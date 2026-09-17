@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Event Response — what each release actually does</title>
+<!--
+  Event Response — the measured answer to "what does this release do to this pair".
+
+  This page is CONTEXT, not a signal, and its wording is constrained by what
+  MD files/EVENT_RESPONSE_BOOK.md actually measured across 76 news families x 26
+  instruments:
+
+    • SIZE replicates and is stated plainly.
+    • TIMING replicates — the reaction is the release, not the day after.
+    • DIRECTION is a coin flip, and five registered tests (three banked before
+      this work, plus §6 and §7) failed to predict it from the outcome, the
+      statement's tone, the surprise magnitude, the lead-up in the 2y, or a
+      composite pre-event state matched by nearest-neighbour.
+
+  So the page shows a DISTRIBUTION, never an arrow. "What may be" is a range and
+  a pair of odds, and the odds are ~50/50 — which is itself the useful thing to
+  know before sitting through a print.
+
+  Data: /backfill/event_response_book.json (aggregates, all families) and
+  /backfill/event_response_events.json (per-event rows, the 13 families whose
+  30-minute window clears 2x an ordinary one). Both are built offline by
+  scripts/build_event_response_book.mjs.
+-->
+<style>
+  :root{
+    --bg:#0d1117;--bg-rgb:13,17,23;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#1c2230;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);
+    --grid:#242c37;
+  }
+  body.light{
+    --bg:#f4f6fb;--bg-rgb:244,246,251;--card:#ffffff;--card2:#eef1f7;--border:#d8dee8;--border2:#c9d1de;
+    --text:#0d1520;--text2:#4b5a6e;--text3:#7c8aa0;
+    --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
+    --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);
+    --grid:#e3e8f0;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;margin:0;padding-bottom:60px}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(var(--bg-rgb),.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:12px 18px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .hdr h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.2px}
+  .hdr .sub{font-size:11.5px;color:var(--text2)}
+  .hbtn{margin-left:auto;background:var(--card2);border:1px solid var(--border);color:var(--text2);
+        border-radius:6px;padding:4px 10px;font-size:11.5px;cursor:pointer}
+  .hbtn:hover{color:var(--text);border-color:var(--text3)}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:13.5px;margin:0 0 3px;font-weight:700}
+  .card .note{font-size:11.5px;color:var(--text2);margin:0 0 14px;max-width:80ch}
+
+  /* KPI row — headline numbers are stat tiles, not a one-bar chart */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .kpi .v{font-size:25px;font-weight:700;line-height:1.15;letter-spacing:-.5px}
+  .kpi .l{font-size:11px;color:var(--text2);margin-top:3px}
+
+  /* Ranking — magnitude, so one hue, light→dark by value */
+  .rank{display:grid;grid-template-columns:minmax(150px,240px) 1fr 54px;gap:8px;align-items:center;margin-bottom:5px}
+  .rank .nm{font-size:11.5px;color:var(--text2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rank .tr{position:relative;height:16px;background:var(--card2);border-radius:3px;overflow:visible}
+  .rank .br{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0;background:var(--blue)}
+  .rank .vl{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--text)}
+  .rank.dim .br{background:var(--text3)}
+  .rank.dim .nm,.rank.dim .vl{color:var(--text3)}
+  .refline{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--amber);opacity:.55}
+
+  select{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;
+         padding:5px 9px;font-size:12px;font-family:inherit}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .controls label{font-size:11px;color:var(--text3)}
+
+  .hero{font-size:40px;font-weight:700;letter-spacing:-1.2px;line-height:1.05}
+  .hero .u{font-size:17px;color:var(--text2);font-weight:600;letter-spacing:0}
+  .herolab{font-size:11.5px;color:var(--text2);margin-top:2px}
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+
+  table{border-collapse:collapse;width:100%;font-size:11.5px}
+  th{text-align:left;font-weight:600;color:var(--text3);padding:5px 8px;border-bottom:1px solid var(--border);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px}
+  td{padding:5px 8px;border-bottom:1px solid var(--border2);font-variant-numeric:tabular-nums}
+  tbody tr:hover{background:var(--card2)}
+  .muted{color:var(--text3)}
+  .warn{background:var(--amber-bg);border:1px solid rgba(210,153,34,.45);color:var(--amber);
+        border-radius:8px;padding:10px 12px;font-size:11.5px;margin-bottom:12px}
+  .foot{font-size:11px;color:var(--text3);max-width:82ch;margin-top:10px}
+  .tip{position:fixed;pointer-events:none;background:var(--card2);border:1px solid var(--border);
+       border-radius:7px;padding:7px 9px;font-size:11.5px;color:var(--text);z-index:99;display:none;
+       box-shadow:0 6px 20px rgba(0,0,0,.35);max-width:280px}
+  .tip b{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Event Response</h1>
+  <span class="sub">what each scheduled release actually does — measured, with sample sizes</span>
+  <button class="hbtn" id="themeBtn">☀︎ light</button>
+</div>
+
+<div class="wrap">
+  <div class="warn" id="banner">Loading the book…</div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2>Which releases the market actually reacts to</h2>
+    <p class="note">The 30-minute window around the release, divided by the same clock on ordinary days —
+      so 3× means the half-hour of the print moved three times a normal half-hour. Anything at or below
+      1× is a release the tape does not register at all. Bars past the amber line clear the 2× bar this
+      book uses to call a reaction real.</p>
+    <div id="ranking"></div>
+    <p class="foot" id="rankFoot"></p>
+  </div>
+
+  <div class="card">
+    <h2>What followed, in detail</h2>
+    <p class="note">Pick a release and an instrument. Everything below is history with its sample size —
+      the spread of what happened, not a forecast of what will.</p>
+    <div class="controls">
+      <label for="famSel">release</label><select id="famSel"></select>
+      <label for="instSel">instrument</label><select id="instSel"></select>
+    </div>
+    <div id="detail"></div>
+  </div>
+
+  <div class="card">
+    <h2>The most similar setups before this one</h2>
+    <p class="note">The eight prior events whose pre-event state — 5-session moves in the 2y, 10y, 30y,
+      the 10y TIPS real yield, the 10y breakeven and the curve slope — most resembles the latest one,
+      and what followed each. The real-yield and breakeven series are stored to two decimals, so their
+      five-session changes quantise to whole basis points — those two columns are coarser than the nominals,
+      which is a limit of the source, not of the matching. <b>This is a lookup, not a prediction.</b> Tested as a predictor
+      (EVENT_RESPONSE_BOOK.md §7, walk-forward, k=8) it hit 49.3% — and a placebo with the state
+      shuffled scored 51.5%, i.e. matching on the real state did worse than ignoring it.</p>
+    <div id="analogues"></div>
+  </div>
+
+  <div class="card">
+    <h2>Read this before reading anything above</h2>
+    <p class="foot" id="honesty"></p>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const tip = $('tip');
+function showTip(e, html){ tip.innerHTML = html; tip.style.display='block';
+  const r = tip.getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX + 14, innerWidth - r.width - 10) + 'px';
+  tip.style.top  = Math.min(e.clientY + 14, innerHeight - r.height - 10) + 'px'; }
+function hideTip(){ tip.style.display='none'; }
+
+$('themeBtn').onclick = () => {
+  document.body.classList.toggle('light');
+  $('themeBtn').textContent = document.body.classList.contains('light') ? '☾ dark' : '☀︎ light';
+  try { localStorage.setItem('er_theme', document.body.classList.contains('light') ? 'light' : 'dark'); } catch {}
+  render();
+};
+try { if (localStorage.getItem('er_theme') === 'light') { document.body.classList.add('light'); $('themeBtn').textContent = '☾ dark'; } } catch {}
+
+const fmtBp = v => (v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(1) + 'bp');
+const fmtPct = (v, d = 1) => (v == null ? '—' : v.toFixed(d) + '%');
+const bpToPct = v => (v == null ? '—' : (v / 100).toFixed(2) + '%');
+const quantile = (sorted, q) => {
+  if (!sorted.length) return null;
+  const pos = (sorted.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+};
+
+let BOOK = null, EVENTS = null;
+
+Promise.all([
+  fetch('/backfill/event_response_book.json').then(r => r.json()),
+  fetch('/backfill/event_response_events.json').then(r => r.json()).catch(() => null),
+]).then(([book, events]) => { BOOK = book; EVENTS = events; boot(); })
+  .catch(e => { $('banner').textContent = 'Could not load the book: ' + e.message; });
+
+function boot(){
+  const fams = Object.entries(BOOK.families);
+  const movers = fams.filter(([, f]) => (f.joinProof?.medianSpikeR0 ?? 0) >= 2);
+  $('banner').innerHTML = `Built ${BOOK.builtAt.slice(0,10)} · <b>${fams.length}</b> release families across `
+    + `<b>${BOOK.instruments.length}</b> instruments. <b>${movers.length}</b> of them move the tape at all — `
+    + `the other ${fams.length - movers.length} are shown greyed, because a release that has never moved a pair `
+    + `should not get a paragraph of scenario text.`;
+
+  const totalEvents = fams.reduce((s, [, f]) => s + f.events, 0);
+  $('kpis').innerHTML = [
+    [fams.length, 'release families measured'],
+    [movers.length, 'that the market reacts to'],
+    [BOOK.instruments.length, 'instruments incl. gold'],
+    [totalEvents.toLocaleString(), 'individual releases'],
+  ].map(([v, l]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+
+  // Family picker — movers first, the rest greyed but still selectable.
+  const order = [...fams].sort((a, b) => (b[1].joinProof?.medianSpikeR0 ?? 0) - (a[1].joinProof?.medianSpikeR0 ?? 0));
+  $('famSel').innerHTML = order.map(([k, f]) =>
+    `<option value="${k}">${f.label}${(f.joinProof?.medianSpikeR0 ?? 0) >= 2 ? '' : '  (no measurable reaction)'}</option>`).join('');
+  $('famSel').onchange = () => { fillInstruments(); render(); };
+  $('instSel').onchange = render;
+
+  $('honesty').innerHTML = `This page reports <b>size and timing</b>, which replicate across 76 families, and
+    deliberately reports <b>no direction</b>, which does not. Five registered tests have now failed to predict the
+    direction of the move that follows a release — from the outcome itself, from the statement's tone, from the
+    surprise magnitude, from the lead-up in the 2-year yield, and from a six-dimensional pre-event state matched
+    by nearest neighbour. The next-day up-rate across all 558 family×instrument rows has a median of
+    <b>50.5%</b>. Where a distribution below straddles zero, that is the finding, not a gap in the analysis.
+    Sample sizes are printed on everything; where a cell would have fewer than 12 events it is omitted rather than
+    shown small. Full method, the frozen designs and every verdict: <code>MD files/EVENT_RESPONSE_BOOK.md</code>.`;
+
+  renderRanking();
+  fillInstruments();
+  render();
+}
+
+function renderRanking(){
+  const rows = Object.entries(BOOK.families)
+    .map(([k, f]) => ({ k, f, r: f.joinProof?.medianSpikeR0 }))
+    .filter(x => Number.isFinite(x.r)).sort((a, b) => b.r - a.r);
+  const max = Math.max(...rows.map(x => x.r), 2.2);
+  const top = rows.slice(0, 18), rest = rows.slice(18);
+  const refPct = (2 / max) * 100;
+  $('ranking').innerHTML = top.map((x, i) => {
+    const w = (x.r / max) * 100;
+    // Sequential: one hue, more-is-darker. Opacity carries magnitude, not a second hue.
+    const op = 0.45 + 0.55 * (x.r / max);
+    const dim = x.r < 2 ? ' dim' : '';
+    return `<div class="rank${dim}" data-i="${i}">
+      <div class="nm" title="${x.f.label}">${x.f.label}</div>
+      <div class="tr">
+        <div class="br" style="width:${w}%;${dim ? '' : `opacity:${op.toFixed(2)}`}"></div>
+        <div class="refline" style="left:${refPct}%"></div>
+      </div>
+      <div class="vl">${x.r.toFixed(2)}×</div>
+    </div>`;
+  }).join('');
+  [...$('ranking').querySelectorAll('.rank')].forEach(el => {
+    const x = top[+el.dataset.i];
+    el.onmousemove = e => showTip(e, `<b>${x.f.label}</b><br>${x.f.events} releases · ${x.f.category}<br>`
+      + `30-min window <b>${x.r.toFixed(2)}×</b> an ordinary one<br>`
+      + `<span class="muted">${x.f.joinProof.instrumentsPassing}/${x.f.joinProof.instruments} instruments clear 2×</span>`);
+    el.onmouseleave = hideTip;
+  });
+  $('rankFoot').innerHTML = `Showing the 18 largest of ${rows.length}. `
+    + `The tail — ${rest.length} more families — runs from ${rest.length ? rest[0].r.toFixed(2) : '—'}× down to `
+    + `${rest.length ? rest[rest.length - 1].r.toFixed(2) : '—'}×; `
+    + `a value below 1 means the half-hour of the release is <i>quieter</i> than an ordinary half-hour.`;
+}
+
+function fillInstruments(){
+  const fk = $('famSel').value, fam = BOOK.book[fk];
+  const insts = fam ? Object.keys(fam.instruments) : [];
+  $('instSel').innerHTML = insts.length ? insts.map(i => `<option value="${i}">${i}</option>`).join('')
+    : '<option>—</option>';
+}
+
+/** A distribution as a diverging range centred on zero: p10–p90 whisker, p25–p75 box, median tick. */
+function rangeBar(vals, label, sub){
+  const s = [...vals].filter(Number.isFinite).sort((a, b) => a - b);
+  if (s.length < 5) return `<div class="muted" style="margin:8px 0">${label}: too few events to draw a distribution (n=${s.length}).</div>`;
+  const q = p => quantile(s, p);
+  const [p10, p25, p50, p75, p90] = [q(.1), q(.25), q(.5), q(.75), q(.9)];
+  const lim = Math.max(Math.abs(p10), Math.abs(p90)) * 1.08 || 1;
+  const W = 100, x = v => 50 + (v / lim) * 50;                   // % of width, zero at centre
+  const pos = p50 >= 0;
+  const hue = pos ? 'var(--bull)' : 'var(--bear)';
+  const upPct = (s.filter(v => v > 0).length / s.length) * 100;
+  return `<div style="margin:14px 0 6px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px">
+      <span style="color:var(--text2)">${label}</span>
+      <span class="muted">${sub} · n=${s.length}</span>
+    </div>
+    <div style="position:relative;height:26px;margin-top:5px">
+      <div style="position:absolute;left:0;right:0;top:12px;height:1px;background:var(--grid)"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--text3);opacity:.7"></div>
+      <div style="position:absolute;left:${Math.min(x(p10), x(p90))}%;width:${Math.abs(x(p90) - x(p10))}%;
+                  top:12px;height:1px;background:${hue};opacity:.5"></div>
+      <div style="position:absolute;left:${Math.min(x(p25), x(p75))}%;width:${Math.abs(x(p75) - x(p25))}%;
+                  top:5px;height:15px;border-radius:2px;background:${hue};opacity:.32"></div>
+      <div style="position:absolute;left:${x(p50)}%;top:2px;bottom:2px;width:2px;margin-left:-1px;background:${hue}"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text3);margin-top:1px">
+      <span>${fmtBp(p10)}</span><span>0</span><span>${fmtBp(p90)}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:2px">
+      <span>median <b>${fmtBp(p50)}</b> <span class="muted">(${bpToPct(p50)})</span></span>
+      <span class="muted">middle half ${fmtBp(p25)} … ${fmtBp(p75)}</span>
+      <span>up <b>${fmtPct(upPct)}</b> of the time</span>
+    </div>
+  </div>`;
+}
+
+/** A single ratio against a reference — a meter, not a pie. */
+function meter(pct, ref, label){
+  if (pct == null) return '';
+  const off = pct - ref;
+  return `<div style="margin-top:12px">
+    <div style="font-size:11.5px;color:var(--text2)">${label}</div>
+    <div style="position:relative;height:10px;background:var(--card2);border-radius:5px;margin-top:5px">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:${Math.max(0, Math.min(100, pct))}%;
+                  background:var(--blue);opacity:.75;border-radius:5px 3px 3px 5px"></div>
+      <div style="position:absolute;left:${ref}%;top:-3px;bottom:-3px;width:1px;background:var(--amber)"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px">
+      <b style="color:var(--text)">${fmtPct(pct)}</b> versus the ${ref}% coin flip (amber) —
+      ${Math.abs(off) < 3 ? 'indistinguishable from chance' : (off > 0 ? 'higher' : 'lower') + ' by ' + Math.abs(off).toFixed(1) + 'pp, on this sample'}
+    </div>
+  </div>`;
+}
+
+function render(){
+  const fk = $('famSel').value, inst = $('instSel').value;
+  const meta = BOOK.families[fk], fam = BOOK.book[fk], row = fam?.instruments?.[inst];
+  if (!meta || !row) { $('detail').innerHTML = '<div class="muted">No measured rows for this combination.</div>'; $('analogues').innerHTML = ''; return; }
+
+  const spike = row.spikeR0, reacts = (meta.joinProof?.medianSpikeR0 ?? 0) >= 2;
+  const evRows = EVENTS?.families?.[fk]?.instruments?.[inst] ?? null;
+
+  let html = '';
+  if (!reacts) html += `<div class="warn">The market does not measurably react to this release.
+    Its 30-minute window runs <b>${(meta.joinProof?.medianSpikeR0 ?? 0).toFixed(2)}×</b> an ordinary one across
+    ${meta.joinProof?.instruments ?? 0} instruments — at or below the ordinary tape. Everything below is still
+    the real measurement; it simply says "nothing happens here".</div>`;
+
+  html += `<div class="split">
+    <div>
+      <div class="hero">${spike != null ? spike.toFixed(1) : '—'}<span class="u">× an ordinary half-hour</span></div>
+      <div class="herolab">${meta.label} → <b>${inst}</b>, across <b>${row.n}</b> releases
+        (${fam.from} → ${fam.to})</div>
+      <table style="margin-top:14px">
+        <tbody>
+          <tr><td class="muted">next day vs an ordinary day</td><td><b>${row.moveMultiple != null ? row.moveMultiple.toFixed(2) + '×' : '—'}</b></td></tr>
+          <tr><td class="muted">typical next-day move, absolute</td><td>${fmtBp(row.absR1Median)} <span class="muted">(${bpToPct(row.absR1Median)})</span></td></tr>
+          <tr><td class="muted">an ordinary day, same clock</td><td>${fmtBp(row.baselineAbsR1)} <span class="muted">(${bpToPct(row.baselineAbsR1)})</span></td></tr>
+          <tr><td class="muted">releases behind this row</td><td>${row.n}</td></tr>
+        </tbody>
+      </table>
+      ${meter(row.r1?.[2], 50, 'How often the next day closed higher')}
+    </div>
+    <div>`;
+
+  if (evRows?.length) {
+    html += rangeBar(evRows.map(r => r.r0), 'First 30 minutes', 'the repricing itself')
+          + rangeBar(evRows.map(r => r.r1), 'Next day, from +30 min', 'what the following session added')
+          + rangeBar(evRows.map(r => r.r5), 'Five sessions on', 'the unwind window');
+  } else {
+    html += `<div class="muted" style="font-size:11.5px">Per-event rows are kept only for the families whose
+      30-minute window clears 2× an ordinary one — matching setups around a release that never moves anything is
+      matching noise to noise. The aggregates on the left are the whole measurement for this family.</div>`;
+  }
+  html += `</div></div>
+    <p class="foot">The bar is a distribution, deliberately: the thin line spans the 10th to 90th percentile of
+    what actually happened, the block is the middle half, the tick is the median. It straddles zero on almost
+    every row on this page, and that is the measurement — the size of a release's move is forecastable, its
+    direction is not.</p>`;
+  $('detail').innerHTML = html;
+
+  renderAnalogues(fk, inst, evRows);
+}
+
+function renderAnalogues(fk, inst, evRows){
+  if (!evRows?.length) { $('analogues').innerHTML = '<div class="muted">No per-event rows for this combination.</div>'; return; }
+  const keys = EVENTS.stateKeys;
+  const ev = evRows.filter(r => r.state && keys.every(k => Number.isFinite(r.state[k])) && Number.isFinite(r.r1))
+                   .sort((a, b) => a.ms - b.ms);
+  if (ev.length < 10) { $('analogues').innerHTML = '<div class="muted">Too few complete rows to match on.</div>'; return; }
+  const latest = ev[ev.length - 1], prior = ev.slice(0, -1);
+  const mu = {}, sd = {};
+  for (const k of keys) {
+    const v = prior.map(p => p.state[k]);
+    mu[k] = v.reduce((a, b) => a + b, 0) / v.length;
+    sd[k] = Math.sqrt(v.reduce((a, b) => a + (b - mu[k]) ** 2, 0) / Math.max(1, v.length - 1)) || 1;
+  }
+  const z = s => keys.map(k => (s[k] - mu[k]) / sd[k]);
+  const qz = z(latest.state);
+  const near = prior.map(p => ({ p, d: Math.hypot(...z(p.state).map((v, i) => v - qz[i])) }))
+                    .sort((a, b) => a.d - b.d).slice(0, 8);
+  const d = ms => new Date(ms).toISOString().slice(0, 10);
+  const up = near.filter(x => x.p.r1 > 0).length;
+
+  $('analogues').innerHTML = `
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:8px">
+      Matching the state before <b>${d(latest.ms)}</b> — 2y ${fmtBp(latest.state.d2y5)}, 10y ${fmtBp(latest.state.d10y5)},
+      real ${fmtBp(latest.state.dReal10_5)}, breakeven ${fmtBp(latest.state.dBe10_5)} over the five sessions into it.
+    </div>
+    <table>
+      <thead><tr><th>date</th><th>Δ2y</th><th>Δreal</th><th>Δbreakeven</th><th>first 30 min</th><th>next day</th><th>distance</th></tr></thead>
+      <tbody>${near.map(x => `<tr>
+        <td>${d(x.p.ms)}</td>
+        <td class="muted">${fmtBp(x.p.state.d2y5)}</td>
+        <td class="muted">${fmtBp(x.p.state.dReal10_5)}</td>
+        <td class="muted">${fmtBp(x.p.state.dBe10_5)}</td>
+        <td style="color:${x.p.r0 >= 0 ? 'var(--bull)' : 'var(--bear)'}">${fmtBp(x.p.r0)}</td>
+        <td style="color:${x.p.r1 >= 0 ? 'var(--bull)' : 'var(--bear)'}">${fmtBp(x.p.r1)}</td>
+        <td class="muted">${x.d.toFixed(2)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <p class="foot">Of these eight, <b>${up}</b> saw the next day close higher and <b>${8 - up}</b> lower.
+    Read that as the spread of what has followed setups like this one — not as ${up > 4 ? 'a lean higher' : up < 4 ? 'a lean lower' : 'a signal'}.
+    The same matching rule, run walk-forward over 6,233 predictions, was right 49.3% of the time, and the
+    shuffled-state placebo was right 51.5% — so the resemblance you can see in this table is not itself evidence.</p>`;
+}
+</script>
+</body>
+</html>
