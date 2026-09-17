@@ -4568,6 +4568,17 @@ python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- Proof of life: is each stage of the pipeline actually running? -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#fb923c">Proof of Life</span>
+        <span class="bot-banner-sub" style="margin:0">scanner → plan → bot: what each stage last did and when — "quiet" and "dead" should never look the same</span>
+      </div>
+      <div id="mtLifeGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;padding:6px 16px 14px;font-size:11px;font-family:'DM Mono',monospace">
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text3)">Loading…</div>
+      </div>
+    </div>
+
     <!-- Risk systems -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">

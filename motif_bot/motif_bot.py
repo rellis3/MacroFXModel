@@ -284,10 +284,13 @@ def _fmt_close_alert(pair: str, row: dict, mode_tag: str) -> str:
     return f"{tag} <b>{pair.upper()}</b>{mode_tag}\n{line2}\n{line3}"
 
 
-def build_status(cfg, broker, plan, paper, guard=None, plan_age_blocked=False, acted_count=0):
+def build_status(cfg, broker, plan, paper, guard=None, plan_age_blocked=False, acted_count=0, life=None):
     bal = broker.account_balance()
     return {
         "running": True,
+        # Proof-of-life counters (2026-09-17): the dashboard shows these so
+        # "quiet" and "dead" stop looking the same.
+        "life": life or {},
         "mode": "paper" if paper else "live",
         "kill_switch": bool(cfg.get("kill_switch")),
         "balance": round(bal, 2) if bal is not None else None,
@@ -463,11 +466,16 @@ def run(base_url: str, force_live: bool) -> None:
     # The plan fetched before the loop was never "new" to the loop -- make the
     # first tick treat it as such so its filtered signals get logged too.
     startup_plan_seen = False
+    _boot_epoch = time.time()
+    life = {"started_at": datetime.now(timezone.utc).isoformat(), "ticks": 0, "plans_loaded": 0,
+            "last_plan_loaded_at": None, "plan_polls": 0, "decisions_today": {}}
 
     while True:
         nowt = time.time()
+        life["ticks"] += 1
 
         if nowt - last_plan >= cfg.get("poll_secs", 60) or last_plan == 0.0:
+            life["plan_polls"] += 1
             try:
                 new_plan = kv.get_json("motif_bot_plan")
             except Exception as e:
@@ -476,6 +484,8 @@ def run(base_url: str, force_live: bool) -> None:
             if new_plan and (not startup_plan_seen or new_plan.get("generatedAt") != (plan or {}).get("generatedAt")):
                 startup_plan_seen = True
                 plan = new_plan
+                life["plans_loaded"] += 1
+                life["last_plan_loaded_at"] = datetime.now(timezone.utc).isoformat()
                 for e in _plan_entries(plan):
                     _register_pair(str(e.get("pair", "")).lower())
                 n_filt = len(plan.get("filtered") or [])
@@ -508,8 +518,15 @@ def run(base_url: str, force_live: bool) -> None:
             except Exception as e:
                 log.warning(f"ai_alert_cfg fetch failed: {e} (Telegram master switch check skipped this cycle)")
             try:
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                counts: dict[str, int] = {}
+                for ev in decision_events:
+                    if datetime.fromtimestamp(ev["t"], tz=timezone.utc).strftime("%Y-%m-%d") == today:
+                        counts[ev["status"]] = counts.get(ev["status"], 0) + 1
+                life["decisions_today"] = counts
+                life["uptime_s"] = int(time.time() - _boot_epoch)
                 status = build_status(cfg, broker, plan, paper, guard=guard,
-                                      plan_age_blocked=plan_age_blocked, acted_count=len(acted_keys))
+                                      plan_age_blocked=plan_age_blocked, acted_count=len(acted_keys), life=life)
                 kv.put_status("motif_bot_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")

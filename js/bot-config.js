@@ -6032,6 +6032,77 @@ async function loadMtLiveStatus() {
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
   loadMtPlan();
   loadMtDecisionLog();
+  loadMtLife();
+}
+
+// Proof-of-life pane: three boxes, one per stage, each with a dot whose
+// colour is driven by AGE against that stage's own cadence -- scanner hourly
+// (+90s), plan hourly, bot status every 30s. Numbers come from the plan's
+// `scan` block (written by motif_track.py) and the bot status's `life`
+// block; both exist only from 2026-09-17, so older payloads show "—".
+function _mtAgo(iso) {
+  if (!iso) return null;
+  const s = (Date.now() - Date.parse(iso)) / 1000;
+  if (!Number.isFinite(s)) return null;
+  return s;
+}
+function _mtFmtAgo(s) {
+  if (s == null) return '—';
+  if (s < 90) return `${Math.round(s)}s ago`;
+  if (s < 5400) return `${Math.round(s / 60)}m ago`;
+  return `${(s / 3600).toFixed(1)}h ago`;
+}
+function _mtDot(ageS, okS, warnS) {
+  const c = ageS == null ? 'var(--text3)' : ageS <= okS ? 'var(--green)' : ageS <= warnS ? 'var(--amber,#e0a93b)' : 'var(--red)';
+  return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};margin-right:6px;vertical-align:middle"></span>`;
+}
+function _mtBox(title, dot, rows) {
+  return `<div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px">
+    <div style="color:var(--text3);margin-bottom:5px">${dot}${title}</div>
+    ${rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;line-height:1.7"><span style="color:var(--text3)">${k}</span><span style="font-weight:600;text-align:right">${v}</span></div>`).join('')}
+  </div>`;
+}
+async function loadMtLife() {
+  const el = document.getElementById('mtLifeGrid');
+  if (!el) return;
+  try {
+    const [plan, st] = await Promise.all([kvGet('motif_bot_plan'), kvGet('motif_bot_status')]);
+    const sc = plan?.scan || null;
+    const hhmm = iso => iso ? new Date(iso).toISOString().slice(11, 16) : '—';
+    // Scanner (Railway, hourly at :01:30)
+    const scanAge = _mtAgo(sc?.finished_at);
+    const scanner = _mtBox('Scanner · motif_track.py on Railway', _mtDot(scanAge, 70 * 60, 130 * 60), [
+      ['last scan finished', sc ? `${hhmm(sc.finished_at)} UTC · ${_mtFmtAgo(scanAge)}` : '— (plan predates this pane)'],
+      ['pairs scanned', sc ? `${sc.pairs_scanned}/${sc.pairs_total}` : '—'],
+      ['scan duration', sc ? `${Math.round((Date.parse(sc.finished_at) - Date.parse(sc.started_at)) / 1000)}s` : '—'],
+      ['new confirmations · this scan / 24h', sc ? `${sc.new_confirmations} / ${sc.confirmations_24h}` : '—'],
+      ['still forming (pairs)', sc ? sc.forming_pairs : '—'],
+      ['next scan', sc ? `${hhmm(sc.next_scan_at)} UTC` : '—'],
+    ]);
+    // Plan (KV)
+    const planAge = _mtAgo(plan?.generatedAt);
+    const planBox = _mtBox('Plan · motif_bot_plan in KV', _mtDot(planAge, 70 * 60, 180 * 60), [
+      ['generated', plan ? `${hhmm(plan.generatedAt)} UTC · ${_mtFmtAgo(planAge)}` : 'never'],
+      ['tradeable entries', plan ? (plan.entries || []).length : '—'],
+      ['rejected by best-config (48h)', plan ? (plan.filtered || []).length : '—'],
+      ['bot fails closed after', `${(_mtCfg.plan_max_age_hours ?? 3)}h without a fresh plan`],
+    ]);
+    // Bot (the user's box)
+    const life = st?.life || null;
+    const pushAge = _mtAgo(st?.pushed_at ? new Date(st.pushed_at * 1000).toISOString() : null);
+    const dec = life?.decisions_today || {};
+    const decStr = Object.keys(dec).length ? Object.entries(dec).map(([k, v]) => `${k} ${v}`).join(' · ') : 'none yet';
+    const up = life?.uptime_s != null ? (life.uptime_s < 3600 ? `${Math.round(life.uptime_s / 60)}m` : `${(life.uptime_s / 3600).toFixed(1)}h`) : '—';
+    const botBox = _mtBox('Bot · motif_bot.py on your box', _mtDot(pushAge, 90, 300), [
+      ['last status push', st ? `${_mtFmtAgo(pushAge)} (every ${_mtCfg.status_secs ?? 30}s)` : 'never'],
+      ['mode · up', st ? `${st.mode} · ${up}` : '—'],
+      ['loop ticks · plan polls', life ? `${life.ticks} · ${life.plan_polls}` : '—'],
+      ['plans loaded · last', life ? `${life.plans_loaded} · ${hhmm(life.last_plan_loaded_at)} UTC` : '—'],
+      ['decisions today', decStr],
+      ['acted · open', st ? `${st.acted_entries ?? 0} · ${(st.mt5_positions || []).length}` : '—'],
+    ]);
+    el.innerHTML = scanner + planBox + botBox;
+  } catch (e) { el.innerHTML = `<div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text3)">${e.message}</div>`; }
 }
 
 // Plan table is sourced straight from motif_bot_plan (not the bot's own
@@ -6111,3 +6182,11 @@ document.querySelector('.tab-btn[data-tab="motifbot"]')?.addEventListener('click
 loadMtConfig();
 loadMtCreds();
 loadMtLiveStatus();
+// Keep the Motif tab's liveness honest without a manual refresh: the bot
+// pushes status every 30s, so a 60s refresh while the tab is visible keeps
+// the "last status push" dot meaningful. Three small KV reads, gzipped.
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  if (!document.getElementById('tab-motifbot')?.classList.contains('active')) return;
+  loadMtLiveStatus();
+}, 60_000);

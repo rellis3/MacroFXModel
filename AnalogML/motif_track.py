@@ -761,6 +761,8 @@ def run(args: argparse.Namespace) -> None:
     plan_filtered: list[dict] = []
     FILTERED_WINDOW_HOURS = 48
 
+    scan_started = datetime.now(timezone.utc)
+    pairs_scanned = 0
     for pair in pairs:
         # A single pair's bad data (corrupt cache, a detection-logic edge
         # case, anything) must never take down the whole run -- caught live
@@ -882,6 +884,7 @@ def run(args: argparse.Namespace) -> None:
             if state:
                 states.append(state)
                 forming += 1
+            pairs_scanned += 1
         except Exception as e:
             print(f"  [warn] {pair}: detection failed ({e}) -- skipping this pair, "
                   f"continuing with the rest")
@@ -899,6 +902,19 @@ def run(args: argparse.Namespace) -> None:
                 "strategy": "motif-touch",
                 "entries": plan_entries,
                 "filtered": plan_filtered,
+                # Proof-of-life for the dashboard: what this scan actually did.
+                "scan": {
+                    "started_at": scan_started.isoformat(),
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "pairs_scanned": pairs_scanned, "pairs_total": len(pairs),
+                    "new_confirmations": new_signals,
+                    "confirmations_24h": sum(1 for t in log["trades"]
+                                             if _hours_since(t.get("logged_at") or "1970-01-01T00:00:00+00:00") <= 24),
+                    "resolved_this_run": resolved_total,
+                    "forming_pairs": forming,
+                    "next_scan_at": (datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+                                     + pd.Timedelta(hours=1) + pd.Timedelta(seconds=90)).isoformat(),
+                },
             })
             plan_pushed = True
         except Exception as e:
