@@ -388,6 +388,7 @@ async function _saveLiveSnapshot(pair) {
   try {
     await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
     entry.snapshotLastT = lastT;
+    entry.snapshotSavedAt = Date.now();
     return true;
   } catch (e) {
     console.warn(`[monday-fib-atlas-live] ${pair}: snapshot save failed — ${e.message}`);
@@ -395,9 +396,18 @@ async function _saveLiveSnapshot(pair) {
   }
 }
 
-export async function saveAllLiveSnapshots() {
+// `maxAgeMs`: only pairs whose R2 copy (as restored at cold start, or as
+// written since) is older than this. The boot-time pass uses it so a box
+// that redeploys several times a day -- never living long enough for the
+// 6h interval to fire -- still keeps R2 fresh without re-sending every pair
+// on every deploy. Undefined = write everything that changed.
+export async function saveAllLiveSnapshots({ maxAgeMs } = {}) {
   let saved = 0;
   for (const pair of liveCache.keys()) {
+    if (maxAgeMs != null) {
+      const e = liveCache.get(pair);
+      if (e?.snapshotSavedAt && Date.now() - e.snapshotSavedAt < maxAgeMs) continue;
+    }
     if (await _saveLiveSnapshot(pair)) saved++;
   }
   if (saved) console.log(`[monday-fib-atlas-live] snapshotted ${saved} warm pair(s) to R2`);
@@ -408,13 +418,13 @@ async function coldStartLiveCache(pair) {
   const sym = pair.toUpperCase();
   liveWarming.add(pair);
   try {
-    let packed = null, fromSnapshot = false;
+    let packed = null, fromSnapshot = false, snapshotSavedAt = 0;
     try {
       const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
       const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
       if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
         const restored = packFromJSON(snap);
-        if (restored?.n) { packed = restored; fromSnapshot = true; }
+        if (restored?.n) { packed = restored; fromSnapshot = true; snapshotSavedAt = Date.parse(snap.savedAt) || 0; }
       }
     } catch (e) { console.warn(`[monday-fib-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
 
@@ -425,7 +435,7 @@ async function coldStartLiveCache(pair) {
       catch (e) { console.warn(`[monday-fib-atlas-live] ${sym}: gap-fill failed on cold start (${e.message})`); }
     }
     const bounded = boundPacked(packed, LIVE_WINDOW_DAYS);
-    liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1] });
+    liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], snapshotSavedAt });
     console.log(`[monday-fib-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
     console.error(`[monday-fib-atlas-live] ${sym}: cold start failed — ${e.message}`);

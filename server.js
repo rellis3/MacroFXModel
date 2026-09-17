@@ -17424,6 +17424,10 @@ app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
 // was on R2 from the previous life anyway.
 const ATLAS_SNAPSHOT_MS = 6 * 3600_000;
 svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
+// Boot-time pass, 5 min in (after pairs warm): ONLY pairs whose R2 copy is
+// already older than the cadence -- keeps R2 fresh across a day of short
+// process lives without re-sending the whole set per deploy.
+setTimeout(() => _laSaveAllLiveSnapshots({ maxAgeMs: ATLAS_SNAPSHOT_MS }), 5 * 60_000);
 
 // Fib Atlas's own copies of the snapshot job above (js/asiaFibAtlasRoutes.js
 // / js/mondayFibAtlasRoutes.js's own `saveAllLiveSnapshots`, added
@@ -17433,6 +17437,8 @@ svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
 // module-level caches (Asia, Monday), so two separate interval calls.
 svcInterval('atlasSnapshots', _faAsiaSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
 svcInterval('atlasSnapshots', _faMondaySaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
+setTimeout(() => _faAsiaSaveAllLiveSnapshots({ maxAgeMs: ATLAS_SNAPSHOT_MS }), 5 * 60_000);
+setTimeout(() => _faMondaySaveAllLiveSnapshots({ maxAgeMs: ATLAS_SNAPSHOT_MS }), 5 * 60_000);
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
