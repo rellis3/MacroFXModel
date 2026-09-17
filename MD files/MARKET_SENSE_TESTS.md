@@ -161,6 +161,20 @@ closure split is a base rate; no pass bar, no direction claim. The 2Y-spread
 mean-reversion sleeve already validated here (YIELD_SPREAD_STRATEGY.md) is a
 different object — the spread's own z-score — and is not re-tested.
 
+**S12 — The owner's framing, as a table (pre-registered 2026-09-17, before
+running).** "After FOMC, when the 30-year had already moved into the meeting and the
+Fed was more hawkish than expected, price sold off." Population: 84 FOMC decision
+days 2016→. Rows = lead-up: Δ30Y over the 20 sessions before the meeting, split
+at ±8bp (up / flat / down). Columns = surprise on the day: Δ2Y on the decision day,
+split at ±5bp (hawkish / neutral / dovish). Cells: share of meetings where SPX500,
+the broad dollar and gold were HIGHER five sessions after the decision, with a
+bootstrap interval, and the mean move. No pass bar: this is a base-rate table
+whose job is to show the owner the numbers behind the five registered nulls. A
+cell with fewer than 10 meetings is printed with its n and not discussed. Reading
+rule stated in advance: a cell only means something if its interval excludes 50%
+AND the neighbouring cells do not contradict it; with nine cells and n≈84, one
+cell clearing 50% by chance is expected.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,
