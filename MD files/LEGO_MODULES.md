@@ -7951,17 +7951,31 @@ clock on ordinary days. It is what caught both bugs below, and a row that does n
    silently (a NaN epoch becomes 0 in an `Int32Array`), which is the exact failure its own
    header was written to warn about. Now located per file, and a file whose timestamps do
    not resolve throws. `scripts/run_session_window_comparison.mjs` is the other consumer.
-2. `backfill/surprise_backfill.json` timestamps are **17 hours early** — US 08:30 ET
-   releases are stored at 19:30/20:30 UTC on the previous day. Verified two ways: by hand
-   against known prints (Dec-2023 CPI, released 2024-01-11, stored as 2024-01-10 20:30Z)
-   and against the tape (a whole-hour scan peaks uniquely at +17h, 2.4–2.5×, with every
-   other hour ≈1.0×). Harmless for the surprise index, whose only use of `ms` is an
-   age-decay weight — **not** harmless for `macroRegimeFx.buildEventStudy`, which keys on
-   `new Date(r.ms)`'s calendar date and therefore attributes every backfilled US morning
-   release to the day before it happened. The builder here calibrates and proves the clock
-   per family; fixing the archive itself needs the untracked 68MB source CSV and is
-   **open**.
+2. `backfill/surprise_backfill.json` timestamps are **broken row by row**. First read as a
+   uniform +17h (true of US CPI and NFP: Dec-2023 CPI, released 2024-01-11, is stored as
+   2024-01-10 20:30Z, and a whole-hour scan peaks uniquely at +17h). Widening the book
+   showed that is not the general case — at least three regimes are mixed inside one file:
+   exact, an hour early (a DST slip), and seventeen hours early. **Canada's Labour Force
+   Survey publishes Employment Change and the Unemployment Rate in the same instant and the
+   archive stores them 17 hours apart**, which is the clearest proof: no single shift can
+   repair it. Only 33% of its US rows (1,362/4,135) sit at any plausible US release clock;
+   the two commonest stamps, 20:30Z and 19:30Z, are not US release times at all.
+   Harmless for the surprise index, whose only use of `ms` is an age-decay weight — **not**
+   harmless for `macroRegimeFx.buildEventStudy`, which keys on `new Date(r.ms)`'s calendar
+   date, so an unknown but large subset of the history behind today.html's "What moves this
+   pair, measured" panel is attributed to the wrong day. The book now sources US/EU/GB from
+   `calendar_events.csv` (correct clocks, verified across the DST switch, and 15 months more
+   coverage) and admits only those FF families that can prove their clock against the tape.
+   Repairing the archive itself needs the untracked 68MB source CSV and is **open**.
 
-**Status: ✅ built and unit-tested; the descriptive book is built for 3 families × 8
-instruments. NO edge claimed — 33 of its 72 populated cells held their sign across their
-own halves, which is what a coin flip does.**
+**Scope (2026-09-17, widened):** 86 families across 7 economies and 11 news categories —
+the site's own taxonomy (inflation, labour, growth, business activity, retail, trade,
+housing, confidence, rates, orders/fiscal, energy) — × all 26 instruments including gold,
+plus the FOMC tone series and the Beige Book. Each family carries a join proof, and the
+brick now also emits the two MARGINALS (lead-up alone, outcome alone), which carry ~3× the
+sample of a joint cell and are the honest first read on a grid this size.
+
+**Status: ✅ built and unit-tested. NO edge claimed** — see
+`MD files/EVENT_RESPONSE_BOOK.md` for what the book says and, just as importantly, what it
+cannot say. The size effects replicate; the conditional direction claim has no support in
+the descriptive grid, and the registered test that would settle it (§6) has not been run.

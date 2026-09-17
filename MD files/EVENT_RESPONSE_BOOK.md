@@ -374,6 +374,86 @@ looking at the right minutes, the size effects replicate, and the conditional
 direction claim has **no support yet** — which is what §6's single registered test
 exists to settle.
 
+## Amendment 1 — the release archive, and what replaced it (2026-09-17)
+
+Recorded per this document's own rule: **data-availability amendments are
+allowed and recorded; moving a pass bar after seeing a result is not.** Nothing
+in §4–§6 changes. What changes is which archive supplies the event timestamps,
+and the reason is a data fault, not a result.
+
+### The correction
+
+The build log below (written earlier the same day) states the FF archive's
+timestamps are **a uniform +17h early**. That is true of US CPI and US NFP, and
+it is **not true in general**. Widening the book to every news family exposed
+the real state of that file:
+
+- **Within a single release, two series disagree.** Canada's Labour Force Survey
+  publishes Employment Change and the Unemployment Rate in the same instant. The
+  archive stores 2024-01-05 13:30Z for the first (correct) and 2024-01-04 20:30Z
+  for the second (17h early). One release, two timestamps, 17 hours apart.
+- **At least three regimes are mixed inside the file**: exact, one hour early
+  (a DST slip — GB CPI 2024-04-17 at 05:00Z for an 06:00Z print), and seventeen
+  hours early (the previous evening).
+- Only **33% of its US rows (1,362 of 4,135) sit at any plausible US release
+  clock** at all; the two most common stamps are 20:30Z (1,153 rows) and 19:30Z
+  (1,092), neither of which is a US release time.
+
+A single global shift cannot repair that, and a per-family shift fitted on the
+market gives noise 89 chances to pick a flattering hour.
+
+### What replaced it
+
+`calendar_events.csv` — the other archive in the repo, from a different vendor —
+carries **correct** timestamps, spot-checked on both sides of the DST switch
+(US CPI 2024-01-11 13:30Z in EST, 2024-03-12 12:30Z in EDT; GB CPI 07:00Z; EU
+flash PMI 09:00Z) and runs to **2026-07**, fifteen months past the FF archive's
+2025-04 cutoff. Its limitation is coverage: it carries a consensus for **USD,
+EUR and GBP only**.
+
+So the book now takes the best source per economy:
+
+| Economy | Source | Clock |
+|---|---|---|
+| US, EU, GB | `calendar_events.csv` | trusted; ±3h sanity check, flagged never dropped |
+| AU, NZ, CA, CH, JP | `backfill/surprise_backfill.json` | must EARN its clock: a ±23h scan must show a peak ≥2× an ordinary day **and** ≥1.5× the next-best hour, or the family is dropped |
+| FOMC, Beige Book | `js/fomcHistory.js`, `js/beigeBookCalendar.js` rule | 14:00 ET resolved per date through `Intl` |
+
+This also fixes a conflation in the first pass, which gated *every* family on
+the market proof and threw away 45 of 58 US/EU/GB families whose timestamps were
+never in doubt. "This release barely moves FX" is a **result**; "we do not know
+when this release happened" is a **data fault**. Only the second is grounds to
+drop a row, and the book now says the first out loud instead of hiding it.
+
+**§3's rule "FF titles only, because the live feed is also FF" is superseded for
+measurement.** It was written to keep history joinable to today's event by title
+and is the right rule for the *display* layer — but it assumed the FF archive's
+timestamps were usable, and they are not. The consequence is an open task, not a
+hidden one: **wiring the book to the live news panel now needs a title map from
+the FF feed's vocabulary to vendor 2's** (`"CPI y/y"` → `"Inflation Rate
+Year-over-Year"`). That mapping is display work and does not affect any number
+measured here.
+
+### The cost, stated plainly
+
+**AUD, NZD, CAD, CHF and JPY news is thin in this book, and the reason is data,
+not choice.** Vendor 2 carries no consensus for those economies; the only
+archive that does is the one whose clocks failed. Of its 22 candidate families,
+4 proved a clock and 18 were dropped. Any per-pair reading for those currencies
+rests on the US/EU/GB families that touch them, not on their own calendars.
+
+### What this says about `buildEventStudy` (correcting the build log below)
+
+The build log's claim — that today.html's "What moves this pair, measured" panel
+attributes *every* backfilled US morning release to the day before — is too
+strong. The correct statement: **an unknown but large subset of backfilled
+releases carries a wrong date** (two thirds of US rows are not at any plausible
+release clock), so that panel's history is unreliable in a way that cannot be
+repaired by a single offset. It remains a real bug on a live surface, and the
+fix is the same either way: re-source or re-time the archive.
+
+---
+
 ## Results (§6 confirmatory cell)
 
 *(not run — appended here when §6 executes, design above untouched)*

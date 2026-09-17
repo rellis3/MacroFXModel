@@ -54,6 +54,9 @@ export const ER_DEFAULTS = {
 
 const MIN = 60, DAY = 86_400;
 
+export const LEAD_STATES = ['priced-hawkish', 'flat', 'priced-dovish'];
+export const OUTCOMES = ['beat', 'inline', 'miss'];
+
 // ── small stats (kept local: one consumer, and statsCore has no median/upPct) ──
 const _sorted = a => [...a].sort((x, y) => x - y);
 export function median(values) {
@@ -333,14 +336,31 @@ export function buildEventResponseBook({ instruments = {}, families = [], yields
       };
 
       const cells = {};
-      for (const st of ['priced-hawkish', 'flat', 'priced-dovish']) {
-        for (const oc of ['beat', 'inline', 'miss']) {
+      for (const st of LEAD_STATES) {
+        for (const oc of OUTCOMES) {
           const sub = rows.filter(r => r.leadState === st && r.outcome === oc);
           if (sub.length < o.minCellObs) continue;            // omitted, not greyed — see header
           cells[`${st}|${oc}`] = { leadState: st, outcome: oc, ...cellStats(sub) };
         }
       }
-      famOut.instruments[name] = { all, cells, cellsOmitted: 9 - Object.keys(cells).length };
+      // The two MARGINALS, each with ~3x the sample of a joint cell. A 3x3 grid
+      // on a 110-print series leaves ~12 per cell, which is the regime where
+      // noise wins; the marginals are the same data cut once instead of twice
+      // and are the honest first read. They also give the comparison the joint
+      // cells have to beat: if `priced-hawkish + beat` says nothing that
+      // `priced-hawkish` alone does not, the interaction is adding nothing.
+      // A family with no outcome score (e.g. a Beige Book release, where the
+      // text score is server-side only) still fills `leadCells`.
+      const leadCells = {}, outcomeCells = {};
+      for (const st of LEAD_STATES) {
+        const sub = rows.filter(r => r.leadState === st);
+        if (sub.length >= o.minCellObs) leadCells[st] = { leadState: st, ...cellStats(sub) };
+      }
+      for (const oc of OUTCOMES) {
+        const sub = rows.filter(r => r.outcome === oc);
+        if (sub.length >= o.minCellObs) outcomeCells[oc] = { outcome: oc, ...cellStats(sub) };
+      }
+      famOut.instruments[name] = { all, cells, leadCells, outcomeCells, cellsOmitted: 9 - Object.keys(cells).length };
     }
     out.families[fam.key] = famOut;
   }
