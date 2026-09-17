@@ -908,8 +908,10 @@ def run(args: argparse.Namespace) -> None:
                     "finished_at": datetime.now(timezone.utc).isoformat(),
                     "pairs_scanned": pairs_scanned, "pairs_total": len(pairs),
                     "new_confirmations": new_signals,
+                    # By CONFIRM time (entry bar), not logged_at -- a backfill
+                    # event can log thousands of old rows in one go.
                     "confirmations_24h": sum(1 for t in log["trades"]
-                                             if _hours_since(t.get("logged_at") or "1970-01-01T00:00:00+00:00") <= 24),
+                                             if _hours_since(t.get("entry_date") or "1970-01-01T00:00:00+00:00") <= 24),
                     "resolved_this_run": resolved_total,
                     "forming_pairs": forming,
                     "next_scan_at": (datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)

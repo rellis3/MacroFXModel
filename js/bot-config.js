@@ -6074,7 +6074,7 @@ async function loadMtLife() {
     const scanner = _mtBox('Scanner · motif_track.py on Railway', _mtDot(scanAge, 70 * 60, 130 * 60), [
       ['last scan finished', sc ? `${hhmm(sc.finished_at)} UTC · ${_mtFmtAgo(scanAge)}` : '— (plan predates this pane)'],
       ['pairs scanned', sc ? `${sc.pairs_scanned}/${sc.pairs_total}` : '—'],
-      ['scan duration', sc ? `${Math.round((Date.parse(sc.finished_at) - Date.parse(sc.started_at)) / 1000)}s` : '—'],
+      ['detection pass', sc ? `${Math.round((Date.parse(sc.finished_at) - Date.parse(sc.started_at)) / 1000)}s (after the OANDA top-up)` : '—'],
       ['new confirmations · this scan / 24h', sc ? `${sc.new_confirmations} / ${sc.confirmations_24h}` : '—'],
       ['still forming (pairs)', sc ? sc.forming_pairs : '—'],
       ['next scan', sc ? `${hhmm(sc.next_scan_at)} UTC` : '—'],
