@@ -2873,7 +2873,8 @@ function assembleChainSnapshot() {
     .sort((a, b) => a.ts - b.ts).slice(0, 6)
     .map(e => { const h = Math.round((e.ts - now) / 3600_000); return `  ${e.country} ${e.event}${e.estimate != null ? ` (consensus ${e.estimate})` : ''} -- ${h < 0 ? `${-h}h ago` : h === 0 ? 'now' : `in ${h}h`}`; })
     .join('\n') || null;
-  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs };
+  const evidence = window.deskEvidenceBrick ? window.deskEvidenceBrick.evidenceForPrompt() : null;
+  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs, evidence };
 }
 async function peekChainRead() {
   try {
@@ -3208,7 +3209,7 @@ function policyPricedLine() {
   const cls = p.direction === 'cuts' ? 'off' : p.direction === 'hikes' ? 'on' : 'mix';
   const tip = `The 2-year Treasury yield (${p.twoYear}%, as of ${p.twoYearAsOf}) against the effective fed funds rate (${p.policyRate}%, ${p.policyAsOf}) — a gap of ${p.gapBp}bp. `
     + `Divided by a standard 25bp move, that is roughly ${n.toFixed(1)} ${word ?? 'moves'} the market has ALREADY priced over the next couple of years. `
-    + `It matters because a currency does not rally on a cut that was already expected — it moves when the expected PATH changes. Context, not a signal.`;
+    + `It matters because a currency does not rally on a cut that was already expected — it moves when the expected PATH changes. Context, not a signal. Tested here 2026-09-17: prior repricing does NOT make the decision day smaller -- 85 FOMC days ran about 1.3 ATR on EUR/USD, USD/JPY, gold and SPX500 whether the 2-year had moved 5bp or 16bp+ into the meeting.`;
   return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Priced in: <b class="tone ${cls}" style="font-weight:800">${word ? `~${n.toFixed(1)} ${word}` : 'roughly on hold'}</b>`
     + `<span class="muted"> · 2Y ${p.twoYear}% vs policy ${p.policyRate}% (${p.gapBp >= 0 ? '+' : ''}${p.gapBp}bp) — a currency reacts to the path CHANGING, not to a move already expected</span></div>`;
 }
@@ -6600,7 +6601,26 @@ function _dayTier(r) {
   const cone = coneGap == null ? '' : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. Moves may get bigger from here.">σ↑${_EV('c', _EV_T.c)}</span>`
     : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year.">σ↓${_EV('c', _EV_T.c)}</span>` : '';
   const txt = `<span class="daytxt" title="Range used: how much of today's expected range price has already travelled. Expected range and vol percentile from the calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '% used' : ''}${rangePts != null ? ` · exp ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ''}${volPct != null ? ` · σ P${volPct}` : ''}${_EV('v', _EV_T.v)}</span>`;
-  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}${nqDownWeekChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}${nqDownWeekChip(r)}${vixInversionChip(r)}</div>`;
+}
+// VIX above VIX3M -> the week has run wider. Tested 2026-09-17, pre-registered
+// (MD files/MARKET_SENSE_TESTS.md S1): first day of an inversion -> next-5-session
+// range +0.76 ATR on SPX500, +0.82 NAS100, +0.44 USD/JPY, +0.43 gold vs matched
+// controls, 86 entries since 2008, CIs clear of zero. Inversions are brief
+// (median one session), so "currently inverted" is nearly always the first day
+// or two; the chip says which day of the inversion it is so the reader can see
+// when it has drifted past what was measured. Range, never direction.
+const VIX_INV_EFFECT = { SPX500: '+0.76', NQ: '+0.82', USDJPY: '+0.44', GOLD: '+0.43' };
+function vixInversionChip(r) {
+  const eff = VIX_INV_EFFECT[r.name];
+  if (!eff) return '';
+  const v = fred?.vix?.value, v3 = fred?.vix3m?.value;
+  if (v == null || v3 == null || !(v >= v3)) return '';
+  const h = fredHist?.vix ?? [], h3 = fredHist?.vix3m ?? [];
+  let dayN = 1;
+  for (let i = h.length - 2, j = h3.length - 2; i >= 0 && j >= 0; i--, j--) { if (h[i].date !== h3[j].date) break; if (h[i].value >= h3[j].value) dayN++; else break; }
+  const asOf = fred?.vix?.asOf ? ` (${fred.vix.asOf} close)` : '';
+  return `<span class="chip warn" title="VIX ${fmtN(v, 1)} is above VIX3M ${fmtN(v3, 1)}${asOf}: near-term fear priced above the 3-month, day ${dayN} of this inversion. Tested here 2026-09-17: on the first day of an inversion the following five sessions ran ${eff} ATR wider on ${dispName(r.name)} than matched days (86 inversions since 2008, CI clear of zero). Inversions usually last a session or two; the effect past day 3 was not measured. A statement about range, never direction.">wider week likely · VIX &gt; VIX3M d${dayN}${_EV('v', _EV_T.v)}</span>`;
 }
 // Nasdaq after a down-week runs wider. Tested 2026-09-17, pre-registered
 // (MD files/GROWTH_VS_YIELDS_TEST.md): NAS100 down >=1% over 5 sessions -> next
@@ -6626,7 +6646,34 @@ function _clockTier(r) {
   const d = r.d;
   const news = d.news_flag ? `<span class="chip warn" title="A major scheduled release today (${d.news_flag}). Expected ranges are scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : '';
   const ev = (() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 24 ? e.event.slice(0, 22) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.">⏰ ${nm} ${evtTime(e)}</span>`; })();
-  return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
+  return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${eventRangeChip(r)}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
+}
+// Release-day range by family, on the pairs where it was measured. Tested
+// 2026-09-17, pre-registered (MD files/MARKET_SENSE_TESTS.md S7): 7,932 releases
+// from this desk's own surprise store vs matched non-release days. Only the cells
+// that passed are listed; a family/pair not here tested null or was too thin.
+// CPI is the odd one: the release session itself is marginal and the NEXT session
+// carries the width (the print lands late in the OANDA session). Range, never
+// direction -- the size of the surprise is not known until the print.
+const EVENT_RANGE_EFFECT = {
+  'rate decision': { EURUSD: '+0.42 on the day', USDJPY: '+0.27 on the day', GBPUSD: '+0.37 the session AFTER' },
+  employment:      { AUDUSD: '+0.19 on the day (big surprises)', EURUSD: '+0.16 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', USDCAD: '+0.11 on the day' },
+  cpi:             { EURUSD: '+0.27 the session AFTER', USDJPY: '+0.25 the session AFTER', GBPUSD: '+0.19 on the day' },
+  gdp:             { EURUSD: '+0.22 on the day (big surprises)', USDCAD: '+0.16 on the day' },
+  pmi:             { USDJPY: '+0.22 on the day' },
+};
+const EVENT_FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i]];
+function eventRangeChip(r) {
+  const fx = EVENT_RANGE_EFFECT;
+  const evs = (typeof pairEvents === 'function' ? pairEvents(r.name) : []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && Math.abs(e.ms - Date.now()) < 14 * 3600e3);
+  for (const e of evs) {
+    const fam = EVENT_FAMILY_RE.find(([, re]) => re.test(e.event ?? ''))?.[0];
+    const eff = fam && fx[fam]?.[r.name];
+    if (!eff) continue;
+    const past = e.ms <= Date.now();
+    return `<span class="chip warn" title="${esc0(e.event)} (${e.country}) ${past ? 'was released at' : 'is due at'} ${evtTime(e)} UK. Tested here 2026-09-17 on ${dispName(r.name)}: ${fam} releases have run ${eff} ATR wider than matched non-release days (this desk's own surprise store, 2017 onward, CI clear of zero). A statement about range, never direction; the surprise itself is unknown until the print.">${fam} day · range ${eff.split(' ')[0]} ATR${/AFTER/.test(eff) ? ' next session' : ''}${_EV('v', _EV_T.v)}</span>`;
+  }
+  return '';
 }
 function pairChipsHtml(r) { return _dayTier(r) + _leanTier(r) + _clockTier(r); }
 
@@ -10530,6 +10577,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as MacroChain from './js/macroChain.js';
   window.macroChainBrick = MacroChain;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The desk's evidence ledger (js/deskEvidence.js): every relationship this desk
+     has tested, with its verdict. Chips and tooltips read it; so do both AI prompts. -->
+<script type="module">
+  import * as DeskEvidence from './js/deskEvidence.js';
+  window.deskEvidenceBrick = DeskEvidence;
   try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">

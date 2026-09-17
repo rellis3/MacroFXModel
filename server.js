@@ -138,6 +138,7 @@ import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
+import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
@@ -3345,6 +3346,9 @@ ${s.events || '  nothing high-impact scheduled'}
 HEADLINES (Yahoo, last few hours; may be thin or stale)
 ${hl || '  none available'}
 
+TESTED ON THIS DESK (pre-registered, paired-control tests on this desk's own data; lean on these BEFORE any market folklore)
+${s.evidence || _evidenceForPrompt()}
+
 === END SNAPSHOT ===
 
 HOW TO WRITE IT (style):
@@ -3360,6 +3364,7 @@ HOW TO WRITE IT (style):
 - Land it on FX: which majors this chain is pushing, and through which leg (rates, oil, risk). Name pairs. No entries, stops, sizes or products, ever. No calls to action.
 - Never name a central-bank official; use the role. Never present positioning (COT, retail book) as a forecast.
 - If the snapshot is thin -- most links quiet, few numbers -- say the chain is quiet today and keep it short. A quiet day is a valid read.
+- EVIDENCE FIRST. Where a TESTED ON THIS DESK line applies to what you are writing, use it and say so in four words ("tested here: null", "measured here: +0.4 ATR"). Never assert a relationship that line marks TESTED NULL as if it held; if you must mention it, say it tested null here. A VALIDATED line is about RANGE -- never turn it into a direction.
 
 Respond with a single valid JSON object, no markdown, no text outside it:
 {"hook":"one sentence, the thing driving today","read":"4-6 short paragraphs separated by blank lines, 150-240 words total, in the style above","stories":[{"name":"the war trade","legs":"energy up, dollar up","status":"dominant|overshadowed|reloading|absent","evidence":"one clause with the snapshot numbers that show it"}],"shouldHave":"one sentence: what the textbook says should be happening and is not -- or 'nothing is out of place today'","next":"one sentence: the next catalyst and what a surprise would look like","forFx":"1-2 sentences naming the pairs this chain is pushing and through which leg"}`;
@@ -4104,6 +4109,9 @@ ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ran
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
 
+=== TESTED ON THIS DESK (pre-registered, paired-control tests on this desk's own data -- use these BEFORE any market folklore; say "tested here" when you do) ===
+${_evidenceForPrompt()}
+
 === REAL HEADLINES (Yahoo Finance) ===
 ${heads}
 
@@ -4112,6 +4120,7 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - Lead the headline and theme with the plain-English "so what" (what it means / what to do), not the metric. Speak numbers like a person ("the 10-year near 4.5%", "VIX easing to 15"), not to spurious decimals.
 - USE THE "WHAT MOVED" DELTAS. Anchor the read on what's actually SHIFTING, not just today's levels: e.g. "the 10-year is up 6bps today (and +12 on the week) — yields grinding higher, dollar-supportive", "credit spreads tightening 5bps this week — no stress signal". A level with no direction is half the story; say the move and what it implies.
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
+- EVIDENCE FIRST. The TESTED ON THIS DESK block is the highest-priority context on this page after the data itself. When a validated line applies to today (a VIX inversion, a scheduled employment / CPI / rate-decision release on a pair it names, a Nasdaq down-week), say what it measured, in ATR, and say "tested here". When you touch a relationship the block marks TESTED NULL (a rates shock meaning FX vol; "priced in" shrinking a decision day; oil "not yet" reaching breakevens; a broken link "resolving"), say it tested null here rather than narrating it. Validated lines are about RANGE and must never be turned into a direction.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
 Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data).

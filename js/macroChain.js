@@ -33,7 +33,7 @@ export const CHAIN_WINDOW_DAYS = 20;
 // floor: the smallest 20d change that counts as "moved".
 export const CHAIN_NODES = {
   oil:    { label: 'Oil (WTI)',                       unit: 'pct', floor: 3,   dp: 1, what: 'Front-month crude in dollars. Energy is the first domino: it is in every input cost and every headline inflation print.' },
-  bei:    { label: 'Inflation expectations',          unit: 'bp',  floor: 5,   dp: 0, what: 'The 10-year breakeven (T10YIE): nominal yield minus the TIPS real yield. What the bond market is pricing for average inflation over ten years.' },
+  bei:    { label: 'Inflation expectations',          unit: 'bp',  floor: 5,   dp: 0, what: 'The 10-year breakeven (T10YIE): nominal yield minus the TIPS real yield. What the bond market is pricing for average inflation over ten years. Tested 2026-09-17: it moves in the SAME window as oil (correlation 0.37 at lag 0, 0.09 at 20 sessions); a quiet breakeven after an oil move is a verdict, not a delay.' },
   us2y:   { label: 'US 2Y yield',                     unit: 'bp',  floor: 8,   dp: 0, what: 'The two-year Treasury yield (DGS2): the market\u2019s vote on what the central bank does over the next couple of years. It moves first, and hardest, on policy.' },
   us30y:  { label: 'US 30Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The thirty-year (DGS30): the vote on inflation and fiscal credibility over a generation. When it moves against the front end, that is the story.' },
   us10y:  { label: 'US 10Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The nominal 10-year Treasury yield (DGS10). It is the real yield plus expected inflation, so a move in it always has a cause on one side or the other.' },
@@ -66,7 +66,7 @@ export const CHAIN_LINKS = [
     textbook: 'Dearer oil lifts inflation expectations',
     holds: 'Energy is feeding through to what the bond market expects for inflation — the first domino is doing its job.',
     broken: {
-      up:   'Oil rose but inflation expectations did not follow. The market is treating the oil move as temporary, or something bigger — a growth scare, a policy stand — is pulling expectations the other way. Either way the energy story has not reached the bond market yet.',
+      up:   'Oil rose but inflation expectations did not follow. The market is treating the oil move as temporary, or something bigger — a growth scare, a policy stand — is pulling expectations the other way. Tested here: breakevens move with oil in the same window, not after it (only 43% of ±10% oil moves get 5bp of breakeven within 20 sessions), so this is the bond market’s call, not a lag.',
       down: 'Oil fell but inflation expectations rose anyway. Inflation is being priced from somewhere other than energy: wages, tariffs, fiscal, or doubt about the central bank.',
     },
   },
@@ -111,7 +111,7 @@ export const CHAIN_LINKS = [
     textbook: 'Higher real yields pull capital in and lift the dollar',
     holds: 'The dollar is following real yields — the carry version of a rate move. Capital is being paid to come in, and it is coming.',
     broken: {
-      up:   'Real yields rose but the dollar fell. Investors are demanding MORE to hold US assets and still not buying the currency: that is a risk-premium or credibility story, not a carry story. The 2022 gilt shape, on the dollar.',
+      up:   'Real yields rose but the dollar fell. Investors are demanding MORE to hold US assets and still not buying the currency: that is a risk-premium or credibility story, not a carry story. The 2022 gilt shape, on the dollar. Tested here (55 such breaks since 2008): over the next 20 sessions the dollar caught up 47% of the time and fell further 36%; the real yield gave back 40% and rose further 36% — history does not say which leg gives way.',
       down: 'Real yields fell but the dollar rose. Money is buying dollars for safety rather than for yield — the flight-to-quality shape.',
     },
   },
@@ -122,7 +122,7 @@ export const CHAIN_LINKS = [
     textbook: 'Higher real yields are gold’s headwind',
     holds: 'Gold is answering to the real yield, as it usually does — the opportunity cost of holding a zero-yield asset is doing the pricing.',
     broken: {
-      up:   'Real yields rose and gold rose with them. Someone is paying up for gold despite being paid more to hold Treasuries: that is a bid for an asset with no counterparty — doubt about the currency, the fiscal path, or the people setting rates. The chain’s loudest tell.',
+      up:   'Real yields rose and gold rose with them. Someone is paying up for gold despite being paid more to hold Treasuries: that is a bid for an asset with no counterparty — doubt about the currency, the fiscal path, or the people setting rates. The chain’s loudest tell. Tested here (45 such breaks): gold went on to gain 2%+ in 33% of cases and lose 2%+ in 29% — no resolution tendency either way.',
       down: 'Real yields fell but gold fell too. The usual support is there and it is not working — look for forced selling (gold sold to raise cash in a margin squeeze) or a dollar bid strong enough to overwhelm it.',
     },
   },
