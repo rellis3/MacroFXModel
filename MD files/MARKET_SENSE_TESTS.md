@@ -207,6 +207,25 @@ Next-20d range NAS100 −0.31 [−0.86, +0.22], SPX500 −0.23; next-5d +0.15 [�
 +0.38]. The extreme extended in 45% of cases (mean −0.6pp, i.e. mild reversion,
 CI includes zero). Rotation extremes do not precede wider index ranges. Banked.
 
+### S9 — Two moves after the Fed. **No difference from an ordinary big day.**
+84 FOMC decision days (2016→), each matched to a non-FOMC day with a day-0 move of
+the same size in the same instrument. Share of the day-0 move given back by at
+least half within 20 sessions: 2Y 38% (matched 39%), 10Y 50% (45%), dollar 48%
+(40%), SPX500 45% (51%). Continuation rates likewise indistinguishable (all
+differences inside ±10pp with intervals across zero). The curve test could not be
+scored for hawkish days (14 meetings with a 2Y day-0 move ≥ +5bp); on the 20
+dovish days the curve flattened 5.5bp over 20 sessions vs 4.5bp on matched days —
+no difference.
+
+Reading: "the first move is not the final verdict" is true, and it is true of
+*every* big day — roughly half of large day-0 moves in any of these instruments
+give back half or more within a month, FOMC or not. The specific mechanism Crown
+describes (long end repricing the economy and unwinding the dollar/equity
+impulse) does not show up as a Fed-specific tendency at the daily horizon. It may
+be right on individual meetings; it is not a base rate you can lean on. What is
+usable is the plain base rate: after a decision day, the move you see at the close
+has about even odds of being half-undone within 20 sessions, same as any big day.
+
 ## What changed on the page and in the briefs (2026-09-17)
 
 - ✓ chip on SPX500 / NAS100 / XAU / USD/JPY cards while VIX ≥ VIX3M: "wider week
@@ -217,6 +236,9 @@ CI includes zero). Rotation extremes do not precede wider index ranges. Banked.
 - The chain's oil → breakevens row and the real-yield → dollar / gold rows carry
   the S4 and S5 findings in their text.
 - The "priced in" line says the S6 null.
+- The FOMC block in the brief and the evidence ledger carry S9: a decision-day
+  move fades at the same rate as any big day; do not narrate a Fed-specific
+  "second move" as if it were a tendency.
 - Both AI prompts (morning brief, chain read) receive a TESTED ON THIS DESK block
   listing every verdict above, and are told to lean on it before folklore and to
   say "tested null here" when they touch a nulled relationship.

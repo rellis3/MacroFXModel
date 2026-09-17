@@ -311,5 +311,73 @@ if (want('S8')) {
   results.studies.S8 = out;
 }
 
-fs.writeFileSync(OUT, JSON.stringify(results, null, 1));
-log(`\nwrote ${path.relative(process.cwd(), OUT)}`);
+
+// ═══ S9 two moves after the Fed ══════════════════════════════════════════════
+// Pre-registered 2026-09-17 evening (commit 6b800f2), after S1–S8 had run.
+if (want('S9')) {
+  log('\n═══ S9  two moves after the Fed: day 0 vs the next 5 / 20 sessions ═══');
+  const meetings = new Set(allMeetings().map(m => m.date));
+  const rowsX = T.EUR_USD.rows;   // a daily calendar carrying the FRED series
+  const spx = T.SPX500_USD;
+  const dayRows = [];
+  for (let i = 1; i < rowsX.length - 20; i++) {
+    const r = rowsX[i], p = rowsX[i - 1];
+    if (r.us2y == null || p.us2y == null || r.us10y == null || p.us10y == null || !r.dxy || !p.dxy) continue;
+    const sp = spx.byDate.get(r.date); const spp = sp ? spx.rows[sp.i - 1] : null; const sp5 = sp ? spx.rows[sp.i + 5] : null, sp20 = sp ? spx.rows[sp.i + 20] : null;
+    dayRows.push({
+      date: r.date, week: r.week, i, fomc: meetings.has(r.date),
+      d2y0: (r.us2y - p.us2y) * 100, d10y0: (r.us10y - p.us10y) * 100, dxy0: (r.dxy / p.dxy - 1) * 100, spx0: (sp && spp) ? Math.log(sp.c / spp.c) * 100 : null,
+      d2y5: (rowsX[i + 5].us2y - r.us2y) * 100, d2y20: (rowsX[i + 20].us2y - r.us2y) * 100,
+      d10y5: (rowsX[i + 5].us10y - r.us10y) * 100, d10y20: (rowsX[i + 20].us10y - r.us10y) * 100,
+      curve5: ((rowsX[i + 5].us10y - rowsX[i + 5].us2y) - (r.us10y - r.us2y)) * 100, curve20: ((rowsX[i + 20].us10y - rowsX[i + 20].us2y) - (r.us10y - r.us2y)) * 100,
+      dxy5: rowsX[i + 5].dxy ? (rowsX[i + 5].dxy / r.dxy - 1) * 100 : null, dxy20: rowsX[i + 20].dxy ? (rowsX[i + 20].dxy / r.dxy - 1) * 100 : null,
+      spx5: (sp && sp5) ? Math.log(sp5.c / sp.c) * 100 : null, spx20: (sp && sp20) ? Math.log(sp20.c / sp.c) * 100 : null,
+    });
+  }
+  const fomcDays = dayRows.filter(d => d.fomc && d.date >= '2016-01-01');
+  const others = dayRows.filter(d => !d.fomc && d.date >= '2016-01-01');
+  log(`  FOMC decision days with data ${fomcDays.length}; non-FOMC days ${others.length} (2016→)`);
+  const rnd = mulberry32(SEED + 9);
+  // matched control: a non-FOMC day whose |day-0 move| in the same instrument sits in the same quintile, different week
+  const quint = (key) => { const v = others.map(o => Math.abs(o[key])).filter(Number.isFinite).sort((a, b) => a - b); return x => Math.min(4, Math.floor(v.filter(q => q < Math.abs(x)).length / v.length * 5)); };
+  const match = (days, key) => { const q = quint(key); const pool = others.filter(o => Number.isFinite(o[key])); return days.map(d => { const qd = q(d[key]); const c = pool.filter(o => q(o[key]) === qd && o.week !== d.week); return c.length ? c[Math.floor(rnd() * c.length)] : null; }); };
+  const share = (arr, fn) => { const v = arr.filter(x => x != null); return v.length ? v.filter(fn).length / v.length : null; };
+  const bootShare = (arr, fn, seed) => { const v = arr.filter(x => x != null); if (!v.length) return { p: null, lo: null, hi: null, n: 0 }; const r2 = mulberry32(seed); const ps = []; for (let k = 0; k < REPS; k++) { let c = 0; for (let j = 0; j < v.length; j++) if (fn(v[Math.floor(r2() * v.length)])) c++; ps.push(c / v.length); } ps.sort((a, b) => a - b); return { p: share(v, fn), lo: ps[Math.floor(REPS * 0.025)], hi: ps[Math.floor(REPS * 0.975)], n: v.length }; };
+  const bootDiffShare = (a, fa, b, fb, seed) => { const r2 = mulberry32(seed); const ds = []; const va = a.filter(x => x != null), vb = b.filter(x => x != null); for (let k = 0; k < REPS; k++) { let ca = 0, cb = 0; for (let j = 0; j < va.length; j++) if (fa(va[Math.floor(r2() * va.length)])) ca++; for (let j = 0; j < vb.length; j++) if (fb(vb[Math.floor(r2() * vb.length)])) cb++; ds.push(ca / va.length - cb / vb.length); } ds.sort((x, y) => x - y); return { diff: share(va, fa) - share(vb, fb), lo: ds[Math.floor(REPS * 0.025)], hi: ds[Math.floor(REPS * 0.975)] }; };
+  const out = {};
+  // (a) curve after a hawkish / dovish day 0
+  const hawk = fomcDays.filter(d => d.d2y0 >= 5), dove = fomcDays.filter(d => d.d2y0 <= -5);
+  log(`  hawkish day-0 (2Y ≥ +5bp): ${hawk.length} meetings; dovish (≤ −5bp): ${dove.length}`);
+  for (const [tag, days] of [['hawkish', hawk], ['dovish', dove]]) {
+    if (days.length < 15) { log(`    ${tag}: n=${days.length}, too thin`); continue; }
+    const ctl = match(days, 'd2y0');
+    for (const h of [5, 20]) {
+      const pairsV = days.map((d, k) => ctl[k] ? d[`curve${h}`] - ctl[k][`curve${h}`] : null).filter(Number.isFinite);
+      const b = bootMean(pairsV, days.slice(0, pairsV.length).map(d => d.week), SEED + h);
+      const own = days.map(d => d[`curve${h}`]).reduce((s, v) => s + v, 0) / days.length;
+      const c10 = days.map(d => d[`d10y${h}`]).reduce((s, v) => s + v, 0) / days.length, c2 = days.map(d => d[`d2y${h}`]).reduce((s, v) => s + v, 0) / days.length;
+      log(`    ${tag} → next ${h}: 2Y ${fmt(c2, 1)}bp, 10Y ${fmt(c10, 1)}bp, curve ${fmt(own, 1)}bp; vs matched non-FOMC ${fmt(b.mean, 1)}bp [${fmt(b.lo, 1)}, ${fmt(b.hi, 1)}]  ${tag === 'hawkish' && b.mean <= -5 && b.hi < 0 ? 'FLATTENS MORE (pass)' : 'no difference'}`);
+      (out.curve ??= []).push({ tag, h, n: days.length, d2y: c2, d10y: c10, curve: own, vsControl: b });
+    }
+  }
+  // (b)(c)(d) fade / continuation on FOMC days vs matched big days
+  for (const [name, k0, k5, k20] of [['2Y', 'd2y0', 'd2y5', 'd2y20'], ['10Y', 'd10y0', 'd10y5', 'd10y20'], ['dollar', 'dxy0', 'dxy5', 'dxy20'], ['SPX500', 'spx0', 'spx5', 'spx20']]) {
+    const days = fomcDays.filter(d => Number.isFinite(d[k0]) && Number.isFinite(d[k20]));
+    const ctl = match(days, k0).filter(Boolean);
+    const cont = (x, kf) => Math.sign(x[kf]) === Math.sign(x[k0]) && x[k0] !== 0;
+    const fade = (x, kf) => Math.sign(x[kf]) === -Math.sign(x[k0]) && Math.abs(x[kf]) >= 0.5 * Math.abs(x[k0]);
+    for (const [lbl, kf] of [['5', k5], ['20', k20]]) {
+      const cF = bootShare(days, x => cont(x, kf), SEED + 1), cC = bootShare(ctl, x => cont(x, kf), SEED + 2), dC = bootDiffShare(days, x => cont(x, kf), ctl, x => cont(x, kf), SEED + 3);
+      const fF = bootShare(days, x => fade(x, kf), SEED + 4), fC = bootShare(ctl, x => fade(x, kf), SEED + 5), dF = bootDiffShare(days, x => fade(x, kf), ctl, x => fade(x, kf), SEED + 6);
+      const finding = Math.abs(dF.diff) >= 0.15 && (dF.lo > 0 || dF.hi < 0) ? (dF.diff > 0 ? 'FADES MORE THAN A NORMAL BIG DAY' : 'FADES LESS') : 'no difference from an ordinary big day';
+      log(`    ${name} next ${lbl}: continuation FOMC ${(cF.p * 100).toFixed(0)}% vs matched ${(cC.p * 100).toFixed(0)}% (diff ${fmt(dC.diff * 100, 0)}pp [${fmt(dC.lo * 100, 0)}, ${fmt(dC.hi * 100, 0)}]); gave back ≥ half: FOMC ${(fF.p * 100).toFixed(0)}% vs matched ${(fC.p * 100).toFixed(0)}% (diff ${fmt(dF.diff * 100, 0)}pp [${fmt(dF.lo * 100, 0)}, ${fmt(dF.hi * 100, 0)}])  n=${days.length}  → ${finding}`);
+      (out.moves ??= []).push({ name, h: lbl, n: days.length, contFomc: cF.p, contCtl: cC.p, contDiff: dC, fadeFomc: fF.p, fadeCtl: fC.p, fadeDiff: dF, finding });
+    }
+  }
+  results.studies.S9 = out;
+}
+
+// merge into the existing output rather than overwrite it when only some studies ran
+const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { studies: {} };
+fs.writeFileSync(OUT, JSON.stringify({ ...prev, ranAt: results.ranAt, studies: { ...prev.studies, ...results.studies } }, null, 1));
+log('wrote ' + path.relative(process.cwd(), OUT));
