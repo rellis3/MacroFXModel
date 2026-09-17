@@ -536,6 +536,80 @@ and shows the "stable" ones is selecting on exactly this.
 
 ---
 
+## Amendment 2 + §7 — the composite-state analogue test (registered 2026-09-17, NOT YET RUN)
+
+Registered **after** §6's grid came back at chance, and deliberately counted as
+its own confirmatory test rather than a re-run of §6. The owner's objection is
+correct and is the reason this exists: §4.2's conditioner is **one variable**
+(the 5-session change in the nominal 2y), bucketed three ways. A null on one
+variable is not a null on the idea that the pre-event state matters.
+
+### What changes
+
+**The state becomes a vector, not a bucket.** All measured strictly before `t`:
+
+| Component | Source | In §4.2? |
+|---|---|---|
+| `d2y5`, `d10y5`, `d30y5` — 5-session yield changes | `yields.csv` | yes |
+| `dReal10_5` — 5-session change in the **10y TIPS real yield** | `yields.csv` `real10` | **new** |
+| `dBe10_5` — 5-session change in the **10y breakeven** | `yields.csv` `be10` | **new** |
+| `dSlope5` — change in 10y−2y | `yields.csv` | computed, unused |
+| `pre5` — what THIS instrument did into the event | M1 | computed, reported, never conditioned on |
+
+Real vs breakeven is the substantive addition: "the 2y rose" is one state, but
+"it rose because real yields rose" and "it rose because inflation expectations
+rose" are different setups that the nominal number cannot distinguish.
+
+**Not available offline, and therefore not in the vector:** policy-path pricing
+(2y minus the effective fed funds rate, i.e. how many cuts are priced). That
+needs FRED `DFF`; the sandbox cannot reach FRED. It exists live in
+`regimeFx.policy` and is the obvious first addition whenever this runs server-side.
+
+**The method becomes analogue matching, not a grid.** A 3×3 grid on ~150 events
+leaves ~17 per cell and every added dimension halves that again. k-nearest-
+neighbour does not partition — it weights — so the same sample supports a richer
+state. Same idea as `js/analogCone.js` (Cone B), whose honesty fields
+(`nAnalogs`, `lowConfidence`) this follows.
+
+### The test (frozen)
+
+For each event, in time order: standardise the state vector on **prior events
+only**, find the `k = 8` nearest prior events of the same family by Euclidean
+distance, and take the **median R1 of those neighbours** as the prediction.
+Score `sign(prediction) == sign(actual R1)`.
+
+This is **walk-forward by construction** — every input is known before the
+event it predicts — so it is a rule that could have been run live, not a
+descriptive split. Events with fewer than 20 prior events are unscored.
+
+**Pass (all four, frozen):**
+1. Pooled hit rate > 50% with binomial **p < 0.01** (stricter than the usual
+   0.05: this is a second look at a question whose first look was null).
+2. **N ≥ 500** scored predictions.
+3. Hit rate > 50% in **both halves** of the sample.
+4. The **placebo arm fails**: the identical machinery with the state vector
+   randomly shuffled across events must NOT clear cell 1. If the placebo passes
+   too, the method manufactures hit rates and the real arm means nothing.
+
+**Fail:** anything else. Recorded, and the pre-positioning branch is then closed
+on both the bucket form (§6) and the composite form, at which point the book
+ships as the impact map it already supports and nothing more.
+
+**Secondary, descriptive (no pass/fail):** the same neighbour search reported as
+"the 8 most similar prior setups and what followed, with distances". Useful for
+a panel **whatever the test says** — it is history with its own sample attached,
+not a forecast — but it may only ever be worded as history.
+
+### Prior knowledge, stated as context, not a verdict
+
+Analogue/k-NN methods are standard practice and are how a desk actually reasons
+("when has this setup happened before"). They do not create information: they
+use the same sample more efficiently, which is exactly why they are the right
+method here and also why they cannot rescue a variable that carries nothing.
+Per `CLAUDE.md`, no odds are attached before the run. The test decides.
+
+---
+
 ## Results (§6 confirmatory cell)
 
 *(not run — appended here when §6 executes, design above untouched)*

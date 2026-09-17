@@ -157,16 +157,16 @@ export function eventWindows(bars, eventMs, opts = {}) {
 // ── the lead-up state (the conditioning variable) ─────────────────────────────
 
 /** Index yields by date once; every lookup below is a walk over that index. */
+export const YIELD_SERIES = ['y2', 'y10', 'y30', 'real10', 'be10'];
+
 export function indexYields(rows = []) {
-  const dates = [], y = { y2: [], y10: [], y30: [] };
+  const dates = [], y = Object.fromEntries(YIELD_SERIES.map(k => [k, []]));
   for (const r of rows) {
     if (!r?.date) continue;
-    const v2 = Number(r.y2), v10 = Number(r.y10), v30 = Number(r.y30);
-    if (!Number.isFinite(v2) && !Number.isFinite(v10) && !Number.isFinite(v30)) continue;
+    const vals = YIELD_SERIES.map(k => Number(r[k]));
+    if (!vals.some(Number.isFinite)) continue;
     dates.push(r.date);
-    y.y2.push(Number.isFinite(v2) ? v2 : null);
-    y.y10.push(Number.isFinite(v10) ? v10 : null);
-    y.y30.push(Number.isFinite(v30) ? v30 : null);
+    YIELD_SERIES.forEach((k, i) => y[k].push(Number.isFinite(vals[i]) ? vals[i] : null));
   }
   return { dates, ...y };
 }
@@ -191,8 +191,13 @@ export function leadUpFor(idx, eventMs, opts = {}) {
     return Number.isFinite(a) && Number.isFinite(b) ? (b - a) * 100 : null;   // pp → bp
   };
   const d2y = d('y2'), d10y = d('y10'), d30y = d('y30');
+  const dReal = d('real10'), dBe = d('be10');
   return {
     d2y5: r1dp(d2y), d10y5: r1dp(d10y), d30y5: r1dp(d30y),
+    // The TIPS pair. "The 2y rose" is one state; "it rose because REAL yields
+    // rose" and "it rose because inflation expectations rose" are different
+    // setups, and a nominal yield alone cannot tell them apart.
+    dReal10_5: r1dp(dReal), dBe10_5: r1dp(dBe),
     dSlope5: d2y != null && d10y != null ? r1dp(d10y - d2y) : null,
     asOf: idx.dates[end],
   };
@@ -354,6 +359,13 @@ export function buildEventResponseBook({ instruments = {}, families = [], yields
           lead: lead?.d2y5 ?? null, leadState: classifyLead(lead?.d2y5 ?? null, deadBp),
           outcome: outcomeBucket(ev.z ?? null, o.inlineZ),
           base: base.absR1, base0: base.absR0,
+          // The full pre-event state, for consumers that want to match on the
+          // whole setup rather than the single bucketed axis (§7's analogue
+          // test). Every component is measured strictly before the event.
+          state: lead ? {
+            d2y5: lead.d2y5, d10y5: lead.d10y5, d30y5: lead.d30y5,
+            dReal10_5: lead.dReal10_5, dBe10_5: lead.dBe10_5, dSlope5: lead.dSlope5,
+          } : null,
         });
       }
       if (!rows.length) continue;
@@ -403,6 +415,12 @@ export function buildEventResponseBook({ instruments = {}, families = [], yields
         if (sub.length >= o.minCellObs) outcomeCells[oc] = { outcome: oc, ...cellStats(sub) };
       }
       famOut.instruments[name] = { all, cells, leadCells, outcomeCells, cellsOmitted: 9 - Object.keys(cells).length };
+      // Per-event rows, opt-in: the raw material for any analysis that wants to
+      // match on the whole setup instead of reading a pre-cut cell. Off by
+      // default because it is ~100x the size of the aggregated view.
+      if (o.emitRows) famOut.instruments[name].rows = rows.map(r => ({
+        ms: r.ms, z: r.z, pre5: r.pre5, r0: r.r0, r1: r.r1, r5: r.r5, state: r.state,
+      }));
     }
     out.families[fam.key] = famOut;
   }

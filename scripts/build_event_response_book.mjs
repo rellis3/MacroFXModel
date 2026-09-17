@@ -57,6 +57,7 @@ const FF_ARCHIVE = path.join(ROOT, 'backfill', 'surprise_backfill.json');
 const VENDOR2 = path.join(ROOT, 'calendar_events.csv');
 const FOMC_SCORES = path.join(ROOT, 'analysis', 'fomc_event_study', 'fomc_lexicon_scores.json');
 const OUT = path.join(ROOT, 'backfill', 'event_response_book.json');
+const EVENTS_OUT = path.join(ROOT, 'backfill', 'event_response_events.json');
 const CLOCKS = path.join(ROOT, 'backfill', 'event_response_clocks.json');
 
 // Every instrument with local M1. Legs decide only which side of the pair the
@@ -121,14 +122,17 @@ const PER_CATEGORY_CAP = 3;
 function readYields(file) {
   const lines = fs.readFileSync(file, 'utf8').trim().split(/\r?\n/);
   const head = lines[0].split(',').map(s => s.trim());
-  const [i2, i10, i30] = ['y2', 'y10', 'y30'].map(k => head.indexOf(k));
+  // real10 / be10 carry the TIPS pair — the axis that separates "the 2y rose
+  // because REAL yields rose" from "because inflation expectations rose".
+  const cols = ['y2', 'y10', 'y30', 'real10', 'be10'];
+  const idx = cols.map(k => head.indexOf(k));
   const rows = [];
   for (let i = 1; i < lines.length; i++) {
     const f = lines[i].split(',');
     const date = (f[0] || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
     const num = j => (j >= 0 && f[j] !== undefined && f[j].trim() !== '' ? Number(f[j]) : null);
-    rows.push({ date, y2: num(i2), y10: num(i10), y30: num(i30) });
+    rows.push({ date, ...Object.fromEntries(cols.map((k, n) => [k, num(idx[n])])) });
   }
   return rows.sort((a, b) => (a.date < b.date ? -1 : 1));
 }
@@ -413,7 +417,7 @@ for (const pair of pairs) {
   if (!bars?.n) { console.log('no local M1 — skipped'); continue; }
   const book = buildEventResponseBook({
     instruments: { [pair]: { bars, legs: INSTRUMENTS[pair] } },
-    families: verified, yields,
+    families: verified, yields, opts: { emitRows: true },
   });
   merged.meta ??= book.meta;
   let cells = 0;
@@ -424,6 +428,31 @@ for (const pair of pairs) {
   }
   console.log(`${bars.n.toLocaleString()} bars · ${cells} joint cell(s) above the bar`);
 }
+
+// Per-event rows for the families the market can actually SEE — the raw material
+// for EVENT_RESPONSE_BOOK.md §7's analogue test, which matches on the whole
+// pre-event state instead of reading a pre-cut bucket. Restricted to families
+// clearing the 2x join proof on their median instrument: matching setups around
+// a release that never moves anything is matching noise to noise, and the file
+// would be ten times the size for it.
+const movers = Object.entries(merged.families)
+  .filter(([k]) => (familyJoinProof(k).medianSpikeR0 ?? 0) >= MIN_SPIKE)
+  .map(([k]) => k);
+const eventsOut = {
+  builtAt: new Date().toISOString(),
+  spec: 'MD files/EVENT_RESPONSE_BOOK.md §7 (registered 2026-09-17, before this ran)',
+  note: 'Per-event rows for families clearing the 2x join proof. Every `state` component is '
+      + 'measured strictly BEFORE its event; r0/r1/r5 are the frozen §4.1 windows in bp.',
+  stateKeys: ['d2y5', 'd10y5', 'd30y5', 'dReal10_5', 'dBe10_5', 'dSlope5'],
+  families: Object.fromEntries(movers.map(k => [k, {
+    label: merged.families[k].label, ccy: merged.families[k].ccy,
+    instruments: Object.fromEntries(Object.entries(merged.families[k].instruments)
+      .map(([n, i]) => [n, i.rows])),
+  }])),
+};
+fs.writeFileSync(EVENTS_OUT, JSON.stringify(eventsOut));
+console.log(`[event-response] wrote ${EVENTS_OUT.replace(ROOT + '/', '')} (${(fs.statSync(EVENTS_OUT).size / 1024).toFixed(0)}KB)`
+  + ` · ${movers.length} families that clear the join proof`);
 
 // Compaction. The full brick output carries n, median, mean and up-rate on four
 // windows for every cell; at 86 families x 26 instruments that is an 10MB file
@@ -442,7 +471,7 @@ const compactCell = c => [
 const SHORT = { 'priced-hawkish': 'h', flat: 'f', 'priced-dovish': 'd', beat: 'b', inline: 'i', miss: 'm' };
 const shortKey = k => k.split('|').map(x => SHORT[x] ?? x).join('');
 const compactCells = obj => Object.fromEntries(Object.entries(obj).map(([k, c]) => [shortKey(k), compactCell(c)]));
-const compactInst = i => ({
+const compactInst = i => ({          // `rows` deliberately not carried here — they ship in EVENTS_OUT
   n: i.all.n, side: i.all.side,
   pre5: [i.all.pre5.median, i.all.pre5.upPct], r0: [i.all.r0.median, i.all.r0.upPct],
   r1: [i.all.r1.median, i.all.r1.mean, i.all.r1.upPct], r5: [i.all.r5.median, i.all.r5.upPct],
