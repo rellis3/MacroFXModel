@@ -123,7 +123,7 @@ export const DESK_EVIDENCE = [
     id: 'price-vs-spread-divergence', verdict: 'null', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S11',
     claim: 'A pair moving against its yield spread (divergence) gets punished afterwards; moving with it (alignment) is safer',
     result: 'EUR/USD (Bund vs T-note) and GBP/USD (Gilt vs T-note), 2007→. Next-20-session range after a divergence: −0.51 ATR [−1.21, +0.19] and +0.16 [−0.86, +1.16] vs matched days; after alignment +0.10 / −0.28. The gap halves within 20 sessions 64-71% of the time, but the pair reversing toward the spread happened 48% / 39% vs 49% / 50% unconditionally -- no tendency about which leg gives.',
-    use: 'Say a pair has detached from its yield spread as description. Do not call it a warning, and do not say the pair will come back to the spread. The validated yield-spread object here is the 2Y spread's own z-score mean reversion, a different thing.',
+    use: 'Say a pair has detached from its yield spread as description. Do not call it a warning, and do not say the pair will come back to the spread. The validated yield-spread object here is the 2Y spread\'s own z-score mean reversion, a different thing.',
   },
   {
     id: 'squeeze-fuel', verdict: 'null', date: '2026-09-13', doc: 'MD files/SQUEEZE_VOL_TEST.md',
