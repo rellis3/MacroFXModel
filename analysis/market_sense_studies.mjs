@@ -510,6 +510,46 @@ if (want('S11')) {
 }
 function bootShareArr(bools, seed) { const rnd = mulberry32(seed); const n = bools.length; const ps = []; for (let k = 0; k < REPS; k++) { let c = 0; for (let j = 0; j < n; j++) if (bools[Math.floor(rnd() * n)]) c++; ps.push(c / n); } ps.sort((a, b) => a - b); return { p: bools.filter(Boolean).length / n, lo: ps[Math.floor(REPS * 0.025)], hi: ps[Math.floor(REPS * 0.975)] }; }
 
+// ═══ S12 lead-up × surprise → direction after FOMC (base-rate table) ═════════
+// Pre-registered 2026-09-17 (commit 9809b3a) before running.
+if (want('S12')) {
+  log('\n═══ S12  after FOMC: 30Y lead-up × day-0 surprise → where SPX / dollar / gold were 5 sessions later ═══');
+  const S30 = await fred('DGS30');
+  const rowsX = T.EUR_USD.rows; { let last = null; for (const r of rowsX) { const v = S30.get(r.date); if (v != null) last = v; r.us30 = last; } }
+  const idx = new Map(rowsX.map(r => [r.date, r.i]));
+  const spx = T.SPX500_USD, gold = T.XAU_USD;
+  const meetings = allMeetings().map(m => m.date).filter(d => d >= '2016-01-01' && idx.has(d) && idx.get(d) + 5 < rowsX.length);
+  const rec = [];
+  for (const d of meetings) {
+    const i = idx.get(d), r = rowsX[i], p = rowsX[i - 1], pre = rowsX[i - 20], f = rowsX[i + 5];
+    if (!r || !p || !pre || !f || r.us30 == null || pre.us30 == null || r.us2y == null || p.us2y == null || !r.dxy || !f.dxy) continue;
+    const s0 = spx.byDate.get(d), s5 = s0 ? spx.rows[s0.i + 5] : null, g0 = gold.byDate.get(d), g5 = g0 ? gold.rows[g0.i + 5] : null;
+    rec.push({ date: d, lead: (r.us30 - pre.us30) * 100, surp: (r.us2y - p.us2y) * 100,
+      spx: (s0 && s5) ? Math.log(s5.c / s0.c) * 100 : null, dxy: (f.dxy / r.dxy - 1) * 100, gold: (g0 && g5) ? Math.log(g5.c / g0.c) * 100 : null });
+  }
+  log(`  meetings ${rec.length}`);
+  const leadCls = x => x.lead >= 8 ? '30Y UP into it' : x.lead <= -8 ? '30Y DOWN into it' : '30Y flat into it';
+  const surpCls = x => x.surp >= 5 ? 'hawkish' : x.surp <= -5 ? 'dovish' : 'neutral';
+  const out = { n: rec.length, cells: [] };
+  const share = (v, seed) => { if (!v.length) return null; const b = bootShareArr(v.map(x => x > 0), seed); return b; };
+  log(`  ${'cell'.padEnd(34)} n    SPX up%        mean    dollar up%     mean    gold up%       mean`);
+  for (const L of ['30Y UP into it', '30Y flat into it', '30Y DOWN into it']) for (const Sx of ['hawkish', 'neutral', 'dovish']) {
+    const cell = rec.filter(x => leadCls(x) === L && surpCls(x) === Sx);
+    const n = cell.length;
+    const f = (key, seed) => { const v = cell.map(x => x[key]).filter(Number.isFinite); if (v.length < 10) return `n<10`; const b = share(v, seed); const m = v.reduce((s, x) => s + x, 0) / v.length; return `${(b.p * 100).toFixed(0)}% [${(b.lo * 100).toFixed(0)},${(b.hi * 100).toFixed(0)}] ${fmt(m, 2)}%`; };
+    log(`  ${(L + ' × ' + Sx).padEnd(34)} ${String(n).padStart(2)}   ${f('spx', SEED + 31).padEnd(22)} ${f('dxy', SEED + 32).padEnd(22)} ${f('gold', SEED + 33)}`);
+    out.cells.push({ lead: L, surprise: Sx, n, spx: n >= 10 ? share(cell.map(x => x.spx).filter(Number.isFinite), SEED + 31) : null, dxy: n >= 10 ? share(cell.map(x => x.dxy), SEED + 32) : null, gold: n >= 10 ? share(cell.map(x => x.gold).filter(Number.isFinite), SEED + 33) : null });
+  }
+  // margins: surprise alone, lead-up alone
+  log('  margins:');
+  for (const Sx of ['hawkish', 'neutral', 'dovish']) { const cell = rec.filter(x => surpCls(x) === Sx); const f = (key, seed) => { const v = cell.map(x => x[key]).filter(Number.isFinite); const b = share(v, seed); const m = v.reduce((s, x) => s + x, 0) / v.length; return `${(b.p * 100).toFixed(0)}% [${(b.lo * 100).toFixed(0)},${(b.hi * 100).toFixed(0)}] ${fmt(m, 2)}%`; }; log(`  ${('surprise ' + Sx).padEnd(34)} ${String(cell.length).padStart(2)}   ${f('spx', SEED + 34).padEnd(22)} ${f('dxy', SEED + 35).padEnd(22)} ${f('gold', SEED + 36)}`); }
+  for (const L of ['30Y UP into it', '30Y flat into it', '30Y DOWN into it']) { const cell = rec.filter(x => leadCls(x) === L); const f = (key, seed) => { const v = cell.map(x => x[key]).filter(Number.isFinite); const b = share(v, seed); const m = v.reduce((s, x) => s + x, 0) / v.length; return `${(b.p * 100).toFixed(0)}% [${(b.lo * 100).toFixed(0)},${(b.hi * 100).toFixed(0)}] ${fmt(m, 2)}%`; }; log(`  ${('lead-up ' + L).padEnd(34)} ${String(cell.length).padStart(2)}   ${f('spx', SEED + 37).padEnd(22)} ${f('dxy', SEED + 38).padEnd(22)} ${f('gold', SEED + 39)}`); }
+  // and the day itself (the reaction, for contrast)
+  const day0 = rec.map(x => { const i = idx.get(x.date); const r = rowsX[i], p = rowsX[i - 1]; const s = spx.byDate.get(x.date), sp = s ? spx.rows[s.i - 1] : null; return { surp: x.surp, spx0: (s && sp) ? Math.log(s.c / sp.c) * 100 : null, dxy0: (r.dxy / p.dxy - 1) * 100 }; });
+  for (const Sx of ['hawkish', 'dovish']) { const c = day0.filter(x => surpCls(x) === Sx); const spxUp = c.filter(x => x.spx0 != null && x.spx0 > 0).length / c.filter(x => x.spx0 != null).length, dxyUp = c.filter(x => x.dxy0 > 0).length / c.length; log(`  ON THE DAY, ${Sx} surprise (n=${c.length}): SPX up ${(spxUp * 100).toFixed(0)}%, dollar up ${(dxyUp * 100).toFixed(0)}% -- the reaction, for contrast with the rows above`); out[`day0_${Sx}`] = { n: c.length, spxUp, dxyUp }; }
+  results.studies.S12 = out;
+}
+
 // merge into the existing output rather than overwrite it when only some studies ran
 const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { studies: {} };
 fs.writeFileSync(OUT, JSON.stringify({ ...prev, ranAt: results.ranAt, studies: { ...prev.studies, ...results.studies } }, null, 1));

@@ -126,6 +126,12 @@ export const DESK_EVIDENCE = [
     use: 'Say a pair has detached from its yield spread as description. Do not call it a warning, and do not say the pair will come back to the spread. The validated yield-spread object here is the 2Y spread\'s own z-score mean reversion, a different thing.',
   },
   {
+    id: 'fomc-leadup-surprise-table', verdict: 'context', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S12',
+    claim: 'When the long end had already moved into the meeting and the Fed surprised hawkish, price sold off over the following days',
+    result: '84 meetings as a lead-up × surprise table. The described cell (30Y up into it × hawkish day 0) has n=7. Margins five sessions later: hawkish surprise → SPX up 36% [14,64], dollar up 64% [43,86]; dovish → dollar up 35% [15,55]; 30Y up into it → gold up 29% [13,45] (one margin of 27 clearing 50%, expected by chance). On the day: hawkish → dollar up 43%, dovish → dollar up 20%.',
+    use: 'Say it as what it is: the combination has happened seven times; the surrounding cells are coin flips. Describe the reaction on the day; do not carry it forward as a direction.',
+  },
+  {
     id: 'squeeze-fuel', verdict: 'null', date: '2026-09-13', doc: 'MD files/SQUEEZE_VOL_TEST.md',
     claim: 'A crowded, underwater retail position is squeeze fuel',
     result: 'Crowded-and-underwater days were not wider than matched days on any of four instruments over nine years; direction flat. Retail is ~60% long on every major every day.',

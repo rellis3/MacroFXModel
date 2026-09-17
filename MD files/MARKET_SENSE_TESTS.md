@@ -317,6 +317,34 @@ yield-spread object with a validated record here remains the 2Y spread's own
 z-score mean reversion (YIELD_SPREAD_STRATEGY.md), which is a different thing.
 n=44/51 is thin and stated as such.
 
+### S12 — Lead-up × surprise → direction after FOMC, as a table. **The cell the
+owner described has happened 7 times in ten years; nothing in the table clears
+the pre-registered reading rule.**
+84 meetings. Share HIGHER five sessions after the decision (bootstrap 95%):
+
+| lead-up (Δ30Y, 20 sessions) × surprise (Δ2Y day 0) | n | SPX500 up | dollar up | gold up |
+|---|---|---|---|---|
+| 30Y up × hawkish | **7** | n<10 | n<10 | n<10 |
+| 30Y up × neutral | 16 | 56% [31,81] | 75% [56,94] | 25% [6,50] |
+| 30Y flat × neutral | 16 | 50% | 56% | 63% |
+| 30Y down × neutral | 18 | 50% | 50% | 56% |
+| all other cells | 2–8 | n<10 | n<10 | n<10 |
+
+Margins: after a **hawkish** surprise (n=14) SPX up 36% [14,64], dollar up 64%
+[43,86], gold 50%; after a **dovish** one (n=20) dollar up 35% [15,55]. After a
+30Y **rise into** the meeting (n=31) gold was up only 29% [13,45] — the one
+margin whose interval excludes 50%, and with 27 margin cells one is expected by
+chance, so it is noted, not claimed. On the day itself the reaction is visible
+but softer than the story: hawkish → SPX up 43%, dollar up 43%; dovish → SPX up
+65%, dollar up 20% (the dovish reaction is the clearer one in this proxy).
+
+Reading: the "30Y already moved, Fed more hawkish than expected, price sold off"
+sequence is not a base rate — it is seven meetings, and the surrounding cells
+sit on 50%. What the table does show is the shape of every registered null:
+the day-0 reaction exists (weakly, in a daily proxy), and five sessions later
+the shares are coin flips with wide intervals. Direction after the Fed is not
+in this data at n=84, whichever way it is cut.
+
 ## What changed on the page and in the briefs (2026-09-17)
 
 - ✓ chip on SPX500 / NAS100 / XAU / USD/JPY cards while VIX ≥ VIX3M: "wider week
