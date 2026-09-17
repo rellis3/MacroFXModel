@@ -6033,6 +6033,7 @@ async function loadMtLiveStatus() {
   loadMtPlan();
   loadMtDecisionLog();
   loadMtLife();
+  loadMtPairs();
 }
 
 // Proof-of-life pane: three boxes, one per stage, each with a dot whose
@@ -6103,6 +6104,70 @@ async function loadMtLife() {
     ]);
     el.innerHTML = scanner + planBox + botBox;
   } catch (e) { el.innerHTML = `<div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text3)">${e.message}</div>`; }
+}
+
+// Pairs board: one row per pair in the tracker's universe (plan.universe),
+// joining three feeds -- /api/spreads for a live price (falls back to the
+// scan's own price for the crosses OANDA's spread feed lacks), motif_state
+// for the touch-run the scanner is tracking, and the plan for the last
+// confirmation + the bot's verdict. The verdict column speaks in the bot's
+// own terms: TRADEABLE (in plan) / REJECTED (with reason) / WATCHING (a setup
+// is forming, how far away) / EXCLUDED (spread > best-config) / no setup.
+const MT_OANDA_SYM = p => { const u = p.toUpperCase(); return u === 'GOLD' ? 'XAU_USD' : `${u.slice(0, 3)}_${u.slice(3)}`; };
+const MT_PIP = p => (/jpy$/i.test(p) ? 0.01 : p.toLowerCase() === 'gold' ? 1.0 : 0.0001);   // = pylego.instruments.pip_size (gold is 1.0, not 0.1 -- see the gold-pip drift note)
+const MT_DP  = p => (/jpy$/i.test(p) ? 3 : p.toLowerCase() === 'gold' ? 2 : 5);
+async function loadMtPairs() {
+  const body = document.getElementById('mtPairsBody'), meta = document.getElementById('mtPairsMeta');
+  if (!body) return;
+  try {
+    const [plan, state, spreads] = await Promise.all([
+      kvGet('motif_bot_plan'),
+      fetch('/api/analogml/motif-state').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/spreads').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    const universe = plan?.universe || [];
+    if (!universe.length) { body.innerHTML = '<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">Plan predates the pairs board — next hourly scan fills this in</td></tr>'; return; }
+    const forming = new Map((state?.pairs || []).map(p => [p.pair, p]));
+    const live = spreads?.pairs || {};
+    const recent = new Map();
+    for (const e of (plan?.entries || []))  recent.set(e.pair, { ...e, verdict: 'tradeable' });
+    for (const f of (plan?.filtered || [])) if (!recent.has(f.pair) || (f.confirmed_at > recent.get(f.pair).confirmed_at)) recent.set(f.pair, { ...f, verdict: 'rejected' });
+    const hhmm = iso => iso ? new Date(iso).toISOString().slice(5, 16).replace('T', ' ') : '—';
+    const rows = universe.map(u => {
+      const p = u.pair, pip = MT_PIP(p), dp = MT_DP(p);
+      const q = live[MT_OANDA_SYM(p)];
+      const st = forming.get(p);
+      const px = q ? (q.bid + q.ask) / 2 : st?.current_price ?? null;
+      const pxSrc = q ? '' : st ? ' <span style="color:var(--text3)" title="scan price -- OANDA spread feed does not carry this cross">scan</span>' : '';
+      const spreadStr = q ? `${q.spreadPips.toFixed(1)}p` : (u.spread_pips != null ? `~${u.spread_pips}p` : '—');
+      const r = recent.get(p);
+      // distance from LIVE price to the tracked level when both exist
+      const dist = (st && px != null) ? Math.abs(px - st.level) / pip : null;
+      let verdict, vColor, rank;
+      if (r?.verdict === 'tradeable') { verdict = 'TRADEABLE — in plan'; vColor = 'var(--green)'; rank = 0; }
+      else if (r?.verdict === 'rejected') { verdict = `REJECTED — ${r.filter_reason || 'best-config'}`; vColor = 'var(--amber,#e0a93b)'; rank = 1; }
+      else if (!u.eligible) { verdict = `EXCLUDED — spread ${u.spread_pips}p > 2.0p (best-config)`; vColor = 'var(--text3)'; rank = 4; }
+      else if (st) { verdict = `WATCHING — ${st.n_touches}-touch ${st.kind}${st.provisional ? ' (provisional)' : ''}, ${dist != null ? dist.toFixed(1) + 'p from level' : ''}; needs a close through it to confirm`; vColor = 'var(--text)'; rank = 2; }
+      else { verdict = 'no setup — scanning every hour'; vColor = 'var(--text3)'; rank = 5; }
+      const setup = st ? `${st.n_touches}-touch ${st.kind}${st.provisional ? ' ·prov' : ''}` : '—';
+      const lastC = r ? `${r.direction} ${r.n_touches}-touch ${r.is_top ? 'top' : 'bottom'} · ${hhmm(r.confirmed_at)} · swing=${r.swing_regime ?? '—'}` : '—';
+      return { rank, dist, html: `<tr style="border-bottom:1px solid var(--border);${rank >= 4 ? 'opacity:.6' : ''}">
+        <td style="padding:5px 10px;font-weight:600">${p.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:right">${px != null ? px.toFixed(dp) : '—'}${pxSrc}</td>
+        <td style="padding:5px 10px;text-align:right;color:${u.eligible ? 'var(--text3)' : 'var(--red)'}">${spreadStr}</td>
+        <td style="padding:5px 10px">${setup}</td>
+        <td style="padding:5px 10px;text-align:right">${st ? st.level.toFixed(dp) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${dist != null ? dist.toFixed(1) + 'p' : '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:var(--text3)">${st ? st.bars_left_in_horizon : '—'}</td>
+        <td style="padding:5px 10px;color:var(--text3)">${lastC}</td>
+        <td style="padding:5px 10px;color:${vColor}">${verdict}</td>
+      </tr>` };
+    });
+    rows.sort((a, b) => a.rank - b.rank || ((a.dist ?? 1e9) - (b.dist ?? 1e9)));
+    body.innerHTML = rows.map(r => r.html).join('');
+    const n = { t: 0, r: 0, w: 0 }; rows.forEach(r => { if (r.rank === 0) n.t++; else if (r.rank === 1) n.r++; else if (r.rank === 2) n.w++; });
+    if (meta) meta.textContent = `${universe.length} pairs · ${n.t} tradeable · ${n.r} rejected · ${n.w} watching · state as of ${state?.generated_at ? new Date(state.generated_at).toISOString().slice(11, 16) + ' UTC' : '—'}`;
+  } catch (e) { body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
 // Plan table is sourced straight from motif_bot_plan (not the bot's own

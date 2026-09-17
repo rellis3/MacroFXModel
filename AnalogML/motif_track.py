@@ -902,6 +902,13 @@ def run(args: argparse.Namespace) -> None:
                 "strategy": "motif-touch",
                 "entries": plan_entries,
                 "filtered": plan_filtered,
+                # Per-pair eligibility under the spread half of best-config, so
+                # the dashboard's pairs board can say "excluded: spread 2.4p"
+                # for a pair that will never appear in entries.
+                "universe": [{"pair": p, "spread_pips": RETAIL_SPREAD_PIPS.get(p),
+                              "eligible": (RETAIL_SPREAD_PIPS.get(p) is None
+                                           or RETAIL_SPREAD_PIPS.get(p) <= BEST_CONFIG["max_spread_pips"])}
+                             for p in pairs],
                 # Proof-of-life for the dashboard: what this scan actually did.
                 "scan": {
                     "started_at": scan_started.isoformat(),
