@@ -1,7 +1,9 @@
 # Event Response Book — design + pre-registration
 
-> **Status: DESIGN FROZEN 2026-09-17, NOT YET RUN.** Written before any of the
-> conditional cells below were computed, per the discipline in
+> **Status: DESIGN FROZEN 2026-09-17. Steps 1–2 (the brick and the descriptive
+> book) BUILT AND RUN the same day — build log appended at the end, design
+> untouched. §6's confirmatory cell is NOT run.** The design was written before
+> any of the conditional cells below were computed, per the discipline in
 > `CB_SENTIMENT_PRICE_TEST.md` / `POST_FOMC_DRIFT_TEST.md`. The data-inventory
 > numbers in §3 were measured first (row counts and date spans — feasibility,
 > not outcomes). No return, correlation or hit-rate in the design space below
@@ -295,6 +297,83 @@ only thing with a pass/fail attached.
 
 ---
 
-## Results
+## Build log — steps 1–2, narrow slice (2026-09-17, design above untouched)
 
-*(nothing run yet — appended here when §6 executes, design above untouched)*
+Built: `js/eventResponseCore.js` (+ 15 synthetic-data subtests) and
+`scripts/build_event_response_book.mjs` → `backfill/event_response_book.json`.
+Scope as agreed: **FOMC / US CPI y/y / US NFP × the 7 USD pairs + gold**.
+Registered in `LEGO_MODULES.md` §1bf. §6's confirmatory cell is **not** run.
+
+### Two data bugs the join proof caught (both pre-existing, both real)
+
+**1. `js/localM1Loader.js` returned an all-zero time axis for most pairs.** It
+hardcoded `r[5]` as the datetime column; the local M1 cache is mixed — `usdjpy`
+has 6 columns, `eurusd` / `gbpusd` / `gold` and others have 8 — so on the 8-column
+files it read a spread column as a timestamp and produced exactly the silent
+failure its own header was written to warn about. Fixed: the column is now located
+per file, and a file whose timestamps do not resolve throws instead of returning
+zeros. Other consumer: `scripts/run_session_window_comparison.mjs`.
+
+**2. `backfill/surprise_backfill.json` timestamps are 17 hours early.** US 08:30 ET
+releases are stored at 19:30/20:30 UTC **on the previous day** (December-2023 CPI,
+released 2024-01-11, is stored as 2024-01-10 20:30Z). Verified independently against
+the tape: a whole-hour scan of the release clock peaks uniquely at **+17h** (CPI
+2.40×, NFP 2.54×) with every other hour at ≈1.0×. The builder therefore *calibrates*
+each family's clock against the market and publishes the proof rather than trusting
+the archive or hardcoding a constant.
+
+That second bug is **not confined to this work**: `macroRegimeFx.buildEventStudy`
+keys releases on `new Date(r.ms)`'s calendar date, so every backfilled US morning
+release in today.html's "What moves this pair, measured" panel — and in the AI
+snapshot's `eventDayBehaviour` — has been attributed to **the day before it
+happened**. Live-collected releases (post 2025-04) are unaffected, so the panel
+currently mixes correctly- and incorrectly-dated history. Fixing the archive needs
+the untracked 68MB source CSV; **open**, and tracked in `LEGO_MODULES.md` §1bf.
+
+### Join proof (median |R0| ÷ the same clock on ordinary days)
+
+| family | eurusd | gbpusd | audusd | nzdusd | usdjpy | usdcad | usdchf | gold |
+|---|---|---|---|---|---|---|---|---|
+| FOMC | 5.48 | 4.59 | 6.46 | 5.74 | 5.61 | 4.47 | 6.09 | 4.93 |
+| CPI  | 2.40 | 2.09 | 2.69 | 2.84 | 2.37 | 1.98 ✗ | 2.45 | 1.71 ✗ |
+| NFP  | 2.54 | 2.23 | 2.22 | 2.42 | 2.77 | 2.16 | 2.53 | 2.96 |
+
+22 of 24 rows clear the 2× bar. The two that do not are published with
+`joinProof.pass:false` attached. FOMC needs no calibration at all — its clock comes
+from `fomcHistory.js` at 14:00 ET, and the market confirms it at ~5×.
+
+### Coverage and the unconditional rows
+
+N per instrument inside the M1 window: **CPI 111 · NFP 112 · FOMC 78**
+(the archive ends 2025-04; FOMC runs to 2025-12 from `fomcHistory`).
+Front-end dead-zone, computed from the yield series alone: **±2.5bp**.
+
+Event-day size, median |R1| ÷ an ordinary day — the one thing here that is not
+marginal, and it agrees with what the banked FOMC work already said:
+
+| family | range across the 8 instruments | next-day direction |
+|---|---|---|
+| FOMC | **1.50× – 2.05×** | 37–58% up (coin flip) |
+| CPI  | 1.04× – 1.41× | 46–55% up (coin flip) |
+| NFP  | 0.93× – 1.14× | 45–56% up (coin flip) |
+
+NFP spikes hard at the release (R0 2.2–3.0×) and leaves the **next** day looking
+like an ordinary day — the 30-minute-pricing result, visible from a second angle.
+
+### The conditional grid — descriptive, and so far indistinguishable from noise
+
+72 of 216 cells cleared `n ≥ 12`; 144 were omitted. Of the 72, **33 held their sign
+across their own halves — 46%, which is what a coin flip does.** Nothing in the grid
+is presented as an effect, and nothing from it should reach a page that implies one.
+The largest cells (e.g. FOMC / usdjpy / priced-hawkish + in-line, n=16, R1 −34.5bp)
+are exactly the kind of number §5's arithmetic predicts will appear from noise alone
+at this cell count.
+
+That is the honest state after step 2: the machinery is built and proven to be
+looking at the right minutes, the size effects replicate, and the conditional
+direction claim has **no support yet** — which is what §6's single registered test
+exists to settle.
+
+## Results (§6 confirmatory cell)
+
+*(not run — appended here when §6 executes, design above untouched)*

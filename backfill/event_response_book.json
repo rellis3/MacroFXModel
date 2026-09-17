@@ -1,0 +1,4026 @@
+{
+ "builtAt": "2026-09-17T06:07:36.135Z",
+ "spec": "MD files/EVENT_RESPONSE_BOOK.md §4 (design frozen 2026-09-17)",
+ "status": "DESCRIPTIVE — history with sample sizes. Not a forecast, not a signal. The confirmatory test registered in §6 is separate and is not run here.",
+ "releaseArchive": {
+  "source": "backfill/surprise_backfill.json",
+  "from": "2007-01-02 09:00:00",
+  "to": "2025-04-04 11:30:00"
+ },
+ "yieldSource": {
+  "source": "analysis/output/yield_coupling/yields.csv",
+  "from": "2005-01-03",
+  "to": "2026-08-21",
+  "cadence": "daily closes (no intraday yield series exists offline)"
+ },
+ "instruments": [
+  "eurusd",
+  "gbpusd",
+  "audusd",
+  "nzdusd",
+  "usdjpy",
+  "usdcad",
+  "usdchf",
+  "gold"
+ ],
+ "families": {
+  "cpi": {
+   "label": "US CPI y/y",
+   "source": "ForexFactory archive · US | CPI y/y",
+   "events": 219,
+   "gaps": [],
+   "outcomeNote": null,
+   "clockShiftHours": 17,
+   "clockCalibrated": true,
+   "joinProof": {
+    "spikeRatioR0": 2.4,
+    "runnerUpSpike": 1.55,
+    "pass": true
+   }
+  },
+  "nfp": {
+   "label": "US Non-Farm Payrolls",
+   "source": "ForexFactory archive · US | Non-Farm Employment Change",
+   "events": 220,
+   "gaps": [],
+   "outcomeNote": null,
+   "clockShiftHours": 17,
+   "clockCalibrated": true,
+   "joinProof": {
+    "spikeRatioR0": 2.54,
+    "runnerUpSpike": 1.38,
+    "pass": true
+   }
+  },
+  "fomc": {
+   "label": "FOMC statement",
+   "source": "js/fomcHistory.js dates @ 14:00 ET · cb-lexicon-v1 Δscore, standardised",
+   "events": 78,
+   "gaps": [
+    {
+     "afterDate": "2020-01-29",
+     "gapDays": 91,
+     "medianDays": 42
+    }
+   ],
+   "outcomeNote": "beat/miss here mean HAWKISH/DOVISH versus the previous statement, not a data surprise.",
+   "clockShiftHours": 0,
+   "clockCalibrated": false,
+   "joinProof": {
+    "spikeRatioR0": 5.48,
+    "runnerUpSpike": null,
+    "pass": true
+   }
+  }
+ },
+ "meta": {
+  "deadZoneBp": 2.5,
+  "minCellObs": 12,
+  "inlineZ": 0.25,
+  "leadSessions": 5,
+  "r0Minutes": 30,
+  "tolMinutes": 90,
+  "baselineDays": 20
+ },
+ "book": {
+  "cpi": {
+   "label": "US CPI y/y",
+   "ccy": "USD",
+   "instruments": {
+    "eurusd": {
+     "all": {
+      "n": 111,
+      "pre5": {
+       "n": 111,
+       "median": 4.1,
+       "mean": 5.4,
+       "upPct": 53.2
+      },
+      "r0": {
+       "n": 111,
+       "median": 2.8,
+       "mean": 4.4,
+       "upPct": 54.1
+      },
+      "r1": {
+       "n": 111,
+       "median": -7.6,
+       "mean": -3,
+       "upPct": 45.9
+      },
+      "r5": {
+       "n": 111,
+       "median": 0.8,
+       "mean": -0.8,
+       "upPct": 50.5
+      },
+      "absR1Median": 32,
+      "baselineAbsR1Median": 26,
+      "moveMultiple": 1.17,
+      "joinProof": {
+       "spikeRatioR0": 2.4,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": -43,
+        "mean": -24.8,
+        "upPct": 44
+       },
+       "r0": {
+        "n": 25,
+        "median": -3.7,
+        "mean": -14.6,
+        "upPct": 40
+       },
+       "r1": {
+        "n": 25,
+        "median": 0.3,
+        "mean": 4.1,
+        "upPct": 52
+       },
+       "r5": {
+        "n": 25,
+        "median": -22.1,
+        "mean": -15.2,
+        "upPct": 40
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": 11.5,
+        "lateR1Median": -9.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": -29.6,
+        "mean": -23.4,
+        "upPct": 31.6
+       },
+       "r0": {
+        "n": 19,
+        "median": 2.8,
+        "mean": 6.4,
+        "upPct": 68.4
+       },
+       "r1": {
+        "n": 19,
+        "median": -21.6,
+        "mean": -18,
+        "upPct": 31.6
+       },
+       "r5": {
+        "n": 19,
+        "median": -53.3,
+        "mean": -21.9,
+        "upPct": 42.1
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": -14.7,
+        "lateR1Median": -23.8
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 8.6,
+        "mean": 11.1,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 16,
+        "median": 34.3,
+        "mean": 27.8,
+        "upPct": 68.8
+       },
+       "r1": {
+        "n": 16,
+        "median": 0.1,
+        "mean": 10.4,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 16,
+        "median": -38.1,
+        "mean": -2,
+        "upPct": 43.8
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -20,
+        "lateR1Median": 33.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 17.9,
+        "mean": 10.6,
+        "upPct": 57.1
+       },
+       "r0": {
+        "n": 14,
+        "median": 4.3,
+        "mean": 5.5,
+        "upPct": 64.3
+       },
+       "r1": {
+        "n": 14,
+        "median": -2.8,
+        "mean": 6.2,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 14,
+        "median": 37.6,
+        "mean": 17.8,
+        "upPct": 57.1
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": -15.3,
+        "lateR1Median": 7.2
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "gbpusd": {
+     "all": {
+      "n": 110,
+      "pre5": {
+       "n": 110,
+       "median": 0,
+       "mean": 5.2,
+       "upPct": 50
+      },
+      "r0": {
+       "n": 110,
+       "median": 2.5,
+       "mean": 3.8,
+       "upPct": 55.5
+      },
+      "r1": {
+       "n": 110,
+       "median": -0.7,
+       "mean": 1.9,
+       "upPct": 49.1
+      },
+      "r5": {
+       "n": 110,
+       "median": 14.1,
+       "mean": 3.7,
+       "upPct": 54.5
+      },
+      "absR1Median": 36.7,
+      "baselineAbsR1Median": 31.7,
+      "moveMultiple": 1.18,
+      "joinProof": {
+       "spikeRatioR0": 2.09,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": -37.5,
+        "mean": -3.7,
+        "upPct": 36
+       },
+       "r0": {
+        "n": 25,
+        "median": -4.6,
+        "mean": -15.7,
+        "upPct": 44
+       },
+       "r1": {
+        "n": 25,
+        "median": 0,
+        "mean": 8.4,
+        "upPct": 48
+       },
+       "r5": {
+        "n": 25,
+        "median": -32.1,
+        "mean": -17,
+        "upPct": 44
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": 21.4,
+        "lateR1Median": -30.3
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": -14.5,
+        "mean": -19.2,
+        "upPct": 42.1
+       },
+       "r0": {
+        "n": 19,
+        "median": 7.3,
+        "mean": 6.7,
+        "upPct": 68.4
+       },
+       "r1": {
+        "n": 19,
+        "median": -1.4,
+        "mean": -8.8,
+        "upPct": 47.4
+       },
+       "r5": {
+        "n": 19,
+        "median": 13,
+        "mean": -2.9,
+        "upPct": 57.9
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": 4.6,
+        "lateR1Median": -12.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 3.7,
+        "mean": 44.3,
+        "upPct": 56.3
+       },
+       "r0": {
+        "n": 16,
+        "median": 25.1,
+        "mean": 29.1,
+        "upPct": 75
+       },
+       "r1": {
+        "n": 16,
+        "median": 5.4,
+        "mean": 2.8,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 16,
+        "median": -49.4,
+        "mean": -35.2,
+        "upPct": 37.5
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -35,
+        "lateR1Median": 38
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 19.5,
+        "mean": 5,
+        "upPct": 64.3
+       },
+       "r0": {
+        "n": 14,
+        "median": 5.5,
+        "mean": 7.3,
+        "upPct": 71.4
+       },
+       "r1": {
+        "n": 14,
+        "median": 12.4,
+        "mean": 12.9,
+        "upPct": 64.3
+       },
+       "r5": {
+        "n": 14,
+        "median": 49.1,
+        "mean": 53,
+        "upPct": 71.4
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": 13.3,
+        "lateR1Median": 11.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "audusd": {
+     "all": {
+      "n": 111,
+      "pre5": {
+       "n": 111,
+       "median": 10.3,
+       "mean": 12.6,
+       "upPct": 52.3
+      },
+      "r0": {
+       "n": 111,
+       "median": 4.6,
+       "mean": 6.6,
+       "upPct": 57.7
+      },
+      "r1": {
+       "n": 111,
+       "median": -0.3,
+       "mean": -1.3,
+       "upPct": 49.5
+      },
+      "r5": {
+       "n": 111,
+       "median": -19,
+       "mean": -14,
+       "upPct": 48.6
+      },
+      "absR1Median": 50.1,
+      "baselineAbsR1Median": 35.3,
+      "moveMultiple": 1.31,
+      "joinProof": {
+       "spikeRatioR0": 2.69,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": -14.5,
+        "mean": -31.9,
+        "upPct": 44
+       },
+       "r0": {
+        "n": 25,
+        "median": -5.8,
+        "mean": -20.2,
+        "upPct": 44
+       },
+       "r1": {
+        "n": 25,
+        "median": 22.9,
+        "mean": 10.4,
+        "upPct": 60
+       },
+       "r5": {
+        "n": 25,
+        "median": -22.9,
+        "mean": -14.8,
+        "upPct": 48
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": 43.8,
+        "lateR1Median": 2.4
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": -22.7,
+        "mean": 0.8,
+        "upPct": 47.4
+       },
+       "r0": {
+        "n": 19,
+        "median": 8.4,
+        "mean": 12.8,
+        "upPct": 78.9
+       },
+       "r1": {
+        "n": 19,
+        "median": -17.6,
+        "mean": -20.8,
+        "upPct": 31.6
+       },
+       "r5": {
+        "n": 19,
+        "median": -34.3,
+        "mean": -27.7,
+        "upPct": 31.6
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": -1.6,
+        "lateR1Median": -42.2
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 25.4,
+        "mean": 38.3,
+        "upPct": 56.3
+       },
+       "r0": {
+        "n": 16,
+        "median": 49.1,
+        "mean": 45.7,
+        "upPct": 87.5
+       },
+       "r1": {
+        "n": 16,
+        "median": 9.7,
+        "mean": 1,
+        "upPct": 56.3
+       },
+       "r5": {
+        "n": 16,
+        "median": -29.1,
+        "mean": -43.1,
+        "upPct": 43.8
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -61.1,
+        "lateR1Median": 70.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 9,
+        "mean": 23.7,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 14,
+        "median": 1.1,
+        "mean": 7,
+        "upPct": 57.1
+       },
+       "r1": {
+        "n": 14,
+        "median": 11,
+        "mean": 19.4,
+        "upPct": 64.3
+       },
+       "r5": {
+        "n": 14,
+        "median": -5.9,
+        "mean": 7.9,
+        "upPct": 50
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": 10.5,
+        "lateR1Median": 31.2
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "nzdusd": {
+     "all": {
+      "n": 111,
+      "pre5": {
+       "n": 111,
+       "median": 6.6,
+       "mean": -5.6,
+       "upPct": 52.3
+      },
+      "r0": {
+       "n": 111,
+       "median": 4.1,
+       "mean": 6.2,
+       "upPct": 53.2
+      },
+      "r1": {
+       "n": 111,
+       "median": -10.5,
+       "mean": 0.3,
+       "upPct": 45.9
+      },
+      "r5": {
+       "n": 111,
+       "median": -14.2,
+       "mean": -13.1,
+       "upPct": 47.7
+      },
+      "absR1Median": 44.9,
+      "baselineAbsR1Median": 35.8,
+      "moveMultiple": 1.22,
+      "joinProof": {
+       "spikeRatioR0": 2.84,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": -19.5,
+        "mean": -54.6,
+        "upPct": 44
+       },
+       "r0": {
+        "n": 25,
+        "median": -7.6,
+        "mean": -20.9,
+        "upPct": 40
+       },
+       "r1": {
+        "n": 25,
+        "median": 18.6,
+        "mean": 21.4,
+        "upPct": 52
+       },
+       "r5": {
+        "n": 25,
+        "median": 0.1,
+        "mean": 3.3,
+        "upPct": 52
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": 25.6,
+        "lateR1Median": 18.6
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": -17.6,
+        "mean": -5.3,
+        "upPct": 47.4
+       },
+       "r0": {
+        "n": 19,
+        "median": 4.6,
+        "mean": 12.5,
+        "upPct": 57.9
+       },
+       "r1": {
+        "n": 19,
+        "median": -27.4,
+        "mean": -30.7,
+        "upPct": 26.3
+       },
+       "r5": {
+        "n": 19,
+        "median": -69.1,
+        "mean": -45.9,
+        "upPct": 26.3
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": -25.2,
+        "lateR1Median": -34.5
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 7.7,
+        "mean": 4.1,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 16,
+        "median": 48.6,
+        "mean": 45.2,
+        "upPct": 87.5
+       },
+       "r1": {
+        "n": 16,
+        "median": -14.3,
+        "mean": 11.6,
+        "upPct": 43.8
+       },
+       "r5": {
+        "n": 16,
+        "median": -61.6,
+        "mean": -37.8,
+        "upPct": 37.5
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -44.4,
+        "lateR1Median": 72.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 10.9,
+        "mean": 6.7,
+        "upPct": 57.1
+       },
+       "r0": {
+        "n": 14,
+        "median": -0.1,
+        "mean": 5.6,
+        "upPct": 42.9
+       },
+       "r1": {
+        "n": 14,
+        "median": 15.1,
+        "mean": 17.8,
+        "upPct": 71.4
+       },
+       "r5": {
+        "n": 14,
+        "median": 15,
+        "mean": 11.9,
+        "upPct": 64.3
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": 13.1,
+        "lateR1Median": 17.1
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "usdjpy": {
+     "all": {
+      "n": 111,
+      "pre5": {
+       "n": 111,
+       "median": 22.1,
+       "mean": 13,
+       "upPct": 55.9
+      },
+      "r0": {
+       "n": 111,
+       "median": -1.8,
+       "mean": -6.4,
+       "upPct": 45
+      },
+      "r1": {
+       "n": 111,
+       "median": -2,
+       "mean": -9,
+       "upPct": 49.5
+      },
+      "r5": {
+       "n": 111,
+       "median": 6.1,
+       "mean": 13.1,
+       "upPct": 56.8
+      },
+      "absR1Median": 30.6,
+      "baselineAbsR1Median": 28.8,
+      "moveMultiple": 1.41,
+      "joinProof": {
+       "spikeRatioR0": 2.37,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": 74.6,
+        "mean": 79.9,
+        "upPct": 72
+       },
+       "r0": {
+        "n": 25,
+        "median": 2.2,
+        "mean": 13.9,
+        "upPct": 60
+       },
+       "r1": {
+        "n": 25,
+        "median": 10,
+        "mean": -3.4,
+        "upPct": 60
+       },
+       "r5": {
+        "n": 25,
+        "median": 46.9,
+        "mean": 32.2,
+        "upPct": 64
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": 2.2,
+        "lateR1Median": 10.4
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": 37.2,
+        "mean": 54.6,
+        "upPct": 78.9
+       },
+       "r0": {
+        "n": 19,
+        "median": -5.9,
+        "mean": -6.9,
+        "upPct": 26.3
+       },
+       "r1": {
+        "n": 19,
+        "median": -2.4,
+        "mean": -3.7,
+        "upPct": 47.4
+       },
+       "r5": {
+        "n": 19,
+        "median": 4.4,
+        "mean": 14.4,
+        "upPct": 52.6
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": 2.9,
+        "lateR1Median": -10
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 69.8,
+        "mean": 50.2,
+        "upPct": 68.8
+       },
+       "r0": {
+        "n": 16,
+        "median": -16.6,
+        "mean": -32.8,
+        "upPct": 25
+       },
+       "r1": {
+        "n": 16,
+        "median": -19.5,
+        "mean": -7.3,
+        "upPct": 37.5
+       },
+       "r5": {
+        "n": 16,
+        "median": 24.4,
+        "mean": 33.1,
+        "upPct": 81.3
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": 2.9,
+        "lateR1Median": -40.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 15.3,
+        "mean": 0.6,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 14,
+        "median": -3,
+        "mean": -2.6,
+        "upPct": 42.9
+       },
+       "r1": {
+        "n": 14,
+        "median": -16.2,
+        "mean": -7,
+        "upPct": 42.9
+       },
+       "r5": {
+        "n": 14,
+        "median": -26.3,
+        "mean": -12,
+        "upPct": 42.9
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": -27.6,
+        "lateR1Median": -13.6
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "usdcad": {
+     "all": {
+      "n": 111,
+      "pre5": {
+       "n": 111,
+       "median": -3.4,
+       "mean": -10.1,
+       "upPct": 45.9
+      },
+      "r0": {
+       "n": 111,
+       "median": -0.3,
+       "mean": -1.6,
+       "upPct": 49.5
+      },
+      "r1": {
+       "n": 111,
+       "median": 1.9,
+       "mean": -0.9,
+       "upPct": 51.4
+      },
+      "r5": {
+       "n": 111,
+       "median": 10.4,
+       "mean": 10.7,
+       "upPct": 55
+      },
+      "absR1Median": 35.6,
+      "baselineAbsR1Median": 25.3,
+      "moveMultiple": 1.37,
+      "joinProof": {
+       "spikeRatioR0": 1.98,
+       "pass": false
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": -3.4,
+        "mean": 7.6,
+        "upPct": 48
+       },
+       "r0": {
+        "n": 25,
+        "median": 3.7,
+        "mean": 11.1,
+        "upPct": 64
+       },
+       "r1": {
+        "n": 25,
+        "median": -0.5,
+        "mean": -12.8,
+        "upPct": 44
+       },
+       "r5": {
+        "n": 25,
+        "median": 23.7,
+        "mean": 20.5,
+        "upPct": 56
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": -36.4,
+        "lateR1Median": 0
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": -22.8,
+        "mean": -25.8,
+        "upPct": 42.1
+       },
+       "r0": {
+        "n": 19,
+        "median": 0.4,
+        "mean": -1.9,
+        "upPct": 52.6
+       },
+       "r1": {
+        "n": 19,
+        "median": 2.2,
+        "mean": 9.1,
+        "upPct": 52.6
+       },
+       "r5": {
+        "n": 19,
+        "median": 20.7,
+        "mean": 25.8,
+        "upPct": 68.4
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": 2.2,
+        "lateR1Median": 11.5
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": -37.6,
+        "mean": -36.5,
+        "upPct": 37.5
+       },
+       "r0": {
+        "n": 16,
+        "median": -17.7,
+        "mean": -18.2,
+        "upPct": 18.8
+       },
+       "r1": {
+        "n": 16,
+        "median": 4,
+        "mean": 6.7,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 16,
+        "median": 10.7,
+        "mean": 19.2,
+        "upPct": 56.3
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": 26.3,
+        "lateR1Median": -43.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 3.3,
+        "mean": -10.1,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 14,
+        "median": -2.4,
+        "mean": -3.2,
+        "upPct": 35.7
+       },
+       "r1": {
+        "n": 14,
+        "median": 2.1,
+        "mean": -2.1,
+        "upPct": 64.3
+       },
+       "r5": {
+        "n": 14,
+        "median": -9.8,
+        "mean": -4.9,
+        "upPct": 42.9
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": 1.9,
+        "lateR1Median": 2.3
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "usdchf": {
+     "all": {
+      "n": 111,
+      "pre5": {
+       "n": 111,
+       "median": -11.8,
+       "mean": -4.1,
+       "upPct": 45
+      },
+      "r0": {
+       "n": 111,
+       "median": -3.8,
+       "mean": -3.6,
+       "upPct": 40.5
+      },
+      "r1": {
+       "n": 111,
+       "median": 3,
+       "mean": -1.4,
+       "upPct": 55
+      },
+      "r5": {
+       "n": 111,
+       "median": 0.4,
+       "mean": -2.3,
+       "upPct": 50.5
+      },
+      "absR1Median": 32.3,
+      "baselineAbsR1Median": 25.8,
+      "moveMultiple": 1.33,
+      "joinProof": {
+       "spikeRatioR0": 2.45,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": 36.9,
+        "mean": 30.7,
+        "upPct": 60
+       },
+       "r0": {
+        "n": 25,
+        "median": -0.3,
+        "mean": 11.9,
+        "upPct": 48
+       },
+       "r1": {
+        "n": 25,
+        "median": 3,
+        "mean": -8.7,
+        "upPct": 52
+       },
+       "r5": {
+        "n": 25,
+        "median": 22.8,
+        "mean": 11.8,
+        "upPct": 64
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": -19.7,
+        "lateR1Median": 5.9
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": 47.1,
+        "mean": 38.2,
+        "upPct": 68.4
+       },
+       "r0": {
+        "n": 19,
+        "median": -4.8,
+        "mean": -6,
+        "upPct": 31.6
+       },
+       "r1": {
+        "n": 19,
+        "median": 1.8,
+        "mean": 7.1,
+        "upPct": 57.9
+       },
+       "r5": {
+        "n": 19,
+        "median": 26,
+        "mean": 15,
+        "upPct": 57.9
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": 33.6,
+        "lateR1Median": -0.3
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 3.6,
+        "mean": -4.4,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 16,
+        "median": -28.1,
+        "mean": -23.5,
+        "upPct": 31.3
+       },
+       "r1": {
+        "n": 16,
+        "median": -32,
+        "mean": -27.5,
+        "upPct": 31.3
+       },
+       "r5": {
+        "n": 16,
+        "median": -10,
+        "mean": -23.8,
+        "upPct": 50
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -7.2,
+        "lateR1Median": -58.9
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": -27.9,
+        "mean": -19.5,
+        "upPct": 21.4
+       },
+       "r0": {
+        "n": 14,
+        "median": -5.7,
+        "mean": -5.8,
+        "upPct": 28.6
+       },
+       "r1": {
+        "n": 14,
+        "median": 3.7,
+        "mean": 3.8,
+        "upPct": 57.1
+       },
+       "r5": {
+        "n": 14,
+        "median": -11,
+        "mean": -4,
+        "upPct": 35.7
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": 1.6,
+        "lateR1Median": 5.8
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 5
+    },
+    "gold": {
+     "all": {
+      "n": 109,
+      "pre5": {
+       "n": 109,
+       "median": 15.3,
+       "mean": 8.1,
+       "upPct": 56
+      },
+      "r0": {
+       "n": 109,
+       "median": 6,
+       "mean": 10.8,
+       "upPct": 67.9
+      },
+      "r1": {
+       "n": 109,
+       "median": 7.8,
+       "mean": 6.5,
+       "upPct": 54.1
+      },
+      "r5": {
+       "n": 109,
+       "median": 35.2,
+       "mean": 15.8,
+       "upPct": 55
+      },
+      "absR1Median": 46.7,
+      "baselineAbsR1Median": 48.4,
+      "moveMultiple": 1.04,
+      "joinProof": {
+       "spikeRatioR0": 1.71,
+       "pass": false
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 25,
+       "pre5": {
+        "n": 25,
+        "median": -72.8,
+        "mean": -73.5,
+        "upPct": 36
+       },
+       "r0": {
+        "n": 25,
+        "median": 4.8,
+        "mean": -0.1,
+        "upPct": 68
+       },
+       "r1": {
+        "n": 25,
+        "median": 24.8,
+        "mean": 27.3,
+        "upPct": 60
+       },
+       "r5": {
+        "n": 25,
+        "median": -15.5,
+        "mean": -4,
+        "upPct": 48
+       },
+       "leadMedianBp": 7,
+       "halves": {
+        "earlyN": 12,
+        "lateN": 13,
+        "earlyR1Median": 31.4,
+        "lateR1Median": 18
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 19,
+       "pre5": {
+        "n": 19,
+        "median": -11.3,
+        "mean": -64,
+        "upPct": 47.4
+       },
+       "r0": {
+        "n": 19,
+        "median": 5.3,
+        "mean": 10.1,
+        "upPct": 68.4
+       },
+       "r1": {
+        "n": 19,
+        "median": -12.7,
+        "mean": -6.7,
+        "upPct": 42.1
+       },
+       "r5": {
+        "n": 19,
+        "median": 2.1,
+        "mean": -10.8,
+        "upPct": 52.6
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 9,
+        "lateN": 10,
+        "earlyR1Median": -9,
+        "lateR1Median": -16.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      },
+      "priced-hawkish|miss": {
+       "leadState": "priced-hawkish",
+       "outcome": "miss",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": -23.7,
+        "mean": -40,
+        "upPct": 37.5
+       },
+       "r0": {
+        "n": 16,
+        "median": 31.9,
+        "mean": 32,
+        "upPct": 81.3
+       },
+       "r1": {
+        "n": 16,
+        "median": 4.7,
+        "mean": -0.9,
+        "upPct": 56.3
+       },
+       "r5": {
+        "n": 16,
+        "median": -42.7,
+        "mean": -33.2,
+        "upPct": 31.3
+       },
+       "leadMedianBp": 8,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": 4.7,
+        "lateR1Median": 25
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 14,
+       "pre5": {
+        "n": 14,
+        "median": 56,
+        "mean": 25.2,
+        "upPct": 78.6
+       },
+       "r0": {
+        "n": 14,
+        "median": 9.9,
+        "mean": 13,
+        "upPct": 78.6
+       },
+       "r1": {
+        "n": 14,
+        "median": -10.2,
+        "mean": -8.6,
+        "upPct": 42.9
+       },
+       "r5": {
+        "n": 14,
+        "median": 75.4,
+        "mean": 10,
+        "upPct": 64.3
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 7,
+        "lateN": 7,
+        "earlyR1Median": -4.5,
+        "lateR1Median": -15.9
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 5
+    }
+   },
+   "events": 219,
+   "from": "2007-01-18",
+   "to": "2025-03-12"
+  },
+  "nfp": {
+   "label": "US Non-Farm Payrolls",
+   "ccy": "USD",
+   "instruments": {
+    "eurusd": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": 10.6,
+       "mean": 12.8,
+       "upPct": 56.8
+      },
+      "r0": {
+       "n": 112,
+       "median": -1.1,
+       "mean": -3.9,
+       "upPct": 48.2
+      },
+      "r1": {
+       "n": 112,
+       "median": -2.9,
+       "mean": -0.8,
+       "upPct": 48.2
+      },
+      "r5": {
+       "n": 112,
+       "median": 5.8,
+       "mean": 7.6,
+       "upPct": 53.6
+      },
+      "absR1Median": 29.6,
+      "baselineAbsR1Median": 26.8,
+      "moveMultiple": 1.07,
+      "joinProof": {
+       "spikeRatioR0": 2.54,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": 6.4,
+        "mean": -15.1,
+        "upPct": 54.8
+       },
+       "r0": {
+        "n": 31,
+        "median": 1.3,
+        "mean": -0.9,
+        "upPct": 51.6
+       },
+       "r1": {
+        "n": 31,
+        "median": 3.4,
+        "mean": 6.4,
+        "upPct": 54.8
+       },
+       "r5": {
+        "n": 31,
+        "median": -8.1,
+        "mean": 7.5,
+        "upPct": 48.4
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": 0.2,
+        "lateR1Median": 5.5
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": -22.1,
+        "mean": -14.7,
+        "upPct": 38.5
+       },
+       "r0": {
+        "n": 26,
+        "median": 7.2,
+        "mean": 7.2,
+        "upPct": 69.2
+       },
+       "r1": {
+        "n": 26,
+        "median": 0.1,
+        "mean": -2.4,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 26,
+        "median": 11.5,
+        "mean": 8.9,
+        "upPct": 61.5
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": -21.7,
+        "lateR1Median": 8.9
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": 33.3,
+        "mean": 59.4,
+        "upPct": 75
+       },
+       "r0": {
+        "n": 37,
+        "median": -11.4,
+        "mean": -11.3,
+        "upPct": 35.1
+       },
+       "r1": {
+        "n": 37,
+        "median": -5,
+        "mean": -4.2,
+        "upPct": 40.5
+       },
+       "r5": {
+        "n": 37,
+        "median": 3.4,
+        "mean": -1.1,
+        "upPct": 51.4
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": -4.9,
+        "lateR1Median": -14.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "gbpusd": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": 1.1,
+       "mean": -0.7,
+       "upPct": 52.3
+      },
+      "r0": {
+       "n": 112,
+       "median": -0.6,
+       "mean": -5.1,
+       "upPct": 49.1
+      },
+      "r1": {
+       "n": 112,
+       "median": -2,
+       "mean": 0.4,
+       "upPct": 48.2
+      },
+      "r5": {
+       "n": 112,
+       "median": -3.9,
+       "mean": 5.1,
+       "upPct": 49.1
+      },
+      "absR1Median": 37.8,
+      "baselineAbsR1Median": 31.8,
+      "moveMultiple": 1.14,
+      "joinProof": {
+       "spikeRatioR0": 2.23,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": -12.5,
+        "mean": -35.2,
+        "upPct": 48.4
+       },
+       "r0": {
+        "n": 31,
+        "median": -3.7,
+        "mean": -2.5,
+        "upPct": 41.9
+       },
+       "r1": {
+        "n": 31,
+        "median": 9.9,
+        "mean": 20.2,
+        "upPct": 54.8
+       },
+       "r5": {
+        "n": 31,
+        "median": 60.3,
+        "mean": 38.8,
+        "upPct": 58.1
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": 15.9,
+        "lateR1Median": 3.5
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": -23.3,
+        "mean": -22.1,
+        "upPct": 38.5
+       },
+       "r0": {
+        "n": 26,
+        "median": 9.4,
+        "mean": 6.7,
+        "upPct": 76.9
+       },
+       "r1": {
+        "n": 26,
+        "median": -0.7,
+        "mean": 4.5,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 26,
+        "median": 6.2,
+        "mean": 18.4,
+        "upPct": 53.8
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": -6.8,
+        "lateR1Median": 23.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": 33.4,
+        "mean": 32.2,
+        "upPct": 61.1
+       },
+       "r0": {
+        "n": 37,
+        "median": -10,
+        "mean": -12.3,
+        "upPct": 35.1
+       },
+       "r1": {
+        "n": 37,
+        "median": -8.7,
+        "mean": -16.9,
+        "upPct": 37.8
+       },
+       "r5": {
+        "n": 37,
+        "median": -47.5,
+        "mean": -36.8,
+        "upPct": 35.1
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": -6.3,
+        "lateR1Median": -17.8
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "audusd": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": 8,
+       "mean": 6.3,
+       "upPct": 53.2
+      },
+      "r0": {
+       "n": 112,
+       "median": -0.3,
+       "mean": -2.4,
+       "upPct": 47.3
+      },
+      "r1": {
+       "n": 112,
+       "median": -0.9,
+       "mean": 3.8,
+       "upPct": 49.1
+      },
+      "r5": {
+       "n": 112,
+       "median": 23.5,
+       "mean": 21.9,
+       "upPct": 56.3
+      },
+      "absR1Median": 31.5,
+      "baselineAbsR1Median": 35.3,
+      "moveMultiple": 0.98,
+      "joinProof": {
+       "spikeRatioR0": 2.22,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": -33.5,
+        "mean": -23.7,
+        "upPct": 41.9
+       },
+       "r0": {
+        "n": 31,
+        "median": 0.9,
+        "mean": -0.7,
+        "upPct": 51.6
+       },
+       "r1": {
+        "n": 31,
+        "median": 3.2,
+        "mean": 5.4,
+        "upPct": 51.6
+       },
+       "r5": {
+        "n": 31,
+        "median": 34.9,
+        "mean": 26.8,
+        "upPct": 64.5
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": -1.6,
+        "lateR1Median": 5.5
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": -48.4,
+        "mean": -23.9,
+        "upPct": 42.3
+       },
+       "r0": {
+        "n": 26,
+        "median": 15.4,
+        "mean": 12.1,
+        "upPct": 69.2
+       },
+       "r1": {
+        "n": 26,
+        "median": 1.1,
+        "mean": 14.1,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 26,
+        "median": 24.2,
+        "mean": 44.5,
+        "upPct": 57.7
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": -9.5,
+        "lateR1Median": 42.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": 22.7,
+        "mean": 25.8,
+        "upPct": 63.9
+       },
+       "r0": {
+        "n": 37,
+        "median": -3.7,
+        "mean": -9.3,
+        "upPct": 35.1
+       },
+       "r1": {
+        "n": 37,
+        "median": -20.5,
+        "mean": -13,
+        "upPct": 35.1
+       },
+       "r5": {
+        "n": 37,
+        "median": -31.4,
+        "mean": -21.9,
+        "upPct": 45.9
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": -12.5,
+        "lateR1Median": -27.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "nzdusd": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": 18.1,
+       "mean": 22.8,
+       "upPct": 55
+      },
+      "r0": {
+       "n": 112,
+       "median": -1.7,
+       "mean": -4.4,
+       "upPct": 45.5
+      },
+      "r1": {
+       "n": 112,
+       "median": 1.1,
+       "mean": -1.3,
+       "upPct": 50.9
+      },
+      "r5": {
+       "n": 112,
+       "median": 9.3,
+       "mean": -1.9,
+       "upPct": 52.7
+      },
+      "absR1Median": 34.4,
+      "baselineAbsR1Median": 38.6,
+      "moveMultiple": 0.93,
+      "joinProof": {
+       "spikeRatioR0": 2.42,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": 10.8,
+        "mean": -27.5,
+        "upPct": 51.6
+       },
+       "r0": {
+        "n": 31,
+        "median": -0.9,
+        "mean": -2.7,
+        "upPct": 45.2
+       },
+       "r1": {
+        "n": 31,
+        "median": 1.7,
+        "mean": 3.7,
+        "upPct": 54.8
+       },
+       "r5": {
+        "n": 31,
+        "median": 27,
+        "mean": 7.2,
+        "upPct": 54.8
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": -7.3,
+        "lateR1Median": 7.2
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": -35.1,
+        "mean": -5.7,
+        "upPct": 34.6
+       },
+       "r0": {
+        "n": 26,
+        "median": 15.5,
+        "mean": 12.5,
+        "upPct": 65.4
+       },
+       "r1": {
+        "n": 26,
+        "median": 4,
+        "mean": 8.5,
+        "upPct": 53.8
+       },
+       "r5": {
+        "n": 26,
+        "median": 9.9,
+        "mean": 5.8,
+        "upPct": 53.8
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": -12.5,
+        "lateR1Median": 31.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": 74.5,
+        "mean": 64.9,
+        "upPct": 66.7
+       },
+       "r0": {
+        "n": 37,
+        "median": -8.9,
+        "mean": -13.6,
+        "upPct": 35.1
+       },
+       "r1": {
+        "n": 37,
+        "median": -24.6,
+        "mean": -17.2,
+        "upPct": 35.1
+       },
+       "r5": {
+        "n": 37,
+        "median": -38.4,
+        "mean": -38.8,
+        "upPct": 40.5
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": -27.9,
+        "lateR1Median": -19.7
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "usdjpy": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": -1.2,
+       "mean": -14.3,
+       "upPct": 49.5
+      },
+      "r0": {
+       "n": 112,
+       "median": 0.5,
+       "mean": 4.2,
+       "upPct": 51.8
+      },
+      "r1": {
+       "n": 112,
+       "median": 0.7,
+       "mean": 1.8,
+       "upPct": 50
+      },
+      "r5": {
+       "n": 112,
+       "median": 9.2,
+       "mean": -3,
+       "upPct": 55.4
+      },
+      "absR1Median": 28.4,
+      "baselineAbsR1Median": 29.2,
+      "moveMultiple": 0.95,
+      "joinProof": {
+       "spikeRatioR0": 2.77,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": 68.9,
+        "mean": 62.1,
+        "upPct": 77.4
+       },
+       "r0": {
+        "n": 31,
+        "median": 3.9,
+        "mean": 3.7,
+        "upPct": 54.8
+       },
+       "r1": {
+        "n": 31,
+        "median": -10.8,
+        "mean": -12.8,
+        "upPct": 35.5
+       },
+       "r5": {
+        "n": 31,
+        "median": 26.3,
+        "mean": -10.9,
+        "upPct": 61.3
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": -26,
+        "lateR1Median": -6.6
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": 34.9,
+        "mean": 27.7,
+        "upPct": 69.2
+       },
+       "r0": {
+        "n": 26,
+        "median": -5.8,
+        "mean": -6.6,
+        "upPct": 34.6
+       },
+       "r1": {
+        "n": 26,
+        "median": -4.8,
+        "mean": -5.4,
+        "upPct": 46.2
+       },
+       "r5": {
+        "n": 26,
+        "median": -9.8,
+        "mean": -8,
+        "upPct": 46.2
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": 7.7,
+        "lateR1Median": -20.6
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": -97.7,
+        "mean": -118.6,
+        "upPct": 16.7
+       },
+       "r0": {
+        "n": 37,
+        "median": 10.4,
+        "mean": 6.8,
+        "upPct": 54.1
+       },
+       "r1": {
+        "n": 37,
+        "median": 11.4,
+        "mean": 9.4,
+        "upPct": 62.2
+       },
+       "r5": {
+        "n": 37,
+        "median": 0.9,
+        "mean": 3.6,
+        "upPct": 51.4
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": 4.6,
+        "lateR1Median": 17.6
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "usdcad": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": -3.7,
+       "mean": -9.9,
+       "upPct": 49.5
+      },
+      "r0": {
+       "n": 112,
+       "median": -1.5,
+       "mean": -0.8,
+       "upPct": 45.5
+      },
+      "r1": {
+       "n": 112,
+       "median": -4,
+       "mean": -2.9,
+       "upPct": 45.5
+      },
+      "r5": {
+       "n": 112,
+       "median": -15.4,
+       "mean": -11,
+       "upPct": 47.3
+      },
+      "absR1Median": 26,
+      "baselineAbsR1Median": 25.2,
+      "moveMultiple": 0.97,
+      "joinProof": {
+       "spikeRatioR0": 2.16,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": 8.6,
+        "mean": 4.6,
+        "upPct": 54.8
+       },
+       "r0": {
+        "n": 31,
+        "median": -0.8,
+        "mean": -1.3,
+        "upPct": 45.2
+       },
+       "r1": {
+        "n": 31,
+        "median": -3.5,
+        "mean": -5.4,
+        "upPct": 48.4
+       },
+       "r5": {
+        "n": 31,
+        "median": -1.8,
+        "mean": 1.7,
+        "upPct": 48.4
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": -4.5,
+        "lateR1Median": 0
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": 16.5,
+        "mean": 19.9,
+        "upPct": 61.5
+       },
+       "r0": {
+        "n": 26,
+        "median": -8.4,
+        "mean": -12.4,
+        "upPct": 30.8
+       },
+       "r1": {
+        "n": 26,
+        "median": 0.3,
+        "mean": -3.9,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 26,
+        "median": -30.8,
+        "mean": -30.5,
+        "upPct": 38.5
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": 6.7,
+        "lateR1Median": -5.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": -27.1,
+        "mean": -33.4,
+        "upPct": 44.4
+       },
+       "r0": {
+        "n": 37,
+        "median": 5.1,
+        "mean": 7.1,
+        "upPct": 59.5
+       },
+       "r1": {
+        "n": 37,
+        "median": -2.8,
+        "mean": 4.3,
+        "upPct": 45.9
+       },
+       "r5": {
+        "n": 37,
+        "median": 16.4,
+        "mean": 6,
+        "upPct": 62.2
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": -10.9,
+        "lateR1Median": 21.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "usdchf": {
+     "all": {
+      "n": 112,
+      "pre5": {
+       "n": 111,
+       "median": -7,
+       "mean": -6.8,
+       "upPct": 47.7
+      },
+      "r0": {
+       "n": 112,
+       "median": 1.5,
+       "mean": 4.1,
+       "upPct": 54.5
+      },
+      "r1": {
+       "n": 112,
+       "median": 3.1,
+       "mean": -2.9,
+       "upPct": 50.9
+      },
+      "r5": {
+       "n": 112,
+       "median": -11.4,
+       "mean": -18.4,
+       "upPct": 44.6
+      },
+      "absR1Median": 27.4,
+      "baselineAbsR1Median": 26.4,
+      "moveMultiple": 1,
+      "joinProof": {
+       "spikeRatioR0": 2.53,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": 32.5,
+        "mean": 47,
+        "upPct": 67.7
+       },
+       "r0": {
+        "n": 31,
+        "median": -0.2,
+        "mean": 1.4,
+        "upPct": 48.4
+       },
+       "r1": {
+        "n": 31,
+        "median": -5.6,
+        "mean": -7.4,
+        "upPct": 41.9
+       },
+       "r5": {
+        "n": 31,
+        "median": 1,
+        "mean": -7.4,
+        "upPct": 54.8
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": -5.6,
+        "lateR1Median": -16.3
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": true
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": 23.1,
+        "mean": 22.1,
+        "upPct": 61.5
+       },
+       "r0": {
+        "n": 26,
+        "median": -3.7,
+        "mean": -6.5,
+        "upPct": 42.3
+       },
+       "r1": {
+        "n": 26,
+        "median": -0.3,
+        "mean": -2.1,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 26,
+        "median": -32.5,
+        "mean": -25.8,
+        "upPct": 30.8
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": 13.2,
+        "lateR1Median": -1.7
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 37,
+       "pre5": {
+        "n": 36,
+        "median": -44.7,
+        "mean": -69.9,
+        "upPct": 25
+       },
+       "r0": {
+        "n": 37,
+        "median": 8.3,
+        "mean": 9.9,
+        "upPct": 59.5
+       },
+       "r1": {
+        "n": 37,
+        "median": 11,
+        "mean": -1,
+        "upPct": 62.2
+       },
+       "r5": {
+        "n": 37,
+        "median": -6.8,
+        "mean": -9.7,
+        "upPct": 48.6
+       },
+       "leadMedianBp": -12,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 19,
+        "earlyR1Median": 9.5,
+        "lateR1Median": 14.8
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 6
+    },
+    "gold": {
+     "all": {
+      "n": 110,
+      "pre5": {
+       "n": 109,
+       "median": 40.8,
+       "mean": 39,
+       "upPct": 53.2
+      },
+      "r0": {
+       "n": 110,
+       "median": 0.6,
+       "mean": -5.6,
+       "upPct": 50.9
+      },
+      "r1": {
+       "n": 110,
+       "median": 5.3,
+       "mean": 0.1,
+       "upPct": 55.5
+      },
+      "r5": {
+       "n": 110,
+       "median": 57.7,
+       "mean": 47.4,
+       "upPct": 63.6
+      },
+      "absR1Median": 46.7,
+      "baselineAbsR1Median": 47.4,
+      "moveMultiple": 1.12,
+      "joinProof": {
+       "spikeRatioR0": 2.96,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 31,
+       "pre5": {
+        "n": 31,
+        "median": -39.9,
+        "mean": -11.6,
+        "upPct": 45.2
+       },
+       "r0": {
+        "n": 31,
+        "median": 1,
+        "mean": -4.5,
+        "upPct": 51.6
+       },
+       "r1": {
+        "n": 31,
+        "median": 9.4,
+        "mean": 16.5,
+        "upPct": 61.3
+       },
+       "r5": {
+        "n": 31,
+        "median": 23.2,
+        "mean": 45.2,
+        "upPct": 61.3
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 15,
+        "lateN": 16,
+        "earlyR1Median": 9.4,
+        "lateR1Median": 10.4
+       },
+       "unstable": {
+        "r0": true,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "flat|inline": {
+       "leadState": "flat",
+       "outcome": "inline",
+       "n": 26,
+       "pre5": {
+        "n": 26,
+        "median": -36.9,
+        "mean": -14.1,
+        "upPct": 34.6
+       },
+       "r0": {
+        "n": 26,
+        "median": 20.2,
+        "mean": 22.6,
+        "upPct": 73.1
+       },
+       "r1": {
+        "n": 26,
+        "median": 5,
+        "mean": 1,
+        "upPct": 57.7
+       },
+       "r5": {
+        "n": 26,
+        "median": 69.2,
+        "mean": 38.6,
+        "upPct": 65.4
+       },
+       "leadMedianBp": 0,
+       "halves": {
+        "earlyN": 13,
+        "lateN": 13,
+        "earlyR1Median": 13.2,
+        "lateR1Median": 2.6
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      },
+      "priced-dovish|inline": {
+       "leadState": "priced-dovish",
+       "outcome": "inline",
+       "n": 36,
+       "pre5": {
+        "n": 35,
+        "median": 128.5,
+        "mean": 112.9,
+        "upPct": 71.4
+       },
+       "r0": {
+        "n": 36,
+        "median": -13.8,
+        "mean": -19.7,
+        "upPct": 41.7
+       },
+       "r1": {
+        "n": 36,
+        "median": -17.8,
+        "mean": -21.1,
+        "upPct": 44.4
+       },
+       "r5": {
+        "n": 36,
+        "median": 43.7,
+        "mean": 36.3,
+        "upPct": 58.3
+       },
+       "leadMedianBp": -11.5,
+       "halves": {
+        "earlyN": 18,
+        "lateN": 18,
+        "earlyR1Median": 10.7,
+        "lateR1Median": -38.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 6
+    }
+   },
+   "events": 220,
+   "from": "2007-01-06",
+   "to": "2025-04-04"
+  },
+  "fomc": {
+   "label": "FOMC statement",
+   "ccy": "USD",
+   "instruments": {
+    "eurusd": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": 0.5,
+       "mean": -2.9,
+       "upPct": 51.3
+      },
+      "r0": {
+       "n": 78,
+       "median": 1,
+       "mean": 1.4,
+       "upPct": 52.6
+      },
+      "r1": {
+       "n": 78,
+       "median": -2.5,
+       "mean": -2.2,
+       "upPct": 48.7
+      },
+      "r5": {
+       "n": 78,
+       "median": -31.5,
+       "mean": -24.7,
+       "upPct": 39.7
+      },
+      "absR1Median": 40.3,
+      "baselineAbsR1Median": 26.6,
+      "moveMultiple": 1.55,
+      "joinProof": {
+       "spikeRatioR0": 5.48,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": 0.8,
+        "mean": -8.4,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 12,
+        "median": -8.7,
+        "mean": 1.2,
+        "upPct": 33.3
+       },
+       "r1": {
+        "n": 12,
+        "median": -6.1,
+        "mean": -10.8,
+        "upPct": 41.7
+       },
+       "r5": {
+        "n": 12,
+        "median": -45.9,
+        "mean": -29.3,
+        "upPct": 41.7
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": 22.9,
+        "lateR1Median": -40.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": -29.3,
+        "mean": -47.2,
+        "upPct": 25
+       },
+       "r0": {
+        "n": 16,
+        "median": -5.8,
+        "mean": -14.7,
+        "upPct": 43.8
+       },
+       "r1": {
+        "n": 16,
+        "median": -3.6,
+        "mean": -0.5,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 16,
+        "median": -24.4,
+        "mean": -8.4,
+        "upPct": 43.8
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -5.5,
+        "lateR1Median": 11.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "gbpusd": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": -7.1,
+       "mean": -1.5,
+       "upPct": 43.6
+      },
+      "r0": {
+       "n": 78,
+       "median": 1.7,
+       "mean": 0.9,
+       "upPct": 51.3
+      },
+      "r1": {
+       "n": 78,
+       "median": 3.4,
+       "mean": -7.1,
+       "upPct": 51.3
+      },
+      "r5": {
+       "n": 78,
+       "median": -49.1,
+       "mean": -44,
+       "upPct": 35.9
+      },
+      "absR1Median": 60.6,
+      "baselineAbsR1Median": 30.8,
+      "moveMultiple": 1.95,
+      "joinProof": {
+       "spikeRatioR0": 4.59,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": -9.3,
+        "mean": -13.6,
+        "upPct": 41.7
+       },
+       "r0": {
+        "n": 12,
+        "median": -4.6,
+        "mean": 1,
+        "upPct": 33.3
+       },
+       "r1": {
+        "n": 12,
+        "median": -17.7,
+        "mean": 3.2,
+        "upPct": 33.3
+       },
+       "r5": {
+        "n": 12,
+        "median": -81.6,
+        "mean": -58.6,
+        "upPct": 25
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": 21.3,
+        "lateR1Median": -49.4
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": -12.3,
+        "mean": -1.9,
+        "upPct": 31.3
+       },
+       "r0": {
+        "n": 16,
+        "median": -4.8,
+        "mean": -13.5,
+        "upPct": 43.8
+       },
+       "r1": {
+        "n": 16,
+        "median": 7.9,
+        "mean": -15,
+        "upPct": 56.3
+       },
+       "r5": {
+        "n": 16,
+        "median": -60.5,
+        "mean": -45.7,
+        "upPct": 31.3
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": 7.9,
+        "lateR1Median": -7.8
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "audusd": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": -0.4,
+       "mean": 5.9,
+       "upPct": 50
+      },
+      "r0": {
+       "n": 78,
+       "median": 3.1,
+       "mean": 3.6,
+       "upPct": 55.1
+      },
+      "r1": {
+       "n": 78,
+       "median": -17.4,
+       "mean": -15.5,
+       "upPct": 43.6
+      },
+      "r5": {
+       "n": 78,
+       "median": -61.6,
+       "mean": -56.8,
+       "upPct": 34.6
+      },
+      "absR1Median": 57.4,
+      "baselineAbsR1Median": 34.4,
+      "moveMultiple": 1.68,
+      "joinProof": {
+       "spikeRatioR0": 6.46,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": -1.8,
+        "mean": -15.9,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 12,
+        "median": -15,
+        "mean": -1.9,
+        "upPct": 33.3
+       },
+       "r1": {
+        "n": 12,
+        "median": 14,
+        "mean": 12.4,
+        "upPct": 58.3
+       },
+       "r5": {
+        "n": 12,
+        "median": -35.4,
+        "mean": -37.5,
+        "upPct": 25
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": 34.6,
+        "lateR1Median": -29.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 19.6,
+        "mean": -6.7,
+        "upPct": 62.5
+       },
+       "r0": {
+        "n": 16,
+        "median": -2.1,
+        "mean": -13.4,
+        "upPct": 43.8
+       },
+       "r1": {
+        "n": 16,
+        "median": -12.8,
+        "mean": -16.7,
+        "upPct": 43.8
+       },
+       "r5": {
+        "n": 16,
+        "median": -68.7,
+        "mean": -89.9,
+        "upPct": 31.3
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -67.1,
+        "lateR1Median": 7.5
+       },
+       "unstable": {
+        "r0": true,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "nzdusd": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": 25.4,
+       "mean": 8.2,
+       "upPct": 57.7
+      },
+      "r0": {
+       "n": 78,
+       "median": -1,
+       "mean": 2.5,
+       "upPct": 47.4
+      },
+      "r1": {
+       "n": 78,
+       "median": -9.7,
+       "mean": -7.7,
+       "upPct": 44.9
+      },
+      "r5": {
+       "n": 78,
+       "median": -53.5,
+       "mean": -46.2,
+       "upPct": 34.6
+      },
+      "absR1Median": 51.2,
+      "baselineAbsR1Median": 37.5,
+      "moveMultiple": 1.5,
+      "joinProof": {
+       "spikeRatioR0": 5.74,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": 40.2,
+        "mean": -18.2,
+        "upPct": 66.7
+       },
+       "r0": {
+        "n": 12,
+        "median": -16.3,
+        "mean": -1.3,
+        "upPct": 25
+       },
+       "r1": {
+        "n": 12,
+        "median": -5.6,
+        "mean": 13.6,
+        "upPct": 33.3
+       },
+       "r5": {
+        "n": 12,
+        "median": -42.4,
+        "mean": -32.4,
+        "upPct": 33.3
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": 23.3,
+        "lateR1Median": -34.9
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 22.9,
+        "mean": -5.6,
+        "upPct": 56.3
+       },
+       "r0": {
+        "n": 16,
+        "median": -6.4,
+        "mean": -15,
+        "upPct": 37.5
+       },
+       "r1": {
+        "n": 16,
+        "median": 1.4,
+        "mean": -1.1,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 16,
+        "median": -49.1,
+        "mean": -52.2,
+        "upPct": 31.3
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -14.7,
+        "lateR1Median": 3.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "usdjpy": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": 17.6,
+       "mean": 8.4,
+       "upPct": 57.7
+      },
+      "r0": {
+       "n": 78,
+       "median": 1.1,
+       "mean": -1.6,
+       "upPct": 52.6
+      },
+      "r1": {
+       "n": 78,
+       "median": -28,
+       "mean": -18,
+       "upPct": 37.2
+      },
+      "r5": {
+       "n": 78,
+       "median": 5.1,
+       "mean": 8,
+       "upPct": 52.6
+      },
+      "absR1Median": 47.6,
+      "baselineAbsR1Median": 28.9,
+      "moveMultiple": 1.85,
+      "joinProof": {
+       "spikeRatioR0": 5.61,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": 31.1,
+        "mean": 38,
+        "upPct": 58.3
+       },
+       "r0": {
+        "n": 12,
+        "median": 12.2,
+        "mean": -3,
+        "upPct": 66.7
+       },
+       "r1": {
+        "n": 12,
+        "median": -23.4,
+        "mean": -21.6,
+        "upPct": 33.3
+       },
+       "r5": {
+        "n": 12,
+        "median": 35.5,
+        "mean": -17.8,
+        "upPct": 50
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": -27.4,
+        "lateR1Median": 9.9
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 69.7,
+        "mean": 62,
+        "upPct": 81.3
+       },
+       "r0": {
+        "n": 16,
+        "median": 15.7,
+        "mean": 17.8,
+        "upPct": 87.5
+       },
+       "r1": {
+        "n": 16,
+        "median": -34.5,
+        "mean": -8.2,
+        "upPct": 43.8
+       },
+       "r5": {
+        "n": 16,
+        "median": 49.7,
+        "mean": 56.6,
+        "upPct": 62.5
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -23.8,
+        "lateR1Median": -34.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "usdcad": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": 6.7,
+       "mean": 6.1,
+       "upPct": 57.7
+      },
+      "r0": {
+       "n": 78,
+       "median": -1.8,
+       "mean": -2.1,
+       "upPct": 43.6
+      },
+      "r1": {
+       "n": 78,
+       "median": 3.3,
+       "mean": 3.1,
+       "upPct": 52.6
+      },
+      "r5": {
+       "n": 78,
+       "median": 21.2,
+       "mean": 21,
+       "upPct": 57.7
+      },
+      "absR1Median": 37.8,
+      "baselineAbsR1Median": 23.6,
+      "moveMultiple": 1.64,
+      "joinProof": {
+       "spikeRatioR0": 4.47,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": 1.2,
+        "mean": 0.9,
+        "upPct": 50
+       },
+       "r0": {
+        "n": 12,
+        "median": 1,
+        "mean": -5.1,
+        "upPct": 50
+       },
+       "r1": {
+        "n": 12,
+        "median": 19.7,
+        "mean": -4.9,
+        "upPct": 58.3
+       },
+       "r5": {
+        "n": 12,
+        "median": 55.6,
+        "mean": 47,
+        "upPct": 66.7
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": -30.2,
+        "lateR1Median": 35.1
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 25.9,
+        "mean": 24.6,
+        "upPct": 62.5
+       },
+       "r0": {
+        "n": 16,
+        "median": 7.3,
+        "mean": 13.4,
+        "upPct": 62.5
+       },
+       "r1": {
+        "n": 16,
+        "median": -14.2,
+        "mean": -8.1,
+        "upPct": 31.3
+       },
+       "r5": {
+        "n": 16,
+        "median": 6.4,
+        "mean": 5.1,
+        "upPct": 50
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": -14.2,
+        "lateR1Median": -16.4
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "usdchf": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": -4.7,
+       "mean": 0.7,
+       "upPct": 48.7
+      },
+      "r0": {
+       "n": 78,
+       "median": -0.8,
+       "mean": -1.3,
+       "upPct": 46.2
+      },
+      "r1": {
+       "n": 78,
+       "median": -1.6,
+       "mean": -6.5,
+       "upPct": 47.4
+      },
+      "r5": {
+       "n": 78,
+       "median": 12.5,
+       "mean": 14.3,
+       "upPct": 55.1
+      },
+      "absR1Median": 51.1,
+      "baselineAbsR1Median": 27.8,
+      "moveMultiple": 2.05,
+      "joinProof": {
+       "spikeRatioR0": 6.09,
+       "pass": true
+      },
+      "side": 1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": -8.5,
+        "mean": 14.6,
+        "upPct": 41.7
+       },
+       "r0": {
+        "n": 12,
+        "median": 6.4,
+        "mean": -3.2,
+        "upPct": 66.7
+       },
+       "r1": {
+        "n": 12,
+        "median": 25.7,
+        "mean": 1.9,
+        "upPct": 58.3
+       },
+       "r5": {
+        "n": 12,
+        "median": -41,
+        "mean": -12.8,
+        "upPct": 41.7
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": -49.6,
+        "lateR1Median": 31.8
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": 48.9,
+        "mean": 55.3,
+        "upPct": 75
+       },
+       "r0": {
+        "n": 16,
+        "median": 3,
+        "mean": 14.9,
+        "upPct": 50
+       },
+       "r1": {
+        "n": 16,
+        "median": 1.9,
+        "mean": -10.8,
+        "upPct": 50
+       },
+       "r5": {
+        "n": 16,
+        "median": 32.4,
+        "mean": 16.2,
+        "upPct": 68.8
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": 13,
+        "lateR1Median": -20.2
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": false
+       }
+      }
+     },
+     "cellsOmitted": 7
+    },
+    "gold": {
+     "all": {
+      "n": 78,
+      "pre5": {
+       "n": 78,
+       "median": -23.6,
+       "mean": -2.6,
+       "upPct": 43.6
+      },
+      "r0": {
+       "n": 78,
+       "median": 0.4,
+       "mean": 7.5,
+       "upPct": 51.3
+      },
+      "r1": {
+       "n": 78,
+       "median": 19.2,
+       "mean": 6,
+       "upPct": 57.7
+      },
+      "r5": {
+       "n": 78,
+       "median": -5.9,
+       "mean": -3.2,
+       "upPct": 47.4
+      },
+      "absR1Median": 77.1,
+      "baselineAbsR1Median": 48.1,
+      "moveMultiple": 1.61,
+      "joinProof": {
+       "spikeRatioR0": 4.93,
+       "pass": true
+      },
+      "side": -1
+     },
+     "cells": {
+      "priced-hawkish|beat": {
+       "leadState": "priced-hawkish",
+       "outcome": "beat",
+       "n": 12,
+       "pre5": {
+        "n": 12,
+        "median": -65.9,
+        "mean": -75.9,
+        "upPct": 25
+       },
+       "r0": {
+        "n": 12,
+        "median": -13.2,
+        "mean": 11.7,
+        "upPct": 41.7
+       },
+       "r1": {
+        "n": 12,
+        "median": 31.3,
+        "mean": 6.6,
+        "upPct": 58.3
+       },
+       "r5": {
+        "n": 12,
+        "median": -20.3,
+        "mean": -67.6,
+        "upPct": 41.7
+       },
+       "leadMedianBp": 9.5,
+       "halves": {
+        "earlyN": 6,
+        "lateN": 6,
+        "earlyR1Median": 74.2,
+        "lateR1Median": -41.8
+       },
+       "unstable": {
+        "r0": false,
+        "r1": true,
+        "r5": true
+       }
+      },
+      "priced-hawkish|inline": {
+       "leadState": "priced-hawkish",
+       "outcome": "inline",
+       "n": 16,
+       "pre5": {
+        "n": 16,
+        "median": -32.1,
+        "mean": -28.5,
+        "upPct": 31.3
+       },
+       "r0": {
+        "n": 16,
+        "median": -11,
+        "mean": -12.9,
+        "upPct": 37.5
+       },
+       "r1": {
+        "n": 16,
+        "median": 34.1,
+        "mean": 6.7,
+        "upPct": 62.5
+       },
+       "r5": {
+        "n": 16,
+        "median": -12.2,
+        "mean": -13.7,
+        "upPct": 50
+       },
+       "leadMedianBp": 10,
+       "halves": {
+        "earlyN": 8,
+        "lateN": 8,
+        "earlyR1Median": 26.4,
+        "lateR1Median": 49.5
+       },
+       "unstable": {
+        "r0": false,
+        "r1": false,
+        "r5": true
+       }
+      }
+     },
+     "cellsOmitted": 7
+    }
+   },
+   "events": 78,
+   "from": "2016-03-16",
+   "to": "2025-12-10"
+  }
+ }
+}

@@ -7912,3 +7912,56 @@ several (`econPollers` has 13, `tde` 3), which made `tde` look like a 20-second 
 
 **Status: ✅ built, unit-tested, and verified end-to-end against real R2 — boot, kill,
 reboot, and the day total carried across (`levels` 10.7s in-process vs 21.4s for the day).**
+
+---
+
+### 1bf. Event Response Core — release windows conditioned on the lead-up (2026-09-17)
+
+**Files:** `js/eventResponseCore.js` (Tier 1, pure), `js/eventResponseCore.test.mjs`
+(15 subtests, synthetic bars + synthetic yields, no network),
+`scripts/build_event_response_book.mjs` (offline builder),
+`backfill/event_response_book.json` (the committed output).
+Design and pass/fail frozen first in `MD files/EVENT_RESPONSE_BOOK.md`.
+
+**What it is.** `(bars, events, yields) → book`: for each release family × instrument,
+the four frozen windows (PRE5 / R0 / R1 / R5, M1, in bp) unconditionally, and then the
+3 × 3 grid of lead-up state (what the 2y did in the five sessions *before* the event) ×
+outcome (beat / in line / miss). Every cell carries `n`, the half-split and an
+`unstable` flag; cells under `minCellObs: 12` are omitted rather than shown small.
+
+**What it is NOT.** Not a forecast and not a signal — `MD files/EVENT_RESPONSE_BOOK.md`
+§6's single confirmatory cell is a separate, still-unrun test, and this brick computes
+no p-value anywhere (overlapping R5 windows on monthly series; `n`, the split and the
+effect size are the honest statistics).
+
+**Imports, never copies:** `econSurprise.parseCalNumber` / `scoreReleases` for the
+per-series surprise dispersion and polarity (a raw `parseFloat('1,250')` is 1, silently),
+`localM1Loader.loadM1ForPairLocal` for bars, `fomcHistory` for the market-validated
+decision days.
+
+**The join proof is the load-bearing part.** Every row reports median |R0| ÷ the same
+clock on ordinary days. It is what caught both bugs below, and a row that does not clear
+2× is published with `pass: false` rather than quietly presented as a finding.
+
+**Two pre-existing bugs it surfaced, both real:**
+
+1. `js/localM1Loader.js` hardcoded `r[5]` as the datetime column. The local M1 cache is
+   **mixed** — `usdjpy` has 6 columns, `eurusd`/`gbpusd`/`gold` and others have 8 — so on
+   most pairs it read a spread column as a timestamp and returned an all-zero time axis,
+   silently (a NaN epoch becomes 0 in an `Int32Array`), which is the exact failure its own
+   header was written to warn about. Now located per file, and a file whose timestamps do
+   not resolve throws. `scripts/run_session_window_comparison.mjs` is the other consumer.
+2. `backfill/surprise_backfill.json` timestamps are **17 hours early** — US 08:30 ET
+   releases are stored at 19:30/20:30 UTC on the previous day. Verified two ways: by hand
+   against known prints (Dec-2023 CPI, released 2024-01-11, stored as 2024-01-10 20:30Z)
+   and against the tape (a whole-hour scan peaks uniquely at +17h, 2.4–2.5×, with every
+   other hour ≈1.0×). Harmless for the surprise index, whose only use of `ms` is an
+   age-decay weight — **not** harmless for `macroRegimeFx.buildEventStudy`, which keys on
+   `new Date(r.ms)`'s calendar date and therefore attributes every backfilled US morning
+   release to the day before it happened. The builder here calibrates and proves the clock
+   per family; fixing the archive itself needs the untracked 68MB source CSV and is
+   **open**.
+
+**Status: ✅ built and unit-tested; the descriptive book is built for 3 families × 8
+instruments. NO edge claimed — 33 of its 72 populated cells held their sign across their
+own halves, which is what a coin flip does.**
