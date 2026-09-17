@@ -340,23 +340,47 @@ def run(base_url: str, force_live: bool) -> None:
                               creds.get("mt5_server"), creds.get("mt5_path") or None):
             log.error("broker connect failed -- exiting")
             return
-        verify_pairs = sorted({str(p).lower() for p in (cfg.get("enabled_pairs") or [])} or
-                               {str(e.get("pair", "")).lower() for e in _plan_entries(plan)})
-        if not verify_pairs:
-            log.warning("no enabled_pairs configured and no plan loaded yet -- skipping startup symbol verification")
+    verified_pairs: set[str] = set()   # pairs already checked against the broker's symbol list this run
+
+    def _verify_new_pairs(pairs: set[str], *, startup: bool) -> None:
+        """Broker symbol check for any pair not yet verified this run. Runs at
+        startup and again whenever a plan brings a pair in for the first time
+        -- with enabled_pairs=[] ("all plan pairs") the startup list is often
+        empty, so a per-plan check is the only one that ever sees the real
+        pairs. Mt5Broker.tradable() answers True for an UNKNOWN symbol, so an
+        unmapped pair would otherwise only surface as a rejected order."""
+        todo = sorted(p for p in pairs if p and p not in verified_pairs)
+        if paper or not todo:
+            return
+        verified_pairs.update(todo)
+        try:
+            problems = broker.verify_symbols(todo)
+        except Exception as e:
+            log.warning(f"symbol verification failed to run: {e}")
+            return
+        if problems:
+            for p in problems:
+                sugg = f" -- closest matches: {', '.join(p['suggestions'])}" if p["suggestions"] else " -- no close match found on this account"
+                log.error(f"BROKER SYMBOL MISMATCH: {p['pair']} configured as {p['configured']!r} -- "
+                          f"not found on this account{sugg}")
         else:
-            try:
-                problems = broker.verify_symbols(verify_pairs)
-            except Exception as e:
-                problems = []
-                log.warning(f"symbol verification failed to run: {e}")
-            if problems:
-                for p in problems:
-                    sugg = f" -- closest matches: {', '.join(p['suggestions'])}" if p["suggestions"] else " -- no close match found on this account"
-                    log.error(f"BROKER SYMBOL MISMATCH: {p['pair']} configured as {p['configured']!r} -- "
-                              f"not found on this account{sugg}")
-            else:
-                log.info(f"symbol check OK -- all {len(verify_pairs)} pair(s) resolve to a real symbol on this account")
+            where = "" if startup else " (new in this plan)"
+            log.info(f"symbol check OK -- {len(todo)} pair(s){where} resolve to a real symbol on this account")
+
+    if not paper:
+        startup_pairs = ({str(p).lower() for p in (cfg.get("enabled_pairs") or [])} or
+                         {str(e.get("pair", "")).lower() for e in _plan_entries(plan)})
+        if startup_pairs:
+            _verify_new_pairs(startup_pairs, startup=True)
+        elif plan:
+            # Normal on a quiet start: enabled_pairs=[] means "trade whatever
+            # the plan carries", and a plan with zero entries carries nothing
+            # to verify yet. Each pair is checked the first time a plan
+            # brings it in (see _verify_new_pairs).
+            log.info(f"startup symbol check: nothing to verify yet -- enabled_pairs is empty (= all plan pairs) and the "
+                     f"current plan ({plan.get('generatedAt')}) has 0 entries; each pair is checked when a plan first carries it")
+        else:
+            log.warning("no enabled_pairs configured and no plan loaded yet -- symbols will be checked when the first plan lands")
 
     guard = RiskGuard(log=log)
     guard.sync_cfg(cfg)
@@ -440,6 +464,7 @@ def run(base_url: str, force_live: bool) -> None:
                 for e in _plan_entries(plan):
                     _register_pair(str(e.get("pair", "")).lower())
                 log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(_plan_entries(plan))} entries")
+                _verify_new_pairs({str(e.get("pair", "")).lower() for e in _plan_entries(plan)}, startup=False)
             last_plan = nowt
 
         if nowt - last_status >= cfg.get("status_secs", 30):
