@@ -46,6 +46,7 @@ export const CHAIN_NODES = {
   usdjpy: { label: 'USD/JPY',                         unit: 'pct', floor: 1,   dp: 1, what: 'The haven pair. Fear normally means the yen is bought — USD/JPY DOWN — as carry trades funded in yen are closed.' },
   vix:    { label: 'Fear gauge (VIX)',                unit: 'pt',  floor: 3,   dp: 1, what: 'S&P 500 implied volatility. The price of insurance against the next 30 days.' },
   hy:     { label: 'Credit spreads (HY)',             unit: 'bp',  floor: 15,  dp: 0, what: 'High-yield OAS: the extra yield junk borrowers pay over Treasuries. Widening = lenders want more compensation = stress.' },
+  nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
   btc:    { label: 'Bitcoin',                         unit: 'pct', floor: 5,   dp: 1, what: 'Trades most days as a high-beta risk asset and, on the days the dollar story is about credibility, as the last stop on the anti-dollar chain. The loosest link here.' },
 };
 
@@ -123,6 +124,18 @@ export const CHAIN_LINKS = [
     broken: {
       up:   'Real yields rose and gold rose with them. Someone is paying up for gold despite being paid more to hold Treasuries: that is a bid for an asset with no counterparty — doubt about the currency, the fiscal path, or the people setting rates. The chain’s loudest tell.',
       down: 'Real yields fell but gold fell too. The usual support is there and it is not working — look for forced selling (gold sold to raise cash in a margin squeeze) or a dollar bid strong enough to overwhelm it.',
+    },
+  },
+  {
+    id: 'real-nq',
+    short: 'real yields \u2192 growth stocks',
+    punch: { holds: 'Growth stocks answering to the discount rate, as the textbook says.', up: 'Real yields up, Nasdaq up anyway \u2192 earnings or the financing story are outrunning the discount rate; the rally is paying to ignore rates.', down: 'Real yields down, Nasdaq down \u2192 a growth scare: rates are falling because earnings are expected to, not because money is easier.' },
+    from: 'real', to: 'nq', sign: -1,
+    textbook: 'Higher real yields hit growth stocks hardest',
+    holds: 'Growth stocks are answering to the real yield \u2014 the discount rate is doing the pricing. Tested 2026-09-17 (analysis/growth_vs_yields_study.mjs): what this link does NEXT is nothing \u2014 a Nasdaq down-week widens the following session on its own, and the yield leg adds nothing to that. Read it as description.',
+    broken: {
+      up:   'Real yields rose and Nasdaq rose with them. The long-duration equity is ignoring its discount rate: either earnings and the financing story are beating it, or the rally is on borrowed time. Which one is a judgment; the break itself is a fact.',
+      down: 'Real yields fell and Nasdaq fell too. Money got cheaper and growth stocks did not care \u2014 rates are falling because growth is expected to, the growth-scare shape. Watch credit and copper for confirmation.',
     },
   },
   {

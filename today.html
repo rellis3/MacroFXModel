@@ -1491,7 +1491,7 @@ function mveChip(r) {
 let commodityDrivers = null;
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
-const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD' };
+const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD' };
 async function loadCommodityDrivers() {
   try {
     // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
@@ -6600,7 +6600,23 @@ function _dayTier(r) {
   const cone = coneGap == null ? '' : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. Moves may get bigger from here.">σ↑${_EV('c', _EV_T.c)}</span>`
     : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year.">σ↓${_EV('c', _EV_T.c)}</span>` : '';
   const txt = `<span class="daytxt" title="Range used: how much of today's expected range price has already travelled. Expected range and vol percentile from the calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '% used' : ''}${rangePts != null ? ` · exp ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ''}${volPct != null ? ` · σ P${volPct}` : ''}${_EV('v', _EV_T.v)}</span>`;
-  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}${nqDownWeekChip(r)}</div>`;
+}
+// Nasdaq after a down-week runs wider. Tested 2026-09-17, pre-registered
+// (MD files/GROWTH_VS_YIELDS_TEST.md): NAS100 down >=1% over 5 sessions -> next
+// session's range +0.19 to +0.23 ATR vs matched controls, CI clear of zero,
+// n=1,232, holds 2018+ and with rates quiet. It was sold to us as a yields story
+// ("opposing moves between growth stocks and bonds"); the yield leg tested as a
+// passenger. A statement about RANGE. The 5-day up-share afterwards is 58%,
+// which is a base rate, not a lean.
+function nqDownWeekChip(r) {
+  if (r.name !== 'NQ') return '';
+  const pts = commodityDrivers?.series?.nq;
+  if (!pts || pts.length < 6) return '';
+  const last = pts.at(-1), ref = pts.at(-6);
+  const wk = (last.value / ref.value - 1) * 100;
+  if (!(wk <= -1)) return '';
+  return `<span class="chip warn" title="NAS100 is ${wk.toFixed(1)}% over the last five sessions (${ref.date} close to ${last.date} close). After a down-week of 1% or more, the next session has run about 20% wider than matched days (+0.19 to +0.23 ATR, n=1,232, 2018+ holds) -- tested here 2026-09-17. This says the range tends to be bigger; it says nothing about direction. The yield move that was supposed to explain it tested as a passenger.">wider day likely · NQ ${wk.toFixed(1)}% wk${_EV('v', _EV_T.v)}</span>`;
 }
 function _leanTier(r) {
   const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
