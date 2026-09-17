@@ -23,7 +23,20 @@ export function makeR2Client() {
     endpoint: R2_ENDPOINT,
     region: 'auto',
     credentials: { accessKeyId, secretAccessKey },
-    requestHandler: { connectionTimeout: 10_000 },
+    // connectionTimeout alone only bounds handshake time -- a stalled/slow
+    // response body stream has NO bound at all without requestTimeout too,
+    // so a hung GetObject/PutObject can sit forever with zero CPU usage and
+    // no error, silently occupying whatever await is holding it (e.g. this
+    // module's own getJSON/putJSON, called mid-book-rebuild by every one of
+    // the 5 reference engines' guardAgainstRegression + M1_TAIL merge +
+    // final persist). volBacktestM1Engine.js's OWN separate R2 client
+    // already carries this exact fix (found investigating a fib_atlas_bot
+    // cold-start stuck at "warming" forever, 2026-09-01) -- this client uses
+    // a different S3Client instance and was never given the same fix.
+    // 2026-09-17: matches a real overnight reference-engine-rebuild stall
+    // (NQ stuck 45+ min with 0% CPU, ruling out slow computation) that this
+    // gap is the leading explanation for.
+    requestHandler: { connectionTimeout: 10_000, requestTimeout: 120_000 },
   });
 }
 
