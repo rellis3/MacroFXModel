@@ -74,6 +74,7 @@ Pages with a later date have genuinely been worked on since.
 | Page | Intended purpose | Status | Last modified | Notes |
 |---|---|---|---|---|
 | `beige-book.html` | Fed Beige Book release viewer with sentiment scoring | 🟢 Live | ≤2026-08-09 | Macro context dashboard |
+| `event-response.html` | What each scheduled release actually does to each pair — size, timing and the distribution of outcomes, from 76 news families x 26 instruments | 🟢 Live | 2026-09-17 | Context, not a signal: direction is reported as a coin flip because five registered tests say it is |
 | `boe-sentiment.html` | Bank of England statement/minutes sentiment tracker | 🟢 Live | ≤2026-08-09 | Central-bank context |
 | `boj-sentiment.html` | Bank of Japan statement sentiment tracker | 🟢 Live | ≤2026-08-09 | Central-bank context |
 | `consumer-confidence.html` | US consumer confidence indicator dashboard | 🟢 Live | ≤2026-08-09 | Macro context |
