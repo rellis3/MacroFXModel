@@ -610,6 +610,70 @@ Per `CLAUDE.md`, no odds are attached before the run. The test decides.
 
 ---
 
-## Results (§6 confirmatory cell)
+## Results — §6 and §7 (run 2026-09-17, designs frozen above before running)
 
-*(not run — appended here when §6 executes, design above untouched)*
+### §6 confirmatory cell: FAIL — clean null, banked
+
+`R1_basket ~ surprise_z + d2y5_z + (surprise_z × d2y5_z)`, dollar basket,
+5 pooled US families, **N = 511** events. Code:
+`analysis/event_response/confirm_cell.mjs`.
+
+| | coefficient | t |
+|---|---|---|
+| `b1` surprise (no pass/fail weight) | −0.02 | −0.01 |
+| `b2` lead-up | −3.44 | −1.48 |
+| **`b3` INTERACTION (the registered cell)** | **−1.77** | **−0.14** |
+
+Halves: 2016–2020 `b3` = −41.28 (t = −1.32), 2021–2026 `b3` = −0.16
+(t = −0.04). The sign is stable and N clears the bar; the **t does not come
+close**. Pass conditions 2 and 3 met, condition 1 failed → **FAIL**.
+
+### §7 composite-state analogue test: FAIL — and the placebo is the finding
+
+k = 8, state = Δ2y, Δ10y, Δ30y, **Δreal10**, **Δbreakeven**, Δslope, walk-forward
+by construction. Code: `analysis/event_response/analogue_test.mjs`.
+
+| arm | n | hit rate | p | halves |
+|---|---|---|---|---|
+| **real** | 6,233 | **49.3%** | 0.86 | 50.4% / 48.3% |
+| **placebo** (state shuffled) | 6,233 | **51.5%** | **0.0096** | 52.2% / 50.8% |
+
+Three of four conditions failed, including the control: **the placebo cleared
+the hit-rate bar that the real arm missed.**
+
+That inversion is worth stating plainly, because it is more informative than the
+null itself. With the state shuffled, k-NN still predicts *the median next-day
+move of 8 prior events in that family* — which is a recent-drift / base-rate
+predictor, and that scores a little above 50%. Matching on the **real** state
+selects a less representative subset of prior events and scores **worse than
+ignoring the state entirely**. So the composite pre-event state is not merely
+uninformative here: as a conditioner for this predictor it is **costly**.
+
+**The p-values on both arms are optimistic and should not be read as "drift is
+an edge".** The 6,233 predictions are 13 families × up to 26 instruments, and
+instruments inside a currency move together — a US release is one event, not
+eight independent ones. The effective sample is a small fraction of 6,233, which
+deflates the real arm's null and the placebo's apparent significance equally.
+
+Per family (descriptive only — 13 families is 13 chances): NZ OCR 54.9% (n=215)
+to BoE 45.6% (n=329). A 45–55% spread across 13 families is what noise does.
+
+### Consequence, per the frozen decision tables
+
+The pre-positioning branch is now **closed on both forms** — the bucketed single
+variable (§6) and the composite-state analogue (§7) — with the TIPS/breakeven
+axes and the instrument's own lead-in included, and with a placebo control that
+says the machinery cannot manufacture a result. This closes the branch
+`CB_SENTIMENT_PRICE_TEST.md` left open, and the event-study family now has
+**five registered nulls** (reaction→drift, Δtone→direction, |Δtone|→magnitude,
+§6, §7) against **one pass** (the unconditional post-FOMC USD drift, calendar-only).
+
+**Still open, and NOT tested here:** policy-path repricing (2y minus effective
+fed funds — how many cuts are priced) is not in the state vector because the
+sandbox cannot reach FRED for `DFF`. It exists live in `regimeFx.policy`. That is
+a genuine gap, not a hidden one, and it is the one component of the owner's
+original list that remains unmeasured.
+
+**What ships:** the book as the impact map §1's claim A supports — what each
+release does to each instrument, in size, with `n` — and nothing that implies
+direction. The conditional grid stays out of the UI.
