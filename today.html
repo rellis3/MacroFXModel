@@ -813,6 +813,13 @@
   .chain-r.open .chain-w{display:block}
   .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
   @media (max-width:560px){.chain-p,.chain-w{margin-left:0}}
+  .dw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:8px}
+  .dw-r{border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--card2);display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;cursor:help}
+  .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)}
+  .dw-k{font-size:11px} .dw-l{font-size:12.5px;font-weight:700} .dw-since{font-size:10.5px} .dw-ins{grid-column:2/4;font-size:10.5px}
+  .dw-d{grid-column:1/4;font-size:11.5px;color:var(--text2);line-height:1.5;margin-top:2px}
+  .dw-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:8px 0 4px}
+  .dw-log{font-size:11.5px;line-height:1.6;color:var(--text2)} .dw-log.cleared{color:var(--text3)}
   .chain-read{margin:0 0 10px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
   .chain-read-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px}
   .chain-hook{font-size:14px;font-weight:800;line-height:1.4;margin-bottom:6px}
@@ -925,6 +932,8 @@
   <div class="dashgrid">
     <div class="main-col">
       <div class="mbrief" id="mbrief" style="display:none"></div>
+
+      <div class="mread" id="deskWatch" style="display:none"></div>
 
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
@@ -1846,6 +1855,8 @@ async function loadGate() {
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
+  loadDeskWatch();                                                 // early-warning strip (server-side engine)
+  setInterval(loadDeskWatch, 5 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
@@ -5173,6 +5184,31 @@ function buildMacro() {
   return { threads, ccy, summary };
 }
 
+// ── Desk watch: what is firing right now, and the last transitions ──────────
+// Server-side engine (js/deskWatch.js, ticked every 15 min on Railway) keeps the
+// state and pages Telegram on transitions; this strip shows it. ✓ = a tested
+// finding from the evidence book (range, never direction); ~ = a described
+// state. The book itself is evidence.html.
+let deskWatch = null;
+async function loadDeskWatch() {
+  try { const r = await jget('/api/desk-watch'); if (r?.ok) { deskWatch = r; renderDeskWatch(); } } catch { /* strip stays hidden */ }
+}
+function renderDeskWatch() {
+  const el = $('deskWatch'); if (!el) return;
+  const w = deskWatch; if (!w?.states?.length) { el.style.display = 'none'; return; }
+  const firing = w.states.filter(t => t.firing);
+  const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+  const glyph = k => k === 'tested' ? _EV('v', _EV_T.v) : _EV('c', _EV_T.c);
+  const row = t => `<div class="dw-r ${t.kind}" title="${esc0(t.detail)}"><span class="dw-k">${glyph(t.kind)}</span><span class="dw-l">${esc0(t.label)}</span><span class="dw-since muted">since ${t.since ? ago(t.since) : '?'}</span>${t.instruments?.length ? `<span class="dw-ins muted">${t.instruments.map(dispName).join(' · ')}</span>` : ''}<div class="dw-d">${esc0(t.detail.split('\n')[0])}</div></div>`;
+  const log = (w.log ?? []).slice(0, 6).map(f => `<div class="dw-log ${f.event}"><span class="muted">${new Date(f.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span> ${f.event === 'started' ? '▲' : '▽'} ${esc0(f.label)}${f.after5 ? ` <span class="muted">→ next 5 sessions ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5} ATR`).join(', ')}</span>` : ''}</div>`).join('');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">👁 Desk watch — ${firing.length ? `${firing.length} condition${firing.length === 1 ? '' : 's'} firing` : 'nothing firing'} <span style="font-weight:400;letter-spacing:0;text-transform:none">· checked every 15 min, Telegram on change · <a href="evidence.html" target="_blank">the evidence book →</a></span></span>${secChev('deskWatch')}</div>
+    ${secBody('deskWatch', `
+      ${firing.length ? `<div class="dw-grid">${firing.map(row).join('')}</div>` : '<div class="muted" style="font-size:12px">No tested or described condition is firing. The rows below are the measured chain; the watch speaks when one of them changes state.</div>'}
+      ${log ? `<div class="dw-h">Last transitions</div>${log}` : ''}
+      <div class="mread-precise" style="margin-top:8px">✓ a finding from the evidence book: pre-registered, tested on this desk's data, about RANGE and never direction. ~ a described state: what changed, not what follows. Each fire is scored five sessions later with the realised range so the book keeps its own forward record.</div>`)}`;
+}
 function renderMacro() {
   const el = $('macro');
   const m = buildMacro();

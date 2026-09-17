@@ -139,6 +139,9 @@ import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeRelea
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
+import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
+import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
@@ -3264,6 +3267,110 @@ Rules:
 Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
+
+// ── Desk watch: the early-warning layer ──────────────────────────────────────
+// Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
+// chain, the stock/bond correlation, the calendar), evaluate every trigger in
+// js/deskWatch.js, compare with the last state in KV, and speak ONLY on a
+// transition -- a condition starting or stopping. Transitions go to Telegram
+// (from Railway; the cron worker never sends) and into a fire log that is the
+// evidence book's forward record: each fire is scored five sessions later with
+// the realised range, so a validated finding keeps earning (or losing) its tick
+// in public. No model calls anywhere in this path.
+const _WATCH_KV = 'desk_watch_v1';
+const _WATCH_EVERY_MS = 15 * 60_000;
+const _WATCH_LOG_MAX = 400;
+const _WATCH_SERIES = { nq: 'NAS100_USD', oil: 'WTICO_USD', gold: 'XAU_USD', spx: 'SPX500_USD', usdjpy: 'USD_JPY', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', copper: 'XCU_USD', btc: 'BTC_USD' };
+const _WATCH_INSTR_SYM = { SPX500: 'spx', NQ: 'nq', GOLD: 'gold', USDJPY: 'usdjpy', EURUSD: 'eurusd', GBPUSD: 'gbpusd', AUDUSD: 'audusd', USDCAD: 'usdcad' };
+let _watchRunning = false, _watchLast = { at: 0, states: null, error: null };
+async function _loadWatchStore() {
+  try { const raw = await kv.getStrict(_WATCH_KV); if (!raw) return { states: [], log: [] }; const p = JSON.parse(raw); return { states: Array.isArray(p?.states) ? p.states : [], log: Array.isArray(p?.log) ? p.log : [] }; }
+  catch (e) { console.warn('[desk-watch] store unreadable, not touching it:', e.message); return null; }
+}
+async function _watchInputs() {
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
+  const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
+  const hist = {};
+  await Promise.all(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy'].map(async k => { try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) hist[k] = JSON.parse(raw); } catch { /* skipped */ } }));
+  const series = {};
+  for (const [k, sym] of Object.entries(_WATCH_SERIES)) {
+    try { const bars = await _btFetchD1(sym, 60); series[k] = bars.sort((a, b) => a.date < b.date ? -1 : 1).map(b => ({ date: b.date, value: b.close, high: b.high, low: b.low })); }
+    catch (e) { console.warn(`[desk-watch] ${sym}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  // the chain, server-side: same brick as the page
+  const vals = {};
+  const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
+  for (const [node, key] of Object.entries(fredSrc)) vals[node] = hist[key] ? _chainNodeDelta(hist[key], _CHAIN_NODES[node]) : null;
+  for (const node of ['oil', 'gold', 'copper', 'audusd', 'usdcad', 'usdjpy', 'btc', 'nq']) vals[node] = series[node] ? _chainNodeDelta(series[node], _CHAIN_NODES[node]) : null;
+  const chain = _evaluateChain(vals);
+  let stockBond = null; try { stockBond = await _stockBondCorr(); } catch { /* optional */ }
+  let events = []; try { const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const now = Date.now(); events = (res.events ?? []).filter(e => e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3); } catch { /* optional */ }
+  const fomcDates = _fomcAllMeetings().map(m => m.date);
+  return { fred, hist, series, chain, stockBond, events, fomcDates, now: Date.now() };
+}
+// Score fires that are five sessions old: the realised range over the five
+// sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
+function _scoreWatchLog(log, series) {
+  const atr14 = (bars, i) => { if (i < 14) return null; let s = 0; for (let k = i - 13; k <= i; k++) { const b = bars[k], p = bars[k - 1]; s += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); } return s / 14; };
+  for (const f of log) {
+    if (f.after5 != null || !f.instruments?.length) continue;
+    const scores = [];
+    for (const inst of f.instruments) {
+      const bars = series[_WATCH_INSTR_SYM[inst]]; if (!bars) continue;
+      const day = f.at.slice(0, 10); let i = bars.findIndex(b => b.date >= day); if (i < 0) continue;
+      if (bars[i].date > day) i = i - 1; if (i < 14 || i + 5 >= bars.length) continue;
+      const atr = atr14(bars, i); if (!atr) continue;
+      const fwd = bars.slice(i + 1, i + 6); const rng = (Math.max(...fwd.map(b => b.high)) - Math.min(...fwd.map(b => b.low))) / atr;
+      scores.push({ inst, range5: +rng.toFixed(2) });
+    }
+    if (scores.length) { f.after5 = scores; f.scoredAt = new Date().toISOString(); }
+  }
+}
+async function _deskWatchTick(opts = {}) {
+  if (_watchRunning) return _watchLast;
+  _watchRunning = true;
+  try {
+    const store = await _loadWatchStore();
+    if (!store) throw new Error('desk_watch_v1 unreadable; refusing to overwrite');
+    const inputs = await _watchInputs();
+    const states = _evaluateTriggers(inputs);
+    const prevById = new Map(store.states.map(t => [t.id, t]));
+    const nowIso = new Date().toISOString();
+    for (const t of states) { const p = prevById.get(t.id); t.since = t.firing ? (p?.firing && p.since ? p.since : nowIso) : null; }
+    const { started, stopped } = _diffStates(store.states, states);
+    for (const t of started) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'started', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: t.instruments ?? [], value: t.value ?? null });
+    for (const t of stopped) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'cleared', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: [], value: t.value ?? null });
+    store.log = store.log.slice(0, _WATCH_LOG_MAX);
+    _scoreWatchLog(store.log, inputs.series);
+    // First pass after deploy: everything already firing counts as "started"; say so once, quietly, and do not page for it.
+    const firstPass = store.states.length === 0;
+    let sent = false;
+    if (!firstPass && (started.length || stopped.length) && !opts.silent) {
+      const msg = _formatWatchTelegram({ started, stopped });
+      if (msg && state.tg?.token && state.tg?.chatId) sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+    }
+    await kv.put(_WATCH_KV, JSON.stringify({ states, log: store.log, updatedAt: nowIso }));
+    _watchLast = { at: Date.now(), states, started: started.map(t => t.id), stopped: stopped.map(t => t.id), sent, firstPass, error: null };
+    if (started.length || stopped.length) console.log(`[desk-watch] started ${started.map(t => t.id).join(',') || '-'} · cleared ${stopped.map(t => t.id).join(',') || '-'} · telegram ${sent ? 'sent' : firstPass ? 'skipped (first pass)' : 'not sent'}`);
+    return _watchLast;
+  } catch (e) {
+    _watchLast = { ..._watchLast, error: e.message };
+    console.error('[desk-watch]', e.message);
+    return _watchLast;
+  } finally { _watchRunning = false; }
+}
+app.get('/api/desk-watch', async (_req, res) => {
+  try {
+    const store = await _loadWatchStore();
+    res.json({ ok: true, states: store?.states ?? [], log: (store?.log ?? []).slice(0, 60), updatedAt: store?.updatedAt ?? null, lastTick: _watchLast.at ? new Date(_watchLast.at).toISOString() : null, error: _watchLast.error ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-watch/tick', async (req, res) => {
+  try { res.json({ ok: true, ...(await _deskWatchTick({ silent: req.query.silent === '1' })) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+setInterval(() => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
 
 // ── The chain, read aloud ────────────────────────────────────────────────────
 // The chain panel judges each textbook link on measured moves. This turns those
@@ -31083,6 +31190,9 @@ svcTimeout('scorecardHistory', () => _recordScorecardHistory().catch(e => consol
 svcTimeout('bookHistory', () => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
 svcTimeout('scoreLedger', () => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
 _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.message));
+// First desk-watch pass after the FRED history has had a chance to seed (the
+// triggers read it); after kv.load() because the store is read-modify-write.
+setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));

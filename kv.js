@@ -50,6 +50,9 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
                              // rebuild, and the answer only changes by one day at a time.
+  'desk_watch_v1',           // the early-warning layer's state + fire log: which conditions are on, when each
+                             // started, and what happened after. The forward record of the evidence book.
+                             // Must also be in _worker.js PERMANENT_KEYS.
   'chain_read_v1',           // the last trader's-voice chain read (+ the day's earlier ones). A paid
                              // model call each; the reader expects to find the last one hours later
                              // and after a redeploy. Must also be in _worker.js PERMANENT_KEYS.
