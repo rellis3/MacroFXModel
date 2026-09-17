@@ -129,7 +129,7 @@ from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
-from pylego.motif_policy import passes_best_config  # noqa: E402
+from pylego.motif_policy import passes_best_config, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
@@ -753,6 +753,13 @@ def run(args: argparse.Namespace) -> None:
     # reference (see motif_bot.py's own doc for why re-using the tracked
     # price would be wrong).
     plan_entries: list[dict] = []
+    # Display-only companion to plan_entries (2026-09-17): every recently
+    # confirmed motif the best-config filter REJECTED, with the reason. The
+    # bot never acts on these -- it decision-logs them once each so the
+    # dashboard's timeline shows "seen it, skipped it, here's why" instead
+    # of sitting blank while the filter does its job.
+    plan_filtered: list[dict] = []
+    FILTERED_WINDOW_HOURS = 48
 
     for pair in pairs:
         # A single pair's bad data (corrupt cache, a detection-logic edge
@@ -843,6 +850,16 @@ def run(args: argparse.Namespace) -> None:
                 direction = 1 if t["direction"] == "BUY" else -1
                 swing_regime = _swing_regime(t["entry_idx"] - 1, direction, t["level"])
                 if not passes_best_config(pair, swing_regime):
+                    if _hours_since(t["entry_date"]) <= FILTERED_WINDOW_HOURS:
+                        spread = RETAIL_SPREAD_PIPS.get(pair)
+                        why = (f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p" if spread is not None and spread > BEST_CONFIG["max_spread_pips"]
+                               else f"swing regime = {swing_regime} (with-trend: PF 0.98 in backtest)")
+                        plan_filtered.append({
+                            "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
+                            "n_touches": t["n_touches"], "is_top": t["is_top"], "level": t["level"],
+                            "swing_regime": swing_regime, "confirmed_at": t["entry_date"],
+                            "filter_reason": why,
+                        })
                     continue
                 plan_entries.append({
                     "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
@@ -881,6 +898,7 @@ def run(args: argparse.Namespace) -> None:
                 "generatedAt": datetime.now(timezone.utc).isoformat(),
                 "strategy": "motif-touch",
                 "entries": plan_entries,
+                "filtered": plan_filtered,
             })
             plan_pushed = True
         except Exception as e:

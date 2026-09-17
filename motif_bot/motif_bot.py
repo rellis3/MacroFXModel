@@ -390,6 +390,7 @@ def run(base_url: str, force_live: bool) -> None:
     acted_keys: set[str] = set()
     reject_until: dict[str, float] = {}
     stale_logged: set[str] = set()      # motif_keys already decision-logged as too old to enter (once each, not every tick)
+    filtered_logged: set[str] = set()   # motif_keys already decision-logged as rejected by the best-config filter
     tg_entry_msgid: dict[int, int] = {}
     tg_closed_alerted: set[int] = set()
     sym_key: dict[str, str] = {}
@@ -459,6 +460,10 @@ def run(base_url: str, force_live: bool) -> None:
         except Exception as e:
             log.warning(f"decision log flush failed: {e}")
 
+    # The plan fetched before the loop was never "new" to the loop -- make the
+    # first tick treat it as such so its filtered signals get logged too.
+    startup_plan_seen = False
+
     while True:
         nowt = time.time()
 
@@ -468,12 +473,27 @@ def run(base_url: str, force_live: bool) -> None:
             except Exception as e:
                 log.warning(f"plan fetch failed: {e} -- keeping current plan")
                 new_plan = None
-            if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
+            if new_plan and (not startup_plan_seen or new_plan.get("generatedAt") != (plan or {}).get("generatedAt")):
+                startup_plan_seen = True
                 plan = new_plan
                 for e in _plan_entries(plan):
                     _register_pair(str(e.get("pair", "")).lower())
-                log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(_plan_entries(plan))} entries")
+                n_filt = len(plan.get("filtered") or [])
+                log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(_plan_entries(plan))} entries"
+                         f"{f' · {n_filt} recent confirmation(s) rejected by best-config' if n_filt else ''}")
                 _verify_new_pairs({str(e.get("pair", "")).lower() for e in _plan_entries(plan)}, startup=False)
+                # Signals the tracker saw but the validated filter rejected:
+                # log each ONCE so the dashboard timeline shows the bot
+                # declining them, with the reason, rather than nothing at all.
+                for f in plan.get("filtered") or []:
+                    fk = f.get("motif_key")
+                    if not fk or fk in filtered_logged:
+                        continue
+                    filtered_logged.add(fk)
+                    fpair = str(f.get("pair", "")).lower()
+                    why = f"best-config filter: {f.get('filter_reason') or 'rejected'}"
+                    log.info(f"{fpair} {fk} not tradeable -- {why}")
+                    _record_decision(fpair, fk, "filtered", reason=why)
             last_plan = nowt
 
         if nowt - last_status >= cfg.get("status_secs", 30):

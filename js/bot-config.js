@@ -6044,28 +6044,38 @@ async function loadMtPlan() {
   try {
     const plan = await kvGet('motif_bot_plan');
     const entries = plan?.entries || [];
-    if (!entries.length) {
-      body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No open motifs currently pass the best-config filter</td></tr>';
-      return;
-    }
-    const acted = new Set();   // best-effort -- the bot's own _state carries the authoritative set; this is a display hint only
-    body.innerHTML = entries.map(e => {
+    // Signals the tracker confirmed in the last ~48h that the best-config
+    // filter rejected -- shown greyed with the reason, so an empty tradeable
+    // list reads as "the filter is working", not "nothing is happening".
+    const filtered = (plan?.filtered || []).slice().sort((a, b) => (b.confirmed_at || '').localeCompare(a.confirmed_at || ''));
+    const gen = plan?.generatedAt ? new Date(plan.generatedAt).toISOString().slice(11, 16) + ' UTC' : '—';
+    const row = (e, dim, tail) => {
       const buy = e.direction === 'BUY';
       const kind = e.is_top ? 'top' : 'bottom';
       const when = e.confirmed_at ? new Date(e.confirmed_at).toISOString().slice(0, 16).replace('T', ' ') : '—';
-      return `<tr>
-        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
-        <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
-        <td style="padding:5px 10px;text-align:left">${e.n_touches ?? '?'}-touch ${kind}</td>
+      const c = dim ? 'color:var(--text3)' : '';
+      return `<tr style="${dim ? 'opacity:.7' : ''}">
+        <td style="padding:5px 10px;font-weight:600;text-align:left;${c}">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${dim ? 'var(--text3)' : buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+        <td style="padding:5px 10px;text-align:left;${c}">${e.n_touches ?? '?'}-touch ${kind}</td>
         <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.swing_regime ?? '—'}</td>
         <td style="padding:5px 10px;text-align:left;color:var(--text3)">${when}</td>
-        <td style="padding:5px 10px;text-align:center;color:var(--text3)">${acted.has(e.motif_key) ? '✓' : '—'}</td>
+        <td style="padding:5px 10px;text-align:${dim ? 'left' : 'center'};color:var(--text3)">${tail}</td>
       </tr>`;
-    }).join('');
+    };
+    const head = `<tr><td colspan="6" style="padding:6px 10px;color:var(--text3);font-size:11px">plan ${gen} · <b style="color:var(--text)">${entries.length}</b> tradeable · ${filtered.length} rejected by best-config in the last 48h</td></tr>`;
+    const tradeable = entries.length
+      ? entries.map(e => row(e, false, '—')).join('')
+      : '<tr><td colspan="6" style="padding:10px;text-align:center;color:var(--text3)">No open motifs currently pass the best-config filter</td></tr>';
+    const rejected = filtered.length
+      ? `<tr><td colspan="6" style="padding:8px 10px 2px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Seen but rejected — the bot will not trade these</td></tr>`
+        + filtered.map(e => row(e, true, '⏸ ' + (e.filter_reason || 'filtered'))).join('')
+      : '';
+    body.innerHTML = head + tradeable + rejected;
   } catch (e) { body.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
-const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
+const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', filtered: 'var(--text3)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
 async function loadMtDecisionLog() {
   const body = document.getElementById('mtDecisionBody');
   if (!body) return;
