@@ -140,6 +140,27 @@ meetings show DGS30 falling ≥ 5bp more than the rest over d0..d+5 with the CI
 clear of zero AND more than the matched non-FOMC comparison. n ≈ 28 per tercile is
 thin; stated wherever it binds.
 
+**S11 — Price vs yield spread: divergence, alignment, and who pays (pre-registered
+2026-09-17, before running).** The owner's question: when a pair's move diverges from
+its yield-spread move, vs when the two are aligned, what follows — and which pairs
+get hurt. Data: OANDA daily bond CFDs (USB10Y_USD, DE10YB_EUR, UK10YB_GBP; bond
+PRICE is the inverse of yield, so the FX-bullish spread is +US_price −foreign_price
+∝ foreign yield − US yield, i.e. rising = the foreign leg pays relatively more) and
+EUR/USD, GBP/USD daily closes — the two pairs with a foreign 10Y CFD. USD/JPY, AUD/USD
+have no foreign-leg CFD and are not scored. Features at day t: 20-session log change
+in the pair (%) and 20-session change in the spread (bond-price points, standardised
+by its own trailing-250 stdev); **divergence** = the two moved ≥ 1 stdev each in
+OPPOSITE directions; **alignment** = ≥ 1 stdev each the SAME direction. Outcomes vs
+matched controls (same ATR quintile, trend tercile, different week): next-20-session
+range in ATR (the "damage" question, as range); and, as base rates with intervals, the
+share of divergence episodes where the gap closed by the PAIR moving back toward the
+spread vs by the SPREAD moving toward the pair over the following 20 sessions (gap
+= standardised pair − standardised spread; closure = |gap| shrinks by ≥ half; which
+leg moved more). Pass bar for range: ≥ +0.10 ATR with the CI clear of zero. The
+closure split is a base rate; no pass bar, no direction claim. The 2Y-spread
+mean-reversion sleeve already validated here (YIELD_SPREAD_STRATEGY.md) is a
+different object — the spread's own z-score — and is not re-tested.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,

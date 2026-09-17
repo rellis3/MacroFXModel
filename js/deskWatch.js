@@ -47,6 +47,7 @@ export const EVENT_RANGE_EFFECT = {
   pmi:             { USDJPY: '+0.22 ATR on the day' },
 };
 const CCY_PAIRS = { US: ['EURUSD', 'USDJPY'], GB: ['GBPUSD'], EU: ['EURUSD'], JP: ['USDJPY'], AU: ['AUDUSD'], CA: ['USDCAD'] };
+import { eventImpact } from './eventImpactMap.js';
 
 /**
  * Evaluate every trigger. Returns [{ id, kind, label, firing, detail, evidenceId, instruments, value }].
@@ -80,17 +81,33 @@ export function evaluateTriggers(inp = {}) {
         detail: on ? `NAS100 is ${wk.toFixed(1)}% over five sessions (${ref.date} → ${last.date}). Tested here: after a down-week of 1%+ the next session has run about 20% wider (+0.19 to +0.23 ATR, n=1,232). Range, not direction; the 5-day up-share afterwards is 58%, a base rate.` : `NAS100 is ${wk.toFixed(1)}% over five sessions — no longer a down-week.` });
     }
   }
-  // ── tested: validated release due / released on a pair it passed on ────────
+  // ── tested: a release that has MOVED markets is due (two books agree) ──────
+  // Two independent measurements feed this: S7 (release-session range by family,
+  // this desk's surprise store) and the Event Response Book (30-minute spike and
+  // next-day size per family x instrument, 76 families). A release is worth a
+  // page when either says it moves the pair; the message carries both numbers
+  // where both exist. The book's own headline -- most releases move nothing --
+  // is why the trigger stays quiet for housing starts.
   {
     const soon = events.filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.ms - now < 24 * 3600e3 && e.ms - now > -3 * 3600e3);
     const hits = [];
     for (const e of soon) {
       const fam = EVENT_FAMILY_RE.find(([, re]) => re.test(e.event ?? ''))?.[0]; if (!fam) continue;
-      for (const pair of CCY_PAIRS[e.country] ?? []) { const eff = EVENT_RANGE_EFFECT[fam]?.[pair]; if (eff) hits.push({ fam, pair, eff, e }); }
+      const imp = eventImpact(e.country, fam);
+      const pairs = new Set([...(CCY_PAIRS[e.country] ?? []), ...Object.keys(imp?.instruments ?? {})]);
+      for (const pair of pairs) {
+        const eff = EVENT_RANGE_EFFECT[fam]?.[pair]; const bk = imp?.instruments?.[pair];
+        if (!eff && !(bk && bk.spike >= 2)) continue;
+        hits.push({ fam, pair, eff, bk, e });
+      }
     }
     const seen = new Set(); const uniq = hits.filter(h => { const k = `${h.fam}|${h.pair}`; if (seen.has(k)) return false; seen.add(k); return true; });
-    push({ id: 'event-range', kind: 'tested', evidenceId: 'surprise-size', label: 'Validated release in the next 24h', firing: uniq.length > 0, value: { n: uniq.length }, instruments: [...new Set(uniq.map(h => h.pair))],
-      detail: uniq.length ? uniq.map(h => `${h.e.country} ${h.e.event} ${h.e.ms > now ? `in ${Math.max(1, Math.round((h.e.ms - now) / 3600e3))}h` : `${Math.round((now - h.e.ms) / 3600e3)}h ago`}${h.e.estimate != null ? ` (consensus ${h.e.estimate})` : ''} → ${h.pair}: ${h.fam} releases have run ${h.eff} vs matched days (tested here, 2017→). Range, not direction.`).join('\n') : 'No validated release family due in the next 24h.' });
+    const when = e => e.ms > now ? `in ${Math.max(1, Math.round((e.ms - now) / 3600e3))}h` : `${Math.round((now - e.ms) / 3600e3)}h ago`;
+    const line = h => `${h.e.country} ${h.e.event} ${when(h.e)}${h.e.estimate != null ? ` (consensus ${h.e.estimate})` : ''} → ${h.pair}: ` +
+      [h.bk ? `has moved ${h.bk.spike}× an ordinary half-hour on release and left a next day ${h.bk.next}× normal (n=${h.bk.n}; next-day direction ${h.bk.upPct}% up — a coin flip)` : null,
+       h.eff ? `release-session range ${h.eff} vs matched days (S7)` : null].filter(Boolean).join('; ') + '. Size, not direction.';
+    push({ id: 'event-range', kind: 'tested', evidenceId: 'surprise-size', label: 'Market-moving release in the next 24h', firing: uniq.length > 0, value: { n: uniq.length }, instruments: [...new Set(uniq.map(h => h.pair))],
+      detail: uniq.length ? uniq.map(line).join('\n') : 'No release that has measurably moved a pair is due in the next 24h.' });
   }
   // ── described: front-end shock (tested: FX ran calmer after hawkish ones) ──
   {

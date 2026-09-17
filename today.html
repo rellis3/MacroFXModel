@@ -6704,10 +6704,15 @@ function eventRangeChip(r) {
   const evs = (typeof pairEvents === 'function' ? pairEvents(r.name) : []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && Math.abs(e.ms - Date.now()) < 14 * 3600e3);
   for (const e of evs) {
     const fam = EVENT_FAMILY_RE.find(([, re]) => re.test(e.event ?? ''))?.[0];
-    const eff = fam && fx[fam]?.[r.name];
-    if (!eff) continue;
+    if (!fam) continue;
+    const eff = fx[fam]?.[r.name];
+    const bk = window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name];
+    if (!eff && !(bk && bk.spike >= 2)) continue;
     const past = e.ms <= Date.now();
-    return `<span class="chip warn" title="${esc0(e.event)} (${e.country}) ${past ? 'was released at' : 'is due at'} ${evtTime(e)} UK. Tested here 2026-09-17 on ${dispName(r.name)}: ${fam} releases have run ${eff} ATR wider than matched non-release days (this desk's own surprise store, 2017 onward, CI clear of zero). A statement about range, never direction; the surprise itself is unknown until the print.">${fam} day · range ${eff.split(' ')[0]} ATR${/AFTER/.test(eff) ? ' next session' : ''}${_EV('v', _EV_T.v)}</span>`;
+    const bkTxt = bk ? `The Event Response Book (76 families, 26 instruments): this release has moved ${dispName(r.name)} ${bk.spike}× an ordinary half-hour in its first 30 minutes and left a next day ${bk.next}× normal (n=${bk.n}); next-day direction ${bk.upPct}% up — a coin flip.` : '';
+    const s7Txt = eff ? `Release-session range ${eff} ATR vs matched non-release days (this desk's surprise store, 2017 onward, CI clear of zero).` : '';
+    const head = bk ? `${fam} · ${bk.spike}× on release` : `${fam} day · range ${eff.split(' ')[0]} ATR${/AFTER/.test(eff) ? ' next session' : ''}`;
+    return `<span class="chip warn" title="${esc0(e.event)} (${e.country}) ${past ? 'was released at' : 'is due at'} ${evtTime(e)} UK. ${esc0(bkTxt)} ${esc0(s7Txt)} Size, never direction; the surprise itself is unknown until the print.">${esc0(head)}${_EV('v', _EV_T.v)}</span>`;
   }
   return '';
 }
@@ -10620,6 +10625,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as DeskEvidence from './js/deskEvidence.js';
   window.deskEvidenceBrick = DeskEvidence;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The Event Response Book's impact map (js/eventImpactMap.js, generated): what
+     each release has done to each pair, in size. -->
+<script type="module">
+  import * as EventImpact from './js/eventImpactMap.js';
+  window.eventImpactBrick = EventImpact;
   try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">
