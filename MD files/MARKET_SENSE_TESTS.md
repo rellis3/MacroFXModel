@@ -175,6 +175,75 @@ rule stated in advance: a cell only means something if its interval excludes 50%
 AND the neighbouring cells do not contradict it; with nine cells and n≈84, one
 cell clearing 50% by chance is expected.
 
+**S13 — Does watching more pairs add breadth? (pre-registered 2026-09-17, before
+running.)** Claim A: "the number of things you watch is the number of real
+opportunities you get." The measurable version is Grinold's law — IR ≈ IC × √N —
+and its catch: N is the number of *independent* bets, not tickers. Sleeves: the
+2Y yield-spread z-score sleeve (`YIELD_SPREAD_STRATEGY.md`) and, separately, the
+Asia fib atlas vote portfolio — both already have a record here, so neither is
+being invented for this test. Universes of size 1, 2, 4, 8, 16, 26 drawn from
+`instrumentRegistry` order; 1,000 bootstrap draws of universe membership at each
+size (fixed seed), so no universe is hand-picked after the fact. Costs charged in
+per pair from the spread profile (a cross at 3 pips is not a free extra signal).
+Report: OOS Sharpe vs size, against both √N and √N_eff, where
+N_eff = (Σλ)²/Σλ² of the correlation matrix of the sleeve's own per-pair daily
+P&L. Reading rule fixed now: breadth "pays" only if OOS Sharpe at N=26 beats N=4
+by ≥0.3 with a bootstrap CI clear of zero, on ≥30 OOS trades per universe. Prior
+stated in advance: the dollar factor should put N_eff for 26 FX pairs somewhere
+around 3–6, in which case the curve flattens by N≈6 and the honest version of the
+claim on this desk is "watch six things properly".
+
+**S14 — Does a multi-year regime break precede anything? (pre-registered
+2026-09-17, before running.)** Claim A's alert object: "when something breaks a
+multi-year regime, I hear about it instantly." Setup, defined now: a series
+closes outside its trailing 3-year (756-session) high/low range for the first
+time in ≥60 sessions. Universe: 26 FX + gold + SPX500/NAS100, plus the FRED set
+already in the harness (DGS2, DGS10, DGS30, DFII10, T10YIE, HY OAS, VIXCLS,
+DTWEXBGS). Outcomes: next-5d and next-20d range in ATR14 against the shared
+paired control (same instrument, different ISO week, same ATR-percentile
+quintile, same 20-day trend tercile), plus the up-share for direction. Reading
+rule fixed now: "worth an alert" needs range ≥ +0.30 ATR with the CI clear of
+zero, on ≥30 paired episodes, in **at least three of the four instrument families**
+(FX majors, FX crosses, metals/indices, rates/credit) — one family clearing on its
+own is what chance looks like across ~35 series. Anything less goes in the book as
+another null, and `today.html` says regime breaks are description.
+
+**S15 — The non-reaction: a big surprise, no move. (pre-registered 2026-09-17,
+before running.)** Claim B's kernel: "crude didn't break down on the biggest
+supply build." Setup: a release whose surprise is top-decile by |z| against its
+own history, where the instrument's reaction over the release session is
+**bottom-tercile** relative to what the Event Response Book expects for that
+family × instrument (residual = realized ÷ expected multiple). Populations: (a)
+oil — 1,306 EIA Weekly Crude Oil Inventory prints (2014-01 → 2026-07,
+`calendar_events.csv`, actual vs consensus) against WTI (`WTICO_USD`), with API
+stocks as a robustness leg; (b) the generalised version — the surprise store
+behind S7 (7,932 pair-releases, 2017→) across the 9 country|category blocks in
+`eventImpactMap`. Outcomes, both populations: next-5d and next-20d range in ATR14
+vs paired control, **and** the direction share *in the direction the surprise
+implied* (a build is bearish crude; a hawkish CPI surprise is bullish the
+currency), because the claim here is directional, unlike every range study
+above. Reading rule fixed now: a pass needs the directional share's bootstrap CI
+to exclude 50% on ≥40 paired episodes in the oil population, and to hold with the
+same sign on the generalised population. A range-only result is reported as a
+size finding, not as Crown's claim. Prior stated in advance: this desk has nulled
+every direction test it has run (yields→FX, CB tone, priced-in, post-FOMC drift,
+S12's table), so the base case is null — the point is that this one is cheap to
+settle and the data is already here.
+
+**S16 — Weird × technical, the conjunction (conditional pre-registration,
+2026-09-17).** Runs only if S15 returns anything at all; registered now so the
+conjunction cannot be fished for afterwards. Claim B, step 2: the anomaly matters
+more when the technicals agree — "if there's a recent breakout, I'm even more
+interested." Setup: S15's non-reaction episodes, split by whether the instrument
+had a breakout in the prior 10 sessions, defined with the desk's existing object
+(a close through a tracked level with confirmation, `motif_track`'s definition,
+not a fresh one). Outcome: the same directional share and next-20d range as S15.
+Reading rule fixed now: the conjunction "adds" only if the breakout subgroup's
+directional share beats the non-breakout subgroup by ≥10pp with the paired CI
+clear of zero **and** the subgroup has ≥30 episodes. Two subgroups, one test, no
+further slicing — if the split is run on anything else (session, family, pair),
+it is exploratory and labelled so.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,
