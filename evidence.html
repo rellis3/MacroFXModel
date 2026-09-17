@@ -51,6 +51,14 @@
   <button class="hbtn" data-f="null" onclick="setFilter('null')">∅ null</button>
   <button class="hbtn" data-f="context" onclick="setFilter('context')">~ base rate</button>
   <button class="hbtn" data-f="firing" onclick="setFilter('firing')">firing now</button>
+  <span class="stamp">·</span>
+  <button class="hbtn" data-d="all" onclick="setDomain('all')">all domains</button>
+  <button class="hbtn" data-d="macro" onclick="setDomain('macro')">macro</button>
+  <button class="hbtn" data-d="events" onclick="setDomain('events')">events</button>
+  <button class="hbtn" data-d="price" onclick="setDomain('price')">price &amp; technical</button>
+  <button class="hbtn" data-d="volatility" onclick="setDomain('volatility')">volatility</button>
+  <button class="hbtn" data-d="positioning" onclick="setDomain('positioning')">positioning</button>
+  <button class="hbtn" data-d="execution" onclick="setDomain('execution')">execution</button>
   <a class="hbtn" href="today.html">☀️ Daily Brief</a>
 </div>
 <div class="wrap">
@@ -64,16 +72,18 @@
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const GL = { validated: '✓', null: '∅', context: '~' };
   const WORD = { validated: 'validated', null: 'tested null', context: 'base rate' };
-  let watch = null, filter = 'all';
+  let watch = null, filter = 'all', domain = 'all';
+  window.setDomain = d => { domain = d; document.querySelectorAll('.hbtn[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === d)); render(); };
   window.setFilter = f => { filter = f; document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f)); render(); };
   const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
   function render() {
     const states = watch?.states ?? [], log = watch?.log ?? [];
     const firingFor = id => states.filter(t => t.firing && t.evidenceId === id);
     const logFor = id => log.filter(f => f.evidenceId === id && f.event === 'started');
-    const list = DESK_EVIDENCE.filter(e => filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : e.verdict === filter);
+    const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : e.verdict === filter));
     const n = v => DESK_EVIDENCE.filter(e => e.verdict === v).length;
-    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span>`;
+    const nd = d => DESK_EVIDENCE.filter(e => e.domain === d).length;
+    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span>`;
     document.getElementById('cards').innerHTML = list.map(e => {
       const fire = firingFor(e.id), rec = logFor(e.id);
       const live = fire.length
@@ -85,7 +95,7 @@
         : `<div class="rec"><b>Forward record</b> — nothing fired since this was written down${e.verdict === 'validated' ? '; the first fire will appear here with its next-5-session range' : ''}.</div>`;
       return `<div class="card ${e.verdict}">
         <div class="top"><span class="v ${e.verdict}">${GL[e.verdict]} ${WORD[e.verdict]}</span><span class="claim">${esc(e.claim)}</span></div>
-        <div class="meta">${e.date} · ${esc(e.doc)}${e.instruments ? ` · ${e.instruments.join(', ')}` : ''}</div>
+        <div class="meta"><b>${esc(e.domain)}</b> · ${e.date} · ${esc(e.doc)}${e.instruments ? ` · ${e.instruments.join(', ')}` : ''}</div>
         <div class="r">${esc(e.result)}</div>
         <div class="use"><b>How to use it:</b> ${esc(e.use)}</div>
         ${live}${record}

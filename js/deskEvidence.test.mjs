@@ -5,6 +5,7 @@ const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e 
 ok('ids unique', new Set(DESK_EVIDENCE.map(e => e.id)).size === DESK_EVIDENCE.length);
 ok('every entry has claim, result, use, date, doc', DESK_EVIDENCE.every(e => e.claim && e.result && e.use && /^\d{4}-\d{2}-\d{2}$/.test(e.date) && e.doc));
 ok('verdicts are validated | null | context', DESK_EVIDENCE.every(e => ['validated', 'null', 'context'].includes(e.verdict)));
+ok('every entry has a domain', DESK_EVIDENCE.every(e => ['macro', 'events', 'positioning', 'price', 'volatility', 'execution'].includes(e.domain)));
 ok('validated entries name instruments', DESK_EVIDENCE.filter(e => e.verdict === 'validated').every(e => Array.isArray(e.instruments) && e.instruments.length));
 ok('no entry claims direction', DESK_EVIDENCE.every(e => !/predicts? (the )?direction|goes (up|down) next/i.test(e.use)));
 ok('evidenceFor(NQ) includes the down-week and every null', evidenceFor('NQ').some(e => e.id === 'nq-down-week') && evidenceFor('NQ').filter(e => e.verdict === 'null').length === DESK_EVIDENCE.filter(e => e.verdict === 'null').length);
