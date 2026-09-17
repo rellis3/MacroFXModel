@@ -378,8 +378,16 @@ const MAX_SNAPSHOT_AGE_HOURS = 72;
 async function _saveLiveSnapshot(pair) {
   const entry = liveCache.get(pair);
   if (!entry?.packed?.n) return false;
+  // Skip a pair whose last bar hasn't moved since its previous save (weekend,
+  // closed session) -- each snapshot is the full window as JSON, ~15 MB, and
+  // R2 uploads are Railway egress at $0.05/GB. Caught 2026-09-17: 62 pairs
+  // x 15 MB every 15 min across the three atlases was ~90 GB/day, the bulk
+  // of the bill. Cadence itself is set in server.js.
+  const lastT = entry.packed.times[entry.packed.n - 1];
+  if (entry.snapshotLastT === lastT) return false;
   try {
     await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    entry.snapshotLastT = lastT;
     return true;
   } catch (e) {
     console.warn(`[monday-fib-atlas-live] ${pair}: snapshot save failed — ${e.message}`);

@@ -17411,10 +17411,19 @@ app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
 // (the portfolio page, the tearsheet, volatility_bot_v2's plan producer),
 // not just the bot — fixed at the shared cache, not duplicated per caller.
 // 15 min cadence: frequent enough that a restart's gap-fill catch-up stays
-// small, infrequent enough to be a trivial R2 write volume (R2 has no
-// per-write quota concern the way CF KV does here).
-svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, 15 * 60_000);
-setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
+// (R2 has no per-write quota concern the way CF KV does here -- but every
+// byte uploaded IS Railway egress; see the cadence note below.)
+// Cadence (2026-09-17): every 6h, not 15 min, and NO write-after-boot. Each
+// snapshot is the pair's full window as JSON (~13-16 MB) and R2 uploads are
+// Railway egress at $0.05/GB -- 62 warm pairs across the three atlases every
+// 15 min was ~930 MB per tick, ~90 GB/day, the bulk of a $128/month bill.
+// The restore path accepts a snapshot up to MAX_SNAPSHOT_AGE_HOURS (72h) and
+// gap-fills from OANDA regardless, so 6h-stale costs a cold start ~360 M1
+// bars per pair -- nothing. The write-after-boot went too: with several
+// pushes a day it re-sent the whole set on every deploy, for a snapshot that
+// was on R2 from the previous life anyway.
+const ATLAS_SNAPSHOT_MS = 6 * 3600_000;
+svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
 
 // Fib Atlas's own copies of the snapshot job above (js/asiaFibAtlasRoutes.js
 // / js/mondayFibAtlasRoutes.js's own `saveAllLiveSnapshots`, added
@@ -17422,10 +17431,8 @@ setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up
 // wipe this in-memory cache, forcing a full ~16-pair x 2-ladder cold-start
 // marathon repeatedly on a repo with several pushes/day). Two separate
 // module-level caches (Asia, Monday), so two separate interval calls.
-svcInterval('atlasSnapshots', _faAsiaSaveAllLiveSnapshots, 15 * 60_000);
-setTimeout(_faAsiaSaveAllLiveSnapshots, 5 * 60_000);
-svcInterval('atlasSnapshots', _faMondaySaveAllLiveSnapshots, 15 * 60_000);
-setTimeout(_faMondaySaveAllLiveSnapshots, 5 * 60_000);
+svcInterval('atlasSnapshots', _faAsiaSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
+svcInterval('atlasSnapshots', _faMondaySaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
