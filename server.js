@@ -13526,13 +13526,15 @@ app.post('/api/econ-surprise/backfill', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get('/api/econ-surprise', async (_req, res) => {
+app.get('/api/econ-surprise', async (req, res) => {
   try {
     const rows = await _readSurpriseStore();
     const idx = _buildSurpriseIndex(rows);
     // Per-series recent prints, so the calendar can show what the LAST few of each
-    // release actually did rather than only naming the next one.
-    const series = _seriesHistory(rows, { perSeries: 4 });
+    // release actually did rather than only naming the next one. ?history=1 returns
+    // every scored print per series -- the research harness reads the full store
+    // through this (analysis/market_sense_studies.mjs S7), nothing else needs it.
+    const series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
     res.json({ ok: true, storedReleases: rows.length, ...idx, series, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
