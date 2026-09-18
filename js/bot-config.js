@@ -5573,7 +5573,7 @@ async function loadOiLiveStatus() {
     // Prefer the bot's live lines; fall back to the plan itself so the table shows
     // the planned zones even before the bot is running.
     const rows = st?.lines || Object.entries(planWrap?.instruments || {}).map(([k, v]) =>
-      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [] }));
+      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [], dayDriftPct: v.dayDriftPct }));
     // Carry the plan's stale flag onto the bot's own lines too (status may omit it).
     const _staleBy = Object.fromEntries(Object.entries(planWrap?.instruments || {}).map(([k, v]) => [k, v.stale]));
     if (!st) { if (ageEl) ageEl.textContent = planWrap ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
@@ -5586,7 +5586,7 @@ async function loadOiLiveStatus() {
     if (uniEl)  uniEl.textContent  = rows.length;
     if (body) {
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
         const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
@@ -5610,6 +5610,7 @@ async function loadOiLiveStatus() {
           <td style="padding:6px 10px;color:${stale ? 'var(--amber)' : regCol(r.regime)}">${stale ? 'stale — re-paste' : (r.regime || '—')}</td>
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.spot)}</td>
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
+          <td style="padding:6px 10px;text-align:right;color:${r.dayDriftPct == null ? 'var(--text3)' : Math.abs(r.dayDriftPct) >= 1.5 ? 'var(--amber)' : 'var(--text3)'}">${r.dayDriftPct == null ? '—' : (r.dayDriftPct > 0 ? '+' : '') + r.dayDriftPct.toFixed(2) + '%'}</td>
           <td style="padding:6px 10px;text-align:right">${stale ? '—' : (r.zoneCount ?? 0)}</td>
           <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
           <td style="padding:6px 10px">${primedCell(r)}</td>
