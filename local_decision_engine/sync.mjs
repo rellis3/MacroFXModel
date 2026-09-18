@@ -114,7 +114,22 @@ async function syncM1(pair) {
     throw new Error(`m1-tail fetch failed for ${pair}: empty response`);
   }
   const fetched = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
-  const merged = since != null ? mergePacked(existing, fetched, LOCAL_WINDOW_DAYS) : fetched;
+  let merged;
+  if (since == null) {
+    merged = fetched;   // first-ever sync for this pair -- full window, nothing to merge
+  } else if (fetched.times[0] > since) {
+    merged = mergePacked(existing, fetched, LOCAL_WINDOW_DAYS);   // confirmed genuinely newer -- safe to append
+  } else {
+    // The server didn't actually honor `since` this cycle (confirmed live
+    // 2026-09-18: hit mid-Railway-deploy, old code without `since` support
+    // was still serving and just returned the full bounded window). Blindly
+    // concatenating that onto `existing` silently DOUBLED the local file --
+    // found via a backward timestamp jump in the saved .bin. REPLACE
+    // instead of append whenever the response isn't provably strictly
+    // newer than what's already on disk.
+    console.warn(`[sync] ${pair}: response wasn't strictly after since=${since} -- server may not have honored it this cycle; replacing local file instead of appending`);
+    merged = fetched;
+  }
   await saveM1(pair, merged);
   return merged.n;
 }
