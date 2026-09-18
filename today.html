@@ -2671,9 +2671,13 @@ function tradeGate(r) {
   // that means nothing.
   const minStopPts = rangePts != null ? +(rangePts * (volHot ? 0.33 : 0.25)).toFixed(d.dp ?? 2) : null;
 
+  // The trade of the day is one small idea at the end of the read, built from the
+  // data the page already holds. Only a HARD blocker (untradeable spread, stale
+  // price, a load-bearing data conflict) removes it. Thin or split evidence does
+  // not remove the idea; it lowers its confidence and the prompt says so.
   const verdict = blockers.length ? 'NO_TRADE'
-    : consensus < 2 ? 'NO_TRADE'
-    : conflicted ? 'LEAN_ONLY'
+    : consensus < 2 ? 'THIN'
+    : conflicted ? 'SPLIT'
     : 'OK';
   return {
     verdict, blockers, agreeing, consensus, conflicted, outlookAgree,
@@ -9716,7 +9720,7 @@ async function loadDrawerAnalysis(r) {
   if (tod && /^(LONG|SHORT)$/i.test(tod.direction ?? '') && tod.entry) {
     const dirCls = /LONG/i.test(tod.direction) ? 'bull' : 'bear';
     tradeCard = `<div class="ai-trade">
-      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(tod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Trade of the day${tod.confidence ? ` · ${esc(tod.confidence)} confidence` : ''}</span></div>
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(tod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Trade of the day · an idea, not a call${tod.confidence ? ` · ${esc(tod.confidence)} confidence` : ''}</span></div>
       <div class="ai-trade-kv">
         <div><div class="k">Entry</div><div class="v">${esc(tod.entry)}</div></div>
         <div><div class="k">Stop</div><div class="v">${esc(tod.stopLoss) || '—'}</div></div>
@@ -9726,7 +9730,7 @@ async function loadDrawerAnalysis(r) {
       ${tod.rationale ? `<div class="ai-trade-rationale">${esc(tod.rationale)}</div>` : ''}
     </div>`;
   } else if (tod && tod.rationale) {
-    tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
+    tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day · a hard blocker fired</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
   }
   // Weekly/monthly outlook — the AI's narration of js/outlookEngine.js's own
   // computed bias, NOT a re-derived call (buildAnalysisPrompt rule 19). Each
@@ -10014,7 +10018,7 @@ function assembleSnapshot(r) {
     agreeingReads: gate.agreeing.map(a => `${a.what} says ${a.side} (${a.detail})`),
     consensusCount: gate.consensus, readsConflict: gate.conflicted,
     outlookDriverAgreement: gate.outlookAgree,
-    note: 'NO_TRADE means direction MUST be "NONE" — either a hard blocker is present or fewer than two independent reads point the same way. LEAN_ONLY means reads point in opposite directions: you may describe a lean but must not propose entry/stop/target. Only OK permits a trade. This is a gate, not advice: a structurally bullish read that proposes a short with zero drivers agreeing is the failure it exists to stop.',
+    note: 'NO_TRADE means a HARD blocker fired (untradeable, stale price, load-bearing data conflict): direction MUST be "NONE". THIN means fewer than two independent reads agree; SPLIT means they disagree materially -- in both cases still give the idea, with confidence LOW and the caveat named. OK means the evidence supports the idea at the confidence it earns. The idea is one modest line at the end of the read, never its subject.',
   };
   // Stop width in PRICE terms. atrPct is a percentile and cannot be used to judge a
   // stop distance; this is the distance.
