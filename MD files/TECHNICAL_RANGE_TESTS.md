@@ -65,6 +65,53 @@ compared against a control matched on the same trailing ATR quintile AND the
 remaining-session range (open+2h → close) is reported separately — that is the
 honest version of "the day keeps going".
 
+## Batch 2 — pre-registered 2026-09-18 after T1–T3 had run, before any of these ran
+
+**T3b — After-09:00 continuation (the honest version of T3's 80–90%).** Setup as
+T3 (first 2h ≥ 0.6 ATR). Outcome: sign of (close − 09:00 price) equals sign of the
+2h move, on setup days vs ordinary mornings (first 2h < 0.4 ATR), with intervals;
+and the mean after-09:00 move in the direction of the morning, in ATR. A base rate;
+finding bar ≥ 15pp with the interval clear of zero.
+
+**T4 — Opening-range breakout: follow-through or fade.** Opening range = the first
+London hour (07:00–08:00 UK). Breakout = first M1 close beyond the range before
+13:30 UK. Outcomes, as base rates with intervals: (a) the break extends by ≥ 0.5 ×
+the opening range before price returns inside it (follow-through) vs returns inside
+within 60 minutes (fade); (b) the session closes beyond the broken side; (c) the
+range after the break vs matched non-breakout sessions (paired, range claim, pass
+bar as above). Split by tape speed at the break (the 15-min approach speed quintile,
+js/tapeSpeedEngine.js convention) — the one conditioner this desk has validated.
+
+**T5 — Gaps.** Instruments: NAS100, SPX500, gold. Gap = Monday's first London bar
+open vs Friday's last close (the only gap a near-24h CFD reliably has), in ATR14.
+Outcomes as base rates by gap size (< 0.25, 0.25–0.5, > 0.5 ATR): share filled (price
+trades back to Friday's close) within the session, within 5 sessions; Monday's range
+vs matched non-Monday sessions.
+
+**T6 — Calendar range profiles.** Session range / ATR14 by weekday, and for the
+last two and first two sessions of the month and of the quarter, vs all sessions:
+mean, p50, with intervals. No pass bar; a profile the range chip can quote.
+
+**M7 — Yen firming into rising US yields → the week after.** Daily data (OANDA
+USD/JPY, FRED DGS10). Setup: USD/JPY 5-session change ≤ −1% AND DGS10 5-session
+change ≥ +8bp (the divergence panel's "carry unwind" condition). Outcome: next-5
+range on USD/JPY, EUR/JPY, AUD/JPY vs matched controls (range claim). Direction as
+a base rate only.
+
+**M9 — Implied above realised → compression.** VIX vs 20-session realised
+annualised vol of SPX500 (from daily log returns). Setup: VIX / realised in the top
+decile of its trailing-500 distribution (fear over-priced). Outcome: next-5 and
+next-20 range on SPX500 and NAS100 vs matched controls; a *narrower* result with the
+CI clear is the claim ("calmer"), reported as such.
+
+**M12 — Breadth: every index down for N days.** Daily OANDA closes for NAS100,
+SPX500, US30, US2000, DE30, UK100. Setup: all six closed down on the same session
+(N=1), and two consecutive such sessions (N=2). Outcomes: next-5 range on SPX500 and
+NAS100 vs matched controls; next-5 direction as a base rate.
+
+Queued, not run (data not held): options walls as range fences (needs the OI
+archive to reach 200+ sessions).
+
 ## What a pass changes on the page
 
 A validated T1 or T3 range effect earns a ✓ chip on the day tier, worded as range
