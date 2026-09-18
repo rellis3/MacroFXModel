@@ -4896,11 +4896,28 @@ document.querySelector('.tab-btn[data-tab="volatilityv2"]')?.addEventListener('c
 loadVb2Config();
 loadVb2Creds();
 loadVb2LiveStatus();
+// Auto-refresh while the tab is open and visible -- same pattern as Motif
+// bot's tab (js/bot-config.js's loadMtLiveStatus poll below). Without this,
+// the Decision Timeline / Today's Levels / Open Positions tables only ever
+// updated on page load, a tab click, or the manual "Refresh" button --
+// easy to watch a stale view during a live session without noticing.
+// 30s matches this bot's own status_secs default, so it's not polling
+// faster than the bot actually pushes anything new.
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  if (!document.getElementById('tab-volatilityv2')?.classList.contains('active')) return;
+  loadVb2LiveStatus();
+}, 30_000);
 
 document.querySelector('.tab-btn[data-tab="volatilityv3"]')?.addEventListener('click', loadVb3LiveStatus);
 loadVb3Config();
 loadVb3Creds();
 loadVb3LiveStatus();
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  if (!document.getElementById('tab-volatilityv3')?.classList.contains('active')) return;
+  loadVb3LiveStatus();
+}, 30_000);
 
 // ══════════════════════════════════════════════════════════════════════════
 // fib_atlas_bot (Asia + Monday range-extension vote) — mirrors the Vb2-
