@@ -118,12 +118,20 @@ async function pairDecision(pair, opts) {
 
   const hit = cache.get(pair);
   if (hit) return hit.result;
-  // Not warmed yet (first-ever request for this pair, or the background
-  // loop hasn't reached it this pass) — compute it once, synchronously,
-  // rather than make the caller wait for the next refresh cycle.
-  await refreshOne(pair, opts);
-  const fresh = cache.get(pair);
-  return fresh ? fresh.result : { stale: true, reason: 'no local book/M1 cached yet — run sync.mjs first', zones: [], zoneCount: 0 };
+  // Not warmed yet (first-ever request for this pair, or a cold start
+  // before the background loop has reached it). Do NOT synchronously
+  // await the compute here -- confirmed live 2026-09-18: a /plan request
+  // covering several simultaneously-uncached pairs (e.g. right after a
+  // fresh restart, before refreshAll's own pre-warm finishes) awaited
+  // each one in sequence and could take 25s+ for the WHOLE request, even
+  // though the worker-thread offload kept the main thread free for OTHER
+  // requests meanwhile -- it still timed out the caller of THIS one.
+  // Kick the compute off in the background (lands in cache for a future
+  // poll, de-duped against refreshAll's own pass by refreshOne's own
+  // cache check) and report warming immediately instead, matching what
+  // this file's own header comment already promised.
+  refreshOne(pair, opts).catch(e => console.warn(`[local-decision-engine] background refresh failed for ${pair}: ${e.message}`));
+  return { stale: true, warming: true, reason: 'warming up — first computation in progress, will be ready on a future poll', zones: [], zoneCount: 0 };
 }
 
 setInterval(refreshAll, REFRESH_INTERVAL_MS);
