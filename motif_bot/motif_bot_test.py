@@ -93,12 +93,12 @@ def test_full_cycle_buy_to_tp_is_profitable():
     px = b.price("eurusd")
     sl, tp = mb._sl_tp_from_fill(e, px, 0.0001)
     lots = mb.size_for("eurusd", 10_000.0, 0.25, abs(px - sl), 5.0)
-    b.enter("eurusd", "LONG", sl, tp, lots, 3.0, True, comment=f"MT[{e['motif_key']}]")
+    b.enter("eurusd", "LONG", sl, tp, lots, 3.0, True, comment=mb._position_comment(e["motif_key"]))
     b.set_price("eurusd", tp + 0.0005)
     b.check_barriers()
     c = b.serialize_closed_trades()[0]
     assert c["reason"] == "tp" and c["profit"] > 0
-    assert c["comment"] == f"MT[{e['motif_key']}]"          # dedup identity survives to the audit trail
+    assert c["comment"] == mb._position_comment(e["motif_key"])   # deterministic tag survives to the audit trail
 
 
 def test_full_cycle_sell_to_sl_is_a_loss():
@@ -108,7 +108,7 @@ def test_full_cycle_sell_to_sl_is_a_loss():
     px = b.price("gbpusd")
     sl, tp = mb._sl_tp_from_fill(e, px, 0.0001)
     lots = mb.size_for("gbpusd", 10_000.0, 0.25, abs(px - sl), 5.0)
-    b.enter("gbpusd", "SHORT", sl, tp, lots, 3.0, True, comment=f"MT[{e['motif_key']}]")
+    b.enter("gbpusd", "SHORT", sl, tp, lots, 3.0, True, comment=mb._position_comment(e["motif_key"]))
     b.set_price("gbpusd", sl + 0.0005)
     b.check_barriers()
     c = b.serialize_closed_trades()[0]
@@ -214,6 +214,29 @@ def test_default_paper_mode_is_true():
     """Never start a fresh bot live -- same discipline as every other bot's
     DEFAULT_CFG in this repo."""
     assert mb.DEFAULT_CFG["paper_mode"] is True
+
+
+# ── _position_comment -- the "Invalid comment argument" fix ────────────────
+# Caught live 2026-09-18: `MT[{motif_key}]` grows with n_touches and bar-index
+# size, and the backtest's own 30,062-trade history shows 21.6% of all motifs
+# already produce a comment over MT5's 31-char cap -- `Mt5Broker._safe_comment`
+# truncates it, but the truncated/mangled result was STILL rejected by the
+# broker as "Invalid comment argument" (order_send returning None), silently
+# skipping real entries. _position_comment fixes this by using a
+# FIXED-LENGTH hash instead of embedding the variable-length key verbatim.
+
+def test_position_comment_is_short_regardless_of_motif_key_length():
+    # The exact real motif that failed live: a 3-touch motif with 5-digit
+    # H1 bar indices -- "MT[audcad:bottom:10045-10069-10092]" is 35 chars,
+    # already over the 31-char MT5 limit before any truncation.
+    long_key = "audcad:bottom:10045-10069-10092"
+    assert len(f"MT[{long_key}]") > 31, "sanity check: this key really did overflow the old format"
+    assert len(mb._position_comment(long_key)) <= 20
+
+
+def test_position_comment_is_deterministic_per_motif_key():
+    assert mb._position_comment("eurusd:top:1-2") == mb._position_comment("eurusd:top:1-2")
+    assert mb._position_comment("eurusd:top:1-2") != mb._position_comment("eurusd:top:1-3")
 
 
 def test_default_risk_guard_enabled_is_false():

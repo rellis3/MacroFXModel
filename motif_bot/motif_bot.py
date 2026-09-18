@@ -42,6 +42,7 @@ _status / _plan / _state / _decision_log.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import os
 import sys
@@ -138,6 +139,27 @@ def _log_guard_transition(log: logging.Logger, state: dict, key: str,
         log.warning(f'RiskGuard [{key}]: {verb} — {reason}')
     elif prev:
         log.info(f'RiskGuard [{key}]: clear{" — entries resumed" if enforced else ""}')
+
+
+def _position_comment(motif_key: str) -> str:
+    """Short, FIXED-LENGTH order comment (14 chars) instead of embedding
+    `motif_key` verbatim -- caught live 2026-09-18: `MT[{motif_key}]` grows
+    with n_touches and with how large the bar index is (the backtest's own
+    trade history shows 21.6% of all motifs already produce a comment over
+    MT5's 31-char limit, e.g. `MT[audcad:bottom:10045-10069-10092]` = 35
+    chars), and only gets worse as more history accumulates. Mt5Broker's
+    `_safe_comment` truncates an over-long comment to 31 chars as a backstop,
+    but the truncated/mangled result was STILL rejected by the broker as
+    "Invalid comment argument" (`order_send` returning None), silently
+    skipping real entries -- not a rare edge case, roughly 1 in 5.
+
+    A short hash of `motif_key` is deterministic (same motif always gets the
+    same tag) and its length never depends on n_touches or bar index size, so
+    it can never grow into this failure again. The full motif_key is not lost
+    -- it's still the position's audit identity everywhere else (acted_keys,
+    motif_bot_decision_log, the Telegram alert text); the broker comment only
+    ever needed to be human-recognisable, not load-bearing."""
+    return f"MT[{hashlib.sha1(motif_key.encode()).hexdigest()[:10]}]"
 
 
 def _mt5_sym(pair: str) -> str:
@@ -632,7 +654,7 @@ def run(base_url: str, force_live: bool) -> None:
                 # dashboard's serialized-output shape) -- translate here, once,
                 # rather than let the two vocabularies leak into each other.
                 tid = broker.enter(pair, "LONG" if is_long else "SHORT", sl, tp, lots,
-                                   max_spread(pair, cfg), paper, comment=f"MT[{motif_key}]")
+                                   max_spread(pair, cfg), paper, comment=_position_comment(motif_key))
                 filled = tid is not None and tid != -1
                 if filled:
                     acted_keys.add(motif_key)
