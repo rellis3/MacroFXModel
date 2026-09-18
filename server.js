@@ -16392,18 +16392,6 @@ async function _refreshOIBotZones() {
         // (each pair is pasted separately, so staleness is per-pair, not per-plan) and let
         // the bot gate on the CHAIN's age as well as the plan's.
         oiSavedAtMs: Number.isFinite(inst.savedAtMs) ? inst.savedAtMs : null,
-        // DAY-ANCHOR DRIFT: how far LIVE spot has walked from where today's levels were
-        // anchored. `daySpot`/`daySpotAt` (js/oi.js) freeze at the first paste of the UTC
-        // day and survive every intraday re-projection (the 15-min basis control) — so
-        // this is a genuine "how far has price moved since the OI snapshot was taken"
-        // read, distinct from `spot` itself (which now tracks live price — see the
-        // 2026-09-18 basis-control fix). Informational only here; oi_bot.py's
-        // day_drift_max_pct (0 = off by default) is what turns it into a live gate.
-        dayDrift: (Number.isFinite(inst.spot) && Number.isFinite(inst.daySpot))
-          ? +(inst.spot - inst.daySpot).toFixed(6) : null,
-        dayDriftPct: (Number.isFinite(inst.spot) && Number.isFinite(inst.daySpot) && inst.daySpot)
-          ? +(((inst.spot - inst.daySpot) / inst.daySpot) * 100).toFixed(3) : null,
-        daySpot: Number.isFinite(inst.daySpot) ? inst.daySpot : null,
         refMove: _dayRefMove,                                      // shipped for the executor's approach-velocity read — same day-scaled value the planner used, not the primary's
         refMoveSource: dayRefMoveObj?.source ?? inst.refMove?.source ?? null,
         farExpiry,   // the far primary book (null unless a nearer day expiry was traded instead)

@@ -171,8 +171,56 @@ Stated trap: that share measures open→close and so contains the morning move
 itself; the after-09:00 continuation (close vs the 09:00 price) was not registered
 and is queued as T3b before anyone reads the 80–90% as "the afternoon continues".
 
+## Batch 2 results (run 2026-09-18; designs frozen above before running)
+
+### T3b — After-09:00 continuation. **NULL — T3's 80–90% was the morning itself.**
+Close vs the 09:00 price continued the morning's direction in 47–60% of fast
+starts (n=36–151) vs 48–52% on ordinary mornings; every difference inside ±10pp
+with the interval across zero; mean after-09:00 move in the morning's direction
+−0.10 to +0.16 ATR, all intervals across zero. So: a fast first two hours widens
+the afternoon (T3 stands) but says nothing about which way the afternoon goes.
+The T3 ledger entry is corrected accordingly.
+
+### T4 — Opening-range breakout. **A base rate: the London first-hour range breaks
+almost every day and price is back inside within the hour 83–86% of the time.**
+Breakouts occurred in 99% of sessions (the first hour is ~22% of the day, T2).
+Extended ≥ 0.5 × the opening range before returning: 24–32%. Back inside within
+60 minutes: 83–86%. Session closed beyond the broken side: 50–52% on every
+instrument (intervals straddle 50%). Fast-tape breaks (top speed tercile at the
+break) followed through 5–8pp more often than slow ones on all eight, with the
+intervals clear of zero, but below the pre-registered 15pp bar — consistent with
+tape-speed persistence and reported as that, not as a breakout edge. Reading:
+the London opening-range break is not a signal in either direction; the
+first-hour range is simply too small to be a fence.
+
+### T5 — Monday gaps (indices, gold). **Small gaps fill because they are small;
+large ones mostly do not fill the same day.**
+| gap (Monday open vs Friday close) | n | filled same session | within 5 sessions | Monday range vs matched |
+|---|---|---|---|---|
+| NAS100 < 0.25 ATR | 395 | 82% [78, 86] | 93% | −0.11 (calmer) |
+| NAS100 0.25–0.5 | 71 | 61% | 83% | null |
+| NAS100 > 0.5 ATR | 29 | 34% [17, 52] | 59% | too few |
+| SPX500 < 0.25 | 381 | 81% | 93% | −0.19 (calmer) |
+| SPX500 > 0.5 | 36 | 36% | 64% | too few |
+| gold < 0.25 | 419 | 87% | 93% | −0.15 (calmer) |
+| gold > 0.5 | 30 | 30% | 73% | too few |
+
+"Gaps fill" is true of gaps a quarter of an ATR or smaller, and those Mondays run
+calmer than ordinary sessions. A gap over half an ATR fills the same session only
+about a third of the time (n≈30, thin).
+
+### T6 — Calendar range profiles (range / ATR14; * = interval clear of the mean).
+Monday is the quietest session on all eight (0.87–0.96×*). Thursday is the widest
+on FX (1.05–1.09×*; Wednesday 1.05–1.10×* on several). The first two sessions of
+a month run wider on seven of eight (1.09–1.16×*); quarter-end sessions run calmer
+where they clear (GBP/USD 0.92, AUD/USD 0.88, NAS100 0.90, SPX500 0.92*); month-end
+is mixed (USD/JPY 1.11* wider, the rest inside the interval). Friday: gold 1.07*,
+USD/CAD 1.06*, others ordinary.
+
 ### What changed
 - Book: T1 null (NR7 → calmer), T2 base rates, T3 validated range with the
   continuation base rate and its stated trap. Brief and chain read see all three.
-- Queued: T3b (after-09:00 continuation, close vs 09:00); T3 as a live trigger once
-  the watch reads intraday bars.
+- T3b run: the continuation is null; T3's ledger entry says range only.
+- T4 (opening-range break: 85% back inside within the hour), T5 (gap fill by size),
+  T6 (calendar profile) added to the book as base rates.
+- Queued: T3 and T4 as live triggers once the watch reads intraday bars.

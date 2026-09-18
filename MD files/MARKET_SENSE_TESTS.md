@@ -175,75 +175,6 @@ rule stated in advance: a cell only means something if its interval excludes 50%
 AND the neighbouring cells do not contradict it; with nine cells and n≈84, one
 cell clearing 50% by chance is expected.
 
-**S13 — Does watching more pairs add breadth? (pre-registered 2026-09-17, before
-running.)** Claim A: "the number of things you watch is the number of real
-opportunities you get." The measurable version is Grinold's law — IR ≈ IC × √N —
-and its catch: N is the number of *independent* bets, not tickers. Sleeves: the
-2Y yield-spread z-score sleeve (`YIELD_SPREAD_STRATEGY.md`) and, separately, the
-Asia fib atlas vote portfolio — both already have a record here, so neither is
-being invented for this test. Universes of size 1, 2, 4, 8, 16, 26 drawn from
-`instrumentRegistry` order; 1,000 bootstrap draws of universe membership at each
-size (fixed seed), so no universe is hand-picked after the fact. Costs charged in
-per pair from the spread profile (a cross at 3 pips is not a free extra signal).
-Report: OOS Sharpe vs size, against both √N and √N_eff, where
-N_eff = (Σλ)²/Σλ² of the correlation matrix of the sleeve's own per-pair daily
-P&L. Reading rule fixed now: breadth "pays" only if OOS Sharpe at N=26 beats N=4
-by ≥0.3 with a bootstrap CI clear of zero, on ≥30 OOS trades per universe. Prior
-stated in advance: the dollar factor should put N_eff for 26 FX pairs somewhere
-around 3–6, in which case the curve flattens by N≈6 and the honest version of the
-claim on this desk is "watch six things properly".
-
-**S14 — Does a multi-year regime break precede anything? (pre-registered
-2026-09-17, before running.)** Claim A's alert object: "when something breaks a
-multi-year regime, I hear about it instantly." Setup, defined now: a series
-closes outside its trailing 3-year (756-session) high/low range for the first
-time in ≥60 sessions. Universe: 26 FX + gold + SPX500/NAS100, plus the FRED set
-already in the harness (DGS2, DGS10, DGS30, DFII10, T10YIE, HY OAS, VIXCLS,
-DTWEXBGS). Outcomes: next-5d and next-20d range in ATR14 against the shared
-paired control (same instrument, different ISO week, same ATR-percentile
-quintile, same 20-day trend tercile), plus the up-share for direction. Reading
-rule fixed now: "worth an alert" needs range ≥ +0.30 ATR with the CI clear of
-zero, on ≥30 paired episodes, in **at least three of the four instrument families**
-(FX majors, FX crosses, metals/indices, rates/credit) — one family clearing on its
-own is what chance looks like across ~35 series. Anything less goes in the book as
-another null, and `today.html` says regime breaks are description.
-
-**S15 — The non-reaction: a big surprise, no move. (pre-registered 2026-09-17,
-before running.)** Claim B's kernel: "crude didn't break down on the biggest
-supply build." Setup: a release whose surprise is top-decile by |z| against its
-own history, where the instrument's reaction over the release session is
-**bottom-tercile** relative to what the Event Response Book expects for that
-family × instrument (residual = realized ÷ expected multiple). Populations: (a)
-oil — 1,306 EIA Weekly Crude Oil Inventory prints (2014-01 → 2026-07,
-`calendar_events.csv`, actual vs consensus) against WTI (`WTICO_USD`), with API
-stocks as a robustness leg; (b) the generalised version — the surprise store
-behind S7 (7,932 pair-releases, 2017→) across the 9 country|category blocks in
-`eventImpactMap`. Outcomes, both populations: next-5d and next-20d range in ATR14
-vs paired control, **and** the direction share *in the direction the surprise
-implied* (a build is bearish crude; a hawkish CPI surprise is bullish the
-currency), because the claim here is directional, unlike every range study
-above. Reading rule fixed now: a pass needs the directional share's bootstrap CI
-to exclude 50% on ≥40 paired episodes in the oil population, and to hold with the
-same sign on the generalised population. A range-only result is reported as a
-size finding, not as Crown's claim. Prior stated in advance: this desk has nulled
-every direction test it has run (yields→FX, CB tone, priced-in, post-FOMC drift,
-S12's table), so the base case is null — the point is that this one is cheap to
-settle and the data is already here.
-
-**S16 — Weird × technical, the conjunction (conditional pre-registration,
-2026-09-17).** Runs only if S15 returns anything at all; registered now so the
-conjunction cannot be fished for afterwards. Claim B, step 2: the anomaly matters
-more when the technicals agree — "if there's a recent breakout, I'm even more
-interested." Setup: S15's non-reaction episodes, split by whether the instrument
-had a breakout in the prior 10 sessions, defined with the desk's existing object
-(a close through a tracked level with confirmation, `motif_track`'s definition,
-not a fresh one). Outcome: the same directional share and next-20d range as S15.
-Reading rule fixed now: the conjunction "adds" only if the breakout subgroup's
-directional share beats the non-breakout subgroup by ≥10pp with the paired CI
-clear of zero **and** the subgroup has ≥30 episodes. Two subgroups, one test, no
-further slicing — if the split is run on anything else (session, family, pair),
-it is exploratory and labelled so.
-
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,
@@ -414,114 +345,23 @@ the day-0 reaction exists (weakly, in a daily proxy), and five sessions later
 the shares are coin flips with wide intervals. Direction after the Fed is not
 in this data at n=84, whichever way it is cut.
 
-### S13 — Does watching more pairs add breadth? **Partial: N_eff scored, the
-sleeve comparison and the full 26-pair Sharpe curve NOT RUN.**
+### M7 — Yen firming into rising US yields → the week after. **Too thin (n=35).**
+35 first-day episodes in 18 years; not scored. Base rates only: USD/JPY higher five
+sessions later 47%, EUR/JPY 62%, AUD/JPY 47%.
 
-`analysis/market_sense_studies.mjs`'s S13 needs FRED (the yield-spread sleeve's
-foreign short rates) and OANDA (the full 26-pair + gold daily series), both
-blocked in the session that ran this — see the environment note below. Only the
-raw-instrument N_eff leg is scored here, run OFFLINE from local M1 parquet
-(`analysis/coverage_funnel_local.mjs`, 25 of the 26 registry FX pairs — no
-local NZD/CAD file — + gold, resampled to daily; 3,025 common trading days,
-2016-01 → 2026-09):
+### M9 — Implied above realised → compression. **The OPPOSITE: wider.**
+VIX ÷ 20-session realised SPX vol in the top decile (88 first days since 2010):
+NAS100 next-5 range **+0.38 ATR** [+0.11, +0.62], next-20 +0.56 [+0.13, +1.03];
+SPX500 next-5 +0.17 (null), next-20 **+0.67** [+0.13, +1.21]. R1 (2022+) same sign,
+intervals touching zero. "Fear is over-priced, expect calm" is backwards at the
+daily horizon: when implied sits far above realised, realised catches up. Today's
+ratio 2.19 is the 90th percentile.
 
-| universe | N | N_eff (eigenvalue decomposition of the daily-return correlation matrix) |
-|---|---|---|
-| all 26 (25 local + gold) | 26 | **5.58** |
-| 7 USD majors only | 7 | **2.41** |
-| 18 crosses only | 18 | **4.71** |
-
-This is exactly the shape the pre-registration's prior predicted: *"the dollar
-factor should put N_eff for 26 FX pairs somewhere around 3–6."* It landed at
-5.58 — inside that range, and the majors-only cut (2.41) says most of that
-concentration is the dollar factor specifically, not FX in general. Read
-plainly: 26 tickers watched is **~5.6 independent bets**, not 26. Crown's
-"1,700 signals" needs the same audit before it means what it sounds like it
-means; this desk's own 26-pair FX book alone loses ~80% of its nominal breadth
-to one factor.
-
-**Not run, and not claimed:** (b) the yield-spread sleeve's own N_eff and its
-Sharpe-vs-universe-size curve (needs FRED; the code is written and reviewed in
-`market_sense_studies.mjs`, committed, unexecuted) — this was already going to
-be capped at the sleeve's real 6-pair ceiling, not the registered N=26, per
-the scope note in that file. The registered pass bar (OOS Sharpe N=26 vs N=4,
-≥0.3, CI clear of zero) needs both legs and neither ran to completion; nothing
-here is scored against it.
-
-### S14 — Does a multi-year regime break precede anything? **NOT SCORABLE —
-episode counts came back too thin everywhere, on 3 of the registered 4
-families (rates/credit not run at all).**
-
-Same offline run, same "first close outside the trailing 3-year (756-session)
-range, first time in ≥60 sessions" setup as registered, across FX majors (7),
-FX crosses (18) and gold (1) — 26 series, 2016→2026. **Every single series
-came back below the 40-episode MIN_N floor**: the qualifying-break count per
-instrument ranged 4–11 (median 8) over the ~10.7-year local history. This is
-mechanically expected, not a bug — a *first-in-3-years* break, cooled down to
-one count per 60 sessions, on a 10-year window is a rare-event definition by
-construction; getting 40+ of them needs either decades more history than the
-local M1 cache has, or a shorter lookback/cooldown than the one that was
-pre-registered. 0 of 3 attempted families clear (none could even be scored).
-Rates/credit (DGS2/10/30, DFII10, T10YIE, HY, VIX, DXY — needs FRED) did not
-run at all, so **the registered "≥3 of 4 families" bar cannot be evaluated
-here on any reading** — at most 3 of 4 were ever attemptable offline, and none
-of those 3 produced a scorable cell. Banked as: this setup's episode count is
-too rare for the paired-bootstrap discipline at the window this desk pre-
-registered; a real answer needs either more history or a loosened definition,
-pre-registered again before re-running — not silently loosened here.
-
-### S15 — The non-reaction: a big surprise, no move. **(b) generalized leg:
-NULL. (a) oil leg: NOT RUN.**
-
-(a) needs WTI daily bars, which exist nowhere locally in this repo (the M1
-parquet cache is FX + gold only) — not scored, no oil-specific verdict exists
-yet either way. (b) reran the S7-style surprise store **entirely from local
-data**: `calendar_events.csv`'s own actual/consensus columns, z-scored per
-(country, event) series (113 series with ≥20 prints each; 18,178 usable
-release-pair rows) — not the live API S7 originally pulled from, but the same
-raw feed underneath it. Top-decile |z| surprise, bottom-tercile same-session
-reaction, directional share over the next 5/20 sessions in the surprise-
-implied direction:
-
-| pair | non-reaction episodes | next-5d share (implied direction) | next-20d share |
-|---|---|---|---|
-| EUR/USD | 321 | 54% [48, 60] | 52% [46, 57] |
-| USD/JPY | 190 | 51% [44, 57] | 45% [38, 53] |
-| GBP/USD | 46 | 48% [35, 63] | 59% [43, 72] |
-
-AUD/USD and USD/CAD never accumulated a usable series — `calendar_events.csv`'s
-AU/CA coverage for the five registered families (CPI, employment, GDP, rate
-decision, PMI) is too thin locally to build a per-series z. All three scored
-pairs clear the registered ≥40-episode floor; **none clears the registered
-reading rule** (CI must exclude 50%) — every interval straddles it, EUR/USD's
-tightest of the three at [48,60]. Consistent with the base case stated in the
-pre-registration and with every other direction test on this desk: the "sleeping
-surprise resolves in its implied direction" claim is null on the generalized
-leg. The oil-specific case Crown actually described is still untested.
-
-### S16 — Weird × technical, the conjunction. **NOT RUN.** Conditional on
-S15(a), which did not run (no local WTI). Nothing to split.
-
-### A note on how S13–S16 were run (2026-09-18)
-
-This session's network egress was blocked to all four hosts
-`analysis/market_sense_studies.mjs` needs for a full S13–S16 run — FRED,
-OANDA, this desk's own Railway API, and CFTC (house convention, `CLAUDE.md`:
-*"OANDA is reachable in Railway, not in the sandbox... that's environment, not
-a bug"* — this run hit the FRED/Railway/CFTC version of the same thing). The
-full harness is implemented and committed either way
-(`analysis/market_sense_studies.mjs`), unexecuted. What's reported above ran
-from a second, local-only script (`analysis/coverage_funnel_local.mjs`) built
-specifically to answer the parts of S13–S16 that two files already in this
-repo can answer with zero network calls: `VolRangeForecaster/data/m1/*.parquet`
-(M1 bars, resampled to daily here) and `calendar_events.csv`. Its first run
-silently corrupted 22 of 26 parquet files — they don't share one column
-layout (four files carry two extra spread columns the rest don't, shifting
-where `datetime` sits) — caught before any number below was written down, not
-after; the fix reads each file's own schema instead of assuming a fixed
-column index. **To get S13(b), S14's rates/credit family, S15(a) and S16: run
-`node analysis/market_sense_studies.mjs S13,S14,S15,S16` from an environment
-with that network access** (wherever S1–S12 were originally run).
+### M12 — Breadth: every index down on the same session. **PASS (range).**
+All six indices (NAS100, SPX500, US30, US2000, DE30, UK100) down on one session,
+n=1,002: next-5 range SPX500 **+0.31 ATR** [+0.17, +0.45], NAS100 **+0.26** [+0.15,
++0.38]. Two such sessions in a row (n=243): +0.55 and +0.35. Direction five sessions
+later 58–61% up — indices' ordinary drift, not a signal.
 
 ## What changed on the page and in the briefs (2026-09-17)
 
