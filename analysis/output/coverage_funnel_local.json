@@ -1,0 +1,582 @@
+{
+ "studies": {
+  "S13": {
+   "rawNEff": {
+    "symbols": 26,
+    "days": 3025,
+    "nEff": 5.582080544102093,
+    "topEig": [
+     7.627716065212897,
+     4.784819473267339,
+     4.477874835396272,
+     3.247130337056273,
+     1.9654291483824389,
+     1.7090443433321574,
+     1.484026948985179,
+     0.6660071540064048
+    ]
+   },
+   "majorsNEff": {
+    "symbols": 7,
+    "nEff": 2.405563059452434
+   },
+   "crossesNEff": {
+    "symbols": 18,
+    "nEff": 4.70503436669428
+   },
+   "notRun": {
+    "part": "S13(b) yield-spread sleeve",
+    "reason": "needs FRED"
+   }
+  },
+  "S14": {
+   "families": {
+    "FX majors": {
+     "tests": [
+      {
+       "label": "EUR_USD break",
+       "sym": "EUR_USD",
+       "outcome": "r5",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_USD break",
+       "sym": "EUR_USD",
+       "outcome": "r20",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_USD break",
+       "sym": "GBP_USD",
+       "outcome": "r5",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_USD break",
+       "sym": "GBP_USD",
+       "outcome": "r20",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_USD break",
+       "sym": "AUD_USD",
+       "outcome": "r5",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_USD break",
+       "sym": "AUD_USD",
+       "outcome": "r20",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "NZD_USD break",
+       "sym": "NZD_USD",
+       "outcome": "r5",
+       "n": 7,
+       "paired": 7,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "NZD_USD break",
+       "sym": "NZD_USD",
+       "outcome": "r20",
+       "n": 7,
+       "paired": 7,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "USD_CHF break",
+       "sym": "USD_CHF",
+       "outcome": "r5",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "USD_CHF break",
+       "sym": "USD_CHF",
+       "outcome": "r20",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "USD_JPY break",
+       "sym": "USD_JPY",
+       "outcome": "r5",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "USD_JPY break",
+       "sym": "USD_JPY",
+       "outcome": "r20",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      }
+     ],
+     "clears": false
+    },
+    "FX crosses": {
+     "tests": [
+      {
+       "label": "EUR_GBP break",
+       "sym": "EUR_GBP",
+       "outcome": "r5",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_GBP break",
+       "sym": "EUR_GBP",
+       "outcome": "r20",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_AUD break",
+       "sym": "EUR_AUD",
+       "outcome": "r5",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_AUD break",
+       "sym": "EUR_AUD",
+       "outcome": "r20",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_CAD break",
+       "sym": "EUR_CAD",
+       "outcome": "r5",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_CAD break",
+       "sym": "EUR_CAD",
+       "outcome": "r20",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_CHF break",
+       "sym": "EUR_CHF",
+       "outcome": "r5",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_CHF break",
+       "sym": "EUR_CHF",
+       "outcome": "r20",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_NZD break",
+       "sym": "EUR_NZD",
+       "outcome": "r5",
+       "n": 9,
+       "paired": 9,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_NZD break",
+       "sym": "EUR_NZD",
+       "outcome": "r20",
+       "n": 9,
+       "paired": 9,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_NZD break",
+       "sym": "AUD_NZD",
+       "outcome": "r5",
+       "n": 5,
+       "paired": 4,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_NZD break",
+       "sym": "AUD_NZD",
+       "outcome": "r20",
+       "n": 5,
+       "paired": 4,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_CAD break",
+       "sym": "AUD_CAD",
+       "outcome": "r5",
+       "n": 9,
+       "paired": 9,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_CAD break",
+       "sym": "AUD_CAD",
+       "outcome": "r20",
+       "n": 9,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_CHF break",
+       "sym": "AUD_CHF",
+       "outcome": "r5",
+       "n": 9,
+       "paired": 9,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_CHF break",
+       "sym": "AUD_CHF",
+       "outcome": "r20",
+       "n": 9,
+       "paired": 9,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_AUD break",
+       "sym": "GBP_AUD",
+       "outcome": "r5",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_AUD break",
+       "sym": "GBP_AUD",
+       "outcome": "r20",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_CAD break",
+       "sym": "GBP_CAD",
+       "outcome": "r5",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_CAD break",
+       "sym": "GBP_CAD",
+       "outcome": "r20",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_CHF break",
+       "sym": "GBP_CHF",
+       "outcome": "r5",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_CHF break",
+       "sym": "GBP_CHF",
+       "outcome": "r20",
+       "n": 6,
+       "paired": 6,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_NZD break",
+       "sym": "GBP_NZD",
+       "outcome": "r5",
+       "n": 7,
+       "paired": 7,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_NZD break",
+       "sym": "GBP_NZD",
+       "outcome": "r20",
+       "n": 7,
+       "paired": 7,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_JPY break",
+       "sym": "EUR_JPY",
+       "outcome": "r5",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "EUR_JPY break",
+       "sym": "EUR_JPY",
+       "outcome": "r20",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_JPY break",
+       "sym": "GBP_JPY",
+       "outcome": "r5",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "GBP_JPY break",
+       "sym": "GBP_JPY",
+       "outcome": "r20",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_JPY break",
+       "sym": "AUD_JPY",
+       "outcome": "r5",
+       "n": 11,
+       "paired": 11,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "AUD_JPY break",
+       "sym": "AUD_JPY",
+       "outcome": "r20",
+       "n": 11,
+       "paired": 11,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "CAD_JPY break",
+       "sym": "CAD_JPY",
+       "outcome": "r5",
+       "n": 7,
+       "paired": 7,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "CAD_JPY break",
+       "sym": "CAD_JPY",
+       "outcome": "r20",
+       "n": 7,
+       "paired": 7,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "CHF_JPY break",
+       "sym": "CHF_JPY",
+       "outcome": "r5",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "CHF_JPY break",
+       "sym": "CHF_JPY",
+       "outcome": "r20",
+       "n": 10,
+       "paired": 10,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "NZD_JPY break",
+       "sym": "NZD_JPY",
+       "outcome": "r5",
+       "n": 11,
+       "paired": 11,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "NZD_JPY break",
+       "sym": "NZD_JPY",
+       "outcome": "r20",
+       "n": 11,
+       "paired": 11,
+       "noCtl": 0,
+       "scored": false
+      }
+     ],
+     "clears": false
+    },
+    "metals (gold only — no local SPX500/NAS100)": {
+     "tests": [
+      {
+       "label": "XAU_USD break",
+       "sym": "XAU_USD",
+       "outcome": "r5",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      },
+      {
+       "label": "XAU_USD break",
+       "sym": "XAU_USD",
+       "outcome": "r20",
+       "n": 8,
+       "paired": 8,
+       "noCtl": 0,
+       "scored": false
+      }
+     ],
+     "clears": false
+    }
+   },
+   "familiesAttempted": 3,
+   "familiesClearing": 0,
+   "note": "registered rule needs ≥3 of 4 families; only 3 of 4 could be attempted locally (rates/credit needs FRED)"
+  },
+  "S15": {
+   "seriesUsed": 113,
+   "totalRows": 18178,
+   "bySym": [
+    {
+     "sym": "EUR_USD",
+     "n": 321,
+     "nTopSurprise": 964,
+     "share5": {
+      "p": 0.5389408099688473,
+      "lo": 0.48286604361370716,
+      "hi": 0.5981308411214953
+     },
+     "share20": {
+      "p": 0.5171339563862928,
+      "lo": 0.46105919003115264,
+      "hi": 0.5700934579439252
+     },
+     "scored": true
+    },
+    {
+     "sym": "USD_JPY",
+     "n": 190,
+     "nTopSurprise": 642,
+     "share5": {
+      "p": 0.5052631578947369,
+      "lo": 0.4368421052631579,
+      "hi": 0.5736842105263158
+     },
+     "share20": {
+      "p": 0.45263157894736844,
+      "lo": 0.37894736842105264,
+      "hi": 0.531578947368421
+     },
+     "scored": true
+    },
+    {
+     "sym": "GBP_USD",
+     "n": 46,
+     "nTopSurprise": 165,
+     "share5": {
+      "p": 0.4782608695652174,
+      "lo": 0.34782608695652173,
+      "hi": 0.6304347826086957
+     },
+     "share20": {
+      "p": 0.5869565217391305,
+      "lo": 0.43478260869565216,
+      "hi": 0.717391304347826
+     },
+     "scored": true
+    }
+   ],
+   "scored": 3,
+   "pass": 0,
+   "note": "generalized leg only — S15(a) oil leg not run, no local WTI bars"
+  }
+ },
+ "ranAt": "2026-09-18T06:25:22.831Z",
+ "mode": "offline-local-data-only",
+ "notRun": [
+  {
+   "id": "S13b",
+   "reason": "yield-spread sleeve reconstruction needs FRED (GS2 + 6 foreign short-rate series)"
+  },
+  {
+   "id": "S14-rates-credit",
+   "reason": "needs FRED (DGS2/10/30, DFII10, T10YIE, HY, VIX, DXY); S14 scored on a 3-family ceiling here, not the registered 4"
+  },
+  {
+   "id": "S15a",
+   "reason": "the oil leg needs WTI bars, not present anywhere locally in this repo"
+  },
+  {
+   "id": "S16",
+   "reason": "conditional on S15(a), which did not run"
+  }
+ ]
+}
