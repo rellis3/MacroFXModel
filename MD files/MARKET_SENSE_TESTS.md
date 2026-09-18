@@ -244,6 +244,52 @@ clear of zero **and** the subgroup has ≥30 episodes. Two subgroups, one test, 
 further slicing — if the split is run on anything else (session, family, pair),
 it is exploratory and labelled so.
 
+**S17 — The gold/oil ratio mean-reverts (pre-registered 2026-09-18, before
+running).** Claim (Crown, 2026-09-18): crude is "the dominant market" right now
+(war supply constraints, shipping costs) and has run up faster than gold, so
+CL1÷GC1 (or USO÷GLD) is stretched; historically this ratio mean-reverts because
+one side overextends relative to the other, and gold should "catch back up."
+This is a trading claim, not a mechanism-only chain link — it is structurally
+identical to this desk's one validated cross-asset sleeve
+(`YIELD_SPREAD_STRATEGY.md`: rolling z-score of a spread, extreme z bets on
+reversion), so it is tested the same way, not added to `js/macroChain.js` as
+description.
+
+**Definition, fixed now.** Ratio = ln(WTI close ÷ gold close) (`WTICO_USD` ÷
+`XAU_USD`, OANDA daily, matching Crown's CL÷GC orientation — rising = oil rich
+vs gold). Rolling 126-session z-score (same window family as the yield-spread
+sleeve's validated region, reused rather than invented). Setup: first session
+of a new episode with |z| ≥ 2.0 (same entry threshold as the sleeve), scored
+separately for oil-rich (z ≥ +2) and gold-rich (z ≤ −2) — the mechanism claims
+symmetry even though Crown's current call is one-sided. Population: full OANDA
+daily history for both instruments (≈2005→).
+
+**Outcome.** Relative return over the next 5 and 20 sessions: `ln(goldF/gold) −
+ln(oilF/oil)`. The reversion call implies this should be **positive** after an
+oil-rich setup (gold outperforms) and **negative** after a gold-rich setup.
+ISO-week-block bootstrap share of episodes matching that sign, 95% CI, against
+the **named benchmark**: the same share computed unconditionally (all trading
+days, not just setup days) — a "mean-reverts" claim that cannot beat the
+unconditional rate of gold-beats-oil has not shown anything (`CLAUDE.md`'s
+"name the benchmark before claiming improvement").
+
+**Pass bar, fixed in advance.** A leg (oil-rich→gold-outperforms,
+gold-rich→oil-outperforms) passes only if its conditional share's CI excludes
+50% **and** beats the unconditional benchmark share by ≥10pp, on ≥40 episodes,
+scored separately at 5d and 20d. A cell that clears "CI excludes 50%" without
+clearing the benchmark margin is reported as a base rate, not a finding — same
+distinction this desk already drew on S5 and S11. Whether the ratio's own |z|
+shrinks over the horizon (mean reversion of the spread itself, independent of
+which leg moves) is reported separately as description, not scored against the
+pass bar — S11 already banked that closure and direction are different claims.
+
+**Status: NOT YET RUN.** Needs `WTICO_USD` daily bars via OANDA — blocked in
+this session (network egress denied to OANDA/FRED at the time of writing, and
+unlike S13–S15 there is no local fallback: `VolRangeForecaster/data/m1/` has no
+oil file, confirmed by directory listing, and no oil price series exists
+anywhere else in this repo, confirmed by search). The harness is written in
+`analysis/market_sense_studies.mjs` (S17), committed and reviewed, unexecuted.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,

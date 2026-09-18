@@ -883,6 +883,62 @@ if (want('S16')) {
   }
 }
 
+// ═══ S17 gold/oil ratio: extreme z → reversion, and which leg gives way? ═════
+// Pre-registered 2026-09-18 (Crown clip): CL1÷GC1 stretched after the FOMC
+// sell-off, the ratio "has a tendency to mean revert... one side eventually
+// becomes overextended relative to the other." Same discipline as the
+// validated yield-spread z-score sleeve (YIELD_SPREAD_STRATEGY.md): rolling
+// z, extreme entry, but here the outcome is which of the two LEGS gives way,
+// scored against the unconditional benchmark (CLAUDE.md: name the benchmark).
+if (want('S17')) {
+  log('\n═══ S17  gold/oil ratio (ln WTI/gold, 126d z): extreme → which leg gives way? ═══');
+  if (!bars.WTICO_USD) { bars.WTICO_USD = (await fetchD1('WTICO_USD', 5000)).sort((a, b) => a.date < b.date ? -1 : 1); log(`  WTICO_USD ${bars.WTICO_USD.length} bars ${bars.WTICO_USD[0].date} → ${bars.WTICO_USD.at(-1).date}`); }
+  if (!T.WTICO_USD) T.WTICO_USD = table('WTICO_USD');
+  const oilT = T.WTICO_USD, goldT = T.XAU_USD;
+  const rows = oilT.rows.map(r => { const g = goldT.byDate.get(r.date); return g?.ok ? { i: r.i, date: r.date, week: r.week, oilC: r.c, goldC: g.c } : null; }).filter(Boolean);
+  for (const r of rows) r.ratio = Math.log(r.oilC / r.goldC);
+  const zWindow = 126;
+  for (let i = zWindow; i < rows.length; i++) {
+    const win = rows.slice(i - zWindow, i).map(r => r.ratio), m = win.reduce((a, b) => a + b, 0) / win.length;
+    const sd = Math.sqrt(win.reduce((s, v) => s + (v - m) ** 2, 0) / win.length);
+    rows[i].z = sd > 1e-9 ? (rows[i].ratio - m) / sd : null;
+  }
+  for (let i = 0; i < rows.length; i++) {
+    const f5 = rows[i + 5], f20 = rows[i + 20];
+    if (f5) rows[i].relF5 = Math.log(f5.goldC / rows[i].goldC) - Math.log(f5.oilC / rows[i].oilC);
+    if (f20) rows[i].relF20 = Math.log(f20.goldC / rows[i].goldC) - Math.log(f20.oilC / rows[i].oilC);
+  }
+  const pop = rows.filter(r => r.z != null);
+  log(`  population: ${pop.length} trading days with a 126d z, ${rows[zWindow]?.date} → ${rows.at(-1)?.date}`);
+  const out = { population: pop.length };
+  const bench5 = bootShareArr(pop.filter(r => Number.isFinite(r.relF5)).map(r => r.relF5 > 0), SEED + 80);
+  const bench20 = bootShareArr(pop.filter(r => Number.isFinite(r.relF20)).map(r => r.relF20 > 0), SEED + 81);
+  log(`  unconditional benchmark (gold beats oil, all days): next-5d ${(bench5.p * 100).toFixed(0)}% [${(bench5.lo * 100).toFixed(0)},${(bench5.hi * 100).toFixed(0)}]; next-20d ${(bench20.p * 100).toFixed(0)}% [${(bench20.lo * 100).toFixed(0)},${(bench20.hi * 100).toFixed(0)}]`);
+  out.benchmark = { r5: bench5, r20: bench20 };
+  for (const [tag, cond, impliedPositive, seedBump] of [['oil-rich (z≥+2) → gold should outperform', r => r.z >= 2.0, true, 90], ['gold-rich (z≤−2) → oil should outperform', r => r.z <= -2.0, false, 100]]) {
+    const setup = pop.filter((r, k, arr) => cond(r) && !(pop[k - 1] && cond(pop[k - 1])));
+    log(`  ${tag}: ${setup.length} episodes (first day of each)`);
+    const leg = {};
+    for (const [h, key, seed] of [['5d', 'relF5', seedBump], ['20d', 'relF20', seedBump + 1]]) {
+      const v = setup.filter(r => Number.isFinite(r[key]));
+      const share = v.length ? bootShareArr(v.map(r => (r[key] > 0) === impliedPositive), seed) : null;
+      const bench = h === '5d' ? bench5 : bench20;
+      const scored = v.length >= 40;
+      // diff is the conditional share MINUS the unconditional benchmark share, both
+      // measured in the implied direction -- so the pass bar is just "CI excludes
+      // 50% AND beats the benchmark by >=10pp", no sign juggling needed.
+      const diff = share ? share.p - bench.p : null;
+      const excl50 = scored && (share.lo > 0.5 || share.hi < 0.5);
+      const beatsBench = scored && diff != null && diff >= 0.10;
+      const finalPass = excl50 && beatsBench;
+      log(`    ${h}: n=${v.length}${scored ? '' : ' — below 40, not scored'}. Implied-direction share ${share ? `${(share.p * 100).toFixed(0)}% [${(share.lo * 100).toFixed(0)},${(share.hi * 100).toFixed(0)}]` : 'n/a'} vs benchmark ${(bench.p * 100).toFixed(0)}% (diff ${share ? `${(diff * 100).toFixed(0)}pp` : 'n/a'})  ${!scored ? 'NOT SCORED' : finalPass ? 'PASS' : excl50 ? 'CI excludes 50% but does not beat the benchmark by 10pp — base rate, not a finding' : 'NULL'}`);
+      leg[h] = { n: v.length, share, benchShare: bench.p, diff, scored, pass: finalPass };
+    }
+    out[tag] = leg;
+  }
+  results.studies.S17 = out;
+}
+
 // merge into the existing output rather than overwrite it when only some studies ran
 const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { studies: {} };
 fs.writeFileSync(OUT, JSON.stringify({ ...prev, ranAt: results.ranAt, studies: { ...prev.studies, ...results.studies } }, null, 1));

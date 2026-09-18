@@ -91,3 +91,61 @@ way `real-nq` already was.
   extension idea, not yet built: rank nodes by how much of the others'
   concurrent moves they explain, refreshed with the page). Noted here as a
   candidate for a future entry, not started.
+
+---
+
+## 2026-09-18 (2) — "Gold is getting cheaper, just not in dollars — CL1÷GC1"
+
+> *"We're pricing it in barrels of crude... crude and gold are keeping score on
+> two different sides of the same gigantic macro trade... crude is the
+> dominant market here... gold is getting progressively cheaper relative to
+> crude... you just take CL1 divided by GC1... this relationship has the
+> tendency to mean revert, not because oil and gold move in some magical fixed
+> ratio, but because even in a strong trending market one side eventually
+> becomes overextended relative to the other."*
+
+**1. The claim, stated plainly.** The oil/gold price ratio mean-reverts;
+right now oil has run far enough ahead of gold (post-FOMC) that the ratio is
+stretched, and the predicted resolution is gold catching up (outperforming
+oil going forward), not oil giving back its move.
+
+**2. What's already on this desk.** Nothing — checked before writing anything
+(`grep` across `MD files/`, every `js/*.js`, every `*.html` for gold/oil
+ratio language; the handful of hits were "gold" and "oil" mentioned near each
+other as separate instruments in vol-forecast benchmarking and desk-watch
+code, not a ratio concept). This is a genuinely new claim to the desk, not a
+repeat or an extension of something already tested.
+
+But the *shape* of the claim is not new: it is structurally identical to the
+one sleeve this desk has already validated — the 2Y yield-spread z-score
+mean-reversion (`YIELD_SPREAD_STRATEGY.md`): a rolling z-score of a spread/
+ratio, an extreme entry threshold, a bet on reversion. That gives a discipline
+to borrow rather than invent: same z-window family, same entry threshold,
+reused rather than fit fresh to this data.
+
+**3. Trading claim or macro-understanding claim.** Trading claim — this
+predicts a forward relative return (gold outperforms oil), not just a
+mechanism. Goes through `MARKET_SENSE_TESTS.md`'s pre-registration
+discipline, not into `js/macroChain.js` as a described link (the chain has no
+direct oil↔gold link either, by design — they only connect indirectly through
+the real-yield chain, and that's a mechanism note, not a ratio-trading claim).
+
+**4. Verdict and action.**
+- **Pre-registered as S17** in `MARKET_SENSE_TESTS.md`, before any data was
+  touched: ln(WTI÷gold), 126-session rolling z, |z|≥2.0 entry (both
+  directions, scored separately, since the mechanism claims symmetry even
+  though Crown's call today is one-sided), outcome = forward relative return
+  (gold return − oil return) over 5/20 sessions, share bootstrapped against
+  the **unconditional benchmark share** (not just "CI excludes 50%" — a
+  reversion claim that doesn't beat the base rate of gold beating oil on an
+  ordinary day hasn't shown anything). Pass bar: CI excludes 50% AND beats
+  the benchmark by ≥10pp, on ≥40 episodes, per horizon.
+- **Harness written, not run.** `analysis/market_sense_studies.mjs`'s S17
+  block is committed and reviewed. **Blocked on data, same as S15(a)'s oil
+  leg**: needs `WTICO_USD` daily bars via OANDA, and this session's network
+  egress is still denied to OANDA/FRED (checked again before writing this
+  entry). No local fallback exists either — confirmed the M1 parquet cache
+  has no oil file and no oil price series exists anywhere else in this repo.
+- **Not claimed:** anything about whether the ratio is *actually* stretched
+  right now, or what "catching up" looks like in this specific episode. That
+  needs the same run.
