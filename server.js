@@ -17659,23 +17659,51 @@ app.get('/api/oi-bot/hold-calibration', async (req, res) => {
 // the fresh basis (LIGHT: only the futures→spot projection moves — greeks/regime stay from the
 // daily analyse, so no intraday flicker), then push the drifted lines to the bot by refreshing
 // its plan. Fail-safe: any pair that can't quote, or an implausible basis, is left untouched.
+//
+// RAN WITH A BROKEN baseUrl SINCE IT WAS WRITTEN. _oiRefreshBasis(inst) was called with no
+// options, so fetchPairedQuote built a RELATIVE url — `/api/futures-quote?...` — which Node's
+// fetch rejects outright ("Failed to parse URL from ..."). That rejection is caught INSIDE
+// fetchPairedQuote itself, so it came back null with no error surfaced anywhere, `oiRefreshBasis`
+// fell through to `{ changed: false }`, and this ran every 15 minutes, for every pair, forever,
+// doing nothing. The sibling /api/oi/reanalyse?live=1 handler hit the identical bug and carries
+// the same baseUrl fix with a comment explaining it — this automatic timer never got it. Found
+// live 2026-09-18: gold's basisAtMs was 156 minutes stale while spot had moved 27 points, and
+// oi_bot's break zones were arming from a spot last refreshed at ingest, hours earlier — a plan
+// meant to track live price all day was silently frozen at whatever it was when pasted.
+//
+// `quoted` (added to oiRefreshBasis's return alongside this fix) is what makes a FUTURE version
+// of this exact failure visible instead of silent: it is true whenever the quote fetch itself
+// worked, independent of whether the basis moved enough to reproject. Zero pairs quoted across
+// two consecutive ticks (30 min) is not "the market was quiet" — every pair having nothing to do
+// at once does not happen — it is the fetch path being broken again.
+let _basisZeroQuoteStreak = 0;
 async function _refreshOIBasis() {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-    let changed = 0;
+    let changed = 0, quoted = 0, n = 0;
     for (const [pair, inst] of Object.entries(store || {})) {
       if (!inst || typeof inst !== 'object') continue;
+      n++;
       try {
-        const r = await _oiRefreshBasis(inst);
+        const r = await _oiRefreshBasis(inst, { baseUrl: `http://127.0.0.1:${PORT}` });
+        if (r?.quoted) quoted++;
         if (r?.changed) { store[pair] = r.inst; changed++; }
         else if (r?.inst) store[pair] = r.inst;   // spot/futures freshened even on sub-pip drift
       } catch { /* leave this pair as-is */ }
     }
+    if (n && quoted === 0) {
+      if (++_basisZeroQuoteStreak >= 2) {
+        console.warn(`[oi-basis] ${_basisZeroQuoteStreak} consecutive ticks with ZERO of ${n} pair(s) ` +
+          `quoted — the live futures-quote fetch looks broken, not just quiet. Basis is not refreshing.`);
+      }
+    } else {
+      _basisZeroQuoteStreak = 0;
+    }
     if (changed) {
       await kv.put('oi_store', JSON.stringify({ data: store, timestamp: Date.now() }));
       try { await _refreshOIBotZones(); } catch { /* zones refresh is best-effort */ }   // push drifted lines to the bot
-      console.log(`[oi-basis] re-projected ${changed} pair(s) onto a fresh basis + refreshed bot zones`);
+      console.log(`[oi-basis] re-projected ${changed} pair(s) onto a fresh basis + refreshed bot zones (${quoted}/${n} quoted)`);
     }
     return changed;
   } catch (e) { console.warn('[oi-basis] refresh failed:', e.message); return 0; }

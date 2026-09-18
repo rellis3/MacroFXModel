@@ -1422,22 +1422,26 @@ export function oiReprojectBasis(inst, { newBasis, newSpot, newFutures } = {}) {
 }
 
 // Live basis control (COG): re-fetch the paired futures/spot quote for a stored inst and
-// re-project its levels onto the fresh basis. Returns { inst, changed, dPips } — `changed`
-// false (inst untouched) when there's no quote, the basis is implausible, or the move is
-// sub-threshold. Reuses fetchPairedQuote / futuresIsInverted / basisImplausible — no copy.
+// re-project its levels onto the fresh basis. Returns { inst, changed, quoted, dPips }.
+// `changed` false (inst untouched) when there's no quote, the basis is implausible, or the
+// move is sub-threshold. `quoted` is the separate signal a caller needs to tell "nothing to
+// do" apart from "the quote fetch itself is broken" — both looked identical (`changed: false`)
+// before this field existed, which is exactly how server.js's 15-min automatic refresh ran
+// with a broken baseUrl for as long as it did without a single log line saying so (see its
+// call site). Reuses fetchPairedQuote / futuresIsInverted / basisImplausible — no copy.
 export async function oiRefreshBasis(inst, { baseUrl = '', minPipFrac = 1e-6 } = {}) {
-  if (!inst || !inst.pair) return { inst, changed: false };
+  if (!inst || !inst.pair) return { inst, changed: false, quoted: false };
   const live = await fetchPairedQuote(inst.pair, baseUrl).catch(() => null);
-  if (!live || !Number.isFinite(live.price) || !Number.isFinite(live.spot) || live.spot <= 0) return { inst, changed: false };
+  if (!live || !Number.isFinite(live.price) || !Number.isFinite(live.spot) || live.spot <= 0) return { inst, changed: false, quoted: false };
   const newFutures = live.price, newSpot = live.spot;
   const futuresSpot = futuresIsInverted(inst.pair) ? 1 / newFutures : newFutures;
   const newBasis = futuresSpot - newSpot;
-  if (basisImplausible(newBasis, newSpot)) return { inst, changed: false };
+  if (basisImplausible(newBasis, newSpot)) return { inst, changed: false, quoted: true };
   const d = newBasis - (Number.isFinite(inst.basis) ? inst.basis : 0);
   if (Math.abs(d) < newSpot * minPipFrac) {   // sub-pip drift — refresh spot/futures only, no re-project
-    return { inst: { ...inst, spot: newSpot, futures: newFutures, basis: newBasis, basisAt: Date.now() }, changed: false, dPips: 0 };
+    return { inst: { ...inst, spot: newSpot, futures: newFutures, basis: newBasis, basisAt: Date.now() }, changed: false, quoted: true, dPips: 0 };
   }
-  return { inst: oiReprojectBasis(inst, { newBasis, newSpot, newFutures }), changed: true, dPips: d };
+  return { inst: oiReprojectBasis(inst, { newBasis, newSpot, newFutures }), changed: true, quoted: true, dPips: d };
 }
 
 // Where along PRICE the dealer-gamma regime is PIN (long gamma → ranges hold, fade extremes)
