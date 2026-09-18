@@ -160,11 +160,27 @@ Four studies go into `MARKET_SENSE_TESTS.md` with their reading rules fixed:
 1. **E** — the coverage meter. Half a day, and it makes the gap visible instead
    of asserted.
 2. **S15** — the funnel's kernel, with the oil case as the worked example. The
-   data is sitting in the repo and the brief currently claims it isn't.
+   data is sitting in the repo and the brief currently claims it isn't. **Run
+   2026-09-18 (generalized leg only — no local WTI for the oil case): NULL on
+   EUR/USD, USD/JPY, GBP/USD, all three CIs straddling 50%.** See
+   `MARKET_SENSE_TESTS.md` §S15.
 3. **A**, behind whatever S15 returns: a ✓ weird-o-meter if it passes, a
    ~described anomaly list if it nulls (still useful; still ranked by rarity).
+   S15(b) nulled, so this is the ~described version until S15(a)'s oil case
+   (still unrun, no local WTI data) says otherwise.
 4. **S14**, then **B** and **D** together — breadth only behind the budget rule.
-5. **S13** before any bot's universe is widened. If N_eff for 26 FX pairs comes
-   back at 4, the honest version of Claim A on this desk is "watch six things
-   properly", and that changes the build, not just the panel.
+   **Run 2026-09-18 (FX + gold only, no local rates/credit): every series came
+   back with 4–11 qualifying breaks over ~10.7 years, below the 40-episode
+   floor everywhere — the setup is too rare for this desk's paired-bootstrap
+   bar at the registered window.** A regime-break alert needs either more
+   history or a pre-registered loosened definition before this is buildable
+   as a ✓ trigger; see `MARKET_SENSE_TESTS.md` §S14.
+5. **S13** before any bot's universe is widened. **Run 2026-09-18 (raw
+   instrument N_eff, no sleeve comparison yet — needs FRED): N_eff = 5.58 of
+   26 for the full FX+gold book, 2.41 of 7 for the USD majors alone.** The
+   prior lands almost exactly where it was guessed to — the honest version of
+   Claim A on this desk is close to "watch six things properly" already, and
+   the majors-only number says most of the loss is one dollar factor. That
+   changes the build, not just the panel: a breadth panel over this universe
+   is showing ~5–6 independent reads dressed as 26.
 6. **F**, **G**, **H** last — presentation of whatever survived.
