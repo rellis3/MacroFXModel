@@ -21231,6 +21231,98 @@ app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
 });
 
+// ── Market-Sense Studies (market-sense.html) ─────────────────────────────
+// Runs analysis/market_sense_studies.mjs as a child process — the exact
+// reviewed, pre-registered CLI harness behind MD files/MARKET_SENSE_TESTS.md
+// (Lego Principle 1: import/execute the real thing, never a reimplementation
+// that could drift from it). Needs OANDA_KEY — only reachable on Railway,
+// sandboxed dev sessions 403. Same async-job pattern as /api/honest-forecast/*.
+//
+// S13–S16 are listed but marked `disabled`: their pre-registrations are in
+// the MD file, but their harness code was removed from this script on
+// 2026-09-18 (commit 32e04da, an unrelated "Batch 2" run) and has not been
+// re-added — the catalog says so honestly rather than silently omitting them.
+const MARKET_SENSE_STUDIES = [
+  { id: 'S1',  title: 'VIX term structure inverts → the week gets wide' },
+  { id: 'S2',  title: 'Stocks and bonds falling together (corr(SPX, Δ10Y) < −0.20)' },
+  { id: 'S3',  title: 'Front-end shock (|Δ2Y 5d| top decile) → FX 5-day range' },
+  { id: 'S4',  title: 'Oil 20d move ≥±10% → breakeven change, next 5/10/20 sessions' },
+  { id: 'S5',  title: 'Broken-link resolution over the next 20 sessions (base rates)' },
+  { id: 'S6',  title: '"Priced in": decision-day range vs the prior 2Y repricing' },
+  { id: 'S7',  title: 'Data surprise |z| → release-session range, by family' },
+  { id: 'S8',  title: 'Rotation: |NAS100 − US2000| 20d relative return, top decile' },
+  { id: 'S9',  title: 'Two moves after the Fed: day 0 vs the next 5 / 20 sessions' },
+  { id: 'S10', title: 'Crowded short in long bonds into the Fed' },
+  { id: 'S11', title: 'Price vs 10Y yield spread: divergence vs alignment' },
+  { id: 'S12', title: 'After FOMC: lead-up × surprise → SPX/dollar/gold (base-rate table)' },
+  { id: 'S13', title: 'Does watching more pairs add breadth? (N vs N_eff)', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S14', title: 'Does a multi-year regime break precede anything?', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S15', title: 'The non-reaction: a big surprise, no move', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S16', title: 'Weird × technical, the conjunction', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S17', title: 'Gold/oil ratio (ln WTI/gold, 126d z): extreme → which leg gives way?' },
+];
+const MS_RUNNABLE = new Set(MARKET_SENSE_STUDIES.filter(s => !s.disabled).map(s => s.id));
+const MS_SCRIPT = path.join(__dirname, 'analysis', 'market_sense_studies.mjs');
+const MS_OUT = path.join(__dirname, 'analysis', 'output', 'market_sense_studies.json');
+const msJobs = new Map();
+function _purgeStaleMsJobs() {
+  const cutoff = Date.now() - 3 * 60 * 60_000;   // studies fetch CFTC/econ-surprise history too; give runs room
+  for (const [id, job] of msJobs) if (job.startedAt < cutoff) msJobs.delete(id);
+}
+function _readMsOutput() {
+  try { return JSON.parse(fs.readFileSync(MS_OUT, 'utf8')); } catch { return null; }
+}
+
+app.get('/api/market-sense/studies', (req, res) => res.json({ ok: true, studies: MARKET_SENSE_STUDIES }));
+
+app.get('/api/market-sense/last', (req, res) => res.json({ ok: true, result: _readMsOutput() }));
+
+app.post('/api/market-sense/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data (only runs where OANDA is reachable, e.g. Railway production)' });
+  }
+  const requested = Array.isArray(req.body?.studies) ? req.body.studies.filter(id => MS_RUNNABLE.has(id)) : [];
+  const arg = requested.length && requested.length < MS_RUNNABLE.size ? requested.join(',') : '';   // empty -> the script runs everything it has
+
+  const jobId = `ms_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMsJobs();
+  msJobs.set(jobId, { status: 'running', startedAt, log: [] });
+
+  const child = spawn(process.execPath, arg ? [MS_SCRIPT, arg] : [MS_SCRIPT], { cwd: __dirname, env: process.env });
+  let buf = '';
+  const pushLines = chunk => {
+    buf += chunk;
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    if (lines.length) msJobs.get(jobId)?.log.push(...lines);
+  };
+  child.stdout.on('data', d => pushLines(d.toString()));
+  child.stderr.on('data', d => pushLines(d.toString()));
+  child.on('error', e => msJobs.set(jobId, { status: 'error', startedAt, log: msJobs.get(jobId)?.log ?? [], error: e.message }));
+  child.on('close', code => {
+    const job = msJobs.get(jobId);
+    if (!job) return;
+    if (buf) job.log.push(buf);
+    if (code === 0) {
+      msJobs.set(jobId, { status: 'done', startedAt, log: job.log, result: _readMsOutput(), ranStudies: requested.length ? requested : [...MS_RUNNABLE] });
+    } else {
+      msJobs.set(jobId, { status: 'error', startedAt, log: job.log, error: `market_sense_studies.mjs exited with code ${code}` });
+    }
+  });
+
+  res.json({ ok: true, jobId, ranStudies: requested.length ? requested : [...MS_RUNNABLE] });
+});
+
+app.get('/api/market-sense/status/:jobId', (req, res) => {
+  const job = msJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed, log: job.log });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', elapsed, log: job.log, result: job.result, ranStudies: job.ranStudies });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, elapsed, log: job.log });
+});
+
 // ── Live Validation Harness ──────────────────────────────────────────────
 // Runs js/liveValidationCore.js's runLiveValidation (also used by
 // education/jordan_impulse_range_backtest/scripts/live_validation_harness.mjs
