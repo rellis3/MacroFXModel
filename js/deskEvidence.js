@@ -278,6 +278,19 @@ export const DESK_EVIDENCE = [
     use: 'The divergence panel may describe the shape; nothing may be claimed about the week after.',
   },
   {
+    id: 'band-reach-from-here', domain: 'price', verdict: 'validated', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T7',
+    claim: 'Reaching the median daily band early raises the odds of reaching the 75th band before the close',
+    result: 'Eight instruments, ~2,500 London sessions each. At 10:30 UK, median band reached vs the ordinary odds for the hour: NAS100 63% vs 23%, SPX500 59% vs 22%, USD/JPY 44% vs 17%, EUR/USD 43% vs 18%, gold 50% vs 21% (2.3-2.7×; n=260-450 per cell). Largest at the open, decaying through the day. Once reached, the median band was the day\'s extreme in only 4-10% of sessions, the 75th in 5-14%.',
+    use: 'The "aim for the 75th, not the median" line: a target guide, never an entry. The bands are waypoints, not walls -- do not expect price to stop at one.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'NQ', 'SPX500'],
+  },
+  {
+    id: 'asia-range-london', domain: 'price', verdict: 'context', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T7',
+    claim: 'A wide Asia range means London extends',
+    result: 'The reverse. A top-tercile Asia range (range/ATR) LOWERED the odds of reaching the median band after 07:00: gold 24% vs 46% on narrow-Asia days, USD/JPY 18% vs 36%, EUR/USD 33% vs 42%. A wide Asia has already used the day\'s range.',
+    use: 'After a wide Asia session, expect LESS of the day\'s range to be left for London, not more.',
+  },
+  {
     id: 'yields-to-fx-direction', domain: 'macro', verdict: 'null', date: '2026-08-23', doc: 'memory: project_yield_asset_coupling',
     claim: 'Yield moves predict the direction of FX and indices',
     result: 'Forward coupling null; the relationship is real only in the same bar.',

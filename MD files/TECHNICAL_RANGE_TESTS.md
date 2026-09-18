@@ -150,6 +150,42 @@ Instruments: the eight of T1–T6. Output: a generated parameter table
 usual JSON. What ships: a "Band read · as at HH:MM" block in the drawer's day
 section, wording "reached in n% of days like this", never "fade".
 
+### T7 results (run 2026-09-18; design frozen above before running)
+
+Eight instruments, ~2,500 London sessions each (2017 → 2026-08). Output
+`analysis/output/band_reach_study.json`; parameter table `js/bandReachParams.js`.
+
+**1. From here — the colleague's headline is real, and it is the same shape on
+every instrument.** Reaching the median band early roughly **doubles-to-triples**
+the odds of the 75th before the close. At 10:30 UK, median reached vs the ordinary
+odds for the hour: NAS100 **63% vs 23%** (2.7×), SPX500 59% vs 22% (2.7×), USD/JPY
+44% vs 17% (2.6×), EUR/USD 43% vs 18% (2.3×), gold 50% vs 21% (2.3×); intervals
+±5pp, n=260–450 per cell. The lift is largest at the open (NAS100 at 07:00: 73% vs
+22%) and decays through the day as the odds for everyone fall.
+
+**2. Stall — "expect price to stop at the band" is wrong.** Once the median band
+is reached, it was (nearly) the day's extreme in only **4–10%** of sessions; the
+75th in 5–14%. The bands are waypoints, not walls. (This is the level-touch null
+again, from the other side.)
+
+**3. Clock.** Typical first touch of the median high: EUR/USD ~10:30 UK (p25 07:45,
+p75 13:55), gold ~11:30, NAS100 ~14:30 (US hours), SPX500 similar. The 75th
+~13:45–15:10. Hit rates 48–51% for the median, 24–27% for the 75th, 10–11% for the
+90th — the quantile definitions, as they should be.
+
+**4. Asia — backwards from the intuition.** A *wide* Asia range (top tercile,
+range/ATR) LOWERS the odds of reaching the median band after 07:00: gold 24% vs 46%
+on narrow-Asia days (−22pp, finding), USD/JPY 18% vs 36% (finding), EUR/USD 33% vs
+42% (−10pp, clear but under the bar). A wide Asia has already used the day's range
+— often reaching the band before London opens — so "Asia expanded, expect London
+to extend" is the reverse of what happened.
+
+**What shipped.** The drawer's day section opens with a derived "Aim ↑ for the 75th
+(price), not the median — reached in 63% of days like this vs 23% for the hour" line
+when the lift is ≥ 1.5× and the odds ≥ 35%, "Aim for the median" otherwise, with
+both sides, the stall rate, the clock and the Asia note under it; a chip on the
+card's day tier carries the aim and the lift. A target guide, never an entry.
+
 ## What a pass changes on the page
 
 A validated T1 or T3 range effect earns a ✓ chip on the day tier, worded as range
