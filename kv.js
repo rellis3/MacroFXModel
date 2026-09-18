@@ -234,6 +234,7 @@ const _CF_EXACT = new Set([
   'motif_bot_plan',        // Motif Bot live plan (currently-open motifs passing the best-config filter, pushed by AnalogML/motif_track.py's own hourly scan, NOT a server.js interval) — keep last good plan across a redeploy
   'motif_bot_state',       // Motif Bot one-shot state (acted motif_keys, tg message ids, dedup sets) — survives BOT restarts via KV
   'motif_bot_decision_log', // Motif Bot per-motif decision audit (entered/rejected/blocked + why), capped rolling window — bot-config.html's Decision Timeline
+  'motif_bot_spread_stats', // Motif Bot per-pair live spread averages (real MT5 ticks, motif_bot.py's own sampler) — must survive redeploys, it's accumulated data motif_track.py's best-config filter reads back
   // NOTE: motif_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as fib_atlas_bot_status below)
   // NOTE: fib_atlas_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as volatility_bot_v2_status below)
   // NOTE: volatility_bot_v2_status is deliberately NOT here — the bot rewrites it every ~30s

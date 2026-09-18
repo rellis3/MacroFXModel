@@ -63,7 +63,8 @@ RISK_GUARD_DEFAULTS = {
 }
 
 
-def passes_best_config(pair: str, swing_regime: str | None) -> bool:
+def passes_best_config(pair: str, swing_regime: str | None,
+                       spread_pips: float | None = None) -> bool:
     """True if a confirmed motif on `pair` with this `swing_regime` is part of
     the validated best config -- i.e. should be paper-tracked as "actionable"
     and offered to the live execution bot. `swing_regime` is one of
@@ -71,8 +72,17 @@ def passes_best_config(pair: str, swing_regime: str | None) -> bool:
     read at the confirm bar, AnalogML.motif_features.bucket_trade's own
     field) -- None/"unknown" passes (fail OPEN on a missing feature read
     rather than silently dropping a trade the strategy would otherwise take;
-    the spread half of the filter is unaffected either way)."""
-    spread = RETAIL_SPREAD_PIPS.get(pair.lower())
+    the spread half of the filter is unaffected either way).
+
+    `spread_pips` (2026-09-18), when given, OVERRIDES the static
+    RETAIL_SPREAD_PIPS estimate for this call -- pass a live-measured average
+    (see `pylego.spread_stats` / motif_bot.py's own sampling loop) so the
+    gate judges THIS account's real, currently-observed cost instead of a
+    generic modelled guess, which real spread can sit either side of
+    depending on session/volatility and on the broker actually used.
+    None (the default) keeps the static table -- unchanged behaviour for
+    every caller that hasn't been given a live reading."""
+    spread = spread_pips if spread_pips is not None else RETAIL_SPREAD_PIPS.get(pair.lower())
     if spread is not None and spread > BEST_CONFIG["max_spread_pips"]:
         return False
     if swing_regime == BEST_CONFIG["skip_swing_regime"]:

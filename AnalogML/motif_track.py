@@ -130,6 +130,7 @@ from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
 from pylego.motif_policy import passes_best_config  # noqa: E402
+from pylego.spread_stats import live_spread_pips  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
@@ -407,7 +408,8 @@ def _confidence_bar(rate: float, width: int = 5) -> str:
 
 
 def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidence: dict | None,
-                 current_price: float | None = None, swing_regime: str | None = None) -> str:
+                 current_price: float | None = None, swing_regime: str | None = None,
+                 live_spread_override: float | None = None) -> str:
     """Telegram HTML for one new confirmed motif. Two sizing lines, not
     three: "Tracked (frozen grid)" stays -- it is the actual record
     motif_trades.json logs and the ONLY thing every validated Sharpe/PF
@@ -441,7 +443,13 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
     OOS, motif-alert-backtest.html). A `pylego.motif_policy.passes_best_config`
     verdict is shown alongside it for exactly that reason -- this is also the
     field motif_bot_plan filters on, so the alert now states, for every trade,
-    whether the execution bot would act on it."""
+    whether the execution bot would act on it.
+
+    `live_spread_override` (2026-09-18): this account's live-measured average
+    spread for `pair`, when there's enough of it to trust (see
+    pylego.spread_stats) -- passed through to the SAME passes_best_config
+    call motif_bot_plan is built with, so this alert's "bot would act on
+    this" verdict never disagrees with what the plan actually does."""
     pip = pip_size(pair)
     direction = m.direction
     entry = t["entry_price"]
@@ -497,7 +505,7 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
 
     regime_line = ""
     if swing_regime is not None:
-        acted = passes_best_config(pair, swing_regime)
+        acted = passes_best_config(pair, swing_regime, spread_pips=live_spread_override)
         tag = "✅ bot would act on this" if acted else "⏸️ bot skips (best-config filter)"
         regime_line = f"\U0001f4d0 Swing regime  <b>{swing_regime}</b> · {tag}\n"
 
@@ -644,6 +652,20 @@ def run(args: argparse.Namespace) -> None:
                 print("[telegram] --telegram passed but the dashboard's shared Telegram config "
                       "isn't set (Alerts modal) -- alerts will be skipped this run")
 
+    # This account's live-measured spread averages (motif_bot.py's own MT5
+    # sampling loop, see pylego/spread_stats.py) -- used to override the
+    # static RETAIL_SPREAD_PIPS estimate in passes_best_config wherever
+    # there's enough data to trust it. A replay/testing run (--as-of) must
+    # stay reproducible from historical price data alone, so it never reads
+    # this -- same reasoning as the --telegram/plan-push guards below.
+    live_spreads: dict = {}
+    if not args.as_of:
+        try:
+            live_spreads = KvClient(args.dashboard_url).get_json("motif_bot_spread_stats") or {}
+        except Exception as e:
+            print(f"  [warn] motif_bot_spread_stats fetch failed: {e} -- "
+                  f"best-config filter falls back to the static spread table")
+
     log = load_log()
     new_signals, resolved_total, alerts_sent = 0, 0, 0
     states: list[dict] = []
@@ -722,7 +744,7 @@ def run(args: argparse.Namespace) -> None:
                                                       pair, bars, FROZEN)
                     current_price = float(bars["close"].to_numpy()[-1])
                     text = format_alert(pair, t, m, atr_arr, htf_lean, confidence, current_price,
-                                        swing_regime)
+                                        swing_regime, live_spread_pips(live_spreads, pair))
                     if send_via_dashboard(args.dashboard_url, text):
                         alerts_sent += 1
                     else:
@@ -734,7 +756,7 @@ def run(args: argparse.Namespace) -> None:
                 # never re-derive this differently in two places.
                 direction = 1 if t["direction"] == "BUY" else -1
                 swing_regime = _swing_regime(t["entry_idx"] - 1, direction, t["level"])
-                if not passes_best_config(pair, swing_regime):
+                if not passes_best_config(pair, swing_regime, live_spread_pips(live_spreads, pair)):
                     continue
                 plan_entries.append({
                     "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
