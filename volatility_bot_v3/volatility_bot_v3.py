@@ -55,7 +55,12 @@ from volatility_bot_v3.drawdown_throttle import DrawdownThrottle  # noqa: E402
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("volatility_bot_v3")
 
-MAGIC = 20260828                                              # unique to this bot
+MAGIC = 20260918                                              # unique to THIS bot — 2026-09-18: was a straight copy of
+                                                               # v2's own 20260828 (this file started as a copy of
+                                                               # volatility_bot_v2.py) — a real collision risk if the two
+                                                               # ever ran on the same MT5 account: MT5 filters/tracks a
+                                                               # bot's own positions by magic number, so a shared value
+                                                               # would make each bot see the other's positions as its own
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
 # The local decision engine (local_decision_engine/server.mjs) — a SEPARATE
 # base URL from DASHBOARD_URL on purpose (2026-09-18): DASHBOARD_URL stays
@@ -212,21 +217,22 @@ DEFAULT_CFG = {
     "eod_close_buffer_mins": 5,
 
     # Telegram — entered/skipped/rejected decisions + SL/TP close outcomes.
-    # Added 2026-08-31, REPLACING the old vol-forecast level-proximity alert
-    # (js/volLevelAlertCore.js's checkVolLevelAlertsNow — informational-only,
-    # no decision/confidence, no enter-or-skip reasoning, no close outcome;
-    # switched off server-side, see server.js's DEFAULT_VOL_LEVEL_CFG doc).
-    # Same own-dedicated-token convention as oi_bot's tg_token/tg_chat_id
-    # (plain per-bot KV config field, not the shared-fallback machinery in
-    # pylego/telegram.py — this bot's config KV key already carries MT5
-    # creds at the same trust level). Real token/chat baked in as the actual
-    # default (not blank) after a "Reset Defaults" + "Save" wiped the live
-    # config's tg fields once already -- see server.js's
-    # _restoreVolatilityV2Config doc; a blank default is what let that happen
-    # silently.
-    "tg_enabled": True,
-    "tg_token": "8470462785:AAEBm4okIKQrj7CGytRHJdrZ_gdtHih5chA",
-    "tg_chat_id": "8397861902",
+    # v2's own DEFAULT_CFG bakes in its REAL token/chat as the default (not
+    # blank) for a specific reason — a "Reset Defaults" + "Save" once wiped
+    # the live config's tg fields silently, see server.js's
+    # _restoreVolatilityV2Config doc. This file started as a straight copy of
+    # v2's, which would have meant v3 defaulting to v2's OWN real chat —
+    # every v3 alert (during what's meant to be an isolated paper-mode
+    # validation period) landing in the same feed as v2's real live alerts,
+    # indistinguishable. Deliberately blank + disabled here instead: v3 needs
+    # its OWN dedicated bot (BotFather) + chat before Telegram is turned on,
+    # not v2's. `send_telegram`/`_tg_send` both fail safe (no-op, never
+    # raise) on a missing token, so this is a safe default, not just an
+    # empty one — set volatility_bot_v3_config's tg_token/tg_chat_id once a
+    # real v3-specific bot exists.
+    "tg_enabled": False,
+    "tg_token": "",
+    "tg_chat_id": "",
 }
 
 # Broker symbol routing (identity stays shared; routing is local). Config can
@@ -966,7 +972,7 @@ def run(base_url: str, force_live: bool) -> None:
                     short_tag = f"{spec['side']}{spec['rung']}_{zid.rsplit('_', 1)[-1]}"
                     tid = broker.enter(instr, direction, spec["sl"], spec["tp"], lots,
                                        max_spread(instr, cfg), paper,
-                                       comment=f"VA[{short_tag}]", dedupe_tag=short_tag)
+                                       comment=f"VA3[{short_tag}]", dedupe_tag=short_tag)
                     filled = tid is not None and tid != -1
                     if filled:
                         guard.record_trade(instr)
