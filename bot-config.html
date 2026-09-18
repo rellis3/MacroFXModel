@@ -488,6 +488,7 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <button class="tab-btn" data-tab="macroequity" onclick="switchTab('macroequity')" style="color:#818cf8" id="meTabBtn">📈 Macro Equity</button>
     <button class="tab-btn" data-tab="volatility" onclick="switchTab('volatility')" style="color:#e0a93b" id="vbTabBtn">📐 Volatility</button>
     <button class="tab-btn" data-tab="volatilityv2" onclick="switchTab('volatilityv2')" style="color:#38bdf8" id="vb2TabBtn">🗳 Vote Atlas</button>
+    <button class="tab-btn" data-tab="volatilityv3" onclick="switchTab('volatilityv3')" style="color:#34d399" id="vb3TabBtn">🗳 Vote Atlas v3</button>
     <button class="tab-btn" data-tab="fibatlas" onclick="switchTab('fibatlas')" style="color:#a78bfa" id="faTabBtn">🌐 Fib Atlas</button>
     <button class="tab-btn" data-tab="motifbot" onclick="switchTab('motifbot')" style="color:#fb923c" id="mtTabBtn">👀 Motif Touch</button>
     <button class="tab-btn" data-tab="rangeline" onclick="switchTab('rangeline')" style="color:#4fd1c5" id="rlTabBtn">📊 Range-Line</button>
@@ -4146,6 +4147,346 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
 
   </div><!-- /tab-volatilityv2 -->
 
+  <div class="tab-pane" id="tab-volatilityv3">
+
+    <div class="bot-banner" style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.28)">
+      <div class="bot-banner-icon">🗳</div>
+      <div style="flex:1">
+        <div class="bot-banner-title" style="color:#34d399">Vote Atlas v3 — Local Decision Engine</div>
+        <div class="bot-banner-sub">Same strategy/risk logic as Vote Atlas (left), but the fade/follow vote + margin is computed LOCALLY at the exact moment of decision instead of read from a 45s-old server plan — fixes the live-vs-backtest divergence found 2026-09-18. Own magic number, own Telegram, paper by default — safe to run alongside Vote Atlas on the same MT5 account. volatility_bot_v3/volatility_bot_v3.py</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="level-atlas-vote-portfolio.html" target="_blank" style="text-decoration:none">
+          <button style="background:transparent;border:1px solid #34d399;border-radius:7px;color:#34d399;font-weight:600;padding:8px 14px;cursor:pointer;font-size:12px">Backtest</button>
+        </a>
+        <button style="background:#34d399;border:none;border-radius:7px;color:#00291d;font-weight:700;padding:8px 14px;cursor:pointer;font-size:12px" onclick="saveVb3Config();saveVb3Creds()">Save All</button>
+      </div>
+    </div>
+
+    <!-- How it decides -->
+    <details class="card" style="padding:0;margin-bottom:14px">
+      <summary style="cursor:pointer;padding:12px 16px;font-size:12px;font-weight:600;color:#34d399;list-style:none">
+        ▸ How the bot decides &amp; what each status means <span style="color:var(--text3);font-weight:400">(read this if the table looks confusing)</span>
+      </summary>
+      <div style="padding:0 16px 14px;font-size:12px;line-height:1.6;color:var(--text2)">
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Why v3 exists</div>
+        <p style="margin:0 0 10px">Vote Atlas (v2) computes each zone's vote/margin on the SERVER every ~45 seconds and the bot fires against whatever snapshot happened to be current — measured 2026-09-18 to drift a real zone's margin 3→1 over 43 minutes with no touch occurring, and 20/26 (77%) of a day's real entries logged a margin that didn't match the backtest's computation for the identical touch. v3 fixes this by running a small local engine (<code>local_decision_engine/</code>, on this same machine, next to MT5) that computes the vote fresh at the exact moment the bot needs it — the staleness gap collapses to milliseconds instead of up to 45 seconds. It's the same engine code (<code>atlasWalk</code>/<code>matchLiveContext</code>/<code>voteDecision</code>), just relocated, not reimplemented.</p>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The day, start to finish</div>
+        <ol style="margin:0 0 10px 18px;padding:0">
+          <li>A local process (<code>local_decision_engine/sync.mjs --loop</code>) pulls this pair's book once a day and a fresh M1 tail every 15 minutes from Railway — a pure pull, no OANDA credential on this machine.</li>
+          <li>Another local process (<code>local_decision_engine/server.mjs</code>) keeps a warm, always-current cache of every enabled pair's zones, recomputing only when new local bars arrive.</li>
+          <li>This bot asks that local engine for a decision on every price tick — same one-entry-per-zone, bracketed-order, currency-loss-gate, stack-guard, portfolio-heat-budget logic as Vote Atlas, just sourcing the zone from the local engine instead of a KV plan.</li>
+          <li>If the local engine is unreachable or its data is stale beyond the configured max age, NEW entries are blocked (fail-closed) — existing positions are left alone.</li>
+        </ol>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">The currency loss gate</div>
+        <p style="margin:0 0 10px">Identical mechanism to Vote Atlas — tracks THIS bot's own realized P&amp;L per currency, live, reset at UTC midnight, blocks new trades touching a currency once today's realized loss on it breaches the threshold.</p>
+        <div style="font-weight:600;color:var(--text);margin-bottom:2px">Fade-stop tightening &amp; Early exit</div>
+        <p style="margin:0">Applied by the LOCAL ENGINE when it computes the zone (same formulas Vote Atlas's server-side plan producer uses) — there's nothing for the bot itself to recompute; the toggles below just control whether the local engine applies them.</p>
+      </div>
+    </details>
+
+    <!-- Live status -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px 8px">
+        <span style="font-size:12px;font-weight:600;color:#34d399">Live Status</span>
+        <span id="vb3LiveAge" style="font-size:11px;color:var(--text3)">Waiting for bot…</span>
+        <span id="vb3LiveMode" style="font-size:11px;font-weight:600"></span>
+        <span style="flex:1"></span>
+        <span id="vb3LiveBal" style="font-size:11px;color:var(--text3)"></span>
+        <button onclick="loadVb3LiveStatus()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="display:flex;gap:20px;padding:4px 16px 12px;font-size:11px;font-family:'DM Mono',monospace;flex-wrap:wrap">
+        <span>Open positions: <b id="vb3OpenN">—</b></span>
+        <span>Today's trades: <b id="vb3TradesN">—</b></span>
+        <span>Live universe: <b id="vb3UniN">—</b></span>
+        <span>Currency gate: <b id="vb3GateN" style="color:var(--text3)">—</b></span>
+      </div>
+    </div>
+
+    <!-- Risk systems -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#c084fc">Risk Systems</span>
+        <span class="bot-banner-sub" style="margin:0">every risk mechanism's CURRENT state, at a glance — not just its config value</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding:6px 16px 14px;font-size:11px;font-family:'DM Mono',monospace">
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Never-resetting running-peak drawdown throttle. Engaged = new position sizes are cut by the configured multiplier until balance recovers to the restore level (not merely off the trigger).">
+          <div style="color:var(--text3);margin-bottom:3px">Drawdown throttle</div>
+          <div id="vb3Throttle" style="font-weight:600">—</div>
+          <button id="vb3ThrottleResetBtn" type="button" onclick="resetVb3Throttle()" style="display:none;margin-top:6px;font-size:10px;padding:3px 8px;border-color:var(--amber,#e0a93b);color:var(--amber,#e0a93b)" title="Manual override — clears the running peak and throttled state immediately, instead of waiting for balance to recover to the restore level.">Reset throttle now</button>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="How old is the STALEST enabled pair's Level Atlas book — the base-rate data the local engine votes against. Shared across every consumer (Vote Atlas, v3, the backtest page), not v3-specific.">
+          <div style="color:var(--text3);margin-bottom:3px">Book freshness</div>
+          <div id="vb3Staleness" style="font-weight:600">—</div>
+          <button id="vb3RefreshBookBtn" type="button" onclick="refreshVb3Book()" style="margin-top:6px;font-size:10px;padding:3px 8px" title="Manually re-runs the Level Atlas rebuild for this bot's enabled pairs right now.">Refresh book now</button>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Daily/monthly drawdown lockout (pylego.risk_guard). Locked = ALL new entries blocked account-wide until the lockout window expires, regardless of pair.">
+          <div style="color:var(--text3);margin-bottom:3px">Risk guard</div>
+          <div id="vb3RiskGuard" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Sum of risk % across every currently-open position (from the bot's own risk ledger) vs the configured portfolio heat cap.">
+          <div style="color:var(--text3);margin-bottom:3px">Portfolio heat</div>
+          <div id="vb3Heat" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Fail-closed safety: if the bot hasn't gotten a fresh decision from the LOCAL ENGINE within plan_max_age_hours, NEW entries are blocked (existing brackets keep running) rather than trading against stale/absent local data.">
+          <div style="color:var(--text3);margin-bottom:3px">Local engine gate</div>
+          <div id="vb3PlanGate" style="font-weight:600">—</div>
+        </div>
+        <div style="border:1px solid var(--border);border-radius:6px;padding:8px 10px" title="Flattening = within the configured buffer of the strategy's session close (Europe/London midnight) — open positions are being closed out and NEW entries are blocked until the next session.">
+          <div style="color:var(--text3);margin-bottom:3px">EOD close</div>
+          <div id="vb3EodGate" style="font-weight:600">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Open positions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#34d399">Open Positions</span>
+        <span class="bot-banner-sub" style="margin:0">what the bot is holding right now</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Dir</th>
+              <th style="padding:6px 10px;text-align:right">Lots</th>
+              <th style="padding:6px 10px;text-align:right">Open</th>
+              <th style="padding:6px 10px;text-align:right">Live</th>
+              <th style="padding:6px 10px;text-align:right">P&amp;L</th>
+            </tr>
+          </thead>
+          <tbody id="vb3OpenBody">
+            <tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Today's levels & live decisions -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#34d399">Today's Levels &amp; Live Decisions</span>
+        <span class="bot-banner-sub" style="margin:0">one row per currently-armed rung — fade/follow, margin, and the priced entry/SL/TP, computed locally</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)" id="vb3LinesHead">
+              <th data-col="pair" onclick="vb3SortLines('pair')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Pair<span class="sort-ind"></span></th>
+              <th data-col="side" onclick="vb3SortLines('side')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Side<span class="sort-ind"></span></th>
+              <th data-col="rung" onclick="vb3SortLines('rung')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Rung<span class="sort-ind"></span></th>
+              <th data-col="decision" onclick="vb3SortLines('decision')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Decision<span class="sort-ind"></span></th>
+              <th data-col="margin" onclick="vb3SortLines('margin')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">Margin<span class="sort-ind"></span></th>
+              <th data-col="entry" onclick="vb3SortLines('entry')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">Entry<span class="sort-ind"></span></th>
+              <th data-col="sl" onclick="vb3SortLines('sl')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">SL<span class="sort-ind"></span></th>
+              <th data-col="tp" onclick="vb3SortLines('tp')" style="padding:6px 10px;text-align:right;cursor:pointer;user-select:none">TP<span class="sort-ind"></span></th>
+              <th data-col="status" onclick="vb3SortLines('status')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Status<span class="sort-ind"></span></th>
+              <th data-col="rationale" onclick="vb3SortLines('rationale')" style="padding:6px 10px;text-align:left;cursor:pointer;user-select:none">Rationale<span class="sort-ind"></span></th>
+            </tr>
+          </thead>
+          <tbody id="vb3LinesBody">
+            <tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Run the bot to see today's levels</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ALL lines, watched or not -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#a78bfa">All Lines — every rung, watched or not</span>
+        <span class="bot-banner-sub" style="margin:0">unfiltered — includes margin&lt;3 and "no decision" lines the bot's plan above leaves out. p50/p75 only.</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="vb3AllLinesFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadVb3AllLines()">
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)">
+          Sort <select id="vb3AllLinesSort" onchange="loadVb3AllLines()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+            <option value="margin">Margin (high→low)</option>
+            <option value="pair">Pair (A→Z)</option>
+          </select>
+        </label>
+        <button onclick="loadVb3AllLines()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:center">Tradeable now</th>
+            </tr>
+          </thead>
+          <tbody id="vb3AllLinesBody">
+            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Decision audit log -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#f59e0b">Decision Timeline</span>
+        <span class="bot-banner-sub" style="margin:0">persistent audit — why was each touch entered, rejected, skipped, or pair-blocked. Written by the bot itself, most recent first. Carries voteDims from day one for direct comparison against the backtest.</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="vb3DecFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadVb3DecisionLog()">
+        </label>
+        <button onclick="vb3DecShiftDay(-1)" title="Previous day" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">← Prev</button>
+        <input type="date" id="vb3DecDate" onchange="loadVb3DecisionLog()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+        <button onclick="vb3DecShiftDay(1)" title="Next day" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">Next →</button>
+        <button onclick="vb3DecClearDate()" title="Clear date filter — show most recent events across all dates" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 8px;font-size:11px;cursor:pointer">All dates</button>
+        <button onclick="loadVb3DecisionLog()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Time (UTC)</th>
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Reason</th>
+            </tr>
+          </thead>
+          <tbody id="vb3DecisionBody">
+            <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- How to run -->
+    <div class="card">
+      <div class="card-title">How to run</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Needs the local decision engine running first (its own README: <code>local_decision_engine/README.md</code>). Paper mode is the default. Uses its own magic number (20260918) and Telegram — safe to run alongside Vote Atlas v2 on the same MT5 account.</div>
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Start the local decision engine (once, leave running):
+node local_decision_engine/sync.mjs --loop
+node local_decision_engine/server.mjs
+
+# 2) Paper trade this bot (default) — point --url at this dashboard:
+python volatility_bot_v3/volatility_bot_v3.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python volatility_bot_v3/volatility_bot_v3.py)
+
+# 3) Go live on MT5 (after saving credentials below + a clean paper run):
+python volatility_bot_v3/volatility_bot_v3.py --live --url &lt;dashboard-url&gt;</pre>
+      <div class="bot-banner-sub" style="margin-top:8px">The local engine recomputes continuously from local M1 data — the pair list below controls which pairs BOTH the local engine watches and this bot trades. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and Node (for the local engine) on the same machine as MT5.</div>
+    </div>
+
+    <!-- Pair universe -->
+    <div class="card">
+      <div class="card-title">Pairs</div>
+      <div class="bot-banner-sub" style="margin-bottom:8px">Which pairs this bot trades — must be a subset of <code>local_decision_engine/config.json</code>'s pair list (the local engine only computes zones for pairs it's configured to sync). Same universe as Vote Atlas v2's picker.</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" onclick="vb3SelectAllPairs()" style="background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--text2);padding:5px 12px;font-size:11px;cursor:pointer">Select all</button>
+        <button type="button" onclick="vb3SelectRecommendedPairs()" style="background:transparent;border:1px solid #34d399;border-radius:6px;color:#34d399;padding:5px 12px;font-size:11px;cursor:pointer">Select recommended</button>
+      </div>
+      <div id="vb3PairChecks" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px 10px;font-size:12px"></div>
+    </div>
+
+    <div class="grid">
+      <!-- ── Controls ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">Bot Control</div>
+        <div class="form-row"><span class="form-lbl" title="Paper trade (checked): fills are simulated, no real orders sent — safe default with zero live track record. Unchecked (LIVE): the bot sends real MT5 orders using the credentials below. Only go live after a clean paper run.">Mode</span>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="vb3_paper_mode"> Paper trade <small style="color:var(--text3)">(uncheck = LIVE)</small></label></div>
+        <div class="form-row"><span class="form-lbl" title="Emergency stop: blocks all NEW entries immediately (existing open positions are left alone, not force-closed).">Kill switch <small>no new entries</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_kill_switch"> stop</label></div>
+        <div class="form-row"><span class="form-lbl" title="% of account balance risked on EVERY trade, sized off that specific trade's own SL distance.">Risk % / trade</span><input type="number" id="vb3_risk_pct" min="0.05" max="5" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Hard ceiling on any single position's lot size, regardless of what the risk-% sizing formula would otherwise compute.">Max lot</span><input type="number" id="vb3_max_lot" min="0.01" max="50" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open across ALL pairs simultaneously.">Max open positions</span><input type="number" id="vb3_max_open" min="1" max="40" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Caps how many positions this bot can hold open on the SAME pair at once.">Max concurrent / pair</span><input type="number" id="vb3_max_concurrent_per_pair" min="1" max="10" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Skips an entry if the live bid/ask spread on that symbol is wider than this many pips at the moment of fill.">Max spread (pips)</span><input type="number" id="vb3_max_spread_pips" min="0.1" max="50" step="0.1" style="width:80px"><span id="vb3SpreadCapNote" style="font-size:11px;color:var(--text3);margin-left:8px"></span></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Risk overlays</div>
+        <div class="form-row"><span class="form-lbl" title="Tracks THIS bot's own realized P&amp;L per currency, live, reset at UTC midnight. Once a currency's realized loss today breaches the threshold below, new trades touching that currency are blocked for the rest of the day.">Currency loss gate</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_ccy_loss_gate"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="The per-currency realized-loss threshold (% of account) that trips the gate above.">↳ Max daily loss / currency %</span><input type="number" id="vb3_max_daily_loss_pct" min="0.1" max="20" step="0.1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Applied by the LOCAL ENGINE when it computes the zone, not by this bot — a fade zone's stop may already be tightened toward entry using that pair's own historically-validated MAE percentile. Defaults OFF — Early exit below is the validated, leverage-safe replacement.">Fade-stop tightening <small>local-engine-side, see explainer above — defaults OFF</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_fade_stop_tighten"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Applied by the LOCAL ENGINE when it computes the zone. On a fade zone, cuts the ACTUAL broker stop to this fraction of the full stop distance while still SIZING the position off the full (untightened) distance.">Early exit (no re-lever) <small>local-engine-side</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_early_exit"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Fraction of the full stop distance the actual broker stop is cut to when Early exit is on.">↳ Early exit threshold</span><input type="number" id="vb3_early_exit_threshold" min="0.1" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Trades the outermost (p90) rung — every armed p90 touch trades unconditionally (no vote). Defaults OFF — no live track record yet.">P90 rung (unconditional fade) <small>different mechanism, defaults OFF</small></span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_p90_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Caps the TOTAL risk % this bot has committed across all its own currently-open positions combined. 0 = off.">Portfolio heat cap % <small>0 = off</small></span><input type="number" id="vb3_max_open_risk_pct" min="0" max="50" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Tracks this bot's own running PEAK balance and once drawdown from that peak breaches the trigger below, scales every new position's size down by the throttle multiplier.">Drawdown throttle</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_throttle_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Cliff = single on/off step at the trigger below. Graded ramp = steps size down through a 3-tier ramp as drawdown worsens instead of one hard cut — the live default. Graded mode IGNORES the trigger/multiplier fields below.">↳ Throttle style</span>
+          <select id="vb3_throttle_mode" style="width:200px">
+            <option value="cliff">Cliff (single step)</option>
+            <option value="graded">Graded ramp (live default)</option>
+          </select></div>
+        <div class="form-row"><span class="form-lbl" title="Drawdown from the running peak balance (%, negative) that engages the throttle. Cliff mode only.">↳ Trigger drawdown %</span><input type="number" id="vb3_throttle_trigger_dd" min="-50" max="-0.5" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Drawdown from the same peak (%, negative, closer to zero than the trigger) that balance must recover to before the throttle releases back to full size.">↳ Restore drawdown %</span><input type="number" id="vb3_throttle_restore_dd" min="-50" max="0" step="0.5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Size multiplier applied to every new position while the throttle is engaged. Cliff mode only.">↳ Throttle size multiplier</span><input type="number" id="vb3_throttle_mult" min="0.05" max="1" step="0.05" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Blocks a new entry that would stack a same-direction position too close to one already open on a related pair/currency.">Stack guard</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_stack_guard"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="How close (in pips) two same-direction zones need to be before the stack guard above treats them as redundant.">↳ Stack guard pips</span><input type="number" id="vb3_stack_guard_pips" min="0" max="100" step="1" style="width:80px"></div>
+        <div style="margin-top:8px;margin-bottom:4px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Cadences (seconds)</div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot polls live price against each zone's entry to decide whether to fire — this is a local watch loop, not a network call.">Price tick <small>local watch</small></span><input type="number" id="vb3_tick_secs" min="1" max="60" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot pushes its own status (open positions, today's trades, currency gate state) to the dashboard for this page to display.">Status push</span><input type="number" id="vb3_status_secs" min="10" max="300" step="5" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="How often the bot re-pulls a fresh decision from the LOCAL engine — a same-machine call with no Railway round-trip, so this can safely run fast (default 3s, matching tick_secs — a genuine near-real-time decision, not a 45s server snapshot).">Local engine poll <small>local call — fast by design</small></span><input type="number" id="vb3_plan_secs" min="1" max="3600" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Fail-closed safety: if the bot hasn't gotten a fresh decision from the local engine within this many hours, it stops taking NEW entries rather than trading against stale/absent local data. Default is 10 minutes (0.167h) — far tighter than Vote Atlas v2's 1h, since a local engine outage should be caught fast.">Local engine max age (hours) <small>fail-closed on new entries beyond this</small></span><input type="number" id="vb3_plan_max_age_hours" min="0.01" max="24" step="0.01" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Flattens every open position before the strategy's own session close (Europe/London midnight, DST-aware) instead of letting it run into the next day unbounded.">EOD close</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_eod_close_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Minutes BEFORE the session-close boundary to flatten.">↳ Buffer (minutes before close)</span><input type="number" id="vb3_eod_close_buffer_mins" min="0" max="120" step="1" style="width:80px"></div>
+        <div class="form-row"><span class="form-lbl" title="Telegram alert on every entered/skipped/rejected zone plus SL/TP close outcomes. Own bot/chat — separate from Vote Atlas v2's, blank by default.">Telegram alerts</span>
+          <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="vb3_tg_enabled"> on</label></div>
+        <div class="form-row"><span class="form-lbl" title="Own Telegram bot token — blank by default, deliberately NOT shared with Vote Atlas v2's (fixed 2026-09-18 to avoid both bots posting to the same chat under one identity).">↳ Bot token</span><input type="text" id="vb3_tg_token" placeholder="(blank by default — own bot, not shared with v2)" style="width:220px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">↳ Chat ID</span><input type="text" id="vb3_tg_chat_id" placeholder="(own chat)" style="width:160px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#34d399;color:#00291d" onclick="saveVb3Config()">Save Config</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetVb3Defaults()">Reset Defaults</button>
+          <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="testVb3Telegram()">Send test alert</button>
+          <span id="vb3SaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="card-title">MT5 Account</div>
+        <div class="bot-banner-sub" style="margin-bottom:8px">Can safely point at the SAME account/terminal as Vote Atlas v2 — this bot's own magic number (20260918, distinct from v2's) keeps positions/closed-trade queries and order placement fully isolated at the broker level. Note: the account-level drawdown lockout (Risk guard, above) currently reads the account's WHOLE balance, not just this bot's own P&amp;L, if run on a shared account.</div>
+        <div class="form-row"><span class="form-lbl">Account #</span><input type="text" id="vb3_mt5_account" placeholder="12345678" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Password</span><input type="password" id="vb3_mt5_password" placeholder="(saved — leave blank to keep)" style="width:160px"></div>
+        <div class="form-row"><span class="form-lbl">Server</span><input type="text" id="vb3_mt5_server" placeholder="Broker-Server" style="width:160px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Terminal path <small>optional</small></span><input type="text" id="vb3_mt5_path" placeholder="C:\\...\\terminal64.exe" style="width:200px;text-align:left"></div>
+        <div style="margin-top:16px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#34d399;color:#00291d" onclick="saveVb3Creds()">Save Credentials</button>
+          <span id="vb3CredsStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+        <div class="bot-banner-sub" style="margin-top:12px">Saved to KV (<code style="background:var(--s3);padding:1px 5px;border-radius:3px">volatility_bot_v3_credentials</code>). The bot reads them on connect when paper trade is OFF. Flip to live only after a paper run looks right AND parity vs the backtest is confirmed via the Decision Timeline above.</div>
+      </div>
+    </div>
+
+    <!-- ── Broker index symbols ────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Broker Symbols — Indices</div>
+      <div class="bot-banner-sub" style="margin-bottom:10px">Brokers name the index CFDs differently. Set what YOUR MT5 broker calls each one (leave blank to use the built-in default in brackets). FX pairs and gold resolve automatically.</div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        <div class="form-row"><span class="form-lbl">NASDAQ 100 <small>nq</small></span><input type="text" id="vb3_sym_nq" placeholder="USTECH100" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">S&amp;P 500 <small>spx</small></span><input type="text" id="vb3_sym_spx" placeholder="SP500" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">DAX 40 <small>de30</small></span><input type="text" id="vb3_sym_de30" placeholder="GER40" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Dow 30 <small>dow</small></span><input type="text" id="vb3_sym_dow" placeholder="US30" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Russell 2000 <small>us2000</small></span><input type="text" id="vb3_sym_us2000" placeholder="US2000" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">UK 100 <small>uk100</small></span><input type="text" id="vb3_sym_uk100" placeholder="UK100" style="width:140px;text-align:left"></div>
+        <div class="form-row"><span class="form-lbl">Gold <small>gold</small></span><input type="text" id="vb3_sym_gold" placeholder="XAUUSD" style="width:140px;text-align:left"></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+        <button class="btn-save" style="background:#34d399;color:#00291d" onclick="saveVb3Config()">Save Symbols</button>
+        <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh (no restart needed for FX; restart needed for live index trades)</span>
+      </div>
+    </div>
+
+  </div><!-- /tab-volatilityv3 -->
+
   <!-- ══════════════════════════════════════════════════════ FIB ATLAS TAB -->
   <div class="tab-pane" id="tab-fibatlas">
 
@@ -4989,13 +5330,14 @@ python range_line_bot/range_line_bot.py --live --url &lt;dashboard-url&gt;</pre>
               <th style="padding:6px 10px;text-align:left">Regime</th>
               <th style="padding:6px 10px;text-align:right">Spot</th>
               <th style="padding:6px 10px;text-align:right">Max pain</th>
+              <th style="padding:6px 10px;text-align:right" title="How far live spot has walked from where today's OI snapshot was taken. The walls themselves never move intraday — only this reading does. day_drift_max_pct (config-only, default 0/off) can refuse new fade/break/react entries past a threshold; maxpain is always exempt.">Day drift</th>
               <th style="padding:6px 10px;text-align:right">Zones</th>
               <th style="padding:6px 10px;text-align:left">Taken</th>
               <th style="padding:6px 10px;text-align:left" title="Zones the bot skipped because price had already passed their entry when the plan armed (priming — not chasing a stale break). Hover a count for when + how far past.">Skipped</th>
             </tr>
           </thead>
           <tbody id="oiLinesBody">
-            <tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's zones</td></tr>
+            <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">Run the bot (or refresh the plan) to see today's zones</td></tr>
           </tbody>
         </table>
       </div>
@@ -6412,6 +6754,7 @@ const TAB_BOT_KEY_MAP = {
   macroequity: 'macro_equity_bot_status',
   volatility:  ['volatility_bot_status', 'volatility_ride_status'],
   volatilityv2: 'volatility_bot_v2_status',
+  volatilityv3: 'volatility_bot_v3_status',
   fibatlas:    'fib_atlas_bot_status',
   motifbot:    'motif_bot_status',
   rangeline:   'range_line_bot_status',

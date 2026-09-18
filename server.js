@@ -17339,9 +17339,17 @@ app.get('/api/level-atlas/staleness', async (_req, res) => {
 // there's exactly one rebuild code path, not a second one to drift from it.
 // Scoped to just the bot's own enabled_pairs (not all 31 reference pairs) —
 // faster, and it's the ONLY set the live bot actually depends on.
-app.post('/api/level-atlas/refresh-now', async (_req, res) => {
+app.post('/api/level-atlas/refresh-now', async (req, res) => {
   try {
-    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    // ?bot=v3 reads v3's own enabled_pairs instead of v2's — same underlying
+    // Level Atlas book, just a different bot's pair universe to prioritize.
+    // v3's local decision engine (local_decision_engine/) depends on this
+    // same book's freshness (its M1 tail route calls getFastLive, but the
+    // BOOK itself — base rates per dimension bucket — only updates via this
+    // nightly/manual rebuild), so it isn't v2-specific even though the
+    // config it reads for a pair list defaults to v2's.
+    const cfgKey = req.query.bot === 'v3' ? 'volatility_bot_v3_config' : 'volatility_bot_v2_config';
+    const cfgRaw = await kv.get(cfgKey).catch(() => null);
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
     const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
     const { jobId } = _startLevelAtlasRunJob({ instruments: pairs.map(p => p.toUpperCase()) });
@@ -17467,6 +17475,22 @@ app.post('/api/volatility-v2/telegram-test', async (_req, res) => {
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Vote Atlas v3's own copy of the telegram-test route above — v3 defaults
+// tg_token/tg_chat_id to blank (see volatility_bot_v3.py's DEFAULT_CFG,
+// fixed 2026-09-18 identity-collision cleanup) rather than v2's real live
+// credentials, so this route reads v3's own saved config, never v2's.
+app.post('/api/volatility-v3/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v3_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas v3 config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas v3 — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
