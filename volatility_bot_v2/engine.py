@@ -90,6 +90,14 @@ def make_spec(instrument: str, z: dict) -> dict:
         "sizingSl": float(z["sizingSl"]) if z.get("sizingSl") is not None else (float(z["sl"]) if z.get("sl") is not None else None),
         "margin": z.get("margin"),
         "rationale": z.get("rationale", ""),
+        # 2026-09-18: live-vs-backtest divergence audit (server.js's
+        # _volatilityV2PriceZone doc has the full account) — the compact
+        # per-dimension vote detail (dimKey/bucket/favors) behind this zone's
+        # margin, logged at entry time so a future day's decision_log entry
+        # can be diffed dimension-by-dimension against the backtest's own
+        # computation for the same touch, instead of only comparing the
+        # summary margin (which is all today's incident could reconstruct).
+        "voteDims": z.get("voteDims"),
     }
 
 

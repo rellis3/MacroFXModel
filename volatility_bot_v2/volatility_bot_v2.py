@@ -592,11 +592,21 @@ def run(base_url: str, force_live: bool) -> None:
     decision_dirty = {"v": False}   # set by _record_decision, cleared by a successful flush
     def _record_decision(pair: str, status: str, *, side: str | None = None, rung: str | None = None,
                           zone_id: str | None = None, decision: str | None = None, margin: int | None = None,
-                          reason: str | None = None) -> None:
+                          reason: str | None = None, vote_dims: list | None = None) -> None:
         decision_dirty["v"] = True
-        decision_events.append({"t": int(time.time()), "pair": pair, "side": side, "rung": rung,
-                                 "zone_id": zone_id, "decision": decision, "margin": margin,
-                                 "status": status, "reason": reason})
+        event = {"t": int(time.time()), "pair": pair, "side": side, "rung": rung,
+                  "zone_id": zone_id, "decision": decision, "margin": margin,
+                  "status": status, "reason": reason}
+        # vote_dims (2026-09-18, live-vs-backtest divergence audit — see
+        # engine.py's make_spec doc): the per-dimension vote detail behind
+        # `margin`, ONLY for "entered" (the vast majority of events are
+        # pair_blocked/skipped/rejected noise per this function's own size
+        # comment above — attaching it to every event would blow the 50,000-
+        # event cap's byte budget for no diagnostic value, since only actual
+        # entries are worth diffing against the backtest).
+        if vote_dims and status == "entered":
+            event["voteDims"] = vote_dims
+        decision_events.append(event)
         if len(decision_events) > DECISION_LOG_MAX_EVENTS:
             del decision_events[:len(decision_events) - DECISION_LOG_MAX_EVENTS]
 
@@ -939,7 +949,8 @@ def run(base_url: str, force_live: bool) -> None:
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
                                  f"→ ticket {tid} lots {lots} (margin {spec['margin']})")
                         _record_decision(instr, "entered", side=spec.get("side"), rung=spec.get("rung"),
-                                          zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"))
+                                          zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
+                                          vote_dims=spec.get("voteDims"))
                         if cfg.get("tg_enabled", True) and tg_master_on:
                             mid = _tg_send(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
                                            _fmt_entry_alert(instr, spec, lots, " [PAPER]" if paper else ""))

@@ -83,6 +83,7 @@ import {
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
 import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTrade, applyFadeStopTightening as _laApplyFadeStopTightening } from './js/levelAtlasVoteReview.js';
+import { matchLiveContext as _laMatchLiveContext } from './js/levelAtlasReport.js';
 import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } from './js/levelAtlasEngine.js';
 import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
 import { buildLadder as _laBuildLadder } from './js/forecastLadder.js';
@@ -16561,6 +16562,28 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
   const priced = _laPriceBarrierTrade(withDist, vd.decision, cost);
   if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
 
+  // 2026-09-18: live-vs-backtest divergence audit (owner-flagged, #1 priority
+  // — live's realized win rate has been running ~20-30pp below the honest
+  // backtest's every day since the parquet/anchor fixes). Cross-referencing
+  // the existing volatility_bot_v2_decision_log against a same-day overnight
+  // recompute showed 20/26 (77%) of real entries logged a DIFFERENT margin
+  // than the "honest" full-history computation for the SAME touch at the
+  // SAME minute — voteDecision/matchLiveContext are the identical shared
+  // functions both paths call (ruled out a drifted duplicate), so the
+  // divergence has to be in the CONTEXT going in, not the vote logic itself.
+  // Recomputing matchLiveContext here (redundant with the one voteDecision
+  // already ran internally, but it doesn't expose its own result) to attach
+  // the per-dimension supports/challenges/context detail to the zone, so the
+  // bot can log WHICH dimensions actually voted at entry time — turns the
+  // next occurrence into an exact dimension-by-dimension diff against the
+  // backtest instead of another after-the-fact reconstruction. Compact
+  // (dimKey+bucket+favors only, no per-dimension stats) to keep the
+  // decision log's per-event size sane.
+  const _voteMatch = _laMatchLiveContext(book, withDist);
+  const voteDims = _voteMatch
+    ? [..._voteMatch.supports, ..._voteMatch.challenges, ..._voteMatch.context].map(x => ({ k: x.dimKey, b: x.bucket, f: x.favors }))
+    : null;
+
   const sgn = withDist.side === 'up' ? 1 : -1;
   const inner = withDist.level - sgn * withDist.innerDistPips * withDist.pip;
   let outerDistPips = withDist.outerDistPips;
@@ -16591,6 +16614,7 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
     side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
     entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
     rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+    voteDims,
   };
 }
 
