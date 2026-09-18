@@ -122,9 +122,25 @@ async function syncM1(pair) {
   if (!j.ok) throw new Error(`m1-tail fetch failed for ${pair}: ${j.error || 'unknown'}`);
   if (!j.n) {
     // Incremental pull with nothing new since last time is the NORMAL case
-    // (most 15-min cycles land between bar closes at the edge) -- only a
+    // (most 15-min cycles land between bar closes at the edge, and ALWAYS
+    // over a weekend -- FX closed Fri ~22:00 UTC to Sun ~22:00 UTC) -- only a
     // full pull returning empty is a real problem.
-    if (since != null) return existing.n;
+    //
+    // Found 2026-09-19 (same bug caught in fib_local_decision_engine's
+    // identical copy, owner question about weekend behavior): a bare
+    // `return existing.n` here never touches the local file, so its mtime
+    // freezes at the last real bar. server.mjs's m1Age() reads that mtime,
+    // and once it exceeds MAX_M1_AGE_HOURS (2h default) -- about 2 hours
+    // after Friday's close, i.e. still Friday night -- every pair reports
+    // {stale:true} and /plan skips the whole universe for the entire
+    // weekend, NOT because the data is stale (it's exactly as current as
+    // the closed market allows) but because "no new bars" was being
+    // conflated with "sync isn't working." Re-saving the SAME data confirms
+    // "we checked, and the market genuinely has nothing new" as a fresh
+    // fact, which is what the staleness gate should measure -- a real sync
+    // failure (server down, network gone) still correctly ages out, since
+    // THEN this line is never reached at all.
+    if (since != null) { if (existing?.n) await saveM1(pair, existing); return existing.n; }
     throw new Error(`m1-tail fetch failed for ${pair}: empty response`);
   }
   const fetched = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };

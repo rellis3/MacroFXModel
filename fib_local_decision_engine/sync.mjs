@@ -79,7 +79,20 @@ async function syncM1(pair) {
   if (r.status === 202 && j.warming) { console.log(`[sync] ${pair}: server still warming — will retry next cycle`); return null; }
   if (!j.ok) throw new Error(`m1-tail fetch failed for ${pair}: ${j.error || 'unknown'}`);
   if (!j.n) {
-    if (since != null) return existing.n;
+    // "Nothing new since last time" is the NORMAL case over a weekend (FX
+    // closed Fri ~22:00 UTC to Sun ~22:00 UTC) -- found 2026-09-19, owner
+    // question: a plain `return existing.n` here (the original design) never
+    // touches the local file, so its mtime freezes at Friday's last real bar.
+    // server.mjs's m1Age() reads that mtime, and once it exceeds
+    // MAX_M1_AGE_HOURS (2h default) every pair reports {stale:true} and
+    // /plan skips the whole universe -- NOT because the data is actually
+    // stale (it's exactly as current as the market allows), but because
+    // "no new bars" was being conflated with "sync isn't working." Re-saving
+    // the SAME data confirms "we checked, and the market genuinely has
+    // nothing new" as a fresh fact, which is what the staleness gate should
+    // actually be measuring -- a real sync failure (server down, network
+    // gone) still correctly ages out, since THEN this line is never reached.
+    if (since != null) { if (existing?.n) await saveM1(pair, existing); return existing.n; }
     throw new Error(`m1-tail fetch failed for ${pair}: empty response`);
   }
   const fetched = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
