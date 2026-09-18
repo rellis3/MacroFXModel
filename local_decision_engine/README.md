@@ -15,7 +15,12 @@ Environment variables:
 - `OANDA_ENV` — `practice` or `live` (default `live`).
 - `DASHBOARD_URL` — Railway server base URL (default `http://localhost:3000`).
 - `LOCAL_DECISION_PORT` — port for `server.mjs` (default `4500`).
-- `LOCAL_WINDOW_DAYS` — how much local M1 history to keep (default `14`).
+- `LOCAL_WINDOW_DAYS` — how much local M1 history to keep (default `100` —
+  not "~2 weeks" as first planned; `atlasWalk`'s own minLookback gate needs
+  ~90-100 calendar days to clear at all, see the architecture doc's own
+  correction).
+- `REFRESH_INTERVAL_MS` — how often the background loop checks for new bars
+  to recompute (default `5000`).
 
 ## Running
 

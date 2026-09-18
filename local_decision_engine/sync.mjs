@@ -23,7 +23,15 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
-const LOCAL_WINDOW_DAYS = Number(process.env.LOCAL_WINDOW_DAYS || 14);
+// 2026-09-18: was 14 — too short. atlasWalk's own minLookback gate (default
+// 60 TRADING days -- js/levelAtlasEngine.js's `if (dates.length <= minLookback)
+// return {touches:[], coverage:null}`) needs the window to clear ~60 trading
+// days just to produce ANY output at all, separate from and larger than what
+// the fast-moving vote dimensions themselves need. Found live: a 14-day
+// window made every /decide call return "no live coverage yet" with zero
+// zones. 100 calendar days comfortably clears 60 trading days with margin
+// for holidays/index-specific calendars.
+const LOCAL_WINDOW_DAYS = Number(process.env.LOCAL_WINDOW_DAYS || 100);
 
 async function loadConfig() {
   const raw = await readFile(path.join(__dirname, 'config.json'), 'utf8');

@@ -11,6 +11,7 @@
  * something this server should paper over by guessing.
  */
 import express from 'express';
+import { readFile } from 'fs/promises';
 import { computeZones } from './lib/zonePricer.mjs';
 import { loadBook, loadM1, bookAge, m1Age } from './lib/localStore.mjs';
 
@@ -18,19 +19,78 @@ const PORT = Number(process.env.LOCAL_DECISION_PORT || 4500);
 const MAX_BOOK_AGE_HOURS = Number(process.env.MAX_BOOK_AGE_HOURS || 36);   // book only changes ~daily; generous but not infinite
 const MAX_M1_AGE_HOURS = Number(process.env.MAX_M1_AGE_HOURS || 2);        // M1 tail should be minutes old under normal sync
 
+// The pairs the background refresh loop keeps warm — same config.json
+// sync.mjs reads, plus anything a caller asks about that wasn't in it (so
+// an ad-hoc /decide?pair=X for an unconfigured pair still eventually warms
+// on subsequent calls, just not proactively before the first one).
+const WATCHED_PAIRS = new Set(JSON.parse(await readFile(new URL('./config.json', import.meta.url), 'utf8')).pairs);
+
 const app = express();
 
+// Warm cache, keyed by pair — recompute atlasWalk only when the underlying
+// data actually changed, not on every poll. Same reasoning as the server's
+// own getFastLive (js/levelAtlasRoutes.js): M1 only advances once a minute,
+// so recomputing on every 3s tick is pure waste.
+//
+// Found live (2026-09-18): computeZones alone costs ~500-800ms/pair at the
+// 100-day local window (needed to clear atlasWalk's own minLookback gate —
+// see sync.mjs's own doc) — 17 pairs sequentially is ~14-19s. A cache keyed
+// only "recompute on request if stale" still means EVERY request lands in
+// that ~19s window once a minute (whenever the M1 tail's last bar
+// advances), which is exactly what timed out the bot's own 5s client on
+// the first real end-to-end run. Fix: a background loop refreshes the
+// cache on its own schedule; HTTP handlers ONLY ever read whatever's
+// already cached (near-instant) or report {warming:true} on a pair that's
+// never been computed yet — they never trigger a synchronous recompute
+// themselves.
+const cache = new Map();   // pair -> { lastBarTime, bookSavedAt, result }
+const REFRESH_INTERVAL_MS = Number(process.env.REFRESH_INTERVAL_MS || 5000);
+const DEFAULT_OPTS = { earlyExit: false, earlyExitThreshold: 0.4 };
+
+async function refreshOne(pair, opts = DEFAULT_OPTS) {
+  const [bAge, mAge] = await Promise.all([bookAge(pair), m1Age(pair)]);
+  if (bAge > MAX_BOOK_AGE_HOURS || mAge > MAX_M1_AGE_HOURS) return;   // let staleness show through to callers via pairDecision's own checks, not a cached stale result
+  const [{ book, savedAt }, packed] = await Promise.all([loadBook(pair), loadM1(pair)]);
+  if (!book || !packed?.n) return;
+
+  const lastBarTime = packed.times[packed.n - 1];
+  const hit = cache.get(pair);
+  if (hit && hit.lastBarTime === lastBarTime && hit.bookSavedAt === savedAt) return;   // nothing new — leave the cache as-is
+
+  const result = computeZones(pair, { book, packed, earlyExit: opts.earlyExit, earlyExitThreshold: opts.earlyExitThreshold });
+  cache.set(pair, { lastBarTime, bookSavedAt: savedAt, result });
+}
+
+let refreshing = false;
+async function refreshAll() {
+  if (refreshing) return;   // don't overlap a slow pass with the next tick
+  refreshing = true;
+  try {
+    for (const pair of WATCHED_PAIRS) {
+      try { await refreshOne(pair); }
+      catch (e) { console.warn(`[local-decision-engine] refresh failed for ${pair}: ${e.message}`); }
+    }
+  } finally { refreshing = false; }
+}
+
 async function pairDecision(pair, opts) {
+  WATCHED_PAIRS.add(pair);
   const [bAge, mAge] = await Promise.all([bookAge(pair), m1Age(pair)]);
   if (bAge > MAX_BOOK_AGE_HOURS) return { stale: true, reason: `book is ${bAge.toFixed(1)}h old (max ${MAX_BOOK_AGE_HOURS}h) — run sync.mjs`, zones: [], zoneCount: 0 };
   if (mAge > MAX_M1_AGE_HOURS) return { stale: true, reason: `M1 tail is ${mAge.toFixed(1)}h old (max ${MAX_M1_AGE_HOURS}h) — run sync.mjs`, zones: [], zoneCount: 0 };
 
-  const [{ book }, packed] = await Promise.all([loadBook(pair), loadM1(pair)]);
-  if (!book) return { stale: true, reason: 'no local book cached — run sync.mjs first', zones: [], zoneCount: 0 };
-  if (!packed?.n) return { stale: true, reason: 'no local M1 tail cached — run sync.mjs first', zones: [], zoneCount: 0 };
-
-  return computeZones(pair, { book, packed, earlyExit: opts.earlyExit, earlyExitThreshold: opts.earlyExitThreshold });
+  const hit = cache.get(pair);
+  if (hit) return hit.result;
+  // Not warmed yet (first-ever request for this pair, or the background
+  // loop hasn't reached it this pass) — compute it once, synchronously,
+  // rather than make the caller wait for the next refresh cycle.
+  await refreshOne(pair, opts);
+  const fresh = cache.get(pair);
+  return fresh ? fresh.result : { stale: true, reason: 'no local book/M1 cached yet — run sync.mjs first', zones: [], zoneCount: 0 };
 }
+
+setInterval(refreshAll, REFRESH_INTERVAL_MS);
+refreshAll();   // pre-warm on startup rather than waiting for the first tick
 
 app.get('/decide', async (req, res) => {
   const pair = String(req.query.pair || '').toLowerCase();

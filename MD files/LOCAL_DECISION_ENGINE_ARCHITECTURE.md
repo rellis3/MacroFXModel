@@ -75,7 +75,7 @@ engine is the same code, relocated — not rewritten.
   forcing every enabled pair to cold-start its 180-day window again; local
   decisioning removes the need for that cache to exist on Railway at all).
 
-### Daily local sync (small, checked against real sizes — not estimated)
+### Daily local sync (measured against the real build, not estimated)
 
 Once a day, pull two things per enabled pair:
 1. **The book** — `GET /api/level-atlas/book/:pair`. Measured real size:
@@ -84,17 +84,42 @@ Once a day, pull two things per enabled pair:
    (~2.1MB/pair — that includes 3 rearm-fraction books, display cards,
    session-transition tables, and the day's full touch/pending detail, none
    of which a local sync needs).
-2. **A short M1 tail** — ~2 weeks, enough for the fast-moving dimensions
-   (approach speed, WaveTrend state, churn). Reuse `js/m1GapFill.js` as-is
-   for this — it already does exactly this kind of top-up, just needs
-   pointing at a short local window instead of the full archive.
+2. **A local M1 tail** — NOT the "~2 weeks" originally planned. `atlasWalk`
+   itself refuses to produce ANY output below its own `minLookback` gate
+   (default 60 TRADING days — `js/levelAtlasEngine.js`'s `if (dates.length
+   <= minLookback) return {touches:[], coverage:null}`), which needs
+   ~90-100 CALENDAR days to clear reliably (found live, 2026-09-18: a
+   14-day window made every request return "no live coverage yet" with
+   zero zones). `LOCAL_WINDOW_DAYS` defaults to 100. Measured real size at
+   that window: **~2.3MB/pair** (binary format, `packToBinary`/
+   `packFromBinary` reused from `js/volBacktestM1Engine.js`).
 
-For Vote Atlas's 17 enabled pairs: ~5.5MB/day (book) + ~5-6MB/day (M1 tail)
-≈ **10-12MB/day, under 400MB/month**. Cloudflare R2 has zero egress fees by
-design; the only real cost is Railway serving these small files once a day,
-which at this size doesn't register next to the compute cost it replaces.
-Fib Atlas's own pair count will scale this proportionally — check its
-`enabled_pairs` count before assuming the same order of magnitude.
+For Vote Atlas's 17 enabled pairs, measured real total: **~5.5MB (book) +
+~39MB (M1 tail) ≈ 44MB/day, ~1.3GB/month.** Still small relative to typical
+hosting egress allowances and nowhere near the compute cost it replaces, but
+a genuinely different number from the original "~10-12MB/day" estimate in
+this doc's first draft — corrected here rather than left wrong. Cloudflare
+R2 has zero egress fees by design; the only real cost is Railway serving
+these files once a day. Fib Atlas's own pair count will scale this
+proportionally — check its `enabled_pairs` count before assuming the same
+order of magnitude.
+
+### Serving decisions fast without blocking on a live recompute
+
+`atlasWalk` over a 100-day/pair window costs ~500-800ms of CPU — trivial
+once, but a naive "recompute on request if the cache looks stale" design
+still means every request lands in a ~14-19s slow window (17 pairs
+sequentially) once a minute, whenever the M1 tail's last bar advances. This
+is exactly what happened on the real end-to-end test: the bot's own 5s
+HTTP client timed out against a synchronous recompute. Fixed with a
+background refresh loop (`local_decision_engine/server.mjs`) that keeps the
+cache warm on its own schedule — HTTP handlers only ever read whatever's
+already cached (confirmed live: 0.137s for a full 17-pair `/plan` once
+warm) or compute once, synchronously, for a pair that's never been seen
+before. Same principle as the server's own `getFastLive` design
+(`js/levelAtlasRoutes.js`) — recompute only when the underlying M1 data
+has actually moved, not on every poll — just not carried over into the
+first draft of this file's own local engine.
 
 ### The shared core vs the per-strategy adapter
 
