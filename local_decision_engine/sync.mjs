@@ -36,7 +36,7 @@
  * manager) — it owns its own scheduling now that there's no OANDA rate
  * limit to respect locally. See MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
  */
-import { saveBook, saveM1, loadM1 } from './lib/localStore.mjs';
+import { saveBook, saveM1, loadM1, loadBook } from './lib/localStore.mjs';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -56,11 +56,25 @@ async function loadConfig() {
   return JSON.parse(raw);
 }
 
+// `main()` re-runs this unconditionally on EVERY sync.mjs startup (not just
+// every BOOK_SYNC_INTERVAL_HOURS -- that throttle only applies to the
+// --loop timer), so restarting sync.mjs used to rewrite every book file
+// with a fresh local savedAt regardless of whether the book actually
+// changed. server.mjs's cache is keyed off that savedAt, so every restart
+// force-recomputed all 17 pairs in one batch for no reason -- confirmed
+// live 2026-09-18 as a real contributor to the local engine blocking long
+// enough to time out the bot's own 5s HTTP client. Now compares the
+// server's own generatedAt against what's already saved and skips the
+// write entirely when nothing changed.
 async function syncBook(pair) {
   const r = await fetch(`${DASHBOARD_URL}/api/level-atlas/book/${pair}?rearm=0.3`);
   const j = await r.json();
   if (!j.ok || !j.book) throw new Error(`book fetch failed for ${pair}: ${j.error || 'unknown'}`);
-  await saveBook(pair, j.book);
+  const existing = await loadBook(pair);
+  if (existing.sourceGeneratedAt && existing.sourceGeneratedAt === j.generatedAt) {
+    return j.generatedAt;   // unchanged -- skip the write, don't invalidate server.mjs's cache for nothing
+  }
+  await saveBook(pair, j.book, j.generatedAt);
   return j.generatedAt;
 }
 

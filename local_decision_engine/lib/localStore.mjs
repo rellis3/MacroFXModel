@@ -23,18 +23,27 @@ async function ensureDirs() {
   await mkdir(M1_DIR, { recursive: true });
 }
 
-export async function saveBook(pair, book) {
+// `sourceGeneratedAt` is the SERVER's own generatedAt for this book (not
+// this write's own timestamp) -- carried through so sync.mjs can compare
+// against it and skip the write entirely when the book hasn't actually
+// changed. See sync.mjs's syncBook doc: without this, every sync.mjs
+// restart re-wrote every book file with a fresh LOCAL savedAt regardless
+// of content, which made server.mjs's cache (keyed on savedAt) think every
+// pair's book had changed and force-recompute all of them in one batch --
+// confirmed live 2026-09-18 as a real contributor to the local engine
+// blocking long enough to time out the bot's 5s HTTP client.
+export async function saveBook(pair, book, sourceGeneratedAt) {
   await ensureDirs();
-  await writeFile(path.join(BOOK_DIR, `${pair}.json`), JSON.stringify({ book, savedAt: new Date().toISOString() }));
+  await writeFile(path.join(BOOK_DIR, `${pair}.json`), JSON.stringify({ book, savedAt: new Date().toISOString(), sourceGeneratedAt }));
 }
 
 export async function loadBook(pair) {
   try {
     const raw = await readFile(path.join(BOOK_DIR, `${pair}.json`), 'utf8');
     const j = JSON.parse(raw);
-    return { book: j.book, savedAt: j.savedAt };
+    return { book: j.book, savedAt: j.savedAt, sourceGeneratedAt: j.sourceGeneratedAt };
   } catch {
-    return { book: null, savedAt: null };
+    return { book: null, savedAt: null, sourceGeneratedAt: null };
   }
 }
 
