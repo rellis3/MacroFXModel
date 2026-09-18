@@ -220,6 +220,26 @@ export const DESK_EVIDENCE = [
     use: 'Use the decomposition to describe what kind of move just happened, not to forecast the next one.',
   },
   {
+    id: 'narrow-day-expansion', domain: 'price', verdict: 'null', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T1',
+    claim: 'An inside day or NR7 (the narrowest of seven) is a coiled spring -- the next day expands',
+    result: 'Eight instruments, ~2,490 London sessions each, 2016→. Inside days: next-session range −0.09 to +0.04 ATR vs matched days, every CI across zero. NR7: the next session is NARROWER with the CI clear on USD/JPY (−0.17), SPX500 (−0.17), NAS100 (−0.13), USD/CAD, AUD/USD; the 5-session range narrower too. Next-day direction 49-55%.',
+    use: 'Quiet days cluster. A narrow day is a reason to expect a narrow day, not a breakout. Do not write "coiled spring".',
+  },
+  {
+    id: 'first-hour-fraction', domain: 'price', verdict: 'validated', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T2',
+    claim: 'How much of the day is done by the end of the first hour',
+    result: 'Median share of the session range travelled in the first London hour: FX 19-23%, gold 19%, indices 12-13%; first New York hour: FX 26-32%, gold 33%, indices 19-20% (p25-p75 roughly ±8pp). The first London hour\'s high or low survives as the session extreme only 4-12% of the time.',
+    use: 'A measurement for the range-used chip: by 08:00 UK an FX pair has typically used a fifth of its day. "The first hour sets the range" is false nineteen times in twenty.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GOLD', 'NQ', 'SPX500'],
+  },
+  {
+    id: 'fast-start-rest-of-day', domain: 'price', verdict: 'validated', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T3',
+    claim: 'A fast first two hours after the London open means the rest of the day runs wide too',
+    result: 'First 2h ≥ 0.6 ATR14 (n=50-151 per FX pair): the range AFTER 09:00 ran +0.15 ATR wider on EUR/USD, +0.17 GBP/USD, +0.39 USD/JPY, +0.20 AUD/USD, +0.47 gold, +0.75 SPX500 vs matched days, CIs clear (USD/CAD +0.17, CI touching zero; NAS100 unscored, n=36). A "trend-day close" at the extreme is NOT more likely (43-56% vs 40-52%). The session closed on the side of the morning move 80-91% vs 60-72% -- but that share contains the morning move itself; the after-09:00 continuation is queued (T3b) before it is read as "the afternoon continues".',
+    use: 'When the first two hours have already used 0.6 ATR, expect the afternoon to be wider than an ordinary afternoon, in the instrument\'s units. Not a trend-day call, and not yet a direction.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'GOLD', 'SPX500'],
+  },
+  {
     id: 'yields-to-fx-direction', domain: 'macro', verdict: 'null', date: '2026-08-23', doc: 'memory: project_yield_asset_coupling',
     claim: 'Yield moves predict the direction of FX and indices',
     result: 'Forward coupling null; the relationship is real only in the same bar.',

@@ -1,9 +1,12 @@
 # Technical range tests — three price-only claims, pre-registered together
 
-> **Status: PRE-REGISTERED 2026-09-18, before any of the three was run.** Same
-> harness discipline as `MARKET_SENSE_TESTS.md`: paired controls, week-block
-> bootstrap, population audit, range first, direction only as a base rate with an
-> interval. Results appended below the line after the run.
+> **Status: PRE-REGISTERED 2026-09-18 (commit bbead67), run the same day.**
+> T1 (inside day / NR7 → expansion): **NULL — and NR7 is followed by a *calmer*
+> day on five of eight instruments.** T2: base rates measured (first hour ≈ 21–23%
+> of the day on FX, 12–13% on indices). T3 (fast first two hours → the rest of the
+> day): **PASS** — the range after 09:00 runs +0.15 to +0.75 ATR wider, and the
+> session closes on the side of the morning move 80–90% of the time vs 60–70% on
+> ordinary mornings. Nothing above the Results line changed after the run.
 
 ## Data
 
@@ -73,4 +76,56 @@ direction base rate goes in the book as a base rate and nowhere else.
 
 ## Results
 
-*(appended after the run)*
+Eight instruments, ~2,490 London sessions each with features (2016-01 → 2026-08;
+~560 thin sessions per instrument dropped — weekends and holidays in the archive).
+Unconditional next-session range ≈ 1.0 ATR, next-5 ≈ 2.3. Output:
+`analysis/output/technical_range_studies.json`.
+
+### T1 — Inside day / NR7 → expansion. **NULL; NR7 runs calmer.**
+Inside days (n=292–396 per instrument): next-session range diff between −0.09 and
++0.04 ATR, every CI across zero, on all eight; 5-session the same. NR7 (n=359–402):
+the next session is **narrower** with the CI clear of zero on USD/JPY (−0.17),
+SPX500 (−0.17), NAS100 (−0.13), USD/CAD (−0.09), AUD/USD (−0.08); null on the rest;
+the 5-session range is narrower too on USD/JPY, NAS100, SPX500, GBP/USD. R1 (2022+)
+agrees where scored. Next-day direction after either: 49–55%, intervals across 50.
+Reading: quiet days cluster — that is volatility persistence, the opposite of the
+"coiled spring" story. A narrow day is a reason to expect a narrow day.
+
+### T2 — The first hour as a fraction of the day (base rates).
+| | London 07:00–08:00 p25 / p50 / p75 | New York 13:30–14:30 p25 / p50 / p75 | first-hour extreme held all session |
+|---|---|---|---|
+| EUR/USD | 16 / **22** / 30% | 22 / **31** / 43% | 11% |
+| GBP/USD | 16 / 23 / 32% | 21 / 29 / 40% | 12% |
+| USD/JPY | 15 / 21 / 29% | 19 / 27 / 40% | 6% |
+| AUD/USD | 16 / 21 / 29% | 19 / 26 / 37% | 8% |
+| USD/CAD | 13 / 19 / 25% | 23 / 32 / 44% | 8% |
+| gold | 14 / 19 / 27% | 23 / 33 / 46% | 7% |
+| NAS100 | 9 / 12 / 17% | 13 / 19 / 29% | 4% |
+| SPX500 | 9 / 13 / 18% | 14 / 20 / 30% | 5% |
+
+By 08:00 UK an FX pair has typically used a fifth of its eventual range; the New York
+first hour uses more (a third on FX, a fifth on indices). The first London hour's high
+or low survives as the session's extreme only 4–12% of the time — "the first hour sets
+the day's range" is false nineteen times in twenty.
+
+### T3 — A fast first two hours → the rest of the day. **PASS (range); continuation
+is a strong base rate.**
+Setup: first 2h after 07:00 UK ≥ 0.6 ATR14 (n=36–151). Full-session range is wider
+mechanically (+0.45 to +1.03 ATR); the honest number is the range **after 09:00**:
+EUR/USD +0.15 [+0.07, +0.25], GBP/USD +0.17, USD/JPY +0.39, AUD/USD +0.20, gold
++0.47, SPX500 +0.75 — all CIs clear of zero; USD/CAD +0.17 with the CI touching
+zero; NAS100 n=36 unscored. At ≥0.8 ATR (R2) the after-09:00 effect holds on
+EUR/USD (+0.22) and is unscored elsewhere (n<40). "Trend-day close" (close in the
+top or bottom fifth of the range): **no different** from ordinary mornings anywhere
+(43–56% vs 40–52%) — a fast start does not make a day close at its extreme. "Close
+on the side of the 2h move": 80–91% on setups vs 60–72% on ordinary mornings, +14 to
++28pp with CIs clear on EUR/USD, GBP/USD, AUD/USD, USD/CAD, NAS100 and the R2 cells.
+Stated trap: that share measures open→close and so contains the morning move
+itself; the after-09:00 continuation (close vs the 09:00 price) was not registered
+and is queued as T3b before anyone reads the 80–90% as "the afternoon continues".
+
+### What changed
+- Book: T1 null (NR7 → calmer), T2 base rates, T3 validated range with the
+  continuation base rate and its stated trap. Brief and chain read see all three.
+- Queued: T3b (after-09:00 continuation, close vs 09:00); T3 as a live trigger once
+  the watch reads intraday bars.
