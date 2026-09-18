@@ -95,6 +95,18 @@ DEFAULT_CFG = {
     # stale gold paste must not stop NQ trading). 30h matches today.html's
     # OI_FRESH_H, so the page and the bot call the same chain stale.
     "oi_max_age_hours": 30,        # 0 = off
+    # Day-anchor drift gate: the OI snapshot itself never refreshes intraday (only its
+    # futures->spot CONVERSION does, every 15 min — the basis control). So the walls stay
+    # exactly where they were computed from this morning's positioning, even as spot walks
+    # further and further from where that snapshot was taken. This refuses a NEW fade/
+    # break/react entry once live spot is more than this % from daySpot (frozen at the
+    # day's first paste — server.js's dayDriftPct on the plan). maxpain is EXEMPT by
+    # design: it trades reversion FROM extension, so distance from the anchor is the
+    # setup the trade wants, not a reason to refuse it. 0 = off — this is new, unproven
+    # behaviour: leave it off and watch what DAY-DRIFT GATE log lines would have blocked
+    # before turning it on. A day-drift entry that already exists is never closed by this;
+    # it only blocks NEW ones, same as every other gate here.
+    "day_drift_max_pct": 0,        # 0 = off; e.g. 1.5 = refuse new fade/break/react entries beyond 1.5% from the day anchor
     # Break dwell: a break zone must hold its trigger for N consecutive ticks —
     # a single wick through wall+breakPips on a 3s poll is not a decisive break.
     "break_hold_ticks": 2,         # 0 = fire on first touch (old behaviour)
@@ -455,6 +467,11 @@ def _instr_lines(plan, sessions):
             # blocked instrument should be legible on the page, not only in the log.
             # None when the producer didn't stamp a paste time (older plan shape).
             "oiAgeH": (lambda a: round(a, 1) if a is not None else None)(_oi_age_hours(slice_, time.time())),
+            # How far live spot has walked from where today's OI snapshot was anchored
+            # (server.js computes it from daySpot/daySpotAt — see its comment). None on
+            # an older plan shape. The gate that ACTS on this is day_drift_max_pct below;
+            # this is just the passthrough so the config page can show it.
+            "dayDriftPct": slice_.get("dayDriftPct"),
         })
     return out
 
@@ -519,6 +536,7 @@ def run(base_url: str, force_live: bool) -> None:
     budget_skips: dict[str, bool] = {}           # zone_id → deferred-by-risk-budget (once-per-change logging)
     anchor_warned: set[str] = set()              # zone_id → already warned that its stop is plan-anchored
     group_skips: dict[str, bool] = {}            # zone_id → deferred-by-group-cap (once-per-change logging)
+    drift_skips: dict[str, bool] = {}            # zone_id → deferred-by-day-drift-gate (once-per-change logging)
     warned_missing: dict[str, bool] = {}         # enabled_pairs entries absent from the plan (warn once)
     runners: dict[int, dict] = {}                # scale-out runner ticket → {pair, be, partner} (BE-at-TP1 watch)
     plan = None
@@ -928,6 +946,22 @@ def run(base_url: str, force_live: bool) -> None:
                                     f"spot and may be stale against live {px}")
                     if reject_until.get(zid, 0) > nowt:
                         continue                       # in reject cooldown — don't hammer the broker
+                    # Day-anchor drift gate: refuse a NEW wall-based entry once live spot has
+                    # walked too far from where today's OI snapshot was taken. Off by default
+                    # (day_drift_max_pct: 0) — see DEFAULT_CFG's comment for why. maxpain is
+                    # exempt: it trades reversion FROM extension, so being far from the anchor
+                    # is the setup, not a reason to refuse it.
+                    drift_max = float(cfg.get("day_drift_max_pct", 0) or 0)
+                    if drift_max > 0 and spec["mode"] != "maxpain":
+                        dd_pct = (_plan_instruments(plan).get(instr) or {}).get("dayDriftPct")
+                        if dd_pct is not None and abs(dd_pct) > drift_max:
+                            if not drift_skips.get(zid):
+                                drift_skips[zid] = True
+                                log.info(f"DAY-DRIFT GATE [{instr}] {zid} deferred — spot is "
+                                         f"{dd_pct:+.2f}% from today's OI anchor (> {drift_max}%); "
+                                         f"today's walls may no longer describe live positioning")
+                            continue
+                    drift_skips.pop(zid, None)
                     # Correlated-group cap: the four indices are one macro bet — cap
                     # same-direction positions per asset class. Defer, don't burn.
                     cls = sym_class.get(instr)
