@@ -307,6 +307,24 @@ function boundPacked(packed, days) {
   };
 }
 
+// Strictly-after-`sinceSec` trim, for the m1-tail route's incremental pull
+// (see its own doc). Strict `>` deliberately excludes a bar exactly AT
+// sinceSec — that's the caller's own already-held last bar, re-including it
+// would duplicate it once the caller appends this response.
+function boundPackedSince(packed, sinceSec) {
+  if (!packed?.n) return packed;
+  let cutIdx = packed.n;
+  for (let i = 0; i < packed.n; i++) { if (packed.times[i] > sinceSec) { cutIdx = i; break; } }
+  if (cutIdx <= 0) return packed;
+  if (cutIdx >= packed.n) return { n: 0, times: [], opens: [], highs: [], lows: [], closes: [], volumes: [] };
+  return {
+    n: packed.n - cutIdx,
+    times: packed.times.slice(cutIdx), opens: packed.opens.slice(cutIdx),
+    highs: packed.highs.slice(cutIdx), lows: packed.lows.slice(cutIdx),
+    closes: packed.closes.slice(cutIdx), volumes: packed.volumes.slice(cutIdx),
+  };
+}
+
 // One walk over the (bounded, already-warm) packed series -> today's raw
 // touches + pending, UNMATCHED (matching against the book happens outside
 // the cache, every call, so a fresh /run's book reaches a poll immediately
@@ -566,16 +584,25 @@ export function mountLevelAtlasRoutes(app, express) {
   // historical bars does NOT reproduce the same vote/margin as the
   // official archive for the identical touch (data-provenance mismatch,
   // not a window-length or staleness issue — those were ruled out first).
+  // ?since=<unix seconds> — incremental pull for the local decision engine's
+  // sync.mjs, added 2026-09-18: the original always-full-window pull
+  // resent the ENTIRE ~100-day tail (~100k bars) every 15-minute cycle to
+  // convey what was really only the ~15 bars that closed since the last
+  // pull. `days` still applies as an outer cap either way (protects
+  // against a stale/bogus `since`, and is the whole response when `since`
+  // is omitted, unchanged for any other caller of this route).
   app.get('/api/level-atlas/m1-tail/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
       const days = Math.min(180, Math.max(1, Number(req.query.days) || 14));
+      const sinceSec = req.query.since !== undefined && Number.isFinite(Number(req.query.since)) ? Number(req.query.since) : null;
       const live = await getFastLive(pair);
       if (live.warming) return res.status(202).json({ ok: false, warming: true, error: 'still warming — retry in a few seconds' });
       const entry = liveCache.get(pair);
       if (!entry?.packed?.n) return res.status(404).json({ ok: false, error: `no live cache for ${req.params.instrument} yet` });
-      const bounded = boundPacked(entry.packed, days);
-      res.json({ ok: true, instrument: pair.toUpperCase(), days, savedAt: new Date().toISOString(), ...packToJSON(bounded) });
+      let bounded = boundPacked(entry.packed, days);
+      if (sinceSec != null) bounded = boundPackedSince(bounded, sinceSec);
+      res.json({ ok: true, instrument: pair.toUpperCase(), days, since: sinceSec, savedAt: new Date().toISOString(), ...packToJSON(bounded) });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

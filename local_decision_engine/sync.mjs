@@ -17,19 +17,26 @@
  *      snapshot — see js/levelAtlasRoutes.js's own doc on that route.
  *      Needs to run often enough to comfortably clear server.mjs's
  *      MAX_M1_AGE_HOURS fail-closed gate (default 2h); 15 min leaves a
- *      wide margin even if one sync attempt fails. Measured real cost:
- *      ~732KB/pair/call — at 15-min cadence across 17 pairs that's
- *      ~1.2GB/day, ~$1.78/month at Railway's $0.05/GB egress rate (checked
- *      directly via /api/egress-audit, not estimated) — deliberately
- *      chosen, not left to default to something wasteful; tune
- *      M1_SYNC_INTERVAL_MINUTES up if that's not tight enough, or down if
- *      cost matters more than freshness.
+ *      wide margin even if one sync attempt fails.
+ *
+ *      INCREMENTAL as of 2026-09-18: once a local M1 file exists,
+ *      syncM1() requests only bars strictly after its own last bar
+ *      (?since=) and appends, instead of re-pulling the whole
+ *      LOCAL_WINDOW_DAYS window every cycle. The original always-full
+ *      design was measured at ~732KB/pair/call (~1.2GB/day, ~$1.78/month
+ *      at Railway's $0.05/GB egress rate, via /api/egress-audit) to convey
+ *      what was really only the ~15 bars that closed since the last pull —
+ *      correct but wasteful, and the fix here isn't primarily about that
+ *      dollar figure (already small): a mass cache invalidation across all
+ *      watched pairs at once made server.mjs's background recompute loop
+ *      block its single event loop for ~10+ seconds, timing out the bot's
+ *      own 5s HTTP client (see server.mjs's matching fix, same date).
  *
  * Run as `node sync.mjs --loop` and leave it running (or under a process
  * manager) — it owns its own scheduling now that there's no OANDA rate
  * limit to respect locally. See MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
  */
-import { saveBook, saveM1 } from './lib/localStore.mjs';
+import { saveBook, saveM1, loadM1 } from './lib/localStore.mjs';
 import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -57,14 +64,59 @@ async function syncBook(pair) {
   return j.generatedAt;
 }
 
+// Appends `fresh` (strictly-after-`existing`'s-last-bar, per the server's
+// own `since` filter) onto `existing`, then trims the FRONT back to
+// `windowDays` so an incremental sync doesn't grow the local file forever.
+// No dedupe needed -- the server-side filter already guarantees no overlap.
+function mergePacked(existing, fresh, windowDays) {
+  if (!existing?.n) return fresh;
+  if (!fresh?.n) return existing;
+  const times = [...existing.times, ...fresh.times];
+  const opens = [...existing.opens, ...fresh.opens];
+  const highs = [...existing.highs, ...fresh.highs];
+  const lows = [...existing.lows, ...fresh.lows];
+  const closes = [...existing.closes, ...fresh.closes];
+  const volumes = [...existing.volumes, ...fresh.volumes];
+  const n = times.length;
+  const cutSec = times[n - 1] - windowDays * 86400;
+  let cutIdx = 0;
+  for (let i = 0; i < n; i++) { if (times[i] >= cutSec) { cutIdx = i; break; } }
+  if (cutIdx <= 0) return { n, times, opens, highs, lows, closes, volumes };
+  return {
+    n: n - cutIdx, times: times.slice(cutIdx), opens: opens.slice(cutIdx),
+    highs: highs.slice(cutIdx), lows: lows.slice(cutIdx),
+    closes: closes.slice(cutIdx), volumes: volumes.slice(cutIdx),
+  };
+}
+
+// Incremental: once a local M1 file already exists, only request bars
+// STRICTLY AFTER its own last bar (?since=) instead of the full window
+// every cycle -- measured 2026-09-18, the always-full pull was resending
+// the entire ~100-day/~100k-bar tail (~732KB/pair) every 15 minutes to
+// convey what was really only the ~15 bars that closed since the last
+// pull. First-ever sync for a pair (no local file yet) still does a full
+// days=N pull to establish the starting window.
 async function syncM1(pair) {
-  const r = await fetch(`${DASHBOARD_URL}/api/level-atlas/m1-tail/${pair}?days=${LOCAL_WINDOW_DAYS}`);
+  const existing = await loadM1(pair);
+  const since = existing?.n ? existing.times[existing.n - 1] : null;
+  const url = since != null
+    ? `${DASHBOARD_URL}/api/level-atlas/m1-tail/${pair}?days=${LOCAL_WINDOW_DAYS}&since=${since}`
+    : `${DASHBOARD_URL}/api/level-atlas/m1-tail/${pair}?days=${LOCAL_WINDOW_DAYS}`;
+  const r = await fetch(url);
   const j = await r.json();
   if (r.status === 202 && j.warming) { console.log(`[sync] ${pair}: server still warming — will retry next cycle`); return null; }
-  if (!j.ok || !j.n) throw new Error(`m1-tail fetch failed for ${pair}: ${j.error || 'unknown'}`);
-  const packed = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
-  await saveM1(pair, packed);
-  return packed.n;
+  if (!j.ok) throw new Error(`m1-tail fetch failed for ${pair}: ${j.error || 'unknown'}`);
+  if (!j.n) {
+    // Incremental pull with nothing new since last time is the NORMAL case
+    // (most 15-min cycles land between bar closes at the edge) -- only a
+    // full pull returning empty is a real problem.
+    if (since != null) return existing.n;
+    throw new Error(`m1-tail fetch failed for ${pair}: empty response`);
+  }
+  const fetched = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
+  const merged = since != null ? mergePacked(existing, fetched, LOCAL_WINDOW_DAYS) : fetched;
+  await saveM1(pair, merged);
+  return merged.n;
 }
 
 async function syncAllBooks(pairs) {

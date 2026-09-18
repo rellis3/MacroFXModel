@@ -69,6 +69,17 @@ async function refreshAll() {
     for (const pair of WATCHED_PAIRS) {
       try { await refreshOne(pair); }
       catch (e) { console.warn(`[local-decision-engine] refresh failed for ${pair}: ${e.message}`); }
+      // Yield to the event loop between pairs. computeZones is synchronous
+      // CPU work (~500-800ms/pair) -- found live 2026-09-18: when sync.mjs's
+      // M1 resync lands and invalidates every watched pair's cache at
+      // roughly the same moment, this loop used to grind through all of
+      // them back-to-back with nothing else able to run in between, which
+      // blocked Node's single thread for ~10+ seconds straight and timed
+      // out the bot's own 5s HTTP client mid-batch ("Read timed out"). A
+      // setImmediate between pairs lets a pending /plan or /decide request
+      // get served (from whatever's already cached) instead of queuing
+      // behind the whole batch.
+      await new Promise(r => setImmediate(r));
     }
   } finally { refreshing = false; }
 }
