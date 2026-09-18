@@ -174,6 +174,17 @@ export const CHAIN_LINKS = [
     },
   },
   {
+    id: 'dxy-usdjpy',
+    short: 'dollar → USD/JPY',
+    punch: { holds: 'USD/JPY tracking the broad dollar, no yen story of its own.', up: 'Dollar up broadly, yen too strong to follow → check for BoJ/MOF intervention.', down: 'Dollar down broadly, yen still weak → a BoJ story, not a dollar story.' }, from: 'dxy', to: 'usdjpy', sign: +1,
+    textbook: 'A broadly stronger dollar should show up against the yen too',
+    holds: 'USD/JPY is moving with the broad dollar — no yen-specific story is overriding the dollar move.',
+    broken: {
+      up:   'The broad dollar rose but the yen did not weaken with it — too strong a yen for a dollar story. This is the shape a BoJ/MOF intervention leaves (the yen bought back against a dollar that is otherwise firm), not a fear bid (see fear → yen for that leg) and not the dollar strength reaching the yen the way it is reaching everything else in the chain.',
+      down: 'The broad dollar fell but USD/JPY held up or rose — the yen is weak on its own terms (a BoJ-dovishness or carry-demand story), not following the dollar down. A dollar sell-off elsewhere in the chain (gold up, AUD up) alongside a stuck or rising USD/JPY is exactly the "intervention living alongside the dollar story" shape, not a contradiction of it.',
+    },
+  },
+  {
     id: 'oil-usdcad',
     short: 'oil → CAD',
     punch: { holds: 'CAD trading as an oil currency.', up: 'Oil up, CAD not bid → rates or risk outweighing the oil channel.', down: 'Oil down, CAD holding → a rates or risk story carrying it.' }, from: 'oil', to: 'usdcad', sign: -1,

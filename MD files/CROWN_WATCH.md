@@ -149,3 +149,77 @@ the real-yield chain, and that's a mechanism note, not a ratio-trading claim).
 - **Not claimed:** anything about whether the ratio is *actually* stretched
   right now, or what "catching up" looks like in this specific episode. That
   needs the same run.
+
+---
+
+## 2026-09-18 (3) — "Dollar/yen and the intervention around it is the only chart you need"
+
+> *"The only chart you need on your screens right now... dollar yen and the
+> intervention that's around dollar yen from the U.S. and Japan is driving
+> the entire market... the war trade is energy up, dollar up, and this is
+> pushing back on the dollar up part, so we can have high energy, we could
+> have a lower dollar that is forcibly lower not from interest rates, from
+> intervention, and we can have high gold, high silver, strong industrial
+> metals, and all of this should not be happening at the same time... you
+> don't need to look at AI anymore... you just need to understand dollar
+> manipulation."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) USD/JPY, and
+specifically US/Japan FX intervention around it, is the single dominant
+driver right now — everything else (sector rotation, AI, Nvidia) is noise by
+comparison; (b) intervention can force the dollar down (against the yen
+specifically) *without* that being a rates/real-yield story, so it can
+coexist with — not contradict — a "war trade" that's simultaneously pushing
+energy and the dollar up elsewhere. The tell is an unusual co-movement: high
+energy, a forced-lower dollar, and gold/silver/industrial metals all bid at
+once.
+
+**2. What's already on this desk.** Checked `js/macroChain.js`'s
+`CHAIN_NODES`/`CHAIN_LINKS` before writing anything, same as the last two
+entries:
+
+- `usdjpy` was already a node, and already had exactly one link —
+  `vix-usdjpy` (fear → yen), whose own BROKEN-down sentence already names
+  "a BoJ story or intervention" as the alternative when the yen strengthens
+  without fear rising. So the desk already had language for yen moves that
+  don't fit the fear story.
+- **The real gap:** `usdjpy` had no link to `dxy` (the broad dollar) at all —
+  unlike AUD/USD, USD/CAD and bitcoin, which all sit downstream of `dxy` in
+  the chain. So Crown's specific claim (the yen decoupling from an otherwise-
+  firm broad dollar) had no mechanism to test against; it was structurally
+  invisible, not just unmeasured.
+- No silver node, no intervention detector, and no direct oil/gold/dollar
+  three-way link — checked and confirmed absent, same audit-before-building
+  discipline as the last two entries.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding, and
+a live regime read on top of it. "USD/JPY is the one chart right now" is not
+a backtestable historical claim as stated — it's a today-specific call. The
+*mechanism* underneath it (does the yen track the broad dollar, and what does
+it mean when it doesn't) is exactly what a chain link can show, the same way
+`real-spx` operationalized the first clip's "SPX is quiet" observation without
+testing whether SPX is quiet *right now*.
+
+**4. Verdict and action.**
+- **Built now:** added a `dxy-usdjpy` link (sign +1) to `js/macroChain.js`,
+  parallel to the existing `dxy-audusd`/`dxy-btc` links. Its broken-up
+  sentence names the intervention shape directly (broad dollar firm, yen not
+  following); its broken-down sentence names the BoJ-dovishness alternative
+  and explicitly says a dollar sell-off elsewhere in the chain (gold up, AUD
+  up) alongside a stuck-or-rising USD/JPY is the "intervention alongside the
+  dollar story" shape Crown described, not a contradiction of it — so the
+  page can now show that specific co-movement pattern instead of it being
+  invisible. Test coverage added to `js/macroChain.test.mjs` (holding case +
+  both broken directions), all green. Additive only, nothing else touched.
+  Registered in `LEGO_MODULES.md`.
+- **Not built:** a silver node. Gold and copper already cover the
+  precious/industrial ends of Crown's "gold, silver, industrial metals"
+  basket with real-yield-driven mechanism links; a third metals node is a
+  reasonable next addition but a bigger one than today's — noted as a
+  candidate, not built.
+- **Not claimed:** whether USD/JPY genuinely is the dominant driver right
+  now, whether intervention is actually happening, or whether the
+  gold+silver+metals co-move is currently live. Those are today's-tape
+  questions the chain has to actually run to answer, same limit noted on the
+  first entry's "is the 10Y dominating today" question — not something this
+  log can settle by reading code.

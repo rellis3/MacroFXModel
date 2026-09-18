@@ -8011,3 +8011,42 @@ assumed.
 the yield leg adds nothing). The same test on SPX is a cheap, natural
 follow-on, registered as a candidate (not yet run) in `CROWN_WATCH.md`'s
 2026-09-18 entry rather than run here without a stated reading rule first.
+
+### The chain, today — `dxy-usdjpy` link added (2026-09-18 (3))
+
+Second same-day change to `js/macroChain.js` (see the SPX entry just above for
+the module's consumer list). A Crown clip claimed dollar/yen and its
+intervention risk (US/Japan) is the one chart explaining the whole market
+right now, and specifically that it can decouple the yen from the broad
+dollar while the "war trade" (energy up, dollar up) keeps running elsewhere —
+gold, silver and industrial metals all bid at once, which "should not all be
+happening at the same time."
+
+**Audit before building:** `usdjpy` was already a node, but its only link
+into the chain was `vix-usdjpy` (fear → yen) — there was no link testing it
+against the broad dollar (`dxy`) at all, unlike AUD/USD, USD/CAD and bitcoin,
+which all have a `dxy-*` link. So the exact shape Crown describes (dollar
+broadly firm on the war trade, yen not following because of intervention) had
+nowhere to register as a break — it was invisible by construction, not just
+untested.
+
+**What changed:** added a `dxy-usdjpy` link (sign +1, dollar → USD/JPY),
+parallel in structure to the existing `dxy-audusd`/`dxy-btc` links. Its
+`up`-direction broken sentence names the intervention shape directly (broad
+dollar up, yen not following); its `down`-direction sentence names the
+BoJ-dovishness/carry-demand alternative, and explicitly says a dollar sell-off
+elsewhere in the chain (gold up, AUD up) alongside a stuck-or-rising USD/JPY
+is the "intervention alongside the dollar story" shape Crown described, not a
+contradiction of it. No node added, no existing link touched — additive only.
+`js/macroChain.test.mjs` covers the holding case and both broken directions,
+all green.
+
+**Not done, deliberately:** no silver node. Crown named gold/silver/industrial
+metals as one co-moving complex; gold and copper already cover the
+precious/industrial ends and both already have real-yield-driven mechanism
+links, so a third metals node was judged a bigger, less-clean addition than
+this session's effort budget — noted as a candidate in `CROWN_WATCH.md`'s
+2026-09-18 (3) entry, not built. No intervention *detector* either — the
+chain reasons over price relationships, not policy headlines; the new link
+makes the price *shape* an intervention leaves visible, it does not identify
+intervention as the cause.

@@ -222,6 +222,7 @@
         <a class="sm-item" href="correlations.html" target="_blank"><span class="sm-item-name">⬡ Corr Lab</span><span class="sm-item-desc">Rolling 20/60-day correlation matrix + hedge pair scanner; compares any instrument set</span></a>
         <a class="sm-item" href="cot-extremes.html" target="_blank"><span class="sm-item-name">📋 COT Extremes</span><span class="sm-item-desc">CFTC Commitment of Traders — flags extreme net positioning in FX, commodities and bonds</span></a>
         <a class="sm-item" href="regime-viewer.html" target="_blank"><span class="sm-item-name">🔍 Regime Viewer</span><span class="sm-item-desc">V1 HMM and V2 Baum-Welch regime overlaid on price; compare classifier output and transitions</span></a>
+        <a class="sm-item" href="market-sense.html" target="_blank"><span class="sm-item-name">🧪 Market-Sense Studies</span><span class="sm-item-desc">Runs the pre-registered tests in MARKET_SENSE_TESTS.md (S1-S12, S17) by button instead of CLI; needs OANDA, Railway only</span></a>
         <a class="sm-item" href="analysis.html" target="_blank"><span class="sm-item-name">📊 Pattern Lab</span><span class="sm-item-desc">5-year daily pattern analysis — day-of-week, monthly seasonality, session bias stats per pair</span></a>
         <a class="sm-item" href="hedge-signals-v2.html" target="_blank"><span class="sm-item-name">⚡ Signals v2</span><span class="sm-item-desc">Cointegration-gated pairs, money-matched sizing, half-life stop — more robust than v1</span></a>
         <a class="sm-item" href="gold-miner-arb.html" target="_blank"><span class="sm-item-name">⛏️ Gold/GDX Arb</span><span class="sm-item-desc">Owner-spec GDX vs Gold stat-arb: rolling hedge-ratio z-score, cointegration gate, scale-in/out tranches, VIX filter, $ risk sizing — vs a naive baseline, IS/OOS, 3 CSV exports</span></a>
@@ -640,6 +641,13 @@
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/diagnose</span><span class="am-desc">Env vars, R2 connectivity and OANDA connectivity diagnostic</span><span class="am-consumers">forecaster-backtest.html, regime-backtest.html (linked)</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vol-backtest/candles/:pair</span><span class="am-desc">M1 candles for a pair/date range (chart rendering)</span><span class="am-consumers">forecaster-backtest.html, gold-zones.html, hedge-backtest.html, backtest-viewer.html, asia-range-backtest.html, range-fib-backtest.html, regime-viewer.html, regime-backtest.html, vol-backtest.html</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/version</span><span class="am-desc">Deployed version tag, deploy timestamp, R2-configured flag</span><span class="am-consumers">none found</span></div>
+        </div>
+        <div class="am-feat">
+          <div class="am-feat-hd">Market-Sense Studies</div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/market-sense/studies</span><span class="am-desc">Catalog of S1-S17 (S13-S16 flagged disabled -- harness code not currently in the file)</span><span class="am-consumers">market-sense.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/market-sense/last</span><span class="am-desc">Last written analysis/output/market_sense_studies.json, no run triggered</span><span class="am-consumers">market-sense.html</span></div>
+          <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/market-sense/run</span><span class="am-desc">Spawns analysis/market_sense_studies.mjs as a child process for the selected studies</span><span class="am-consumers">market-sense.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/market-sense/status/:jobId</span><span class="am-desc">Polls a market-sense run: live log + parsed result once done</span><span class="am-consumers">market-sense.html</span></div>
         </div>
         <div class="am-feat">
           <div class="am-feat-hd">Honest-Forecast / VWAP / Trend-EMA A/B / Rank-IC / v2 / Bench / Strategy Lab</div>
