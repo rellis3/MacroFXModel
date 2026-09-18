@@ -1857,6 +1857,7 @@ async function loadGate() {
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
+  loadLedgerSummary();                                             // yesterday, scored
   setInterval(loadDeskWatch, 5 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
@@ -4088,6 +4089,8 @@ function renderMarketRead() {
         ${measuredBarsHtml ? `<div class="mread-h help" title="Each pair's actual move since the London-midnight open, divided by that pair's own expected day range so a JPY cross and EUR/CHF are on the same scale, then fitted across all pairs at once as strength(base) − strength(quote) with the strengths summing to zero. This is what HAS moved.">Who's being bought (top) vs sold (bottom) <span class="muted" style="font-weight:400">· measured move</span></div>${measuredBarsHtml}${measuredNote}` : ''}
         <div class="mread-h${measuredBarsHtml ? '' : ' help'}" style="margin-top:${measuredBarsHtml ? '10px' : '0'}"${measuredBarsHtml ? '' : ' title="A blend of each pair\'s HMM trend regime and today\'s session bias — a model read, not a measure of how far anything moved."'}>${measuredBarsHtml ? 'What our reads LEAN' : "Who's being bought (top) vs sold (bottom)"} <span class="muted" style="font-weight:400">(regime + session bias, not a move)</span></div>
         ${leanBarsHtml}
+        ${leanGroupsHtml()}
+        ${yesterdayHtml()}
         ${(srBarsHtml || srNote) ? `<div class="mread-h help" style="margin-top:10px" title="Actual minus consensus on each scheduled release, standardised against that series' OWN history of surprises so a payrolls miss and a CPI miss are comparable, then decay-weighted (60-day half-life). Positive = this economy has been coming in ahead of what was expected. This is what markets reprice on — distinct from the activity level below, which says how strong the economy IS, not whether it beat.">Beating vs missing consensus <span class="muted" style="font-weight:400">· surprise, in sigma</span></div>${srBarsHtml}${srNote}` : ''}
         ${gs.length ? `<div class="mread-h help" style="margin-top:10px" title="A LEVEL, not a surprise: a real composite for USD (industrial production plus regional Fed surveys) and an OECD business-confidence proxy for the other seven — explicitly NOT official PMI. An economy can be objectively weak here while still beating consensus above; the two rows answer different questions and are deliberately not merged.">Business activity by currency <span class="muted" style="font-weight:400">(level, not a surprise)</span></div>${gsBarsHtml}` : ''}
       </div>
@@ -6684,10 +6687,62 @@ function nqDownWeekChip(r) {
   if (!(wk <= -1)) return '';
   return `<span class="chip warn" title="NAS100 is ${wk.toFixed(1)}% over the last five sessions (${ref.date} close to ${last.date} close). After a down-week of 1% or more, the next session has run about 20% wider than matched days (+0.19 to +0.23 ATR, n=1,232, 2018+ holds) -- tested here 2026-09-17. This says the range tends to be bigger; it says nothing about direction. The yield move that was supposed to explain it tested as a passenger.">wider day likely · NQ ${wk.toFixed(1)}% wk${_EV('v', _EV_T.v)}</span>`;
 }
+// The price that proves the lean wrong. A bias without a falsifier is an opinion;
+// with one it is a testable statement, and the reader can size off it. The
+// falsifier is the page's own typical daily extreme AGAINST the lean (OL med for
+// an up lean, OH med for a down lean) -- the level a normal day reaches about
+// half the time, so a lean that survives to there has been wrong for a while.
+// Borrowed from a daily-bias sheet that prints "wrong below X" on every line.
+function wrongAtFor(r) {
+  const dir = directionFor(r); const d = r.d, L = d?.levels ?? {};
+  if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) return null;
+  const lv = dir.direction === 'up' ? L.ol_med : L.oh_med;
+  if (!lv?.price || d.current_price == null) return null;
+  const onWrongSide = dir.direction === 'up' ? d.current_price <= lv.price : d.current_price >= lv.price;
+  return { side: dir.direction === 'up' ? 'below' : 'above', price: lv.price, tag: dir.direction === 'up' ? 'typical daily low' : 'typical daily high', breached: onWrongSide };
+}
+function wrongAtChip(r) {
+  const w = wrongAtFor(r); if (!w) return '';
+  return `<span class="chip ${w.breached ? 'bear' : 'dim'}" title="The price that proves today's lean wrong: the ${w.tag} (OL/OH med), which an ordinary day reaches about half the time. ${w.breached ? 'Price is already through it -- the lean has been overrun.' : 'A lean that survives to here has been wrong for a while; size off this distance, not off hope.'}">${w.breached ? '⚠ overrun' : 'wrong'} ${w.side === 'below' ? '&lt;' : '&gt;'} ${fmtN(w.price, r.d.dp)}</span>`;
+}
 function _leanTier(r) {
   const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
-  return `<div class="tier"><span class="lbl">lean</span>${dir}${_supportChip(r)}${_threatChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}</div>`;
 }
+// The board's leans, grouped into the trades they actually are. Three pound
+// shorts are one pound trade; four long-dollar leans are one dollar trade; every
+// index long is one risk trade. The correlation regime says the same thing in a
+// number; this says it in names, so "one of each at most" is a sentence the
+// reader can act on.
+function leanGroupsHtml() {
+  const rs = allRows();
+  const exp = {};   // key -> [{name, dir}]
+  const add = (k, name, dir) => (exp[k] ??= []).push({ name, dir });
+  for (const r of rs) {
+    const dir = directionFor(r); if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) continue;
+    const up = dir.direction === 'up';
+    if (r.d.ac === 'index') { add(up ? 'long risk (indices)' : 'short risk (indices)', r.name, dir.direction); continue; }
+    if (r.name === 'GOLD') { add(up ? 'long gold' : 'short gold', r.name, dir.direction); continue; }
+    const cc = PAIR_CCY[r.name]; if (!cc) continue;
+    add(`${up ? 'long' : 'short'} ${cc[0]}`, r.name, dir.direction); add(`${up ? 'short' : 'long'} ${cc[1]}`, r.name, dir.direction);
+  }
+  // keep the groups that explain the most leans; a pair can sit in two (its base and its quote)
+  const groups = Object.entries(exp).filter(([, v]) => v.length >= 2).sort((a, b) => b[1].length - a[1].length).slice(0, 4);
+  if (!groups.length) return '';
+  return `<div class="riskverdict" style="margin-top:6px" title="Leans that share a currency or an asset class move together. Counting them as separate trades is how a book ends up with one bet sized four times. The correlation-regime line says this as a number; this says it as names.">Leans grouped as trades: ${groups.map(([k, v]) => `<b>${v.length} × ${esc0(k)}</b> <span class="muted">(${v.map(x => dispName(x.name) + (x.dir === 'up' ? '↑' : '↓')).join(', ')})</span>`).join(' · ')}<span class="muted"> — one of each at most.</span></div>`;
+}
+// Yesterday, scored: what this page's direction tags did at the next close. The
+// pair ledger has recorded every rendered lean since 2026-09-13; this is the
+// honest opener a daily sheet should carry before it leans again.
+let _ledgerSummary = null;
+function yesterdayHtml() {
+  const days = _ledgerSummary?.byDay; if (!days?.length) return '';
+  const y = days.find(d => d.h1?.n > 0) ?? days.find(d => d.h0?.n > 0); if (!y) return '';
+  const h = y.h1?.n > 0 ? y.h1 : y.h0, hz = y.h1?.n > 0 ? 'at the next close' : 'at the close';
+  const net = h.meanPnlNetAtr != null ? ` · net ${h.meanPnlNetAtr >= 0 ? '+' : ''}${h.meanPnlNetAtr.toFixed(2)} ATR per call after spread` : '';
+  return `<div class="riskverdict" style="margin-top:6px" title="The pair ledger scores every direction tag this page renders against the OANDA daily close. h1 = the close after the call day. Thirty calls per pair before any single pair's rate is shown; this is the board-wide day count.">Yesterday (${esc0(y.day)}), scored: <b class="tone ${h.hits / h.n >= 0.6 ? 'on' : h.hits / h.n <= 0.4 ? 'off' : 'mix'}" style="font-weight:800">${h.hits} of ${h.n}</b><span class="muted"> direction calls right ${hz}${y.declined ? `, ${y.declined} declined as mixed` : ''}${net}. ${_ledgerSummary.overall?.h1?.n < 30 ? `${_ledgerSummary.overall?.h1?.n ?? 0} scored so far -- a record, not yet a rate.` : `${_ledgerSummary.overall.h1.n} scored overall, ${Math.round(_ledgerSummary.overall.h1.hitRate * 100)}% right.`}</span></div>`;
+}
+async function loadLedgerSummary() { try { const j = await jget('/api/ledger'); if (j?.ok) { _ledgerSummary = j.summary; render(); } } catch { /* line stays hidden */ } }
 function _clockTier(r) {
   const d = r.d;
   const news = d.news_flag ? `<span class="chip warn" title="A major scheduled release today (${d.news_flag}). Expected ranges are scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : '';

@@ -4207,6 +4207,18 @@ async function _buildMorningBrief() {
           : '');
     }
   } catch { /* the calendar line still says FOMC; the block is additive */ }
+  // Yesterday, scored -- the ledger's own tally of what the page's direction
+  // tags did at the next close. A bias sheet that never grades itself is a
+  // newsletter; this one opens with the score.
+  let yesterdayLine = '';
+  try {
+    const raw = await kv.get(LEDGER_KV).catch(() => null);
+    const rows = raw ? (JSON.parse(raw)?.rows ?? JSON.parse(raw)) : null;
+    if (Array.isArray(rows)) {
+      const sm = _ledgerSummary(rows); const y = (sm.byDay ?? []).find(d => d.h1?.n > 0);
+      if (y) yesterdayLine = `YESTERDAY, SCORED: ${y.h1.hits} of ${y.h1.n} of this page's direction calls on ${y.day} were right at the next close${y.declined ? ` (${y.declined} declined as mixed)` : ''}; ${sm.overall.h1.n} scored overall, ${sm.overall.h1.n >= 30 ? Math.round(sm.overall.h1.hitRate * 100) + '% right' : 'too few for a rate'}. Open with this if the day allows; never hide a bad day.`;
+    }
+  } catch { /* the brief tolerates absence */ }
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
 
 If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it. If it is marked UPCOMING, say what's expected/at stake and frame the day as a wait-for-it around that event. If it is marked RELEASED, it has happened: lead with what came out (the FOMC block, or the event's ACTUAL vs consensus) and how the market responded, and never write as if it were still ahead. Do not bury it either way.
@@ -4216,6 +4228,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
 TIME NOW: ${nowUtc}. Every event below is marked RELEASED or UPCOMING against this clock -- a released event is history to be read, not a wait.
+${yesterdayLine}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}${fomcBlock ? ' (see the FOMC block: already decided)' : ''}` : ''}${fomcBlock}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
 ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ranking, strongest to weakest ===\nEach currency is scored on real economic data, then the dimensions are GROUPED INTO SIX FACTORS -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the factors are averaged with EQUAL WEIGHT. That grouping is the point: three dimensions measure rates and two measure inflation, so a flat average across dimensions would hand rates triple weight and inflation double, purely because more series happen to point at them. Every score is already on a -1..+1 scale; missing or stale dimensions are left out, never treated as neutral. Central-bank tone is shown per currency elsewhere but is deliberately in NO factor and scores nothing -- hawkish-score momentum was tested against forward price here and banked a clean null.\n${scorecardLines}\nHOW TO USE IT. Ground the dollar/FX-complex section in this project's own scoring rather than generic yield/DXY levels, and go one level deeper than the headline number: say WHICH FACTOR is carrying a currency's score, because "USD is strong on rates but weak on growth" is a teachable, falsifiable statement and "USD scores +0.4" is not. Lean hardest on the WHAT IS SEPARATING THE BOARD line -- that is the factor currencies are actually spread across today, and a currency being strong on a factor everyone agrees about tells you far less than one leading the factor in dispute. Name the disagreements too: a composite where every factor points the same way is a much stronger read than one where growth and inflation pull opposite ways and net out near zero, and those two look identical in the headline number. A curve reading near 0 or negative means that currency's curve is flat or inverted -- name it directly if rates is the factor driving the score. Do not give a thin read the confidence of a well-covered one: [n/6 factors] and the per-factor "(x/y series fresh)" counts say how much is actually behind each number, and any dimension listed as excluded-as-stale is genuinely absent, not neutral. Finally, this whole composite is CONTEXT, not a signal -- macro-as-signal has been tested and banked as null in this project five times over. Use it to explain why the FX board looks the way it does; never present it as a forecast.` : ''}

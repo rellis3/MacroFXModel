@@ -177,6 +177,13 @@ export function summarise(rows) {
     byDirection: by(r => r.dir),
     byTape: by(r => r.tape),
     byThreat: by(r => r.threat ?? 'none'),
+    // Yesterday, scored: the honest opener a daily bias sheet should carry ("2 of
+    // 9 directional calls right"). Per day, directional calls with each horizon's
+    // hits -- h0 is the call day's close, h1 the next close. Days newest first.
+    byDay: [...new Set(directional.map(r => r.d))].sort().reverse().slice(0, 10).map(d => {
+      const rs = directional.filter(r => r.d === d);
+      return { day: d, calls: rs.length, declined: scored.filter(r => r.d === d && r.dir === 'mixed').length, h0: tally(rs, 'h0'), h1: tally(rs, 'h1') };
+    }),
   };
 }
 
