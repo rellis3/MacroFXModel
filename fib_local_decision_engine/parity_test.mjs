@@ -62,15 +62,27 @@ async function tryPairLadder(pair, ladder, yDate) {
   const { touches } = WALK_FN[ladder](packed, {
     instrument: pair.toUpperCase(), assetClass: assetCls, rearmFracs: [0.3], pendingRearmFrac: 0.3,
   });
-  const yTouch = touches.find(t => t.date === yDate && t.rearmFrac === 0.3);
-  if (!yTouch) return null;
+  const yTouches = touches.filter(t => t.date === yDate && t.rearmFrac === 0.3);
+  if (!yTouches.length) return null;
 
   const book = await fetchBook(pair, ladder);
-  const vd = voteDecision(book, yTouch);
-  if (!vd) return null;
-
-  const stored = (await fetchVoteTrades(pair, ladder)).find(t => t.date === yDate && t.side === yTouch.side && t.rung === yTouch.rung && t.time === yTouch.time);
-  return { pair, ladder, touch: yTouch, local: vd, stored };
+  const storedTrades = await fetchVoteTrades(pair, ladder);
+  // Try every one of yesterday's touches, not just the first — a real
+  // fraction of touches structurally have no vd (e.g. a 'follow' at the
+  // outermost rung), and this test only needs ONE usable fixture, not
+  // agreement across all of them.
+  for (const yTouch of yTouches) {
+    const vd = voteDecision(book, yTouch);
+    if (!vd) continue;
+    // NOTE: the raw walk touch's own rung field is called `level`; the
+    // stored /vote-trades API response calls the same thing `rung` —
+    // different names for the same value, found 2026-09-18 debugging this
+    // test's own false negative (comparing `t.rung === yTouch.rung` always
+    // failed since `yTouch.rung` is undefined on a raw touch object).
+    const stored = storedTrades.find(t => t.date === yDate && t.side === yTouch.side && t.rung === yTouch.level && t.time === yTouch.time);
+    if (stored) return { pair, ladder, touch: yTouch, local: vd, stored };
+  }
+  return null;
 }
 
 async function checkLadder(ladder, yDate) {
