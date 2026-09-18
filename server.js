@@ -31817,9 +31817,11 @@ if (process.env.OANDA_KEY) {
     // concurrent memory pressure before Level Atlas's heavier, index-inclusive
     // loop could finish. Running them one at a time trades a longer total
     // window (this is an overnight batch job; wall-clock time is free) for a
-    // much lower peak memory footprint. Order: Level Atlas first (heaviest,
-    // and the one actually found broken), then the two session engines, then
-    // both Fib Atlas variants.
+    // much lower peak memory footprint. Order (updated 2026-09-18, see the
+    // reorder comment right below Level Atlas's own runSeq call): Level Atlas
+    // first (heaviest, and the one actually found broken in the original
+    // 2026-09-15 incident), then Asia/Monday Fib Atlas, then the two session
+    // engines last.
     async function runSeq(label, start) {
       try {
         const { done } = start();
@@ -31830,8 +31832,21 @@ if (process.env.OANDA_KEY) {
       }
     }
     await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
-    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
-    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
+    // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
+    // owner request once fib_atlas_bot_v2 made Fib Atlas freshness load-
+    // bearing for a second live/paper bot, not just the original). The crash
+    // this whole chain has never been root-caused (needs Railway logs, see
+    // this file's own history) still dies at a SHIFTING point most nights —
+    // this doesn't fix that, it just decides who eats the risk: whichever
+    // engine(s) run LAST are the ones most exposed to a death from
+    // accumulated pressure across the chain. Level Atlas and Fib Atlas both
+    // feed a LIVE/paper trading bot's plan directly (Vote Atlas/v3, the two
+    // Fib Atlas bots); Session Path/Session Handoff do not (checked
+    // 2026-09-18 — no plan producer imports either route's rebuilt book,
+    // they're standalone research/dashboard engines), so this reorder moves
+    // the two trading-critical engines ahead of the two that aren't.
+    //
     // Asia/Monday Fib Atlas are FX/gold-only (Pine indicator's own scope) —
     // filter the shared pair list rather than adding a second hand-maintained
     // one. Exclusion list uses the SAME canonical 'SPX'/'DOW' spelling
@@ -31865,6 +31880,8 @@ if (process.env.OANDA_KEY) {
     console.log(`[reference-engine-rebuild] Fib Atlas pair order rotated to start at "${fibAtlasPairs[0]}" (offset ${_fibRotOffset}/${fibAtlasPairsBase.length}, day-of-year ${_dayOfYear})`);
     await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
     await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
+    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     console.log('[reference-engine-rebuild] nightly tick complete');
   });
   console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
