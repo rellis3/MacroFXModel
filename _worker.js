@@ -63,8 +63,12 @@ function isAllowedKVKey(key) {
     'oi_bot_state', 'oi_hold_calibration', 'oi_capture_freshness',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
     'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
+    'volatility_bot_v3_config', 'volatility_bot_v3_credentials', 'volatility_bot_v3_status',
+    'volatility_bot_v3_state', 'volatility_bot_v3_trade_log', 'volatility_bot_v3_decision_log',
     'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_status',
     'fib_atlas_bot_plan', 'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
+    'fib_atlas_bot_v2_config', 'fib_atlas_bot_v2_credentials', 'fib_atlas_bot_v2_status',
+    'fib_atlas_bot_v2_state', 'fib_atlas_bot_v2_trade_log', 'fib_atlas_bot_v2_decision_log',
     'motif_bot_config', 'motif_bot_credentials', 'motif_bot_status',
     'motif_bot_plan', 'motif_bot_state', 'motif_bot_decision_log',
     'egress_audit',
@@ -1097,8 +1101,16 @@ export default {
             'oi_capture_freshness',
             'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_plan',
             'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
+            // No volatility_bot_v3_plan — v3 computes decisions locally, nothing
+            // server-side to persist (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md).
+            'volatility_bot_v3_config', 'volatility_bot_v3_credentials',
+            'volatility_bot_v3_state', 'volatility_bot_v3_trade_log', 'volatility_bot_v3_decision_log',
             'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_plan',
             'fib_atlas_bot_state', 'fib_atlas_bot_trade_log', 'fib_atlas_bot_decision_log',
+            // No fib_atlas_bot_v2_plan — v2 computes decisions locally, nothing
+            // server-side to persist (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md).
+            'fib_atlas_bot_v2_config', 'fib_atlas_bot_v2_credentials',
+            'fib_atlas_bot_v2_state', 'fib_atlas_bot_v2_trade_log', 'fib_atlas_bot_v2_decision_log',
             'motif_bot_config', 'motif_bot_credentials', 'motif_bot_plan',
             'motif_bot_state', 'motif_bot_decision_log',
             'egress_audit',
@@ -1163,7 +1175,7 @@ export default {
           // which merges via its own /api/bot/status endpoint below). A bot left
           // out still shows live positions but loses every closed trade the
           // moment it exits — silently, since nothing errors.
-          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status', 'motif_bot_status']);
+          const STATUS_KEYS = new Set(['regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_bot_v3_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status', 'fib_atlas_bot_v2_status', 'motif_bot_status']);
           if (STATUS_KEYS.has(key) && data?.today_closed_trades?.length) {
             await mergeTradeHistory(env, key, data.today_closed_trades);
           }
@@ -2517,7 +2529,7 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
         const to   = url.searchParams.get('to')   || from;
         // Keep in step with STATUS_KEYS in /api/kv/set — a key written but not
         // read back here is history that exists in KV and never reaches the page.
-        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status', 'motif_bot_status'];
+        const BOT_KEYS = ['bot_status', 'regime_bot_status', 'gold_bot_status', 'gold_v2_status', 'confluence_bot_status', 'regime_bot_v2_status', 'regime_bot_v4_status', 'regime_bot_v7_status', 'dyn_anchor_status', 'macro_equity_bot_status', 'volatility_bot_status', 'volatility_bot_v2_status', 'volatility_bot_v3_status', 'volatility_ride_status', 'range_line_bot_status', 'oi_bot_status', 'backtestsystem_status', 'yield_spread_status', 'hedge_bot_status', 'position_hedge_bot_status', 'nq_qmr_status', 'spx_qmr_status', 'dow_qmr_status', 'dax_qmr_status', 'fib_atlas_bot_status', 'fib_atlas_bot_v2_status', 'motif_bot_status'];
         const dates = [];
         const startD = new Date(from + 'T00:00:00Z');
         const endD   = new Date(to   + 'T00:00:00Z');

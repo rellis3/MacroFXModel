@@ -227,12 +227,30 @@ const _CF_EXACT = new Set([
   'volatility_bot_v2_state',       // Volatility V2 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'volatility_bot_v2_trade_log',   // Volatility V2 resolved closed-trade log (deduped, capped) — give-back/MFE history
   'volatility_bot_v2_decision_log', // Volatility V2 per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
+  'volatility_bot_v3_config',      // Volatility V3 (Level Atlas Vote Portfolio, local decision engine) bot settings — must survive redeploys
+  'volatility_bot_v3_credentials', // Volatility V3 MT5 credentials — must survive redeploys
+  // No volatility_bot_v3_plan — 2026-09-18: v3 computes decisions locally
+  // (local_decision_engine/), not via a server-side plan producer; there is
+  // nothing server-side to persist here. See
+  // MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
+  'volatility_bot_v3_state',       // Volatility V3 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
+  'volatility_bot_v3_trade_log',   // Volatility V3 resolved closed-trade log (deduped, capped) — give-back/MFE history
+  'volatility_bot_v3_decision_log', // Volatility V3 per-touch decision audit (entered/rejected/skipped + why, now carrying voteDims) — bot-config.html's Decision Timeline
   'fib_atlas_bot_config',      // Fib Atlas (Asia+Monday range-extension vote) bot settings — must survive redeploys
   'fib_atlas_bot_credentials', // Fib Atlas MT5 + Telegram credentials — must survive redeploys
   'fib_atlas_bot_plan',        // Fib Atlas live plan (per pair|ladder fade/follow zones, server.js's _refreshFibAtlasPlan) — keep last good plan across a redeploy
   'fib_atlas_bot_state',       // Fib Atlas one-shot state (entered zones, tg message ids, dedup sets) — survives BOT restarts via KV
   'fib_atlas_bot_trade_log',   // Fib Atlas resolved closed-trade log (deduped, capped) — give-back/MFE history
   'fib_atlas_bot_decision_log', // Fib Atlas per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
+  'fib_atlas_bot_v2_config',      // Fib Atlas v2 (local decision engine fork) bot settings — must survive redeploys
+  'fib_atlas_bot_v2_credentials', // Fib Atlas v2 MT5 + Telegram credentials — must survive redeploys
+  // No fib_atlas_bot_v2_plan — 2026-09-18: v2 computes decisions locally
+  // (fib_local_decision_engine/), not via server.js's plan producer; there
+  // is nothing server-side to persist here. See
+  // MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
+  'fib_atlas_bot_v2_state',       // Fib Atlas v2 one-shot state (entered zones, tg message ids, dedup sets) — survives BOT restarts via KV
+  'fib_atlas_bot_v2_trade_log',   // Fib Atlas v2 resolved closed-trade log (deduped, capped) — give-back/MFE history
+  'fib_atlas_bot_v2_decision_log', // Fib Atlas v2 per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
   'motif_bot_config',      // Motif Bot (touch-motif structural signal) settings — must survive redeploys
   'motif_bot_credentials', // Motif Bot MT5 + Telegram credentials — must survive redeploys
   'motif_bot_plan',        // Motif Bot live plan (currently-open motifs passing the best-config filter, pushed by AnalogML/motif_track.py's own hourly scan, NOT a server.js interval) — keep last good plan across a redeploy
@@ -242,6 +260,7 @@ const _CF_EXACT = new Set([
   'spread_profile_v1',     // js/spreadProfile.js — measured spread per pair per UTC hour, weeks of accumulation; the motif spread gate's evidence base
   // NOTE: motif_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as fib_atlas_bot_status below)
   // NOTE: fib_atlas_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as volatility_bot_v2_status below)
+  // NOTE: fib_atlas_bot_v2_status is deliberately NOT here — same reason
   // NOTE: volatility_bot_v2_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as oi_bot_status / volatility_bot_status).
   'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need

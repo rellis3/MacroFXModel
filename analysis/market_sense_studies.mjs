@@ -12,32 +12,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchD1 } from '../js/volBacktestEngine.js';
 import { allMeetings } from '../js/fomcHistory.js';
-import { YIELD_SPREAD_DEFAULTS } from '../js/yieldSpreadCore.js';
-// ZSCORE_PAIRS + buildRollingZSeries inlined from js/zscoreSpreadEngine.js (pure;
-// copied rather than imported so this harness does not pull in that module's M1/
-// hyparquet loader, which this offline script has no use for).
-const ZSCORE_PAIRS = {
-  usdjpy: { label: 'USDJPY', pairDisplay: 'USD/JPY', baseSeries: 'GS2', quoteSeries: 'IRSTCI01JPM156N', pip: 0.01, defaultThreshold: 2.0 },
-  eurusd: { label: 'EURUSD', pairDisplay: 'EUR/USD', baseSeries: 'GS2', quoteSeries: 'IRSTCI01DEM156N', pip: 0.0001, defaultThreshold: 2.5 },
-  gbpusd: { label: 'GBPUSD', pairDisplay: 'GBP/USD', baseSeries: 'GS2', quoteSeries: 'IR3TIB01GBM156N', pip: 0.0001, defaultThreshold: 2.5 },
-  audusd: { label: 'AUDUSD', pairDisplay: 'AUD/USD', baseSeries: 'GS2', quoteSeries: 'IR3TIB01AUM156N', pip: 0.0001, defaultThreshold: 2.5 },
-  usdcad: { label: 'USDCAD', pairDisplay: 'USD/CAD', baseSeries: 'GS2', quoteSeries: 'IRSTCI01CAM156N', pip: 0.0001, defaultThreshold: 2.0 },
-  usdchf: { label: 'USDCHF', pairDisplay: 'USD/CHF', baseSeries: 'GS2', quoteSeries: 'IR3TIB01CHM156N', pip: 0.0001, defaultThreshold: 2.0 },
-};
-function _shiftDate(dateStr, deltaDays) { const d = new Date(dateStr + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + deltaDays); return d.toISOString().substring(0, 10); }
-function _dateRangeDays(fromStr, toStr) { const out = []; let d = new Date(fromStr + 'T00:00:00Z'); const end = new Date(toStr + 'T00:00:00Z'); while (d <= end) { out.push(d.toISOString().substring(0, 10)); d = new Date(d.getTime() + 86_400_000); } return out; }
-function buildRollingZSeries(usObs, otherObs, zWindow, dateFrom, dateTo) {
-  const fredFrom = _shiftDate(dateFrom, -(zWindow + 14)); const days = _dateRangeDays(fredFrom, dateTo);
-  let lastUs = null, lastOther = null; const spread = new Array(days.length);
-  for (let i = 0; i < days.length; i++) { const d = days[i]; if (usObs.has(d)) lastUs = usObs.get(d); if (otherObs.has(d)) lastOther = otherObs.get(d); spread[i] = (lastUs != null && lastOther != null) ? lastUs - lastOther : null; }
-  const zByDate = new Map(); const win = []; let sum = 0, sumSq = 0; const warmup = Math.min(zWindow, 30);
-  for (let i = 0; i < days.length; i++) {
-    const v = spread[i];
-    if (v != null) { win.push(v); sum += v; sumSq += v * v; if (win.length > zWindow) { const old = win.shift(); sum -= old; sumSq -= old * old; } }
-    if (v != null && win.length >= warmup) { const n = win.length, mean = sum / n, variance = Math.max(0, sumSq / n - mean * mean), std = Math.sqrt(variance); if (std > 1e-9) zByDate.set(days[i], { z: (v - mean) / std, spread: v }); }
-  }
-  return zByDate;
-}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(OUT_DIR(), 'market_sense_studies.json');
@@ -576,311 +550,64 @@ if (want('S12')) {
   results.studies.S12 = out;
 }
 
-// ── shared: fetch every registry FX pair not already loaded (S13 & S14) ─────
-const REGISTRY_FX = ['EUR_USD', 'GBP_USD', 'AUD_USD', 'NZD_USD', 'USD_CAD', 'USD_CHF',
-  'EUR_GBP', 'EUR_AUD', 'EUR_CAD', 'EUR_CHF', 'EUR_NZD', 'AUD_NZD', 'AUD_CAD', 'AUD_CHF', 'NZD_CAD',
-  'GBP_AUD', 'GBP_CAD', 'GBP_CHF', 'GBP_NZD', 'USD_JPY', 'EUR_JPY', 'GBP_JPY', 'AUD_JPY', 'CAD_JPY', 'CHF_JPY', 'NZD_JPY'];
-async function ensureRegistryFX() {
-  for (const sym of REGISTRY_FX) {
-    if (!bars[sym]) { bars[sym] = (await fetchD1(sym, 5000)).sort((a, b) => a.date < b.date ? -1 : 1); log(`  ${sym} ${bars[sym].length} bars ${bars[sym][0].date} → ${bars[sym].at(-1).date}`); }
-    if (!T[sym]) T[sym] = table(sym);
+// ═══ M7 yen firming into rising US yields → the week after ═══════════════════
+// Pre-registered 2026-09-18 (commit 0e68f7a) before running.
+if (want('M7')) {
+  log('\n═══ M7  USD/JPY 5d ≤ −1% while DGS10 5d ≥ +8bp → next-5 range on the yen crosses ═══');
+  for (const s of ['EUR_JPY', 'AUD_JPY']) if (!T[s]) { try { bars[s] = (await fetchD1(s, 5000)).sort((a, b) => a.date < b.date ? -1 : 1); T[s] = table(s); log(`  ${s} ${bars[s].length} bars`); } catch (e) { log(`  ${s}: ${e.message}`); } }
+  const rows = T.USD_JPY.rows;
+  for (let i = 5; i < rows.length; i++) { rows[i].uj5 = Math.log(rows[i].c / rows[i - 5].c) * 100; rows[i].y5 = rows[i].us10y != null && rows[i - 5].us10y != null ? (rows[i].us10y - rows[i - 5].us10y) * 100 : null; }
+  const cond = r => r.uj5 != null && r.y5 != null && r.uj5 <= -1 && r.y5 >= 8;
+  const days = T.USD_JPY.pop.filter(r => cond(r) && !(rows[r.i - 1] && cond(rows[r.i - 1])));
+  log(`  setups (first day) ${days.length}`);
+  const out = { n: days.length, tests: [] };
+  for (const sym of ['USD_JPY', 'EUR_JPY', 'AUD_JPY']) {
+    if (!T[sym]) continue;
+    const d = days.map(x => T[sym].byDate.get(x.date)).filter(r => r?.ok);
+    const excl = r => { const u = T.USD_JPY.byDate.get(r.date); return u && cond(u); };
+    for (const t of [paired(sym, d, 'r5', { excludeFn: excl, label: sym }), paired(sym, d, 'r20', { excludeFn: excl, label: sym })]) { log(line(t)); out.tests.push(t); }
+    const up5 = d.filter(r => r.r5 != null && T[sym].rows[r.i + 5] && T[sym].rows[r.i + 5].c > r.c).length / Math.max(1, d.filter(r => r.r5 != null).length);
+    log(`      ${sym} higher 5 sessions later: ${(up5 * 100).toFixed(0)}% (base rate, n=${d.length})`);
   }
+  results.studies.M7 = out;
 }
-// symmetric-matrix eigen-decomposition (cyclic Jacobi) — n ≤ 27, a few sweeps converge
-function corrMatrix(syms, dates, retMap) {
-  const X = syms.map(s => dates.map(d => retMap[s].get(d)));
-  const n = syms.length, C = Array.from({ length: n }, () => new Array(n).fill(0));
-  for (let a = 0; a < n; a++) for (let b = a; b < n; b++) {
-    const xa = X[a], xb = X[b], ma = xa.reduce((s, v) => s + v, 0) / xa.length, mb = xb.reduce((s, v) => s + v, 0) / xb.length;
-    let sab = 0, saa = 0, sbb = 0; for (let k = 0; k < xa.length; k++) { sab += (xa[k] - ma) * (xb[k] - mb); saa += (xa[k] - ma) ** 2; sbb += (xb[k] - mb) ** 2; }
-    const c = saa && sbb ? sab / Math.sqrt(saa * sbb) : 0; C[a][b] = c; C[b][a] = c;
+// ═══ M9 implied above realised → compression ═════════════════════════════════
+if (want('M9')) {
+  log('\n═══ M9  VIX / 20-session realised SPX vol in the top decile → next-5 / 20 range ═══');
+  const rows = T.SPX500_USD.rows;
+  for (let i = 21; i < rows.length; i++) { const rets = []; for (let k = i - 19; k <= i; k++) rets.push(Math.log(rows[k].c / rows[k - 1].c)); const m = rets.reduce((s, x) => s + x, 0) / rets.length; const sd = Math.sqrt(rets.reduce((s, x) => s + (x - m) ** 2, 0) / rets.length); rows[i].rv = sd * Math.sqrt(252) * 100; rows[i].ivrv = rows[i].vix != null && rows[i].rv > 0 ? rows[i].vix / rows[i].rv : null; }
+  for (let i = 521; i < rows.length; i++) { const r = rows[i]; if (r.ivrv == null) continue; const w = rows.slice(i - 500, i).map(x => x.ivrv).filter(Number.isFinite); r.ivrvRank = w.filter(v => v < r.ivrv).length / w.length; }
+  const cond = r => r.ivrvRank != null && r.ivrvRank >= 0.9;
+  const days = T.SPX500_USD.pop.filter(r => cond(r) && !(rows[r.i - 1] && cond(rows[r.i - 1])));
+  log(`  setups (first day in the top decile) ${days.length}; today's ratio ${rows.at(-1).ivrv?.toFixed(2)} (rank ${rows.at(-1).ivrvRank != null ? Math.round(rows.at(-1).ivrvRank * 100) + 'th' : '?'})`);
+  const out = { n: days.length, tests: [], now: { ivrv: rows.at(-1).ivrv, rank: rows.at(-1).ivrvRank } };
+  for (const sym of ['SPX500_USD', 'NAS100_USD']) {
+    const d = days.map(x => T[sym].byDate.get(x.date)).filter(r => r?.ok);
+    const excl = r => { const s = T.SPX500_USD.byDate.get(r.date); return s && cond(s); };
+    for (const t of [paired(sym, d, 'r5', { excludeFn: excl, label: sym }), paired(sym, d, 'r20', { excludeFn: excl, label: sym }), paired(sym, d.filter(sinceR1), 'r5', { excludeFn: excl, label: `${sym} R1` })]) { log(line(t)); out.tests.push(t); }
   }
-  return C;
+  results.studies.M9 = out;
 }
-function nEffFromCorr(C) {
-  const n = C.length; let A = C.map(row => row.slice());
-  for (let sweep = 0; sweep < 100; sweep++) {
-    let off = 0; for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) off += A[p][q] ** 2;
-    if (off < 1e-12) break;
-    for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) {
-      if (Math.abs(A[p][q]) < 1e-14) continue;
-      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
-      const t = (theta >= 0 ? 1 : -1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
-      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
-      const app = A[p][p], aqq = A[q][q], apq = A[p][q];
-      A[p][p] = c * c * app - 2 * s * c * apq + s * s * aqq; A[q][q] = s * s * app + 2 * s * c * apq + c * c * aqq; A[p][q] = 0; A[q][p] = 0;
-      for (let i = 0; i < n; i++) { if (i === p || i === q) continue; const aip = A[i][p], aiq = A[i][q]; A[i][p] = c * aip - s * aiq; A[p][i] = A[i][p]; A[i][q] = s * aip + c * aiq; A[q][i] = A[i][q]; }
-    }
+// ═══ M12 breadth: every index down ═══════════════════════════════════════════
+if (want('M12')) {
+  log('\n═══ M12  all six indices closed down on the same session → next-5 range ═══');
+  const IDX = ['NAS100_USD', 'SPX500_USD', 'US30_USD', 'US2000_USD', 'DE30_EUR', 'UK100_GBP'];
+  for (const s of IDX) if (!T[s]) { try { bars[s] = (await fetchD1(s, 5000)).sort((a, b) => a.date < b.date ? -1 : 1); T[s] = table(s); log(`  ${s} ${bars[s].length} bars`); } catch (e) { log(`  ${s}: ${e.message}`); } }
+  const have = IDX.filter(s => T[s]);
+  const downOn = date => have.every(s => { const r = T[s].byDate.get(date); const p = r ? T[s].rows[r.i - 1] : null; return r && p && r.c < p.c; });
+  const spx = T.SPX500_USD.rows;
+  const allDown = spx.map(r => ({ r, d: downOn(r.date) }));
+  const n1 = allDown.filter(x => x.d && x.r.ok).map(x => x.r);
+  const n2 = allDown.filter((x, i) => x.d && i > 0 && allDown[i - 1].d && x.r.ok).map(x => x.r);
+  log(`  indices with data ${have.length}; all-down sessions ${n1.length}; two in a row ${n2.length}`);
+  const out = { indices: have.length, n1: n1.length, n2: n2.length, tests: [] };
+  for (const [tag, days] of [['N=1', n1], ['N=2', n2]]) for (const sym of ['SPX500_USD', 'NAS100_USD']) {
+    const d = days.map(x => T[sym].byDate.get(x.date)).filter(r => r?.ok);
+    const t = paired(sym, d, 'r5', { excludeFn: r => downOn(r.date), label: `${sym} ${tag}` }); log(line(t)); out.tests.push(t);
+    const up5 = d.filter(r => T[sym].rows[r.i + 5] && T[sym].rows[r.i + 5].c > r.c).length / Math.max(1, d.length);
+    log(`      ${sym} ${tag} higher 5 sessions later: ${(up5 * 100).toFixed(0)}% (base rate, n=${d.length})`);
   }
-  const eig = []; for (let i = 0; i < n; i++) eig.push(A[i][i]);
-  eig.sort((a, b) => b - a);
-  const sum = eig.reduce((s, v) => s + v, 0), sumSq = eig.reduce((s, v) => s + v * v, 0);
-  return { eig, nEff: sumSq ? (sum * sum) / sumSq : n };
-}
-
-// ═══ S13 breadth: does watching more pairs add anything? ════════════════════
-// Pre-registered 2026-09-17 (commit 26203b3) before running. Scope note printed
-// below: the registered universes 1/2/4/8/16/26 assumed a strategy that runs on
-// all 26; the only strategy on this desk with a validated multi-pair record
-// (the yield-spread z-score sleeve) is defined on exactly 6 pairs and does not
-// extend to the other 20 without inventing an untested spread definition for
-// each — so (b) is scored on its real ceiling, N=1..6, not N=26.
-if (want('S13')) {
-  log('\n═══ S13  does watching more pairs add breadth? (N and N_eff) ═══');
-  await ensureRegistryFX();
-  const out = {};
-
-  // ---- (a) raw-instrument N_eff across the registry's 26 FX + gold ----
-  const ALL26 = [...REGISTRY_FX, 'XAU_USD'];
-  const retBySym = {}; const dateSet = new Set();
-  for (const sym of ALL26) { const m = new Map(); for (const r of T[sym].pop) if (Number.isFinite(r.ret1)) { m.set(r.date, r.ret1); dateSet.add(r.date); } retBySym[sym] = m; }
-  const commonDates = [...dateSet].filter(d => ALL26.every(sym => retBySym[sym].has(d))).sort();
-  log(`  common trading dates across all 26 FX + gold: ${commonDates.length}`);
-  if (commonDates.length >= 500) {
-    const { eig, nEff } = nEffFromCorr(corrMatrix(ALL26, commonDates, retBySym));
-    log(`  raw daily-return correlation, 26 FX + gold (n=${commonDates.length} days): N_eff = ${nEff.toFixed(2)} of 27 (top 5 eigenvalues: ${eig.slice(0, 5).map(x => x.toFixed(2)).join(', ')})`);
-    out.rawNEff = { symbols: ALL26.length, days: commonDates.length, nEff, topEig: eig.slice(0, 6) };
-    const majors = ['EUR_USD', 'GBP_USD', 'AUD_USD', 'NZD_USD', 'USD_CAD', 'USD_CHF', 'USD_JPY'];
-    const { nEff: neM } = nEffFromCorr(corrMatrix(majors, commonDates, retBySym));
-    log(`  majors-only (7 USD pairs): N_eff = ${neM.toFixed(2)} of 7`);
-    out.majorsNEff = { symbols: majors.length, nEff: neM };
-  } else log(`  only ${commonDates.length} common dates — N_eff not computed`);
-
-  // ---- (b) the validated yield-spread sleeve, reconstructed pure from FRED CSV
-  // + OANDA daily closes already in this harness (not the production engine —
-  // a faithful re-derivation of YIELD_SPREAD_STRATEGY.md's rule for this test):
-  // entry |z|≥pair default, zWindow 126, exit |z|≤1.5 or 20-day hold, USD-role
-  // sign convention, 0.02% round-trip cost. ----
-  const usdBase = { usdjpy: true, usdcad: true, usdchf: true, eurusd: false, gbpusd: false, audusd: false };
-  const OANDA_OF = { usdjpy: 'USD_JPY', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdchf: 'USD_CHF' };
-  const gs2 = await fred('GS2');
-  const zWindow = 126, zExit = 1.5, maxHold = 20, costRT = (YIELD_SPREAD_DEFAULTS.costPct ?? 0.02) / 100;
-  const sleeveDaily = {};
-  for (const [key, cfg] of Object.entries(ZSCORE_PAIRS)) {
-    const foreign = await fred(cfg.quoteSeries);
-    const sym = OANDA_OF[key]; const rows = T[sym].rows;
-    const zByDate = buildRollingZSeries(gs2, foreign, zWindow, rows[0].date, rows.at(-1).date);
-    const thr = cfg.defaultThreshold ?? 2.0;
-    let pos = null; const daily = new Map();
-    for (let i = 1; i < rows.length; i++) {
-      const r = rows[i], p = rows[i - 1], z = zByDate.get(r.date)?.z ?? null;
-      let pnl = 0;
-      if (pos) { pnl = pos.dir * Math.log(r.c / p.c); pos.hold++; if (z == null || Math.abs(z) <= zExit || pos.hold >= maxHold) { pnl -= costRT / 2; pos = null; } }
-      if (!pos && z != null && Math.abs(z) >= thr) { pos = { dir: usdBase[key] ? Math.sign(z) : -Math.sign(z), hold: 0 }; pnl -= costRT / 2; }
-      daily.set(r.date, pnl);
-    }
-    sleeveDaily[key] = daily;
-  }
-  const sleeveKeys = Object.keys(ZSCORE_PAIRS);
-  const sleeveDates = [...sleeveDaily[sleeveKeys[0]].keys()].filter(d => sleeveKeys.every(k => sleeveDaily[k].has(d))).sort();
-  log(`  yield-spread sleeve reconstructed, ${sleeveKeys.length} pairs, ${sleeveDates.length} common trading days`);
-  const sharpe = vals => { const m = vals.reduce((a, b) => a + b, 0) / vals.length, sd = Math.sqrt(vals.reduce((s, v) => s + (v - m) ** 2, 0) / vals.length); return sd ? (m / sd) * Math.sqrt(252) : 0; };
-  const combos = arr => { const out = []; for (let m = 1; m < (1 << arr.length); m++) { const c = []; for (let b = 0; b < arr.length; b++) if (m & (1 << b)) c.push(arr[b]); out.push(c); } return out; };
-  const bySize = {};
-  for (const c of combos(sleeveKeys)) { const vals = sleeveDates.map(d => c.reduce((s, k) => s + sleeveDaily[k].get(d), 0) / c.length); (bySize[c.length] ??= []).push(sharpe(vals)); }
-  log('  equal-weight combined Sharpe by universe size (mean over every C(6,k) combo of that size):');
-  const sizeSummary = [];
-  for (let k = 1; k <= 6; k++) { const v = bySize[k], m = v.reduce((a, b) => a + b, 0) / v.length; log(`    N=${k}: mean Sharpe ${m.toFixed(2)} over ${v.length} combos (range ${Math.min(...v).toFixed(2)} to ${Math.max(...v).toFixed(2)})`); sizeSummary.push({ n: k, meanSharpe: m, min: Math.min(...v), max: Math.max(...v), combos: v.length }); }
-  const sleeveRetBySym = {}; for (const k of sleeveKeys) sleeveRetBySym[k] = new Map(sleeveDates.map(d => [d, sleeveDaily[k].get(d)]));
-  const { eig: sleeveEig, nEff: sleeveNEff } = nEffFromCorr(corrMatrix(sleeveKeys, sleeveDates, sleeveRetBySym));
-  log(`  sleeve's own 6-pair daily-P&L correlation: N_eff = ${sleeveNEff.toFixed(2)} of 6 (eigenvalues: ${sleeveEig.map(x => x.toFixed(2)).join(', ')})`);
-  const n1 = sizeSummary[0].meanSharpe, n6 = sizeSummary[5].meanSharpe, gain = n6 - n1;
-  log(`  N=6 mean Sharpe ${n6.toFixed(2)} vs N=1 mean Sharpe ${n1.toFixed(2)}: gain ${fmt(gain, 2)}. Registered pass bar (N=26 vs N=4, ≥0.3, CI clear of zero) is not measurable at this sleeve's real 6-pair ceiling — reported as N=6 vs N=1 instead, scope limit stated above.`);
-  out.sleeve = { keys: sleeveKeys, days: sleeveDates.length, bySize: sizeSummary, nEff: sleeveNEff, eig: sleeveEig, n1MeanSharpe: n1, n6MeanSharpe: n6, gain };
-  results.studies.S13 = out;
-}
-
-// ═══ S14 regime breaks: does a first-in-years range break precede anything ══
-// Pre-registered 2026-09-17 (commit 26203b3) before running.
-if (want('S14')) {
-  log('\n═══ S14  first close outside the trailing 3-year range (≥60 sessions since the last one) ═══');
-  await ensureRegistryFX();
-  const S30b = await fred('DGS30'), HYb = await fred('BAMLH0A0HYM2');
-  const rowsCal = T.EUR_USD.rows;
-  { let l30 = null, lhy = null; for (const r of rowsCal) { const v30 = S30b.get(r.date); if (v30 != null) l30 = v30; r.us30 = l30; const vhy = HYb.get(r.date); if (vhy != null) lhy = vhy; r.hy = lhy; } }
-  function levelTable(seriesMap) {
-    const rows = rowsCal.map(r => ({ i: r.i, date: r.date, week: r.week }));
-    let last = null; for (const r of rows) { const v = seriesMap.get(r.date); if (v != null) last = v; r.c = last; }
-    for (let i = 1; i < rows.length; i++) rows[i].tr = (rows[i].c != null && rows[i - 1].c != null) ? Math.abs(rows[i].c - rows[i - 1].c) : null;
-    for (let i = 14; i < rows.length; i++) { const win = rows.slice(i - 13, i + 1).map(r => r.tr).filter(Number.isFinite); if (win.length === 14) rows[i].atr = win.reduce((a, b) => a + b, 0) / 14; }
-    for (let i = 264; i < rows.length; i++) {
-      const r = rows[i]; if (!r.atr || r.c == null) continue;
-      const win = rows.slice(i - 250, i).map(x => x.atr).filter(Number.isFinite);
-      r.atrQ = win.length ? Math.min(4, Math.floor(win.filter(v => v < r.atr).length / win.length * 5)) : null;
-      r.trend20 = (rows[i - 20]?.c != null) ? r.c - rows[i - 20].c : null;
-      const f5 = rows.slice(i + 1, i + 6), f20 = rows.slice(i + 1, i + 21), vals = a => a.map(x => x.c).filter(Number.isFinite);
-      if (f5.length === 5) { const v = vals(f5); r.r5 = (v.length === 5 && r.atr) ? (Math.max(...v) - Math.min(...v)) / r.atr : null; }
-      if (f20.length === 20) { const v = vals(f20); r.r20 = (v.length === 20 && r.atr) ? (Math.max(...v) - Math.min(...v)) / r.atr : null; }
-      r.day0 = rows[i - 1]?.atr ? r.tr / rows[i - 1].atr : (r.atr ? r.tr / r.atr : null);
-      r.ok = r.atrQ != null && r.trend20 != null;
-    }
-    const pop = rows.filter(r => r.ok);
-    const v = pop.map(r => r.trend20).filter(Number.isFinite).sort((a, b) => a - b);
-    if (v.length) { const t1 = v[Math.floor(v.length / 3)], t2 = v[Math.floor(2 * v.length / 3)]; for (const r of pop) r.trendT = r.trend20 < t1 ? 0 : r.trend20 < t2 ? 1 : 2; }
-    return { rows, pop, byDate: new Map(rows.map(r => [r.date, r])) };
-  }
-  T.FRED_DGS2 = levelTable(F.us2y); T.FRED_DGS10 = levelTable(F.us10y); T.FRED_DGS30 = levelTable(S30b);
-  T.FRED_DFII10 = levelTable(F.real); T.FRED_T10YIE = levelTable(F.bei); T.FRED_HY = levelTable(HYb);
-  T.FRED_VIX = levelTable(F.vix); T.FRED_DXY = levelTable(F.dxy);
-
-  function regimeBreaks(rows, window = 756, cooldown = 60) {
-    const out = []; let lastBreak = -1e9;
-    for (let i = window; i < rows.length; i++) {
-      const r = rows[i]; if (r.c == null) continue;
-      let hi = -Infinity, lo = Infinity, cnt = 0;
-      for (let j = i - window; j < i; j++) { const v = rows[j].c; if (v != null) { if (v > hi) hi = v; if (v < lo) lo = v; cnt++; } }
-      if (cnt < window * 0.9) continue;
-      if (r.c > hi || r.c < lo) { if (i - lastBreak >= cooldown) out.push(r); lastBreak = i; }
-    }
-    return out;
-  }
-  const FAMILIES = {
-    'FX majors': ['EUR_USD', 'GBP_USD', 'AUD_USD', 'NZD_USD', 'USD_CAD', 'USD_CHF', 'USD_JPY'],
-    'FX crosses': ['EUR_GBP', 'EUR_AUD', 'EUR_CAD', 'EUR_CHF', 'EUR_NZD', 'AUD_NZD', 'AUD_CAD', 'AUD_CHF', 'NZD_CAD', 'GBP_AUD', 'GBP_CAD', 'GBP_CHF', 'GBP_NZD', 'EUR_JPY', 'GBP_JPY', 'AUD_JPY', 'CAD_JPY', 'CHF_JPY', 'NZD_JPY'],
-    'metals/indices': ['XAU_USD', 'SPX500_USD', 'NAS100_USD'],
-    'rates/credit': ['FRED_DGS2', 'FRED_DGS10', 'FRED_DGS30', 'FRED_DFII10', 'FRED_T10YIE', 'FRED_HY', 'FRED_VIX', 'FRED_DXY'],
-  };
-  const out = { families: {} };
-  let familiesClearing = 0;
-  for (const [fam, syms] of Object.entries(FAMILIES)) {
-    log(`  — ${fam} —`);
-    let famClears = false; const famTests = [];
-    for (const sym of syms) {
-      const t = T[sym]; if (!t) { log(`    ${sym}: no table, skipped`); continue; }
-      const breaks = regimeBreaks(t.rows);
-      if (breaks.length < 5) { log(`    ${sym}: ${breaks.length} qualifying breaks — too few even to test`); continue; }
-      for (const tst of [paired(sym, breaks, 'r5', { label: `${sym} break` }), paired(sym, breaks, 'r20', { label: `${sym} break` })]) {
-        log(line(tst)); famTests.push(tst);
-        if (tst.scored && tst.pass) famClears = true;
-      }
-    }
-    if (famClears) familiesClearing++;
-    out.families[fam] = { tests: famTests, clears: famClears };
-    log(`    ${fam}: ${famClears ? 'CLEARS the bar (≥30 episodes, +0.30 ATR, CI clear of zero, on at least one member)' : 'does not clear'}`);
-  }
-  const verdict = familiesClearing >= 3 ? `PASS — ${familiesClearing}/4 families clear` : `NULL — only ${familiesClearing}/4 families clear (bar was ≥3/4)`;
-  log(`  VERDICT: ${verdict}`);
-  out.familiesClearing = familiesClearing; out.verdict = verdict;
-  results.studies.S14 = out;
-}
-
-// ═══ S15 the non-reaction: a top-decile surprise, a bottom-tercile move ═════
-// Pre-registered 2026-09-17 (commit 26203b3) before running.
-let _s15OilSetup = null;   // shared with S16, same process only
-if (want('S15') || want('S16')) {
-  log('\n═══ S15  the non-reaction: top-decile surprise, bottom-tercile same-day move ═══');
-  const out = { oil: null, generalized: null };
-
-  // ---- (a) oil: EIA Weekly Crude Oil Inventory vs WTI ----
-  const csvPath = path.join(__dirname, '..', 'calendar_events.csv');
-  const csvLines = fs.readFileSync(csvPath, 'utf8').split('\n');
-  const header = csvLines[0].split(','); const cidx = Object.fromEntries(header.map((h, k) => [h.trim(), k]));
-  const eia = [];
-  for (let k = 1; k < csvLines.length; k++) {
-    const line = csvLines[k]; if (!line) continue;
-    const cells = line.split(',');
-    if (cells[cidx.event] !== 'EIA Weekly Crude Oil Inventory') continue;
-    const date = cells[cidx.date], actual = parseFloat(cells[cidx.actual]), consensus = parseFloat(cells[cidx.consensus]);
-    if (!date || !Number.isFinite(actual) || !Number.isFinite(consensus)) continue;
-    eia.push({ date, actual, consensus, surprise: actual - consensus });
-  }
-  log(`  EIA Weekly Crude Oil Inventory rows with actual+consensus: ${eia.length}`);
-  if (eia.length >= 40) {
-    const surp = eia.map(r => r.surprise), m = surp.reduce((a, b) => a + b, 0) / surp.length;
-    const sd = Math.sqrt(surp.reduce((s, v) => s + (v - m) ** 2, 0) / surp.length);
-    for (const r of eia) r.z = sd ? (r.surprise - m) / sd : 0;
-    if (!bars.WTICO_USD) { bars.WTICO_USD = (await fetchD1('WTICO_USD', 5000)).sort((a, b) => a.date < b.date ? -1 : 1); log(`  WTICO_USD ${bars.WTICO_USD.length} bars ${bars.WTICO_USD[0].date} → ${bars.WTICO_USD.at(-1).date}`); }
-    if (!T.WTICO_USD) T.WTICO_USD = table('WTICO_USD');
-    const wti = T.WTICO_USD;
-    for (let i = 0; i < wti.rows.length; i++) { const r = wti.rows[i], f5 = wti.rows[i + 5], f20 = wti.rows[i + 20]; r.retF5 = f5 ? Math.log(f5.c / r.c) : null; r.retF20 = f20 ? Math.log(f20.c / r.c) : null; }
-    const rel = eia.map(r => ({ ...r, row: wti.byDate.get(r.date) })).filter(r => r.row?.ok);
-    log(`  matched to WTI trading calendar: ${rel.length}`);
-    const zs = rel.map(r => Math.abs(r.z)).sort((a, b) => a - b), zThr = zs[Math.floor(zs.length * 0.9)];
-    const day0s = rel.map(r => r.row.day0).filter(Number.isFinite).sort((a, b) => a - b), reactT1 = day0s[Math.floor(day0s.length / 3)];
-    const topSurprise = rel.filter(r => Math.abs(r.z) >= zThr);
-    const setup = topSurprise.filter(r => r.row.day0 != null && r.row.day0 <= reactT1);
-    log(`  top-decile |z| ≥ ${zThr.toFixed(2)} (n=${topSurprise.length}); of those, bottom-tercile same-day reaction (day0 ≤ ${reactT1.toFixed(2)} ATR): n=${setup.length}`);
-    _s15OilSetup = setup;
-    const setupRows = setup.map(r => r.row);
-    const excl = r => topSurprise.some(x => x.date === r.date);
-    const rangeTests = [paired('WTICO_USD', setupRows, 'r5', { excludeFn: excl, label: 'EIA non-reaction' }), paired('WTICO_USD', setupRows, 'r20', { excludeFn: excl, label: 'EIA non-reaction' })];
-    for (const t of rangeTests) log(line(t));
-    const dirRows = setup.filter(r => Number.isFinite(r.row.retF5) && Number.isFinite(r.row.retF20));
-    const implied = r => -Math.sign(r.surprise);   // actual > consensus (bigger build/smaller draw) is bearish
-    const scored = dirRows.length >= 40;
-    const share5 = dirRows.length ? bootShareArr(dirRows.map(r => Math.sign(r.row.retF5) === implied(r)), SEED + 51) : null;
-    const share20 = dirRows.length ? bootShareArr(dirRows.map(r => Math.sign(r.row.retF20) === implied(r)), SEED + 52) : null;
-    log(`  directional share, in the surprise-implied direction (n=${dirRows.length}${scored ? '' : ' — BELOW the 40-episode floor, not scored'}): next-5d ${share5 ? (share5.p * 100).toFixed(0) : 'n/a'}%${share5 ? ` [${(share5.lo * 100).toFixed(0)},${(share5.hi * 100).toFixed(0)}]` : ''}; next-20d ${share20 ? (share20.p * 100).toFixed(0) : 'n/a'}%${share20 ? ` [${(share20.lo * 100).toFixed(0)},${(share20.hi * 100).toFixed(0)}]` : ''}`);
-    const pass = scored && (share5.lo > 0.5 || share5.hi < 0.5);
-    log(`  VERDICT (oil leg): ${pass ? 'PASS — CI excludes 50%' : scored ? 'NULL — CI includes 50%' : 'NOT SCORED — below the 40-episode floor'}`);
-    out.oil = { rows: eia.length, matched: rel.length, zThr, reactT1, nTopSurprise: topSurprise.length, nSetup: setup.length, nDir: dirRows.length, scored, share5, share20, rangeTests, pass };
-  } else { log(`  only ${eia.length} EIA rows with both actual and consensus — below MIN_N, not scored`); out.oil = { rows: eia.length, scored: false }; }
-
-  // ---- (b) generalized: the S7 surprise store, every family × pair ----
-  const api = await fetch('https://macrofxmodel-production.up.railway.app/api/econ-surprise?history=1').then(r => r.json());
-  const series = api?.series ?? {};
-  const CODE = { US: 'USD', GB: 'GBP', EU: 'EUR', JP: 'JPY', AU: 'AUD', CA: 'CAD' };
-  const PAIR2 = { US: ['EUR_USD', 'USD_JPY'], GB: ['GBP_USD'], EU: ['EUR_USD'], JP: ['USD_JPY'], AU: ['AUD_USD'], CA: ['USD_CAD'] };
-  const sessionDate = ms => { const t = new Date(ms); if (t.getUTCHours() >= 21) t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().slice(0, 10); };
-  const rel2 = [];
-  for (const [key, list] of Object.entries(series)) {
-    const [ccy, name] = key.split('|'); if (!PAIR2[ccy] || !CODE[ccy]) continue;
-    for (const x of list) if (Number.isFinite(x.z) && x.ms) for (const sym of PAIR2[ccy]) {
-      const [base, quote] = sym.split('_'); const dir = CODE[ccy] === base ? 1 : CODE[ccy] === quote ? -1 : 0;
-      if (!dir) continue; rel2.push({ ccy, sym, date: sessionDate(x.ms), z: x.z, dir });
-    }
-  }
-  log(`  generalized store: ${rel2.length} usable release-pair rows`);
-  const bySym = new Map(); for (const r of rel2) (bySym.get(r.sym) ?? bySym.set(r.sym, []).get(r.sym)).push(r);
-  const genOut = []; let genPass = 0, genScored = 0;
-  for (const [sym, list] of bySym) {
-    const t = T[sym]; if (!t) continue;
-    for (let i = 0; i < t.rows.length; i++) { const r = t.rows[i]; if (r.retF5 === undefined) { const f5 = t.rows[i + 5], f20 = t.rows[i + 20]; r.retF5 = f5 ? Math.log(f5.c / r.c) : null; r.retF20 = f20 ? Math.log(f20.c / r.c) : null; } }
-    const rows = list.map(r => ({ ...r, row: t.byDate.get(r.date) })).filter(r => r.row?.ok);
-    if (rows.length < 60) continue;
-    const zs = rows.map(r => Math.abs(r.z)).sort((a, b) => a - b), zThr = zs[Math.floor(zs.length * 0.9)];
-    const day0s = rows.map(r => r.row.day0).filter(Number.isFinite).sort((a, b) => a - b), reactT1 = day0s[Math.floor(day0s.length / 3)];
-    const topS = rows.filter(r => Math.abs(r.z) >= zThr);
-    const setup2 = topS.filter(r => r.row.day0 != null && r.row.day0 <= reactT1);
-    const dirRows2 = setup2.filter(r => Number.isFinite(r.row.retF5) && Number.isFinite(r.row.retF20));
-    if (dirRows2.length < 20) { log(`    ${sym}: only ${dirRows2.length} non-reaction episodes — not scored`); continue; }
-    const s5 = bootShareArr(dirRows2.map(r => Math.sign(r.row.retF5) === Math.sign(r.dir)), SEED + 60);
-    const s20 = bootShareArr(dirRows2.map(r => Math.sign(r.row.retF20) === Math.sign(r.dir)), SEED + 61);
-    const scored2 = dirRows2.length >= 40; if (scored2) { genScored++; if (s5.lo > 0.5 || s5.hi < 0.5) genPass++; }
-    log(`    ${sym}: n=${dirRows2.length} non-reaction episodes (of ${topS.length} top-decile, ${rows.length} total)${scored2 ? '' : ' — below 40, not scored'}. Implied-direction share next-5d ${(s5.p * 100).toFixed(0)}% [${(s5.lo * 100).toFixed(0)},${(s5.hi * 100).toFixed(0)}], next-20d ${(s20.p * 100).toFixed(0)}% [${(s20.lo * 100).toFixed(0)},${(s20.hi * 100).toFixed(0)}]`);
-    genOut.push({ sym, n: dirRows2.length, nTopSurprise: topS.length, share5: s5, share20: s20, scored: scored2 });
-  }
-  log(`  generalized VERDICT: ${genScored} symbol(s) scored, ${genPass} of those with CI excluding 50%`);
-  out.generalized = { totalRows: rel2.length, bySym: genOut, scored: genScored, pass: genPass };
-  if (want('S15')) results.studies.S15 = out;
-}
-
-// ═══ S16 weird × technical: does a recent breakout change the finding? ══════
-// Conditional pre-registration, 2026-09-17 (commit 26203b3): runs only if S15
-// returned anything. NOTE: uses a 10-session prior-high/low close-through as
-// the breakout proxy, not motif_track's tracked-level object — wiring the live
-// tracker into this offline harness is out of scope here; a stated scope
-// substitution, not a silent one.
-if (want('S16')) {
-  log('\n═══ S16  weird × technical: non-reaction episodes split by a prior breakout ═══');
-  if (!_s15OilSetup || _s15OilSetup.length < 10) {
-    log(`  S15's oil non-reaction setup has ${_s15OilSetup?.length ?? 0} episodes — too few to split; S16 not scored.`);
-    results.studies.S16 = { skipped: true, n: _s15OilSetup?.length ?? 0 };
-  } else {
-    const wti = T.WTICO_USD;
-    for (let i = 10; i < wti.rows.length; i++) { const r = wti.rows[i], win = wti.rows.slice(i - 10, i).map(x => x.c).filter(Number.isFinite); r.breakout10 = (win.length === 10 && r.c != null) ? (r.c > Math.max(...win) || r.c < Math.min(...win)) : false; }
-    const withBO = _s15OilSetup.filter(r => r.row.breakout10 === true), noBO = _s15OilSetup.filter(r => r.row.breakout10 === false);
-    log(`  of ${_s15OilSetup.length} non-reaction episodes: ${withBO.length} had a prior 10-session breakout, ${noBO.length} did not`);
-    const implied = r => -Math.sign(r.surprise);
-    const shareFor = grp => { const v = grp.filter(r => Number.isFinite(r.row.retF5)); return v.length ? bootShareArr(v.map(r => Math.sign(r.row.retF5) === implied(r)), SEED + 70) : null; };
-    const sBO = shareFor(withBO), sNo = shareFor(noBO);
-    log(`  next-5d implied-direction share: with breakout ${sBO ? `${(sBO.p * 100).toFixed(0)}% [${(sBO.lo * 100).toFixed(0)},${(sBO.hi * 100).toFixed(0)}] (n=${withBO.length})` : 'n/a'}; without ${sNo ? `${(sNo.p * 100).toFixed(0)}% [${(sNo.lo * 100).toFixed(0)},${(sNo.hi * 100).toFixed(0)}] (n=${noBO.length})` : 'n/a'}`);
-    const diff = (sBO && sNo) ? sBO.p - sNo.p : null;
-    const scored = withBO.length >= 30 && noBO.length >= 30;
-    const conjAdds = scored && diff != null && diff >= 0.10 && sBO.lo > sNo.hi;
-    log(`  VERDICT: ${!scored ? `NOT SCORED — needs ≥30 in each subgroup (have ${withBO.length} / ${noBO.length})` : conjAdds ? `CONJUNCTION ADDS — breakout subgroup beats the other by ${(diff * 100).toFixed(0)}pp with the CIs separated` : 'NO CONJUNCTION — the split does not clear the registered bar'}`);
-    results.studies.S16 = { withBreakout: withBO.length, withoutBreakout: noBO.length, shareBreakout: sBO, shareNoBreakout: sNo, diff, scored, conjAdds };
-  }
+  results.studies.M12 = out;
 }
 
 // ═══ S17 gold/oil ratio: extreme z → reversion, and which leg gives way? ═════

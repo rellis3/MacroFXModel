@@ -4234,6 +4234,462 @@ window.testVb2Telegram = testVb2Telegram;
 window.vb2SortLines = vb2SortLines;
 window.vb2SelectAllPairs = vb2SelectAllPairs; window.vb2SelectRecommendedPairs = vb2SelectRecommendedPairs;
 
+// ══════════════════════════════════════════════════════════════════════════
+// volatility_bot_v3 (Local Decision Engine) — mirrors the Vb2-prefixed block
+// above almost exactly (same pair universe, same risk/sizing/cadence
+// contract, same currency-gate/throttle/stack-guard mechanics), with three
+// deliberate differences: (1) no `volatility_bot_v3_plan` KV key exists —
+// the local engine IS the plan source, so loadVb3LiveStatus doesn't fetch
+// one and there's no "Plan:" age field; (2) no drift-history card — v2's
+// weekly automated backtest-vs-live audit job hasn't been built for v3 yet;
+// (3) plan_secs/plan_max_age_hours default to a much faster cadence (3s /
+// 10min vs v2's 45s / 1h) since the "plan" is now a same-machine local call,
+// not a 45s-cadence Railway snapshot. See MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
+// ══════════════════════════════════════════════════════════════════════════
+
+const VB3_PAIRS = VB2_PAIRS;
+const VB3_CORRELATED_RISK_EXCLUDE = VB2_CORRELATED_RISK_EXCLUDE;
+const VB3_DEFAULT_CHECKED = VB2_DEFAULT_CHECKED;
+const VB3_INDEX_KEYS = VB2_INDEX_KEYS;
+
+const VB3_DEFAULTS = {
+  ...VB2_DEFAULTS,
+  enabled_pairs: [...VB3_DEFAULT_CHECKED],
+  // Local engine call, not a 45s Railway snapshot — safe to poll as often as
+  // tick_secs itself; fail-closed gate tightened to match (10 min vs v2's 1h).
+  plan_secs: 3,
+  plan_max_age_hours: 1 / 6,
+  // Own bot/chat, deliberately blank (not v2's real live credentials) --
+  // 2026-09-18 identity-collision fix, see volatility_bot_v3.py's DEFAULT_CFG.
+  tg_enabled: false, tg_token: '', tg_chat_id: '',
+};
+let _vb3Cfg = { ...VB3_DEFAULTS };
+let _vb3LastStatus = null;
+
+function _vb3RenderPairChecks() {
+  const el = document.getElementById('vb3PairChecks');
+  if (!el) return;
+  const checked = new Set(_vb3Cfg.enabled_pairs?.length ? _vb3Cfg.enabled_pairs : VB3_DEFAULT_CHECKED);
+  el.innerHTML = VB3_PAIRS.map(p => `<label style="display:flex;align-items:center;gap:5px;padding:3px 0"><input type="checkbox" data-vb3-pair="${p}" ${checked.has(p) ? 'checked' : ''}>${p.toUpperCase()}</label>`).join('');
+}
+function _vb3ReadPairChecks() {
+  const boxes = document.querySelectorAll('#vb3PairChecks input[data-vb3-pair]');
+  return Array.from(boxes).filter(b => b.checked).map(b => b.dataset.vb3Pair);
+}
+function vb3SelectAllPairs() {
+  document.querySelectorAll('#vb3PairChecks input[data-vb3-pair]').forEach(b => { b.checked = true; });
+}
+function vb3SelectRecommendedPairs() {
+  document.querySelectorAll('#vb3PairChecks input[data-vb3-pair]').forEach(b => { b.checked = !VB3_CORRELATED_RISK_EXCLUDE.has(b.dataset.vb3Pair); });
+}
+
+function renderVb3Form() {
+  const chk = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
+  const set = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+  chk('vb3_paper_mode',  _vb3Cfg.paper_mode ?? true);
+  chk('vb3_kill_switch', _vb3Cfg.kill_switch);
+  set('vb3_risk_pct',            _vb3Cfg.risk_pct            ?? VB3_DEFAULTS.risk_pct);
+  set('vb3_max_lot',             _vb3Cfg.max_lot             ?? VB3_DEFAULTS.max_lot);
+  set('vb3_max_open',            _vb3Cfg.max_open            ?? VB3_DEFAULTS.max_open);
+  set('vb3_max_concurrent_per_pair', _vb3Cfg.max_concurrent_per_pair ?? VB3_DEFAULTS.max_concurrent_per_pair);
+  const msp = _vb3Cfg.max_spread_pips;
+  const mspNote = document.getElementById('vb3SpreadCapNote');
+  if (msp && typeof msp === 'object') {
+    const el = document.getElementById('vb3_max_spread_pips'); if (el) el.value = '';
+    if (mspNote) mspNote.textContent = `per-pair (${Object.keys(msp).length} pairs) — saving won't touch this unless you type a number here`;
+  } else {
+    set('vb3_max_spread_pips', msp ?? VB3_DEFAULTS.max_spread_pips);
+    if (mspNote) mspNote.textContent = '';
+  }
+  chk('vb3_ccy_loss_gate',       _vb3Cfg.ccy_loss_gate ?? true);
+  set('vb3_max_daily_loss_pct',  _vb3Cfg.max_daily_loss_pct  ?? VB3_DEFAULTS.max_daily_loss_pct);
+  chk('vb3_fade_stop_tighten',   _vb3Cfg.fade_stop_tighten ?? VB3_DEFAULTS.fade_stop_tighten);
+  set('vb3_max_open_risk_pct',   _vb3Cfg.max_open_risk_pct  ?? VB3_DEFAULTS.max_open_risk_pct);
+  chk('vb3_early_exit',          _vb3Cfg.early_exit ?? VB3_DEFAULTS.early_exit);
+  set('vb3_early_exit_threshold', _vb3Cfg.early_exit_threshold ?? VB3_DEFAULTS.early_exit_threshold);
+  chk('vb3_p90_enabled',         _vb3Cfg.p90_enabled ?? VB3_DEFAULTS.p90_enabled);
+  chk('vb3_throttle_enabled',    _vb3Cfg.throttle_enabled ?? VB3_DEFAULTS.throttle_enabled);
+  { const el = document.getElementById('vb3_throttle_mode'); if (el) el.value = _vb3Cfg.throttle_mode ?? VB3_DEFAULTS.throttle_mode; }
+  set('vb3_throttle_trigger_dd', _vb3Cfg.throttle_trigger_dd ?? VB3_DEFAULTS.throttle_trigger_dd);
+  set('vb3_throttle_restore_dd', _vb3Cfg.throttle_restore_dd ?? VB3_DEFAULTS.throttle_restore_dd);
+  set('vb3_throttle_mult',       _vb3Cfg.throttle_mult ?? VB3_DEFAULTS.throttle_mult);
+  chk('vb3_stack_guard',         _vb3Cfg.stack_guard ?? true);
+  set('vb3_stack_guard_pips',    _vb3Cfg.stack_guard_pips   ?? VB3_DEFAULTS.stack_guard_pips);
+  set('vb3_tick_secs',           _vb3Cfg.tick_secs          ?? VB3_DEFAULTS.tick_secs);
+  set('vb3_status_secs',         _vb3Cfg.status_secs        ?? VB3_DEFAULTS.status_secs);
+  set('vb3_plan_secs',           _vb3Cfg.plan_secs          ?? VB3_DEFAULTS.plan_secs);
+  set('vb3_plan_max_age_hours',  _vb3Cfg.plan_max_age_hours ?? VB3_DEFAULTS.plan_max_age_hours);
+  chk('vb3_eod_close_enabled',   _vb3Cfg.eod_close_enabled ?? VB3_DEFAULTS.eod_close_enabled);
+  set('vb3_eod_close_buffer_mins', _vb3Cfg.eod_close_buffer_mins ?? VB3_DEFAULTS.eod_close_buffer_mins);
+  chk('vb3_tg_enabled',          _vb3Cfg.tg_enabled ?? VB3_DEFAULTS.tg_enabled);
+  set('vb3_tg_token',            _vb3Cfg.tg_token ?? '');
+  set('vb3_tg_chat_id',          _vb3Cfg.tg_chat_id ?? '');
+  const syms = _vb3Cfg.broker_symbols || {};
+  VB3_INDEX_KEYS.forEach(k => { const e = document.getElementById(`vb3_sym_${k}`); if (e) e.value = syms[k] ?? ''; });
+  _vb3RenderPairChecks();
+}
+
+function readVb3Form() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  _vb3Cfg.paper_mode           = !!document.getElementById('vb3_paper_mode')?.checked;
+  _vb3Cfg.kill_switch          = !!document.getElementById('vb3_kill_switch')?.checked;
+  _vb3Cfg.risk_pct             = num('vb3_risk_pct', VB3_DEFAULTS.risk_pct);
+  _vb3Cfg.max_lot              = num('vb3_max_lot', VB3_DEFAULTS.max_lot);
+  _vb3Cfg.max_open             = Math.round(num('vb3_max_open', VB3_DEFAULTS.max_open));
+  _vb3Cfg.max_concurrent_per_pair = Math.round(num('vb3_max_concurrent_per_pair', VB3_DEFAULTS.max_concurrent_per_pair));
+  {
+    const rawSpread = document.getElementById('vb3_max_spread_pips')?.value;
+    const loadedIsDict = _vb3Cfg.max_spread_pips && typeof _vb3Cfg.max_spread_pips === 'object';
+    if (loadedIsDict && (rawSpread === '' || rawSpread == null)) {
+      // untouched — keep the dict as-is, don't overwrite with the scalar default
+    } else {
+      _vb3Cfg.max_spread_pips = num('vb3_max_spread_pips', VB3_DEFAULTS.max_spread_pips);
+    }
+  }
+  _vb3Cfg.ccy_loss_gate        = !!document.getElementById('vb3_ccy_loss_gate')?.checked;
+  _vb3Cfg.max_daily_loss_pct   = num('vb3_max_daily_loss_pct', VB3_DEFAULTS.max_daily_loss_pct);
+  _vb3Cfg.fade_stop_tighten    = !!document.getElementById('vb3_fade_stop_tighten')?.checked;
+  _vb3Cfg.max_open_risk_pct    = num('vb3_max_open_risk_pct', VB3_DEFAULTS.max_open_risk_pct);
+  _vb3Cfg.early_exit           = !!document.getElementById('vb3_early_exit')?.checked;
+  _vb3Cfg.early_exit_threshold = num('vb3_early_exit_threshold', VB3_DEFAULTS.early_exit_threshold);
+  _vb3Cfg.p90_enabled          = !!document.getElementById('vb3_p90_enabled')?.checked;
+  _vb3Cfg.throttle_enabled     = !!document.getElementById('vb3_throttle_enabled')?.checked;
+  _vb3Cfg.throttle_mode        = document.getElementById('vb3_throttle_mode')?.value || VB3_DEFAULTS.throttle_mode;
+  _vb3Cfg.throttle_trigger_dd  = num('vb3_throttle_trigger_dd', VB3_DEFAULTS.throttle_trigger_dd);
+  _vb3Cfg.throttle_restore_dd  = num('vb3_throttle_restore_dd', VB3_DEFAULTS.throttle_restore_dd);
+  _vb3Cfg.throttle_mult        = num('vb3_throttle_mult', VB3_DEFAULTS.throttle_mult);
+  _vb3Cfg.stack_guard          = !!document.getElementById('vb3_stack_guard')?.checked;
+  _vb3Cfg.stack_guard_pips     = num('vb3_stack_guard_pips', VB3_DEFAULTS.stack_guard_pips);
+  _vb3Cfg.tick_secs            = Math.round(num('vb3_tick_secs', VB3_DEFAULTS.tick_secs));
+  _vb3Cfg.status_secs          = Math.round(num('vb3_status_secs', VB3_DEFAULTS.status_secs));
+  _vb3Cfg.plan_secs            = Math.round(num('vb3_plan_secs', VB3_DEFAULTS.plan_secs));
+  _vb3Cfg.plan_max_age_hours   = num('vb3_plan_max_age_hours', VB3_DEFAULTS.plan_max_age_hours);
+  _vb3Cfg.eod_close_enabled    = !!document.getElementById('vb3_eod_close_enabled')?.checked;
+  _vb3Cfg.eod_close_buffer_mins = Math.round(num('vb3_eod_close_buffer_mins', VB3_DEFAULTS.eod_close_buffer_mins));
+  _vb3Cfg.tg_enabled           = !!document.getElementById('vb3_tg_enabled')?.checked;
+  _vb3Cfg.tg_token             = (document.getElementById('vb3_tg_token')?.value || '').trim();
+  _vb3Cfg.tg_chat_id           = (document.getElementById('vb3_tg_chat_id')?.value || '').trim();
+  _vb3Cfg.enabled_pairs        = _vb3ReadPairChecks();
+  const syms = {};
+  VB3_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`vb3_sym_${k}`)?.value || '').trim(); if (v) syms[k] = v; });
+  _vb3Cfg.broker_symbols = syms;
+}
+
+async function loadVb3Config() {
+  try { const stored = await kvGet('volatility_bot_v3_config'); if (stored) _vb3Cfg = { ...VB3_DEFAULTS, ...stored }; renderVb3Form(); } catch (e) {}
+}
+async function saveVb3Config() {
+  readVb3Form();
+  const el = document.getElementById('vb3SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('volatility_bot_v3_config', _vb3Cfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#34d399'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+async function resetVb3Throttle() {
+  const el = document.getElementById('vb3SaveStatus');
+  if (!confirm('Reset the drawdown throttle now?\n\nThis clears the running peak and restores full position sizing immediately, without waiting for balance to recover. Only do this if the current drawdown is believed stale — it discards real information the throttle was tracking.')) return;
+  if (el) { el.textContent = 'Resetting throttle…'; el.style.color = 'var(--text3)'; }
+  try {
+    const fresh = (await kvGet('volatility_bot_v3_config')) || { ..._vb3Cfg };
+    fresh.throttle_reset_at = new Date().toISOString();
+    await kvSet('volatility_bot_v3_config', fresh);
+    _vb3Cfg = fresh; renderVb3Form();
+    if (el) { el.textContent = 'Throttle reset ✓ (takes effect within one status cycle)'; el.style.color = '#34d399'; setTimeout(() => { el.textContent = ''; }, 5000); }
+  } catch (e) { if (el) { el.textContent = `Reset failed: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+// Book freshness — SAME check v2's tile uses (/api/level-atlas/staleness is
+// global, not scoped to any one bot's config) since v3's local engine votes
+// against the same Level Atlas book v2 does; only the refresh trigger below
+// is bot-scoped (reads THIS bot's enabled_pairs via ?bot=v3).
+async function loadVb3Staleness() {
+  const el = document.getElementById('vb3Staleness');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/level-atlas/staleness');
+    const j = await r.json();
+    if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
+    const days = (j.oldestAgeHours / 24).toFixed(1);
+    if (j.oldestAgeHours > 15) {
+      el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} ${days}d stale`;
+      el.style.color = 'var(--red)';
+    } else {
+      el.textContent = `fresh (oldest: ${j.oldestPair?.toUpperCase()} ${j.oldestAgeHours.toFixed(0)}h)`;
+      el.style.color = 'var(--green)';
+    }
+  } catch (e) { el.textContent = 'check failed'; el.style.color = 'var(--red)'; }
+}
+
+async function refreshVb3Book() {
+  const btn = document.getElementById('vb3RefreshBookBtn');
+  if (!confirm('Manually re-run the Level Atlas rebuild for this bot\'s enabled pairs now?\n\nThis is the same job the nightly 00:30 tick runs — takes several minutes, one pair at a time.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Refreshing…'; }
+  try {
+    const r = await fetch('/api/level-atlas/refresh-now?bot=v3', { method: 'POST' });
+    const j = await r.json();
+    if (btn) { btn.textContent = j.ok ? 'Refresh started ✓' : `Failed: ${j.error}`; }
+    setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = 'Refresh book now'; } loadVb3Staleness(); }, 8000);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Refresh book now'; }
+    alert(`Refresh failed: ${e.message}`);
+  }
+}
+window.refreshVb3Book = refreshVb3Book;
+
+async function testVb3Telegram() {
+  const el = document.getElementById('vb3SaveStatus');
+  if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/volatility-v3/telegram-test', { method: 'POST' });
+    const d = await r.json();
+    if (el) { el.textContent = d.ok ? 'Test sent ✓' : `Test failed: ${d.error || ''}`; el.style.color = d.ok ? '#34d399' : 'var(--red)'; }
+  } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetVb3Defaults() {
+  if (!confirm('Reset ALL Vote Atlas v3 config fields (risk sizing, broker symbols, Telegram, everything) back to defaults? This does not save until you click Save Config, but will overwrite anything currently loaded once you do.')) return;
+  const untracked = {};
+  for (const k of Object.keys(_vb3Cfg)) if (!(k in VB3_DEFAULTS)) untracked[k] = _vb3Cfg[k];
+  const preservedSpread = (_vb3Cfg.max_spread_pips && typeof _vb3Cfg.max_spread_pips === 'object') ? _vb3Cfg.max_spread_pips : undefined;
+  _vb3Cfg = { ...VB3_DEFAULTS, ...untracked };
+  if (preservedSpread) _vb3Cfg.max_spread_pips = preservedSpread;
+  renderVb3Form();
+  const el = document.getElementById('vb3SaveStatus');
+  if (el) { el.textContent = preservedSpread ? 'Defaults restored (per-pair spread caps kept) — click Save to apply' : 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadVb3Creds() { try { _applyCredsToForm(await kvGet('volatility_bot_v3_credentials'), 'vb3_', 'vb3_mt5_password'); } catch (e) {} }
+async function saveVb3Creds() { await _saveCreds('volatility_bot_v3_credentials', 'vb3_', 'vb3_mt5_password', 'vb3CredsStatus'); }
+
+let _vb3Lines = [];
+let _vb3LinesSort = { col: null, dir: 1 };
+function vb3SortLines(col) {
+  if (_vb3LinesSort.col === col) _vb3LinesSort.dir *= -1;
+  else { _vb3LinesSort.col = col; _vb3LinesSort.dir = 1; }
+  _vb3RenderLinesTable();
+}
+function _vb3RenderLinesTable() {
+  const body = document.getElementById('vb3LinesBody');
+  if (!body) return;
+  const head = document.getElementById('vb3LinesHead');
+  if (head) {
+    head.querySelectorAll('th').forEach(th => {
+      const ind = th.querySelector('.sort-ind');
+      if (!ind) return;
+      ind.textContent = th.dataset.col === _vb3LinesSort.col ? (_vb3LinesSort.dir > 0 ? ' ▲' : ' ▼') : '';
+    });
+  }
+  let rows = _vb3Lines.slice();
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">Bot running but no zones yet — waiting for the local engine</td></tr>';
+    return;
+  }
+  const NUMERIC = new Set(['margin', 'entry', 'sl', 'tp']);
+  const { col, dir } = _vb3LinesSort;
+  if (col) {
+    rows.sort((a, b) => {
+      let av = a[col], bv = b[col];
+      if (NUMERIC.has(col)) { av = av == null ? -Infinity : +av; bv = bv == null ? -Infinity : +bv; return (av - bv) * dir; }
+      av = (av ?? '').toString().toLowerCase(); bv = (bv ?? '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
+    });
+  }
+  const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+  const STATUS_COLOR = { entered: 'var(--green)', armed: 'var(--text2)' };
+  body.innerHTML = rows.map(r => `<tr>
+      <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
+      <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
+      <td style="padding:5px 10px;text-align:left">${r.rung || '—'}</td>
+      <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+      <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
+      <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
+      <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
+      <td style="padding:5px 10px;text-align:left;color:${STATUS_COLOR[r.status] || 'var(--text3)'}">${r.status === 'entered' ? '▶ entered' : (r.status || '—')}</td>
+      <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
+    </tr>`).join('');
+}
+
+async function loadVb3LiveStatus() {
+  const ageEl = document.getElementById('vb3LiveAge'), modeEl = document.getElementById('vb3LiveMode');
+  const balEl = document.getElementById('vb3LiveBal'), openEl = document.getElementById('vb3OpenN');
+  const uniEl = document.getElementById('vb3UniN'), gateEl = document.getElementById('vb3GateN');
+  try {
+    const st = await kvGet('volatility_bot_v3_status');
+    _vb3LastStatus = st || null;
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; loadVb3AllLines(); loadVb3DecisionLog(); return; }
+    if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+    if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+    if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+    const positions = st.mt5_positions || [];
+    if (openEl) openEl.textContent = positions.length;
+    const tradesEl = document.getElementById('vb3TradesN');
+    if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
+    if (uniEl)  uniEl.textContent  = (st.universe || []).length;
+    if (gateEl) {
+      const tally = st.ccy_gate?.tally || {};
+      const blocked = Object.entries(tally).filter(([, v]) => v <= -(_vb3Cfg.max_daily_loss_pct ?? 1));
+      gateEl.textContent = blocked.length ? blocked.map(([c, v]) => `${c} ${v.toFixed(1)}%`).join(', ') : 'clear';
+      gateEl.style.color = blocked.length ? 'var(--red)' : 'var(--text3)';
+    }
+
+    const throttleEl = document.getElementById('vb3Throttle');
+    const throttleResetBtn = document.getElementById('vb3ThrottleResetBtn');
+    if (throttleEl) {
+      const th = st.throttle;
+      const modeTag = th?.mode === 'graded' ? ' [graded]' : th?.mode ? ' [cliff]' : '';
+      if (!th || th.peak == null) { throttleEl.textContent = 'no data yet'; throttleEl.style.color = 'var(--text3)'; }
+      else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED${modeTag} — sizing at ${th.mult}× (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
+      else { throttleEl.textContent = `clear${modeTag} (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
+      if (throttleResetBtn) throttleResetBtn.style.display = (th && th.throttled) ? '' : 'none';
+    }
+    const guardEl = document.getElementById('vb3RiskGuard');
+    if (guardEl) {
+      const rg = st.risk_guard;
+      if (!rg) { guardEl.textContent = 'no data yet'; guardEl.style.color = 'var(--text3)'; }
+      else if (rg.locked) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
+      else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--green)'; }
+    }
+    const heatEl = document.getElementById('vb3Heat');
+    if (heatEl) {
+      const used = st.portfolio_heat_pct ?? 0, cap = st.portfolio_heat_cap_pct ?? 0;
+      if (!cap) { heatEl.textContent = `${used.toFixed(2)}% used (cap off)`; heatEl.style.color = 'var(--text3)'; }
+      else {
+        const pctOfCap = used / cap * 100;
+        heatEl.textContent = `${used.toFixed(2)}% / ${cap.toFixed(2)}% cap (${pctOfCap.toFixed(0)}%)`;
+        heatEl.style.color = pctOfCap >= 90 ? 'var(--red)' : pctOfCap >= 60 ? 'var(--amber,#e0a93b)' : 'var(--green)';
+      }
+    }
+    const planGateEl = document.getElementById('vb3PlanGate');
+    if (planGateEl) {
+      if (st.plan_age_blocked) { planGateEl.textContent = '⚠ BLOCKED — local engine data stale, no new entries'; planGateEl.style.color = 'var(--red)'; }
+      else { planGateEl.textContent = 'fresh'; planGateEl.style.color = 'var(--green)'; }
+    }
+    const eodGateEl = document.getElementById('vb3EodGate');
+    if (eodGateEl) {
+      if (st.eod_close_blocked) { eodGateEl.textContent = '⚠ FLATTENING — session close, no new entries'; eodGateEl.style.color = 'var(--red)'; }
+      else { eodGateEl.textContent = 'clear'; eodGateEl.style.color = 'var(--green)'; }
+    }
+
+    const openBody = document.getElementById('vb3OpenBody');
+    if (openBody) {
+      if (!positions.length) {
+        openBody.innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>';
+      } else {
+        const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+        openBody.innerHTML = positions.map(p => {
+          const buy = (p.direction || '').toUpperCase() === 'BUY';
+          const pnl = +(p.profit || 0);
+          return `<tr>
+            <td style="padding:5px 10px;font-weight:600;text-align:left">${(p.symbol || '?').toUpperCase()}</td>
+            <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+            <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+            <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+            <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+            <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    _vb3Lines = st.lines || [];
+    _vb3RenderLinesTable();
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+  loadVb3AllLines();
+  loadVb3DecisionLog();
+  loadVb3Staleness();
+}
+
+async function loadVb3AllLines() {
+  const body = document.getElementById('vb3AllLinesBody');
+  if (!body) return;
+  const pairs = _vb3Cfg.enabled_pairs?.length ? _vb3Cfg.enabled_pairs : [...VB3_DEFAULT_CHECKED];
+  const filter = (document.getElementById('vb3AllLinesFilter')?.value || '').trim().toLowerCase();
+  try {
+    const r = await fetch(`/api/level-atlas/vote-preview?instruments=${encodeURIComponent(pairs.join(','))}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
+    let rows = [];
+    for (const [pair, inst] of Object.entries(j.instruments || {})) {
+      for (const p of (inst.pending || [])) rows.push({ pair, side: p.side, rung: p.rung, status: 'pending', decision: p.decision });
+      for (const t of (inst.touches || [])) rows.push({ pair, side: t.side, rung: t.rung, status: `touched · ${t.outcome}`, decision: t.decision });
+    }
+    if (filter) rows = rows.filter(r => r.pair.toLowerCase().includes(filter));
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No lines for that pair yet' : 'No live coverage yet'}</td></tr>`; return; }
+    const sortBy = document.getElementById('vb3AllLinesSort')?.value || 'margin';
+    if (sortBy === 'pair') rows.sort((a, b) => a.pair.localeCompare(b.pair) || (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
+    else rows.sort((a, b) => (b.decision?.margin ?? -1) - (a.decision?.margin ?? -1));
+    body.innerHTML = rows.map(r => {
+      const d = r.decision;
+      const strong = d && d.margin >= 3;
+      const decLabel = !d ? '🪙 no decision' : (d.decision === 'follow' ? '↗ continue' : '↘ fade');
+      const decColor = !d ? 'var(--text3)' : (d.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left">${r.side === 'up' ? '↑ up' : '↓ down'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.rung}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
+        <td style="padding:5px 10px;text-align:right">${d?.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${strong ? 'var(--green)' : 'var(--text3)'}">${strong ? '✓' : '—'}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+const VB3_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', pair_blocked: 'var(--text3)' };
+function vb3DecShiftDay(delta) {
+  const input = document.getElementById('vb3DecDate');
+  if (!input) return;
+  const base = input.value ? new Date(input.value + 'T00:00:00Z') : new Date();
+  base.setUTCDate(base.getUTCDate() + delta);
+  input.value = base.toISOString().slice(0, 10);
+  loadVb3DecisionLog();
+}
+function vb3DecClearDate() {
+  const input = document.getElementById('vb3DecDate');
+  if (input) input.value = '';
+  loadVb3DecisionLog();
+}
+async function loadVb3DecisionLog() {
+  const body = document.getElementById('vb3DecisionBody');
+  if (!body) return;
+  const filter = (document.getElementById('vb3DecFilter')?.value || '').trim().toLowerCase();
+  const dateFilter = document.getElementById('vb3DecDate')?.value || '';
+  try {
+    const log = await kvGet('volatility_bot_v3_decision_log');
+    let events = (log?.events || []).slice().reverse();
+    if (filter) events = events.filter(e => (e.pair || '').toLowerCase().includes(filter));
+    if (dateFilter) events = events.filter(e => e.t && new Date(e.t * 1000).toISOString().slice(0, 10) === dateFilter);
+    if (!events.length) {
+      const why = dateFilter ? `No events for ${dateFilter}${filter ? ` (pair ${filter})` : ''}` : (filter ? 'No events for that pair yet' : 'No decision events logged yet');
+      body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      return;
+    }
+    body.innerHTML = events.slice(0, 300).map(e => {
+      const ts = e.t ? new Date(e.t * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = e.decision === 'follow' ? 'var(--blue,#60a5fa)' : e.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left">${e.side ? (e.side === 'up' ? '↑ up' : '↓ down') : '—'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.rung || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${e.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${e.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${VB3_DEC_STATUS_COLOR[e.status] || 'var(--text3)'}">${e.status || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.reason || '—'}</td>
+      </tr>`;
+    }).join('') + (events.length > 300 ? `<tr><td colspan="8" style="padding:8px;text-align:center;color:var(--text3)">…${events.length - 300} older event(s) not shown</td></tr>` : '');
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+window.saveVb3Config = saveVb3Config; window.resetVb3Defaults = resetVb3Defaults;
+window.resetVb3Throttle = resetVb3Throttle;
+window.saveVb3Creds = saveVb3Creds; window.loadVb3LiveStatus = loadVb3LiveStatus;
+window.loadVb3AllLines = loadVb3AllLines; window.loadVb3DecisionLog = loadVb3DecisionLog;
+window.vb3DecShiftDay = vb3DecShiftDay; window.vb3DecClearDate = vb3DecClearDate;
+window.testVb3Telegram = testVb3Telegram;
+window.vb3SortLines = vb3SortLines;
+window.vb3SelectAllPairs = vb3SelectAllPairs; window.vb3SelectRecommendedPairs = vb3SelectRecommendedPairs;
+
 // ── Forecast drift vs reference ───────────────────────────────────────────────
 // For each live-universe pair, call /api/forecast-drift/:pair (plan lines vs the
 // recalibrated reference forecaster) and render the per-line % drift. A large negative
@@ -4440,6 +4896,28 @@ document.querySelector('.tab-btn[data-tab="volatilityv2"]')?.addEventListener('c
 loadVb2Config();
 loadVb2Creds();
 loadVb2LiveStatus();
+// Auto-refresh while the tab is open and visible -- same pattern as Motif
+// bot's tab (js/bot-config.js's loadMtLiveStatus poll below). Without this,
+// the Decision Timeline / Today's Levels / Open Positions tables only ever
+// updated on page load, a tab click, or the manual "Refresh" button --
+// easy to watch a stale view during a live session without noticing.
+// 30s matches this bot's own status_secs default, so it's not polling
+// faster than the bot actually pushes anything new.
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  if (!document.getElementById('tab-volatilityv2')?.classList.contains('active')) return;
+  loadVb2LiveStatus();
+}, 30_000);
+
+document.querySelector('.tab-btn[data-tab="volatilityv3"]')?.addEventListener('click', loadVb3LiveStatus);
+loadVb3Config();
+loadVb3Creds();
+loadVb3LiveStatus();
+setInterval(() => {
+  if (document.visibilityState !== 'visible') return;
+  if (!document.getElementById('tab-volatilityv3')?.classList.contains('active')) return;
+  loadVb3LiveStatus();
+}, 30_000);
 
 // ══════════════════════════════════════════════════════════════════════════
 // fib_atlas_bot (Asia + Monday range-extension vote) — mirrors the Vb2-
@@ -5210,6 +5688,508 @@ loadFaConfig();
 loadFaCreds();
 loadFaLiveStatus();
 
+// ══════════════════════════════════════════════════════════════════════════
+// fib_atlas_bot_v2 (local decision engine fork, 2026-09-18) — mirrors the
+// Fa-prefixed block above field-for-field (same DEFAULT_CFG shape — engine.py
+// and the risk/sizing/broker logic are copied verbatim, only the plan source
+// differs). Genuinely different: no fib_atlas_bot_v2_plan KV key exists (the
+// local engine IS the plan source), so "Today's Levels" reads the bot's OWN
+// status.lines instead of a separate plan fetch, plan_secs/plan_max_age_hours
+// default tighter (same-machine call, should respond fast). Reuses rather
+// than duplicates whatever is genuinely shared, non-bot-specific data: the
+// pair universe constants (FA_PAIRS/FA_RECOMMENDED_EXCLUDE/FA_DEFAULT_CHECKED),
+// the backtest daily-trade reference (FA_DAILY_TRADE_REFERENCE — same
+// backtest), the decision-matching helper (_faMatchDecision — generic), and
+// book freshness (same underlying book both bots read, view-only here — use
+// the original tab's "Refresh book now" button, it benefits both).
+// ══════════════════════════════════════════════════════════════════════════
+
+const FA2_DEFAULTS = {
+  paper_mode: true, kill_switch: false,
+  ladders: { asia: true, monday: true },
+  risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
+  max_spread_pips: 2.0,
+  enabled_pairs: [...FA_DEFAULT_CHECKED],
+  ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
+  throttle_enabled: false, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
+  max_open_risk_pct: 0,
+  // Tighter than FA_DEFAULTS' 2h/45s (fib_atlas_bot_v2.py's own DEFAULT_CFG) —
+  // plan_secs is now a same-machine HTTP call, not a Railway round-trip, and
+  // plan_max_age_hours exists to catch a STALLED source, which should be
+  // caught fast when that source is a local process this machine also owns.
+  plan_max_age_hours: 1 / 6,
+  tick_secs: 3, status_secs: 30, plan_secs: 3,
+  tg_enabled: true, tg_token: '', tg_chat_id: '',
+};
+let _fa2Cfg = { ...FA2_DEFAULTS };
+let _fa2LastStatus = null;
+
+function _fa2RenderPairChecks() {
+  const el = document.getElementById('fa2PairChecks');
+  if (!el) return;
+  const checked = new Set(_fa2Cfg.enabled_pairs?.length ? _fa2Cfg.enabled_pairs : FA_DEFAULT_CHECKED);
+  el.innerHTML = FA_PAIRS.map(p => `<label style="display:flex;align-items:center;gap:5px;padding:3px 0"><input type="checkbox" data-fa2-pair="${p}" ${checked.has(p) ? 'checked' : ''}>${p.toUpperCase()}</label>`).join('');
+}
+function _fa2ReadPairChecks() {
+  const boxes = document.querySelectorAll('#fa2PairChecks input[data-fa2-pair]');
+  return Array.from(boxes).filter(b => b.checked).map(b => b.dataset.fa2Pair);
+}
+function fa2SelectAllPairs() {
+  document.querySelectorAll('#fa2PairChecks input[data-fa2-pair]').forEach(b => { b.checked = true; });
+}
+function fa2SelectRecommendedPairs() {
+  document.querySelectorAll('#fa2PairChecks input[data-fa2-pair]').forEach(b => { b.checked = !FA_RECOMMENDED_EXCLUDE.has(b.dataset.fa2Pair); });
+}
+
+function renderFa2Form() {
+  const chk = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
+  const set = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+  chk('fa2_paper_mode',  _fa2Cfg.paper_mode ?? true);
+  chk('fa2_kill_switch', _fa2Cfg.kill_switch);
+  chk('fa2_ladder_asia',   _fa2Cfg.ladders?.asia ?? true);
+  chk('fa2_ladder_monday', _fa2Cfg.ladders?.monday ?? true);
+  set('fa2_risk_pct',            _fa2Cfg.risk_pct            ?? FA2_DEFAULTS.risk_pct);
+  set('fa2_max_lot',             _fa2Cfg.max_lot             ?? FA2_DEFAULTS.max_lot);
+  set('fa2_max_open',            _fa2Cfg.max_open            ?? FA2_DEFAULTS.max_open);
+  set('fa2_max_concurrent_per_pair', _fa2Cfg.max_concurrent_per_pair ?? FA2_DEFAULTS.max_concurrent_per_pair);
+  set('fa2_max_spread_pips',     _fa2Cfg.max_spread_pips     ?? FA2_DEFAULTS.max_spread_pips);
+  set('fa2_ddlimit',             _fa2Cfg.ddlimit             ?? FA2_DEFAULTS.ddlimit);
+  set('fa2_monthlydd',           _fa2Cfg.monthlydd           ?? FA2_DEFAULTS.monthlydd);
+  set('fa2_lockout',             _fa2Cfg.lockout             ?? FA2_DEFAULTS.lockout);
+  set('fa2_cooldown',            _fa2Cfg.cooldown            ?? FA2_DEFAULTS.cooldown);
+  chk('fa2_throttle_enabled',    _fa2Cfg.throttle_enabled ?? FA2_DEFAULTS.throttle_enabled);
+  set('fa2_throttle_trigger_dd', _fa2Cfg.throttle_trigger_dd ?? FA2_DEFAULTS.throttle_trigger_dd);
+  set('fa2_throttle_restore_dd', _fa2Cfg.throttle_restore_dd ?? FA2_DEFAULTS.throttle_restore_dd);
+  set('fa2_throttle_mult',       _fa2Cfg.throttle_mult ?? FA2_DEFAULTS.throttle_mult);
+  set('fa2_max_open_risk_pct',   _fa2Cfg.max_open_risk_pct  ?? FA2_DEFAULTS.max_open_risk_pct);
+  set('fa2_tick_secs',           _fa2Cfg.tick_secs          ?? FA2_DEFAULTS.tick_secs);
+  set('fa2_status_secs',         _fa2Cfg.status_secs        ?? FA2_DEFAULTS.status_secs);
+  set('fa2_plan_secs',           _fa2Cfg.plan_secs          ?? FA2_DEFAULTS.plan_secs);
+  set('fa2_plan_max_age_hours',  _fa2Cfg.plan_max_age_hours ?? FA2_DEFAULTS.plan_max_age_hours);
+  chk('fa2_tg_enabled',          _fa2Cfg.tg_enabled ?? FA2_DEFAULTS.tg_enabled);
+  set('fa2_tg_token',            _fa2Cfg.tg_token ?? FA2_DEFAULTS.tg_token);
+  set('fa2_tg_chat_id',          _fa2Cfg.tg_chat_id ?? FA2_DEFAULTS.tg_chat_id);
+  _fa2RenderPairChecks();
+}
+
+function readFa2Form() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  _fa2Cfg.paper_mode           = !!document.getElementById('fa2_paper_mode')?.checked;
+  _fa2Cfg.kill_switch          = !!document.getElementById('fa2_kill_switch')?.checked;
+  _fa2Cfg.ladders = {
+    asia:   !!document.getElementById('fa2_ladder_asia')?.checked,
+    monday: !!document.getElementById('fa2_ladder_monday')?.checked,
+  };
+  _fa2Cfg.risk_pct             = num('fa2_risk_pct', FA2_DEFAULTS.risk_pct);
+  _fa2Cfg.max_lot              = num('fa2_max_lot', FA2_DEFAULTS.max_lot);
+  _fa2Cfg.max_open             = Math.round(num('fa2_max_open', FA2_DEFAULTS.max_open));
+  _fa2Cfg.max_concurrent_per_pair = Math.round(num('fa2_max_concurrent_per_pair', FA2_DEFAULTS.max_concurrent_per_pair));
+  _fa2Cfg.max_spread_pips      = num('fa2_max_spread_pips', FA2_DEFAULTS.max_spread_pips);
+  _fa2Cfg.ddlimit               = num('fa2_ddlimit', FA2_DEFAULTS.ddlimit);
+  _fa2Cfg.monthlydd             = num('fa2_monthlydd', FA2_DEFAULTS.monthlydd);
+  _fa2Cfg.lockout                = num('fa2_lockout', FA2_DEFAULTS.lockout);
+  _fa2Cfg.cooldown               = num('fa2_cooldown', FA2_DEFAULTS.cooldown);
+  _fa2Cfg.throttle_enabled     = !!document.getElementById('fa2_throttle_enabled')?.checked;
+  _fa2Cfg.throttle_trigger_dd  = num('fa2_throttle_trigger_dd', FA2_DEFAULTS.throttle_trigger_dd);
+  _fa2Cfg.throttle_restore_dd  = num('fa2_throttle_restore_dd', FA2_DEFAULTS.throttle_restore_dd);
+  _fa2Cfg.throttle_mult        = num('fa2_throttle_mult', FA2_DEFAULTS.throttle_mult);
+  _fa2Cfg.max_open_risk_pct    = num('fa2_max_open_risk_pct', FA2_DEFAULTS.max_open_risk_pct);
+  _fa2Cfg.tick_secs            = Math.round(num('fa2_tick_secs', FA2_DEFAULTS.tick_secs));
+  _fa2Cfg.status_secs          = Math.round(num('fa2_status_secs', FA2_DEFAULTS.status_secs));
+  _fa2Cfg.plan_secs            = Math.round(num('fa2_plan_secs', FA2_DEFAULTS.plan_secs));
+  _fa2Cfg.plan_max_age_hours   = num('fa2_plan_max_age_hours', FA2_DEFAULTS.plan_max_age_hours);
+  _fa2Cfg.tg_enabled           = !!document.getElementById('fa2_tg_enabled')?.checked;
+  _fa2Cfg.tg_token             = (document.getElementById('fa2_tg_token')?.value || '').trim();
+  _fa2Cfg.tg_chat_id           = (document.getElementById('fa2_tg_chat_id')?.value || '').trim();
+  _fa2Cfg.enabled_pairs        = _fa2ReadPairChecks();
+}
+
+async function loadFa2Config() {
+  try { const stored = await kvGet('fib_atlas_bot_v2_config'); if (stored) _fa2Cfg = { ...FA2_DEFAULTS, ...stored, ladders: { ...FA2_DEFAULTS.ladders, ...(stored.ladders || {}) } }; renderFa2Form(); } catch (e) {}
+}
+async function saveFa2Config() {
+  readFa2Form();
+  const el = document.getElementById('fa2SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('fib_atlas_bot_v2_config', _fa2Cfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f472b6'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+async function testFa2Telegram() {
+  const el = document.getElementById('fa2SaveStatus');
+  if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/fib-atlas-bot-v2/telegram-test', { method: 'POST' });
+    const d = await r.json();
+    if (el) { el.textContent = d.ok ? 'Test sent ✓' : `Test failed: ${d.error || ''}`; el.style.color = d.ok ? '#f472b6' : 'var(--red)'; }
+  } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetFa2Defaults() {
+  _fa2Cfg = { ...FA2_DEFAULTS, ladders: { ...FA2_DEFAULTS.ladders } }; renderFa2Form();
+  const el = document.getElementById('fa2SaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadFa2Creds() { try { _applyCredsToForm(await kvGet('fib_atlas_bot_v2_credentials'), 'fa2_', 'fa2_mt5_password'); } catch (e) {} }
+async function saveFa2Creds() { await _saveCreds('fib_atlas_bot_v2_credentials', 'fa2_', 'fa2_mt5_password', 'fa2CredsStatus'); }
+
+async function loadFa2LiveStatus() {
+  const ageEl = document.getElementById('fa2LiveAge'), modeEl = document.getElementById('fa2LiveMode');
+  const balEl = document.getElementById('fa2LiveBal'), openEl = document.getElementById('fa2OpenN');
+  const uniEl = document.getElementById('fa2UniN');
+  let st = null;
+  try {
+    st = await kvGet('fib_atlas_bot_v2_status');
+    _fa2LastStatus = st || null;
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; }
+    else {
+      if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+      const positions = st.mt5_positions || [];
+      if (openEl) openEl.textContent = positions.length;
+      const tradesEl = document.getElementById('fa2TradesN');
+      if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
+      if (uniEl)  uniEl.textContent  = (st.universe || []).length;
+
+      const throttleEl = document.getElementById('fa2Throttle');
+      if (throttleEl) {
+        const th = st.throttle;
+        if (!th || th.peak == null) { throttleEl.textContent = 'no data yet'; throttleEl.style.color = 'var(--text3)'; }
+        else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED — sizing cut (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
+        else { throttleEl.textContent = `clear (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
+      }
+      const guardEl = document.getElementById('fa2RiskGuard');
+      if (guardEl) {
+        const rg = st.risk_guard;
+        if (!rg) { guardEl.textContent = 'no data yet'; guardEl.style.color = 'var(--text3)'; }
+        else if (rg.locked) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
+        else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--green)'; }
+      }
+      const heatEl = document.getElementById('fa2Heat');
+      if (heatEl) {
+        const used = st.portfolio_heat_pct ?? 0, cap = st.portfolio_heat_cap_pct ?? 0;
+        if (!cap) { heatEl.textContent = `${used.toFixed(2)}% used (cap off)`; heatEl.style.color = 'var(--text3)'; }
+        else {
+          const pctOfCap = used / cap * 100;
+          heatEl.textContent = `${used.toFixed(2)}% / ${cap.toFixed(2)}% cap (${pctOfCap.toFixed(0)}%)`;
+          heatEl.style.color = pctOfCap >= 90 ? 'var(--red)' : pctOfCap >= 60 ? 'var(--amber,#e0a93b)' : 'var(--green)';
+        }
+      }
+      const planGateEl = document.getElementById('fa2PlanGate');
+      if (planGateEl) {
+        if (st.plan_age_blocked) { planGateEl.textContent = '⚠ BLOCKED — plan stale, no new entries'; planGateEl.style.color = 'var(--red)'; }
+        else { planGateEl.textContent = 'fresh'; planGateEl.style.color = 'var(--green)'; }
+      }
+
+      const openBody = document.getElementById('fa2OpenBody');
+      if (openBody) {
+        if (!positions.length) {
+          openBody.innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>';
+        } else {
+          const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+          openBody.innerHTML = positions.map(p => {
+            const buy = (p.direction || '').toUpperCase() === 'BUY';
+            const pnl = +(p.profit || 0);
+            return `<tr>
+              <td style="padding:5px 10px;font-weight:600;text-align:left">${(p.symbol || '?').toUpperCase()}</td>
+              <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+              <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+              <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+              <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+              <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+            </tr>`;
+          }).join('');
+        }
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+
+  // Today's Levels table is sourced from the BOT'S OWN status.lines (not a
+  // separate plan fetch — there's no fib_atlas_bot_v2_plan KV key, the local
+  // decision engine IS the plan source, and the bot already flattens its
+  // currently-loaded plan into `lines` for exactly this purpose — see
+  // fib_atlas_bot_v2.py's own _instr_lines()).
+  const pa = document.getElementById('fa2PlanAge');
+  if (pa) pa.textContent = st?.generatedAt ? new Date(st.generatedAt).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';
+  const body = document.getElementById('fa2LinesBody');
+  if (body) {
+    const rows = (st?.lines || []).slice();
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">No armed zones right now — bot may not be running, or nothing currently clears the vote margin</td></tr>';
+    } else {
+      rows.sort((a, b) => (b.margin ?? 0) - (a.margin ?? 0));
+      const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+      body.innerHTML = rows.map(r => `<tr>
+          <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+          <td style="padding:5px 10px;text-align:left">${r.side === 'above' ? '↑ above' : '↓ below'}</td>
+          <td style="padding:5px 10px;text-align:left">${r.rung ?? '—'}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
+          <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+          <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
+          <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
+          <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
+          <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
+        </tr>`).join('');
+    }
+  }
+  loadFa2AllLines();
+  loadFa2DecisionLog();
+  loadFa2FrequencyCheck();
+  loadFa2EntrySlippage();
+  loadFa2Staleness();
+}
+
+// Unfiltered companion to the Today's Levels table above — same route as the
+// original Fib Atlas tab's own loadFaAllLines() (/api/fib-atlas-bot/all-lines,
+// server-side, reads the ONE shared vote grid both bot instances execute
+// against — there's no separate "v2's own all-lines", the underlying
+// computation is identical either way, only which zones get ACTED on
+// differs). Same pattern Vote Atlas v3's tab uses for its own All Lines card.
+async function loadFa2AllLines() {
+  const body = document.getElementById('fa2AllLinesBody');
+  if (!body) return;
+  const pairs = _fa2Cfg.enabled_pairs?.length ? _fa2Cfg.enabled_pairs : [...FA_DEFAULT_CHECKED];
+  const filter = (document.getElementById('fa2AllLinesFilter')?.value || '').trim().toLowerCase();
+  body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading ${pairs.length} pair(s) × 2 ladders…</td></tr>`;
+  try {
+    const r = await fetch(`/api/fib-atlas-bot/all-lines?pairs=${encodeURIComponent(pairs.join(','))}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
+    let rows = [];
+    for (const [pair, inst] of Object.entries(j.instruments || {})) {
+      for (const [ladder, res] of [['asia', inst.asia], ['monday', inst.monday]]) {
+        if (res?.warming) { rows.push({ pair, ladder, warming: true }); continue; }
+        for (const l of (res?.lines || [])) rows.push({ pair, ladder, ...l });
+      }
+    }
+    if (filter) rows = rows.filter(r => r.pair.toLowerCase().includes(filter));
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No lines for that pair yet' : 'No live coverage yet'}</td></tr>`; return; }
+    const sortBy = document.getElementById('fa2AllLinesSort')?.value || 'margin';
+    if (sortBy === 'pair') rows.sort((a, b) => a.pair.localeCompare(b.pair) || a.ladder.localeCompare(b.ladder) || (b.margin ?? -1) - (a.margin ?? -1));
+    else rows.sort((a, b) => (b.margin ?? -1) - (a.margin ?? -1));
+    body.innerHTML = rows.map(r => {
+      if (r.warming) {
+        return `<tr>
+          <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+          <td colspan="6" style="padding:5px 10px;text-align:left;color:var(--text3)">warming (cold cache) — not evaluated yet</td>
+        </tr>`;
+      }
+      const strong = r.tradeableNow;
+      const decLabel = !r.decision ? '🪙 no decision' : (r.decision === 'follow' ? '↗ follow' : '↘ fade');
+      const decColor = !r.decision ? 'var(--text3)' : (r.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      const gapBlocked = !strong && (r.margin ?? 0) >= 2 && r.gapMin != null;
+      const tradeCell = strong ? '✓' : (gapBlocked ? `⏱ ${r.gapMin}m gap` : '—');
+      const tradeColor = strong ? 'var(--green)' : (gapBlocked ? 'var(--amber,#e0a93b)' : 'var(--text3)');
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.side === 'above' ? '↑ above' : '↓ below'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.rung}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
+        <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${tradeColor}">${tradeCell}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+// Shared book data (same underlying source both bots read) — view-only here,
+// no "Refresh book now" button: use the original Fib Atlas tab's, it
+// benefits both bots since they share the same book.
+async function loadFa2Staleness() {
+  const el = document.getElementById('fa2Staleness');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/fib-atlas-bot/staleness');
+    const j = await r.json();
+    if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
+    const days = (j.oldestAgeHours / 24).toFixed(1);
+    if (j.oldestAgeHours > 15) {
+      el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} (${j.oldestLadder}) ${days}d stale`;
+      el.style.color = 'var(--red)';
+    } else {
+      el.textContent = `fresh (oldest: ${j.oldestPair?.toUpperCase()} ${j.oldestLadder} ${j.oldestAgeHours.toFixed(0)}h)`;
+      el.style.color = 'var(--green)';
+    }
+  } catch (e) { el.textContent = 'check failed'; el.style.color = 'var(--red)'; }
+}
+
+// Same FA_DAILY_TRADE_REFERENCE the original bot's tab uses — it's the same
+// backtest, judging a different bot instance against it is the whole point.
+async function loadFa2FrequencyCheck() {
+  const body = document.getElementById('fa2FreqBody');
+  if (!body) return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/fib-atlas-bot-v2/trade-log?from=${from}&to=${today}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = j.error || 'failed to load'; return; }
+    const byDate = {};
+    for (const t of (j.trades || [])) byDate[t.date] = (byDate[t.date] || 0) + 1;
+    const todayCount = byDate[today] || 0;
+    const ref = FA_DAILY_TRADE_REFERENCE;
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      days.push({ date: d, count: byDate[d] || 0 });
+    }
+    const todayColor = todayCount >= ref.median ? 'var(--green)' : 'var(--text3)';
+    const last7Str = days.map(d => {
+      const c = d.count;
+      const color = c === 0 ? 'var(--text3)' : (c >= ref.median ? 'var(--green)' : 'var(--amber,#e0a93b)');
+      return `<span style="color:${color}">${d.date.slice(5)}:${c}</span>`;
+    }).join('&nbsp;&nbsp;');
+    body.innerHTML = `
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">
+        <div>Today: <b style="color:${todayColor}">${todayCount}</b></div>
+        <div>Backtest median (active days): <b>${ref.median}</b> <span style="color:var(--text3)">(p10 ${ref.p10} / p90 ${ref.p90}, mean ${ref.mean})</span></div>
+        <div style="color:var(--text3)">~${ref.zeroDayRatePct}% of ALL days see zero trades historically — one quiet day alone isn't unusual on its own</div>
+      </div>
+      <div>last 7 days: ${last7Str}</div>
+    `;
+  } catch (e) { body.innerHTML = e.message; }
+}
+
+function fa2DecShiftDay(delta) {
+  const input = document.getElementById('fa2DecDate');
+  if (!input) return;
+  const base = input.value ? new Date(input.value + 'T00:00:00Z') : new Date();
+  base.setUTCDate(base.getUTCDate() + delta);
+  input.value = base.toISOString().slice(0, 10);
+  loadFa2DecisionLog();
+}
+function fa2DecClearDate() {
+  const input = document.getElementById('fa2DecDate');
+  if (input) input.value = '';
+  loadFa2DecisionLog();
+}
+async function loadFa2DecisionLog() {
+  const body = document.getElementById('fa2DecisionBody');
+  if (!body) return;
+  const filter = (document.getElementById('fa2DecFilter')?.value || '').trim().toLowerCase();
+  const dateFilter = document.getElementById('fa2DecDate')?.value || '';
+  try {
+    const log = await kvGet('fib_atlas_bot_v2_decision_log');
+    let events = (log?.events || []).slice().reverse();
+    if (filter) events = events.filter(e => (e.pair || '').toLowerCase().includes(filter));
+    if (dateFilter) events = events.filter(e => e.t && new Date(e.t * 1000).toISOString().slice(0, 10) === dateFilter);
+    if (!events.length) {
+      const why = dateFilter ? `No events for ${dateFilter}${filter ? ` (pair ${filter})` : ''}` : (filter ? 'No events for that pair yet' : 'No decision events logged yet');
+      body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      return;
+    }
+    body.innerHTML = events.slice(0, 300).map(e => {
+      const ts = e.t ? new Date(e.t * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = e.decision === 'follow' ? 'var(--blue,#60a5fa)' : e.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${e.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${e.ladder === 'asia' ? 'Asia' : e.ladder === 'monday' ? 'Monday' : '—'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.side ? (e.side === 'above' ? '↑ above' : '↓ below') : '—'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.rung ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${e.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${e.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${FA_DEC_STATUS_COLOR[e.status] || 'var(--text3)'}">${e.status || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.reason || '—'}</td>
+      </tr>`;
+    }).join('') + (events.length > 300 ? `<tr><td colspan="9" style="padding:8px;text-align:center;color:var(--text3)">…${events.length - 300} older event(s) not shown</td></tr>` : '');
+  } catch (e) { body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+// Reuses _faMatchDecision (generic pair/ladder/side/rung/time matching, not
+// bot-specific) and FA_SLIP_LOOKBACK_DAYS/FA_SLIP_MATCH_WINDOW_SECS.
+async function loadFa2EntrySlippage() {
+  const body = document.getElementById('fa2SlipBody');
+  const kpiEl = document.getElementById('fa2SlipKpi');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>';
+  try {
+    const to = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - FA_SLIP_LOOKBACK_DAYS * 86400_000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/fib-atlas-bot-v2/trade-log?from=${from}&to=${to}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'fetch failed');
+    const rows = [];
+    let unmatched = 0;
+    for (const t of j.trades || []) {
+      if (t.ladder == null || t.side == null) continue;
+      const d = _faMatchDecision(t, j.decisions || []);
+      if (!d) { unmatched++; continue; }
+      if (d.entry == null || t.open_price == null) continue;
+      let pip;
+      try { pip = getPipSize(t.symbol); } catch { continue; }
+      if (!(pip > 0)) continue;
+      const slipPips = ((t.direction === 'BUY' ? (t.open_price - d.entry) : (d.entry - t.open_price)) / pip);
+      rows.push({ ...t, decision: d.decision, margin: d.margin, plannedEntry: d.entry, slipPips });
+    }
+
+    if (!rows.length) {
+      const why = unmatched ? `${unmatched} trade(s) found but none matched a decision-log entry within ${FA_SLIP_MATCH_WINDOW_SECS}s (decision logging may have started after these fills)` : 'No matched fills in the last ' + FA_SLIP_LOOKBACK_DAYS + ' days';
+      body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      if (kpiEl) kpiEl.innerHTML = '';
+      return;
+    }
+
+    const byDecision = {};
+    for (const row of rows) (byDecision[row.decision || '?'] ??= []).push(row.slipPips);
+    const summarize = xs => {
+      const n = xs.length;
+      const mean = xs.reduce((a, b) => a + b, 0) / n;
+      const sorted = [...xs].sort((a, b) => a - b);
+      return { n, mean, min: sorted[0], max: sorted[n - 1] };
+    };
+    const allSlip = rows.map(r => r.slipPips);
+    const overall = summarize(allSlip);
+    const kpiCell = (label, s) => `<div>
+        ${label} avg slip: <b style="color:${s.mean > 0 ? 'var(--red)' : s.mean < 0 ? 'var(--green)' : 'var(--text3)'}">${s.mean >= 0 ? '+' : ''}${s.mean.toFixed(2)}p</b>
+        <span style="color:var(--text3)">(n=${s.n}, range ${s.min.toFixed(1)} to ${s.max.toFixed(1)}p)</span>
+      </div>`;
+    const cells = [kpiCell('All', overall)];
+    for (const [dec, xs] of Object.entries(byDecision)) cells.push(kpiCell(dec, summarize(xs)));
+    if (kpiEl) {
+      kpiEl.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">${cells.join('')}</div>
+        <div style="color:var(--text3)">positive = real fill worse than the plan's modeled entry (paid more on a buy, sold for less on a sell) · ${unmatched} fill(s) had no matching decision-log entry within ${FA_SLIP_MATCH_WINDOW_SECS}s, excluded above</div>`;
+    }
+
+    rows.sort((a, b) => (b.time_open ?? 0) - (a.time_open ?? 0));
+    body.innerHTML = rows.slice(0, 200).map(row => {
+      const ts = row.time_open ? new Date((row.time_open - (row.tz_offset_sec ?? 0)) * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = row.decision === 'follow' ? 'var(--blue,#60a5fa)' : row.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      const slipColor = row.slipPips > 0 ? 'var(--red)' : row.slipPips < 0 ? 'var(--green)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(row.key || row.symbol || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${row.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${row.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${row.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${row.plannedEntry != null ? (+row.plannedEntry).toFixed(5) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${row.open_price != null ? (+row.open_price).toFixed(5) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:${slipColor}">${row.slipPips >= 0 ? '+' : ''}${row.slipPips.toFixed(2)}p</td>
+      </tr>`;
+    }).join('') + (rows.length > 200 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--text3)">…${rows.length - 200} older matched fill(s) not shown</td></tr>` : '');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`;
+    if (kpiEl) kpiEl.innerHTML = '';
+  }
+}
+
+window.saveFa2Config = saveFa2Config; window.resetFa2Defaults = resetFa2Defaults;
+window.saveFa2Creds = saveFa2Creds; window.loadFa2LiveStatus = loadFa2LiveStatus;
+window.loadFa2DecisionLog = loadFa2DecisionLog;
+window.fa2DecShiftDay = fa2DecShiftDay; window.fa2DecClearDate = fa2DecClearDate;
+window.testFa2Telegram = testFa2Telegram;
+window.fa2SelectAllPairs = fa2SelectAllPairs; window.fa2SelectRecommendedPairs = fa2SelectRecommendedPairs;
+window.loadFa2EntrySlippage = loadFa2EntrySlippage; window.loadFa2FrequencyCheck = loadFa2FrequencyCheck;
+window.loadFa2AllLines = loadFa2AllLines;
+
+document.querySelector('.tab-btn[data-tab="fibatlas2"]')?.addEventListener('click', loadFa2LiveStatus);
+loadFa2Config();
+loadFa2Creds();
+loadFa2LiveStatus();
+
 // ── Range-Line Bot config (mirrors the volatility bot) ────────────────────────
 const RL_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
@@ -5573,7 +6553,7 @@ async function loadOiLiveStatus() {
     // Prefer the bot's live lines; fall back to the plan itself so the table shows
     // the planned zones even before the bot is running.
     const rows = st?.lines || Object.entries(planWrap?.instruments || {}).map(([k, v]) =>
-      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [] }));
+      ({ instrument: k, regime: v.regime, spot: v.spot, maxPain: v.maxPain, zoneCount: v.zoneCount, stale: v.stale, entered: [], dayDriftPct: v.dayDriftPct }));
     // Carry the plan's stale flag onto the bot's own lines too (status may omit it).
     const _staleBy = Object.fromEntries(Object.entries(planWrap?.instruments || {}).map(([k, v]) => [k, v.stale]));
     if (!st) { if (ageEl) ageEl.textContent = planWrap ? 'Bot not running — showing the plan' : 'Bot not running — no plan yet'; }
@@ -5586,7 +6566,7 @@ async function loadOiLiveStatus() {
     if (uniEl)  uniEl.textContent  = rows.length;
     if (body) {
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
+        body.innerHTML = '<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">No OI plan yet — paste the OI heatmap on index.html, then refresh the plan</td></tr>';
       } else {
         const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : (/^(nq|spx|dax|dow|rut|de30|us30|us2000|ftse|uk100)$/i.test(sym) ? 1 : (/gold|xau/i.test(sym) ? 2 : 5)));
         const regCol = r => r === 'PIN' ? 'var(--green)' : r === 'BREAKOUT' ? 'var(--red)' : 'var(--text3)';
@@ -5610,6 +6590,7 @@ async function loadOiLiveStatus() {
           <td style="padding:6px 10px;color:${stale ? 'var(--amber)' : regCol(r.regime)}">${stale ? 'stale — re-paste' : (r.regime || '—')}</td>
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.spot)}</td>
           <td style="padding:6px 10px;text-align:right">${d(r.instrument, r.maxPain)}</td>
+          <td style="padding:6px 10px;text-align:right;color:${r.dayDriftPct == null ? 'var(--text3)' : Math.abs(r.dayDriftPct) >= 1.5 ? 'var(--amber)' : 'var(--text3)'}">${r.dayDriftPct == null ? '—' : (r.dayDriftPct > 0 ? '+' : '') + r.dayDriftPct.toFixed(2) + '%'}</td>
           <td style="padding:6px 10px;text-align:right">${stale ? '—' : (r.zoneCount ?? 0)}</td>
           <td style="padding:6px 10px;color:var(--text3)">${(r.entered || []).length}</td>
           <td style="padding:6px 10px">${primedCell(r)}</td>

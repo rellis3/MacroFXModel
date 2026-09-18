@@ -102,5 +102,18 @@ console.log('[summarise — honest about n, and every cell says so]');
   ok('30% on 100 calls reads "WORSE than a coin flip"', /WORSE/.test(c.text), c.text);
 }
 
+console.log('[summarise.byDay]');
+{
+  const rows = [
+    { d: '2026-09-14', pair: 'A', dir: 'up', out: { h0: { hit: true, pnlAtr: 0.2, pnlNetAtr: 0.1 }, h1: { hit: false, pnlAtr: -0.1, pnlNetAtr: -0.2 }, h5: { hit: null } } },
+    { d: '2026-09-14', pair: 'B', dir: 'down', out: { h0: { hit: true, pnlAtr: 0.3, pnlNetAtr: 0.2 }, h1: { hit: true, pnlAtr: 0.4, pnlNetAtr: 0.3 }, h5: { hit: null } } },
+    { d: '2026-09-14', pair: 'C', dir: 'mixed', out: { h0: { hit: null }, h1: { hit: null }, h5: { hit: null } } },
+    { d: '2026-09-15', pair: 'A', dir: 'up', out: { h0: { hit: false, pnlAtr: -0.2, pnlNetAtr: -0.3 }, h1: { hit: null }, h5: { hit: null } } },
+  ];
+  const s = summarise(rows);
+  ok('one entry per day, newest first', s.byDay.length === 2 && s.byDay[0].day === '2026-09-15');
+  ok('counts directional calls and declines per day', s.byDay[1].calls === 2 && s.byDay[1].declined === 1);
+  ok('tallies hits per horizon', s.byDay[1].h0.hits === 2 && s.byDay[1].h1.hits === 1 && s.byDay[1].h1.n === 2);
+}
 if (failures) { console.error(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nAll pairLedger tests passed.');

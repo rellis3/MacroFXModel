@@ -4207,6 +4207,18 @@ async function _buildMorningBrief() {
           : '');
     }
   } catch { /* the calendar line still says FOMC; the block is additive */ }
+  // Yesterday, scored -- the ledger's own tally of what the page's direction
+  // tags did at the next close. A bias sheet that never grades itself is a
+  // newsletter; this one opens with the score.
+  let yesterdayLine = '';
+  try {
+    const raw = await kv.get(LEDGER_KV).catch(() => null);
+    const rows = raw ? (JSON.parse(raw)?.rows ?? JSON.parse(raw)) : null;
+    if (Array.isArray(rows)) {
+      const sm = _ledgerSummary(rows); const y = (sm.byDay ?? []).find(d => d.h1?.n > 0);
+      if (y) yesterdayLine = `YESTERDAY, SCORED: ${y.h1.hits} of ${y.h1.n} of this page's direction calls on ${y.day} were right at the next close${y.declined ? ` (${y.declined} declined as mixed)` : ''}; ${sm.overall.h1.n} scored overall, ${sm.overall.h1.n >= 30 ? Math.round(sm.overall.h1.hitRate * 100) + '% right' : 'too few for a rate'}. Open with this if the day allows; never hide a bad day.`;
+    }
+  } catch { /* the brief tolerates absence */ }
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
 
 If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it. If it is marked UPCOMING, say what's expected/at stake and frame the day as a wait-for-it around that event. If it is marked RELEASED, it has happened: lead with what came out (the FOMC block, or the event's ACTUAL vs consensus) and how the market responded, and never write as if it were still ahead. Do not bury it either way.
@@ -4216,6 +4228,7 @@ NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/B
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
 TIME NOW: ${nowUtc}. Every event below is marked RELEASED or UPCOMING against this clock -- a released event is history to be read, not a wait.
+${yesterdayLine}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}${fomcBlock ? ' (see the FOMC block: already decided)' : ''}` : ''}${fomcBlock}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
 ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ranking, strongest to weakest ===\nEach currency is scored on real economic data, then the dimensions are GROUPED INTO SIX FACTORS -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the factors are averaged with EQUAL WEIGHT. That grouping is the point: three dimensions measure rates and two measure inflation, so a flat average across dimensions would hand rates triple weight and inflation double, purely because more series happen to point at them. Every score is already on a -1..+1 scale; missing or stale dimensions are left out, never treated as neutral. Central-bank tone is shown per currency elsewhere but is deliberately in NO factor and scores nothing -- hawkish-score momentum was tested against forward price here and banked a clean null.\n${scorecardLines}\nHOW TO USE IT. Ground the dollar/FX-complex section in this project's own scoring rather than generic yield/DXY levels, and go one level deeper than the headline number: say WHICH FACTOR is carrying a currency's score, because "USD is strong on rates but weak on growth" is a teachable, falsifiable statement and "USD scores +0.4" is not. Lean hardest on the WHAT IS SEPARATING THE BOARD line -- that is the factor currencies are actually spread across today, and a currency being strong on a factor everyone agrees about tells you far less than one leading the factor in dispute. Name the disagreements too: a composite where every factor points the same way is a much stronger read than one where growth and inflation pull opposite ways and net out near zero, and those two look identical in the headline number. A curve reading near 0 or negative means that currency's curve is flat or inverted -- name it directly if rates is the factor driving the score. Do not give a thin read the confidence of a well-covered one: [n/6 factors] and the per-factor "(x/y series fresh)" counts say how much is actually behind each number, and any dimension listed as excluded-as-stale is genuinely absent, not neutral. Finally, this whole composite is CONTEXT, not a signal -- macro-as-signal has been tested and banked as null in this project five times over. Use it to explain why the FX board looks the way it does; never present it as a forecast.` : ''}
@@ -17106,14 +17119,19 @@ if (process.env.OANDA_KEY) {
 // `comment` (Mt5Broker/paper.py both emit it) — "FA[<dedupeTag>]",
 // asiaLivePlanZones/mondayLivePlanZones's own tag, `${a|m}_${side[0]}${level}`
 // — into ladder/side/rung at READ time, for `/api/fib-atlas-bot/trade-log` below.
-function _parseFibAtlasDedupeTag(comment) {
+function _parseFibAtlasDedupeTag(comment, prefix = 'FA') {
   // Rung is a fib multiple (asiaFibAtlasEngine.js's RUNGS_ABOVE/BELOW), so it
   // is routinely fractional (-0.5, -0.25, 1.25, 1.5, 2.5, ...) -- the
   // original `-?\d+` (integer-only) silently failed to match any of those,
   // decoding 63% of real trades (2026-09-12 live/backtest reconciliation
   // check) to ladder:null/side:null/rung:null. `(?:\.\d+)?` makes the
   // fractional part optional so integer rungs (FA[a_a2]) still match too.
-  const m = /FA\[([am])_([ab])(-?\d+(?:\.\d+)?)\]/.exec(comment || '');
+  // `prefix` (2026-09-18, Fib Atlas v2 fork): v2's own MT5 order comment is
+  // "FA2[...]" not "FA[...]" (a bare "FA[" match would ALSO match inside
+  // "FA2[", but the capture groups shift, so it must be passed explicitly,
+  // not left to a substring coincidence).
+  const re = new RegExp(`${prefix}\\[([am])_([ab])(-?\\d+(?:\\.\\d+)?)\\]`);
+  const m = re.exec(comment || '');
   if (!m) return { ladder: null, side: null, rung: null };
   return {
     ladder: m[1] === 'a' ? 'asia' : 'monday',
@@ -17326,9 +17344,17 @@ app.get('/api/level-atlas/staleness', async (_req, res) => {
 // there's exactly one rebuild code path, not a second one to drift from it.
 // Scoped to just the bot's own enabled_pairs (not all 31 reference pairs) —
 // faster, and it's the ONLY set the live bot actually depends on.
-app.post('/api/level-atlas/refresh-now', async (_req, res) => {
+app.post('/api/level-atlas/refresh-now', async (req, res) => {
   try {
-    const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+    // ?bot=v3 reads v3's own enabled_pairs instead of v2's — same underlying
+    // Level Atlas book, just a different bot's pair universe to prioritize.
+    // v3's local decision engine (local_decision_engine/) depends on this
+    // same book's freshness (its M1 tail route calls getFastLive, but the
+    // BOOK itself — base rates per dimension bucket — only updates via this
+    // nightly/manual rebuild), so it isn't v2-specific even though the
+    // config it reads for a pair list defaults to v2's.
+    const cfgKey = req.query.bot === 'v3' ? 'volatility_bot_v3_config' : 'volatility_bot_v2_config';
+    const cfgRaw = await kv.get(cfgKey).catch(() => null);
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
     const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
     const { jobId } = _startLevelAtlasRunJob({ instruments: pairs.map(p => p.toUpperCase()) });
@@ -17460,6 +17486,22 @@ app.post('/api/volatility-v2/telegram-test', async (_req, res) => {
   }
 });
 
+// Vote Atlas v3's own copy of the telegram-test route above — v3 defaults
+// tg_token/tg_chat_id to blank (see volatility_bot_v3.py's DEFAULT_CFG,
+// fixed 2026-09-18 identity-collision cleanup) rather than v2's real live
+// credentials, so this route reads v3's own saved config, never v2's.
+app.post('/api/volatility-v3/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v3_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas v3 config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas v3 — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // Fib Atlas bot's own copy of the telegram-test route above — reads
 // whatever tg_token/tg_chat_id are CURRENTLY saved in fib_atlas_bot_config
 // (not a separate form submit), same convention as every other bot's test
@@ -17470,6 +17512,22 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Fib Atlas v2's own copy — same convention, own config key. The owner's
+// intent for v2 is the SAME Telegram chat as the original bot (2026-09-18),
+// which is a config-page value to copy over, not something this route
+// assumes or defaults to.
+app.post('/api/fib-atlas-bot-v2/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('fib_atlas_bot_v2_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot v2 config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot v2 — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -17517,6 +17575,46 @@ app.get('/api/fib-atlas-bot/trade-log', async (req, res) => {
       return { ...t, key, ladder, side, rung };
     });
     const decRaw = await kv.get('fib_atlas_bot_decision_log').catch(() => null);
+    const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
+      .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));
+    res.json({ ok: true, from, to, trades, decisions });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Fib Atlas v2's own copy of the trade-log route above — same reconciliation
+// need (compare v2's REAL decisions against the offline backtest) applies
+// just as much to a local-decision-engine bot as the original, arguably
+// more so since parity is the whole point being validated. Reads v2's own
+// KV buckets and MT5 comment prefix ("FA2[...]", not "FA[...]").
+app.get('/api/fib-atlas-bot-v2/trade-log', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = req.query.from ? String(req.query.from) : today;
+    const to = req.query.to ? String(req.query.to) : from;
+    const inRange = (dateStr) => {
+      if (!dateStr) return true;
+      return dateStr >= from && dateStr <= to;
+    };
+    const dates = [];
+    for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const perDay = await Promise.all(dates.map(async dt => {
+      try {
+        const raw = await kv.get(`trade_hist_fib_atlas_bot_v2_status_${dt}`);
+        return raw ? JSON.parse(raw).map(t => ({ ...t, date: dt })) : [];
+      } catch { return []; }
+    }));
+    const trades = perDay.flat().map(t => {
+      const { ladder, side, rung } = _parseFibAtlasDedupeTag(t.comment, 'FA2');
+      let key = null;
+      try { key = resolveKey(t.symbol) || String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      catch { key = String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      return { ...t, key, ladder, side, rung };
+    });
+    const decRaw = await kv.get('fib_atlas_bot_v2_decision_log').catch(() => null);
     const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
       .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));
     res.json({ ok: true, from, to, trades, decisions });

@@ -34,10 +34,12 @@ window.POS_BOTS = [
   { key: 'macro_equity_bot_status',   label: 'MacroEquity', color: '#818cf8', bg: '#1e1b4b', bd: '#4338ca', paper: false },
   { key: 'volatility_bot_status',     label: 'Volatility',  color: '#e0a93b', bg: '#292100', bd: '#78610a', paper: true },
   { key: 'volatility_bot_v2_status',  label: 'Vote Atlas',  color: '#38bdf8', bg: '#062233', bd: '#0369a1', paper: true },
+  { key: 'volatility_bot_v3_status',  label: 'Vote Atlas v3', color: '#34d399', bg: '#052e21', bd: '#0e9668', paper: true },
   { key: 'volatility_ride_status',    label: 'Vol-Ride',    color: '#f0b64b', bg: '#2c2400', bd: '#8a6d0c', paper: true },
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
   { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },
   { key: 'yield_spread_status',          label: 'YieldSpread',    color: '#f472b6', bg: '#2a0a1c', bd: '#9d1f5f', paper: true },
   { key: 'fib_atlas_bot_status',         label: 'Fib Atlas',      color: '#a78bfa', bg: '#1e1633', bd: '#6d28d9', paper: true },
+  { key: 'fib_atlas_bot_v2_status',      label: 'Fib Atlas v2',   color: '#f472b6', bg: '#2b0f21', bd: '#a3286e', paper: true },
   { key: 'motif_bot_status',             label: 'Motif Touch',    color: '#fb923c', bg: '#2a1300', bd: '#9a3412', paper: true },
 ];

@@ -40,6 +40,12 @@ MAGICS = {
     "volatility_bot_v2/volatility_bot_v2.py": 20260828,  # Vote Atlas (Level Atlas vote portfolio) -- was
                                                           # unregistered, caught by this test while adding motif_bot below
     "motif_bot/motif_bot.py":                 20260916,  # touch-motif structural signal (AnalogML)
+    "volatility_bot_v3/volatility_bot_v3.py": 20260918,  # Vote Atlas v3 (local decision engine fork of v2) -- was
+                                                          # unregistered, caught by this test while adding fib_atlas_bot_v2 below
+    "fib_atlas_bot_v2/fib_atlas_bot_v2.py":   20260920,  # Fib Atlas v2 -- local decision engine fork of fib_atlas_bot,
+                                                          # same MT5 account + Telegram as the live bot (set via its own
+                                                          # fib_atlas_bot_v2_credentials/_config KV keys), separated only
+                                                          # by magic number so it can trade its own config side by side
 }
 
 # Magics that were re-assigned in the 2026-07 de-collision. Positions opened

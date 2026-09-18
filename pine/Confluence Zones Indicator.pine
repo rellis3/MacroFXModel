@@ -12,7 +12,7 @@ indicator("C.og - Confluence Zones + OI v2", overlay=true, max_lines_count=500, 
 //    Both are drawn for the current chart symbol.
 // 3. Confluence zones are coloured by layer count
 //    (yellow=2, orange=3, red/purple=4+). OI levels are
-//    coloured by type:
+//    coloured by type:````````````
 //      • call_wall  → RED    (resistance — heavy call OI above)
 //      • put_wall   → GREEN  (support — heavy put OI below)
 //      • max_pain   → YELLOW (pin / magnet, dashed)
@@ -208,17 +208,29 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
     tU = str.upper(t)
     if tU == str.upper(goldT) or tU == "XAUUSD" or tU == "GOLD"
         r := "GOLD"
-    else if tU == str.upper(nqT) or tU == "NQ1!" or tU == "NQ" or tU == "NASDAQ100" or tU == "NAS100USD"
+    // BARE, NO-CURRENCY-SUFFIX forms added below (NAS100/SPX500/DE30/UK100/US30/US2000,
+    // plus NQ's US100). Gold and every FX pair never needed this: the pair name itself
+    // already carries both currencies (EURUSD, XAUUSD), so nothing was missing there.
+    // Indices are the one class where a lot of non-OANDA CFD feeds (ICMarkets,
+    // Pepperstone, and others) list the ticker with NO trailing currency code at all —
+    // every hardcoded fallback here previously required one (NAS100USD, SPX500USD,
+    // GER40/GER30, UK100GBP, US30USD, US2000USD), so a chart on any of those bare
+    // tickers fell through to the unmatched `r = t` passthrough at the end of this
+    // function, never equalled any of "GOLD"/"NQ"/"SPX500"/etc., and every symbol-block
+    // match against the pasted text (`inSymBlock := str.contains(rowUp, symUp)`) failed
+    // silently for every single index while gold/FX kept working — exactly the reported
+    // symptom (2026-09-18).
+    else if tU == str.upper(nqT) or tU == "NQ1!" or tU == "NQ" or tU == "NASDAQ100" or tU == "NAS100USD" or tU == "NAS100" or tU == "US100"
         r := "NQ"
-    else if tU == str.upper(spxT) or tU == "SPX500USD" or tU == "US500" or tU == "SP1!"
+    else if tU == str.upper(spxT) or tU == "SPX500USD" or tU == "SPX500" or tU == "US500" or tU == "SP1!"
         r := "SPX500"
-    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "DE30USD" or tU == "FDAX1!"
+    else if tU == str.upper(de30T) or tU == "GER40" or tU == "GER30" or tU == "DE30EUR" or tU == "DE30USD" or tU == "DE30" or tU == "DE40" or tU == "FDAX1!"
         r := "DE30"
-    else if tU == str.upper(uk100T) or tU == "UK100GBP" or tU == "Z1!" or tU == "FTSE100"
+    else if tU == str.upper(uk100T) or tU == "UK100GBP" or tU == "UK100" or tU == "Z1!" or tU == "FTSE100" or tU == "FTSE"
         r := "UK100"
-    else if tU == str.upper(us30T) or tU == "US30USD" or tU == "DJIA" or tU == "YM1!"
+    else if tU == str.upper(us30T) or tU == "US30USD" or tU == "US30" or tU == "DJIA" or tU == "DJI30" or tU == "YM1!"
         r := "US30"
-    else if tU == str.upper(us2kT) or tU == "US2000USD" or tU == "RTY1!" or tU == "RUT"
+    else if tU == str.upper(us2kT) or tU == "US2000USD" or tU == "US2000" or tU == "RTY1!" or tU == "RUT"
         r := "US2000"
     // BTC feeds vary by exchange — normalise the common tickers to the export's BTCUSD
     else if tU == "BTCUSDT" or tU == "XBTUSD" or tU == "BTCUSD.P" or tU == "BTCUSDT.P" or tU == "BTC1!"
@@ -889,6 +901,28 @@ if show_table and barstate.islast
     bool hasRegime = show_regime and show_oi and not na(liveRegime)
 
     int totalRows = nVisCZ + nVisOI + (hasRegime ? 1 : 0)
+    // DIAGNOSTIC FOR A ZERO-ROW RESULT. Before this, a ticker the normaliser could not
+    // recognise (bare "US30" vs the hardcoded "US30USD", say — the exact bug fixed
+    // 2026-09-18, and the next broker's own spelling variant will hit the same wall)
+    // drew nothing at all and gave no reason why: the paste could be perfect and this
+    // still looked identically blank as "you haven't pasted anything yet". `sym` here
+    // is a normal string on a genuine mismatch (f_normaliseTicker's fallthrough is the
+    // unmatched ticker itself, never na), so naming both it and the raw chart ticker is
+    // enough to show, at a glance, WHICH side is wrong — the mapping input, or the paste.
+    if totalRows == 0
+        // Separate rows, not one cell with embedded \n — table.cell's newline handling
+        // is not something to rely on unverified; label.new supports \n reliably, table
+        // cells are the less certain case, and this only has to be right once.
+        czTable := table.new(position.bottom_right, 1, 3,
+             bgcolor=color.new(color.black, 40),
+             border_width=1, border_color=color.new(color.orange, 40),
+             frame_width=1,  frame_color=color.new(color.orange, 40))
+        table.cell(czTable, 0, 0, "No C+Z/OI data resolved for this chart",
+             text_color=color.new(color.orange, 10), text_size=size.tiny, bgcolor=color.new(color.orange, 85))
+        table.cell(czTable, 0, 1, "chart ticker: " + syminfo.ticker + "  ->  resolved as: " + sym,
+             text_color=color.new(color.orange, 10), text_size=size.tiny, bgcolor=color.new(color.orange, 85))
+        table.cell(czTable, 0, 2, "Check Symbol Mapping matches this chart, and the paste includes '" + sym + "'",
+             text_color=color.new(color.orange, 10), text_size=size.tiny, bgcolor=color.new(color.orange, 85))
     if totalRows > 0
         czTable := table.new(position.bottom_right, 3, totalRows + 1,
              bgcolor=color.new(color.black, 60),
