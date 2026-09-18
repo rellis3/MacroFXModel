@@ -177,16 +177,41 @@ it collides with what's live right now trading real demo capital.
    adopt the same local engine as its second consumer — proving the shared
    design, not rebuilding it.
 
+## Resolved during the real build (2026-09-18), not just designed
+
+- **Credentials stay on Railway, always.** Owner's explicit constraint,
+  given mid-build: OANDA_KEY and all gap-fill/top-up logic live server-side
+  only — the local machine is "the bot + a pull," never holds a live-
+  trading credential. `GET /api/level-atlas/m1-tail/:pair` now calls the
+  server's own `getFastLive` (existing, OANDA-backed, unchanged) instead of
+  serving a possibly-stale saved snapshot, so every call is guaranteed
+  fresh server-side — no new Railway job needed, no OANDA exposure
+  locally. `sync.mjs` has zero OANDA dependency; `local_decision_engine/lib/fetchM1Range.mjs`
+  (the original local OANDA fetcher) was built, then deleted once this
+  landed.
+- **Sync cadence, sized against real measured egress, not guessed.**
+  Checked `/api/egress-audit` directly rather than estimating: the
+  m1-tail route costs ~732KB/pair/call. `sync.mjs` now pulls the book once
+  a day (barely changes) and the M1 tail every 15 minutes by default
+  (`M1_SYNC_INTERVAL_MINUTES`) — comfortably inside `server.mjs`'s
+  `MAX_M1_AGE_HOURS` (2h) fail-closed gate with margin for a missed cycle,
+  at ~1.2GB/day / ~$1.78/month, a deliberate choice, not a default nobody
+  checked.
+- **Local engine performance.** A long-lived Node process
+  (`local_decision_engine/server.mjs`), not invoked-per-call — confirmed
+  necessary live: a naive from-scratch `atlasWalk` per pair costs
+  ~500-800ms, so 17 pairs from cold is ~14-19s. A background refresh loop
+  keeps a warm cache (recompute only when the underlying M1 data actually
+  moved — same principle as the server's own `getFastLive`); HTTP handlers
+  only ever read the cache. Confirmed live: 0.137s for a full 17-pair
+  `/plan` once warm, versus 18.7s cold.
+
 ## Open items, not yet resolved
 
 - Exact shape of Fib Atlas's `voteDecision` (asia vs monday — may differ
   from each other too) — needs a real read, not an assumption, before the
   adapter is designed.
-- Whether the local engine runs as a long-lived local Node process (sidecar)
-  or is invoked per-call — a long-lived process avoids repeated local M1
-  parse cost; needs the same kind of decoded-snapshot-cache thinking already
-  proven server-side, scaled down to a ~2-week local window.
-- Local M1 tail staleness handling — what the bot does if the local sync
-  job itself falls behind (network outage, machine asleep) — needs a
-  fail-safe (refuse to trade on stale local data, mirroring `plan_max_age_hours`
-  in the current bot) rather than silently trading on old context.
+- The ~1-point residual margin discrepancy found in `parity_test.mjs`
+  (local margin=5 vs backtest margin=4 on one real touch, decision
+  matched) — small, deferred to Phase 4's multi-day validation to
+  characterize rather than chase on a single sample.

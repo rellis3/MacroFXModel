@@ -1,21 +1,34 @@
 #!/usr/bin/env node
 /**
- * sync.mjs — the local decision engine's daily sync job.
+ * sync.mjs — the local decision engine's sync job. A PURE PULL from
+ * Railway — no OANDA credential, no gap-fill logic, on the local machine
+ * at all (owner's explicit constraint, 2026-09-18: OANDA_KEY and all
+ * top-up logic stay server-side; local is "the bot + a pull").
  *
- * Pulls two small things per configured pair from Railway/OANDA so the
- * local engine can compute decisions without a network round-trip per tick:
- *   1. The book (GET /api/level-atlas/book/:pair — existing, public,
- *      unchanged route). Measured real size: ~325KB/pair.
- *   2. A short (~LOCAL_WINDOW_DAYS) local M1 tail, kept current via
- *      js/m1GapFill.js's gapFillPacked (the same, already-tested module the
- *      server itself uses) — not a reimplementation.
+ * Pulls two things, on two different schedules matched to how often each
+ * actually changes:
+ *   1. The book (GET /api/level-atlas/book/:pair) — once/day. Base rates
+ *      per dimension bucket; genuinely stable within a day. Measured real
+ *      size: ~325KB/pair.
+ *   2. The M1 tail (GET /api/level-atlas/m1-tail/:pair) — every
+ *      M1_SYNC_INTERVAL_MINUTES (default 15). This route now calls the
+ *      server's own getFastLive first (guaranteed fresh, OANDA-backed,
+ *      server-side only) rather than serving a possibly-stale saved
+ *      snapshot — see js/levelAtlasRoutes.js's own doc on that route.
+ *      Needs to run often enough to comfortably clear server.mjs's
+ *      MAX_M1_AGE_HOURS fail-closed gate (default 2h); 15 min leaves a
+ *      wide margin even if one sync attempt fails. Measured real cost:
+ *      ~732KB/pair/call — at 15-min cadence across 17 pairs that's
+ *      ~1.2GB/day, ~$1.78/month at Railway's $0.05/GB egress rate (checked
+ *      directly via /api/egress-audit, not estimated) — deliberately
+ *      chosen, not left to default to something wasteful; tune
+ *      M1_SYNC_INTERVAL_MINUTES up if that's not tight enough, or down if
+ *      cost matters more than freshness.
  *
- * Run once/day (cron, Task Scheduler, or `node sync.mjs --loop` for a
- * simple built-in daily loop). See MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
+ * Run as `node sync.mjs --loop` and leave it running (or under a process
+ * manager) — it owns its own scheduling now that there's no OANDA rate
+ * limit to respect locally. See MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
  */
-import { gapFillPacked } from '../js/m1GapFill.js';
-import { oandaSymbol } from '../js/instrumentRegistry.js';
-import { fetchM1Range } from './lib/fetchM1Range.mjs';
 import { saveBook, saveM1 } from './lib/localStore.mjs';
 import { readFile } from 'fs/promises';
 import path from 'path';
@@ -24,36 +37,16 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DASHBOARD_URL = process.env.DASHBOARD_URL || 'http://localhost:3000';
 // 2026-09-18: was 14 — too short. atlasWalk's own minLookback gate (default
-// 60 TRADING days -- js/levelAtlasEngine.js's `if (dates.length <= minLookback)
-// return {touches:[], coverage:null}`) needs the window to clear ~60 trading
-// days just to produce ANY output at all, separate from and larger than what
-// the fast-moving vote dimensions themselves need. Found live: a 14-day
-// window made every /decide call return "no live coverage yet" with zero
-// zones. 100 calendar days comfortably clears 60 trading days with margin
-// for holidays/index-specific calendars.
+// 60 TRADING days) needs the window to clear ~60 trading days just to
+// produce ANY output at all. 100 calendar days comfortably clears that
+// with margin for holidays/index-specific calendars.
 const LOCAL_WINDOW_DAYS = Number(process.env.LOCAL_WINDOW_DAYS || 100);
+const M1_SYNC_INTERVAL_MINUTES = Number(process.env.M1_SYNC_INTERVAL_MINUTES || 15);
+const BOOK_SYNC_INTERVAL_HOURS = Number(process.env.BOOK_SYNC_INTERVAL_HOURS || 24);
 
 async function loadConfig() {
   const raw = await readFile(path.join(__dirname, 'config.json'), 'utf8');
   return JSON.parse(raw);
-}
-
-// Trim to the last `days` — identical logic to js/levelAtlasRoutes.js's own
-// boundPacked (js/levelAtlasRoutes.js:296-308), copied rather than imported
-// since that file pulls in the full route-mounting/R2 dependency graph for
-// one small pure function.
-function boundPacked(packed, days) {
-  if (!packed?.n) return packed;
-  const cutSec = packed.times[packed.n - 1] - days * 86400;
-  let cutIdx = 0;
-  for (let i = 0; i < packed.n; i++) { if (packed.times[i] >= cutSec) { cutIdx = i; break; } }
-  if (cutIdx <= 0) return packed;
-  return {
-    n: packed.n - cutIdx,
-    times: packed.times.slice(cutIdx), opens: packed.opens.slice(cutIdx),
-    highs: packed.highs.slice(cutIdx), lows: packed.lows.slice(cutIdx),
-    closes: packed.closes.slice(cutIdx), volumes: packed.volumes.slice(cutIdx),
-  };
 }
 
 async function syncBook(pair) {
@@ -64,64 +57,42 @@ async function syncBook(pair) {
   return j.generatedAt;
 }
 
-// Seeds/refreshes the local M1 base from the SAME already-correct archive
-// the server itself uses (GET /api/level-atlas/m1-tail/:pair — a trimmed
-// slice of LIVE_SNAPSHOT_PREFIX), then gap-fills only the tiny live delta
-// since that snapshot was saved directly from OANDA. Found by direct
-// testing (parity_test.mjs, 2026-09-18): re-deriving the ENTIRE local
-// window from a fresh OANDA query, instead of syncing the archive's own
-// data, does NOT reproduce the official vote/margin for the identical
-// touch — a data-provenance mismatch, not a staleness or window-length
-// issue (both were ruled out first). This mirrors exactly what
-// loadM1ForPair + gapFillPacked already do server-side: a known-good
-// stored base, topped up with a small live delta — never re-derive the
-// base itself from a live feed.
 async function syncM1(pair) {
-  const oandaSym = oandaSymbol(pair);
-  const nowSec = Math.floor(Date.now() / 1000);
-
   const r = await fetch(`${DASHBOARD_URL}/api/level-atlas/m1-tail/${pair}?days=${LOCAL_WINDOW_DAYS}`);
   const j = await r.json();
+  if (r.status === 202 && j.warming) { console.log(`[sync] ${pair}: server still warming — will retry next cycle`); return null; }
   if (!j.ok || !j.n) throw new Error(`m1-tail fetch failed for ${pair}: ${j.error || 'unknown'}`);
-  let packed = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
-  console.log(`[sync] ${pair}: base ${packed.n.toLocaleString()} bars from server archive (snapshot saved ${j.savedAt})`);
-
-  packed = await gapFillPacked(packed, oandaSym, fetchM1Range, {
-    nowSec, minGapSec: 300, onLog: m => console.log(`[sync] ${pair}: ${m}`),
-  });
-
-  packed = boundPacked(packed, LOCAL_WINDOW_DAYS);
+  const packed = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
   await saveM1(pair, packed);
   return packed.n;
 }
 
-async function syncPair(pair) {
-  try {
-    const generatedAt = await syncBook(pair);
-    const n = await syncM1(pair);
-    console.log(`[sync] ${pair}: book ${generatedAt}, M1 tail ${n.toLocaleString()} bars`);
-  } catch (e) {
-    console.error(`[sync] ${pair} FAILED: ${e.message}`);
+async function syncAllBooks(pairs) {
+  for (const pair of pairs) {
+    try { const g = await syncBook(pair); console.log(`[sync] ${pair}: book ${g}`); }
+    catch (e) { console.error(`[sync] ${pair} book FAILED: ${e.message}`); }
   }
 }
 
-async function runOnce() {
-  const cfg = await loadConfig();
-  for (const pair of cfg.pairs) {
-    await syncPair(pair);   // sequential — same "one pair fully before the next" discipline the server-side jobs use, avoids hammering OANDA/Railway concurrently
+async function syncAllM1(pairs) {
+  for (const pair of pairs) {
+    try { const n = await syncM1(pair); if (n != null) console.log(`[sync] ${pair}: M1 tail ${n.toLocaleString()} bars`); }
+    catch (e) { console.error(`[sync] ${pair} M1 FAILED: ${e.message}`); }
   }
 }
 
 async function main() {
-  if (process.argv.includes('--loop')) {
-    console.log('[sync] running once now, then every 24h');
-    for (;;) {
-      await runOnce();
-      await new Promise(r => setTimeout(r, 24 * 3600_000));
-    }
-  } else {
-    await runOnce();
-  }
+  const cfg = await loadConfig();
+  const loop = process.argv.includes('--loop');
+
+  await syncAllBooks(cfg.pairs);
+  await syncAllM1(cfg.pairs);
+
+  if (!loop) return;
+
+  console.log(`[sync] looping: book every ${BOOK_SYNC_INTERVAL_HOURS}h, M1 tail every ${M1_SYNC_INTERVAL_MINUTES}min`);
+  setInterval(() => syncAllBooks(cfg.pairs), BOOK_SYNC_INTERVAL_HOURS * 3600_000);
+  setInterval(() => syncAllM1(cfg.pairs), M1_SYNC_INTERVAL_MINUTES * 60_000);
 }
 
 main().catch(e => { console.error('[sync] fatal:', e); process.exit(1); });

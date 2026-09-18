@@ -545,28 +545,37 @@ export function mountLevelAtlasRoutes(app, express) {
     }
   });
 
-  // GET /api/level-atlas/m1-tail/EURUSD?days=14 — a short, TRIMMED slice of
-  // the already-correct, periodically-refreshed live-snapshot (LIVE_SNAPSHOT_PREFIX,
-  // saved by saveAllLiveSnapshots — the SAME 180-day bounded archive
-  // coldStartLiveCache restores from). Built 2026-09-18 for the local
-  // decision engine (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md): a
-  // local sync job needs a KNOWN-CORRECT recent M1 base to seed from, not a
-  // fresh independent OANDA fetch — found by direct testing that a pure
-  // OANDA-direct re-fetch of historical bars does NOT reproduce the same
-  // vote/margin as the official archive for the identical touch (data-
-  // provenance mismatch, not a window-length or staleness issue — ruled
-  // those out first). This route exists so "sync from the real archive,
-  // then gap-fill only the tiny live delta locally" is possible, mirroring
-  // exactly what loadM1ForPair + gapFillPacked already do server-side.
+  // GET /api/level-atlas/m1-tail/EURUSD?days=14 — a short, TRIMMED, GUARANTEED-
+  // FRESH slice of M1 for the local decision engine
+  // (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md). Built 2026-09-18; revised
+  // same day per an explicit owner constraint: OANDA credentials and all
+  // gap-fill/top-up LOGIC stay server-side on Railway only — the local
+  // machine is "the bot + a pull", never holds a live-trading credential
+  // itself. So this route calls getFastLive(pair) FIRST (the server's own
+  // warm cache + incremental OANDA gap-fill, unchanged, same OANDA_KEY
+  // already used everywhere else) rather than reading the possibly-stale
+  // saved snapshot directly — every call is as fresh as getFastLive's own
+  // "recomputes only when a new M1 bar has actually closed" contract
+  // already guarantees, with zero new Railway job needed and zero OANDA
+  // exposure on the local side. (Earlier version read LIVE_SNAPSHOT_PREFIX
+  // via getJSON directly — kept working, but only as fresh as whatever
+  // last wrote that snapshot, which is a different guarantee than this.)
+  //
+  // Original rationale for why this needs the REAL archive at all, not a
+  // fresh OANDA-only fetch: direct testing found a pure OANDA re-fetch of
+  // historical bars does NOT reproduce the same vote/margin as the
+  // official archive for the identical touch (data-provenance mismatch,
+  // not a window-length or staleness issue — those were ruled out first).
   app.get('/api/level-atlas/m1-tail/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
       const days = Math.min(180, Math.max(1, Number(req.query.days) || 14));
-      const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
-      const packed = packFromJSON(snap);
-      if (!packed) return res.status(404).json({ ok: false, error: `no live snapshot for ${req.params.instrument} yet` });
-      const bounded = boundPacked(packed, days);
-      res.json({ ok: true, instrument: pair.toUpperCase(), days, savedAt: snap.savedAt ?? null, ...packToJSON(bounded) });
+      const live = await getFastLive(pair);
+      if (live.warming) return res.status(202).json({ ok: false, warming: true, error: 'still warming — retry in a few seconds' });
+      const entry = liveCache.get(pair);
+      if (!entry?.packed?.n) return res.status(404).json({ ok: false, error: `no live cache for ${req.params.instrument} yet` });
+      const bounded = boundPacked(entry.packed, days);
+      res.json({ ok: true, instrument: pair.toUpperCase(), days, savedAt: new Date().toISOString(), ...packToJSON(bounded) });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
