@@ -683,7 +683,8 @@ def run(base_url: str, force_live: bool) -> None:
                 px0 = (quotes.price(instr) if quotes is not None else broker.price(instr))
                 if px0 is not None:
                     _before = set(sessions[instr].primed)
-                    sessions[instr].decide(px0, dry_run=True, tol=_tol(cfg, instr), now=time.time())
+                    sessions[instr].decide(px0, dry_run=True, tol=_tol(cfg, instr), now=time.time(),
+                                            max_retro=_max_retro(cfg, instr))
                     for _zid in sorted(set(sessions[instr].primed) - _before):
                         _r = sessions[instr].primed[_zid]
                         log.info(f"PRIMED {instr} {_zid} @ {_r['price']} — price already {_r['past']} "
@@ -1016,6 +1017,18 @@ def run(base_url: str, force_live: bool) -> None:
 def _tol(cfg: dict, instr: str) -> float:
     try:
         return float(cfg.get("touch_tol_pips", 1) or 0) * I.pip_size(instr)
+    except Exception:
+        return 0.0
+
+
+def _max_retro(cfg: dict, instr: str) -> float:
+    # Default 1 pip: matches touch_tol_pips's own existing default (same
+    # order of magnitude), and every real overshoot observed live
+    # 2026-09-18 (EURAUD 0.78p, GBPUSD 0.86p, EURCHF 0.95p, USDCHF 0.71p)
+    # was under this -- all of those got permanently skipped before this
+    # fix existed. See VoteSession.decide's own doc for why this exists.
+    try:
+        return float(cfg.get("max_retro_entry_pips", 1) or 0) * I.pip_size(instr)
     except Exception:
         return 0.0
 

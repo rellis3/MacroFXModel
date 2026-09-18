@@ -63,6 +63,23 @@ ok("dry_run primes a zone price has already passed", FADE_UP["zone_id"] in s2.pr
 ok("primed record carries when/price/entry for the dashboard", s2.primed[FADE_UP["zone_id"]]["price"] == 1.1055)
 ok("a primed zone never fires for real either", s2.decide(1.1050) == [])
 
+print("[max_retro: a small overshoot on first sight isn't a real gap]")
+# Found live 2026-09-18: dry_run priming runs on EVERY plan-sync cycle, not
+# just once at startup, so a genuinely fresh touch racing its own first
+# priming pass got permanently skipped over an overshoot of a fraction of
+# a pip -- same treatment as a real overnight gap. entry=1.1050, price
+# 1.10505 is 0.5 pip past (EURUSD pip=0.0001) -- within a 1-pip max_retro.
+s4 = VoteSession("eurusd", [FADE_UP])
+s4.decide(1.10505, dry_run=True, now=1000.0, max_retro=0.0001)
+ok("small overshoot within max_retro is NOT primed", FADE_UP["zone_id"] not in s4.primed)
+fired4 = s4.decide(1.10505)
+ok("un-primed zone can still fire for real on the next (non-dry_run) decide", any(x["zone_id"] == FADE_UP["zone_id"] for x in fired4))
+
+s5 = VoteSession("eurusd", [FADE_UP])
+s5.decide(1.1055, dry_run=True, now=1000.0, max_retro=0.0001)   # 5 pips past, beyond a 1-pip tolerance
+ok("overshoot beyond max_retro is still primed (genuine gap)", FADE_UP["zone_id"] in s5.primed)
+ok("that primed zone still never fires for real", s5.decide(1.1050) == [])
+
 print("[set_zones preserves one-shot state across a plan refresh]")
 s3 = VoteSession("eurusd", [FADE_UP])
 s3.mark_entered(FADE_UP["zone_id"])

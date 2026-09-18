@@ -156,12 +156,27 @@ class VoteSession:
         self.zones = list(zones or [])
 
     def decide(self, px: float, dry_run: bool = False, tol: float = 0.0,
-               now: float | None = None) -> list:
+               now: float | None = None, max_retro: float = 0.0) -> list:
         """Zones that fire at `px` this tick. `dry_run` primes (marks zones
-        already past their entry) instead of returning specs — used once on
-        plan load so an overnight crossing can't retro-enter. `now` (epoch
-        seconds, injected so the engine stays clock-free) is stamped onto
-        each new primed record."""
+        already past their entry) instead of returning specs — used to guard
+        against retro-entering a crossing that happened while this session
+        had no visibility of it. `now` (epoch seconds, injected so the
+        engine stays clock-free) is stamped onto each new primed record.
+
+        `max_retro` (price units): confirmed live 2026-09-18 that dry_run
+        priming isn't only a one-time startup guard -- volatility_bot_v3.py
+        calls it on EVERY plan-sync cycle (every plan_secs, independently
+        timed from the real tick loop), so a genuinely fresh zone racing
+        against its own first dry_run pass would get permanently
+        primed-and-skipped over an overshoot of a fraction of a pip, same
+        as a real overnight gap -- there was no way to tell "just touched,
+        barely past" from "missed while offline for hours" apart. `tol`
+        doesn't help here: it only widens the pre-trigger boundary, it
+        doesn't forgive an overshoot once past. A zone within `max_retro`
+        of its entry is left UN-primed instead -- eligible for the real
+        (non-dry_run) tick loop to still enter it normally on its own next
+        pass, rather than being permanently barred by a race it never had a
+        fair chance to win."""
         if px is None:
             return []
         out = []
@@ -178,10 +193,13 @@ class VoteSession:
                 continue
             if dry_run:
                 entry = float(z.get("entry", 0))
+                past = abs(float(px) - entry)
+                if past <= max_retro:
+                    continue   # still within tolerance -- leave un-primed, not a real gap
                 self.primed[zid] = {
                     "at": now, "price": float(px), "entry": entry,
                     "side": z.get("side"), "decision": z.get("decision"),
-                    "past": round(abs(float(px) - entry), 6),
+                    "past": round(past, 6),
                 }
             else:
                 out.append(make_spec(self.instrument, z))

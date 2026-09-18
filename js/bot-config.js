@@ -4259,6 +4259,12 @@ const VB3_DEFAULTS = {
   // tick_secs itself; fail-closed gate tightened to match (10 min vs v2's 1h).
   plan_secs: 3,
   plan_max_age_hours: 1 / 6,
+  // 2026-09-18: dry_run priming runs on EVERY plan-sync cycle, not just at
+  // startup — with 0 tolerance a genuinely fresh touch racing its own first
+  // priming pass got permanently skipped over a fraction-of-a-pip overshoot,
+  // indistinguishable from a real overnight gap. 1 pip matches every real
+  // overshoot observed that day. See engine.py's VoteSession.decide doc.
+  max_retro_entry_pips: 1,
   // Own bot/chat, deliberately blank (not v2's real live credentials) --
   // 2026-09-18 identity-collision fix, see volatility_bot_v3.py's DEFAULT_CFG.
   tg_enabled: false, tg_token: '', tg_chat_id: '',
@@ -4315,6 +4321,7 @@ function renderVb3Form() {
   set('vb3_throttle_mult',       _vb3Cfg.throttle_mult ?? VB3_DEFAULTS.throttle_mult);
   chk('vb3_stack_guard',         _vb3Cfg.stack_guard ?? true);
   set('vb3_stack_guard_pips',    _vb3Cfg.stack_guard_pips   ?? VB3_DEFAULTS.stack_guard_pips);
+  set('vb3_max_retro_entry_pips', _vb3Cfg.max_retro_entry_pips ?? VB3_DEFAULTS.max_retro_entry_pips);
   set('vb3_tick_secs',           _vb3Cfg.tick_secs          ?? VB3_DEFAULTS.tick_secs);
   set('vb3_status_secs',         _vb3Cfg.status_secs        ?? VB3_DEFAULTS.status_secs);
   set('vb3_plan_secs',           _vb3Cfg.plan_secs          ?? VB3_DEFAULTS.plan_secs);
@@ -4360,6 +4367,7 @@ function readVb3Form() {
   _vb3Cfg.throttle_mult        = num('vb3_throttle_mult', VB3_DEFAULTS.throttle_mult);
   _vb3Cfg.stack_guard          = !!document.getElementById('vb3_stack_guard')?.checked;
   _vb3Cfg.stack_guard_pips     = num('vb3_stack_guard_pips', VB3_DEFAULTS.stack_guard_pips);
+  _vb3Cfg.max_retro_entry_pips = num('vb3_max_retro_entry_pips', VB3_DEFAULTS.max_retro_entry_pips);
   _vb3Cfg.tick_secs            = Math.round(num('vb3_tick_secs', VB3_DEFAULTS.tick_secs));
   _vb3Cfg.status_secs          = Math.round(num('vb3_status_secs', VB3_DEFAULTS.status_secs));
   _vb3Cfg.plan_secs            = Math.round(num('vb3_plan_secs', VB3_DEFAULTS.plan_secs));
