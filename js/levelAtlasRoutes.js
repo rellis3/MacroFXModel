@@ -545,6 +545,33 @@ export function mountLevelAtlasRoutes(app, express) {
     }
   });
 
+  // GET /api/level-atlas/m1-tail/EURUSD?days=14 — a short, TRIMMED slice of
+  // the already-correct, periodically-refreshed live-snapshot (LIVE_SNAPSHOT_PREFIX,
+  // saved by saveAllLiveSnapshots — the SAME 180-day bounded archive
+  // coldStartLiveCache restores from). Built 2026-09-18 for the local
+  // decision engine (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md): a
+  // local sync job needs a KNOWN-CORRECT recent M1 base to seed from, not a
+  // fresh independent OANDA fetch — found by direct testing that a pure
+  // OANDA-direct re-fetch of historical bars does NOT reproduce the same
+  // vote/margin as the official archive for the identical touch (data-
+  // provenance mismatch, not a window-length or staleness issue — ruled
+  // those out first). This route exists so "sync from the real archive,
+  // then gap-fill only the tiny live delta locally" is possible, mirroring
+  // exactly what loadM1ForPair + gapFillPacked already do server-side.
+  app.get('/api/level-atlas/m1-tail/:instrument', async (req, res) => {
+    try {
+      const pair = String(req.params.instrument).toLowerCase();
+      const days = Math.min(180, Math.max(1, Number(req.query.days) || 14));
+      const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
+      const packed = packFromJSON(snap);
+      if (!packed) return res.status(404).json({ ok: false, error: `no live snapshot for ${req.params.instrument} yet` });
+      const bounded = boundPacked(packed, days);
+      res.json({ ok: true, instrument: pair.toUpperCase(), days, savedAt: snap.savedAt ?? null, ...packToJSON(bounded) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /api/level-atlas/fastlive/EURUSD — same shape as /live, but computed
   // from a warm, incrementally-updated bounded window (see getFastLive above)
   // instead of served from whatever the last /run happened to store. Meant to
