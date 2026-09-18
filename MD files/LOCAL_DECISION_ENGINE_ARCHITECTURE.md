@@ -1,0 +1,167 @@
+# Local Decision Engine — Architecture
+
+Written 2026-09-18 for the Vote Atlas live-vs-backtest divergence fix. Shared
+with the Fib Atlas session because Fib Atlas has the identical structural
+problem and should build against the same design, not a second one.
+
+## The problem this solves
+
+Both Vote Atlas (`volatility_bot_v2`) and Fib Atlas (asia + monday ladders)
+follow the same pattern: a server-side plan producer (`_refreshVolatilityV2Plan`
+/ `_refreshFibAtlasPlan`, `server.js`) recomputes each enabled pair's tradeable
+zones every **45 seconds** and writes the result to KV. The Python bot polls
+price every **3 seconds** (`tick_secs`) and fires a trade the moment price
+crosses a zone's level — using the margin from whichever 45-second plan
+snapshot happened to be current, not a fresh computation at the exact
+crossing instant.
+
+The backtest (`atlasWalk` + `voteDecision`/`matchLiveContext`,
+`js/levelAtlasEngine.js` / `js/levelAtlasReport.js`) never has this problem —
+it evaluates every touch exactly once, at the precise historical moment of
+crossing, using fully-settled bar data. It's a clean batch replay, not a
+poll loop.
+
+Confirmed directly (2026-09-18, Vote Atlas): a real pending zone's computed
+margin drifted 3 → 1 over 43 minutes with price never even reaching it —
+concrete proof the 45s-snapshot approach is measurably stale relative to the
+backtest's "evaluate once, at the exact moment" methodology. Cross-referencing
+the existing decision log against a same-day overnight recompute found 20 of
+26 (77%) of real entries logged a margin that didn't match the backtest's
+computation for the identical touch at the identical minute.
+
+A second, smaller contributor: the live plan producer's fastlive cache is
+bounded to `LIVE_WINDOW_DAYS = 180` (not the backtest's full ~10-year
+history) — safe for most context dimensions (documented rationale: nothing
+needs more than ~60 trading days), but NOT safe for the `lastVisit`-derived
+fields (`rollingRate`, `wtStateRepeated`, `prevOutcomeCrossDay` — only the
+last one was independently tested) or for anything that needs a long sample
+to be stable (`htfTrend`, `confluence`). Both gaps get fixed by the same
+architecture change below.
+
+## The fix: compute the decision locally, not remotely
+
+Move the actual vote computation off Railway and onto the same machine the
+Python bot already runs on (next to MT5). A bot calls a local HTTP endpoint
+at the exact moment it wants to decide, gets a fresh answer computed on
+local data — no network hop, no 45-second snapshot, the staleness gap
+collapses to milliseconds. This is the same fix for BOTH bots, because both
+have the identical 45s-plan / 3s-tick mismatch.
+
+**Reuse the existing JS engine verbatim. Do not re-implement it in Python.**
+This session spent an entire night chasing bugs caused by exactly that
+pattern — a second implementation of the same logic silently drifting from
+the first (UTC-vs-London-midnight session anchor, a hardcoded parquet
+column index, a missing R2 client timeout that existed in one client but not
+its sibling). `atlasWalk`, `matchLiveContext`, and each bot's own
+`voteDecision` variant are already correct and already tested. The local
+engine is the same code, relocated — not rewritten.
+
+### What runs where
+
+**Stays on Railway (unchanged):**
+- The nightly full-history reference-engine rebuild (all 5 engines — Level
+  Atlas, Session Path, Session Handoff, Asia Fib Atlas, Monday Fib Atlas).
+  Already fixed and cheap as of 2026-09-17 (decoded-snapshot cache keyed off
+  the raw parquet's own R2 ETag — see `js/volBacktestM1Engine.js`).
+- KV for config/status/trade-log, so the dashboard keeps working from
+  anywhere.
+- `GET /api/level-atlas/book/:pair` (already exists) — the sync source.
+
+**Moves local (new):**
+- The actual per-tick decision computation.
+- The 45-second plan producer and its always-warm fastlive cache retire once
+  local decisioning is proven — this is also the fix for the ~$10/day
+  cold-start cost (every Railway redeploy wipes the in-memory fastlive cache,
+  forcing every enabled pair to cold-start its 180-day window again; local
+  decisioning removes the need for that cache to exist on Railway at all).
+
+### Daily local sync (small, checked against real sizes — not estimated)
+
+Once a day, pull two things per enabled pair:
+1. **The book** — `GET /api/level-atlas/book/:pair`. Measured real size:
+   **~325KB/pair** (single default-rearm book: `{instrument, splitDate,
+   cells}` — base rates per dimension bucket). NOT the full stored R2 object
+   (~2.1MB/pair — that includes 3 rearm-fraction books, display cards,
+   session-transition tables, and the day's full touch/pending detail, none
+   of which a local sync needs).
+2. **A short M1 tail** — ~2 weeks, enough for the fast-moving dimensions
+   (approach speed, WaveTrend state, churn). Reuse `js/m1GapFill.js` as-is
+   for this — it already does exactly this kind of top-up, just needs
+   pointing at a short local window instead of the full archive.
+
+For Vote Atlas's 17 enabled pairs: ~5.5MB/day (book) + ~5-6MB/day (M1 tail)
+≈ **10-12MB/day, under 400MB/month**. Cloudflare R2 has zero egress fees by
+design; the only real cost is Railway serving these small files once a day,
+which at this size doesn't register next to the compute cost it replaces.
+Fib Atlas's own pair count will scale this proportionally — check its
+`enabled_pairs` count before assuming the same order of magnitude.
+
+### The shared core vs the per-strategy adapter
+
+`matchLiveContext` (`js/levelAtlasReport.js`) is **already** shared between
+Vote Atlas and Fib Atlas — both import it from the same file. The final
+decision function is NOT shared: Vote Atlas uses `voteDecision` from
+`js/levelAtlasVoteReview.js`; Fib Atlas has its own `voteDecision` in
+`js/asiaFibAtlasVoteReview.js` — structurally similar contract, distinct
+implementation, presumably adapted for Fib Atlas's own ladder/dimension set
+(not yet fully read — confirm the exact shape before assuming it's a drop-in
+match).
+
+Design the local engine as one shared core with a thin per-strategy adapter,
+not two separate builds:
+
+```
+GET /decide?pair=eurusd&side=up&rung=p50&strategy=voteAtlas
+GET /decide?pair=eurusd&side=up&rung=p50&strategy=fibAsia
+GET /decide?pair=eurusd&side=up&rung=p50&strategy=fibMonday
+```
+
+Each call: load the local book + local M1 tail for `pair`, build the touch
+context via the shared `atlasWalk`/`matchLiveContext` primitives, then apply
+whichever strategy's decision function `strategy` selects. Response shape
+mirrors what `_volatilityV2PriceZone` already returns (`decision`, `margin`,
+`outVotes`/`backVotes`, and now `voteDims` — the compact per-dimension
+supports/challenges/context detail shipped 2026-09-18 for exactly this kind
+of diffing).
+
+## Rollout — build sideways, do not touch what's live
+
+The current bot is **already** internally named `volatility_bot_v2`
+everywhere (folder, KV keys: `volatility_bot_v2_config` /
+`_status` / `_plan` / `_trade_log`). A new build must be `v3` (or an
+equivalently distinct name) — do not reuse "v2" for the new architecture,
+it collides with what's live right now trading real demo capital.
+
+1. Build the local decision engine as its own standalone module, tested
+   independently: replay a known historical touch and assert the local
+   engine's output matches the stored votetrades file exactly for that
+   touch. This turns tonight's one-off manual comparison into a permanent
+   regression test, not a diagnostic you re-run by hand each time.
+2. Confirm Fib Atlas's `voteDecision` fits the shared-core-plus-adapter shape
+   (or needs its own adapter contract) — read `js/asiaFibAtlasVoteReview.js`
+   properly before building the adapter, don't assume.
+3. Build `volatility_bot_v3`: identical Python trading/risk/broker logic to
+   v2 (proven, unchanged), swap only the entry-time call from "read the last
+   45s plan snapshot" to "ask the local engine right now." Paper mode by
+   default, matching every other bot's own first-light convention in this
+   repo.
+4. Run v3 paper alongside v2 live for a validation window. This is now
+   directly measurable: the same margin-diff method used tonight, but
+   comparing v3-local vs the backtest instead of v2-remote vs the backtest.
+5. Only once v3's parity is proven, cut over: retire v2, then let Fib Atlas
+   adopt the same local engine as its second consumer — proving the shared
+   design, not rebuilding it.
+
+## Open items, not yet resolved
+
+- Exact shape of Fib Atlas's `voteDecision` (asia vs monday — may differ
+  from each other too) — needs a real read, not an assumption, before the
+  adapter is designed.
+- Whether the local engine runs as a long-lived local Node process (sidecar)
+  or is invoked per-call — a long-lived process avoids repeated local M1
+  parse cost; needs the same kind of decoded-snapshot-cache thinking already
+  proven server-side, scaled down to a ~2-week local window.
+- Local M1 tail staleness handling — what the bot does if the local sync
+  job itself falls behind (network outage, machine asleep) — needs a
+  fail-safe (refuse to trade on stale local data, mirroring `plan_max_age_hours`
+  in the current bot) rather than silently trading on old context.

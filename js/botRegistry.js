@@ -34,6 +34,7 @@ window.POS_BOTS = [
   { key: 'macro_equity_bot_status',   label: 'MacroEquity', color: '#818cf8', bg: '#1e1b4b', bd: '#4338ca', paper: false },
   { key: 'volatility_bot_status',     label: 'Volatility',  color: '#e0a93b', bg: '#292100', bd: '#78610a', paper: true },
   { key: 'volatility_bot_v2_status',  label: 'Vote Atlas',  color: '#38bdf8', bg: '#062233', bd: '#0369a1', paper: true },
+  { key: 'volatility_bot_v3_status',  label: 'Vote Atlas v3', color: '#34d399', bg: '#052e21', bd: '#0e9668', paper: true },
   { key: 'volatility_ride_status',    label: 'Vol-Ride',    color: '#f0b64b', bg: '#2c2400', bd: '#8a6d0c', paper: true },
   { key: 'range_line_bot_status',     label: 'Range-Line',  color: '#4fd1c5', bg: '#06302b', bd: '#0f766e', paper: true },
   { key: 'oi_bot_status',             label: 'OI Gamma',    color: '#4dd0e1', bg: '#06282e', bd: '#0e7490', paper: true },
