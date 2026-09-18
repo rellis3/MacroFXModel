@@ -4,7 +4,7 @@
  */
 import {
   toEpochSec, lastPackedEpoch, computeGap, chunkMinuteRange,
-  fetchM1Gap, mergeBarsIntoPacked, gapFillPacked,
+  fetchM1Gap, mergeBarsIntoPacked, gapFillPacked, SANE_EPOCH_FLOOR as SANE_EPOCH_FLOOR_TEST,
 } from './m1GapFill.js';
 
 let failures = 0;
@@ -32,6 +32,60 @@ ok('computeGap null when current (within minGapSec)', computeGap(packedEndingAt(
 {
   const g = computeGap(packedEndingAt(t0), t0 + 5 * 3600);   // 5h stale
   ok('computeGap returns [lastBar+1min, now]', g && g.fromSec === t0 + MIN && g.toSec === t0 + 5 * 3600);
+}
+
+// ── corrupted-tail protection (2026-09-16 incident) ──────────────────────
+// A NaN/unparseable timestamp in the LAST row silently becomes 0 once
+// written into an Int32Array (production's actual storage type for `times`
+// — see volBacktestM1Engine.js's `pack()`) — no error, no warning. Before
+// this fix, lastPackedEpoch trusted index n-1 blindly, so ONE corrupted
+// trailing bar made computeGap think the whole series was from 1970,
+// triggering a real ~7.9M-bar refetch of EURUSD's entire history in
+// production and hammering OANDA hard enough to draw 504s on the next pair.
+function packedEndingWithCorruptTail(t0, corruptCount, count = 8) {
+  const p = packedEndingAt(t0, count);
+  for (let i = p.n - corruptCount; i < p.n; i++) p.times[i] = 0;   // simulate the silent NaN->0 coercion
+  return p;
+}
+{
+  const p = packedEndingWithCorruptTail(t0, 1);   // just the last bar corrupted
+  ok('lastPackedEpoch skips ONE corrupted trailing bar, finds the real last one',
+     lastPackedEpoch(p) === t0 - MIN);
+  const g = computeGap(p, t0 + 5 * 3600);
+  ok('computeGap still returns a normal small delta with one corrupted tail bar',
+     g && g.fromSec === t0, g);
+}
+{
+  const p = packedEndingWithCorruptTail(t0, 3);   // last 3 bars corrupted
+  ok('lastPackedEpoch skips MULTIPLE corrupted trailing bars',
+     lastPackedEpoch(p) === t0 - 3 * MIN);
+}
+{
+  const p = packedEndingWithCorruptTail(t0, 5);   // ALL 5 scanned bars corrupted (n=8, scans last 5)
+  ok('lastPackedEpoch gives up (null) rather than guess, when every scanned bar is corrupted',
+     lastPackedEpoch(p) === null);
+  ok('computeGap null too — refuses to fetch off a totally corrupted tail',
+     computeGap(p, t0 + 5 * 3600) === null);
+}
+{
+  // The actual production failure mode: last bar literally IS epoch 0 (the
+  // silent NaN coercion), rest of the series is genuinely real/recent data.
+  const p = packedEndingWithCorruptTail(t0, 1);
+  const g = computeGap(p, t0 + 5 * 3600);
+  ok('never requests anything near 1970 even with the exact production corruption pattern',
+     g && g.fromSec > SANE_EPOCH_FLOOR_TEST, g);
+}
+{
+  // A genuinely-ancient (pre-2015, but non-zero/not "corrupted-looking")
+  // series reads as "no valid last bar" via the SAME floor check, not as
+  // "fetch from some clamped date" -- there's exactly one enforcement point
+  // (lastPackedEpoch), not a second one in computeGap that could drift from it.
+  const ancient = Math.floor(Date.UTC(1999, 0, 1) / 1000);
+  const p = packedEndingAt(ancient);
+  ok('an all-ancient series has no valid last bar either, same floor logic',
+     lastPackedEpoch(p) === null);
+  ok('computeGap refuses to fetch at all for an all-ancient series, rather than clamping to a wrong window',
+     computeGap(p, t0 + 5 * 3600) === null);
 }
 
 // ── chunkMinuteRange ──

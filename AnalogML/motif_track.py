@@ -118,7 +118,7 @@ from pathlib import Path
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from pattern_scan import load_bars  # noqa: E402
+from pattern_scan import load_bars, load_m1_and_bars  # noqa: E402
 from motif_features import bucket_trade, compute_features  # noqa: E402
 from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
 
@@ -129,7 +129,7 @@ from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
-from pylego.motif_policy import passes_best_config  # noqa: E402
+from pylego.motif_policy import passes_best_config, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
 from pylego.spread_stats import live_spread_pips  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
@@ -211,8 +211,39 @@ def _motif_key(pair: str, m) -> str:
     return f"{pair}:{'top' if m.is_top else 'bottom'}:{'-'.join(str(i) for i in m.touch_idxs)}"
 
 
+def _hours_since(iso: str, now: datetime | None = None) -> float:
+    """Wall-clock hours from an ISO timestamp (tz-aware or naive-as-UTC) to
+    now. Used to keep expired trades out of motif_bot_plan."""
+    ts = pd.Timestamp(iso)
+    ts = ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    now_ts = pd.Timestamp(now or datetime.now(timezone.utc))
+    now_ts = now_ts.tz_localize("UTC") if now_ts.tzinfo is None else now_ts.tz_convert("UTC")
+    return float((now_ts - ts).total_seconds() / 3600.0)
+
+
+def _watermark_idx(mark, bars: pd.DataFrame) -> int | None:
+    """Position in `bars` of the stored watermark -- None means "seed fresh":
+    no watermark yet, a legacy integer one (see scan_pair_motif's doc), or a
+    timestamp the current window no longer contains. A watermark that fell
+    in a gap resolves to the last bar at or before it (searchsorted), so a
+    missed bar never re-opens already-scanned history."""
+    if mark is None or isinstance(mark, (int, float)):
+        return None
+    try:
+        ts = pd.Timestamp(mark)
+    except (TypeError, ValueError):
+        return None
+    if ts.tzinfo is None:
+        ts = ts.tz_localize(bars.index.tz)
+    else:
+        ts = ts.tz_convert(bars.index.tz)
+    if ts < bars.index[0]:
+        return None
+    return int(bars.index.searchsorted(ts, side="right")) - 1
+
+
 def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
-                    params: dict) -> list[tuple[dict, object]]:
+                    params: dict, pending: tuple | None = None) -> list[tuple[dict, object]]:
     """Logs any motif that confirmed SINCE THE LAST RUN and isn't already
     recorded -- keyed by touch identity (survives a missed run), gated by a
     per-pair watermark (survives a re-run against the same data). The
@@ -223,13 +254,41 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
     happened during development: 28,524 "new signals" on one run). A fresh
     pair's watermark is seeded at the current latest bar with nothing
     logged -- same "only what's new since last run, never backfill"
-    contract as paper_track.py's scan_pair()."""
+    contract as paper_track.py's scan_pair().
+
+    The watermark is the latest scanned bar's TIMESTAMP, not its index.
+    It used to be the raw index (n - 1) -- the same class of bug
+    `resolve_open_trades` was fixed for on 2026-08-19, and it bit here on
+    2026-09-16: three pairs' M1 parquet grew a longer history, every bar's
+    position shifted, and 211 motifs from 2021 sat "above" the stale index
+    and were logged as brand-new open trades -- which motif_bot_plan would
+    then have handed the execution bot to enter at market, five years
+    late. A timestamp is immune to the data window changing shape. A legacy
+    integer watermark is re-seeded at the latest bar (nothing logged from
+    the past), exactly like a fresh pair -- there is no honest way to map an
+    old index onto a window that may already have moved under it.
+
+    `bars` must be COMPLETE bars only (see split_complete_bars) -- the
+    backtest never sees a half-formed bar, so neither may this. `pending`
+    is (timestamp, open) of the bar currently forming, if any M1 of it has
+    printed: a motif confirming on the LAST complete bar enters at that
+    open, exactly the backtest's "open of the bar after confirmation". Until
+    2026-09-17 the forming bar sat inside `bars` as a real bar: it became
+    the watermark, so when it completed an hour later any confirmation on
+    it was already "<= watermark" and skipped for good. Only bars that
+    opened after one scan AND closed before the next were ever caught --
+    6 live trades in a month against a backtest rate of ~2/day.
+
+    If a confirmation lands on the last complete bar and no forming-bar
+    open exists yet, it is deferred (watermark held one bar back) and
+    picked up on the next scan with that bar's real open."""
     n = len(bars)
     watermarks = log.setdefault("watermarks", {})
-    last_scanned = watermarks.get(pair)
+    last_scanned = _watermark_idx(watermarks.get(pair), bars)
     if last_scanned is None:
-        watermarks[pair] = n - 1
+        watermarks[pair] = bars.index[n - 1].isoformat()
         return []
+    deferred = False
 
     already = {t["motif_key"] for t in log["trades"] if t["pair"] == pair}
     pip = pip_size(pair)
@@ -242,9 +301,17 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
         if key in already:
             continue
         entry_idx = m.confirm_idx + 1
-        if entry_idx >= n:
-            continue  # confirmed on the very last bar -- no entry bar exists yet
-        entry_price = float(bars["open"].to_numpy()[entry_idx])
+        if entry_idx < n:
+            entry_price = float(bars["open"].to_numpy()[entry_idx])
+            entry_date = bars.index[entry_idx].isoformat()
+        elif pending is not None:
+            # Confirmed on the last complete bar: the entry bar is the one
+            # forming right now, and its open is already known.
+            entry_price = float(pending[1])
+            entry_date = pd.Timestamp(pending[0]).isoformat()
+        else:
+            deferred = True   # no forming-bar open yet -- next scan, same bar, real open
+            continue
         tp_price = entry_price + m.direction * sl_price * params["tp_r"]
         sl_level = entry_price - m.direction * sl_price
         new.append(({
@@ -252,14 +319,39 @@ def scan_pair_motif(pair: str, bars: pd.DataFrame, log: dict, motifs: list,
             "n_touches": m.n_touches, "is_top": m.is_top,
             "level": m.level, "touch_level": m.touch_level,
             "played_out": m.played_out,
-            "entry_idx": int(entry_idx), "entry_date": bars.index[entry_idx].isoformat(),
+            "entry_idx": int(entry_idx), "entry_date": entry_date,
             "direction": "BUY" if m.direction == 1 else "SELL",
             "entry_price": entry_price, "sl_price": sl_level, "tp_price": tp_price,
             "sl_dist": sl_price, "tp_r": params["tp_r"], "status": "open",
             "logged_at": datetime.now(timezone.utc).isoformat(),
         }, m))
-    watermarks[pair] = n - 1
+    watermarks[pair] = bars.index[n - 2 if deferred and n >= 2 else n - 1].isoformat()
     return new
+
+
+def split_complete_bars(m1: pd.DataFrame, bars: pd.DataFrame, timeframe: str,
+                        now: datetime | None = None) -> tuple[pd.DataFrame, tuple | None]:
+    """(complete_bars, pending). Drops the last resampled bar if its period
+    hasn't closed -- the M1 parquet holds only COMPLETE M1 candles (OANDA's
+    `complete` flag), so the last H1 bar is "however many minutes of this
+    hour have printed", which the backtest never sees. A bar counts as
+    closed when its final M1 candle has printed (last M1 >= bar open +
+    period - 1min), or -- sparse-tape fallback -- when wall-clock is well
+    past its close. `pending` is (timestamp, open) of the dropped bar so a
+    confirmation on the last complete bar can enter at the forming bar's
+    real open; None when nothing is forming or nothing was dropped."""
+    if len(bars) == 0:
+        return bars, None
+    period = pd.Timedelta(timeframe)
+    last_open = bars.index[-1]
+    last_m1 = m1.index[-1]
+    now_ts = pd.Timestamp(now or datetime.now(timezone.utc))
+    now_ts = now_ts.tz_localize("UTC") if now_ts.tzinfo is None else now_ts.tz_convert("UTC")
+    closed_by_data = last_m1 >= last_open + period - pd.Timedelta(minutes=1)
+    closed_by_clock = now_ts.tz_convert(last_open.tz) >= last_open + period + pd.Timedelta(minutes=10)
+    if closed_by_data or closed_by_clock:
+        return bars, None
+    return bars.iloc[:-1], (last_open, float(bars["open"].iloc[-1]))
 
 
 def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> int:
@@ -683,7 +775,16 @@ def run(args: argparse.Namespace) -> None:
     # reference (see motif_bot.py's own doc for why re-using the tracked
     # price would be wrong).
     plan_entries: list[dict] = []
+    # Display-only companion to plan_entries (2026-09-17): every recently
+    # confirmed motif the best-config filter REJECTED, with the reason. The
+    # bot never acts on these -- it decision-logs them once each so the
+    # dashboard's timeline shows "seen it, skipped it, here's why" instead
+    # of sitting blank while the filter does its job.
+    plan_filtered: list[dict] = []
+    FILTERED_WINDOW_HOURS = 48
 
+    scan_started = datetime.now(timezone.utc)
+    pairs_scanned = 0
     for pair in pairs:
         # A single pair's bad data (corrupt cache, a detection-logic edge
         # case, anything) must never take down the whole run -- caught live
@@ -692,10 +793,14 @@ def run(args: argparse.Namespace) -> None:
         # silently undoing every other pair's successful refresh. Same
         # per-pair isolation the refresh loop above already has.
         try:
-            bars = load_bars(pair, args.timeframe)
+            m1, bars = load_m1_and_bars(pair, args.timeframe)
+            pending = None
             if args.as_of:
                 cutoff = pd.Timestamp(args.as_of, tz=bars.index.tz)
-                bars = bars[bars.index <= cutoff]
+                bars = bars[bars.index <= cutoff]     # replay: every bar is history, all complete
+            else:
+                bars, pending = split_complete_bars(m1, bars, args.timeframe)
+            del m1
             if len(bars) < 200:
                 continue
 
@@ -708,7 +813,7 @@ def run(args: argparse.Namespace) -> None:
             )
 
             resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
-            new = scan_pair_motif(pair, bars, log, motifs, FROZEN)
+            new = scan_pair_motif(pair, bars, log, motifs, FROZEN, pending=pending)
             pip = pip_size(pair)
             # Computed once per pair, only when there's an open/new trade to
             # read it for -- the WaveTrend/D1/H4 resample inside is the
@@ -751,12 +856,41 @@ def run(args: argparse.Namespace) -> None:
                         print(f"  [warn] Telegram alert failed to send for {pair}")
 
             for t in [t for t in log["trades"] if t["pair"] == pair and t["status"] == "open"]:
+                # A trade past its own barrier horizon (max_bars_ahead H1
+                # bars after entry) can no longer be a live entry whatever
+                # its status says -- if it is still "open" it is stranded
+                # (entry bar outside the current data window, so
+                # resolve_open_trades can't race it), not tradeable. The 211
+                # 2021-vintage zombies logged on 2026-09-16 (see
+                # scan_pair_motif's doc) were exactly this, and would have
+                # gone into the plan as 137 fresh entries. The execution bot
+                # has its own, much tighter max_entry_age_hours gate; this is
+                # the plan refusing to carry the impossible in the first place.
+                if _hours_since(t["entry_date"]) > FROZEN["max_bars_ahead"]:
+                    continue
                 # confirm_idx = entry_idx - 1: entry is always the OPEN of the
                 # bar AFTER confirmation (scan_pair_motif's own contract) --
                 # never re-derive this differently in two places.
                 direction = 1 if t["direction"] == "BUY" else -1
                 swing_regime = _swing_regime(t["entry_idx"] - 1, direction, t["level"])
-                if not passes_best_config(pair, swing_regime, live_spread_pips(live_spreads, pair)):
+                live_pips = live_spread_pips(live_spreads, pair)
+                if not passes_best_config(pair, swing_regime, live_pips):
+                    if _hours_since(t["entry_date"]) <= FILTERED_WINDOW_HOURS:
+                        # Report whichever spread figure the decision above
+                        # actually used -- a live-measured average once this
+                        # account has enough of it (pylego.spread_stats), the
+                        # static RETAIL_SPREAD_PIPS estimate otherwise -- so
+                        # this reason text can never disagree with why the
+                        # motif was really filtered.
+                        spread = live_pips if live_pips is not None else RETAIL_SPREAD_PIPS.get(pair)
+                        why = (f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p" if spread is not None and spread > BEST_CONFIG["max_spread_pips"]
+                               else f"swing regime = {swing_regime} (with-trend: PF 0.98 in backtest)")
+                        plan_filtered.append({
+                            "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
+                            "n_touches": t["n_touches"], "is_top": t["is_top"], "level": t["level"],
+                            "swing_regime": swing_regime, "confirmed_at": t["entry_date"],
+                            "filter_reason": why,
+                        })
                     continue
                 plan_entries.append({
                     "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
@@ -779,6 +913,7 @@ def run(args: argparse.Namespace) -> None:
             if state:
                 states.append(state)
                 forming += 1
+            pairs_scanned += 1
         except Exception as e:
             print(f"  [warn] {pair}: detection failed ({e}) -- skipping this pair, "
                   f"continuing with the rest")
@@ -795,6 +930,29 @@ def run(args: argparse.Namespace) -> None:
                 "generatedAt": datetime.now(timezone.utc).isoformat(),
                 "strategy": "motif-touch",
                 "entries": plan_entries,
+                "filtered": plan_filtered,
+                # Per-pair eligibility under the spread half of best-config, so
+                # the dashboard's pairs board can say "excluded: spread 2.4p"
+                # for a pair that will never appear in entries.
+                "universe": [{"pair": p, "spread_pips": RETAIL_SPREAD_PIPS.get(p),
+                              "eligible": (RETAIL_SPREAD_PIPS.get(p) is None
+                                           or RETAIL_SPREAD_PIPS.get(p) <= BEST_CONFIG["max_spread_pips"])}
+                             for p in pairs],
+                # Proof-of-life for the dashboard: what this scan actually did.
+                "scan": {
+                    "started_at": scan_started.isoformat(),
+                    "finished_at": datetime.now(timezone.utc).isoformat(),
+                    "pairs_scanned": pairs_scanned, "pairs_total": len(pairs),
+                    "new_confirmations": new_signals,
+                    # By CONFIRM time (entry bar), not logged_at -- a backfill
+                    # event can log thousands of old rows in one go.
+                    "confirmations_24h": sum(1 for t in log["trades"]
+                                             if _hours_since(t.get("entry_date") or "1970-01-01T00:00:00+00:00") <= 24),
+                    "resolved_this_run": resolved_total,
+                    "forming_pairs": forming,
+                    "next_scan_at": (datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+                                     + pd.Timedelta(hours=1) + pd.Timedelta(seconds=90)).isoformat(),
+                },
             })
             plan_pushed = True
         except Exception as e:

@@ -813,6 +813,14 @@
   .chain-r.open .chain-w{display:block}
   .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
   @media (max-width:560px){.chain-p,.chain-w{margin-left:0}}
+  .dw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:8px}
+  .dw-r{border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--card2);display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;cursor:help}
+  .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)}
+  .dw-k{font-size:11px} .dw-l{font-size:12.5px;font-weight:700} .dw-since{font-size:10.5px} .dw-ins{grid-column:2/4;font-size:10.5px}
+  .dw-d{grid-column:1/4;font-size:11.5px;color:var(--text2);line-height:1.5;margin-top:2px}
+  .dw-x{grid-column:1/4;font-size:11.5px;line-height:1.5;margin-top:3px;padding:4px 8px;border-radius:5px;background:var(--bg3)}
+  .dw-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin:8px 0 4px}
+  .dw-log{font-size:11.5px;line-height:1.6;color:var(--text2)} .dw-log.cleared{color:var(--text3)}
   .chain-read{margin:0 0 10px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
   .chain-read-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;font-weight:700;color:var(--text2);margin-bottom:5px}
   .chain-hook{font-size:14px;font-weight:800;line-height:1.4;margin-bottom:6px}
@@ -925,6 +933,8 @@
   <div class="dashgrid">
     <div class="main-col">
       <div class="mbrief" id="mbrief" style="display:none"></div>
+
+      <div class="mread" id="deskWatch" style="display:none"></div>
 
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
@@ -1491,7 +1501,7 @@ function mveChip(r) {
 let commodityDrivers = null;
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
-const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD' };
+const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
 async function loadCommodityDrivers() {
   try {
     // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
@@ -1609,13 +1619,13 @@ function vixStatTabsHtml() {
     `<button class="stat-tab${vixStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setVixStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
 }
 function rateStatTabsHtml() {
-  const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s']];
+  const tabs = [['us10y', '10Y'], ['us2y', '2Y'], ['spread', '2s10s'], ['spread30', '2s30s']];
   return `<div class="stat-tabs">${tabs.map(([id, lbl]) =>
     `<button class="stat-tab${rateStatTab === id ? ' on' : ''}" onclick="event.stopPropagation();setRateStatTab('${id}')">${lbl}</button>`).join('')}</div>`;
 }
 function renderStatRow() {
   const el = $('statRow');
-  const us10y = fred?.us10y, us2y = fred?.us2y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
+  const us10y = fred?.us10y, us2y = fred?.us2y, us30y = fred?.us30y, dxy = fred?.dxy, vix = fred?.vix, wti = commodityDrivers?.wti;
   if (!us10y?.value && !dxy?.value && !vix?.value && !wti) { el.style.display = 'none'; return; }
   const cards = [];
 
@@ -1638,6 +1648,23 @@ function renderStatRow() {
     const wkAgo = spreadHist.length >= 6 ? spreadHist[spreadHist.length - 6] : null;
     const wkBps = wkAgo != null ? spreadBps - wkAgo : null;
     cards.push(statCardHtml('2s10s Spread', `${spreadBps >= 0 ? '+' : ''}${spreadBps.toFixed(0)} bps`,
+      dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
+      spreadHist, wkBps == null || wkBps >= 0,
+      wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
+      rateStatTabsHtml()));
+  } else if (rateStatTab === 'spread30' && us30y?.value != null && us2y?.value != null) {
+    // 2s30s: the whole curve, front end to long end. 2s10s is the policy /
+    // recession gauge; this one is where fiscal and inflation-credibility doubt
+    // shows up first, because the 30-year is the tenor that has to be paid to
+    // ignore it. Same construction as the 2s10s card, so the two can be compared.
+    const spreadBps = (us30y.value - us2y.value) * 100;
+    const dBps = (us30y.prev != null && us2y.prev != null) ? spreadBps - (us30y.prev - us2y.prev) * 100 : null;
+    const h30 = (fredHist?.us30y ?? []).map(p => p.value), h2 = (fredHist?.us2y ?? []).map(p => p.value);
+    const n = Math.min(h30.length, h2.length);
+    const spreadHist = n ? h30.slice(-n).map((v, i) => (v - h2.slice(-n)[i]) * 100) : [];
+    const wkAgo = spreadHist.length >= 6 ? spreadHist[spreadHist.length - 6] : null;
+    const wkBps = wkAgo != null ? spreadBps - wkAgo : null;
+    cards.push(statCardHtml('2s30s Spread', `${spreadBps >= 0 ? '+' : ''}${spreadBps.toFixed(0)} bps`,
       dBps != null ? `${dBps >= 0 ? '+' : ''}${dBps.toFixed(0)} bps` : null, dBps == null || dBps >= 0,
       spreadHist, wkBps == null || wkBps >= 0,
       wkBps != null ? `${wkBps >= 0 ? '+' : ''}${wkBps.toFixed(0)} bps` : null, wkBps == null || wkBps >= 0,
@@ -1829,6 +1856,9 @@ async function loadGate() {
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
+  loadDeskWatch();                                                 // early-warning strip (server-side engine)
+  loadLedgerSummary();                                             // yesterday, scored
+  setInterval(loadDeskWatch, 5 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
@@ -2625,8 +2655,13 @@ function tradeGate(r) {
   // Do the agreeing reads actually agree with EACH OTHER, or merely each exist?
   const sides = agreeing.map(a => a.side);
   const netUp = sides.filter(x => x === 'up').length, netDn = sides.filter(x => x === 'down').length;
-  const consensus = Math.max(netUp, netDn);
-  const conflicted = netUp > 0 && netDn > 0;
+  const consensus = Math.max(netUp, netDn), minority = Math.min(netUp, netDn);
+  // "Conflicted" used to mean ANY dissent -- 3 up and 1 down was LEAN_ONLY, and
+  // since the weekly and monthly outlooks disagree with each other on most pairs
+  // most days, LEAN_ONLY was the resting state and every card read NO TRADE for
+  // a week (2026-09-18). A conflict is a MATERIAL split: the minority is at least
+  // half the majority (2-1, 2-2, 3-2). A clear majority (2-0, 3-1, 4-1) is not.
+  const conflicted = minority > 0 && minority * 2 >= consensus;
 
   // Stop floor. Expected day range in PRICE terms, so a stop can be checked.
   const pipSz = _pipSz(d);
@@ -2637,9 +2672,13 @@ function tradeGate(r) {
   // that means nothing.
   const minStopPts = rangePts != null ? +(rangePts * (volHot ? 0.33 : 0.25)).toFixed(d.dp ?? 2) : null;
 
+  // The trade of the day is one small idea at the end of the read, built from the
+  // data the page already holds. Only a HARD blocker (untradeable spread, stale
+  // price, a load-bearing data conflict) removes it. Thin or split evidence does
+  // not remove the idea; it lowers its confidence and the prompt says so.
   const verdict = blockers.length ? 'NO_TRADE'
-    : consensus < 2 ? 'NO_TRADE'
-    : conflicted ? 'LEAN_ONLY'
+    : consensus < 2 ? 'THIN'
+    : conflicted ? 'SPLIT'
     : 'OK';
   return {
     verdict, blockers, agreeing, consensus, conflicted, outlookAgree,
@@ -2782,7 +2821,7 @@ function chainVals() {
   const B = window.macroChainBrick;
   if (!B) return null;
   const out = {};
-  const fredSrc = { bei: 'bei', us10y: 'us10y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
+  const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
   for (const [node, key] of Object.entries(fredSrc)) {
     const pts = fredHist?.[key];
     out[node] = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
@@ -2856,7 +2895,8 @@ function assembleChainSnapshot() {
     .sort((a, b) => a.ts - b.ts).slice(0, 6)
     .map(e => { const h = Math.round((e.ts - now) / 3600_000); return `  ${e.country} ${e.event}${e.estimate != null ? ` (consensus ${e.estimate})` : ''} -- ${h < 0 ? `${-h}h ago` : h === 0 ? 'now' : `in ${h}h`}`; })
     .join('\n') || null;
-  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs };
+  const evidence = window.deskEvidenceBrick ? window.deskEvidenceBrick.evidenceForPrompt() : null;
+  return { asOf: new Date().toISOString(), moved: moved || null, chain: chain || null, ratesSplit, policy, assets: assets || null, risk: riskLines, equities, ccy, divergences, caveats, events: evs, evidence };
 }
 async function peekChainRead() {
   try {
@@ -3191,7 +3231,7 @@ function policyPricedLine() {
   const cls = p.direction === 'cuts' ? 'off' : p.direction === 'hikes' ? 'on' : 'mix';
   const tip = `The 2-year Treasury yield (${p.twoYear}%, as of ${p.twoYearAsOf}) against the effective fed funds rate (${p.policyRate}%, ${p.policyAsOf}) — a gap of ${p.gapBp}bp. `
     + `Divided by a standard 25bp move, that is roughly ${n.toFixed(1)} ${word ?? 'moves'} the market has ALREADY priced over the next couple of years. `
-    + `It matters because a currency does not rally on a cut that was already expected — it moves when the expected PATH changes. Context, not a signal.`;
+    + `It matters because a currency does not rally on a cut that was already expected — it moves when the expected PATH changes. Context, not a signal. Tested here 2026-09-17: prior repricing does NOT make the decision day smaller -- 85 FOMC days ran about 1.3 ATR on EUR/USD, USD/JPY, gold and SPX500 whether the 2-year had moved 5bp or 16bp+ into the meeting.`;
   return `<div class="riskverdict" style="margin-top:3px" title="${esc0(tip)}">Priced in: <b class="tone ${cls}" style="font-weight:800">${word ? `~${n.toFixed(1)} ${word}` : 'roughly on hold'}</b>`
     + `<span class="muted"> · 2Y ${p.twoYear}% vs policy ${p.policyRate}% (${p.gapBp >= 0 ? '+' : ''}${p.gapBp}bp) — a currency reacts to the path CHANGING, not to a move already expected</span></div>`;
 }
@@ -4049,6 +4089,8 @@ function renderMarketRead() {
         ${measuredBarsHtml ? `<div class="mread-h help" title="Each pair's actual move since the London-midnight open, divided by that pair's own expected day range so a JPY cross and EUR/CHF are on the same scale, then fitted across all pairs at once as strength(base) − strength(quote) with the strengths summing to zero. This is what HAS moved.">Who's being bought (top) vs sold (bottom) <span class="muted" style="font-weight:400">· measured move</span></div>${measuredBarsHtml}${measuredNote}` : ''}
         <div class="mread-h${measuredBarsHtml ? '' : ' help'}" style="margin-top:${measuredBarsHtml ? '10px' : '0'}"${measuredBarsHtml ? '' : ' title="A blend of each pair\'s HMM trend regime and today\'s session bias — a model read, not a measure of how far anything moved."'}>${measuredBarsHtml ? 'What our reads LEAN' : "Who's being bought (top) vs sold (bottom)"} <span class="muted" style="font-weight:400">(regime + session bias, not a move)</span></div>
         ${leanBarsHtml}
+        ${leanGroupsHtml()}
+        ${yesterdayHtml()}
         ${(srBarsHtml || srNote) ? `<div class="mread-h help" style="margin-top:10px" title="Actual minus consensus on each scheduled release, standardised against that series' OWN history of surprises so a payrolls miss and a CPI miss are comparable, then decay-weighted (60-day half-life). Positive = this economy has been coming in ahead of what was expected. This is what markets reprice on — distinct from the activity level below, which says how strong the economy IS, not whether it beat.">Beating vs missing consensus <span class="muted" style="font-weight:400">· surprise, in sigma</span></div>${srBarsHtml}${srNote}` : ''}
         ${gs.length ? `<div class="mread-h help" style="margin-top:10px" title="A LEVEL, not a surprise: a real composite for USD (industrial production plus regional Fed surveys) and an OECD business-confidence proxy for the other seven — explicitly NOT official PMI. An economy can be objectively weak here while still beating consensus above; the two rows answer different questions and are deliberately not merged.">Business activity by currency <span class="muted" style="font-weight:400">(level, not a surprise)</span></div>${gsBarsHtml}` : ''}
       </div>
@@ -4195,20 +4237,27 @@ function renderOutlookPanel() {
   if (!brief?.instruments || !window.outlookBrick) { el.style.display = 'none'; return; }
   const rs = allRows();   // global synthesis, same scope as Market Read — ignores the FX/Indices/Gold filter
   if (rs.length < 4) { el.style.display = 'none'; return; }
-  const col = (key, label) => `<div>
-    <div class="mread-h">${label} outlook</div>
-    ${outlookBiasListHtml(rs, key)}
-    ${outlookBoardNarrative(rs, key)}
-  </div>`;
+  // One read, not two columns. The 5-day and 20-day horizons feed the SAME
+  // drivers with different weights; the only inputs that genuinely differ by
+  // horizon (dollar / risk / real-yield momentum) read the macro-change strip,
+  // which was empty for weeks -- so the two columns were the same text twice.
+  // Even with the strip live they agree on most pairs most days. So: the 20-day
+  // read is shown, and the split is reduced to the one fact it carries -- which
+  // pairs the 5-day disagrees on.
+  const split = [];
+  for (const r of rs) {
+    const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly');
+    if (!w?.bias || !m?.bias || w.noRead || m.noRead) continue;
+    if (w.bias !== m.bias && w.bias !== 'NEUTRAL' && m.bias !== 'NEUTRAL') split.push(`${dispName(r.name)} (5-day ${w.bias.toLowerCase()}, 20-day ${m.bias.toLowerCase()})`);
+  }
   el.style.display = 'block';
   el.innerHTML = `
-    <div class="sec-hd-row"><span class="sec-title">🔭 Market Outlook — 5-Day &amp; 20-Day</span>${secChev('outlookPanel')}</div>
+    <div class="sec-hd-row"><span class="sec-title">🔭 Market Outlook — 20-Day</span>${secChev('outlookPanel')}</div>
     ${secBody('outlookPanel', `
-    <div class="mread-cols">
-      ${col('weekly', '5-Day')}
-      ${col('monthly', '20-Day')}
-    </div>
-    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. This board-wide read names whichever factor is lopsided across the MOST pairs at once, not any one pair's story. Click any card below to see that one pair's own driver breakdown, written out in full, in its drawer's 🔭 Outlook section.</div>`)}`;
+    ${outlookBiasListHtml(rs, 'monthly')}
+    ${outlookBoardNarrative(rs, 'monthly')}
+    <div class="riskverdict" style="margin-top:8px" title="The 5-day read uses the same drivers with more weight on price trend and the week's momentum. It agrees with the 20-day on most pairs most days, so it is not shown as a second column; only the disagreements are listed, because that is the only information the split carries.">5-day vs 20-day: ${split.length ? `<b class="tone mix" style="font-weight:800">disagree on ${split.length}</b><span class="muted"> · ${split.join(' · ')} — the short-term read is fighting the longer one, so treat those as unsettled</span>` : `<b class="tone on" style="font-weight:800">agree on every pair</b><span class="muted"> · the week is not fighting the month</span>`}</div>
+    <div class="mread-precise" style="margin-top:10px">Context composite across this board's own signals (technical/COT/macro/carry, yield-spread z-score, DXY/risk/real-yield momentum, price trend) — not a validated forecast. This board-wide read names whichever factor is lopsided across the MOST pairs at once, not any one pair's story. Click any card below to see that one pair's own driver breakdown, at both horizons, in its drawer's 🔭 Outlook section.</div>`)}`;
 }
 
 const CCY_NAMES = { USD: 'USD', EUR: 'EUR', GBP: 'GBP', JPY: 'JPY', CHF: 'CHF', AUD: 'AUD', CAD: 'CAD', NZD: 'NZD' };
@@ -4935,12 +4984,30 @@ function buildMacro() {
   const has = k => v(k) != null;
   const dirOf = (k, dead = 0) => { const a = v(k), b = p(k); if (a == null || b == null) return 0; const d = a - b; return Math.abs(d) <= dead ? 0 : (d > 0 ? 1 : -1); };
   const arrow = d => d > 0 ? 'rising' : d < 0 ? 'falling' : 'steady';
+  // TREND, not yesterday. Every "what it means" line used to compare today's print
+  // to yesterday's with a 2bp deadband -- so a real yield that had climbed 15bp in
+  // twenty days read "holding steady, neutral for gold" for weeks, because no single
+  // day cleared 2bp. Direction now comes from the 5- and 20-day changes on the
+  // macro-change strip (the 20-day decides when it is past its floor, else the
+  // 5-day), and the sentence carries the numbers so the reader can see the trend
+  // the verdict rests on. The 1-day compare is the fallback when the strip is out.
+  const mm = _macroMovedByKey();
+  const trend = (k, floor20, floor5 = floor20 * 0.6, dp = 0, unit = 'bp') => {
+    const row = mm[k];
+    const d20 = row?.deltas?.[20], d5 = row?.deltas?.[5];
+    const fmtD = x => `${x > 0 ? '+' : ''}${Number(x).toFixed(dp)}${unit}`;
+    if (Number.isFinite(d20) && Math.abs(d20) >= floor20) return { dir: Math.sign(d20), text: `${fmtD(d20)} over 20 days${Number.isFinite(d5) ? ` (${fmtD(d5)} this week)` : ''}`, win: 20 };
+    if (Number.isFinite(d5) && Math.abs(d5) >= floor5) return { dir: Math.sign(d5), text: `${fmtD(d5)} this week${Number.isFinite(d20) ? ` (${fmtD(d20)} over 20 days)` : ''}`, win: 5 };
+    if (Number.isFinite(d20) || Number.isFinite(d5)) return { dir: 0, text: `${Number.isFinite(d20) ? fmtD(d20) + ' over 20 days' : ''}${Number.isFinite(d20) && Number.isFinite(d5) ? ', ' : ''}${Number.isFinite(d5) ? fmtD(d5) + ' this week' : ''}`, win: 0 };
+    return null;
+  };
   const threads = [];
 
   // 1) Interest rates & the dollar (carry) — the single biggest FX force
   if (has('us10y') && (has('de10y') || has('jp10y'))) {
     const us = v('us10y'), de = v('de10y'), jp = v('jp10y');
-    const dUs = dirOf('us10y', 0.02);
+    const tr = trend('us10y', 8);
+    const dUs = tr ? tr.dir : dirOf('us10y', 0.02);
     let body = `Money flows toward whoever pays more to hold their cash, so interest rates are the biggest force in currencies. Right now the US pays <b>${us.toFixed(2)}%</b> to lend for 10 years`;
     const cmp = [];
     if (de != null) cmp.push(`${de.toFixed(2)}% in Germany`);
@@ -4948,23 +5015,25 @@ function buildMacro() {
     if (has('gb10y')) cmp.push(`${v('gb10y').toFixed(2)}% in the UK`);
     body += cmp.length ? ` — versus ${cmp.join(', ')}. ` : '. ';
     body += `That gap is why the <b>US dollar has stayed firm</b>, most of all against the low-paying Japanese yen: you get paid to hold dollars.`;
+    const trTxt = tr ? ` (10Y ${tr.text})` : '';
     const so = dUs > 0
-      ? `US rates are still <b>rising</b> this week — that <b>adds to the dollar's pull</b> and keeps the pressure on the yen.`
+      ? `US rates are <b>rising</b>${trTxt} — that <b>adds to the dollar's pull</b> and keeps the pressure on the yen.`
       : dUs < 0
-      ? `But US rates have been <b>slipping</b> this week — that quietly <b>chips away at the dollar's edge</b>, so its strength could soften.`
-      : `US rates are steady, so this support for the dollar is holding rather than growing.`;
+      ? `US rates have been <b>slipping</b>${trTxt} — that quietly <b>chips away at the dollar's edge</b>, so its strength could soften.`
+      : `US rates are steady${trTxt}, so this support for the dollar is holding rather than growing.`;
     threads.push({ ic: '💵', t: 'Interest rates & the dollar', body, so });
   }
 
   // 2) Real yields & gold
   if (has('tips')) {
-    const t = v('tips'), d = dirOf('tips', 0.02);
+    const t = v('tips'), tr = trend('tips', 8), d = tr ? tr.dir : dirOf('tips', 0.02);
     const body = `Gold pays no interest, so it competes with the <b>“real” (after-inflation) return</b> on safe US bonds — currently <b>${t.toFixed(2)}%</b>. When that real return is high, cash looks better than gold; when it falls, gold looks better.`;
+    const trTxt = tr ? ` (${tr.text})` : '';
     const so = d < 0
-      ? `That real return is <b>falling</b> — a <b>tailwind for gold</b> and other things that don't pay a yield.`
+      ? `That real return is <b>falling</b>${trTxt} — a <b>tailwind for gold</b> and other things that don't pay a yield.`
       : d > 0
-      ? `That real return is <b>rising</b> — a <b>headwind for gold</b>, which looks less attractive next to bonds.`
-      : `It's holding steady, so gold's backdrop is neutral on this front.`;
+      ? `That real return is <b>rising</b>${trTxt} — a <b>headwind for gold</b>, which looks less attractive next to bonds. Gold rallying INTO this would be the tell that something other than yields is driving it.`
+      : `It's holding steady${trTxt}, so gold's backdrop is neutral on this front.`;
     threads.push({ ic: '🥇', t: 'Real yields & gold', body, so });
   }
 
@@ -4977,6 +5046,8 @@ function buildMacro() {
     if (vix != null) body += `The <b>“fear gauge” (VIX) is ${vix.toFixed(1)}</b> — ${vixW}. `;
     if (hy != null) body += `The extra interest risky companies must pay to borrow is <b>${hy.toFixed(2)}%</b> — ${hyW}. `;
     if (nfci != null) body += `Overall, lending and financial conditions are <b>${nfci < -0.1 ? 'easy' : nfci > 0.1 ? 'tight' : 'about average'}</b>.`;
+    const vt = trend('vix', 3, 2, 1, ''), ht = trend('hy', 15, 10);
+    if (vt || ht) body += ` Direction: ${[vt ? `VIX ${vt.text}` : null, ht ? `spreads ${ht.text}` : null].filter(Boolean).join(', ')}${(vt?.dir > 0 || ht?.dir > 0) ? ' — the mood is <b>getting more nervous</b>' : (vt?.dir < 0 || ht?.dir < 0) ? ' — the mood is <b>easing</b>' : ' — no change in the mood'}.`;
     const calm = (vix == null || vix < 20) && (hy == null || hy < 4);
     const so = calm
       ? `Calm like this, investors reach for higher returns — that tends to <b>help the growth / commodity currencies (Aussie, Kiwi, and the Canadian dollar)</b> and <b>weigh on the safe-havens (yen, franc, gold)</b>. If the mood flips nervous, expect the reverse.`
@@ -5006,18 +5077,27 @@ function buildMacro() {
   if (has('us2y') && has('us10y')) {
     const s = v('us2y'), l = v('us10y'), inv = s > l;
     const body = `A signal to keep half an eye on: short-term US rates (<b>${s.toFixed(2)}%</b>) versus long-term (<b>${l.toFixed(2)}%</b>). ${inv ? `Short is <b>above</b> long — an “inverted curve”, historically a sign markets expect the Fed to <b>cut rates</b> as growth slows.` : `The normal upward slope (long above short) suggests <b>no imminent recession fear</b> priced in.`}`;
+    const ct = trend('us2s10s', 8);
+    const ctTxt = ct ? ` The gap between them has moved ${ct.text}${ct.dir < 0 ? ' — <b>flattening</b>: the short end is rising faster than the long end, which is the market pricing a tighter central bank, not more growth' : ct.dir > 0 ? ' — <b>steepening</b>: the long end is moving faster than the short end' : ''}.` : '';
     const so = inv
-      ? `If rate-cut bets grow, that typically <b>softens the dollar</b> over time and <b>helps gold</b>.`
-      : `Steady as it is, this isn't pushing the dollar around today — it's a slow-moving backdrop.`;
+      ? `If rate-cut bets grow, that typically <b>softens the dollar</b> over time and <b>helps gold</b>.${ctTxt}`
+      : ct?.dir < 0
+      ? `A flattening curve with the short end leading is a <b>dollar-supportive</b> shape while it lasts — it says the market expects policy to stay tight.${ctTxt}`
+      : `Steady as it is, this isn't pushing the dollar around today — it's a slow-moving backdrop.${ctTxt}`;
     threads.push({ ic: '📉', t: 'The yield curve', body, so });
   }
 
   // 5) Oil (CAD)
-  if (has('wti')) {
-    const o = v('wti'), d = dirOf('wti', 0.5);
-    if (d !== 0) {
-      const body = `Oil is <b>${arrow(d)}</b> (around <b>$${o.toFixed(0)}</b>).`;
-      const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the oil-exporting Canadian dollar</b>${d > 0 ? ', and nudges inflation higher (which can keep rates up)' : ''}.`;
+  {
+    // Live OANDA price and its own 20-day change, not FRED's print (which runs
+    // days behind and once read "around $97" while oil traded 104).
+    const live = commodityDrivers?.wti?.price ?? v('wti');
+    const oilPts = commodityDrivers?.series?.oil;
+    const nd = (oilPts && window.macroChainBrick) ? window.macroChainBrick.nodeDelta(oilPts, window.macroChainBrick.CHAIN_NODES.oil) : null;
+    const d = nd ? (Math.abs(nd.delta) >= 3 ? Math.sign(nd.delta) : 0) : (has('wti') ? dirOf('wti', 0.5) : 0);
+    if (live != null && d !== 0) {
+      const body = `Oil is <b>${arrow(d)}</b> — <b>$${Number(live).toFixed(0)}</b>${nd ? `, ${nd.delta > 0 ? '+' : ''}${nd.delta.toFixed(1)}% over 20 days` : ''}.`;
+      const so = `That <b>${d > 0 ? 'helps' : 'pressures'} the oil-exporting Canadian dollar</b>${d > 0 ? ', and nudges inflation higher (which can keep rates up). Whether it has actually reached inflation pricing is the first link in "The chain, today" below' : ''}.`;
       threads.push({ ic: '🛢️', t: 'Oil', body, so });
     }
   }
@@ -5117,6 +5197,31 @@ function buildMacro() {
   return { threads, ccy, summary };
 }
 
+// ── Desk watch: what is firing right now, and the last transitions ──────────
+// Server-side engine (js/deskWatch.js, ticked every 15 min on Railway) keeps the
+// state and pages Telegram on transitions; this strip shows it. ✓ = a tested
+// finding from the evidence book (range, never direction); ~ = a described
+// state. The book itself is evidence.html.
+let deskWatch = null;
+async function loadDeskWatch() {
+  try { const r = await jget('/api/desk-watch'); if (r?.ok) { deskWatch = r; renderDeskWatch(); } } catch { /* strip stays hidden */ }
+}
+function renderDeskWatch() {
+  const el = $('deskWatch'); if (!el) return;
+  const w = deskWatch; if (!w?.states?.length) { el.style.display = 'none'; return; }
+  const firing = w.states.filter(t => t.firing);
+  const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+  const glyph = k => k === 'tested' ? _EV('v', _EV_T.v) : _EV('c', _EV_T.c);
+  const row = t => `<div class="dw-r ${t.kind}" title="${esc0(t.detail)}"><span class="dw-k">${glyph(t.kind)}</span><span class="dw-l">${esc0(t.label)}</span><span class="dw-since muted">since ${t.since ? ago(t.since) : '?'}</span>${t.instruments?.length ? `<span class="dw-ins muted">${t.instruments.map(dispName).join(' · ')}</span>` : ''}<div class="dw-d">${esc0(t.detail.split('\n')[0])}</div>${t.expect?.length ? `<div class="dw-x">${t.expect.map(e => `<b>${dispName(e.inst)}</b> next ${e.window === 1 ? 'session' : `${e.window} sessions`}: ~${e.after}${e.unit} <span class="muted">vs ~${e.base}${e.unit} ordinary · ATR ${e.atr}${e.unit}</span>`).join(' · ')} <span class="muted">— range either way, history not a promise</span></div>` : ''}</div>`;
+  const log = (w.log ?? []).slice(0, 6).map(f => `<div class="dw-log ${f.event}"><span class="muted">${new Date(f.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span> ${f.event === 'started' ? '▲' : '▽'} ${esc0(f.label)}${f.after5 ? ` <span class="muted">→ next 5 sessions ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5} ATR`).join(', ')}</span>` : ''}</div>`).join('');
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">👁 Desk watch — ${firing.length ? `${firing.length} condition${firing.length === 1 ? '' : 's'} firing` : 'nothing firing'} <span style="font-weight:400;letter-spacing:0;text-transform:none">· checked every 15 min, Telegram on change · <a href="evidence.html" target="_blank">the evidence book →</a></span></span>${secChev('deskWatch')}</div>
+    ${secBody('deskWatch', `
+      ${firing.length ? `<div class="dw-grid">${firing.map(row).join('')}</div>` : '<div class="muted" style="font-size:12px">No tested or described condition is firing. The rows below are the measured chain; the watch speaks when one of them changes state.</div>'}
+      ${log ? `<div class="dw-h">Last transitions</div>${log}` : ''}
+      <div class="mread-precise" style="margin-top:8px">✓ a finding from the evidence book: pre-registered, tested on this desk's data, about RANGE and never direction. ~ a described state: what changed, not what follows. Each fire is scored five sessions later with the realised range so the book keeps its own forward record.</div>`)}`;
+}
 function renderMacro() {
   const el = $('macro');
   const m = buildMacro();
@@ -6545,17 +6650,136 @@ function _dayTier(r) {
   const cone = coneGap == null ? '' : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. Moves may get bigger from here.">σ↑${_EV('c', _EV_T.c)}</span>`
     : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year.">σ↓${_EV('c', _EV_T.c)}</span>` : '';
   const txt = `<span class="daytxt" title="Range used: how much of today's expected range price has already travelled. Expected range and vol percentile from the calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '% used' : ''}${rangePts != null ? ` · exp ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ''}${volPct != null ? ` · σ P${volPct}` : ''}${_EV('v', _EV_T.v)}</span>`;
-  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}${nqDownWeekChip(r)}${vixInversionChip(r)}</div>`;
+}
+// VIX above VIX3M -> the week has run wider. Tested 2026-09-17, pre-registered
+// (MD files/MARKET_SENSE_TESTS.md S1): first day of an inversion -> next-5-session
+// range +0.76 ATR on SPX500, +0.82 NAS100, +0.44 USD/JPY, +0.43 gold vs matched
+// controls, 86 entries since 2008, CIs clear of zero. Inversions are brief
+// (median one session), so "currently inverted" is nearly always the first day
+// or two; the chip says which day of the inversion it is so the reader can see
+// when it has drifted past what was measured. Range, never direction.
+const VIX_INV_EFFECT = { SPX500: '+0.76', NQ: '+0.82', USDJPY: '+0.44', GOLD: '+0.43' };
+function vixInversionChip(r) {
+  const eff = VIX_INV_EFFECT[r.name];
+  if (!eff) return '';
+  const v = fred?.vix?.value, v3 = fred?.vix3m?.value;
+  if (v == null || v3 == null || !(v >= v3)) return '';
+  const h = fredHist?.vix ?? [], h3 = fredHist?.vix3m ?? [];
+  let dayN = 1;
+  for (let i = h.length - 2, j = h3.length - 2; i >= 0 && j >= 0; i--, j--) { if (h[i].date !== h3[j].date) break; if (h[i].value >= h3[j].value) dayN++; else break; }
+  const asOf = fred?.vix?.asOf ? ` (${fred.vix.asOf} close)` : '';
+  return `<span class="chip warn" title="VIX ${fmtN(v, 1)} is above VIX3M ${fmtN(v3, 1)}${asOf}: near-term fear priced above the 3-month, day ${dayN} of this inversion. Tested here 2026-09-17: on the first day of an inversion the following five sessions ran ${eff} ATR wider on ${dispName(r.name)} than matched days (86 inversions since 2008, CI clear of zero). Inversions usually last a session or two; the effect past day 3 was not measured. A statement about range, never direction.">wider week likely · VIX &gt; VIX3M d${dayN}${_EV('v', _EV_T.v)}</span>`;
+}
+// Nasdaq after a down-week runs wider. Tested 2026-09-17, pre-registered
+// (MD files/GROWTH_VS_YIELDS_TEST.md): NAS100 down >=1% over 5 sessions -> next
+// session's range +0.19 to +0.23 ATR vs matched controls, CI clear of zero,
+// n=1,232, holds 2018+ and with rates quiet. It was sold to us as a yields story
+// ("opposing moves between growth stocks and bonds"); the yield leg tested as a
+// passenger. A statement about RANGE. The 5-day up-share afterwards is 58%,
+// which is a base rate, not a lean.
+function nqDownWeekChip(r) {
+  if (r.name !== 'NQ') return '';
+  const pts = commodityDrivers?.series?.nq;
+  if (!pts || pts.length < 6) return '';
+  const last = pts.at(-1), ref = pts.at(-6);
+  const wk = (last.value / ref.value - 1) * 100;
+  if (!(wk <= -1)) return '';
+  return `<span class="chip warn" title="NAS100 is ${wk.toFixed(1)}% over the last five sessions (${ref.date} close to ${last.date} close). After a down-week of 1% or more, the next session has run about 20% wider than matched days (+0.19 to +0.23 ATR, n=1,232, 2018+ holds) -- tested here 2026-09-17. This says the range tends to be bigger; it says nothing about direction. The yield move that was supposed to explain it tested as a passenger.">wider day likely · NQ ${wk.toFixed(1)}% wk${_EV('v', _EV_T.v)}</span>`;
+}
+// The price that proves the lean wrong. A bias without a falsifier is an opinion;
+// with one it is a testable statement, and the reader can size off it. The
+// falsifier is the page's own typical daily extreme AGAINST the lean (OL med for
+// an up lean, OH med for a down lean) -- the level a normal day reaches about
+// half the time, so a lean that survives to there has been wrong for a while.
+// Borrowed from a daily-bias sheet that prints "wrong below X" on every line.
+function wrongAtFor(r) {
+  const dir = directionFor(r); const d = r.d, L = d?.levels ?? {};
+  if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) return null;
+  const lv = dir.direction === 'up' ? L.ol_med : L.oh_med;
+  if (!lv?.price || d.current_price == null) return null;
+  const onWrongSide = dir.direction === 'up' ? d.current_price <= lv.price : d.current_price >= lv.price;
+  return { side: dir.direction === 'up' ? 'below' : 'above', price: lv.price, tag: dir.direction === 'up' ? 'typical daily low' : 'typical daily high', breached: onWrongSide };
+}
+function wrongAtChip(r) {
+  const w = wrongAtFor(r); if (!w) return '';
+  return `<span class="chip ${w.breached ? 'bear' : 'dim'}" title="The price that proves today's lean wrong: the ${w.tag} (OL/OH med), which an ordinary day reaches about half the time. ${w.breached ? 'Price is already through it -- the lean has been overrun.' : 'A lean that survives to here has been wrong for a while; size off this distance, not off hope.'}">${w.breached ? '⚠ overrun' : 'wrong'} ${w.side === 'below' ? '&lt;' : '&gt;'} ${fmtN(w.price, r.d.dp)}</span>`;
 }
 function _leanTier(r) {
   const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
-  return `<div class="tier"><span class="lbl">lean</span>${dir}${_supportChip(r)}${_threatChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}</div>`;
 }
+// The board's leans, grouped into the trades they actually are. Three pound
+// shorts are one pound trade; four long-dollar leans are one dollar trade; every
+// index long is one risk trade. The correlation regime says the same thing in a
+// number; this says it in names, so "one of each at most" is a sentence the
+// reader can act on.
+function leanGroupsHtml() {
+  const rs = allRows();
+  const exp = {};   // key -> [{name, dir}]
+  const add = (k, name, dir) => (exp[k] ??= []).push({ name, dir });
+  for (const r of rs) {
+    const dir = directionFor(r); if (!dir || (dir.direction !== 'up' && dir.direction !== 'down')) continue;
+    const up = dir.direction === 'up';
+    if (r.d.ac === 'index') { add(up ? 'long risk (indices)' : 'short risk (indices)', r.name, dir.direction); continue; }
+    if (r.name === 'GOLD') { add(up ? 'long gold' : 'short gold', r.name, dir.direction); continue; }
+    const cc = PAIR_CCY[r.name]; if (!cc) continue;
+    add(`${up ? 'long' : 'short'} ${cc[0]}`, r.name, dir.direction); add(`${up ? 'short' : 'long'} ${cc[1]}`, r.name, dir.direction);
+  }
+  // keep the groups that explain the most leans; a pair can sit in two (its base and its quote)
+  const groups = Object.entries(exp).filter(([, v]) => v.length >= 2).sort((a, b) => b[1].length - a[1].length).slice(0, 4);
+  if (!groups.length) return '';
+  return `<div class="riskverdict" style="margin-top:6px" title="Leans that share a currency or an asset class move together. Counting them as separate trades is how a book ends up with one bet sized four times. The correlation-regime line says this as a number; this says it as names.">Leans grouped as trades: ${groups.map(([k, v]) => `<b>${v.length} × ${esc0(k)}</b> <span class="muted">(${v.map(x => dispName(x.name) + (x.dir === 'up' ? '↑' : '↓')).join(', ')})</span>`).join(' · ')}<span class="muted"> — one of each at most.</span></div>`;
+}
+// Yesterday, scored: what this page's direction tags did at the next close. The
+// pair ledger has recorded every rendered lean since 2026-09-13; this is the
+// honest opener a daily sheet should carry before it leans again.
+let _ledgerSummary = null;
+function yesterdayHtml() {
+  const days = _ledgerSummary?.byDay; if (!days?.length) return '';
+  const y = days.find(d => d.h1?.n > 0) ?? days.find(d => d.h0?.n > 0); if (!y) return '';
+  const h = y.h1?.n > 0 ? y.h1 : y.h0, hz = y.h1?.n > 0 ? 'at the next close' : 'at the close';
+  const net = h.meanPnlNetAtr != null ? ` · net ${h.meanPnlNetAtr >= 0 ? '+' : ''}${h.meanPnlNetAtr.toFixed(2)} ATR per call after spread` : '';
+  return `<div class="riskverdict" style="margin-top:6px" title="The pair ledger scores every direction tag this page renders against the OANDA daily close. h1 = the close after the call day. Thirty calls per pair before any single pair's rate is shown; this is the board-wide day count.">Yesterday (${esc0(y.day)}), scored: <b class="tone ${h.hits / h.n >= 0.6 ? 'on' : h.hits / h.n <= 0.4 ? 'off' : 'mix'}" style="font-weight:800">${h.hits} of ${h.n}</b><span class="muted"> direction calls right ${hz}${y.declined ? `, ${y.declined} declined as mixed` : ''}${net}. ${_ledgerSummary.overall?.h1?.n < 30 ? `${_ledgerSummary.overall?.h1?.n ?? 0} scored so far -- a record, not yet a rate.` : `${_ledgerSummary.overall.h1.n} scored overall, ${Math.round(_ledgerSummary.overall.h1.hitRate * 100)}% right.`}</span></div>`;
+}
+async function loadLedgerSummary() { try { const j = await jget('/api/ledger'); if (j?.ok) { _ledgerSummary = j.summary; render(); } } catch { /* line stays hidden */ } }
 function _clockTier(r) {
   const d = r.d;
   const news = d.news_flag ? `<span class="chip warn" title="A major scheduled release today (${d.news_flag}). Expected ranges are scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>` : '';
   const ev = (() => { const e = nextPairEvent(r.name); if (!e) return ''; const hi = (e.impact ?? '').toLowerCase() === 'high'; if ((e.ms - Date.now()) > 14 * 3600e3) return ''; const nm = (e.event ?? '').length > 24 ? e.event.slice(0, 22) + '…' : (e.event ?? ''); return `<span class="chip ${hi ? 'warn' : 'neu'}" title="Next scheduled event that moves ${dispName(r.name)}: ${e.event} (${e.country}, ${e.impact}) at ${evtTime(e)} UK.">⏰ ${nm} ${evtTime(e)}</span>`; })();
-  return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
+  return `<div class="tier"><span class="lbl">clock</span>${news}${ev}${eventRangeChip(r)}${(!news && !ev) ? '<span class="quiet">nothing scheduled in the next 14h</span>' : ''}</div>`;
+}
+// Release-day range by family, on the pairs where it was measured. Tested
+// 2026-09-17, pre-registered (MD files/MARKET_SENSE_TESTS.md S7): 7,932 releases
+// from this desk's own surprise store vs matched non-release days. Only the cells
+// that passed are listed; a family/pair not here tested null or was too thin.
+// CPI is the odd one: the release session itself is marginal and the NEXT session
+// carries the width (the print lands late in the OANDA session). Range, never
+// direction -- the size of the surprise is not known until the print.
+const EVENT_RANGE_EFFECT = {
+  'rate decision': { EURUSD: '+0.42 on the day', USDJPY: '+0.27 on the day', GBPUSD: '+0.37 the session AFTER' },
+  employment:      { AUDUSD: '+0.19 on the day (big surprises)', EURUSD: '+0.16 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', USDCAD: '+0.11 on the day' },
+  cpi:             { EURUSD: '+0.27 the session AFTER', USDJPY: '+0.25 the session AFTER', GBPUSD: '+0.19 on the day' },
+  gdp:             { EURUSD: '+0.22 on the day (big surprises)', USDCAD: '+0.16 on the day' },
+  pmi:             { USDJPY: '+0.22 on the day' },
+};
+const EVENT_FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i]];
+function eventRangeChip(r) {
+  const fx = EVENT_RANGE_EFFECT;
+  const evs = (typeof pairEvents === 'function' ? pairEvents(r.name) : []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && Math.abs(e.ms - Date.now()) < 14 * 3600e3);
+  for (const e of evs) {
+    const fam = EVENT_FAMILY_RE.find(([, re]) => re.test(e.event ?? ''))?.[0];
+    if (!fam) continue;
+    const eff = fx[fam]?.[r.name];
+    const bk = window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name];
+    if (!eff && !(bk && bk.spike >= 2)) continue;
+    const past = e.ms <= Date.now();
+    const bkTxt = bk ? `The Event Response Book (76 families, 26 instruments): this release has moved ${dispName(r.name)} ${bk.spike}× an ordinary half-hour in its first 30 minutes and left a next day ${bk.next}× normal (n=${bk.n}); next-day direction ${bk.upPct}% up — a coin flip.` : '';
+    const s7Txt = eff ? `Release-session range ${eff} ATR vs matched non-release days (this desk's surprise store, 2017 onward, CI clear of zero).` : '';
+    const head = bk ? `${fam} · ${bk.spike}× on release` : `${fam} day · range ${eff.split(' ')[0]} ATR${/AFTER/.test(eff) ? ' next session' : ''}`;
+    return `<span class="chip warn" title="${esc0(e.event)} (${e.country}) ${past ? 'was released at' : 'is due at'} ${evtTime(e)} UK. ${esc0(bkTxt)} ${esc0(s7Txt)} Size, never direction; the surprise itself is unknown until the print.">${esc0(head)}${_EV('v', _EV_T.v)}</span>`;
+  }
+  return '';
 }
 function pairChipsHtml(r) { return _dayTier(r) + _leanTier(r) + _clockTier(r); }
 
@@ -9265,7 +9489,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
@@ -9551,7 +9775,7 @@ async function loadDrawerAnalysis(r) {
   if (tod && /^(LONG|SHORT)$/i.test(tod.direction ?? '') && tod.entry) {
     const dirCls = /LONG/i.test(tod.direction) ? 'bull' : 'bear';
     tradeCard = `<div class="ai-trade">
-      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(tod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Trade of the day${tod.confidence ? ` · ${esc(tod.confidence)} confidence` : ''}</span></div>
+      <div class="ai-trade-hd"><span class="chip ${dirCls}">${esc(tod.direction).toUpperCase()}</span><span class="muted" style="font-size:10.5px">Trade of the day · an idea, not a call${tod.confidence ? ` · ${esc(tod.confidence)} confidence` : ''}</span></div>
       <div class="ai-trade-kv">
         <div><div class="k">Entry</div><div class="v">${esc(tod.entry)}</div></div>
         <div><div class="k">Stop</div><div class="v">${esc(tod.stopLoss) || '—'}</div></div>
@@ -9561,7 +9785,7 @@ async function loadDrawerAnalysis(r) {
       ${tod.rationale ? `<div class="ai-trade-rationale">${esc(tod.rationale)}</div>` : ''}
     </div>`;
   } else if (tod && tod.rationale) {
-    tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
+    tradeCard = `<div class="ai-trade"><div class="ai-trade-hd"><span class="chip neu">NO TRADE</span><span class="muted" style="font-size:10.5px">Trade of the day · a hard blocker fired</span></div><div class="ai-trade-rationale">${esc(tod.rationale)}</div></div>`;
   }
   // Weekly/monthly outlook — the AI's narration of js/outlookEngine.js's own
   // computed bias, NOT a re-derived call (buildAnalysisPrompt rule 19). Each
@@ -9849,7 +10073,7 @@ function assembleSnapshot(r) {
     agreeingReads: gate.agreeing.map(a => `${a.what} says ${a.side} (${a.detail})`),
     consensusCount: gate.consensus, readsConflict: gate.conflicted,
     outlookDriverAgreement: gate.outlookAgree,
-    note: 'NO_TRADE means direction MUST be "NONE" — either a hard blocker is present or fewer than two independent reads point the same way. LEAN_ONLY means reads point in opposite directions: you may describe a lean but must not propose entry/stop/target. Only OK permits a trade. This is a gate, not advice: a structurally bullish read that proposes a short with zero drivers agreeing is the failure it exists to stop.',
+    note: 'NO_TRADE means a HARD blocker fired (untradeable, stale price, load-bearing data conflict): direction MUST be "NONE". THIN means fewer than two independent reads agree; SPLIT means they disagree materially -- in both cases still give the idea, with confidence LOW and the caveat named. OK means the evidence supports the idea at the confidence it earns. The idea is one modest line at the end of the read, never its subject.',
   };
   // Stop width in PRICE terms. atrPct is a percentile and cannot be used to judge a
   // stop distance; this is the distance.
@@ -10459,6 +10683,20 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as MacroChain from './js/macroChain.js';
   window.macroChainBrick = MacroChain;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The desk's evidence ledger (js/deskEvidence.js): every relationship this desk
+     has tested, with its verdict. Chips and tooltips read it; so do both AI prompts. -->
+<script type="module">
+  import * as DeskEvidence from './js/deskEvidence.js';
+  window.deskEvidenceBrick = DeskEvidence;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The Event Response Book's impact map (js/eventImpactMap.js, generated): what
+     each release has done to each pair, in size. -->
+<script type="module">
+  import * as EventImpact from './js/eventImpactMap.js';
+  window.eventImpactBrick = EventImpact;
   try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">

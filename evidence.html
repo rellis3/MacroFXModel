@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evidence Book</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--amber-bg:rgba(210,153,34,.12);--blue-bg:rgba(79,125,240,.12);--red-bg:rgba(248,81,73,.12)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1} .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .hbtn.on{color:var(--text);border-color:var(--text3)}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 18px}
+  .intro{color:var(--text2);font-size:12.5px;line-height:1.65;margin-bottom:14px}
+  .tally{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .tally span{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
+  .tally b{color:var(--text)}
+  .card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .card.validated{border-left-color:var(--bull)} .card.null{border-left-color:var(--text3)} .card.context{border-left-color:var(--amber)}
+  .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .v{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:2px 7px;border-radius:4px}
+  .v.validated{background:var(--bull-bg);color:var(--bull)} .v.null{background:var(--card2);color:var(--text3)} .v.context{background:var(--amber-bg);color:var(--amber)}
+  .claim{font-size:14px;font-weight:700;line-height:1.4}
+  .meta{font-size:10.5px;color:var(--text3)}
+  .r{font-size:12.5px;line-height:1.6;color:var(--text2);margin-top:4px}
+  .r b{color:var(--text)}
+  .use{font-size:12px;line-height:1.55;margin-top:6px;padding:6px 10px;border-radius:6px;background:var(--card2);color:var(--text2)}
+  .use b{color:var(--text)}
+  .live{margin-top:8px;font-size:12px;line-height:1.55;padding:6px 10px;border-radius:6px;border:1px solid var(--border)}
+  .live.on{border-color:var(--bull);background:var(--bull-bg)} .live.off{color:var(--text3)}
+  .rec{margin-top:6px;font-size:11.5px;color:var(--text2);line-height:1.6}
+  .rec table{border-collapse:collapse;margin-top:4px;font-size:11px} .rec td{padding:1px 8px 1px 0;color:var(--text2)} .rec td:first-child{color:var(--text3)}
+  .glyph{font-style:normal;font-weight:800;font-size:11px}
+  .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px}
+  @media (max-width:560px){.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>📗 Evidence Book</h1>
+  <span class="stamp" id="stamp">every relationship this desk has tested</span>
+  <span class="spacer"></span>
+  <button class="hbtn on" data-f="all" onclick="setFilter('all')">All</button>
+  <button class="hbtn" data-f="validated" onclick="setFilter('validated')">✓ validated</button>
+  <button class="hbtn" data-f="null" onclick="setFilter('null')">∅ null</button>
+  <button class="hbtn" data-f="context" onclick="setFilter('context')">~ base rate</button>
+  <button class="hbtn" data-f="firing" onclick="setFilter('firing')">firing now</button>
+  <span class="stamp">·</span>
+  <button class="hbtn" data-d="all" onclick="setDomain('all')">all domains</button>
+  <button class="hbtn" data-d="macro" onclick="setDomain('macro')">macro</button>
+  <button class="hbtn" data-d="events" onclick="setDomain('events')">events</button>
+  <button class="hbtn" data-d="price" onclick="setDomain('price')">price &amp; technical</button>
+  <button class="hbtn" data-d="volatility" onclick="setDomain('volatility')">volatility</button>
+  <button class="hbtn" data-d="positioning" onclick="setDomain('positioning')">positioning</button>
+  <button class="hbtn" data-d="execution" onclick="setDomain('execution')">execution</button>
+  <a class="hbtn" href="today.html">☀️ Daily Brief</a>
+</div>
+<div class="wrap">
+  <div class="intro">Every line here was written down as a claim, <b>pre-registered</b>, then run against this desk's own data with paired controls — the same method whether the idea came from an educator, a newsletter, or the page itself. A <b>✓ validated</b> finding is about <b>range</b>, never direction. A <b>∅ null</b> is a relationship that was tested and did nothing — the brief is told to say so when it touches one. A <b>~ base rate</b> is a description with its odds. Each finding accumulates a <b>forward record</b> from the Desk Watch: every time it fired, and what the next five sessions actually did.</div>
+  <div class="tally" id="tally"></div>
+  <div id="cards"><div class="note">Loading…</div></div>
+  <div class="note">Method, numbers and write-ups: <code>MD files/MARKET_SENSE_TESTS.md</code>, <code>GROWTH_VS_YIELDS_TEST.md</code>, <code>SQUEEZE_VOL_TEST.md</code>, <code>APPROACH_SPEED_CONTROL_TEST.md</code>. The ledger itself is <code>js/deskEvidence.js</code>; the watch is <code>js/deskWatch.js</code>. Nothing enters this book by reputation.</div>
+</div>
+<script type="module">
+  import { DESK_EVIDENCE } from './js/deskEvidence.js';
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const GL = { validated: '✓', null: '∅', context: '~' };
+  const WORD = { validated: 'validated', null: 'tested null', context: 'base rate' };
+  let watch = null, filter = 'all', domain = 'all';
+  window.setDomain = d => { domain = d; document.querySelectorAll('.hbtn[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === d)); render(); };
+  window.setFilter = f => { filter = f; document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f)); render(); };
+  const ago = iso => { const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 60 ? `${m}m` : m < 48 * 60 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
+  function render() {
+    const states = watch?.states ?? [], log = watch?.log ?? [];
+    const firingFor = id => states.filter(t => t.firing && t.evidenceId === id);
+    const logFor = id => log.filter(f => f.evidenceId === id && f.event === 'started');
+    const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : e.verdict === filter));
+    const n = v => DESK_EVIDENCE.filter(e => e.verdict === v).length;
+    const nd = d => DESK_EVIDENCE.filter(e => e.domain === d).length;
+    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span>`;
+    document.getElementById('cards').innerHTML = list.map(e => {
+      const fire = firingFor(e.id), rec = logFor(e.id);
+      const live = fire.length
+        ? `<div class="live on">▲ <b>Firing now</b> — ${fire.map(t => `${esc(t.label)} since ${ago(t.since)}${t.instruments?.length ? ` (${t.instruments.join(', ')})` : ''}`).join('; ')}</div>`
+        : (states.some(t => t.evidenceId === e.id) ? `<div class="live off">Watched — not firing now.</div>` : `<div class="live off">Not wired to the watch (no live trigger for this one).</div>`);
+      const scored = rec.filter(f => f.after5);
+      const record = rec.length
+        ? `<div class="rec"><b>Forward record</b> — fired ${rec.length}× since ${new Date(rec.at(-1).at).toLocaleDateString('en-GB')}${scored.length ? `; ${scored.length} scored so far: mean next-5-session range ${(scored.flatMap(f => f.after5.map(a => a.range5)).reduce((s, x) => s + x, 0) / scored.flatMap(f => f.after5).length).toFixed(2)} ATR (unconditional ≈ 2.3)` : ''}.<table>${rec.slice(0, 8).map(f => `<tr><td>${new Date(f.at).toLocaleDateString('en-GB')}</td><td>${esc(f.label)}</td><td>${f.after5 ? f.after5.map(a => `${a.inst} ${a.range5}`).join(' · ') : 'awaiting 5 sessions'}</td></tr>`).join('')}</table></div>`
+        : `<div class="rec"><b>Forward record</b> — nothing fired since this was written down${e.verdict === 'validated' ? '; the first fire will appear here with its next-5-session range' : ''}.</div>`;
+      return `<div class="card ${e.verdict}">
+        <div class="top"><span class="v ${e.verdict}">${GL[e.verdict]} ${WORD[e.verdict]}</span><span class="claim">${esc(e.claim)}</span></div>
+        <div class="meta"><b>${esc(e.domain)}</b> · ${e.date} · ${esc(e.doc)}${e.instruments ? ` · ${e.instruments.join(', ')}` : ''}</div>
+        <div class="r">${esc(e.result)}</div>
+        <div class="use"><b>How to use it:</b> ${esc(e.use)}</div>
+        ${live}${record}
+      </div>`;
+    }).join('') || '<div class="note">Nothing matches this filter.</div>';
+    document.getElementById('stamp').textContent = watch?.updatedAt ? `watch updated ${ago(watch.updatedAt)} ago · ${DESK_EVIDENCE.length} relationships` : `${DESK_EVIDENCE.length} relationships`;
+  }
+  render();
+  fetch('/api/desk-watch').then(r => r.json()).then(j => { if (j?.ok) { watch = j; render(); } }).catch(() => {});
+</script>
+</body>
+</html>

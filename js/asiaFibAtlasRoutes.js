@@ -22,11 +22,15 @@
  * scored too.
  */
 import { loadM1ForPair } from './volBacktestM1Engine.js';
-import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder, asiaRungBarrierPips } from './asiaFibAtlasEngine.js';
+import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision, applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyGapFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
+import {
+  FIB_ATLAS_MIN_MARGIN, FIB_ATLAS_MIN_COST_RATIO, FIB_ATLAS_STOP_TIGHTEN_FRAC, FIB_ATLAS_MAX_GAP_MIN,
+  zonesFromLiveAndBook,
+} from './asiaFibAtlasZonePricer.js';
 import { buildFibAtlasVotePortfolio, computeFibAtlasDeflatedSharpe } from './fibAtlasVotePortfolio.js';
 import { cvolSeries, CVOL_PRODUCTS } from './cvolLoader.js';
 import { majorEventEpochs } from './calendarLoader.js';
@@ -357,8 +361,17 @@ const MAX_SNAPSHOT_AGE_HOURS = 72;   // beyond this, the gap-fill catch-up isn't
 async function _saveLiveSnapshot(pair) {
   const entry = liveCache.get(pair);
   if (!entry?.packed?.n) return false;
+  // Skip a pair whose last bar hasn't moved since its previous save (weekend,
+  // closed session) -- each snapshot is the full window as JSON, ~15 MB, and
+  // R2 uploads are Railway egress at $0.05/GB. Caught 2026-09-17: 62 pairs
+  // x 15 MB every 15 min across the three atlases was ~90 GB/day, the bulk
+  // of the bill. Cadence itself is set in server.js.
+  const lastT = entry.packed.times[entry.packed.n - 1];
+  if (entry.snapshotLastT === lastT) return false;
   try {
     await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    entry.snapshotLastT = lastT;
+    entry.snapshotSavedAt = Date.now();
     return true;
   } catch (e) {
     console.warn(`[asia-fib-atlas-live] ${pair}: snapshot save failed — ${e.message}`);
@@ -369,9 +382,18 @@ async function _saveLiveSnapshot(pair) {
 // Scheduled job body (server.js calls this periodically) — snapshots every
 // CURRENTLY WARM pair in one pass. Cheap: R2 has no write-quota concern like
 // CF KV does, and this only touches pairs already in memory.
-export async function saveAllLiveSnapshots() {
+// `maxAgeMs`: only pairs whose R2 copy (as restored at cold start, or as
+// written since) is older than this. The boot-time pass uses it so a box
+// that redeploys several times a day -- never living long enough for the
+// 6h interval to fire -- still keeps R2 fresh without re-sending every pair
+// on every deploy. Undefined = write everything that changed.
+export async function saveAllLiveSnapshots({ maxAgeMs } = {}) {
   let saved = 0;
   for (const pair of liveCache.keys()) {
+    if (maxAgeMs != null) {
+      const e = liveCache.get(pair);
+      if (e?.snapshotSavedAt && Date.now() - e.snapshotSavedAt < maxAgeMs) continue;
+    }
     if (await _saveLiveSnapshot(pair)) saved++;
   }
   if (saved) console.log(`[asia-fib-atlas-live] snapshotted ${saved} warm pair(s) to R2`);
@@ -382,13 +404,13 @@ async function coldStartLiveCache(pair) {
   const sym = pair.toUpperCase();
   liveWarming.add(pair);
   try {
-    let packed = null, fromSnapshot = false;
+    let packed = null, fromSnapshot = false, snapshotSavedAt = 0;
     try {
       const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
       const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
       if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
         const restored = packFromJSON(snap);
-        if (restored?.n) { packed = restored; fromSnapshot = true; }
+        if (restored?.n) { packed = restored; fromSnapshot = true; snapshotSavedAt = Date.parse(snap.savedAt) || 0; }
       }
     } catch (e) { console.warn(`[asia-fib-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
 
@@ -401,7 +423,7 @@ async function coldStartLiveCache(pair) {
     const bounded = boundPacked(packed, LIVE_WINDOW_DAYS);
     const ivByDate = await loadIvByDate(pair);
     const macroEvents = majorEventEpochs();
-    liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], ivByDate, macroEvents });
+    liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], ivByDate, macroEvents, snapshotSavedAt });
     console.log(`[asia-fib-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
     console.error(`[asia-fib-atlas-live] ${sym}: cold start failed — ${e.message}`);
@@ -463,72 +485,13 @@ async function getFastLive(pair) {
 // the first place). `rearmFrac` is published on every zone so the bot's own
 // rearm tracking uses the EXACT value (`DEFAULT_REARM` = 0.3) the backtest
 // was validated with, never a guessed default.
-export const FIB_ATLAS_MIN_MARGIN = 2;                 // best-config frozen value (asia-fib-atlas-vote-portfolio.html's loadBestConfigBtn)
-export const FIB_ATLAS_MIN_COST_RATIO = 3;              // Asia's own frozen ratio (fib_atlas_cost_efficiency_filter.mjs)
-export const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;         // frozen fraction (fib_atlas_sl_tightening_backtest.mjs)
-// Whiplash-gap filter (2026-09-03, owner-validated — see LEGO_MODULES.md's
-// fib_atlas_gap_filter_backtest.mjs entry): requires a rung's touch to fall
-// within this many minutes of that SAME rung's own prior touch this
-// session, on top of the existing margin>=2 vote. Asia's own optimum (26/26
-// pairs agree, pooled Sharpe peaks here and falls at every wider cutoff
-// tested) — Monday's is a different, much wider value (its own ladder
-// trades far less densely), see mondayFibAtlasRoutes.js.
-export const FIB_ATLAS_MAX_GAP_MIN = 30;
-
-// Pure core: given an ALREADY-COMPUTED `live` (the shape asiaFibAtlasLiveLadder/
-// getFastLive returns: {date, currentPrice, boundary, ladder}) and `book`,
-// price every rung into zones. Extracted (2026-09-01) so a SECOND caller —
-// the nightly rebuild, which already builds a fresh `live`+`book` inside
-// `runOne` below and can seed the bot's plan straight from that, no live-
-// cache round-trip needed — can reuse the EXACT same scoring/pricing rules
-// `asiaLivePlanZones` (the live-cache-backed wrapper right after this) uses,
-// never a second implementation to drift out of sync.
-export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MAX_GAP_MIN } = {}) {
-  const nowSec = Date.now() / 1000;
-  const zones = [];
-  for (const rung of live.ladder) {
-    const vd = voteDecision(book, rung);
-    if (!vd || vd.margin < minMargin) continue;
-    // `lastTouchTime` is null exactly when prevOutcomeSameDay is null (same
-    // lookup, asiaFibAtlasEngine.js's own asiaFibAtlasLiveLadder) — and
-    // margin>=2 structurally requires prevOutcomeSameDay to hold (it's one
-    // of only two VOTE_DIMS), so a zone reaching this point always HAS a
-    // real lastTouchTime. Still guarded with `!= null` rather than assumed,
-    // same defensive style as every other field read off `rung` here.
-    if (maxGapMin != null && rung.lastTouchTime != null) {
-      const gapMin = (nowSec - rung.lastTouchTime) / 60;
-      if (gapMin > maxGapMin) continue;
-    }
-    const { innerDistPips, outerDistPips } = asiaRungBarrierPips(rung.side, rung.level, live.boundary, rung.pip);
-    const targetPips = vd.decision === 'fade' ? innerDistPips : outerDistPips;
-    const sizingStopPips = vd.decision === 'fade' ? outerDistPips : innerDistPips;
-    if (targetPips == null || sizingStopPips == null) continue;   // 'follow' at the outermost rung -- no real stop, don't publish it
-    if (cost > 0 && minCostRatio > 1) {
-      const targetPnlPct = targetPips * rung.pip / rung.price * 100;
-      if (targetPnlPct / cost < minCostRatio) continue;
-    }
-    const stopPips = (vd.decision === 'fade' && stopTightenFrac != null && stopTightenFrac < 1)
-      ? +(sizingStopPips * stopTightenFrac).toFixed(1) : sizingStopPips;
-    const sgn = rung.side === 'above' ? 1 : -1;
-    const sl = rung.price - sgn * stopPips * rung.pip;
-    const sizingSl = rung.price - sgn * sizingStopPips * rung.pip;
-    const tp = rung.price + sgn * targetPips * rung.pip;
-    zones.push({
-      side: rung.side, rung: rung.level, decision: vd.decision, margin: vd.margin,
-      entry: rung.price, sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
-      targetPips, stopPips, sizingStopPips, pip: rung.pip, rearmFrac: DEFAULT_REARM,
-      touchedToday: rung.touchedToday,
-      // Short, stable per-(side,level) tag for Mt5Broker.enter's dedupe_tag —
-      // "a" prefix disambiguates from Monday's own zones on the SAME pair
-      // (asiaLivePlanZones/mondayLivePlanZones share nothing else that would
-      // collide, but a live bot trading BOTH ladders on one instrument needs
-      // this). Well under MT5's 31-char comment cap.
-      dedupeTag: `a_${rung.side[0]}${rung.level}`,
-      rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
-    });
-  }
-  return zones;
-}
+// `FIB_ATLAS_MIN_MARGIN`/`FIB_ATLAS_MIN_COST_RATIO`/`FIB_ATLAS_STOP_TIGHTEN_FRAC`/
+// `FIB_ATLAS_MAX_GAP_MIN`/`zonesFromLiveAndBook` moved to
+// `asiaFibAtlasZonePricer.js` (2026-09-18, local-decision-engine build) so
+// they can be imported credential-free by `fib_local_decision_engine/`. Every
+// existing importer of this file (`botAuditRoutes.js`, `server.js`) is
+// unaffected — re-exported here unchanged via the import above.
+export { FIB_ATLAS_MIN_MARGIN, FIB_ATLAS_MIN_COST_RATIO, FIB_ATLAS_STOP_TIGHTEN_FRAC, FIB_ATLAS_MAX_GAP_MIN, zonesFromLiveAndBook };
 
 export async function asiaLivePlanZones(pair, opts = {}) {
   const live = await getFastLive(pair);

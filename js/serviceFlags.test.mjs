@@ -24,8 +24,30 @@ t('an empty env leaves every service in its documented default state', () => {
   }
 });
 
-t('every service currently defaults ON (no silent behaviour change on deploy)', () => {
-  assert.ok(servicesSnapshot({}).every(s => s.enabled), 'a service defaults off — was that intended?');
+// The default-off list is spelled out here on purpose. Flipping a default is a
+// real behaviour change on the next deploy, so it should fail this test and be
+// changed deliberately, with the reason recorded in the registry's `note`.
+const DEFAULT_OFF = ['hmm5m', 'hmm5mV2', 'hmm1h', 'hmm30m', 'hmm2h'];   // owner, 2026-09-16
+
+t('exactly the documented services default OFF — a new one must be deliberate', () => {
+  const off = servicesSnapshot({}).filter(s => !s.enabled).map(s => s.id).sort();
+  assert.deepEqual(off, [...DEFAULT_OFF].sort(),
+    'a default changed: add it to DEFAULT_OFF here and say why in the registry note');
+});
+
+t('every default-off service explains what stops working', () => {
+  for (const id of DEFAULT_OFF) {
+    const svc = getService(id);
+    assert.ok(svc, `${id} is not in the registry`);
+    assert.match(svc.note ?? '', /OFF since/, `${id}: a default-off row must say when and what it costs`);
+  }
+});
+
+t('a default-off service still comes back with its env var', () => {
+  for (const id of DEFAULT_OFF) {
+    const r = resolveService(id, { [getService(id).env]: '1' });
+    assert.equal(r.enabled, true, `${id} cannot be re-enabled from the env`);
+  }
 });
 
 t('ids are unique and env names are derived, not hand-written', () => {
@@ -53,10 +75,13 @@ t('per-service env wins, in both spellings', () => {
   }
 });
 
-t('an unparseable value is ignored rather than guessed at', () => {
-  const r = resolveService('hmm5mV2', { SVC_HMM5M_V2: 'maybe' });
-  assert.equal(r.enabled, true);
-  assert.equal(r.source, 'default');
+t('an unparseable value falls through to the default rather than being guessed at', () => {
+  const on = resolveService('monitor', { SVC_MONITOR: 'maybe' });
+  assert.equal(on.enabled, true);
+  assert.equal(on.source, 'default');
+  const off = resolveService('hmm5mV2', { SVC_HMM5M_V2: 'sometimes' });
+  assert.equal(off.enabled, false, 'garbage must not switch a default-off service back on');
+  assert.equal(off.source, 'default');
 });
 
 t('legacy opt-out vars still work, so nothing set in Railway today changes meaning', () => {
@@ -91,12 +116,14 @@ t('SERVICE_PROFILE=lean keeps the lean set and drops the rest', () => {
   const snap = servicesSnapshot({ SERVICE_PROFILE: 'lean' });
   const on  = snap.filter(s => s.enabled).map(s => s.id);
   const off = snap.filter(s => !s.enabled).map(s => s.id);
-  for (const id of ['monitor', 'levels', 'hmm5m', 'eventGate', 'botRegimeV2', 'botLevel', 'botGold']) {
+  for (const id of ['monitor', 'levels', 'eventGate', 'botRegimeV2', 'botLevel', 'botGold']) {
     assert.ok(on.includes(id), `lean must keep ${id} — it is live trading or the site's core`);
   }
   for (const id of ['sessionResearchFull', 'nasdaqMacroLead', 'cogShadow', 'hmm5mV2']) {
     assert.ok(off.includes(id), `lean should drop ${id}`);
   }
+  // A service that is off by DEFAULT stays off under lean — lean narrows, never widens.
+  for (const id of DEFAULT_OFF) assert.ok(off.includes(id), `lean must not re-enable ${id}`);
   assert.ok(on.length < snap.length, 'lean must actually turn something off');
 });
 

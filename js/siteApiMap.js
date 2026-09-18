@@ -86,6 +86,7 @@
         <div class="sm-group-hd" style="color:#10b981">Live Trading</div>
         <a class="sm-item" href="desk.html" target="_blank"><span class="sm-item-name">🖥 The Desk</span><span class="sm-item-desc">One-page market read: risk light + calendar, AI story, per-instrument board (range used vs forecast, cone, regime, nearest level/zone), validated range-line + OI zones, bot heartbeats &amp; positions, forward evidence, exceptions feed, macro context drawer — every panel trust-labelled</span></a>
         <a class="sm-item" href="today.html" target="_blank"><span class="sm-item-name">☀️ Daily Brief</span><span class="sm-item-desc">5-minute morning read: per-pair direction, range-used gauge, forecast levels with hit rates, sizing + news risk; drill into M5 chart, Decision Engine zones and the bot level book</span></a>
+        <a class="sm-item" href="evidence.html" target="_blank"><span class="sm-item-name">📗 Evidence Book</span><span class="sm-item-desc">Every relationship this desk has tested — claim, verdict, the number, the write-up — with what is firing right now and each finding's forward record as it accumulates. Feeds the morning brief, the chain read and the Desk Watch alerts.</span></a>
         <a class="sm-item" href="levels.html" target="_blank"><span class="sm-item-name">🎯 Entry Lens</span><span class="sm-item-desc">All-pairs view: macro regime, vol bands, Asia range, z-score conviction and entry bias in one table</span></a>
         <a class="sm-item" href="vol-forecast-v3.html" target="_blank"><span class="sm-item-name">📐 Vol Forecast v3</span><span class="sm-item-desc">Same forecaster and exports as v2 in a compact layout — chart + pinned lines, ladder, live vote per card; Details sheet joins hit rates, path odds, Level Atlas give-back, Vol Intelligence regime and Jump/Diffusion; chart snapshot, light mode, phone layout</span></a>
         <a class="sm-item" href="vol-forecast-v2.html" target="_blank"><span class="sm-item-name">📐 Vol Forecast v2</span><span class="sm-item-desc">EWMA σ forecaster (v2 constants); per-pair daily / weekly / 20-day range projections — use this over v1</span></a>
@@ -138,6 +139,7 @@
         <a class="sm-item" href="real-yield.html" target="_blank"><span class="sm-item-name">💰 Real Yield</span><span class="sm-item-desc">Per-currency real yields for macro context</span></a>
         <a class="sm-item" href="yield-curve.html" target="_blank"><span class="sm-item-name">📉 Yield Curve</span><span class="sm-item-desc">Yield curve macro dashboard (distinct from the P3 display panel)</span></a>
         <a class="sm-item" href="rate-matrix.html" target="_blank"><span class="sm-item-name">🧮 Rate Matrix</span><span class="sm-item-desc">Cross-currency rate-differential matrix</span></a>
+        <a class="sm-item" href="event-response.html" target="_blank"><span class="sm-item-name">📅 Event Response</span><span class="sm-item-desc">What each scheduled release actually does to each pair — size, timing and the spread of outcomes, measured, with sample sizes</span></a>
       </div>
 
       <div class="sm-group" data-group="volresearch">
@@ -884,7 +886,7 @@
         <div class="am-cat-hd" style="color:#64748b">Infrastructure &amp; Shared Data</div>
         <div class="am-feat">
           <div class="am-feat-hd">Background services</div>
-          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/services</span><span class="am-desc">Every background job: on/off flag, what decided it, and measured runs/total ms/busy% since boot. <code>?on=1</code> for enabled only. Registry: js/serviceFlags.js</span><span class="am-consumers">ops — MD files/RAILWAY_SERVICE_FLAGS.md</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/services</span><span class="am-desc">Every background job: on/off flag, what decided it, and measured <code>today</code>/<code>window</code>/<code>sinceBoot</code> runs + ms. Day totals persist to R2, so they survive a redeploy. <code>?on=1</code> for enabled only. Registry: js/serviceFlags.js</span><span class="am-consumers">ops — MD files/RAILWAY_SERVICE_FLAGS.md</span></div>
           <div class="am-feat-hd">KV, config &amp; R2</div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/kv-health</span><span class="am-desc">KV persistence backend status + round-trip probe of critical keys</span><span class="am-consumers">js/bot-config.js</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/nav-layout</span><span class="am-desc">Saved dashboard nav dropdown ordering from KV</span><span class="am-consumers">index.html</span></div>

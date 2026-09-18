@@ -83,11 +83,11 @@ import {
   saveAllLiveSnapshots as _laSaveAllLiveSnapshots,
 } from './js/levelAtlasRoutes.js';
 import { voteDecision as _laVoteDecision, priceBarrierTrade as _laPriceBarrierTrade, applyFadeStopTightening as _laApplyFadeStopTightening } from './js/levelAtlasVoteReview.js';
+import { matchLiveContext as _laMatchLiveContext } from './js/levelAtlasReport.js';
 import { rungLevelsForLadder as _laRungLevelsForLadder, RUNGS as _LA_RUNGS } from './js/levelAtlasEngine.js';
 import { forecastSigma as _laForecastSigma } from './js/forecastSigma.js';
 import { buildLadder as _laBuildLadder } from './js/forecastLadder.js';
 import { LADDER_PARAMS as _LA_LADDER_PARAMS } from './js/forecastLadderParams.js';
-import { resamplePacked as _resamplePacked } from './js/barUtils.js';
 import { costForPair as _laCostForPair } from './js/perLineStrategy.js';
 import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
@@ -139,12 +139,16 @@ import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
+import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
+import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
+import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
 import { macroContext as _macroContext, macroContextByDate as _macroContextByDate, MACRO_FRED_SERIES as _MACRO_FRED_SERIES, riskSensFor as _riskSensFor } from './js/macroCore.js';
 import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, verdict as _mcondVerdict } from './js/macroConditionerEngine.js';
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
-import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2 } from './js/volBacktestM1Engine.js';
+import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
 import { auditVoteAtlasDrift as _auditVoteAtlasDrift } from './js/voteAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
@@ -223,6 +227,9 @@ import { analyzeCrossPair, portfolioIndependence } from './js/crossPairResearch.
 import { scanFeatures } from './js/forecastFeatureScan.js';
 import { bandCalcAB } from './js/bandCalcAB.js';
 import { putJSON as _r2PutJSON, getJSON as _r2GetJSON, r2Configured as _r2Ok } from './js/r2Store.js';
+import compression from 'compression';
+import { egressMiddleware, egressSnapshot, egressPersist } from './js/egressMeter.js';
+import { spreadProfileInit, spreadProfileSample, spreadProfileFlush, spreadProfileReport, MOTIF_UNIVERSE as _SPREAD_UNIVERSE } from './js/spreadProfile.js';
 import { loadM1Resampled as _loadM1ForAB } from './js/weeklyVolBacktestEngine.js';
 import { evaluateSessions, dailySessionContributions } from './js/forecastSessionResearch.js';
 import { _fetchAllH1 as _fetchH1AB, _fetchAllH1 as _fetchH1 } from './js/sessionStats.js';
@@ -2984,7 +2991,12 @@ Rules for your response:
 16. NUMBER DELIVERY — speak numbers like a trader, not a spreadsheet. In the PROSE, round prices the way you'd say them aloud ("1.1430", "just under 1.1450", "around 29,500") — reserve full precision (1.14298, 1.14508) for the exact entry/stop/target in keyLevels and tradingFramework, where it's actionable. Never quote pointless precision in prose ("0.27% of typical daily range", "114.3×") — say "almost none of the day's range left" instead. A number earns its place only if it changes the decision.
 17. LEAD WITH WHAT DRIVES THE DECISION — don't stack every metric. Pick the handful of things that actually make the trade — normally the entry/stop/target level, the macro backdrop behind it, and the one evidenced positioning/technical signal — and build around them; that's three legs, not one, so don't collapse the read down to a level and a single stat. Secondary readings get a clause, not a sentence each. If two signals conflict, resolve it for the reader in plain words ("so despite the breakout flag, the near-term odds still favour the fade") — don't just list both and leave them hanging.
 18. CLOSING TASK — TRADE OF THE DAY. As your final step, using everything above, decide whether there is ONE concrete trade worth proposing right now. If yes: fill tradeOfDay with direction ("LONG" or "SHORT"), and entry/stopLoss/takeProfit as REAL levels — reuse a level you already named elsewhere in your response, or one present in the snapshot (a keyLevel, OI wall, pivot, fib, range edge, or retail cluster) — never a fabricated round number (same rule as #14, applied here too). riskReward is the resulting R multiple as a string (e.g. "1:2.1"). confidence is HIGH/MEDIUM/LOW and must be consistent with convictionScore, not more confident than the rest of your read. rationale is ONE sentence citing the 1-2 strongest pieces of evidence behind it — no new claims not already grounded above. If the evidence is thin, conflicting, or nothing here clears a reasonable bar for an actual trade, set direction to "NONE", leave entry/stopLoss/takeProfit as empty strings, and use rationale to say briefly why there's no trade today (e.g. "levels are stacked against each other and vol is too compressed to size a stop") — do not force a trade that isn't there just to fill the field.
-18a. THE TRADE GATE IS BINDING - IT IS NOT ADVICE. Read s.tradeGate BEFORE deciding. If verdict is NO_TRADE you MUST return direction "NONE" with empty entry/stopLoss/takeProfit and use rationale to say which blocker fired or how little agreement there was; no amount of narrative quality overrides it. If verdict is LEAN_ONLY the reads point opposite ways - describe the lean in prose but still return "NONE" for the trade, because a setup whose own evidence disagrees with itself is not a setup. Only OK permits levels. And never propose a direction your own structural read argues against: if your analysis concludes the structural case favours one side, a trade the other way needs an explicit stated reason it is a short-horizon fade rather than a contradiction - or it should not be proposed at all.
+18a. THE TRADE OF THE DAY IS ONE SMALL IDEA AT THE END OF THE READ. It is built from the data above and it is expected to be there: a direction, an entry, a stop that clears the noise (18b), a target, and one honest sentence of why. Read s.tradeGate first and let its verdict set the WORDING, not whether the idea exists:
+   - NO_TRADE (a hard blocker fired: untradeable spread, stale price, a load-bearing data conflict) -> direction "NONE", empty levels, and the rationale names the blocker. This is the only case with no idea.
+   - THIN (fewer than two independent reads agree) -> still give the idea, confidence "LOW", and say in the rationale that it rests on one read and what would confirm it.
+   - SPLIT (the reads disagree materially) -> still give the idea on the side of the majority, confidence "LOW", and name the read that disagrees. If you genuinely cannot pick a side, give the conditional form: "above X the idea is long to Y; below Z it is short to W" -- that is still an idea.
+   - OK -> the idea with the confidence the evidence supports.
+   Never propose a direction your own structural read argues against without saying it is a short-horizon fade and why. Keep it modest: this is a place to start looking, not a signal, and the reader knows the direction tag has not yet earned a track record (the ledger is scoring it).
 18b. THE STOP MUST CLEAR THE NOISE. s.stopGuidance gives the expected day range and a minimum sensible stop IN PRICE TERMS (atrPct is a percentile and cannot be used to judge a distance). A stop tighter than that sits inside ordinary daily movement and will be taken out by noise carrying no information. Either widen it, or state plainly in the rationale that it is inside the noise floor and why you accept that. Writing "stops need to be outside the noise" and then setting a narrow one is a self-contradiction the reader will act on.
 19. WEEKLY/MONTHLY OUTLOOK — fill weeklyOutlook and monthlyOutlook from the MARKET OUTLOOK section's given bias/confidence/drivers, one sentence each explaining WHY (cite the 1-2 strongest drivers by name) — you are narrating those numbers, not producing a new independent call, and you MUST NOT invent a bias that contradicts the given one. Unlike tradeOfDay, these are position/bias reads, not trade setups — no entry/stop/target, no risk/reward. If the given bias is NEUTRAL or confidence is low, say that plainly rather than manufacturing conviction. Central-bank tone is never valid supporting evidence here (rule above) — if you mention it, it's colour, not a reason.
 
@@ -2996,7 +3008,7 @@ Rules for your response:
 24. NAME WHICH VIEW THE INSTRUMENT EXPRESSES. Use WHERE TODAY'S MOVE CAME FROM to tell the reader whether they are taking a base-currency view, a quote-currency view, or a bet on this specific pair. When the pair-specific share is high, say outright that a macro thesis is better expressed in a different instrument and name the cleaner leg if the data supports one. This is the single most useful sentence you can give someone choosing between correlated setups.
 25. A YIELD MOVE IS NEVER JUST A YIELD MOVE - BUT CHECK THE SPLIT BEFORE USING IT. If you mention rates, say whether the move was real-rate driven (a genuine discount-rate hit to gold and long-duration equities) or breakeven driven (an inflation repricing, much softer, and the version that flips stock-bond correlation positive). BUT the decomposition is only usable when datesAgree, identityHolds AND moveExceedsNoise are all true. If datesAgree is false the legs printed on different days - say the split is unavailable. If identityHolds is false the numbers do not add up - name no driver. If moveExceedsNoise is false there is no move to attribute - say the yield move is inside the noise and move on. A brief that built an "inflation scare" narrative on a 1bp move whose components did not sum is the exact failure this rule exists to prevent.
 25a. DATA CONFLICTS OUTRANK THE NARRATIVE. If DATA CONFLICTS lists anything, lead with it and state plainly that any read depending on that number is unsupported until it resolves. Never assert the conclusion and then note the conflict afterwards - the ordering is the whole point.
-25b. TEACH THE MECHANISM AS YOU GO. Every relationship you invoke gets one clause explaining WHY it works - why real yields hurt gold, why a crowded position is fuel rather than confirmation, why bonds failing to hedge equities is a sizing fact rather than a direction call. Woven into the read, never a separate lesson, and never instead of the number.
+25b. TEACH THE MECHANISM AS YOU GO. Every relationship you invoke gets one clause explaining WHY it works - why real yields hurt gold, why a crowded position is contrarian CONTEXT and not fuel (tested null here), why bonds failing to hedge equities is a sizing fact rather than a direction call. Woven into the read, never a separate lesson, and never instead of the number.
 25c. SAY EACH NUMBER ONCE. This rule exists on the global brief and belongs here too. The structured fields (macroRead / yieldCurveRead / dollarRegimeRead) render directly BELOW the brief paragraphs, so restating a figure there duplicates it on screen rather than reinforcing it — a deployed gold read printed "real 10Y +8bp over 20 days and about three hikes embedded in the 2-year" in the prose and then again, near-verbatim, in the macro card underneath. Put a figure in the ONE place it decides something. In the structured fields, EXTEND the prose (the consequence, the level that would change it) rather than repeating it.
 25d. NAME THE WINDOW ON EVERY EVENT COUNT. "Three high-impact prints due inside four hours" and "six high-impact events in the window" are both true of different windows and read as a contradiction when they sit two paragraphs apart. Whenever you state a count of events, say over what period.
 26. PRECEDENT IS A BASE RATE, NOT A FORECAST, AND ITS SAMPLE IS THE STORY. When you cite the regime precedent, give the effect AND its independent sample size in the same breath, and never attach a confidence or probability to it beyond the stated hit rate. If signFlippedBetweenHalves is set, you must either omit the row or state plainly that it did not hold up — presenting it as an edge is a fabrication. Never write a p-value or the word "significant": forward windows overlap and no valid test is available here.
@@ -3020,7 +3032,16 @@ tldr: plain text ~100 words, copy-paste ready brief. Use this exact format (newl
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
+// Egress meter FIRST (counts on-the-wire bytes), then gzip. Until 2026-09-17
+// every JSON response left uncompressed -- /api/analogml/motif-trades alone
+// was 2.3 MB a hit -- against a bill that showed 392 GB out in 2.6 days.
+app.use(egressMiddleware);
+app.use(compression());
 app.use(express.json({ limit: '25mb' }));
+// Where the outbound bytes go, ranked, since boot -- see js/egressMeter.js.
+app.get('/api/egress-audit', (req, res) => res.json(egressSnapshot(Number(req.query.limit) || 40)));
+// Ledger survives redeploys via KV (egress_audit): load now, flush every 5 min + on SIGTERM.
+egressPersist({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }).catch(e => console.warn('[egress] persist init failed:', e.message));
 
 // Real-time monitoring + level-refresh status
 app.get('/api/monitor/status', (_req, res) => {
@@ -3254,6 +3275,110 @@ Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
+// ── Desk watch: the early-warning layer ──────────────────────────────────────
+// Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
+// chain, the stock/bond correlation, the calendar), evaluate every trigger in
+// js/deskWatch.js, compare with the last state in KV, and speak ONLY on a
+// transition -- a condition starting or stopping. Transitions go to Telegram
+// (from Railway; the cron worker never sends) and into a fire log that is the
+// evidence book's forward record: each fire is scored five sessions later with
+// the realised range, so a validated finding keeps earning (or losing) its tick
+// in public. No model calls anywhere in this path.
+const _WATCH_KV = 'desk_watch_v1';
+const _WATCH_EVERY_MS = 15 * 60_000;
+const _WATCH_LOG_MAX = 400;
+const _WATCH_SERIES = { nq: 'NAS100_USD', oil: 'WTICO_USD', gold: 'XAU_USD', spx: 'SPX500_USD', usdjpy: 'USD_JPY', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', copper: 'XCU_USD', btc: 'BTC_USD' };
+const _WATCH_INSTR_SYM = { SPX500: 'spx', NQ: 'nq', GOLD: 'gold', USDJPY: 'usdjpy', EURUSD: 'eurusd', GBPUSD: 'gbpusd', AUDUSD: 'audusd', USDCAD: 'usdcad' };
+let _watchRunning = false, _watchLast = { at: 0, states: null, error: null };
+async function _loadWatchStore() {
+  try { const raw = await kv.getStrict(_WATCH_KV); if (!raw) return { states: [], log: [] }; const p = JSON.parse(raw); return { states: Array.isArray(p?.states) ? p.states : [], log: Array.isArray(p?.log) ? p.log : [] }; }
+  catch (e) { console.warn('[desk-watch] store unreadable, not touching it:', e.message); return null; }
+}
+async function _watchInputs() {
+  const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
+  const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
+  const hist = {};
+  await Promise.all(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy'].map(async k => { try { const raw = await kv.get(`fredhistory_series_${k}`); if (raw) hist[k] = JSON.parse(raw); } catch { /* skipped */ } }));
+  const series = {};
+  for (const [k, sym] of Object.entries(_WATCH_SERIES)) {
+    try { const bars = await _btFetchD1(sym, 60); series[k] = bars.sort((a, b) => a.date < b.date ? -1 : 1).map(b => ({ date: b.date, value: b.close, high: b.high, low: b.low })); }
+    catch (e) { console.warn(`[desk-watch] ${sym}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  // the chain, server-side: same brick as the page
+  const vals = {};
+  const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
+  for (const [node, key] of Object.entries(fredSrc)) vals[node] = hist[key] ? _chainNodeDelta(hist[key], _CHAIN_NODES[node]) : null;
+  for (const node of ['oil', 'gold', 'copper', 'audusd', 'usdcad', 'usdjpy', 'btc', 'nq', 'spx']) vals[node] = series[node] ? _chainNodeDelta(series[node], _CHAIN_NODES[node]) : null;
+  const chain = _evaluateChain(vals);
+  let stockBond = null; try { stockBond = await _stockBondCorr(); } catch { /* optional */ }
+  let events = []; try { const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const now = Date.now(); events = (res.events ?? []).filter(e => e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3); } catch { /* optional */ }
+  const fomcDates = _fomcAllMeetings().map(m => m.date);
+  return { fred, hist, series, chain, stockBond, events, fomcDates, now: Date.now() };
+}
+// Score fires that are five sessions old: the realised range over the five
+// sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
+function _scoreWatchLog(log, series) {
+  const atr14 = (bars, i) => { if (i < 14) return null; let s = 0; for (let k = i - 13; k <= i; k++) { const b = bars[k], p = bars[k - 1]; s += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); } return s / 14; };
+  for (const f of log) {
+    if (f.after5 != null || !f.instruments?.length) continue;
+    const scores = [];
+    for (const inst of f.instruments) {
+      const bars = series[_WATCH_INSTR_SYM[inst]]; if (!bars) continue;
+      const day = f.at.slice(0, 10); let i = bars.findIndex(b => b.date >= day); if (i < 0) continue;
+      if (bars[i].date > day) i = i - 1; if (i < 14 || i + 5 >= bars.length) continue;
+      const atr = atr14(bars, i); if (!atr) continue;
+      const fwd = bars.slice(i + 1, i + 6); const rng = (Math.max(...fwd.map(b => b.high)) - Math.min(...fwd.map(b => b.low))) / atr;
+      scores.push({ inst, range5: +rng.toFixed(2) });
+    }
+    if (scores.length) { f.after5 = scores; f.scoredAt = new Date().toISOString(); }
+  }
+}
+async function _deskWatchTick(opts = {}) {
+  if (_watchRunning) return _watchLast;
+  _watchRunning = true;
+  try {
+    const store = await _loadWatchStore();
+    if (!store) throw new Error('desk_watch_v1 unreadable; refusing to overwrite');
+    const inputs = await _watchInputs();
+    const states = _evaluateTriggers(inputs);
+    const prevById = new Map(store.states.map(t => [t.id, t]));
+    const nowIso = new Date().toISOString();
+    for (const t of states) { const p = prevById.get(t.id); t.since = t.firing ? (p?.firing && p.since ? p.since : nowIso) : null; }
+    const { started, stopped } = _diffStates(store.states, states);
+    for (const t of started) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'started', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: t.instruments ?? [], value: t.value ?? null });
+    for (const t of stopped) store.log.unshift({ id: t.id, kind: t.kind, label: t.label, at: nowIso, event: 'cleared', detail: t.detail, evidenceId: t.evidenceId ?? null, instruments: [], value: t.value ?? null });
+    store.log = store.log.slice(0, _WATCH_LOG_MAX);
+    _scoreWatchLog(store.log, inputs.series);
+    // First pass after deploy: everything already firing counts as "started"; say so once, quietly, and do not page for it.
+    const firstPass = store.states.length === 0;
+    let sent = false;
+    if (!firstPass && (started.length || stopped.length) && !opts.silent) {
+      const msg = _formatWatchTelegram({ started, stopped });
+      if (msg && state.tg?.token && state.tg?.chatId) sent = await sendTelegram(state.tg.token, state.tg.chatId, msg);
+    }
+    await kv.put(_WATCH_KV, JSON.stringify({ states, log: store.log, updatedAt: nowIso }));
+    _watchLast = { at: Date.now(), states, started: started.map(t => t.id), stopped: stopped.map(t => t.id), sent, firstPass, error: null };
+    if (started.length || stopped.length) console.log(`[desk-watch] started ${started.map(t => t.id).join(',') || '-'} · cleared ${stopped.map(t => t.id).join(',') || '-'} · telegram ${sent ? 'sent' : firstPass ? 'skipped (first pass)' : 'not sent'}`);
+    return _watchLast;
+  } catch (e) {
+    _watchLast = { ..._watchLast, error: e.message };
+    console.error('[desk-watch]', e.message);
+    return _watchLast;
+  } finally { _watchRunning = false; }
+}
+app.get('/api/desk-watch', async (_req, res) => {
+  try {
+    const store = await _loadWatchStore();
+    res.json({ ok: true, states: store?.states ?? [], log: (store?.log ?? []).slice(0, 60), updatedAt: store?.updatedAt ?? null, lastTick: _watchLast.at ? new Date(_watchLast.at).toISOString() : null, error: _watchLast.error ?? null });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/desk-watch/tick', async (req, res) => {
+  try { res.json({ ok: true, ...(await _deskWatchTick({ silent: req.query.silent === '1' })) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+setInterval(() => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
+
 // ── The chain, read aloud ────────────────────────────────────────────────────
 // The chain panel judges each textbook link on measured moves. This turns those
 // verdicts, plus the day's numbers and headlines, into the kind of explanation a
@@ -3335,6 +3460,9 @@ ${s.events || '  nothing high-impact scheduled'}
 HEADLINES (Yahoo, last few hours; may be thin or stale)
 ${hl || '  none available'}
 
+TESTED ON THIS DESK (pre-registered, paired-control tests on this desk's own data; lean on these BEFORE any market folklore)
+${s.evidence || _evidenceForPrompt()}
+
 === END SNAPSHOT ===
 
 HOW TO WRITE IT (style):
@@ -3350,6 +3478,7 @@ HOW TO WRITE IT (style):
 - Land it on FX: which majors this chain is pushing, and through which leg (rates, oil, risk). Name pairs. No entries, stops, sizes or products, ever. No calls to action.
 - Never name a central-bank official; use the role. Never present positioning (COT, retail book) as a forecast.
 - If the snapshot is thin -- most links quiet, few numbers -- say the chain is quiet today and keep it short. A quiet day is a valid read.
+- EVIDENCE FIRST. Where a TESTED ON THIS DESK line applies to what you are writing, use it and say so in four words ("tested here: null", "measured here: +0.4 ATR"). Never assert a relationship that line marks TESTED NULL as if it held; if you must mention it, say it tested null here. A VALIDATED line is about RANGE -- never turn it into a direction.
 
 Respond with a single valid JSON object, no markdown, no text outside it:
 {"hook":"one sentence, the thing driving today","read":"4-6 short paragraphs separated by blank lines, 150-240 words total, in the style above","stories":[{"name":"the war trade","legs":"energy up, dollar up","status":"dominant|overshadowed|reloading|absent","evidence":"one clause with the snapshot numbers that show it"}],"shouldHave":"one sentence: what the textbook says should be happening and is not -- or 'nothing is out of place today'","next":"one sentence: the next catalyst and what a surprise would look like","forFx":"1-2 sentences naming the pairs this chain is pushing and through which leg"}`;
@@ -4032,29 +4161,83 @@ async function _buildMorningBrief() {
           : '')
     : null;
   const events = await _fetchTodayEvents().catch(() => []);
+  // The brief has no clock. It listed today's events with no past/upcoming mark,
+  // dropped anything more than an hour old, and the forecast's news_flag said
+  // "FOMC Rate" with no time -- so a brief GENERATED four hours after the
+  // decision led with "sit on your hands until the Fed decides this afternoon".
+  // Every event now carries RELEASED/UPCOMING and how long ago or until, the
+  // day's released events stay on the list, and the prompt is told the time.
+  const nowMs = Date.now();
+  const nowUtc = new Date(nowMs).toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+  const _ago = ms => { const h = Math.abs(nowMs - ms) / 3600e3; return h < 1 ? `${Math.round(h * 60)}m` : `${h.toFixed(1)}h`; };
   const bigEvents = events
-    .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()) && e.ms >= Date.now() - 60 * 60000)
+    .filter(e => ['high', 'medium'].includes((e.impact ?? '').toLowerCase()))
     .sort((a, b) => a.ms - b.ms)
-    .slice(0, 12)
-    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — [${e.country}] ${_redactFedChairName(e.event)} (${(e.impact ?? '').toLowerCase()} impact)`)
+    .slice(0, 16)
+    .map(e => `• ${new Date(e.ms).toISOString().slice(11, 16)} UTC — ${e.ms <= nowMs ? `RELEASED ${_ago(e.ms)} ago` : `UPCOMING in ${_ago(e.ms)}`} — [${e.country}] ${_redactFedChairName(e.event)} (${(e.impact ?? '').toLowerCase()} impact)${e.estimate != null ? ` consensus ${e.estimate}` : ''}${e.actual != null ? ` ACTUAL ${e.actual}` : ''}`)
     .join('\n')
     || (_calFeedOk
       ? '(no tier-1/2 scheduled events on the calendar today)'
       : '(ECONOMIC CALENDAR FEED UNAVAILABLE — the scheduled-events feed could not be loaded. Do NOT describe today as quiet, data-light or event-free; state plainly that the economic calendar is unavailable and treat scheduled-event risk as unknown.)');
+  // The FOMC engine (below) captures the statement, transcript and SEP for every
+  // meeting and reads them. When the latest meeting is recent, the brief gets the
+  // verdict -- otherwise it can only see "FOMC" on the calendar and guesses.
+  let fomcBlock = '';
+  try {
+    const latestRaw = await kv.get('fomc_latest');
+    const latest = latestRaw ? JSON.parse(latestRaw) : null;
+    const mDate = latest?.meetingDate;
+    const ageH = mDate ? (nowMs - Date.parse(mDate + 'T18:00:00Z')) / 3600e3 : null;
+    if (mDate && ageH != null && ageH > -12 && ageH < 7 * 24) {
+      const parts = [];
+      for (const kind of ['statement', 'sep', 'transcript', 'minutes']) {
+        const raw = await kv.get(`fomc_analysis_${kind}_${mDate}`).catch(() => null);
+        if (!raw) continue;
+        const a = JSON.parse(raw)?.analysis;
+        if (!a) continue;
+        parts.push(`[${_fomcKindLabel(kind).split(' (')[0]}] ${a.regime ?? '?'} (hawkish score ${a.hawkishScore ?? '?'}, read confidence ${a.confidence ?? '?'}): ${_redactFedChairName(String(a.headline ?? ''))}`
+          + (a.whatChanged ? `\n   What changed vs last meeting: ${_redactFedChairName(String(a.whatChanged))}` : '')
+          + (Array.isArray(a.byAsset) && a.byAsset.length ? `\n   By asset: ${a.byAsset.map(x => `${x.asset} ${x.lean}${x.note ? ` — ${_redactFedChairName(String(x.note))}` : ''}`).join(' | ')}` : ''));
+      }
+      const when = ageH >= 0 ? `${ageH < 1 ? Math.round(ageH * 60) + ' minutes' : ageH.toFixed(1) + ' hours'} ago` : `today, due in ${(-ageH).toFixed(1)} hours`;
+      fomcBlock = parts.length
+        ? `\n=== FOMC: THE DECISION IS IN (meeting ${mDate}, decision ${when}) ===\n${parts.join('\n')}\nThis has ALREADY HAPPENED. Do not frame the day as waiting for the Fed, do not call the decision a binary or a coin-flip, and do not describe the statement as pending. Lead with what was decided and how the tape responded (WHAT MOVED), then what it means from here.\n`
+        : (ageH >= 0
+          ? `\n=== FOMC: DECISION RELEASED ${when}, CONTENT NOT YET CAPTURED ===\nThe meeting was today and the decision is out, but its text has not reached this snapshot. Say the decision is out and its content is not in your data; do NOT describe it as pending or upcoming.\n`
+          : '');
+    }
+  } catch { /* the calendar line still says FOMC; the block is additive */ }
+  // Yesterday, scored -- the ledger's own tally of what the page's direction
+  // tags did at the next close. A bias sheet that never grades itself is a
+  // newsletter; this one opens with the score.
+  let yesterdayLine = '';
+  try {
+    const raw = await kv.get(LEDGER_KV).catch(() => null);
+    const rows = raw ? (JSON.parse(raw)?.rows ?? JSON.parse(raw)) : null;
+    if (Array.isArray(rows)) {
+      const sm = _ledgerSummary(rows); const y = (sm.byDay ?? []).find(d => d.h1?.n > 0);
+      if (y) yesterdayLine = `YESTERDAY, SCORED: ${y.h1.hits} of ${y.h1.n} of this page's direction calls on ${y.day} were right at the next close${y.declined ? ` (${y.declined} declined as mixed)` : ''}; ${sm.overall.h1.n} scored overall, ${sm.overall.h1.n >= 30 ? Math.round(sm.overall.h1.hitRate * 100) + '% right' : 'too few for a rate'}. Open with this if the day allows; never hide a bad day.`;
+    }
+  } catch { /* the brief tolerates absence */ }
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
 
-If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it, say what's expected/at stake, and frame the day as a wait-for-it around that event. Do not bury it.
+If a central-bank decision (FOMC/ECB/BoE/BoJ etc.) or a tier-1 release (CPI, NFP, GDP) is on today's calendar below, it is the single most important thing on the page — LEAD with it. If it is marked UPCOMING, say what's expected/at stake and frame the day as a wait-for-it around that event. If it is marked RELEASED, it has happened: lead with what came out (the FOMC block, or the event's ACTUAL vs consensus) and how the market responded, and never write as if it were still ahead. Do not bury it either way.
 
 NEVER name a specific central-bank official (Fed Chair, FOMC governor, ECB/BoE/BoJ head, etc.) anywhere in your output, even if a name appears in the headlines or calendar below — refer to them only by role ("the Fed Chair", "the FOMC", "the ECB"). A named individual anchors the read on their personal reputation or past statements, and that read goes stale (or becomes wrong) the moment leadership changes — describe the institution and the decision, not the person.
 
 === MACRO SNAPSHOT (${fc?.session_label ?? 'today'}) ===
 ${macro}
-${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}` : ''}
+TIME NOW: ${nowUtc}. Every event below is marked RELEASED or UPCOMING against this clock -- a released event is history to be read, not a wait.
+${yesterdayLine}
+${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}${fomcBlock ? ' (see the FOMC block: already decided)' : ''}` : ''}${fomcBlock}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
 ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ranking, strongest to weakest ===\nEach currency is scored on real economic data, then the dimensions are GROUPED INTO SIX FACTORS -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the factors are averaged with EQUAL WEIGHT. That grouping is the point: three dimensions measure rates and two measure inflation, so a flat average across dimensions would hand rates triple weight and inflation double, purely because more series happen to point at them. Every score is already on a -1..+1 scale; missing or stale dimensions are left out, never treated as neutral. Central-bank tone is shown per currency elsewhere but is deliberately in NO factor and scores nothing -- hawkish-score momentum was tested against forward price here and banked a clean null.\n${scorecardLines}\nHOW TO USE IT. Ground the dollar/FX-complex section in this project's own scoring rather than generic yield/DXY levels, and go one level deeper than the headline number: say WHICH FACTOR is carrying a currency's score, because "USD is strong on rates but weak on growth" is a teachable, falsifiable statement and "USD scores +0.4" is not. Lean hardest on the WHAT IS SEPARATING THE BOARD line -- that is the factor currencies are actually spread across today, and a currency being strong on a factor everyone agrees about tells you far less than one leading the factor in dispute. Name the disagreements too: a composite where every factor points the same way is a much stronger read than one where growth and inflation pull opposite ways and net out near zero, and those two look identical in the headline number. A curve reading near 0 or negative means that currency's curve is flat or inverted -- name it directly if rates is the factor driving the score. Do not give a thin read the confidence of a well-covered one: [n/6 factors] and the per-factor "(x/y series fresh)" counts say how much is actually behind each number, and any dimension listed as excluded-as-stale is genuinely absent, not neutral. Finally, this whole composite is CONTEXT, not a signal -- macro-as-signal has been tested and banked as null in this project five times over. Use it to explain why the FX board looks the way it does; never present it as a forecast.` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
 ${bigEvents}
+
+=== TESTED ON THIS DESK (pre-registered, paired-control tests on this desk's own data -- use these BEFORE any market folklore; say "tested here" when you do) ===
+${_evidenceForPrompt()}
 
 === REAL HEADLINES (Yahoo Finance) ===
 ${heads}
@@ -4064,6 +4247,7 @@ READABILITY IS THE #1 GOAL — write for a sharp trader who is NOT a rates/vol s
 - Lead the headline and theme with the plain-English "so what" (what it means / what to do), not the metric. Speak numbers like a person ("the 10-year near 4.5%", "VIX easing to 15"), not to spurious decimals.
 - USE THE "WHAT MOVED" DELTAS. Anchor the read on what's actually SHIFTING, not just today's levels: e.g. "the 10-year is up 6bps today (and +12 on the week) — yields grinding higher, dollar-supportive", "credit spreads tightening 5bps this week — no stress signal". A level with no direction is half the story; say the move and what it implies.
 - Be honest about weight: rates/curve, credit spreads and the vol-risk-premium are the evidenced macro reads — lean on them. Don't state technicals or positioning as mechanism-of-fact, and don't manufacture a strong directional call from a quiet, data-light tape — say when it's a lean.
+- EVIDENCE FIRST. The TESTED ON THIS DESK block is the highest-priority context on this page after the data itself. When a validated line applies to today (a VIX inversion, a scheduled employment / CPI / rate-decision release on a pair it names, a Nasdaq down-week), say what it measured, in ATR, and say "tested here". When you touch a relationship the block marks TESTED NULL (a rates shock meaning FX vol; "priced in" shrinking a decision day; oil "not yet" reaching breakevens; a broken link "resolving"), say it tested null here rather than narrating it. Validated lines are about RANGE and must never be turned into a direction.
 - NO FOLKLORE-AS-FACT. Options positioning, implied-vol percentiles (EVZ/GVZ/VIX rank), gamma, technical levels and S/R do NOT reliably PREDICT what comes next — they describe where the market is positioned NOW. NEVER claim one "historically precedes", "reliably leads", "tends to precede", or "signals an incoming" move, and never say "the tape wants to" or state "smart money is doing X" as fact. Elevated EVZ means options are priced for a bigger move than realized — say exactly that ("options are braced for movement the tape hasn't delivered"), not that it foreshadows one. Describe positioning; hedge the inference.
 
 Finally, go one level more specific than the USD/EUR/JPY/GBP/Gold/Stocks/Oil reads above: give a board-wide read across ELEVEN instruments — the seven USD-pairs EURUSD, GBPUSD, USDJPY, USDCHF, USDCAD, AUDUSD, NZDUSD, PLUS four risk/commodity instruments this desk also trades: XAUUSD (gold), NAS100, SPX500, WTI. For each FX pair, state a lean — BULLISH/BEARISH toward the pair's BASE currency (the first one — e.g. "BULLISH" on EURUSD means EUR strength/USD weakness), or NEUTRAL — grounded strictly in the macro scorecard composites/deltas, yields and risk mood above. For XAUUSD/NAS100/SPX500/WTI, lean BULLISH/BEARISH/NEUTRAL on the instrument itself, grounded in whatever of the dollar/real-yields (gold), VIX/credit spreads/risk mood (NAS100, SPX500), and the raw WTI level + broad risk mood (WTI — you have no supply/demand-side oil data here, so lean on this one more cautiously and say so) actually supports it. NEUTRAL is the correct answer whenever the data doesn't clearly lean either way; lean less confidently wherever coverage is thin, and say so in the note. Then, from all eleven, name the ONE instrument whose fundamental case is currently clearest — the single best one to have on the watchlist today, FX or not — with a direction and a rationale that cites the SPECIFIC data points behind it (composite scores, deltas, yield/vol readings — not a vibe). This is a macro-fundamentals read, not a price-level or entry/stop/target call (this brief carries no live price data).
@@ -13478,13 +13662,15 @@ app.post('/api/econ-surprise/backfill', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get('/api/econ-surprise', async (_req, res) => {
+app.get('/api/econ-surprise', async (req, res) => {
   try {
     const rows = await _readSurpriseStore();
     const idx = _buildSurpriseIndex(rows);
     // Per-series recent prints, so the calendar can show what the LAST few of each
-    // release actually did rather than only naming the next one.
-    const series = _seriesHistory(rows, { perSeries: 4 });
+    // release actually did rather than only naming the next one. ?history=1 returns
+    // every scored print per series -- the research harness reads the full store
+    // through this (analysis/market_sense_studies.mjs S7), nothing else needs it.
+    const series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
     res.json({ ok: true, storedReleases: rows.length, ...idx, series, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
@@ -13519,6 +13705,28 @@ app.get('/api/spreads', async (req, res) => {
     res.json({ ok: false, reason: e.message, pairs: {}, asOf: new Date().toISOString(), count: 0 });
   }
 });
+
+// ── Spread profile: measured spread per pair per UTC hour ───────────────────
+// Every 10 min, the tracker's 26-pair universe through the same OANDA pricing
+// call /api/spreads uses (one request, ~2 KB), accumulated per hour in KV.
+// Exists because the motif strategy's spread gate rests on an estimate table
+// and no spread history existed anywhere -- see js/spreadProfile.js.
+// The estimate table itself (pylego/motif_policy.py RETAIL_SPREAD_PIPS) is
+// mirrored here for the report's ratio column; keep the two in step.
+const _SPREAD_TABLE = {
+  eurusd: 0.8, usdjpy: 0.9, gbpusd: 1.0, audusd: 1.0, eurgbp: 1.1, usdcad: 1.2, usdchf: 1.2, eurjpy: 1.2,
+  nzdusd: 1.3, eurchf: 1.4, audjpy: 1.5, gbpjpy: 1.6, cadjpy: 1.7, euraud: 1.7, audcad: 1.9, audchf: 1.9,
+  nzdjpy: 1.9, eurcad: 2.0, chfjpy: 2.0, audnzd: 2.2, gbpaud: 2.5, gbpchf: 2.5, eurnzd: 2.9, gbpcad: 2.9, gbpnzd: 4.2,
+};
+spreadProfileInit({ get: k => kv.get(k), put: (k, v) => kv.put(k, v) }).catch(e => console.warn('[spread-profile] init failed:', e.message));
+async function _spreadProfileTick() {
+  const out = await _fetchSpreads(_SPREAD_UNIVERSE);
+  if (!out.ok) return;
+  if (spreadProfileSample(out.pairs)) await spreadProfileFlush();
+}
+svcInterval('spreadProfile', _spreadProfileTick, 10 * 60_000);
+svcTimeout('spreadProfile', _spreadProfileTick, 60_000);
+app.get('/api/spread-profile', (_req, res) => res.json(spreadProfileReport(_SPREAD_TABLE)));
 
 // ── Gold ETF flow (GLD + IAU combined AUM) ────────────────────────────────────
 // A genuine data gap flagged by the owner's own colleague's gold brief ("+$5.5bn
@@ -16372,6 +16580,28 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
   const priced = _laPriceBarrierTrade(withDist, vd.decision, cost);
   if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
 
+  // 2026-09-18: live-vs-backtest divergence audit (owner-flagged, #1 priority
+  // — live's realized win rate has been running ~20-30pp below the honest
+  // backtest's every day since the parquet/anchor fixes). Cross-referencing
+  // the existing volatility_bot_v2_decision_log against a same-day overnight
+  // recompute showed 20/26 (77%) of real entries logged a DIFFERENT margin
+  // than the "honest" full-history computation for the SAME touch at the
+  // SAME minute — voteDecision/matchLiveContext are the identical shared
+  // functions both paths call (ruled out a drifted duplicate), so the
+  // divergence has to be in the CONTEXT going in, not the vote logic itself.
+  // Recomputing matchLiveContext here (redundant with the one voteDecision
+  // already ran internally, but it doesn't expose its own result) to attach
+  // the per-dimension supports/challenges/context detail to the zone, so the
+  // bot can log WHICH dimensions actually voted at entry time — turns the
+  // next occurrence into an exact dimension-by-dimension diff against the
+  // backtest instead of another after-the-fact reconstruction. Compact
+  // (dimKey+bucket+favors only, no per-dimension stats) to keep the
+  // decision log's per-event size sane.
+  const _voteMatch = _laMatchLiveContext(book, withDist);
+  const voteDims = _voteMatch
+    ? [..._voteMatch.supports, ..._voteMatch.challenges, ..._voteMatch.context].map(x => ({ k: x.dimKey, b: x.bucket, f: x.favors }))
+    : null;
+
   const sgn = withDist.side === 'up' ? 1 : -1;
   const inner = withDist.level - sgn * withDist.innerDistPips * withDist.pip;
   let outerDistPips = withDist.outerDistPips;
@@ -16402,6 +16632,7 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
     side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
     entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
     rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+    voteDims,
   };
 }
 
@@ -16426,10 +16657,30 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
 
   // Ladder for pricing PENDING (not-yet-touched) rungs — daily bars UP TO
   // (not including) today, from getFastLive's own bounded, already-warm
-  // packed M1 via resamplePacked (no re-fetch, no OANDA call needed).
+  // packed M1.
+  //
+  // FIXED 2026-09-16 (owner-flagged, real bug, not a staleness artifact):
+  // this used to resample via `resamplePacked(packed, 1440)`, which buckets
+  // by plain UTC midnight (`times[i] % 86400`) — a completely different day
+  // boundary than `atlasWalk`'s own `bucketM1IntoSessions(packed,
+  // 'Europe/London')`, the DST-aware London-midnight boundary EVERY other
+  // part of Level Atlas (the backtest, the stored book, every vote/margin
+  // decision) is built on. During BST (UTC+1), that meant this function's
+  // `todayOpen` was captured a full HOUR into the real London session —
+  // wrong anchor, wrong rung levels, on every live trade, independent of
+  // and in addition to any data-staleness issue. Now uses the SAME
+  // `bucketM1IntoSessions` call and the SAME day-open/high/low/close
+  // construction `atlasWalk` itself uses (`d1 = dates.map(...)`), so the
+  // live plan and the backtest finally agree on what "today" means.
   let ladderBySide = {};
   if (packed?.n) {
-    const daily = _resamplePacked(packed, 1440).map(b => ({ date: new Date(b.time * 1000).toISOString().slice(0, 10), open: b.open, high: b.high, low: b.low, close: b.close }));
+    const _sessions = _bucketM1IntoSessions(packed, 'Europe/London');
+    const daily = [..._sessions.keys()].sort().map(d => {
+      const b = _sessions.get(d);
+      let hi = -Infinity, lo = Infinity;
+      for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
+      return { date: d, open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
+    });
     const todayIdx = daily.findIndex(d => d.date === live.date);
     const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
     const todayOpen = todayIdx >= 0 ? daily[todayIdx].open : daily.at(-1)?.open;
@@ -16868,14 +17119,19 @@ if (process.env.OANDA_KEY) {
 // `comment` (Mt5Broker/paper.py both emit it) — "FA[<dedupeTag>]",
 // asiaLivePlanZones/mondayLivePlanZones's own tag, `${a|m}_${side[0]}${level}`
 // — into ladder/side/rung at READ time, for `/api/fib-atlas-bot/trade-log` below.
-function _parseFibAtlasDedupeTag(comment) {
+function _parseFibAtlasDedupeTag(comment, prefix = 'FA') {
   // Rung is a fib multiple (asiaFibAtlasEngine.js's RUNGS_ABOVE/BELOW), so it
   // is routinely fractional (-0.5, -0.25, 1.25, 1.5, 2.5, ...) -- the
   // original `-?\d+` (integer-only) silently failed to match any of those,
   // decoding 63% of real trades (2026-09-12 live/backtest reconciliation
   // check) to ladder:null/side:null/rung:null. `(?:\.\d+)?` makes the
   // fractional part optional so integer rungs (FA[a_a2]) still match too.
-  const m = /FA\[([am])_([ab])(-?\d+(?:\.\d+)?)\]/.exec(comment || '');
+  // `prefix` (2026-09-18, Fib Atlas v2 fork): v2's own MT5 order comment is
+  // "FA2[...]" not "FA[...]" (a bare "FA[" match would ALSO match inside
+  // "FA2[", but the capture groups shift, so it must be passed explicitly,
+  // not left to a substring coincidence).
+  const re = new RegExp(`${prefix}\\[([am])_([ab])(-?\\d+(?:\\.\\d+)?)\\]`);
+  const m = re.exec(comment || '');
   if (!m) return { ladder: null, side: null, rung: null };
   return {
     ladder: m[1] === 'a' ? 'asia' : 'monday',
@@ -17047,6 +17303,173 @@ app.get('/api/level-atlas/vote-state/:instrument', async (req, res) => {
   }
 });
 
+// Level Atlas book staleness — surfaces exactly what the 2026-09-15 incident
+// showed was invisible until the owner noticed a live-vs-backtest P&L gap
+// several days in: the reference-engine-rebuild can silently stop
+// completing (crash, OOM, whatever) with NO signal anywhere except the
+// persisted books quietly stopping short of "now". Checks every one of the
+// bot's own `enabled_pairs` (not the full REFERENCE_ENGINE_PAIRS list —
+// staleness in a pair the bot doesn't even trade isn't this alert's job)
+// and reports the OLDEST `generatedAt` found, since a genuinely healthy
+// rebuild should leave every traded pair reasonably fresh — one straggler
+// is exactly the signal worth surfacing, not averaging away.
+async function _levelAtlasStaleness() {
+  const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+  const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+  const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+  const rows = [];
+  for (const pair of pairs) {
+    try {
+      const book = await _r2GetJSON(`level-atlas/${pair}.json`);
+      rows.push({ pair, generatedAt: book?.generatedAt ?? null });
+    } catch (e) {
+      rows.push({ pair, generatedAt: null, error: e.message });
+    }
+  }
+  const withAges = rows.map(r => ({ ...r, ageHours: r.generatedAt ? (Date.now() - Date.parse(r.generatedAt)) / 3_600_000 : Infinity }));
+  withAges.sort((a, b) => b.ageHours - a.ageHours); // oldest first
+  const oldest = withAges[0];
+  return { pairs: withAges, oldestPair: oldest?.pair ?? null, oldestAgeHours: oldest ? +oldest.ageHours.toFixed(1) : null };
+}
+
+app.get('/api/level-atlas/staleness', async (_req, res) => {
+  try { res.json({ ok: true, ...await _levelAtlasStaleness() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Manual refresh — the owner's own explicit ask (2026-09-16, after the
+// nightly rebuild silently sat broken for days): "even if occasionally I
+// have to hit a manual api call to trigger the refresh". Thin wrapper over
+// the EXISTING /api/level-atlas/run job (same one the nightly tick calls) so
+// there's exactly one rebuild code path, not a second one to drift from it.
+// Scoped to just the bot's own enabled_pairs (not all 31 reference pairs) —
+// faster, and it's the ONLY set the live bot actually depends on.
+app.post('/api/level-atlas/refresh-now', async (req, res) => {
+  try {
+    // ?bot=v3 reads v3's own enabled_pairs instead of v2's — same underlying
+    // Level Atlas book, just a different bot's pair universe to prioritize.
+    // v3's local decision engine (local_decision_engine/) depends on this
+    // same book's freshness (its M1 tail route calls getFastLive, but the
+    // BOOK itself — base rates per dimension bucket — only updates via this
+    // nightly/manual rebuild), so it isn't v2-specific even though the
+    // config it reads for a pair list defaults to v2's.
+    const cfgKey = req.query.bot === 'v3' ? 'volatility_bot_v3_config' : 'volatility_bot_v2_config';
+    const cfgRaw = await kv.get(cfgKey).catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+    const { jobId } = _startLevelAtlasRunJob({ instruments: pairs.map(p => p.toUpperCase()) });
+    res.json({ ok: true, jobId, pairs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Fib Atlas book staleness — same incident class, confirmed present
+// 2026-09-16 while checking whether the live Fib Atlas bot (mode:'live',
+// same real-demo-account status as Vote Atlas — NOT paper, despite the
+// dashboard's stale "[paper]" chip) had the same problem: GBPUSD/USDJPY/
+// AUDUSD/NZDUSD were found stuck ~94h stale while other traded pairs were
+// hours old. Fib Atlas trades TWO ladders per pair (asia + monday, both
+// enabled by default in fib_atlas_bot_config.ladders) — checks both books
+// and reports whichever is older, since either being stale degrades that
+// pair's actual live signal.
+async function _fibAtlasStaleness() {
+  const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+  const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+  const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+  const ladders = [
+    ...(cfg.ladders?.asia !== false ? [{ label: 'asia', prefix: 'asia-fib-atlas' }] : []),
+    ...(cfg.ladders?.monday !== false ? [{ label: 'monday', prefix: 'monday-fib-atlas' }] : []),
+  ];
+  const rows = [];
+  for (const pair of pairs) {
+    for (const l of ladders) {
+      try {
+        const book = await _r2GetJSON(`${l.prefix}/${pair}-votetrades.json`);
+        rows.push({ pair, ladder: l.label, generatedAt: book?.generatedAt ?? null });
+      } catch (e) {
+        rows.push({ pair, ladder: l.label, generatedAt: null, error: e.message });
+      }
+    }
+  }
+  const withAges = rows.map(r => ({ ...r, ageHours: r.generatedAt ? (Date.now() - Date.parse(r.generatedAt)) / 3_600_000 : Infinity }));
+  withAges.sort((a, b) => b.ageHours - a.ageHours); // oldest first
+  const oldest = withAges[0];
+  return { pairs: withAges, oldestPair: oldest?.pair ?? null, oldestLadder: oldest?.ladder ?? null, oldestAgeHours: oldest ? +oldest.ageHours.toFixed(1) : null };
+}
+
+app.get('/api/fib-atlas-bot/staleness', async (_req, res) => {
+  try { res.json({ ok: true, ...await _fibAtlasStaleness() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Manual refresh — same rationale/pattern as /api/level-atlas/refresh-now.
+// Triggers BOTH ladder engines for the bot's enabled pairs (whichever are
+// actually turned on in fib_atlas_bot_config.ladders).
+app.post('/api/fib-atlas-bot/refresh-now', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    const pairs = Array.isArray(cfg.enabled_pairs) && cfg.enabled_pairs.length ? cfg.enabled_pairs : ['eurusd'];
+    const instruments = pairs.map(p => p.toUpperCase());
+    const jobs = {};
+    if (cfg.ladders?.asia !== false) jobs.asia = _startAsiaFibAtlasRunJob({ instruments }).jobId;
+    if (cfg.ladders?.monday !== false) jobs.monday = _startMondayFibAtlasRunJob({ instruments }).jobId;
+    res.json({ ok: true, jobs, pairs });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(3, 30, async () => {
+    // Owner's own correction (2026-09-16): staleness at ALL is a live-vs-
+    // backtest alignment risk (the exact mechanism behind the 2026-09-15
+    // incident this whole system exists because of), not just something to
+    // avoid getting nagged about — a loose threshold trades faster detection
+    // for fewer false alarms in exactly the wrong direction given "I want
+    // this perfect". Was 06:00/30h (tolerated 2 consecutive missed nights
+    // before saying anything); tightened to 03:30/15h:
+    //   - 03:30 gives ~3h buffer past the confirmed ~1.5-2h full five-engine
+    //     runtime (00:30 kickoff), catching a failure the same night instead
+    //     of waiting until 06:00 — less time trading on a stale book with no
+    //     warning, and more time left to react before the trading day starts.
+    //   - 15h still comfortably clears a HEALTHY run's own natural spread
+    //     (first-processed pair vs last-processed, ~1.5-2h apart, so a
+    //     healthy night's oldest pair is at most ~5h old by 03:30) while
+    //     catching a genuinely missed night (24h+) with real margin — no
+    //     tolerance for a SECOND miss baked in anymore.
+    const STALE_HOURS = 15;
+    try {
+      const st = await _levelAtlasStaleness();
+      if (st.oldestAgeHours != null && st.oldestAgeHours > STALE_HOURS) {
+        console.warn(`[level-atlas-staleness] ${st.oldestPair} is ${st.oldestAgeHours}h stale (>${STALE_HOURS}h threshold)`);
+        const cfgRaw = await kv.get('volatility_bot_v2_config').catch(() => null);
+        const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+        if (cfg.tg_token && cfg.tg_chat_id) {
+          const days = (st.oldestAgeHours / 24).toFixed(1);
+          await sendTelegram(cfg.tg_token, cfg.tg_chat_id,
+            `⚠️ Vote Atlas — ${st.oldestPair.toUpperCase()}'s book hasn't refreshed in ${days} days (last update ${st.oldestAgeHours}h ago). The nightly rebuild may be failing again. Trigger a manual refresh: POST /api/level-atlas/refresh-now, or from bot-config.html's Vote Atlas card.`);
+        }
+      } else {
+        console.log(`[level-atlas-staleness] OK — oldest traded book is ${st.oldestAgeHours}h old`);
+      }
+    } catch (e) { console.error('[level-atlas-staleness] check failed:', e.message); }
+    try {
+      const st = await _fibAtlasStaleness();
+      if (st.oldestAgeHours != null && st.oldestAgeHours > STALE_HOURS) {
+        console.warn(`[fib-atlas-staleness] ${st.oldestPair}/${st.oldestLadder} is ${st.oldestAgeHours}h stale (>${STALE_HOURS}h threshold)`);
+        const cfgRaw = await kv.get('fib_atlas_bot_config').catch(() => null);
+        const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+        if (cfg.tg_token && cfg.tg_chat_id) {
+          const days = (st.oldestAgeHours / 24).toFixed(1);
+          await sendTelegram(cfg.tg_token, cfg.tg_chat_id,
+            `⚠️ Fib Atlas — ${st.oldestPair.toUpperCase()} (${st.oldestLadder}) hasn't refreshed in ${days} days (last update ${st.oldestAgeHours}h ago). The nightly rebuild may be failing again. Trigger a manual refresh: POST /api/fib-atlas-bot/refresh-now.`);
+        }
+      } else {
+        console.log(`[fib-atlas-staleness] OK — oldest traded book is ${st.oldestAgeHours}h old`);
+      }
+    } catch (e) { console.error('[fib-atlas-staleness] check failed:', e.message); }
+  });
+  console.log('[level-atlas-staleness] daily check armed at 03:30 London (Telegram-alerts Vote Atlas AND Fib Atlas if any enabled pair\'s book is >15h stale)');
+}
+
 // "Send test alert" for the bot-config.html Vote Atlas tab's Telegram fields
 // — reads whatever tg_token/tg_chat_id is CURRENTLY SAVED in
 // volatility_bot_v2_config (save the form first) and fires one test message,
@@ -17057,6 +17480,22 @@ app.post('/api/volatility-v2/telegram-test', async (_req, res) => {
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
     if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas config yet' });
     const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Vote Atlas v3's own copy of the telegram-test route above — v3 defaults
+// tg_token/tg_chat_id to blank (see volatility_bot_v3.py's DEFAULT_CFG,
+// fixed 2026-09-18 identity-collision cleanup) rather than v2's real live
+// credentials, so this route reads v3's own saved config, never v2's.
+app.post('/api/volatility-v3/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('volatility_bot_v3_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Vote Atlas v3 config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Vote Atlas v3 — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -17079,13 +17518,16 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
   }
 });
 
-// Motif Bot's own test-alert route, same contract as Fib Atlas's above.
-app.post('/api/motif-bot/telegram-test', async (_req, res) => {
+// Fib Atlas v2's own copy — same convention, own config key. The owner's
+// intent for v2 is the SAME Telegram chat as the original bot (2026-09-18),
+// which is a config-page value to copy over, not something this route
+// assumes or defaults to.
+app.post('/api/fib-atlas-bot-v2/telegram-test', async (_req, res) => {
   try {
-    const cfgRaw = await kv.get('motif_bot_config').catch(() => null);
+    const cfgRaw = await kv.get('fib_atlas_bot_v2_config').catch(() => null);
     const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
-    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Motif Bot config yet' });
-    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Motif Bot — test alert. Entered/rejected + TP/SL close alerts will use this bot.');
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot v2 config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot v2 — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
     res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -17141,6 +17583,46 @@ app.get('/api/fib-atlas-bot/trade-log', async (req, res) => {
   }
 });
 
+// Fib Atlas v2's own copy of the trade-log route above — same reconciliation
+// need (compare v2's REAL decisions against the offline backtest) applies
+// just as much to a local-decision-engine bot as the original, arguably
+// more so since parity is the whole point being validated. Reads v2's own
+// KV buckets and MT5 comment prefix ("FA2[...]", not "FA[...]").
+app.get('/api/fib-atlas-bot-v2/trade-log', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = req.query.from ? String(req.query.from) : today;
+    const to = req.query.to ? String(req.query.to) : from;
+    const inRange = (dateStr) => {
+      if (!dateStr) return true;
+      return dateStr >= from && dateStr <= to;
+    };
+    const dates = [];
+    for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const perDay = await Promise.all(dates.map(async dt => {
+      try {
+        const raw = await kv.get(`trade_hist_fib_atlas_bot_v2_status_${dt}`);
+        return raw ? JSON.parse(raw).map(t => ({ ...t, date: dt })) : [];
+      } catch { return []; }
+    }));
+    const trades = perDay.flat().map(t => {
+      const { ladder, side, rung } = _parseFibAtlasDedupeTag(t.comment, 'FA2');
+      let key = null;
+      try { key = resolveKey(t.symbol) || String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      catch { key = String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      return { ...t, key, ladder, side, rung };
+    });
+    const decRaw = await kv.get('fib_atlas_bot_v2_decision_log').catch(() => null);
+    const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
+      .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));
+    res.json({ ok: true, from, to, trades, decisions });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/fib-atlas-bot/all-lines?pairs=eurusd,gbpusd,... — the UNFILTERED
 // per-rung view for both ladders, direct owner ask (2026-09-01) after the
 // filtered plan's margin>=2 cutoff made it impossible to see whether the
@@ -17186,10 +17668,23 @@ app.get('/api/fib-atlas-bot/all-lines', async (req, res) => {
 // (the portfolio page, the tearsheet, volatility_bot_v2's plan producer),
 // not just the bot — fixed at the shared cache, not duplicated per caller.
 // 15 min cadence: frequent enough that a restart's gap-fill catch-up stays
-// small, infrequent enough to be a trivial R2 write volume (R2 has no
-// per-write quota concern the way CF KV does here).
-svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, 15 * 60_000);
-setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up first
+// (R2 has no per-write quota concern the way CF KV does here -- but every
+// byte uploaded IS Railway egress; see the cadence note below.)
+// Cadence (2026-09-17): every 6h, not 15 min, and NO write-after-boot. Each
+// snapshot is the pair's full window as JSON (~13-16 MB) and R2 uploads are
+// Railway egress at $0.05/GB -- 62 warm pairs across the three atlases every
+// 15 min was ~930 MB per tick, ~90 GB/day, the bulk of a $128/month bill.
+// The restore path accepts a snapshot up to MAX_SNAPSHOT_AGE_HOURS (72h) and
+// gap-fills from OANDA regardless, so 6h-stale costs a cold start ~360 M1
+// bars per pair -- nothing. The write-after-boot went too: with several
+// pushes a day it re-sent the whole set on every deploy, for a snapshot that
+// was on R2 from the previous life anyway.
+const ATLAS_SNAPSHOT_MS = 6 * 3600_000;
+svcInterval('atlasSnapshots', _laSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
+// Boot-time pass, 5 min in (after pairs warm): ONLY pairs whose R2 copy is
+// already older than the cadence -- keeps R2 fresh across a day of short
+// process lives without re-sending the whole set per deploy.
+setTimeout(() => _laSaveAllLiveSnapshots({ maxAgeMs: ATLAS_SNAPSHOT_MS }), 5 * 60_000);
 
 // Fib Atlas's own copies of the snapshot job above (js/asiaFibAtlasRoutes.js
 // / js/mondayFibAtlasRoutes.js's own `saveAllLiveSnapshots`, added
@@ -17197,10 +17692,10 @@ setTimeout(_laSaveAllLiveSnapshots, 5 * 60_000);   // let pairs actually warm up
 // wipe this in-memory cache, forcing a full ~16-pair x 2-ladder cold-start
 // marathon repeatedly on a repo with several pushes/day). Two separate
 // module-level caches (Asia, Monday), so two separate interval calls.
-svcInterval('atlasSnapshots', _faAsiaSaveAllLiveSnapshots, 15 * 60_000);
-setTimeout(_faAsiaSaveAllLiveSnapshots, 5 * 60_000);
-svcInterval('atlasSnapshots', _faMondaySaveAllLiveSnapshots, 15 * 60_000);
-setTimeout(_faMondaySaveAllLiveSnapshots, 5 * 60_000);
+svcInterval('atlasSnapshots', _faAsiaSaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
+svcInterval('atlasSnapshots', _faMondaySaveAllLiveSnapshots, ATLAS_SNAPSHOT_MS);
+setTimeout(() => _faAsiaSaveAllLiveSnapshots({ maxAgeMs: ATLAS_SNAPSHOT_MS }), 5 * 60_000);
+setTimeout(() => _faMondaySaveAllLiveSnapshots({ maxAgeMs: ATLAS_SNAPSHOT_MS }), 5 * 60_000);
 
 // ── OI hold-score AUTO-CALIBRATION ────────────────────────────────────────────
 // The hold-score component weights (per-strike GEX, OI flow, persistence, wall
@@ -17291,23 +17786,51 @@ app.get('/api/oi-bot/hold-calibration', async (req, res) => {
 // the fresh basis (LIGHT: only the futures→spot projection moves — greeks/regime stay from the
 // daily analyse, so no intraday flicker), then push the drifted lines to the bot by refreshing
 // its plan. Fail-safe: any pair that can't quote, or an implausible basis, is left untouched.
+//
+// RAN WITH A BROKEN baseUrl SINCE IT WAS WRITTEN. _oiRefreshBasis(inst) was called with no
+// options, so fetchPairedQuote built a RELATIVE url — `/api/futures-quote?...` — which Node's
+// fetch rejects outright ("Failed to parse URL from ..."). That rejection is caught INSIDE
+// fetchPairedQuote itself, so it came back null with no error surfaced anywhere, `oiRefreshBasis`
+// fell through to `{ changed: false }`, and this ran every 15 minutes, for every pair, forever,
+// doing nothing. The sibling /api/oi/reanalyse?live=1 handler hit the identical bug and carries
+// the same baseUrl fix with a comment explaining it — this automatic timer never got it. Found
+// live 2026-09-18: gold's basisAtMs was 156 minutes stale while spot had moved 27 points, and
+// oi_bot's break zones were arming from a spot last refreshed at ingest, hours earlier — a plan
+// meant to track live price all day was silently frozen at whatever it was when pasted.
+//
+// `quoted` (added to oiRefreshBasis's return alongside this fix) is what makes a FUTURE version
+// of this exact failure visible instead of silent: it is true whenever the quote fetch itself
+// worked, independent of whether the basis moved enough to reproject. Zero pairs quoted across
+// two consecutive ticks (30 min) is not "the market was quiet" — every pair having nothing to do
+// at once does not happen — it is the fetch path being broken again.
+let _basisZeroQuoteStreak = 0;
 async function _refreshOIBasis() {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-    let changed = 0;
+    let changed = 0, quoted = 0, n = 0;
     for (const [pair, inst] of Object.entries(store || {})) {
       if (!inst || typeof inst !== 'object') continue;
+      n++;
       try {
-        const r = await _oiRefreshBasis(inst);
+        const r = await _oiRefreshBasis(inst, { baseUrl: `http://127.0.0.1:${PORT}` });
+        if (r?.quoted) quoted++;
         if (r?.changed) { store[pair] = r.inst; changed++; }
         else if (r?.inst) store[pair] = r.inst;   // spot/futures freshened even on sub-pip drift
       } catch { /* leave this pair as-is */ }
     }
+    if (n && quoted === 0) {
+      if (++_basisZeroQuoteStreak >= 2) {
+        console.warn(`[oi-basis] ${_basisZeroQuoteStreak} consecutive ticks with ZERO of ${n} pair(s) ` +
+          `quoted — the live futures-quote fetch looks broken, not just quiet. Basis is not refreshing.`);
+      }
+    } else {
+      _basisZeroQuoteStreak = 0;
+    }
     if (changed) {
       await kv.put('oi_store', JSON.stringify({ data: store, timestamp: Date.now() }));
       try { await _refreshOIBotZones(); } catch { /* zones refresh is best-effort */ }   // push drifted lines to the bot
-      console.log(`[oi-basis] re-projected ${changed} pair(s) onto a fresh basis + refreshed bot zones`);
+      console.log(`[oi-basis] re-projected ${changed} pair(s) onto a fresh basis + refreshed bot zones (${quoted}/${n} quoted)`);
     }
     return changed;
   } catch (e) { console.warn('[oi-basis] refresh failed:', e.message); return 0; }
@@ -18214,6 +18737,9 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
       }
       const terms = String(req.query.terms || '') === 'futures' ? 'futures' : 'spot';   // default spot; 'futures' for a futures/CME chart
       const allExpiry = String(req.query.allExpiry || '') === '1';   // full unbounded term structure (vs the default day-band selection)
+      // `?mode=today` — only the primary + day books the model analyses, no other-expiry /
+      // catch / far levels, ordered by price. See buildOILevelText's note on the three tiers.
+      const mode = String(req.query.mode || '') === 'today' ? 'today' : 'full';
       // The day's trading band per pair (from the forecast's annualised vol, K=3 ≈ beyond the
       // 99th-pct day). Drives which OTHER-expiry walls show by default: in-band + a catch level.
       // `?bandK=` overrides the multiplier. Flat-vol fallback inside oiDayBandFrac when no vol.
@@ -18224,7 +18750,7 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
         const vol = fk && forecastState.latest?.instruments?.[fk]?.vol_annual;
         bandByPair[p] = _oiDayBand(Number.isFinite(vol) ? vol : null, p, { k: bandK });
       }
-      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair });
+      const oiText = buildOILevelText(store, { generated: forecastState.latest.session_date, cot, reachByPair, terms, allExpiry, bandByPair, mode });
       if (oiText && !oiText.includes('no OI data')) text += '\n\n' + oiText;
     } catch { /* OI is a bonus section — never fail the zones export over it */ }
     res.type('text/plain').send(text);
@@ -30609,7 +31135,7 @@ async function refreshMacroContext() {
 // cadence. (seriesDeltas is now calendar-day aware too, so a monthly series
 // degrades honestly instead of silently; this is the other half of that fix.)
 const _FRED_DASH_SERIES = {
-  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10',
+  vix: 'VIXCLS', vix3m: 'VXVCLS', us2y: 'DGS2', us5y: 'DGS5', us10y: 'DGS10', us30y: 'DGS30',
   dxy: 'DTWEXBGS', hy: 'BAMLH0A0HYM2', nfci: 'NFCI',
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE',
   aud_usd: 'DEXUSAL', usd_jpy: 'DEXJPUS',
@@ -30842,6 +31368,9 @@ svcTimeout('scorecardHistory', () => _recordScorecardHistory().catch(e => consol
 svcTimeout('bookHistory', () => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
 svcTimeout('scoreLedger', () => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
 _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.message));
+// First desk-watch pass after the FRED history has had a chance to seed (the
+// triggers read it); after kv.load() because the store is read-modify-write.
+setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
@@ -31202,22 +31731,71 @@ const REFERENCE_ENGINE_PAIRS = [
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
   'CHFJPY', 'BTCUSD',
 ];
-// Standalone nightly M1 tail-append job (2026-09-12 -> REMOVED 2026-09-15):
+// Standalone nightly M1 tail-append job (2026-09-12 -> REMOVED 2026-09-15
+// -> REINSTATED as a shared PRE-FETCH phase, 2026-09-16): first version
 // built to fix the R2 parquet archive `loadM1ForPair` reads being a
-// manually re-backfilled snapshot with no scheduled refresh. Turned out to
-// be solving a non-problem AND actively harmful: every real consumer of
-// `loadM1ForPair` (Level Atlas, Session Path, Session Handoff, Asia/Monday
-// Fib Atlas — all five reference-engine-rebuild sub-jobs below) already
-// tops itself up live via `gapFillPacked` at generation time, so the base
-// archive's own staleness never actually reached a live page. This job
-// instead added a second, redundant OANDA-fetch pass at 00:15 — 15 minutes
-// before the 00:30 rebuild's own five (then-concurrent) fetch loops — and
-// direct Railway log evidence showed the whole process crashing silently
-// (no stack trace, consistent with an OOM kill) partway through its own
-// 31-pair loop on multiple nights, contributing to the same memory pressure
-// that was starving the rebuild below. `loadM1ForPair`'s tail-merge logic
-// (js/volBacktestM1Engine.js, M1_TAIL_PREFIX) is left in place — a real,
-// tested capability, just nothing schedules a writer for it anymore.
+// manually re-backfilled snapshot with no scheduled refresh, then removed
+// as redundant once it was clear every reference-engine sub-job already
+// tops itself up live via its OWN `gapFillPacked` call at generation time —
+// but that left FIVE independent OANDA fetches per overlapping pair every
+// night (Level Atlas + Session Path + Session Handoff + Asia Fib + Monday
+// Fib Atlas all separately re-fetching the SAME candles for e.g. EURUSD),
+// and was itself found to have crashed the process solo on 2026-09-12/13
+// BEFORE the 00:30 tick's own concurrency issue even entered the picture.
+//
+// This version fixes both problems by fetching ONCE, shared: runs first, at
+// 00:05 London (comfortably after the London-midnight session boundary
+// Level Atlas/Session Path/Session Handoff all key off — see
+// bucketM1IntoSessions's own doc — so it's not cutting that boundary short),
+// tops up every REFERENCE_ENGINE_PAIRS pair's M1_TAIL_PREFIX tail file in R2
+// ONE pair at a time (discarding each pair's fetched bars before moving to
+// the next — no cross-pair accumulation, the exact discipline this session
+// learned the hard way tonight testing throttle variants locally). By the
+// time the 00:30 rebuild's five sub-jobs run, `loadM1ForPair` already
+// returns current data for everything this job successfully covered, so
+// each engine's own `gapFillPacked` call becomes a fast near-no-op instead
+// of a real fetch — NOT removed from those engines, deliberately kept as a
+// per-pair fallback: if this job fails or only partially completes for some
+// pairs, those specific pairs simply fall back to today's already-proven
+// per-engine top-up instead of silently staying stale. No hard dependency
+// between the two phases, so a slow or partial Phase 1 degrades gracefully
+// rather than blocking Phase 2.
+
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(0, 5, async () => {
+    let enabled = process.env.M1_SHARED_GAPFILL !== '0';   // env opt-OUT, defaults on
+    try {
+      const raw = await kv.get('caps');
+      if (raw) { const c = JSON.parse(raw); if (typeof c.m1SharedGapFill === 'boolean') enabled = c.m1SharedGapFill; }
+    } catch (e) { console.error('[m1-shared-gapfill] caps read failed:', e.message); }
+    if (!enabled) { console.log('[m1-shared-gapfill] nightly tick — disabled (Caps.m1SharedGapFill=false or M1_SHARED_GAPFILL=0)'); return; }
+    console.log(`[m1-shared-gapfill] nightly tick firing — ${REFERENCE_ENGINE_PAIRS.length} instruments`);
+    const nowSec = Math.floor(Date.now() / 1000);
+    let appended = 0, skipped = 0, failed = 0;
+    for (const sym of REFERENCE_ENGINE_PAIRS) {
+      const pair = sym.toLowerCase();
+      try {
+        let osym; try { osym = oandaSymbol(pair); } catch { skipped++; continue; }
+        const base = await loadM1ForPair(pair); // base parquet + any existing tail, so "last known point" already accounts for prior nights' appends
+        if (!base?.n) { skipped++; continue; }
+        const lastSec = base.times[base.n - 1];
+        if (nowSec - lastSec < 3600) { skipped++; continue; } // already current within an hour — nothing to do
+        const bars = await _fetchM1Gap(osym, lastSec + 60, nowSec, _btFetchM1Range, { onLog: m => console.log(`[m1-shared-gapfill] ${sym}: ${m}`) });
+        if (!bars.length) { skipped++; continue; }
+        if (bars.gaps?.length) console.warn(`[m1-shared-gapfill] ${sym}: ${bars.gaps.length} window(s) never fetched after retries — appending what did succeed`);
+        const existing = (await _r2GetJSON(`${_M1_TAIL_PREFIX}/${pair}.json`)) ?? { bars: [] };
+        const combined = existing.bars.concat(bars.map(b => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close, volume: b.volume ?? 0 })));
+        await _r2PutJSON(`${_M1_TAIL_PREFIX}/${pair}.json`, { bars: combined, updatedAt: new Date().toISOString() });
+        appended++;
+      } catch (e) {
+        failed++;
+        console.error(`[m1-shared-gapfill] ${sym} failed:`, e.message);
+      }
+    }
+    console.log(`[m1-shared-gapfill] done: ${appended} appended, ${skipped} skipped (already current/no OANDA symbol), ${failed} failed`);
+  });
+  console.log('[m1-shared-gapfill] nightly tick armed at 00:05 London (shared M1 top-up feeding all five reference-engine sub-jobs, 25min before the 00:30 rebuild — gated by Caps.m1SharedGapFill or M1_SHARED_GAPFILL=0 to disable)');
+}
 
 if (process.env.OANDA_KEY) {
   _scheduleDailyLondon(0, 30, async () => {
@@ -31239,9 +31817,11 @@ if (process.env.OANDA_KEY) {
     // concurrent memory pressure before Level Atlas's heavier, index-inclusive
     // loop could finish. Running them one at a time trades a longer total
     // window (this is an overnight batch job; wall-clock time is free) for a
-    // much lower peak memory footprint. Order: Level Atlas first (heaviest,
-    // and the one actually found broken), then the two session engines, then
-    // both Fib Atlas variants.
+    // much lower peak memory footprint. Order (updated 2026-09-18, see the
+    // reorder comment right below Level Atlas's own runSeq call): Level Atlas
+    // first (heaviest, and the one actually found broken in the original
+    // 2026-09-15 incident), then Asia/Monday Fib Atlas, then the two session
+    // engines last.
     async function runSeq(label, start) {
       try {
         const { done } = start();
@@ -31252,8 +31832,21 @@ if (process.env.OANDA_KEY) {
       }
     }
     await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
-    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
-    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
+    // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
+    // owner request once fib_atlas_bot_v2 made Fib Atlas freshness load-
+    // bearing for a second live/paper bot, not just the original). The crash
+    // this whole chain has never been root-caused (needs Railway logs, see
+    // this file's own history) still dies at a SHIFTING point most nights —
+    // this doesn't fix that, it just decides who eats the risk: whichever
+    // engine(s) run LAST are the ones most exposed to a death from
+    // accumulated pressure across the chain. Level Atlas and Fib Atlas both
+    // feed a LIVE/paper trading bot's plan directly (Vote Atlas/v3, the two
+    // Fib Atlas bots); Session Path/Session Handoff do not (checked
+    // 2026-09-18 — no plan producer imports either route's rebuilt book,
+    // they're standalone research/dashboard engines), so this reorder moves
+    // the two trading-critical engines ahead of the two that aren't.
+    //
     // Asia/Monday Fib Atlas are FX/gold-only (Pine indicator's own scope) —
     // filter the shared pair list rather than adding a second hand-maintained
     // one. Exclusion list uses the SAME canonical 'SPX'/'DOW' spelling
@@ -31261,9 +31854,34 @@ if (process.env.OANDA_KEY) {
     // 2026-08-28) — not the stale 'SPX500'/'US30' broker-ticker spelling,
     // which would silently stop excluding them here once the array's own
     // entries were renamed.
-    const fibAtlasPairs = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    const fibAtlasPairsBase = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    // Rotate the starting pair each night (2026-09-16) — found by comparing
+    // every Fib Atlas pair's own `generatedAt` after this file's own
+    // 2026-09-15 cross-engine concurrency fix above (a28ff41): GOLD (this
+    // list's own item 0) completed on the very first sequential run, but
+    // EURUSD (item 1) and everything after it did NOT (stuck 4+ days
+    // behind). So a single pair's own gap-fill can apparently still be
+    // heavy enough to kill the whole process mid-list, independent of the
+    // cross-engine concurrency that fix already serializes against.
+    // `runOne`'s own per-pair try/catch (startRunJob's loop,
+    // asiaFibAtlasRoutes.js/mondayFibAtlasRoutes.js) can only catch a
+    // THROWN exception, not an OOM kill of the whole container — so a
+    // fixed list order always dies at the same point and starves
+    // everything after it, every single night, forever (this exact
+    // symptom documented recurring across multiple past sessions, MD
+    // files/LEGO_MODULES.md, never actually root-caused for lack of
+    // Railway log access). Day-of-year rotation needs no persisted state
+    // and is self-healing across restarts: whatever pair a persistent
+    // crash-after-K pattern currently starves gets a turn as an EARLY pair
+    // within one rotation cycle (~24 nights) instead of never.
+    const _dayOfYear = Math.floor((Date.now() - Date.UTC(new Date().getUTCFullYear(), 0, 0)) / 86400_000);
+    const _fibRotOffset = _dayOfYear % fibAtlasPairsBase.length;
+    const fibAtlasPairs = [...fibAtlasPairsBase.slice(_fibRotOffset), ...fibAtlasPairsBase.slice(0, _fibRotOffset)];
+    console.log(`[reference-engine-rebuild] Fib Atlas pair order rotated to start at "${fibAtlasPairs[0]}" (offset ${_fibRotOffset}/${fibAtlasPairsBase.length}, day-of-year ${_dayOfYear})`);
     await runSeq('Asia Fib Atlas', () => _startAsiaFibAtlasRunJob({ instruments: fibAtlasPairs }));
     await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
+    await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+    await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     console.log('[reference-engine-rebuild] nightly tick complete');
   });
   console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');

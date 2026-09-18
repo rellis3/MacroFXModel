@@ -1,0 +1,209 @@
+"""volatility_bot_v3 (Level Atlas Vote Portfolio) engine — the PURE execution
+logic (touch detection + one-shot state). Mirrors oi_bot/engine.py's shape and
+contract exactly (same split: this file has no network/clock/broker; the
+executor in volatility_bot_v3.py owns all of that).
+
+The strategy itself lives in JS (js/levelAtlasVoteReview.js's voteDecision +
+priceBarrierTrade) and is shipped, fully computed and priced, in the
+volatility_bot_v3_plan artifact (server.js's _refreshVolatilityV2Plan) — this
+engine never re-derives a vote, a level, or a stop. It only decides WHEN a
+planned zone becomes tradeable as live price moves, and guarantees each zone
+fires at most once.
+
+A zone from the plan is {zone_id, side, rung, decision, margin, entry, sl, tp,
+rationale} (see server.js's _volatilityV2PriceZone). Unlike OI's fade/break/
+maxpain modes, Level Atlas has exactly ONE trigger shape: price must reach
+`entry` (== the rung's level) from the direction its own `side` implies — an
+'up' rung is approached from below (arm while price < entry, fire once price
+>= entry); a 'down' rung is approached from above (fire once price <= entry).
+There is no OI-style "compare entry to plan spot" step because `side` already
+encodes which way price must travel.
+
+Pure: no network / clock / broker. Offline-testable (engine_test.py).
+"""
+from __future__ import annotations
+
+
+def bet_direction(zone: dict) -> str:
+    """Which way a decision+side actually bets, in market terms — mirrors
+    js/levelAtlasVoteReview.js's betDirection EXACTLY (a wrong sign here would
+    silently trade the opposite of what the backtest validated). A fade on an
+    up-touch bets DOWN (price faded back toward the level from above); a
+    follow on an up-touch bets UP (price kept going the way it was already
+    moving). Returns 'long' or 'short'.
+    """
+    with_side = zone.get("decision") == "follow"
+    is_up = zone.get("side") == "up"
+    return "long" if with_side == is_up else "short"
+
+
+def arm_above(zone: dict) -> bool:
+    """True when price must RISE to reach this zone's entry — determined
+    purely by `side` ('up' rungs sit above the session open, 'down' rungs
+    below it), unlike oi_bot's zones where the arm direction is inferred by
+    comparing entry to the plan spot."""
+    return zone.get("side") == "up"
+
+
+def should_fire(zone: dict, px: float, tol: float = 0.0) -> bool:
+    """Has live price reached this zone's entry from the side its own `side`
+    implies? `tol` (price units) is the same touch-tolerance slack oi_bot
+    uses around an entry level."""
+    entry = float(zone.get("entry", 0))
+    if arm_above(zone):
+        return px >= entry - tol
+    return px <= entry + tol
+
+
+def zone_key(zone: dict) -> str:
+    """The zone's own stable id, straight from the plan — server.js's
+    `_refreshVolatilityV2Plan` already makes this unique per (pair, date,
+    side, rung, rearm-instance) and stable across polls for the CURRENT armed
+    instance. A thin wrapper (not `zone['zone_id']` inline everywhere) so a
+    future id-scheme change has one call site."""
+    return zone["zone_id"]
+
+
+def make_spec(instrument: str, z: dict) -> dict:
+    """A ready-to-execute order spec from a fired zone — mirrors
+    oi_bot.engine.make_spec's contract (instrument/zone_id/dir_up/entry/sl/tp/
+    rationale), minus fields Level Atlas has no equivalent of (mode/regime/
+    hold/tp2 — there is no scale-out ladder here, one bracket per zone)."""
+    dir_up = bet_direction(z) == "long"
+    return {
+        "instrument": instrument,
+        "zone_id": zone_key(z),
+        "side": z.get("side"),
+        "rung": z.get("rung"),
+        "decision": z.get("decision"),
+        "dir_up": dir_up,
+        "entry": float(z.get("entry", 0)),
+        "sl": float(z["sl"]) if z.get("sl") is not None else None,
+        "tp": float(z["tp"]) if z.get("tp") is not None else None,
+        # The plan's FULL, untightened stop distance — sizing must always use
+        # this, never `sl` (which early-exit may tighten for a fade). Found
+        # 2026-08-31: this field was silently dropped here, so
+        # `spec.get("sizingSl", spec["sl"])` in volatility_bot_v3.py always
+        # fell through to `sl` — dormant only because `early_exit` currently
+        # defaults off (sl == sizingSl in that case); would silently
+        # reactivate the implicit-leverage sizing bug the moment it's enabled.
+        "sizingSl": float(z["sizingSl"]) if z.get("sizingSl") is not None else (float(z["sl"]) if z.get("sl") is not None else None),
+        "margin": z.get("margin"),
+        "rationale": z.get("rationale", ""),
+        # 2026-09-18: live-vs-backtest divergence audit (server.js's
+        # _volatilityV2PriceZone doc has the full account) — the compact
+        # per-dimension vote detail (dimKey/bucket/favors) behind this zone's
+        # margin, logged at entry time so a future day's decision_log entry
+        # can be diffed dimension-by-dimension against the backtest's own
+        # computation for the same touch, instead of only comparing the
+        # summary margin (which is all today's incident could reconstruct).
+        "voteDims": z.get("voteDims"),
+    }
+
+
+def stack_conflict(symbols, dir_up: bool, entry: float, open_positions: list,
+                    min_dist: float) -> dict | None:
+    """Same contract as oi_bot.engine.stack_conflict — the first OPEN position
+    that would make a new entry a redundant same-direction stack near an
+    already-open one on this instrument, else None. `min_dist < 0` disables
+    the check; `min_dist is None` also disables it (fail open, not closed —
+    a missing config value must not silently block every entry)."""
+    if min_dist is None or min_dist < 0:
+        return None
+    want = "BUY" if dir_up else "SELL"
+    for p in (open_positions or []):
+        if p.get("symbol") not in symbols or p.get("direction") != want:
+            continue
+        op = p.get("open_price")
+        if op is None:
+            continue
+        try:
+            if abs(float(op) - float(entry)) <= min_dist:
+                return p
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+class VoteSession:
+    """Per-instrument execution state: the plan's zones + one-shot bookkeeping.
+    Mirrors oi_bot.engine.OISession's contract (primed/entered/decide/
+    set_zones/mark_entered) minus the OI-specific streak/break-confirm
+    machinery Level Atlas has no use for (there is no 'break' dwell filter
+    here — every zone fires on first touch, the same discipline the backtest
+    itself uses).
+
+    ``primed``  — zones already triggered when the plan loaded (skip — never
+                  retro-enter a level price has already left).
+    ``entered`` — zones a position has been opened for (fire once, ever).
+    ``touches`` — how many times price has REACHED each zone's trigger
+                  (rising-edge count) — telemetry only, mirrors oi_bot's.
+    """
+
+    def __init__(self, instrument: str, zones: list | None = None):
+        self.instrument = instrument
+        self.zones = list(zones or [])
+        self.primed: dict[str, dict] = {}
+        self.entered: set[str] = set()
+        self.touches: dict[str, int] = {}
+        self._firing: dict[str, bool] = {}   # last-tick trigger state (edge detection)
+
+    def set_zones(self, zones) -> None:
+        """Adopt a refreshed plan slice WITHOUT losing one-shot state (a
+        re-published plan keeps the same zone_ids for a still-armed instance,
+        so entered/primed still apply — a NEW rearm gets a NEW zone_id from
+        the producer, so it naturally starts fresh)."""
+        self.zones = list(zones or [])
+
+    def decide(self, px: float, dry_run: bool = False, tol: float = 0.0,
+               now: float | None = None, max_retro: float = 0.0) -> list:
+        """Zones that fire at `px` this tick. `dry_run` primes (marks zones
+        already past their entry) instead of returning specs — used to guard
+        against retro-entering a crossing that happened while this session
+        had no visibility of it. `now` (epoch seconds, injected so the
+        engine stays clock-free) is stamped onto each new primed record.
+
+        `max_retro` (price units): confirmed live 2026-09-18 that dry_run
+        priming isn't only a one-time startup guard -- volatility_bot_v3.py
+        calls it on EVERY plan-sync cycle (every plan_secs, independently
+        timed from the real tick loop), so a genuinely fresh zone racing
+        against its own first dry_run pass would get permanently
+        primed-and-skipped over an overshoot of a fraction of a pip, same
+        as a real overnight gap -- there was no way to tell "just touched,
+        barely past" from "missed while offline for hours" apart. `tol`
+        doesn't help here: it only widens the pre-trigger boundary, it
+        doesn't forgive an overshoot once past. A zone within `max_retro`
+        of its entry is left UN-primed instead -- eligible for the real
+        (non-dry_run) tick loop to still enter it normally on its own next
+        pass, rather than being permanently barred by a race it never had a
+        fair chance to win."""
+        if px is None:
+            return []
+        out = []
+        for z in self.zones:
+            zid = zone_key(z)
+            if zid in self.entered or zid in self.primed:
+                continue
+            firing = should_fire(z, px, tol)
+            if not dry_run:
+                if firing and not self._firing.get(zid, False):
+                    self.touches[zid] = self.touches.get(zid, 0) + 1
+                self._firing[zid] = firing
+            if not firing:
+                continue
+            if dry_run:
+                entry = float(z.get("entry", 0))
+                past = abs(float(px) - entry)
+                if past <= max_retro:
+                    continue   # still within tolerance -- leave un-primed, not a real gap
+                self.primed[zid] = {
+                    "at": now, "price": float(px), "entry": entry,
+                    "side": z.get("side"), "decision": z.get("decision"),
+                    "past": round(past, 6),
+                }
+            else:
+                out.append(make_spec(self.instrument, z))
+        return out
+
+    def mark_entered(self, zid: str) -> None:
+        self.entered.add(zid)

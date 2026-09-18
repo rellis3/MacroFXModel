@@ -13,11 +13,13 @@
 // that index, and it keeps every one of those legacy names working (`legacyEnv`)
 // so nothing set in Railway today changes meaning.
 //
-// DEFAULTS DO NOT CHANGE BEHAVIOUR. Every service defaults to the state it was
-// already in before this registry existed (`on: true` unless the code was
-// already opt-IN). Deploying this file alone switches nothing off. Turning
-// something off is an explicit act in the Railway env — see
-// `MD files/RAILWAY_SERVICE_FLAGS.md`.
+// DEFAULTS. Every service shipped defaulting to the state it was already in
+// before this registry existed, so the registry's own deploy changed nothing.
+// That is still true of every row EXCEPT the five HMM jobs, which the owner
+// switched off on 2026-09-16 (see their `on: false` and the note on each). A
+// default that is `false` is a deliberate, dated decision — not a tidy-up — and
+// each one says what stops working. `SVC_<ID>=1` turns any of them back on from
+// the Railway env without a deploy. See `MD files/RAILWAY_SERVICE_FLAGS.md`.
 //
 // PRECEDENCE (first match wins)
 //   1. `SVC_<ID>` / a legacy alias  — per-service, explicit, always wins
@@ -81,22 +83,32 @@ export const SERVICES = [
 
   // ── HMM regime family ────────────────────────────────────────────────────
   { id: 'hmm5m', where: 'server', label: '5m HMM regime (v1)',
-    cadence: 'every HMM5M_REFRESH_MS (30s default) × every configured pair', cost: 'high', lean: true, on: true,
+    cadence: 'every HMM5M_REFRESH_MS (30s default) × every configured pair', cost: 'high', lean: true, on: false,
     feeds: '/api/hmm5m → indexv2 + desk tiles, Telegram regime-change alerts, regime history',
-    note: 'Per tick: one 500-bar OANDA fetch and one HMM fit PER PAIR. With 26 pairs that is ~2,500 fetch+fit/hour.' },
+    note: 'OFF since 2026-09-16 (owner). Per tick it was one 500-bar OANDA fetch and one HMM fit PER PAIR — ~2,500 fetch+fit/hour at 26 pairs. '
+        + 'While off, two things in the LIVE level alerts stop silently: the polarity-flip direction override (detectPolarityFlip reads state.hmm5mBars, '
+        + 'which only this job fills, so a broken-and-retested level keeps its old direction) and the VuManChu M5 reads in the alert text/chart '
+        + '(vumanchuM5Bars returns null). Neither errors — they just stop happening.' },
   { id: 'hmm5mV2', where: 'server', label: '5m HMM regime (v2 shadow)',
-    cadence: 'every HMM5M_REFRESH_MS (30s default) × every configured pair', cost: 'high', lean: false, on: true,
+    cadence: 'every HMM5M_REFRESH_MS (30s default) × every configured pair', cost: 'high', lean: false, on: false,
     feeds: '/api/hmm5m-v2 → RegimeV2/regime_bot_v2.py, RegimeV4, bot/regime_bot.py, indexv2',
-    note: 'Doubles the hmm5m workload. Switching it off blinds any regime bot polling /api/hmm5m-v2 — including ones on the MT5 box.' },
+    note: 'OFF since 2026-09-16 (owner). Doubled the hmm5m workload. While off, /api/hmm5m-v2 serves `{}` — a 200, not an error — so RegimeV2/regime_bot_v2.py '
+        + '(started by start.sh, live money) reads no regime for any pair, fails `regime not in TRADEABLE` and sits in `watching` forever. It does not trade. '
+        + 'Same for RegimeV4 / bot/regime_bot.py and anything on the MT5 box. Consider SVC_BOT_REGIME_V2=0 too rather than paying for a process that cannot act.' },
   { id: 'hmm1h', where: 'server', label: '1h HTF HMM (v2)',
-    cadence: 'every 5 min × every configured pair', cost: 'med', lean: true, on: true,
-    feeds: '/api/hmm1h-v2 → regime_bot_v2.py gate E7, RegimeV4, desk' },
+    cadence: 'every 5 min × every configured pair', cost: 'med', lean: true, on: false,
+    feeds: '/api/hmm1h-v2 → regime_bot_v2.py gate E7, RegimeV4, desk',
+    note: 'OFF since 2026-09-16 (owner). This one fails OPEN, not closed: regime_bot_v2.py guards E7 with `if ... && h1_regime`, so an empty feed SKIPS the '
+        + '"1h opposed" check rather than blocking the trade — the bot would trade with one less safety gate. Moot while hmm5mV2 is also off (the bot never '
+        + 'reaches the gates), but turning hmm5mV2 back on WITHOUT this one restores trading minus E7. Re-enable them together.' },
   { id: 'hmm30m', where: 'server', label: '30m MTF HMM (v2)',
-    cadence: 'every 5 min × every configured pair', cost: 'med', lean: false, on: true,
-    feeds: '/api/hmm30m-v2 → regime_bot_v7.py primary signal (NOT started by start.sh — MT5-box bot)' },
+    cadence: 'every 5 min × every configured pair', cost: 'med', lean: false, on: false,
+    feeds: '/api/hmm30m-v2 → regime_bot_v7.py primary signal (NOT started by start.sh — MT5-box bot)',
+    note: 'OFF since 2026-09-16 (owner). The safest of the five: nothing in this container consumes it. Only matters if regime_bot_v7.py is live on the MT5 box.' },
   { id: 'hmm2h', where: 'server', label: '2h HTF HMM (v2)',
-    cadence: 'every 10 min × every configured pair', cost: 'med', lean: false, on: true,
-    feeds: '/api/hmm2h-v2 → regime_bot_v7.py 4× confirmation gate (NOT started by start.sh)' },
+    cadence: 'every 10 min × every configured pair', cost: 'med', lean: false, on: false,
+    feeds: '/api/hmm2h-v2 → regime_bot_v7.py 4× confirmation gate (NOT started by start.sh)',
+    note: 'OFF since 2026-09-16 (owner). As hmm30m: no consumer inside this container. V7 on the MT5 box is the only thing that would notice.' },
   { id: 'regimeHistory', where: 'server', label: 'Regime-history flush (local KV + R2)',
     cadence: '5 min local, 60 min R2', cost: 'low', lean: true, on: true,
     feeds: 'regime-viewer.html history — pure persistence of what the HMM loops already computed' },
@@ -119,6 +131,9 @@ export const SERVICES = [
     cadence: '5 engines, each every 30 min', cost: 'med', lean: false, on: true,
     feeds: 'fomc-sentiment.html, ecb-sentiment.html, boe-sentiment.html, boj-sentiment.html, beige-book.html',
     note: 'A run downloads and parses statement PDFs and calls the Anthropic API — that is an ANT_KEY bill as well as CPU. Releases are calendar-scheduled: the poll is a no-op outside meeting days.' },
+  { id: 'serviceStats', where: 'server', label: 'Service-stat flush to R2',
+    cadence: 'every SVC_STATS_FLUSH_MS (15 min default) + once on SIGTERM', cost: 'low', lean: true, on: true,
+    feeds: '/api/services\'s `today`/`window` totals. This is the meter itself: off ⇒ the per-job numbers go back to resetting on every redeploy, which is what made them useless in the first place.' },
   { id: 'morningBrief', where: 'server', label: 'Auto morning brief',
     cadence: '20 min clock, fires once/day at the configured London hour', cost: 'low', lean: false, on: true,
     feeds: 'The scheduled Telegram morning brief + per-pair briefs (brief-config.html). A run calls the Anthropic API — ANT_KEY spend, not just CPU. No-op until something is enabled in the brief config.' },
@@ -196,8 +211,11 @@ export const SERVICES = [
     cadence: 'every 45s', legacyEnv: ['FIB_ATLAS_PLAN_REFRESH'], cost: 'high', lean: false, on: true,
     feeds: 'KV plan read by fib_atlas_bot' },
   { id: 'atlasSnapshots', where: 'server', label: 'Level/Fib Atlas live-cache R2 snapshots',
-    cadence: '3 jobs, each every 15 min', cost: 'med', lean: false, on: true,
+    cadence: '3 jobs, each every 6h + a stale-only pass 5 min after boot (was 15 min: ~90 GB/day of egress, 2026-09-17)', cost: 'low', lean: false, on: true,
     feeds: 'Nothing reads these directly — they exist so a Railway restart gap-fills instead of paying a full multi-year parquet cold start. Switching them off makes every redeploy much more expensive, not less.' },
+  { id: 'spreadProfile', where: 'server', label: 'Measured spread per pair per UTC hour (motif spread-gate evidence)',
+    cadence: 'every 10 min, one OANDA pricing call for 26 pairs', cost: 'low', lean: true, on: true,
+    feeds: '/api/spread-profile. The motif strategy has a 20-pip stop, which makes its 2.0p spread gate the biggest lever in its pair universe, and the gate rests on an estimate table -- this is the measurement that table gets replaced with.' },
   { id: 'oiBot', where: 'server', label: 'OI gamma bot support (zones, basis, history, calibration)',
     cadence: '5 jobs: 10 min ×2, 15 min, 30 min, 6h', cost: 'med', lean: false, on: true,
     feeds: 'oi-dashboard.html, oi_bot zones//basis KV' },

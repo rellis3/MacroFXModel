@@ -142,7 +142,23 @@ function fmtCot(c) {
 // NO price coordinate — it is positioning, not a level — so it is emitted on the per-pair
 // context line the indicator ignores, never as an `OI {price}` line. Drawing a horizontal
 // line for it would invent a price the data does not contain.
-export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false, bandByPair = null } = {}) {
+// mode: 'full' (default — everything below) or 'today'.
+//
+// `today` is the answer to "there is too much on this sheet and I can't tell what the
+// model actually looked at". The full export has three tiers that look alike on the
+// chart and are not: (1) the PRIMARY and DAY expiries, which are the only two books the
+// model analyses — every Reject/Break, heat, hold score and regime call is computed on
+// them; (2) every OTHER expiry's headline strikes that happen to fall inside today's
+// trading band, drawn so a reachable level is never missing but carrying no analysis
+// at all; (3) a `catch` level beyond the band each side. On a Gold sheet that is ~30
+// lines, of which nine are tier 1. `today` keeps tier 1 only — walls, max pain, gamma /
+// gex flips from the two analysed books, plus the single-price computed levels
+// (charm / vanna flip, expected-move band) — drops anything flagged `far`, and orders
+// the lines by PRICE rather than by type so that levels stacked at one strike sit
+// together in the text the way they sit on the chart. The Pine indicator reads the
+// lines identically in both modes; it is a filter, not a format.
+export function buildOILevelText(store, { topWalls = null, minTier = "moderate", maxWalls = 3, generated = null, cot = null, reachByPair = null, terms = 'spot', allExpiry = false, bandByPair = null, mode = 'full' } = {}) {
+  const today = mode === 'today';
   // bandByPair: { pair: bandFrac } — the day's trading band (from the vol forecast). When
   // present, the DEFAULT export shows every expiry's walls WITHIN the band + a catch level
   // beyond it (so a blowout always has a level ahead), instead of only primary+day. The
@@ -162,6 +178,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
            + ' hold; jumpy = hedging feeds the move so the same level gives way.');
   lines.push('  hNN on a wall = HOLD score 0-100 (react-vs-blow-through: per-strike dealer GEX'
            + ' · persistence · wall multiple) — high tends to hold, low tends to give way.');
+  if (today) lines.push('  MODE: today — only the primary + day books (the two the model analyses) and the'
+                      + ' computed flips/expected-move band; other-expiry walls, catch levels, far levels and'
+                      + ' (when P(touch) was computed) levels the session cannot reach are omitted;'
+                      + ' lines ordered by price so stacked strikes sit together.');
   lines.push('');
 
   const entries = Object.entries(store || {});
@@ -180,6 +200,12 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // Futures-terms display converter (identity in spot mode). Only the printed number
     // changes — sorting, dedup and the P(touch) key all still use the spot price.
     const px = (p) => futuresTerms ? oiFuturesTermsPrice(p, inst) : p;
+    // Every drawable `OI` line for this pair goes through here. Full mode pushes in the
+    // order the code reaches it (byte-identical to before); `today` collects them and
+    // emits once, sorted by price, so a strike with four things on it reads as four
+    // adjacent lines instead of four lines scattered across the type groups.
+    const oiOut = [];
+    const emitOI = (price, line) => { if (today) oiOut.push({ price, line }); else lines.push(line); };
     // Order by type group, then by price descending (top of the book first).
     levels.sort((a, b) => (TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type)) || (b.price - a.price));
 
@@ -245,15 +271,15 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (gk) {
       lines.push(`· charm/vanna (IV ${gk.dteDays}DTE): CEX ${gk.cex >= 0 ? '+' : ''}${gk.cex} · VEX ${gk.vex >= 0 ? '+' : ''}${gk.vex}${gk.vanna ? ` · vanna ${gk.vanna.state}${gk.vanna.firing ? ' firing' : ''}` : ''}`);
       // charm/vanna flip levels as drawable OI lines (the regime boundaries for each).
-      if (gk.charmFlip != null) lines.push(`OI ${px(Number(gk.charmFlip)).toFixed(dp)} : charm_flip`);
-      if (gk.vannaFlip != null) lines.push(`OI ${px(Number(gk.vannaFlip)).toFixed(dp)} : vanna_flip`);
+      if (gk.charmFlip != null) emitOI(Number(gk.charmFlip), `OI ${px(Number(gk.charmFlip)).toFixed(dp)} : charm_flip`);
+      if (gk.vannaFlip != null) emitOI(Number(gk.vannaFlip), `OI ${px(Number(gk.vannaFlip)).toFixed(dp)} : vanna_flip`);
     }
     // Expected-move band as two OI-parseable levels so the indicator can draw the
     // option-implied range live; plus the directional risk-reversal tilt (EOD data).
     const em = inst.expectedMove;
     if (em && em.upper != null) {
-      lines.push(`OI ${px(em.upper).toFixed(dp)} : exp_move_hi`);
-      lines.push(`OI ${px(em.lower).toFixed(dp)} : exp_move_lo`);
+      emitOI(em.upper, `OI ${px(em.upper).toFixed(dp)} : exp_move_hi`);
+      emitOI(em.lower, `OI ${px(em.lower).toFixed(dp)} : exp_move_lo`);
       lines.push(`· exp move ±${em.move} (${em.pct}%)${em.dte != null ? ` to ${em.dte}DTE` : ''} — EOD`);
     }
     const rr = inst.riskReversal;
@@ -291,9 +317,20 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       const ex = levelExpectation(l, isDay(l)
         ? { spot: inst.spot, gammaFlip: dayEx.gammaFlip, refMove: inst.refMove?.move }
         : { spot: inst.spot, gexFlips: inst.gexFlips, gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
+      // `today` drops far levels (beyond ~2.5x the expected move): context in the full
+      // export, noise on a chart of the session ahead.
+      if (today && ex?.far) continue;
       const note  = ex ? ex.mid : '';
       const heat  = heatOf.get(l) || '';
       const touch = rp ? (rp[l.price.toFixed(6)] || '') : '';
+      // `today` + P(touch) available: drop levels the session cannot reach. The
+      // reachability model is the one calibrated number on the sheet (OOS 1.7pp), and a
+      // blank here means its Monte Carlo never touched this price inside the horizon —
+      // "not today's level", which is exactly what the mode is for. Skipped when P(touch)
+      // wasn't computed for the pair (offline / no bars): then nothing is judged, and
+      // nothing is dropped on the strength of a missing number. The expected-move band
+      // and charm/vanna flips carry no touch slot and are never subject to this.
+      if (today && rp && !touch) continue;
       // HOLD score (walls only): the react-vs-blow-through read the bot sizes fades
       // by, exported as a compact `hNN` token so the chart shows the SAME strength
       // read the bot trades. Computed off the level's own expiry book (day levels →
@@ -316,7 +353,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       const segs = [note || '-', heat || '-', touch || '-', hold || '-'];
       while (segs.length && segs[segs.length - 1] === '-') segs.pop();
       const suffix = segs.length ? ` . ${segs.join(' . ')}` : '';
-      lines.push(`OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
+      emitOI(l.price, `OI ${px(l.price).toFixed(dp)} : ${l.type}${tier}${dteTag}${suffix}`);
       drawn.add(`${l.type}@${l.price.toFixed(dp)}`);
     }
     // Other-expiry lines: draw each OTHER expiry's max-pain + raw call/put wall as DTE-tagged
@@ -328,7 +365,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     //   • allExpiry toggle: the FULL unbounded term structure (cross-desk compare).
     // Either way the indicator's DTE styling fades the further-dated ones.
     const bandFrac = bandByPair && Number.isFinite(bandByPair[pair]) ? bandByPair[pair] : null;
-    if ((allExpiry || bandFrac) && Array.isArray(inst.perExpiry)) {
+    if (!today && (allExpiry || bandFrac) && Array.isArray(inst.perExpiry)) {
       // Candidate pool = EVERY expiry's max-pain + biggest call/put wall (perExpiry), deduped
       // against the detailed primary/day lines already drawn (so the catch can be a far
       // primary wall the near-money selector dropped, and we never double-draw).
@@ -373,6 +410,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
         const tail = t2 ? ` . - . - . ${t2}` : '';
         lines.push(`OI ${px(c.price).toFixed(dp)} : ${c.type} ${c.dte}dte${c.catch ? ' catch' : ''}${tail}`);
       }
+    }
+    if (today) {
+      oiOut.sort((a, b) => b.price - a.price);
+      for (const o of oiOut) lines.push(o.line);
     }
     lines.push('');
     emitted++;

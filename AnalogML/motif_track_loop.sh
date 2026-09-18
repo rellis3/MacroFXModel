@@ -12,7 +12,16 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."   # repo root
 
-INTERVAL_SECONDS="${MOTIF_TRACK_INTERVAL_SECONDS:-3600}"
+# Aligned to the H1 close, not a free-running interval (2026-09-17). The
+# backtest enters at the OPEN of the bar after confirmation, i.e. right at
+# the hour; a scan that drifts across the hour enters up to ~60min late and
+# -- with the forming bar previously counted as a real bar -- missed most
+# confirmations outright (see scan_pair_motif's doc). Each scan now starts
+# ALIGN_OFFSET_SECONDS after the top of the hour: OANDA's :59 M1 candle is
+# complete a few seconds past :00, so 90s is comfortably after the H1 close
+# and the forming bar's first M1 (the entry open) has printed. The first
+# scan after a (re)start still runs immediately.
+ALIGN_OFFSET_SECONDS="${MOTIF_TRACK_ALIGN_OFFSET_SECONDS:-90}"
 # On by default (2026-08-13) -- MOTIF_TRACK_TELEGRAM=0 disables without a
 # redeploy. Alerts still need a token/chat_id to resolve (this pair's own
 # config or the shared dashboard tg_config, see motif_track.py --help) --
@@ -58,6 +67,9 @@ Check Railway logs." \
             outage_alerted=1
         fi
     fi
-    echo "[motif_track_loop] sleeping ${INTERVAL_SECONDS}s"
-    sleep "$INTERVAL_SECONDS"
+    now=$(date -u +%s)
+    next=$(( (now / 3600 + 1) * 3600 + ALIGN_OFFSET_SECONDS ))
+    wait=$(( next - now ))
+    echo "[motif_track_loop] next scan at $(date -u -d @"$next" +%FT%TZ) (sleeping ${wait}s)"
+    sleep "$wait"
 done

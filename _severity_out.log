@@ -1,0 +1,43 @@
+Window: 2026-09-12 to 2026-09-18
+Live decision-log "entered" events in window: 15
+Live real fills in window: 17
+
+=== Severity ===
+Backtest-predicted qualifying (margin>=2) touches in window: 100
+Matched a real live decision-log event: 19 (19.0%)
+SILENT MISSES (backtest says margin>=2, live shows nothing at all): 81 (81.0%)
+
+Sample of silent misses (first 30, 30 shown), win rate among them: 70.0%
+pair	ladder	date	side	rung	time	win	pnlPct
+eurusd	monday	2026-09-13	below	-0.5	2026-09-13T21:04:00.000Z	true	0.0929
+gbpusd	asia	2026-09-15	below	-0.5	2026-09-15T20:11:00.000Z	true	0.0293
+gbpusd	asia	2026-09-15	below	-0.5	2026-09-15T21:36:00.000Z	true	0.0293
+gbpusd	asia	2026-09-16	below	-4	2026-09-16T19:07:00.000Z	true	0.064
+gbpusd	asia	2026-09-16	below	-4	2026-09-16T19:40:00.000Z	true	0.064
+usdjpy	asia	2026-09-16	below	-0.25	2026-09-16T17:59:00.000Z	false	-0.0664
+usdjpy	asia	2026-09-17	below	-0.25	2026-09-17T16:01:00.000Z	true	0.0436
+usdjpy	asia	2026-09-17	below	-1	2026-09-17T12:19:00.000Z	true	0.0964
+usdjpy	asia	2026-09-17	below	-1	2026-09-17T12:52:00.000Z	false	-0.1144
+audusd	asia	2026-09-14	below	-0.25	2026-09-14T21:29:00.000Z	true	0.0619
+audusd	asia	2026-09-16	above	1.25	2026-09-16T16:07:00.000Z	false	-0.0432
+audusd	asia	2026-09-16	below	-0.5	2026-09-16T18:12:00.000Z	false	-0.0756
+audusd	asia	2026-09-16	below	-1	2026-09-16T18:25:00.000Z	false	-0.0757
+audusd	asia	2026-09-16	below	-2	2026-09-16T18:48:00.000Z	false	-0.0772
+audusd	asia	2026-09-17	above	1.25	2026-09-17T16:43:00.000Z	true	0.0663
+audusd	asia	2026-09-17	above	1.25	2026-09-17T17:06:00.000Z	true	0.0663
+audusd	asia	2026-09-17	above	1.25	2026-09-17T21:04:00.000Z	true	0.0663
+nzdusd	asia	2026-09-14	below	-0.25	2026-09-14T11:56:00.000Z	true	0.1377
+nzdusd	asia	2026-09-14	below	-0.25	2026-09-14T21:54:00.000Z	true	0.1377
+nzdusd	asia	2026-09-17	above	1.25	2026-09-17T21:20:00.000Z	false	-0.0863
+nzdusd	asia	2026-09-17	above	1.25	2026-09-17T21:40:00.000Z	true	0.0603
+nzdusd	asia	2026-09-17	above	1.25	2026-09-17T21:57:00.000Z	true	0.0163
+nzdusd	asia	2026-09-17	above	1.5	2026-09-17T21:22:00.000Z	true	0.0602
+usdcad	asia	2026-09-14	above	2	2026-09-14T08:12:00.000Z	true	0.0236
+usdcad	asia	2026-09-14	above	4	2026-09-14T20:00:00.000Z	true	0.0235
+usdcad	asia	2026-09-15	above	1.25	2026-09-15T20:18:00.000Z	true	0.022
+usdcad	asia	2026-09-15	above	1.25	2026-09-15T21:46:00.000Z	true	-0.0029
+usdchf	asia	2026-09-15	above	1.25	2026-09-15T21:10:00.000Z	false	-0.0446
+usdchf	asia	2026-09-15	above	1.5	2026-09-15T20:07:00.000Z	true	0.0293
+usdchf	asia	2026-09-17	below	-0.5	2026-09-17T21:04:00.000Z	false	-0.0716
+
+Live "entered" events with NO backtest touch at ANY margin for that (pair,ladder,side,rung,date): 0 of 15 (0.0%)

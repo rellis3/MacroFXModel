@@ -20,9 +20,17 @@ Now every background job is registered in `js/serviceFlags.js`, started through
 `svcInterval`/`svcEnabled` in `server.js` or `start_bot` in `start.sh`, and can
 be switched off **from the Railway env alone**.
 
-**Nothing changes by deploying this.** Every service keeps the default it
-already had, and every legacy var above still works (it is kept as an alias).
-Switching something off is a deliberate act.
+Every legacy var above still works (it is kept as an alias), so nothing already
+set in Railway changed meaning.
+
+> **2026-09-16 — the five HMM jobs now default OFF** (`hmm5m`, `hmm5mV2`,
+> `hmm1h`, `hmm30m`, `hmm2h`), at the owner's request, after the consumer
+> analysis in §5. Every other service still defaults to what it always did.
+> A default-off row carries a dated `note` in `js/serviceFlags.js` saying what
+> stops working, and `js/serviceFlags.test.mjs` fails if the default-off list
+> changes without being updated there. **The live `regime_bot_v2.py` does not
+> trade while `hmm5mV2` is off** — see §5.1. `SVC_HMM5M=1` (etc.) brings any of
+> them back from the Railway env without a deploy.
 
 ---
 
@@ -59,27 +67,52 @@ and for a bot:
 
 ## 3. Measure before you cut — `/api/services`
 
-Every gated job is now **timed**. `GET /api/services` returns, per service: the
-flag state and what decided it, plus `runs`, `totalMs`, `lastMs`, `errors` and
-`busyPct` measured in this process since boot, sorted by `totalMs`.
+Every gated job is **timed**, and since 2026-09-16 the numbers **survive a
+redeploy**. Read the `today` column and cut from the top:
 
 ```
 curl -s https://macrofxmodel-production.up.railway.app/api/services | jq \
-  '.services[] | select(.enabled) | {id, cost, runs, totalMs, busyPct}' | head -40
+  '.services[] | select(.today.totalMs > 0) | {id, cost, today, window}' | head -40
 ```
 
-`busyPct` is the share of wall-clock time the process spent inside that job.
-It is **not** CPU time — a job awaiting an OANDA response is idle, not burning
-CPU — and the numbers can sum past 100% because jobs overlap. It is still the
-first real reading this repo has ever had of which timers do the work.
-`INFRASTRUCTURE_COST_ANALYSIS.md` §6 asks for exactly this before any cost
-claim; leave the service up for a day, then read it and cut from the top.
+| Field | Means |
+|---|---|
+| `today` | UTC-day totals (`runs`/`errors`/`totalMs`), persisted to R2 — **this is the one to cut from** |
+| `window` | the same, summed over the last 7 stored days |
+| `sinceBoot` | this process only, plus `lastMs`/`lastAt`/`busyPct` |
+| `jobs`, `intervalsMs` | how many timers the service registers, and each one's period |
+| `observable` | `false` for a `start.sh` bot — it runs in its own process, so `started` is `null`, not `false` |
+| `persistence` | backend, last flush, days stored, and whether this process is **writing** |
 
-**Note on what this does and does not measure.** It covers the scheduled half of
-the workload inside `server.js`. It does not cover the eight `start.sh` bot
-processes (their flag state is reported, but their CPU is not), nor request-time
-work from page loads. Railway's own Metrics tab remains the source of truth for
-total CPU/RAM.
+**Why persistence.** The first version kept the counters in the process, and
+Railway redeploys on every push to `main` — so on a repo with several pushes a
+day the meter reset before it ever measured a day. The first real read after
+shipping it showed `uptimeSec: 17` and every row zero. Now the counters flush to
+R2 (`ops/service-stats.json`) every `SVC_STATS_FLUSH_MS` (15 min) **and once
+more on SIGTERM**, so a deploy costs at most the last few minutes rather than
+the whole day. `js/serviceStats.js` owns the merge and is unit-tested, including
+the full kill-and-reboot cycle.
+
+**Writes only happen on Railway.** R2 credentials exist in dev sandboxes too, so
+the flush is gated on `RAILWAY_ENVIRONMENT`/`RAILWAY_SERVICE_ID`/
+`RAILWAY_PROJECT_ID` — absent those it reads but never writes (this is not
+hypothetical; a sandbox boot test merged its own numbers into production's
+history once while this was being built). `SVC_STATS_PERSIST=1` forces writing
+on anywhere, `=0` off, and the boot log says which mode is live. Check it after
+a deploy:
+
+```
+[service-stats] loaded 3 day bucket(s) from R2 (last update 2026-09-16T19:45:25.254Z)
+```
+
+If you instead see `read-only here (not a Railway deploy)`, Railway is not
+injecting those vars — set `SVC_STATS_PERSIST=1` and redeploy.
+
+**What it still does not measure.** `busyPct` is wall time, not CPU — a job
+awaiting an OANDA response is idle, and the numbers can sum past 100% because
+jobs overlap. It covers the scheduled half of `server.js` only: not the eight
+`start.sh` bot processes (flag state only), not request-time work from page
+loads. Railway's Metrics tab remains the source of truth for total CPU/RAM.
 
 ---
 
@@ -136,8 +169,8 @@ which of these you still look at or trade. Each entry says what you lose.
 
 | Set | Check |
 |---|---|
-| `SVC_HMM5M_V2=0` | Halves the 30-second HMM workload. But `/api/hmm5m-v2` is polled by `regime_bot_v2.py`, `regime_bot_v4.py` and `bot/regime_bot.py` — **including any running on the MT5 box**. Only off if none of them is live. |
-| `SVC_HMM30M=0`, `SVC_HMM2H=0` | Feed `regime_bot_v7.py` only, which `start.sh` does not start. If V7 is not running anywhere, these are two per-pair model fits every 5 and 10 minutes for nobody. |
+| ~~`SVC_HMM5M_V2=0`~~ | **Done — now the default.** See §5.1. |
+| ~~`SVC_HMM30M=0`, `SVC_HMM2H=0`~~ | **Done — now the default.** Feed `regime_bot_v7.py` only, which `start.sh` does not start. |
 | `SVC_VOLATILITY_V2_PLAN=0`, `SVC_FIB_ATLAS_PLAN=0` | Two 45-second loops. Off ⇒ Vote Atlas / Fib Atlas paper bots trade a stale plan. Only off if those paper bots are parked. |
 | `SVC_BOT_ANALOG_MOTIF=0` | Its own loop script notes the signal is "no longer surfaced live on the dashboard" — it survives for the Telegram alert and the log. |
 | `SVC_CB_SENTIMENT=0` | Five 30-minute pollers **and** the Anthropic calls behind them. Off ⇒ the FOMC/ECB/BoE/BoJ/Beige Book pages stop refreshing after a meeting. |
@@ -151,6 +184,26 @@ a redeploy gap-fills instead of paying a full multi-year parquet cold start, so
 turning it off makes restarts *more* expensive, not less. `tradeLogs` is
 similar: off ⇒ the paper bots keep trading but their closed trades stop being
 recorded, and that record cannot be reconstructed afterwards.
+
+### 5.1 The HMM five — switched off 2026-09-16, and what it cost
+
+All five default off now. Three of them were load-bearing, and two fail
+*silently*, so this is written down rather than left to be rediscovered:
+
+| Job | What stopped |
+|---|---|
+| `hmm5mV2` | **`regime_bot_v2.py` no longer trades.** It is started by `start.sh` and is live money. `/api/hmm5m-v2` serves `{}` — a 200, not an error — so every pair reads as no-regime, fails `regime not in TRADEABLE`, and sits in `watching`. Nothing alerts. Consider `SVC_BOT_REGIME_V2=0` as well: the process still runs, polls and logs while being unable to act. |
+| `hmm1h` | Its E7 "1h opposed" gate is guarded by `if … && h1_regime`, so an empty feed **skips the check** rather than blocking the trade — fail-open. Moot while `hmm5mV2` is also off (the bot never reaches the gates), but re-enabling `hmm5mV2` *without* `hmm1h` restores trading minus one safety gate. **Re-enable the two together.** |
+| `hmm5m` | Two things in the live level alerts stop quietly: the polarity-flip direction override (`detectPolarityFlip` reads `state.hmm5mBars`, which only this job fills — a broken-and-retested level keeps its old direction) and the VuManChu M5 reads in the alert text/chart. |
+| `hmm30m`, `hmm2h` | Nothing in this container consumes them. Only `regime_bot_v7.py` on the MT5 box would notice. |
+
+Two things this did **not** switch off, worth knowing:
+
+- **`levels` still fits an HMM** — one per pair on daily closes, every 30 min,
+  inside the level refresh. It is not separately switchable and must stay on.
+- **`regimeHistory`** still runs on its 5-min/hourly flush, but with the HMM
+  loops off it has nothing new to persist. Harmless; `SVC_REGIME_HISTORY=0`
+  if you want the timer gone too.
 
 ### The one-liner
 

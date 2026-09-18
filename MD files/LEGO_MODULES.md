@@ -7862,3 +7862,152 @@ and the doc says so rather than letting the number be read as more than it is.
 service is gated at no call site, if `start.sh` starts an id the registry does not know,
 or if a bare `setInterval` reappears in `server.js` (two documented exceptions). An
 unswitchable background job cannot be added by accident again.
+
+---
+
+### 1be. Service-stat day buckets — a meter that survives a redeploy (2026-09-16)
+
+**Files:** `js/serviceStats.js` (the brick), `js/serviceStats.test.mjs` (13 tests),
+`server.js` (`svcStatsLoad`/`svcStatsFlush`/`svcStatsView` + the SIGTERM hook + `/api/services`).
+
+**What it owns.** The pure half of "where did the day actually go": UTC day buckets of
+per-service `{runs, errors, totalMs}`, merged from flush deltas, trimmed to a 14-day
+window, rolled up over a span. `normalizeStore` makes a corrupt or foreign store degrade
+to empty rather than throw — losing history is a nuisance, refusing to boot over it is
+worse. The I/O (R2 read/write, the flush timer, the signal handler) stays in `server.js`;
+this stays pure and testable on synthetic data.
+
+**Why it exists — §1bd shipped a meter that could not measure.** The counters lived in
+the process, and Railway redeploys on every push to `main`. The first real read of
+`/api/services` after shipping it came back `uptimeSec: 17`, every row zero: the service
+had restarted seconds earlier and the day's measurements were gone. Advice to "leave it a
+day and read it" was worthless on a repo with several pushes a day. Flushing to R2 every
+15 minutes **and on SIGTERM** (a redeploy IS a SIGTERM) caps the loss at a few minutes.
+
+**Deltas, not totals — the one invariant.** A flush contributes only what accrued since
+the last successful flush, so a mid-day flush adds rather than overwrites, and a counter
+that has gone *backwards* is read as "the process restarted" and taken whole instead of
+as a negative. The merge happens on a structured clone and the clone is adopted only once
+the R2 write lands — without that, a transient R2 error would merge locally, fail, and
+merge the same deltas again next tick, double-counting the very numbers the module exists
+to get right. `serviceStats.test.mjs` runs a full flush → kill → reboot → flush cycle and
+asserts the day total is 97, not 7.
+
+**R2, not CF KV, deliberately.** ~96 writes/day. `CLAUDE.md` is explicit that churny keys
+stay out of `_CF_EXACT` to protect the CF KV free-plan write quota; R2 has no equivalent
+concern (the same reasoning the Level Atlas snapshots already run on).
+
+**A mistake worth keeping written down.** R2 credentials are present in dev sandboxes too,
+so the first boot test merged its own numbers straight into production's history — exactly
+the class of error `CLAUDE.md`'s "never let a sandbox run write back to R2" rule covers,
+in new code that had not inherited the rule. The flush is now gated on Railway's own env
+vars (`RAILWAY_ENVIRONMENT`/`SERVICE_ID`/`PROJECT_ID`), reads work anywhere, and
+`SVC_STATS_PERSIST=1` is the explicit override. The polluted key was reset.
+
+**Also fixed in `/api/services` while here:** `started` was reported `false` for all eight
+`start.sh` bots — they run in their own processes and this one cannot observe them, so it
+now reports `observable: false` / `started: null` instead of something that reads as "not
+running". And `intervalMs` reported whichever timer registered last for any service with
+several (`econPollers` has 13, `tde` 3), which made `tde` look like a 20-second job when
+20s is only its daily-backfill clock; it is now `jobs` + `intervalsMs[]`.
+
+**Status: ✅ built, unit-tested, and verified end-to-end against real R2 — boot, kill,
+reboot, and the day total carried across (`levels` 10.7s in-process vs 21.4s for the day).**
+
+---
+
+### 1bf. Event Response Core — release windows conditioned on the lead-up (2026-09-17)
+
+**Files:** `js/eventResponseCore.js` (Tier 1, pure), `js/eventResponseCore.test.mjs`
+(15 subtests, synthetic bars + synthetic yields, no network),
+`scripts/build_event_response_book.mjs` (offline builder),
+`backfill/event_response_book.json` (the committed output).
+Design and pass/fail frozen first in `MD files/EVENT_RESPONSE_BOOK.md`.
+
+**What it is.** `(bars, events, yields) → book`: for each release family × instrument,
+the four frozen windows (PRE5 / R0 / R1 / R5, M1, in bp) unconditionally, and then the
+3 × 3 grid of lead-up state (what the 2y did in the five sessions *before* the event) ×
+outcome (beat / in line / miss). Every cell carries `n`, the half-split and an
+`unstable` flag; cells under `minCellObs: 12` are omitted rather than shown small.
+
+**What it is NOT.** Not a forecast and not a signal — `MD files/EVENT_RESPONSE_BOOK.md`
+§6's single confirmatory cell is a separate, still-unrun test, and this brick computes
+no p-value anywhere (overlapping R5 windows on monthly series; `n`, the split and the
+effect size are the honest statistics).
+
+**Imports, never copies:** `econSurprise.parseCalNumber` / `scoreReleases` for the
+per-series surprise dispersion and polarity (a raw `parseFloat('1,250')` is 1, silently),
+`localM1Loader.loadM1ForPairLocal` for bars, `fomcHistory` for the market-validated
+decision days.
+
+**The join proof is the load-bearing part.** Every row reports median |R0| ÷ the same
+clock on ordinary days. It is what caught both bugs below, and a row that does not clear
+2× is published with `pass: false` rather than quietly presented as a finding.
+
+**Two pre-existing bugs it surfaced, both real:**
+
+1. `js/localM1Loader.js` hardcoded `r[5]` as the datetime column. The local M1 cache is
+   **mixed** — `usdjpy` has 6 columns, `eurusd`/`gbpusd`/`gold` and others have 8 — so on
+   most pairs it read a spread column as a timestamp and returned an all-zero time axis,
+   silently (a NaN epoch becomes 0 in an `Int32Array`), which is the exact failure its own
+   header was written to warn about. Now located per file, and a file whose timestamps do
+   not resolve throws. `scripts/run_session_window_comparison.mjs` is the other consumer.
+2. `backfill/surprise_backfill.json` timestamps are **broken row by row**. First read as a
+   uniform +17h (true of US CPI and NFP: Dec-2023 CPI, released 2024-01-11, is stored as
+   2024-01-10 20:30Z, and a whole-hour scan peaks uniquely at +17h). Widening the book
+   showed that is not the general case — at least three regimes are mixed inside one file:
+   exact, an hour early (a DST slip), and seventeen hours early. **Canada's Labour Force
+   Survey publishes Employment Change and the Unemployment Rate in the same instant and the
+   archive stores them 17 hours apart**, which is the clearest proof: no single shift can
+   repair it. Only 33% of its US rows (1,362/4,135) sit at any plausible US release clock;
+   the two commonest stamps, 20:30Z and 19:30Z, are not US release times at all.
+   Harmless for the surprise index, whose only use of `ms` is an age-decay weight — **not**
+   harmless for `macroRegimeFx.buildEventStudy`, which keys on `new Date(r.ms)`'s calendar
+   date, so an unknown but large subset of the history behind today.html's "What moves this
+   pair, measured" panel is attributed to the wrong day. The book now sources US/EU/GB from
+   `calendar_events.csv` (correct clocks, verified across the DST switch, and 15 months more
+   coverage) and admits only those FF families that can prove their clock against the tape.
+   Repairing the archive itself needs the untracked 68MB source CSV and is **open**.
+
+**Scope (2026-09-17, widened):** 86 families across 7 economies and 11 news categories —
+the site's own taxonomy (inflation, labour, growth, business activity, retail, trade,
+housing, confidence, rates, orders/fiscal, energy) — × all 26 instruments including gold,
+plus the FOMC tone series and the Beige Book. Each family carries a join proof, and the
+brick now also emits the two MARGINALS (lead-up alone, outcome alone), which carry ~3× the
+sample of a joint cell and are the honest first read on a grid this size.
+
+**Status: ✅ built and unit-tested. NO edge claimed** — see
+`MD files/EVENT_RESPONSE_BOOK.md` for what the book says and, just as importantly, what it
+cannot say. The size effects replicate; the conditional direction claim has no support in
+the descriptive grid, and the registered test that would settle it (§6) has not been run.
+
+### The chain, today — SPX node added (2026-09-18)
+
+`js/macroChain.js` (self-declared Tier-1 brick, `js/macroChain.test.mjs`) — the
+textbook macro chain rendered on `today.html`, one link at a time, with a
+HOLDING/BROKEN/QUIET/UNMEASURED verdict per link. Consumers: `today.html`
+(`chainVals`/`chainLinks`, the chain panel and the AI chain-read prompt),
+`server.js`'s desk watch (`_watchInputs`, one broken-link trigger per link
+via `js/deskWatch.js`). **Belongs in this registry and was not here before
+today** — noted here rather than silently left out, since a Crown clip's
+audit is what surfaced the gap (`MD files/CROWN_WATCH.md`, 2026-09-18 entry).
+
+**What changed today:** added an `spx` node (`CHAIN_NODES.spx`, S&P 500) and a
+`real-spx` link (real yields → broad stocks, sign −1, parallel in structure to
+the existing `real-nq`), plus the data plumbing that was already fetching
+`SPX500_USD` for desk watch but never feeding it into the chain's node list
+(`server.js`'s `_watchInputs()`, `today.html`'s `CHAIN_OHLC`). Additive only —
+no existing node, link or verdict logic touched; `js/macroChain.test.mjs`
+covers the new node's holding/broken/quiet cases, all green.
+
+**Why it was missing.** SPX500 is tracked everywhere else on this desk (desk
+watch's VIX-inversion trigger, S1, S9's FOMC studies) but had no node in the
+chain itself — the one module built specifically to show cross-market
+transmission. Found by reading `CHAIN_NODES` before writing anything, not
+assumed.
+
+**Not done, deliberately:** no forward-predictiveness test for `real-spx` —
+`real-nq`'s node text cites one (a Nasdaq down-week widens the next session;
+the yield leg adds nothing). The same test on SPX is a cheap, natural
+follow-on, registered as a candidate (not yet run) in `CROWN_WATCH.md`'s
+2026-09-18 entry rather than run here without a stated reading rule first.

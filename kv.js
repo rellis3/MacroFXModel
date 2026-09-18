@@ -17,6 +17,7 @@
 //                          fredhistory_*, and anything else not listed above
 
 import { readFile, writeFile, mkdir } from 'fs/promises';
+import { noteBytes } from './js/egressMeter.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -49,6 +50,9 @@ const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
   'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
                              // rebuild, and the answer only changes by one day at a time.
+  'desk_watch_v1',           // the early-warning layer's state + fire log: which conditions are on, when each
+                             // started, and what happened after. The forward record of the evidence book.
+                             // Must also be in _worker.js PERMANENT_KEYS.
   'chain_read_v1',           // the last trader's-voice chain read (+ the day's earlier ones). A paid
                              // model call each; the reader expects to find the last one hours later
                              // and after a redeploy. Must also be in _worker.js PERMANENT_KEYS.
@@ -223,20 +227,44 @@ const _CF_EXACT = new Set([
   'volatility_bot_v2_state',       // Volatility V2 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'volatility_bot_v2_trade_log',   // Volatility V2 resolved closed-trade log (deduped, capped) — give-back/MFE history
   'volatility_bot_v2_decision_log', // Volatility V2 per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
+  'volatility_bot_v3_config',      // Volatility V3 (Level Atlas Vote Portfolio, local decision engine) bot settings — must survive redeploys
+  'volatility_bot_v3_credentials', // Volatility V3 MT5 credentials — must survive redeploys
+  // No volatility_bot_v3_plan — 2026-09-18: v3 computes decisions locally
+  // (local_decision_engine/), not via a server-side plan producer; there is
+  // nothing server-side to persist here. See
+  // MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
+  'volatility_bot_v3_state',       // Volatility V3 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
+  'volatility_bot_v3_trade_log',   // Volatility V3 resolved closed-trade log (deduped, capped) — give-back/MFE history
+  'volatility_bot_v3_decision_log', // Volatility V3 per-touch decision audit (entered/rejected/skipped + why, now carrying voteDims) — bot-config.html's Decision Timeline
   'fib_atlas_bot_config',      // Fib Atlas (Asia+Monday range-extension vote) bot settings — must survive redeploys
   'fib_atlas_bot_credentials', // Fib Atlas MT5 + Telegram credentials — must survive redeploys
   'fib_atlas_bot_plan',        // Fib Atlas live plan (per pair|ladder fade/follow zones, server.js's _refreshFibAtlasPlan) — keep last good plan across a redeploy
   'fib_atlas_bot_state',       // Fib Atlas one-shot state (entered zones, tg message ids, dedup sets) — survives BOT restarts via KV
   'fib_atlas_bot_trade_log',   // Fib Atlas resolved closed-trade log (deduped, capped) — give-back/MFE history
   'fib_atlas_bot_decision_log', // Fib Atlas per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
+  'fib_atlas_bot_v2_config',      // Fib Atlas v2 (local decision engine fork) bot settings — must survive redeploys
+  'fib_atlas_bot_v2_credentials', // Fib Atlas v2 MT5 + Telegram credentials — must survive redeploys
+  // No fib_atlas_bot_v2_plan — 2026-09-18: v2 computes decisions locally
+  // (fib_local_decision_engine/), not via server.js's plan producer; there
+  // is nothing server-side to persist here. See
+  // MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md.
+  'fib_atlas_bot_v2_state',       // Fib Atlas v2 one-shot state (entered zones, tg message ids, dedup sets) — survives BOT restarts via KV
+  'fib_atlas_bot_v2_trade_log',   // Fib Atlas v2 resolved closed-trade log (deduped, capped) — give-back/MFE history
+  'fib_atlas_bot_v2_decision_log', // Fib Atlas v2 per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
   'motif_bot_config',      // Motif Bot (touch-motif structural signal) settings — must survive redeploys
   'motif_bot_credentials', // Motif Bot MT5 + Telegram credentials — must survive redeploys
   'motif_bot_plan',        // Motif Bot live plan (currently-open motifs passing the best-config filter, pushed by AnalogML/motif_track.py's own hourly scan, NOT a server.js interval) — keep last good plan across a redeploy
   'motif_bot_state',       // Motif Bot one-shot state (acted motif_keys, tg message ids, dedup sets) — survives BOT restarts via KV
   'motif_bot_decision_log', // Motif Bot per-motif decision audit (entered/rejected/blocked + why), capped rolling window — bot-config.html's Decision Timeline
-  'motif_bot_spread_stats', // Motif Bot per-pair live spread averages (real MT5 ticks, motif_bot.py's own sampler) — must survive redeploys, it's accumulated data motif_track.py's best-config filter reads back
+  'motif_bot_spread_stats', // Motif Bot per-pair live spread averages (real MT5 ticks, motif_bot.py's own sampler) — must survive redeploys, it's accumulated data motif_track.py's best-config filter reads back.
+                            // NOT the same store as spread_profile_v1 below: this is a live EWMA of THIS account's real
+                            // broker fills, wired directly into passes_best_config's live override; spread_profile_v1 is a
+                            // passive per-UTC-hour OANDA-quote diagnostic for a human to consult, not auto-applied anywhere.
+  'egress_audit',          // js/egressMeter.js ledger — bytes out by route/KV key/R2 prefix + per-day series; the whole point is surviving redeploys
+  'spread_profile_v1',     // js/spreadProfile.js — measured spread per pair per UTC hour, weeks of accumulation; the motif spread gate's evidence base
   // NOTE: motif_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as fib_atlas_bot_status below)
   // NOTE: fib_atlas_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as volatility_bot_v2_status below)
+  // NOTE: fib_atlas_bot_v2_status is deliberately NOT here — same reason
   // NOTE: volatility_bot_v2_status is deliberately NOT here — the bot rewrites it every ~30s
   // (same reason as oi_bot_status / volatility_bot_status).
   'confluence_trade_log',       // Confluence resolved closed-trade log (deduped, capped) — give-back/MFE history for the webpage; same durability need
@@ -441,6 +469,7 @@ async function cfGet(key) {
 
 async function cfPut(key, value, opts = {}) {
   cacheInvalidate(key);
+  noteBytes('kv', key, Buffer.byteLength(typeof value === 'string' ? value : JSON.stringify(value)));
   const r = await cfFetch('PUT', key, value, opts);
   if (!r.ok) throw new Error(`CF KV PUT ${key}: ${r.status}`);
 }

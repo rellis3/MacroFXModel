@@ -307,6 +307,24 @@ function boundPacked(packed, days) {
   };
 }
 
+// Strictly-after-`sinceSec` trim, for the m1-tail route's incremental pull
+// (see its own doc). Strict `>` deliberately excludes a bar exactly AT
+// sinceSec — that's the caller's own already-held last bar, re-including it
+// would duplicate it once the caller appends this response.
+function boundPackedSince(packed, sinceSec) {
+  if (!packed?.n) return packed;
+  let cutIdx = packed.n;
+  for (let i = 0; i < packed.n; i++) { if (packed.times[i] > sinceSec) { cutIdx = i; break; } }
+  if (cutIdx <= 0) return packed;
+  if (cutIdx >= packed.n) return { n: 0, times: [], opens: [], highs: [], lows: [], closes: [], volumes: [] };
+  return {
+    n: packed.n - cutIdx,
+    times: packed.times.slice(cutIdx), opens: packed.opens.slice(cutIdx),
+    highs: packed.highs.slice(cutIdx), lows: packed.lows.slice(cutIdx),
+    closes: packed.closes.slice(cutIdx), volumes: packed.volumes.slice(cutIdx),
+  };
+}
+
 // One walk over the (bounded, already-warm) packed series -> today's raw
 // touches + pending, UNMATCHED (matching against the book happens outside
 // the cache, every call, so a fresh /run's book reaches a poll immediately
@@ -364,8 +382,17 @@ function packFromJSON(obj) {
 async function _saveLiveSnapshot(pair) {
   const entry = liveCache.get(pair);
   if (!entry?.packed?.n) return false;
+  // Skip a pair whose last bar hasn't moved since its previous save (weekend,
+  // closed session) -- each snapshot is the full window as JSON, ~15 MB, and
+  // R2 uploads are Railway egress at $0.05/GB. Caught 2026-09-17: 62 pairs
+  // x 15 MB every 15 min across the three atlases was ~90 GB/day, the bulk
+  // of the bill. Cadence itself is set in server.js.
+  const lastT = entry.packed.times[entry.packed.n - 1];
+  if (entry.snapshotLastT === lastT) return false;
   try {
     await putJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`, { ...packToJSON(entry.packed), savedAt: new Date().toISOString() });
+    entry.snapshotLastT = lastT;
+    entry.snapshotSavedAt = Date.now();
     return true;
   } catch (e) {
     console.warn(`[level-atlas-live] ${pair}: snapshot save failed — ${e.message}`);
@@ -377,9 +404,18 @@ async function _saveLiveSnapshot(pair) {
 // CURRENTLY WARM pair in one pass. Cheap: R2 has no write-quota concern like
 // CF KV does (this project's KV comments explicitly protect that quota;
 // R2 doesn't share it), and this only touches pairs already in memory.
-export async function saveAllLiveSnapshots() {
+// `maxAgeMs`: only pairs whose R2 copy (as restored at cold start, or as
+// written since) is older than this. The boot-time pass uses it so a box
+// that redeploys several times a day -- never living long enough for the
+// 6h interval to fire -- still keeps R2 fresh without re-sending every pair
+// on every deploy. Undefined = write everything that changed.
+export async function saveAllLiveSnapshots({ maxAgeMs } = {}) {
   let saved = 0;
   for (const pair of liveCache.keys()) {
+    if (maxAgeMs != null) {
+      const e = liveCache.get(pair);
+      if (e?.snapshotSavedAt && Date.now() - e.snapshotSavedAt < maxAgeMs) continue;
+    }
     if (await _saveLiveSnapshot(pair)) saved++;
   }
   if (saved) console.log(`[level-atlas-live] snapshotted ${saved} warm pair(s) to R2`);
@@ -390,13 +426,13 @@ async function coldStartLiveCache(pair) {
   const sym = pair.toUpperCase();
   liveWarming.add(pair);
   try {
-    let packed = null, fromSnapshot = false;
+    let packed = null, fromSnapshot = false, snapshotSavedAt = 0;
     try {
       const snap = await getJSON(`${LIVE_SNAPSHOT_PREFIX}/${pair}.json`);
       const ageH = snap?.savedAt ? (Date.now() - Date.parse(snap.savedAt)) / 3600_000 : Infinity;
       if (ageH <= MAX_SNAPSHOT_AGE_HOURS) {
         const restored = packFromJSON(snap);
-        if (restored?.n) { packed = restored; fromSnapshot = true; }
+        if (restored?.n) { packed = restored; fromSnapshot = true; snapshotSavedAt = Date.parse(snap.savedAt) || 0; }
       }
     } catch (e) { console.warn(`[level-atlas-live] ${sym}: snapshot load failed — ${e.message}`); }
 
@@ -408,7 +444,7 @@ async function coldStartLiveCache(pair) {
     }
     const bounded = boundPacked(packed, LIVE_WINDOW_DAYS);
     const result = computeLiveContext(pair, bounded);
-    liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], result });
+    liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], result, snapshotSavedAt });
     console.log(`[level-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
     console.error(`[level-atlas-live] ${sym}: cold start failed — ${e.message}`);
@@ -522,6 +558,51 @@ export function mountLevelAtlasRoutes(app, express) {
       const stored = await getJSON(`${PREFIX}/${pair}.json`);
       if (!stored) return res.status(404).json({ ok: false, error: `no atlas data for ${req.params.instrument} yet — POST /api/level-atlas/run first` });
       res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, live: stored.live ?? { date: null, touches: [], pending: [] } });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/level-atlas/m1-tail/EURUSD?days=14 — a short, TRIMMED, GUARANTEED-
+  // FRESH slice of M1 for the local decision engine
+  // (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md). Built 2026-09-18; revised
+  // same day per an explicit owner constraint: OANDA credentials and all
+  // gap-fill/top-up LOGIC stay server-side on Railway only — the local
+  // machine is "the bot + a pull", never holds a live-trading credential
+  // itself. So this route calls getFastLive(pair) FIRST (the server's own
+  // warm cache + incremental OANDA gap-fill, unchanged, same OANDA_KEY
+  // already used everywhere else) rather than reading the possibly-stale
+  // saved snapshot directly — every call is as fresh as getFastLive's own
+  // "recomputes only when a new M1 bar has actually closed" contract
+  // already guarantees, with zero new Railway job needed and zero OANDA
+  // exposure on the local side. (Earlier version read LIVE_SNAPSHOT_PREFIX
+  // via getJSON directly — kept working, but only as fresh as whatever
+  // last wrote that snapshot, which is a different guarantee than this.)
+  //
+  // Original rationale for why this needs the REAL archive at all, not a
+  // fresh OANDA-only fetch: direct testing found a pure OANDA re-fetch of
+  // historical bars does NOT reproduce the same vote/margin as the
+  // official archive for the identical touch (data-provenance mismatch,
+  // not a window-length or staleness issue — those were ruled out first).
+  // ?since=<unix seconds> — incremental pull for the local decision engine's
+  // sync.mjs, added 2026-09-18: the original always-full-window pull
+  // resent the ENTIRE ~100-day tail (~100k bars) every 15-minute cycle to
+  // convey what was really only the ~15 bars that closed since the last
+  // pull. `days` still applies as an outer cap either way (protects
+  // against a stale/bogus `since`, and is the whole response when `since`
+  // is omitted, unchanged for any other caller of this route).
+  app.get('/api/level-atlas/m1-tail/:instrument', async (req, res) => {
+    try {
+      const pair = String(req.params.instrument).toLowerCase();
+      const days = Math.min(180, Math.max(1, Number(req.query.days) || 14));
+      const sinceSec = req.query.since !== undefined && Number.isFinite(Number(req.query.since)) ? Number(req.query.since) : null;
+      const live = await getFastLive(pair);
+      if (live.warming) return res.status(202).json({ ok: false, warming: true, error: 'still warming — retry in a few seconds' });
+      const entry = liveCache.get(pair);
+      if (!entry?.packed?.n) return res.status(404).json({ ok: false, error: `no live cache for ${req.params.instrument} yet` });
+      let bounded = boundPacked(entry.packed, days);
+      if (sinceSec != null) bounded = boundPackedSince(bounded, sinceSec);
+      res.json({ ok: true, instrument: pair.toUpperCase(), days, since: sinceSec, savedAt: new Date().toISOString(), ...packToJSON(bounded) });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }

@@ -361,7 +361,18 @@ import { createLevelChart } from './js/levelChart.js';
 // the warning card above).
 const PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
   'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
-  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
+  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+  // Indices (2026-09-17) — exploratory only, see INDEX_PAIRS' own comment.
+  'nq', 'spx', 'de30', 'uk100', 'us2000', 'dow'];
+// Fib Atlas has only ever run FX+gold (the founding Pine indicator's own
+// scope) — these 6 are a first-pass feasibility pilot (analysis/
+// fib_atlas_indices_pilot.mjs), not validated: no minimum-clearance
+// filtering applied yet, no per-index threshold sweep (cost-efficiency/gap
+// reused FX/gold's defaults blindly), and the Monday ladder's own sample
+// sizes were tiny (37-68 trades). Selectable here for manual exploration:
+// deliberately EXCLUDED from Select recommended/Load best config below
+// (recommendedExcludeFor) so they never silently join the validated preset.
+const INDEX_PAIRS = new Set(['nq', 'spx', 'de30', 'uk100', 'us2000', 'dow']);
 const DEFAULT_CHECKED = new Set(['eurusd', 'gbpusd', 'usdjpy', 'gold', 'audusd']);
 const PAIR_COLORS = Object.fromEntries(PAIRS.map((p, i) => [p.toUpperCase(), `hsl(${Math.round(i * 360 / PAIRS.length)}, 65%, 62%)`]));
 
@@ -376,7 +387,10 @@ function recommendedExcludeFor(currentLadder) {
   // combined mode reuses Asia's set -- Asia is the dominant risk driver
   // (its baseline maxDD is far worse than Monday's), and the combined-mode
   // OOS study's own exclusion list was itself predominantly Asia-side pairs.
-  return currentLadder === 'monday' ? MONDAY_RECOMMENDED_EXCLUDE : ASIA_RECOMMENDED_EXCLUDE;
+  const base = currentLadder === 'monday' ? MONDAY_RECOMMENDED_EXCLUDE : ASIA_RECOMMENDED_EXCLUDE;
+  // Indices always excluded from the validated preset (see INDEX_PAIRS' own
+  // comment) regardless of ladder -- unvalidated is unvalidated either way.
+  return new Set([...base, ...INDEX_PAIRS]);
 }
 // Chandelier exit's own frozen mult per ladder (Asia=3x ATR, Monday=1.5x ATR
 // -- analysis/fib_atlas_chandelier_exit_backtest.mjs, LEGO_MODULES.md; see
@@ -418,7 +432,11 @@ function costRatioFor(currentLadder) { return currentLadder === 'monday' ? 4 : 3
 function gapMinFor(currentLadder) { return currentLadder === 'monday' ? 180 : 30; }
 
 const pairChecksEl = document.getElementById('pairChecks');
-pairChecksEl.innerHTML = PAIRS.map(p => `<label class="pair-check"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}</label>`).join('');
+pairChecksEl.innerHTML = PAIRS.map(p => {
+  const idx = INDEX_PAIRS.has(p);
+  const title = idx ? ' title="Exploratory only — no minimum-clearance filtering, no per-index threshold sweep, Monday ladder samples were tiny (37-68 trades). Excluded from Select recommended/Load best config on purpose."' : '';
+  return `<label class="pair-check"${title} style="${idx ? 'opacity:.75' : ''}"><input type="checkbox" ${DEFAULT_CHECKED.has(p) ? 'checked' : ''} data-pair="${p}">${p.toUpperCase()}${idx ? ' 🧪' : ''}</label>`;
+}).join('');
 
 document.getElementById('selectAllBtn').addEventListener('click', () => {
   pairChecksEl.querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = true; });

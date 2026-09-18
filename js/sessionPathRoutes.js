@@ -40,7 +40,7 @@ async function runOne(instrument, { onLog = () => {} } = {}) {
   if (process.env.OANDA_KEY) {
     try {
       const before = packed.n;
-      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000) });
+      packed = await gapFillPacked(packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), onLog });
       if (packed.n > before) onLog(`${sym}: gap-filled +${(packed.n - before).toLocaleString()} bars to now`);
     } catch (e) { onLog(`${sym}: gap-fill failed (${e.message}) — using stored M1`); }
   }

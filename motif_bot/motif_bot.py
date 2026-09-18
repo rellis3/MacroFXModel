@@ -99,6 +99,13 @@ DEFAULT_CFG = {
                                      # live book can match the backtest exactly until/unless the account actually
                                      # needs the protection -- see the user's own ask, 2026-09-16 session.
     "plan_max_age_hours": 3,        # motif_track_loop.sh refreshes hourly; 3x that before failing closed on a stale plan.
+    "max_entry_age_hours": 3,       # a plan entry confirmed longer ago than this is NOT the backtest's trade any more
+                                     # (the backtest enters at the open of the bar after confirmation; the plan is
+                                     # rebuilt hourly and this bot polls every minute, so anything genuinely live is
+                                     # well under this) -- skipped, decision-logged once. The plan is a full snapshot
+                                     # of every still-open tracked trade, so without this gate a first start, or a
+                                     # tracker that mis-logged history (211 trades from 2021 landed as "open" on
+                                     # 2026-09-16), would enter every stale motif at market.
     "poll_secs": 60,                # how often this bot re-reads motif_bot_plan / checks for a fill to act on.
     "status_secs": 30,
     "tg_enabled": True,
@@ -202,17 +209,36 @@ def _plan_entries(plan: dict | None) -> list[dict]:
     return list((plan or {}).get("entries") or [])
 
 
-def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
-    ga = (plan or {}).get("generatedAt")
-    if not ga:
+def _hours_since(iso, now_epoch: float) -> float | None:
+    if not iso:
         return None
     try:
-        t = datetime.fromisoformat(str(ga).replace("Z", "+00:00"))
+        t = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
         if t.tzinfo is None:
             t = t.replace(tzinfo=timezone.utc)
         return max(0.0, (now_epoch - t.timestamp()) / 3600.0)
     except Exception:
         return None
+
+
+def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
+    return _hours_since((plan or {}).get("generatedAt"), now_epoch)
+
+
+def _entry_age_hours(entry: dict, now_epoch: float) -> float | None:
+    """Hours since the motif confirmed (plan's `confirmed_at` = the tracked
+    entry bar's open). None when the plan didn't carry a timestamp -- the
+    caller treats that as stale, fail-closed: an entry whose age can't be
+    established is not one this bot should be first to trust."""
+    return _hours_since((entry or {}).get("confirmed_at"), now_epoch)
+
+
+def _entry_is_stale(entry: dict, cfg: dict, now_epoch: float) -> bool:
+    max_age = float(cfg.get("max_entry_age_hours", 3) or 0)
+    if max_age <= 0:
+        return False   # gate switched off explicitly
+    age = _entry_age_hours(entry, now_epoch)
+    return age is None or age > max_age
 
 
 def _enabled_entries(cfg: dict, plan: dict) -> list[dict]:
@@ -281,10 +307,13 @@ def _fmt_close_alert(pair: str, row: dict, mode_tag: str) -> str:
     return f"{tag} <b>{pair.upper()}</b>{mode_tag}\n{line2}\n{line3}"
 
 
-def build_status(cfg, broker, plan, paper, guard=None, plan_age_blocked=False, acted_count=0):
+def build_status(cfg, broker, plan, paper, guard=None, plan_age_blocked=False, acted_count=0, life=None):
     bal = broker.account_balance()
     return {
         "running": True,
+        # Proof-of-life counters (2026-09-17): the dashboard shows these so
+        # "quiet" and "dead" stop looking the same.
+        "life": life or {},
         "mode": "paper" if paper else "live",
         "kill_switch": bool(cfg.get("kill_switch")),
         "balance": round(bal, 2) if bal is not None else None,
@@ -337,23 +366,47 @@ def run(base_url: str, force_live: bool) -> None:
                               creds.get("mt5_server"), creds.get("mt5_path") or None):
             log.error("broker connect failed -- exiting")
             return
-        verify_pairs = sorted({str(p).lower() for p in (cfg.get("enabled_pairs") or [])} or
-                               {str(e.get("pair", "")).lower() for e in _plan_entries(plan)})
-        if not verify_pairs:
-            log.warning("no enabled_pairs configured and no plan loaded yet -- skipping startup symbol verification")
+    verified_pairs: set[str] = set()   # pairs already checked against the broker's symbol list this run
+
+    def _verify_new_pairs(pairs: set[str], *, startup: bool) -> None:
+        """Broker symbol check for any pair not yet verified this run. Runs at
+        startup and again whenever a plan brings a pair in for the first time
+        -- with enabled_pairs=[] ("all plan pairs") the startup list is often
+        empty, so a per-plan check is the only one that ever sees the real
+        pairs. Mt5Broker.tradable() answers True for an UNKNOWN symbol, so an
+        unmapped pair would otherwise only surface as a rejected order."""
+        todo = sorted(p for p in pairs if p and p not in verified_pairs)
+        if paper or not todo:
+            return
+        verified_pairs.update(todo)
+        try:
+            problems = broker.verify_symbols(todo)
+        except Exception as e:
+            log.warning(f"symbol verification failed to run: {e}")
+            return
+        if problems:
+            for p in problems:
+                sugg = f" -- closest matches: {', '.join(p['suggestions'])}" if p["suggestions"] else " -- no close match found on this account"
+                log.error(f"BROKER SYMBOL MISMATCH: {p['pair']} configured as {p['configured']!r} -- "
+                          f"not found on this account{sugg}")
         else:
-            try:
-                problems = broker.verify_symbols(verify_pairs)
-            except Exception as e:
-                problems = []
-                log.warning(f"symbol verification failed to run: {e}")
-            if problems:
-                for p in problems:
-                    sugg = f" -- closest matches: {', '.join(p['suggestions'])}" if p["suggestions"] else " -- no close match found on this account"
-                    log.error(f"BROKER SYMBOL MISMATCH: {p['pair']} configured as {p['configured']!r} -- "
-                              f"not found on this account{sugg}")
-            else:
-                log.info(f"symbol check OK -- all {len(verify_pairs)} pair(s) resolve to a real symbol on this account")
+            where = "" if startup else " (new in this plan)"
+            log.info(f"symbol check OK -- {len(todo)} pair(s){where} resolve to a real symbol on this account")
+
+    if not paper:
+        startup_pairs = ({str(p).lower() for p in (cfg.get("enabled_pairs") or [])} or
+                         {str(e.get("pair", "")).lower() for e in _plan_entries(plan)})
+        if startup_pairs:
+            _verify_new_pairs(startup_pairs, startup=True)
+        elif plan:
+            # Normal on a quiet start: enabled_pairs=[] means "trade whatever
+            # the plan carries", and a plan with zero entries carries nothing
+            # to verify yet. Each pair is checked the first time a plan
+            # brings it in (see _verify_new_pairs).
+            log.info(f"startup symbol check: nothing to verify yet -- enabled_pairs is empty (= all plan pairs) and the "
+                     f"current plan ({plan.get('generatedAt')}) has 0 entries; each pair is checked when a plan first carries it")
+        else:
+            log.warning("no enabled_pairs configured and no plan loaded yet -- symbols will be checked when the first plan lands")
 
     guard = RiskGuard(log=log)
     guard.sync_cfg(cfg)
@@ -362,6 +415,8 @@ def run(base_url: str, force_live: bool) -> None:
     tg_master_on = True
     acted_keys: set[str] = set()
     reject_until: dict[str, float] = {}
+    stale_logged: set[str] = set()      # motif_keys already decision-logged as too old to enter (once each, not every tick)
+    filtered_logged: set[str] = set()   # motif_keys already decision-logged as rejected by the best-config filter
     tg_entry_msgid: dict[int, int] = {}
     tg_closed_alerted: set[int] = set()
     sym_key: dict[str, str] = {}
@@ -424,33 +479,69 @@ def run(base_url: str, force_live: bool) -> None:
         decision_events = []
     DECISION_LOG_MAX_EVENTS = 5000
 
+    decision_dirty = {"v": False}   # set by _record_decision, cleared by a successful flush
     def _record_decision(pair: str, motif_key: str, status: str, *, reason: str | None = None,
                          sl: float | None = None, tp: float | None = None) -> None:
+        decision_dirty["v"] = True
         decision_events.append({"t": int(time.time()), "pair": pair, "motif_key": motif_key,
                                  "status": status, "reason": reason, "sl": sl, "tp": tp})
         if len(decision_events) > DECISION_LOG_MAX_EVENTS:
             del decision_events[:len(decision_events) - DECISION_LOG_MAX_EVENTS]
 
     def _flush_decision_log() -> None:
+        # Only when something was recorded since the last flush. This runs on
+        # every status cycle (~30-45s) and the payload is the WHOLE capped log
+        # (~1 MB once it fills) -- the same bytes re-sent every cycle with
+        # nothing new was ~2 GB/day of Railway egress per bot (2026-09-17).
+        if not decision_dirty["v"]:
+            return
         try:
             kv.put_json("motif_bot_decision_log", {"events": decision_events})
+            decision_dirty["v"] = False
         except Exception as e:
             log.warning(f"decision log flush failed: {e}")
 
+    # The plan fetched before the loop was never "new" to the loop -- make the
+    # first tick treat it as such so its filtered signals get logged too.
+    startup_plan_seen = False
+    _boot_epoch = time.time()
+    life = {"started_at": datetime.now(timezone.utc).isoformat(), "ticks": 0, "plans_loaded": 0,
+            "last_plan_loaded_at": None, "plan_polls": 0, "decisions_today": {}}
+
     while True:
         nowt = time.time()
+        life["ticks"] += 1
 
         if nowt - last_plan >= cfg.get("poll_secs", 60) or last_plan == 0.0:
+            life["plan_polls"] += 1
             try:
                 new_plan = kv.get_json("motif_bot_plan")
             except Exception as e:
                 log.warning(f"plan fetch failed: {e} -- keeping current plan")
                 new_plan = None
-            if new_plan and new_plan.get("generatedAt") != (plan or {}).get("generatedAt"):
+            if new_plan and (not startup_plan_seen or new_plan.get("generatedAt") != (plan or {}).get("generatedAt")):
+                startup_plan_seen = True
                 plan = new_plan
+                life["plans_loaded"] += 1
+                life["last_plan_loaded_at"] = datetime.now(timezone.utc).isoformat()
                 for e in _plan_entries(plan):
                     _register_pair(str(e.get("pair", "")).lower())
-                log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(_plan_entries(plan))} entries")
+                n_filt = len(plan.get("filtered") or [])
+                log.info(f"new plan loaded · {plan.get('generatedAt')} · {len(_plan_entries(plan))} entries"
+                         f"{f' · {n_filt} recent confirmation(s) rejected by best-config' if n_filt else ''}")
+                _verify_new_pairs({str(e.get("pair", "")).lower() for e in _plan_entries(plan)}, startup=False)
+                # Signals the tracker saw but the validated filter rejected:
+                # log each ONCE so the dashboard timeline shows the bot
+                # declining them, with the reason, rather than nothing at all.
+                for f in plan.get("filtered") or []:
+                    fk = f.get("motif_key")
+                    if not fk or fk in filtered_logged:
+                        continue
+                    filtered_logged.add(fk)
+                    fpair = str(f.get("pair", "")).lower()
+                    why = f"best-config filter: {f.get('filter_reason') or 'rejected'}"
+                    log.info(f"{fpair} {fk} not tradeable -- {why}")
+                    _record_decision(fpair, fk, "filtered", reason=why)
             last_plan = nowt
 
             # Sample REAL spread on every pair the strategy trades, not just
@@ -480,8 +571,15 @@ def run(base_url: str, force_live: bool) -> None:
             except Exception as e:
                 log.warning(f"ai_alert_cfg fetch failed: {e} (Telegram master switch check skipped this cycle)")
             try:
+                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                counts: dict[str, int] = {}
+                for ev in decision_events:
+                    if datetime.fromtimestamp(ev["t"], tz=timezone.utc).strftime("%Y-%m-%d") == today:
+                        counts[ev["status"]] = counts.get(ev["status"], 0) + 1
+                life["decisions_today"] = counts
+                life["uptime_s"] = int(time.time() - _boot_epoch)
                 status = build_status(cfg, broker, plan, paper, guard=guard,
-                                      plan_age_blocked=plan_age_blocked, acted_count=len(acted_keys))
+                                      plan_age_blocked=plan_age_blocked, acted_count=len(acted_keys), life=life)
                 kv.put_status("motif_bot_status", status)
             except Exception as e:
                 log.warning(f"status push failed: {e}")
@@ -532,6 +630,16 @@ def run(base_url: str, force_live: bool) -> None:
                 motif_key = entry.get("motif_key")
                 pair = str(entry.get("pair", "")).lower()
                 if not motif_key or motif_key in acted_keys:
+                    continue
+                if _entry_is_stale(entry, cfg, nowt):
+                    if motif_key not in stale_logged:
+                        stale_logged.add(motif_key)
+                        age = _entry_age_hours(entry, nowt)
+                        why = (f"stale: confirmed {age:.1f}h ago (> max_entry_age_hours="
+                               f"{cfg.get('max_entry_age_hours', 3)})" if age is not None
+                               else "stale: plan entry carries no confirmed_at")
+                        log.info(f"{pair} {motif_key} skipped -- {why}")
+                        _record_decision(pair, motif_key, "skipped", reason=why)
                     continue
                 if reject_until.get(motif_key, 0) > nowt:
                     continue

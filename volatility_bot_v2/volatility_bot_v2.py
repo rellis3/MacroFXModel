@@ -589,18 +589,37 @@ def run(base_url: str, force_live: bool) -> None:
     # of safety over the 9 days that already wasn't enough.
     DECISION_LOG_MAX_EVENTS = 50000
 
+    decision_dirty = {"v": False}   # set by _record_decision, cleared by a successful flush
     def _record_decision(pair: str, status: str, *, side: str | None = None, rung: str | None = None,
                           zone_id: str | None = None, decision: str | None = None, margin: int | None = None,
-                          reason: str | None = None) -> None:
-        decision_events.append({"t": int(time.time()), "pair": pair, "side": side, "rung": rung,
-                                 "zone_id": zone_id, "decision": decision, "margin": margin,
-                                 "status": status, "reason": reason})
+                          reason: str | None = None, vote_dims: list | None = None) -> None:
+        decision_dirty["v"] = True
+        event = {"t": int(time.time()), "pair": pair, "side": side, "rung": rung,
+                  "zone_id": zone_id, "decision": decision, "margin": margin,
+                  "status": status, "reason": reason}
+        # vote_dims (2026-09-18, live-vs-backtest divergence audit — see
+        # engine.py's make_spec doc): the per-dimension vote detail behind
+        # `margin`, ONLY for "entered" (the vast majority of events are
+        # pair_blocked/skipped/rejected noise per this function's own size
+        # comment above — attaching it to every event would blow the 50,000-
+        # event cap's byte budget for no diagnostic value, since only actual
+        # entries are worth diffing against the backtest).
+        if vote_dims and status == "entered":
+            event["voteDims"] = vote_dims
+        decision_events.append(event)
         if len(decision_events) > DECISION_LOG_MAX_EVENTS:
             del decision_events[:len(decision_events) - DECISION_LOG_MAX_EVENTS]
 
     def _flush_decision_log() -> None:
+        # Only when something was recorded since the last flush. This runs on
+        # every status cycle (~30-45s) and the payload is the WHOLE capped log
+        # (~1 MB once it fills) -- the same bytes re-sent every cycle with
+        # nothing new was ~2 GB/day of Railway egress per bot (2026-09-17).
+        if not decision_dirty["v"]:
+            return
         try:
             kv.put_json("volatility_bot_v2_decision_log", {"events": decision_events})
+            decision_dirty["v"] = False
         except Exception as e:
             log.warning(f"decision log flush failed: {e}")
 
@@ -930,7 +949,8 @@ def run(base_url: str, force_live: bool) -> None:
                                  f"{direction} @~{spec['entry']} SL {spec['sl']} TP {spec['tp']} "
                                  f"→ ticket {tid} lots {lots} (margin {spec['margin']})")
                         _record_decision(instr, "entered", side=spec.get("side"), rung=spec.get("rung"),
-                                          zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"))
+                                          zone_id=zid, decision=spec.get("decision"), margin=spec.get("margin"),
+                                          vote_dims=spec.get("voteDims"))
                         if cfg.get("tg_enabled", True) and tg_master_on:
                             mid = _tg_send(cfg.get("tg_token", ""), cfg.get("tg_chat_id", ""),
                                            _fmt_entry_alert(instr, spec, lots, " [PAPER]" if paper else ""))

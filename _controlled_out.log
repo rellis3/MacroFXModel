@@ -1,0 +1,28 @@
+Window: 2026-09-12 to 2026-09-18
+
+=== RAW margin>=2 (no gap/cost filter) ===
+total=100 silentMiss=81 (81.0%)
+
+=== FILTERED (same gap/cost filters the live plan already applies) ===
+total=18 silentMiss=15 (83.3%)
+
+Difference: 82 of the raw 100 touches were excluded by gap/cost filters that ALREADY explain their absence from the live decision log -- not a timing bug.
+Of the 18 that SHOULD have been live-eligible after the same filtering, 15 (83.3%) still show zero live response -- this is the real, controlled number.
+
+Filtered silent-miss rows (up to 50 of 15):
+pair	ladder	date	side	rung	time
+gbpusd	asia	2026-09-16	below	-4	2026-09-16T19:07:00.000Z
+usdjpy	asia	2026-09-17	below	-0.25	2026-09-17T16:01:00.000Z
+usdjpy	asia	2026-09-17	below	-1	2026-09-17T12:19:00.000Z
+audusd	asia	2026-09-14	below	-0.25	2026-09-14T21:29:00.000Z
+audusd	asia	2026-09-16	below	-1	2026-09-16T18:25:00.000Z
+audusd	asia	2026-09-16	below	-2	2026-09-16T18:48:00.000Z
+audusd	asia	2026-09-17	above	1.25	2026-09-17T17:06:00.000Z
+nzdusd	asia	2026-09-14	below	-0.25	2026-09-14T21:54:00.000Z
+nzdusd	asia	2026-09-17	above	1.25	2026-09-17T21:40:00.000Z
+nzdusd	asia	2026-09-17	above	1.25	2026-09-17T21:57:00.000Z
+usdcad	asia	2026-09-14	above	2	2026-09-14T08:12:00.000Z
+usdcad	asia	2026-09-14	above	4	2026-09-14T20:00:00.000Z
+usdchf	asia	2026-09-15	above	1.25	2026-09-15T21:10:00.000Z
+audjpy	asia	2026-09-16	above	1.25	2026-09-16T20:37:00.000Z
+audjpy	asia	2026-09-16	above	1.25	2026-09-16T20:43:00.000Z

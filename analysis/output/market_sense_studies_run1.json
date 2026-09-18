@@ -1,0 +1,941 @@
+{
+ "ranAt": "2026-09-17T16:55:42.041Z",
+ "studies": {
+  "S1": {
+   "entries": 86,
+   "exits": 39,
+   "episodes": 133,
+   "medianLen": 1,
+   "p75Len": 3,
+   "tests": [
+    {
+     "label": "SPX500_USD entry",
+     "sym": "SPX500_USD",
+     "outcome": "r5",
+     "n": 82,
+     "paired": 82,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.7562817106698924,
+     "lo": 0.2865762543746857,
+     "hi": 1.2864804623259707,
+     "setupMean": 3.1827459144984376,
+     "ctlMean": 2.426464203828546,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "SPX500_USD entry",
+     "sym": "SPX500_USD",
+     "outcome": "r20",
+     "n": 82,
+     "paired": 82,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 1.2264039128984139,
+     "lo": 0.4707203409096162,
+     "hi": 2.0888894516391714,
+     "setupMean": 5.7630075323208425,
+     "ctlMean": 4.536603619422431,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "SPX500_USD entry R1",
+     "sym": "SPX500_USD",
+     "outcome": "r5",
+     "n": 39,
+     "paired": 39,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "SPX500_USD exit",
+     "sym": "SPX500_USD",
+     "outcome": "r5",
+     "n": 34,
+     "paired": 34,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "NAS100_USD entry",
+     "sym": "NAS100_USD",
+     "outcome": "r5",
+     "n": 82,
+     "paired": 82,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.8236995392090288,
+     "lo": 0.527252879349569,
+     "hi": 1.1345936896714077,
+     "setupMean": 2.9995930124219177,
+     "ctlMean": 2.175893473212888,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "NAS100_USD entry",
+     "sym": "NAS100_USD",
+     "outcome": "r20",
+     "n": 82,
+     "paired": 82,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 1.13215728316209,
+     "lo": 0.5106988626930173,
+     "hi": 1.8091201003357318,
+     "setupMean": 5.558576236436985,
+     "ctlMean": 4.426418953274895,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "NAS100_USD entry R1",
+     "sym": "NAS100_USD",
+     "outcome": "r5",
+     "n": 39,
+     "paired": 39,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "NAS100_USD exit",
+     "sym": "NAS100_USD",
+     "outcome": "r5",
+     "n": 34,
+     "paired": 34,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "USD_JPY entry",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 76,
+     "paired": 76,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.43983077850183355,
+     "lo": 0.08215223049482084,
+     "hi": 0.879717627853703,
+     "setupMean": 2.7507871477464354,
+     "ctlMean": 2.310956369244602,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "USD_JPY entry",
+     "sym": "USD_JPY",
+     "outcome": "r20",
+     "n": 76,
+     "paired": 76,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.3327894930227377,
+     "lo": -0.7291892229872653,
+     "hi": 1.3416654827557977,
+     "setupMean": 5.595055647249057,
+     "ctlMean": 5.262266154226318,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "USD_JPY entry R1",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 39,
+     "paired": 39,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "USD_JPY exit",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 30,
+     "paired": 30,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "XAU_USD entry",
+     "sym": "XAU_USD",
+     "outcome": "r5",
+     "n": 76,
+     "paired": 76,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.4256232732587618,
+     "lo": 0.1126196847831371,
+     "hi": 0.7797217928417178,
+     "setupMean": 2.7968175558413253,
+     "ctlMean": 2.371194282582563,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "XAU_USD entry",
+     "sym": "XAU_USD",
+     "outcome": "r20",
+     "n": 76,
+     "paired": 76,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.9077822640576951,
+     "lo": 0.33530275759110817,
+     "hi": 1.531112676651132,
+     "setupMean": 5.750644048952784,
+     "ctlMean": 4.8428617848950894,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "XAU_USD entry R1",
+     "sym": "XAU_USD",
+     "outcome": "r5",
+     "n": 39,
+     "paired": 39,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "XAU_USD exit",
+     "sym": "XAU_USD",
+     "outcome": "r5",
+     "n": 30,
+     "paired": 30,
+     "noCtl": 0,
+     "scored": false
+    }
+   ]
+  },
+  "S2": {
+   "flips": 37,
+   "episodes": 71,
+   "medianLen": 5,
+   "p75Len": 17,
+   "tests": [
+    {
+     "label": "XAU_USD",
+     "sym": "XAU_USD",
+     "outcome": "r20",
+     "n": 36,
+     "paired": 36,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "XAU_USD",
+     "sym": "XAU_USD",
+     "outcome": "r5",
+     "n": 36,
+     "paired": 36,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "XAU_USD R1",
+     "sym": "XAU_USD",
+     "outcome": "r20",
+     "n": 23,
+     "paired": 23,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "EUR_USD",
+     "sym": "EUR_USD",
+     "outcome": "r20",
+     "n": 36,
+     "paired": 36,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "EUR_USD",
+     "sym": "EUR_USD",
+     "outcome": "r5",
+     "n": 36,
+     "paired": 36,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "EUR_USD R1",
+     "sym": "EUR_USD",
+     "outcome": "r20",
+     "n": 23,
+     "paired": 23,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "USD_JPY",
+     "sym": "USD_JPY",
+     "outcome": "r20",
+     "n": 36,
+     "paired": 36,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "USD_JPY",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 36,
+     "paired": 36,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "USD_JPY R1",
+     "sym": "USD_JPY",
+     "outcome": "r20",
+     "n": 23,
+     "paired": 23,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "SPX500_USD",
+     "sym": "SPX500_USD",
+     "outcome": "r20",
+     "n": 37,
+     "paired": 37,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "SPX500_USD",
+     "sym": "SPX500_USD",
+     "outcome": "r5",
+     "n": 37,
+     "paired": 37,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "SPX500_USD R1",
+     "sym": "SPX500_USD",
+     "outcome": "r20",
+     "n": 23,
+     "paired": 23,
+     "noCtl": 0,
+     "scored": false
+    }
+   ]
+  },
+  "S3": {
+   "thresholdBp": 14.000000000000002,
+   "tests": [
+    {
+     "label": "EUR_USD any",
+     "sym": "EUR_USD",
+     "outcome": "r5",
+     "n": 211,
+     "paired": 210,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.0851731271936775,
+     "lo": -0.26504482181575656,
+     "hi": 0.09666348578695093,
+     "setupMean": 2.2500025231284178,
+     "ctlMean": 2.3351756503220953,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "EUR_USD 2Y up",
+     "sym": "EUR_USD",
+     "outcome": "r5",
+     "n": 117,
+     "paired": 116,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.3426434814757091,
+     "lo": -0.5730791906432201,
+     "hi": -0.1381099396150238,
+     "setupMean": 2.1308755946740887,
+     "ctlMean": 2.4735190761497994,
+     "pass": false,
+     "calmer": true
+    },
+    {
+     "label": "EUR_USD 2Y down",
+     "sym": "EUR_USD",
+     "outcome": "r5",
+     "n": 94,
+     "paired": 94,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.05452062904428624,
+     "lo": -0.2177170145356164,
+     "hi": 0.3449497068625942,
+     "setupMean": 2.3970102220720553,
+     "ctlMean": 2.342489593027769,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "EUR_USD R1",
+     "sym": "EUR_USD",
+     "outcome": "r5",
+     "n": 178,
+     "paired": 177,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.1364408711386061,
+     "lo": -0.32517137120926093,
+     "hi": 0.0633937908941066,
+     "setupMean": 2.2637829863590824,
+     "ctlMean": 2.4002238574976884,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "USD_JPY any",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 211,
+     "paired": 210,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.08394235385543418,
+     "lo": -0.13720190865326523,
+     "hi": 0.31230516236438083,
+     "setupMean": 2.421430545068896,
+     "ctlMean": 2.337488191213462,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "USD_JPY 2Y up",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 116,
+     "paired": 115,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.17590618107062767,
+     "lo": -0.4216987942045904,
+     "hi": 0.10101754359219177,
+     "setupMean": 2.281308342905459,
+     "ctlMean": 2.4572145239760856,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "USD_JPY 2Y down",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 95,
+     "paired": 95,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.33142787797629175,
+     "lo": 0.03443976903456745,
+     "hi": 0.628054405698172,
+     "setupMean": 2.591052158214112,
+     "ctlMean": 2.25962428023782,
+     "pass": true,
+     "calmer": false
+    },
+    {
+     "label": "USD_JPY R1",
+     "sym": "USD_JPY",
+     "outcome": "r5",
+     "n": 179,
+     "paired": 178,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.12081210167095323,
+     "lo": -0.37025293213343935,
+     "hi": 0.13462892332379334,
+     "setupMean": 2.4193809769280574,
+     "ctlMean": 2.5401930785990117,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "GBP_USD any",
+     "sym": "GBP_USD",
+     "outcome": "r5",
+     "n": 212,
+     "paired": 211,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.047183470353242996,
+     "lo": -0.21579274682875552,
+     "hi": 0.11488595039998616,
+     "setupMean": 2.206477829585993,
+     "ctlMean": 2.2536612999392367,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "GBP_USD 2Y up",
+     "sym": "GBP_USD",
+     "outcome": "r5",
+     "n": 117,
+     "paired": 116,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.28296554695339526,
+     "lo": -0.5455616734530745,
+     "hi": -0.02968460031314141,
+     "setupMean": 2.181649340275138,
+     "ctlMean": 2.464614887228534,
+     "pass": false,
+     "calmer": true
+    },
+    {
+     "label": "GBP_USD 2Y down",
+     "sym": "GBP_USD",
+     "outcome": "r5",
+     "n": 95,
+     "paired": 95,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.09835956147173316,
+     "lo": -0.1465482690982088,
+     "hi": 0.3813526816054033,
+     "setupMean": 2.2367947217971422,
+     "ctlMean": 2.1384351603254084,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "GBP_USD R1",
+     "sym": "GBP_USD",
+     "outcome": "r5",
+     "n": 179,
+     "paired": 178,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.1696965656415316,
+     "lo": -0.4104603429785248,
+     "hi": 0.04481209851725338,
+     "setupMean": 2.207146516049393,
+     "ctlMean": 2.3768430816909247,
+     "pass": false,
+     "calmer": false
+    }
+   ]
+  },
+  "S4": {
+   "tests": [
+    {
+     "label": "oil up ≥10% → BEI next 5",
+     "sym": "EUR_USD",
+     "outcome": "beiF5",
+     "n": 128,
+     "paired": 128,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.062499999999996364,
+     "lo": -1.5820895522388028,
+     "hi": 1.476562500000001,
+     "setupMean": 0.8828125,
+     "ctlMean": 0.9453124999999969,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "oil up ≥10% → BEI next 10",
+     "sym": "EUR_USD",
+     "outcome": "beiF10",
+     "n": 128,
+     "paired": 128,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 1.0000000000000009,
+     "lo": -1.2283464566929116,
+     "hi": 3.396946564885496,
+     "setupMean": 1.8281249999999976,
+     "ctlMean": 0.828124999999998,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "oil up ≥10% → BEI next 20",
+     "sym": "EUR_USD",
+     "outcome": "beiF20",
+     "n": 128,
+     "paired": 127,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.09448818897637713,
+     "lo": -3.227642276422767,
+     "hi": 2.6406250000000036,
+     "setupMean": 2.1968503937007875,
+     "ctlMean": 2.291338582677164,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "oil down ≤−10% → BEI next 5",
+     "sym": "EUR_USD",
+     "outcome": "beiF5",
+     "n": 96,
+     "paired": 96,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.031250000000000146,
+     "lo": -2.1899999999999995,
+     "hi": 2.1473684210526276,
+     "setupMean": -0.30208333333333365,
+     "ctlMean": -0.2708333333333334,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "oil down ≤−10% → BEI next 10",
+     "sym": "EUR_USD",
+     "outcome": "beiF10",
+     "n": 96,
+     "paired": 96,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -2.2916666666666674,
+     "lo": -5.684210526315789,
+     "hi": 1.3894736842105233,
+     "setupMean": -2.1562500000000004,
+     "ctlMean": 0.13541666666666632,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "oil down ≤−10% → BEI next 20",
+     "sym": "EUR_USD",
+     "outcome": "beiF20",
+     "n": 96,
+     "paired": 96,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -2.6562499999999996,
+     "lo": -6.741935483870965,
+     "hi": 0.9687500000000012,
+     "setupMean": -2.0416666666666665,
+     "ctlMean": 0.6145833333333329,
+     "pass": false,
+     "calmer": false
+    }
+   ],
+   "xcorr": [
+    {
+     "lag": 0,
+     "corr": 0.36781869543551765
+    },
+    {
+     "lag": 5,
+     "corr": 0.3134823880362895
+    },
+    {
+     "lag": 10,
+     "corr": 0.2552278785207128
+    },
+    {
+     "lag": 15,
+     "corr": 0.17830729733143075
+    },
+    {
+     "lag": 20,
+     "corr": 0.09148633192472426
+    }
+   ],
+   "reached_up": 0.4330708661417323,
+   "reached_down": 0.4375
+  },
+  "S5": {
+   "a": {
+    "n": 55,
+    "dollar": {
+     "mean": 0.31984531135696576,
+     "lo": -0.11687740790138951,
+     "hi": 0.763164512614723,
+     "base": 0.09748265618572055,
+     "shareUp": 0.4727272727272727,
+     "shareDn": 0.36363636363636365
+    },
+    "real yield": {
+     "mean": 1.6727272727272706,
+     "lo": -4.727272727272731,
+     "hi": 7.566037735849054,
+     "base": 0.24369034994697772,
+     "shareUp": 0.36363636363636365,
+     "shareDn": 0.4
+    }
+   },
+   "b": {
+    "n": 45,
+    "gold": {
+     "mean": 0.45433990405395464,
+     "lo": -0.8482367952470026,
+     "hi": 1.6431451899017384,
+     "base": 0.6598587446244162,
+     "shareUp": 0.3333333333333333,
+     "shareDn": 0.28888888888888886
+    },
+    "real yield": {
+     "mean": -0.28888888888889064,
+     "lo": -7.911111111111111,
+     "hi": 7.409090909090909,
+     "base": 0.24369034994697772,
+     "shareUp": 0.37777777777777777,
+     "shareDn": 0.35555555555555557
+    }
+   }
+  },
+  "S6": {
+   "meetings": 85,
+   "tests": [
+    {
+     "sym": "EUR_USD",
+     "n": 85,
+     "t1": 6.000000000000005,
+     "t2": 16.000000000000014,
+     "lo": {
+      "mean": 1.4336760918807807,
+      "lo": 1.2686924522871792,
+      "hi": 1.6115241827538198
+     },
+     "hi": {
+      "mean": 1.3212703051673769,
+      "lo": 1.1768808150624206,
+      "hi": 1.4606598295396505
+     },
+     "diff": -0.11240578671340384,
+     "dl": -0.32436224582406004,
+     "dh": 0.11381963256320149,
+     "uncMean": 1.0114998580426793,
+     "verdict": "null"
+    },
+    {
+     "sym": "USD_JPY",
+     "n": 85,
+     "t1": 5.000000000000027,
+     "t2": 16.999999999999993,
+     "lo": {
+      "mean": 1.2309330894935349,
+      "lo": 1.0983988641915121,
+      "hi": 1.3849806048351532
+     },
+     "hi": {
+      "mean": 1.3034016243810203,
+      "lo": 1.1180902434284288,
+      "hi": 1.548426105692853
+     },
+     "diff": 0.07246853488748539,
+     "dl": -0.16303502029149253,
+     "dh": 0.33070408755540814,
+     "uncMean": 1.0238972655001952,
+     "verdict": "null"
+    },
+    {
+     "sym": "XAU_USD",
+     "n": 85,
+     "t1": 5.000000000000004,
+     "t2": 16.999999999999993,
+     "lo": {
+      "mean": 1.276325364131115,
+      "lo": 1.1044940547718973,
+      "hi": 1.4627344921374519
+     },
+     "hi": {
+      "mean": 1.3450088240770326,
+      "lo": 1.2130941191788833,
+      "hi": 1.4775600337740755
+     },
+     "diff": 0.06868345994591762,
+     "dl": -0.15761299785747385,
+     "dh": 0.29799635955859904,
+     "uncMean": 1.0219937404233772,
+     "verdict": "null"
+    },
+    {
+     "sym": "SPX500_USD",
+     "n": 85,
+     "t1": 5.000000000000027,
+     "t2": 16.000000000000014,
+     "lo": {
+      "mean": 1.3331052291702736,
+      "lo": 0.9619845079753391,
+      "hi": 1.783694245490053
+     },
+     "hi": {
+      "mean": 1.305085763184987,
+      "lo": 1.1888237128451005,
+      "hi": 1.4259351927359798
+     },
+     "diff": -0.028019465985286596,
+     "dl": -0.5469501498151041,
+     "dh": 0.36083410239394653,
+     "uncMean": 1.025186267692884,
+     "verdict": "null"
+    }
+   ]
+  },
+  "S7": {
+   "releases": 448,
+   "tests": [
+    {
+     "label": "employment EUR_USD top-|z| (≥0.42)",
+     "sym": "EUR_USD",
+     "outcome": "day0",
+     "n": 15,
+     "paired": 15,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "employment EUR_USD all",
+     "sym": "EUR_USD",
+     "outcome": "day0",
+     "n": 35,
+     "paired": 35,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "employment EUR_USD top-|z| next day",
+     "sym": "EUR_USD",
+     "outcome": "r1",
+     "n": 15,
+     "paired": 15,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "gdp EUR_USD top-|z| (≥0.70)",
+     "sym": "EUR_USD",
+     "outcome": "day0",
+     "n": 14,
+     "paired": 14,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "gdp EUR_USD all",
+     "sym": "EUR_USD",
+     "outcome": "day0",
+     "n": 37,
+     "paired": 37,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "gdp EUR_USD top-|z| next day",
+     "sym": "EUR_USD",
+     "outcome": "r1",
+     "n": 14,
+     "paired": 14,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "pmi EUR_USD top-|z| (≥0.99)",
+     "sym": "EUR_USD",
+     "outcome": "day0",
+     "n": 15,
+     "paired": 15,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "pmi EUR_USD all",
+     "sym": "EUR_USD",
+     "outcome": "day0",
+     "n": 23,
+     "paired": 23,
+     "noCtl": 0,
+     "scored": false
+    },
+    {
+     "label": "pmi EUR_USD top-|z| next day",
+     "sym": "EUR_USD",
+     "outcome": "r1",
+     "n": 15,
+     "paired": 15,
+     "noCtl": 0,
+     "scored": false
+    }
+   ]
+  },
+  "S8": {
+   "thresholdPp": 6.106293810124466,
+   "n": 140,
+   "tests": [
+    {
+     "label": "NAS100",
+     "sym": "NAS100_USD",
+     "outcome": "r20",
+     "n": 140,
+     "paired": 140,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.30655192482179644,
+     "lo": -0.8643210620581343,
+     "hi": 0.2203839699309464,
+     "setupMean": 4.669784826803703,
+     "ctlMean": 4.9763367516255,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "NAS100",
+     "sym": "NAS100_USD",
+     "outcome": "r5",
+     "n": 140,
+     "paired": 140,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.1532526373336671,
+     "lo": -0.05700521050415234,
+     "hi": 0.37870387216144474,
+     "setupMean": 2.3552295731388124,
+     "ctlMean": 2.201976935805148,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "NAS100 R1",
+     "sym": "NAS100_USD",
+     "outcome": "r20",
+     "n": 68,
+     "paired": 68,
+     "noCtl": 0,
+     "scored": true,
+     "diff": 0.2020955746445556,
+     "lo": -0.3719759437939197,
+     "hi": 0.8278404300622982,
+     "setupMean": 4.828387867097054,
+     "ctlMean": 4.626292292452496,
+     "pass": false,
+     "calmer": false
+    },
+    {
+     "label": "SPX500",
+     "sym": "SPX500_USD",
+     "outcome": "r20",
+     "n": 140,
+     "paired": 140,
+     "noCtl": 0,
+     "scored": true,
+     "diff": -0.225928267288766,
+     "lo": -0.7310198323412097,
+     "hi": 0.30797821521718705,
+     "setupMean": 4.753486020912224,
+     "ctlMean": 4.979414288200989,
+     "pass": false,
+     "calmer": false
+    }
+   ],
+   "persist": {
+    "mean": -0.6068584345034113,
+    "lo": -1.5329471565345287,
+    "hi": 0.3482665294559007
+   }
+  }
+ }
+}

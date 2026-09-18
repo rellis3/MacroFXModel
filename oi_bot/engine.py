@@ -260,6 +260,18 @@ class OISession:
         (unchanged). Touch counts (rising edges of the trigger) are kept per zone."""
         if px is None:
             return []
+        # PRIMING IGNORES THE TOUCH TOLERANCE. `tol` exists so a LIVE touch is
+        # forgiving - price within 2 gold points of a level counts as on it. Priming
+        # asks a different question: has price ALREADY GONE THROUGH this level, so
+        # that entering now would be chasing a move that happened before we were
+        # watching? A price that is within tol on the APPROACH side has not gone
+        # through anything, and marking it primed locks the zone out just as price
+        # arrives at it. Seen live 2026-09-16 on gold: fade_sell_4336.72 primed at
+        # 4335.74 (0.98 BELOW the resistance, coming up to it) and fade_buy_4261.72
+        # primed at 4262.92 (1.2 ABOVE the support) - two of that day's seven skips
+        # were zones price had not reached. Strictly past, or not primed.
+        if dry_run:
+            tol = 0.0
         out = []
         for z in self.zones:
             zid = zone_id(z)
@@ -274,8 +286,10 @@ class OISession:
             if not firing:
                 continue
             if dry_run:
-                if z.get("mode") != "maxpain":     # maxpain enters near current price → never primed away
-                    entry = float(z.get("entry", 0))
+                entry = float(z.get("entry", 0))
+                # should_fire is >= / <= so a live touch AT the level counts; for
+                # priming, "at the level" is not "through it" - leave it armed.
+                if z.get("mode") != "maxpain" and float(px) != entry:   # maxpain enters near current price → never primed away
                     self.primed[zid] = {
                         "at": now, "price": float(px), "entry": entry,
                         "plan_spot": self.spot, "side": z.get("side"), "mode": z.get("mode"),

@@ -11,6 +11,7 @@
  */
 
 import { S3Client, GetObjectCommand, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { noteBytes } from './egressMeter.js';
 
 export const R2_ENDPOINT = process.env.R2_ENDPOINT || 'https://3e867110ae519cd24afc877c72e5026e.r2.cloudflarestorage.com';
 export const R2_BUCKET   = process.env.R2_BUCKET   || 'r2-storage';
@@ -23,7 +24,20 @@ export function makeR2Client() {
     endpoint: R2_ENDPOINT,
     region: 'auto',
     credentials: { accessKeyId, secretAccessKey },
-    requestHandler: { connectionTimeout: 10_000 },
+    // connectionTimeout alone only bounds handshake time -- a stalled/slow
+    // response body stream has NO bound at all without requestTimeout too,
+    // so a hung GetObject/PutObject can sit forever with zero CPU usage and
+    // no error, silently occupying whatever await is holding it (e.g. this
+    // module's own getJSON/putJSON, called mid-book-rebuild by every one of
+    // the 5 reference engines' guardAgainstRegression + M1_TAIL merge +
+    // final persist). volBacktestM1Engine.js's OWN separate R2 client
+    // already carries this exact fix (found investigating a fib_atlas_bot
+    // cold-start stuck at "warming" forever, 2026-09-01) -- this client uses
+    // a different S3Client instance and was never given the same fix.
+    // 2026-09-17: matches a real overnight reference-engine-rebuild stall
+    // (NQ stuck 45+ min with 0% CPU, ruling out slow computation) that this
+    // gap is the leading explanation for.
+    requestHandler: { connectionTimeout: 10_000, requestTimeout: 120_000 },
   });
 }
 
@@ -34,9 +48,11 @@ export function r2Configured() { return !!(process.env.R2_ACCESS_KEY && process.
 export async function putJSON(key, obj) {
   const client = makeR2Client();
   if (!client) return false;
+  const body = JSON.stringify(obj);
+  noteBytes('r2', key.replace(/\/[^/]+$/, '/*'), Buffer.byteLength(body));
   await client.send(new PutObjectCommand({
     Bucket: R2_BUCKET, Key: key,
-    Body: JSON.stringify(obj), ContentType: 'application/json',
+    Body: body, ContentType: 'application/json',
   }));
   return true;
 }

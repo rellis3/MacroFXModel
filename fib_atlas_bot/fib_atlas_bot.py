@@ -575,10 +575,12 @@ def run(base_url: str, force_live: bool) -> None:
         decision_events = []
     DECISION_LOG_MAX_EVENTS = 5000
 
+    decision_dirty = {"v": False}   # set by _record_decision, cleared by a successful flush
     def _record_decision(pair: str, ladder: str, status: str, *, side: str | None = None, rung=None,
                           dedupe_tag: str | None = None, decision: str | None = None, margin: int | None = None,
                           reason: str | None = None, entry: float | None = None, sl: float | None = None,
                           tp: float | None = None) -> None:
+        decision_dirty["v"] = True
         # entry/sl/tp (2026-09-06): the plan's OWN priced levels at decision
         # time -- without these, reconciling a live/demo trade back against
         # "what did the plan say to do" needs the plan's OWN 45s-refresh
@@ -592,8 +594,15 @@ def run(base_url: str, force_live: bool) -> None:
             del decision_events[:len(decision_events) - DECISION_LOG_MAX_EVENTS]
 
     def _flush_decision_log() -> None:
+        # Only when something was recorded since the last flush. This runs on
+        # every status cycle (~30-45s) and the payload is the WHOLE capped log
+        # (~1 MB once it fills) -- the same bytes re-sent every cycle with
+        # nothing new was ~2 GB/day of Railway egress per bot (2026-09-17).
+        if not decision_dirty["v"]:
+            return
         try:
             kv.put_json("fib_atlas_bot_decision_log", {"events": decision_events})
+            decision_dirty["v"] = False
         except Exception as e:
             log.warning(f"decision log flush failed: {e}")
 

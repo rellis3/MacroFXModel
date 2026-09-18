@@ -141,6 +141,41 @@ def test_plan_age_hours_measures_real_elapsed_time():
     assert age is not None and age > 1000  # years old, definitely stale
 
 
+# ── max_entry_age_hours -- the "don't enter 2021's motifs today" gate ──────
+# motif_bot_plan is a full snapshot of every still-open tracked trade. On
+# 2026-09-16 the tracker's index-based watermark shifted and 211 trades from
+# 2021 landed as "open"; the plan push happened to be broken that day
+# (localhost:3000 on Railway) which is the only reason none were entered.
+
+def test_entry_stale_when_confirmed_long_ago():
+    now = 1_800_000_000.0
+    e = _entry(confirmed_at="2021-01-07T19:00:00+00:00")
+    assert mb._entry_is_stale(e, {"max_entry_age_hours": 3}, now)
+
+
+def test_entry_fresh_when_confirmed_within_window():
+    now = 1_800_000_000.0
+    from datetime import datetime, timezone
+    ts = datetime.fromtimestamp(now - 3600, tz=timezone.utc).isoformat()   # 1h ago
+    e = _entry(confirmed_at=ts)
+    assert not mb._entry_is_stale(e, {"max_entry_age_hours": 3}, now)
+
+
+def test_entry_without_confirmed_at_is_stale_fail_closed():
+    e = _entry()
+    assert "confirmed_at" not in e
+    assert mb._entry_is_stale(e, {"max_entry_age_hours": 3}, 1_800_000_000.0)
+
+
+def test_entry_age_gate_can_be_switched_off():
+    e = _entry(confirmed_at="2021-01-07T19:00:00+00:00")
+    assert not mb._entry_is_stale(e, {"max_entry_age_hours": 0}, 1_800_000_000.0)
+
+
+def test_default_max_entry_age_is_on():
+    assert mb.DEFAULT_CFG["max_entry_age_hours"] > 0
+
+
 # ── formatters -- house style parity with fib_atlas_bot/volatility_bot_v2 ──
 
 def test_entry_alert_shows_sl_tp_and_lots():

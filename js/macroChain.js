@@ -33,7 +33,9 @@ export const CHAIN_WINDOW_DAYS = 20;
 // floor: the smallest 20d change that counts as "moved".
 export const CHAIN_NODES = {
   oil:    { label: 'Oil (WTI)',                       unit: 'pct', floor: 3,   dp: 1, what: 'Front-month crude in dollars. Energy is the first domino: it is in every input cost and every headline inflation print.' },
-  bei:    { label: 'Inflation expectations',          unit: 'bp',  floor: 5,   dp: 0, what: 'The 10-year breakeven (T10YIE): nominal yield minus the TIPS real yield. What the bond market is pricing for average inflation over ten years.' },
+  bei:    { label: 'Inflation expectations',          unit: 'bp',  floor: 5,   dp: 0, what: 'The 10-year breakeven (T10YIE): nominal yield minus the TIPS real yield. What the bond market is pricing for average inflation over ten years. Tested 2026-09-17: it moves in the SAME window as oil (correlation 0.37 at lag 0, 0.09 at 20 sessions); a quiet breakeven after an oil move is a verdict, not a delay.' },
+  us2y:   { label: 'US 2Y yield',                     unit: 'bp',  floor: 8,   dp: 0, what: 'The two-year Treasury yield (DGS2): the market\u2019s vote on what the central bank does over the next couple of years. It moves first, and hardest, on policy.' },
+  us30y:  { label: 'US 30Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The thirty-year (DGS30): the vote on inflation and fiscal credibility over a generation. When it moves against the front end, that is the story.' },
   us10y:  { label: 'US 10Y yield',                    unit: 'bp',  floor: 8,   dp: 0, what: 'The nominal 10-year Treasury yield (DGS10). It is the real yield plus expected inflation, so a move in it always has a cause on one side or the other.' },
   real:   { label: 'Real yield (10Y TIPS)',           unit: 'bp',  floor: 8,   dp: 0, what: 'The inflation-adjusted 10-year (DFII10). The true cost of money. Gold, the dollar and long-duration assets answer to this, not to the nominal.' },
   dxy:    { label: 'Dollar (broad index)',            unit: 'pct', floor: 0.5, dp: 1, what: 'The Fed’s trade-weighted broad dollar (DTWEXBGS). Up = the dollar bought against everything.' },
@@ -44,6 +46,8 @@ export const CHAIN_NODES = {
   usdjpy: { label: 'USD/JPY',                         unit: 'pct', floor: 1,   dp: 1, what: 'The haven pair. Fear normally means the yen is bought — USD/JPY DOWN — as carry trades funded in yen are closed.' },
   vix:    { label: 'Fear gauge (VIX)',                unit: 'pt',  floor: 3,   dp: 1, what: 'S&P 500 implied volatility. The price of insurance against the next 30 days.' },
   hy:     { label: 'Credit spreads (HY)',             unit: 'bp',  floor: 15,  dp: 0, what: 'High-yield OAS: the extra yield junk borrowers pay over Treasuries. Widening = lenders want more compensation = stress.' },
+  nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
+  spx:    { label: 'Broad stocks (S&P 500)',          unit: 'pct', floor: 2,   dp: 1, what: 'SPX500: the broad, blend-not-growth benchmark. Less duration exposure than the Nasdaq, so it answers to the real yield more slowly and less — which is exactly why it can sit quiet (the "milk in the grocery store" read) while the chain upstream of it is genuinely moving. A quiet SPX does not mean a quiet market; check nq, dxy and gold before concluding nothing is happening. Not yet tested for forward predictability here (nq has been; see above) — a natural next pre-registration, not yet run.' },
   btc:    { label: 'Bitcoin',                         unit: 'pct', floor: 5,   dp: 1, what: 'Trades most days as a high-beta risk asset and, on the days the dollar story is about credibility, as the last stop on the anti-dollar chain. The loosest link here.' },
 };
 
@@ -63,7 +67,7 @@ export const CHAIN_LINKS = [
     textbook: 'Dearer oil lifts inflation expectations',
     holds: 'Energy is feeding through to what the bond market expects for inflation — the first domino is doing its job.',
     broken: {
-      up:   'Oil rose but inflation expectations did not follow. The market is treating the oil move as temporary, or something bigger — a growth scare, a policy stand — is pulling expectations the other way. Either way the energy story has not reached the bond market yet.',
+      up:   'Oil rose but inflation expectations did not follow. The market is treating the oil move as temporary, or something bigger — a growth scare, a policy stand — is pulling expectations the other way. Tested here: breakevens move with oil in the same window, not after it (only 43% of ±10% oil moves get 5bp of breakeven within 20 sessions), so this is the bond market’s call, not a lag.',
       down: 'Oil fell but inflation expectations rose anyway. Inflation is being priced from somewhere other than energy: wages, tariffs, fiscal, or doubt about the central bank.',
     },
   },
@@ -90,13 +94,25 @@ export const CHAIN_LINKS = [
     },
   },
   {
+    id: 'us2y-us30y',
+    short: 'front end \u2192 long end',
+    punch: { holds: 'Long end following the front end \u2014 the curve believes the policy path.', up: '2-year up, 30-year down \u2192 hard flattening: the market thinks tightening bites before inflation does.', down: '2-year down, 30-year up \u2192 bear steepening on easing: credibility, not policy, is being priced.' },
+    from: 'us2y', to: 'us30y', sign: +1,
+    textbook: 'A front-end repricing pulls the long end with it',
+    holds: 'The long end is following the front end \u2014 the whole curve is repricing the policy path, and the market believes it. Front end leading is the policy read; long end leading is the credibility read.',
+    broken: {
+      up:   'The front end sold off but the long end rallied: a hard flattening. The market thinks the tightening will bite growth, or break something, before it lets inflation through \u2014 the "policy mistake" shape. Dollar-supportive near term, growth-negative after.',
+      down: 'The front end rallied but the long end sold off: bear steepening on easing. Investors want MORE compensation to lend long even as policy eases \u2014 fiscal or inflation-credibility doubt. This is the rates-crisis shape: policy easing that the bond market refuses to pass along.',
+    },
+  },
+  {
     id: 'real-dxy',
     short: 'real yields → dollar',
     punch: { holds: 'Dollar following real yields — capital is being paid to come in.', up: 'Paid more to hold US assets, still not buying the dollar → risk premium, not carry.', down: 'Real yields down, dollar up → a safety bid, not a yield bid.' }, from: 'real', to: 'dxy', sign: +1,
     textbook: 'Higher real yields pull capital in and lift the dollar',
     holds: 'The dollar is following real yields — the carry version of a rate move. Capital is being paid to come in, and it is coming.',
     broken: {
-      up:   'Real yields rose but the dollar fell. Investors are demanding MORE to hold US assets and still not buying the currency: that is a risk-premium or credibility story, not a carry story. The 2022 gilt shape, on the dollar.',
+      up:   'Real yields rose but the dollar fell. Investors are demanding MORE to hold US assets and still not buying the currency: that is a risk-premium or credibility story, not a carry story. The 2022 gilt shape, on the dollar. Tested here (55 such breaks since 2008): over the next 20 sessions the dollar caught up 47% of the time and fell further 36%; the real yield gave back 40% and rose further 36% — history does not say which leg gives way.',
       down: 'Real yields fell but the dollar rose. Money is buying dollars for safety rather than for yield — the flight-to-quality shape.',
     },
   },
@@ -107,8 +123,32 @@ export const CHAIN_LINKS = [
     textbook: 'Higher real yields are gold’s headwind',
     holds: 'Gold is answering to the real yield, as it usually does — the opportunity cost of holding a zero-yield asset is doing the pricing.',
     broken: {
-      up:   'Real yields rose and gold rose with them. Someone is paying up for gold despite being paid more to hold Treasuries: that is a bid for an asset with no counterparty — doubt about the currency, the fiscal path, or the people setting rates. The chain’s loudest tell.',
+      up:   'Real yields rose and gold rose with them. Someone is paying up for gold despite being paid more to hold Treasuries: that is a bid for an asset with no counterparty — doubt about the currency, the fiscal path, or the people setting rates. The chain’s loudest tell. Tested here (45 such breaks): gold went on to gain 2%+ in 33% of cases and lose 2%+ in 29% — no resolution tendency either way.',
       down: 'Real yields fell but gold fell too. The usual support is there and it is not working — look for forced selling (gold sold to raise cash in a margin squeeze) or a dollar bid strong enough to overwhelm it.',
+    },
+  },
+  {
+    id: 'real-nq',
+    short: 'real yields \u2192 growth stocks',
+    punch: { holds: 'Growth stocks answering to the discount rate, as the textbook says.', up: 'Real yields up, Nasdaq up anyway \u2192 earnings or financing outrunning the discount rate; paying to ignore rates.', down: 'Real yields down, Nasdaq down \u2192 growth scare: rates fall because earnings will, not because money is easier.' },
+    from: 'real', to: 'nq', sign: -1,
+    textbook: 'Higher real yields hit growth stocks hardest',
+    holds: 'Growth stocks are answering to the real yield \u2014 the discount rate is doing the pricing. Tested 2026-09-17 (analysis/growth_vs_yields_study.mjs): what this link does NEXT is nothing \u2014 a Nasdaq down-week widens the following session on its own, and the yield leg adds nothing to that. Read it as description.',
+    broken: {
+      up:   'Real yields rose and Nasdaq rose with them. The long-duration equity is ignoring its discount rate: either earnings and the financing story are beating it, or the rally is on borrowed time. Which one is a judgment; the break itself is a fact.',
+      down: 'Real yields fell and Nasdaq fell too. Money got cheaper and growth stocks did not care \u2014 rates are falling because growth is expected to, the growth-scare shape. Watch credit and copper for confirmation.',
+    },
+  },
+  {
+    id: 'real-spx',
+    short: 'real yields \u2192 broad stocks',
+    punch: { holds: 'The broad market answering to the discount rate too, just more quietly.', up: 'Real yields up, SPX up anyway \u2192 earnings outrunning the discount rate across the whole index, not just growth.', down: 'Real yields down, SPX down \u2192 a growth scare wide enough to reach the blend index, not just duration names.' },
+    from: 'real', to: 'spx', sign: -1,
+    textbook: 'Higher real yields are a headwind for equities generally, the broad index included',
+    holds: 'The broad market is answering to the real yield too \u2014 more slowly than the Nasdaq (less duration in the index), but the same direction. If this link and real\u2192nq both hold, the discount-rate story is market-wide, not a growth-stock story alone.',
+    broken: {
+      up:   'Real yields rose and the S&P 500 rose with them. Either broad earnings are outrunning the discount rate, or (check real\u2192nq) the index is being carried by the same handful of duration names everyone already watches \u2014 a quiet SPX print can still hide a real-yield fight happening entirely inside its growth cohort.',
+      down: 'Real yields fell and the S&P 500 fell too. Cheaper money is not helping stocks broadly \u2014 a growth scare wide enough to reach value and cyclicals, not just the long-duration names. Watch credit and copper for confirmation, same as real\u2192nq.',
     },
   },
   {
