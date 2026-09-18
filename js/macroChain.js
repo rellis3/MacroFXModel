@@ -47,6 +47,7 @@ export const CHAIN_NODES = {
   vix:    { label: 'Fear gauge (VIX)',                unit: 'pt',  floor: 3,   dp: 1, what: 'S&P 500 implied volatility. The price of insurance against the next 30 days.' },
   hy:     { label: 'Credit spreads (HY)',             unit: 'bp',  floor: 15,  dp: 0, what: 'High-yield OAS: the extra yield junk borrowers pay over Treasuries. Widening = lenders want more compensation = stress.' },
   nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
+  spx:    { label: 'Broad stocks (S&P 500)',          unit: 'pct', floor: 2,   dp: 1, what: 'SPX500: the broad, blend-not-growth benchmark. Less duration exposure than the Nasdaq, so it answers to the real yield more slowly and less — which is exactly why it can sit quiet (the "milk in the grocery store" read) while the chain upstream of it is genuinely moving. A quiet SPX does not mean a quiet market; check nq, dxy and gold before concluding nothing is happening. Not yet tested for forward predictability here (nq has been; see above) — a natural next pre-registration, not yet run.' },
   btc:    { label: 'Bitcoin',                         unit: 'pct', floor: 5,   dp: 1, what: 'Trades most days as a high-beta risk asset and, on the days the dollar story is about credibility, as the last stop on the anti-dollar chain. The loosest link here.' },
 };
 
@@ -136,6 +137,18 @@ export const CHAIN_LINKS = [
     broken: {
       up:   'Real yields rose and Nasdaq rose with them. The long-duration equity is ignoring its discount rate: either earnings and the financing story are beating it, or the rally is on borrowed time. Which one is a judgment; the break itself is a fact.',
       down: 'Real yields fell and Nasdaq fell too. Money got cheaper and growth stocks did not care \u2014 rates are falling because growth is expected to, the growth-scare shape. Watch credit and copper for confirmation.',
+    },
+  },
+  {
+    id: 'real-spx',
+    short: 'real yields \u2192 broad stocks',
+    punch: { holds: 'The broad market answering to the discount rate too, just more quietly.', up: 'Real yields up, SPX up anyway \u2192 earnings outrunning the discount rate across the whole index, not just growth.', down: 'Real yields down, SPX down \u2192 a growth scare wide enough to reach the blend index, not just duration names.' },
+    from: 'real', to: 'spx', sign: -1,
+    textbook: 'Higher real yields are a headwind for equities generally, the broad index included',
+    holds: 'The broad market is answering to the real yield too \u2014 more slowly than the Nasdaq (less duration in the index), but the same direction. If this link and real\u2192nq both hold, the discount-rate story is market-wide, not a growth-stock story alone.',
+    broken: {
+      up:   'Real yields rose and the S&P 500 rose with them. Either broad earnings are outrunning the discount rate, or (check real\u2192nq) the index is being carried by the same handful of duration names everyone already watches \u2014 a quiet SPX print can still hide a real-yield fight happening entirely inside its growth cohort.',
+      down: 'Real yields fell and the S&P 500 fell too. Cheaper money is not helping stocks broadly \u2014 a growth scare wide enough to reach value and cyclicals, not just the long-duration names. Watch credit and copper for confirmation, same as real\u2192nq.',
     },
   },
   {

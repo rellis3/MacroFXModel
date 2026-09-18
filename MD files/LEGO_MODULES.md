@@ -7979,3 +7979,34 @@ sample of a joint cell and are the honest first read on a grid this size.
 `MD files/EVENT_RESPONSE_BOOK.md` for what the book says and, just as importantly, what it
 cannot say. The size effects replicate; the conditional direction claim has no support in
 the descriptive grid, and the registered test that would settle it (§6) has not been run.
+
+### The chain, today — SPX node added (2026-09-18)
+
+`js/macroChain.js` (self-declared Tier-1 brick, `js/macroChain.test.mjs`) — the
+textbook macro chain rendered on `today.html`, one link at a time, with a
+HOLDING/BROKEN/QUIET/UNMEASURED verdict per link. Consumers: `today.html`
+(`chainVals`/`chainLinks`, the chain panel and the AI chain-read prompt),
+`server.js`'s desk watch (`_watchInputs`, one broken-link trigger per link
+via `js/deskWatch.js`). **Belongs in this registry and was not here before
+today** — noted here rather than silently left out, since a Crown clip's
+audit is what surfaced the gap (`MD files/CROWN_WATCH.md`, 2026-09-18 entry).
+
+**What changed today:** added an `spx` node (`CHAIN_NODES.spx`, S&P 500) and a
+`real-spx` link (real yields → broad stocks, sign −1, parallel in structure to
+the existing `real-nq`), plus the data plumbing that was already fetching
+`SPX500_USD` for desk watch but never feeding it into the chain's node list
+(`server.js`'s `_watchInputs()`, `today.html`'s `CHAIN_OHLC`). Additive only —
+no existing node, link or verdict logic touched; `js/macroChain.test.mjs`
+covers the new node's holding/broken/quiet cases, all green.
+
+**Why it was missing.** SPX500 is tracked everywhere else on this desk (desk
+watch's VIX-inversion trigger, S1, S9's FOMC studies) but had no node in the
+chain itself — the one module built specifically to show cross-market
+transmission. Found by reading `CHAIN_NODES` before writing anything, not
+assumed.
+
+**Not done, deliberately:** no forward-predictiveness test for `real-spx` —
+`real-nq`'s node text cites one (a Nasdaq down-week widens the next session;
+the yield leg adds nothing). The same test on SPX is a cheap, natural
+follow-on, registered as a candidate (not yet run) in `CROWN_WATCH.md`'s
+2026-09-18 entry rather than run here without a stated reading rule first.

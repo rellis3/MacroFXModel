@@ -3309,7 +3309,7 @@ async function _watchInputs() {
   const vals = {};
   const fredSrc = { bei: 'bei', us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', real: 'tips', dxy: 'dxy', vix: 'vix', hy: 'hy' };
   for (const [node, key] of Object.entries(fredSrc)) vals[node] = hist[key] ? _chainNodeDelta(hist[key], _CHAIN_NODES[node]) : null;
-  for (const node of ['oil', 'gold', 'copper', 'audusd', 'usdcad', 'usdjpy', 'btc', 'nq']) vals[node] = series[node] ? _chainNodeDelta(series[node], _CHAIN_NODES[node]) : null;
+  for (const node of ['oil', 'gold', 'copper', 'audusd', 'usdcad', 'usdjpy', 'btc', 'nq', 'spx']) vals[node] = series[node] ? _chainNodeDelta(series[node], _CHAIN_NODES[node]) : null;
   const chain = _evaluateChain(vals);
   let stockBond = null; try { stockBond = await _stockBondCorr(); } catch { /* optional */ }
   let events = []; try { const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const now = Date.now(); events = (res.events ?? []).filter(e => e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3); } catch { /* optional */ }

@@ -1501,7 +1501,7 @@ function mveChip(r) {
 let commodityDrivers = null;
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
-const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD' };
+const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
 async function loadCommodityDrivers() {
   try {
     // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
