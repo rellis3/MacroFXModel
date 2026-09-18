@@ -45,7 +45,13 @@ const results = { ranAt: new Date().toISOString(), mode: 'offline-local-data-onl
   { id: 'S16', reason: 'conditional on S15(a), which did not run' },
 ], studies: {} };
 
-// ── local M1 -> daily OHLC (schema: open,high,low,close,volume,spread_open,spread_close,datetime; datetime at index 7) ──
+// ── local M1 -> daily OHLC. Column layout is NOT uniform across these 26 files:
+// most are [open,high,low,close,volume,datetime] (datetime at 5), but a few
+// (found by inspection: eurusd/gbpusd/audusd/gold) carry two extra spread
+// columns first, [...,volume,spread_open,spread_close,datetime] (datetime at
+// 7). Hardcoding one index silently corrupted 22 of 26 files on the first run
+// (every row collapsed into a single "undefined" date) -- so this reads the
+// column index from the file's own schema instead of assuming it. ──
 async function dailyFromM1(pairKey) {
   const file = path.join(M1_DIR, `${pairKey}_m1.parquet`);
   const buf = fs.readFileSync(file);
@@ -53,13 +59,16 @@ async function dailyFromM1(pairKey) {
   const vfile = { byteLength: ab.byteLength, slice: (s, e) => Promise.resolve(ab.slice(s, e)) };
   const meta = await parquetMetadataAsync(vfile);
   const total = Number(meta.num_rows ?? 0);
+  const cols = meta.schema.filter(c => c.name !== 'schema').map(c => c.name);
+  const dtIdx = cols.indexOf('datetime');
+  if (dtIdx < 0) throw new Error(`${pairKey}_m1.parquet: no 'datetime' column in schema [${cols.join(',')}]`);
   const byDate = new Map();
   const chunkRows = 500_000;
   for (let start = 0; start < total; start += chunkRows) {
     const end = Math.min(start + chunkRows, total);
     let chunk; await parquetRead({ file: vfile, metadata: meta, rowStart: start, rowEnd: end, onComplete: d => (chunk = d) });
     for (const row of chunk) {
-      const dtRaw = row[7]; const dt = dtRaw instanceof Date ? dtRaw.toISOString() : String(dtRaw);
+      const dtRaw = row[dtIdx]; const dt = dtRaw instanceof Date ? dtRaw.toISOString() : String(dtRaw);
       const date = dt.slice(0, 10);
       let d = byDate.get(date);
       if (!d) { d = { date, open: row[0], high: row[1], low: row[2], close: row[3] }; byDate.set(date, d); }
