@@ -32,6 +32,14 @@ Environment variables:
 
 ## Running
 
+Easiest: `start.bat` — opens `sync.mjs --loop` and `server.mjs` each in their
+own window and waits for the server to answer `/health` before returning.
+Run it once, leave both windows open, independent of any bot's own
+start/stop (this engine isn't owned by volatility_bot_v3 — Fib Atlas will
+share it later, see the architecture doc). Then start whichever bot(s) need
+it, separately, whenever you want them trading.
+
+Manual equivalent, if you want explicit control over each process:
 ```
 node sync.mjs --loop       # leave running: pulls book daily, M1 tail every 15 min, pure pull from Railway
 node server.mjs            # the local decision HTTP server, localhost-only

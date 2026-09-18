@@ -4368,9 +4368,9 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
     <div class="card">
       <div class="card-title">How to run</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">Needs the local decision engine running first (its own README: <code>local_decision_engine/README.md</code>). Paper mode is the default. Uses its own magic number (20260918) and Telegram — safe to run alongside Vote Atlas v2 on the same MT5 account.</div>
-      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Start the local decision engine (once, leave running):
-node local_decision_engine/sync.mjs --loop
-node local_decision_engine/server.mjs
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Start the local decision engine (once, leave running — NOT tied to this
+#    bot's own start/stop, one shared engine could later serve Fib Atlas too):
+local_decision_engine\start.bat
 
 # 2) Paper trade this bot (default) — point --url at this dashboard:
 python volatility_bot_v3/volatility_bot_v3.py --url &lt;dashboard-url&gt;
