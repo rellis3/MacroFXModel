@@ -61,7 +61,8 @@ from pylego.quotes import QuoteFeed                                   # noqa: E4
 from pylego.costs import expected_fill, max_spread                    # noqa: E402
 from pylego.risk_guard import RiskGuard, block_category  # noqa: E402
 from pylego.telegram import send_telegram                             # noqa: E402
-from pylego.motif_policy import RISK_GUARD_DEFAULTS                   # noqa: E402
+from pylego.motif_policy import RISK_GUARD_DEFAULTS, RETAIL_SPREAD_PIPS  # noqa: E402
+from pylego.spread_stats import update_pair_stats                     # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("motif_bot")
@@ -426,6 +427,15 @@ def run(base_url: str, force_live: bool) -> None:
         saved_state = kv.get_json("motif_bot_state") or {}
     except Exception:
         saved_state = {}
+    # Per-pair rolling average of REAL bid/ask spread, sampled from this
+    # account's own MT5 ticks -- see pylego/spread_stats.py's own doc for why
+    # (RETAIL_SPREAD_PIPS is a modelled estimate, not what this specific
+    # broker/account actually charges). Loaded here so it survives a bot
+    # restart rather than needing MIN_LIVE_SAMPLES ticks all over again.
+    try:
+        spread_stats: dict = kv.get_json("motif_bot_spread_stats") or {}
+    except Exception:
+        spread_stats = {}
     for v in (saved_state.get("acted_keys") or []):
         acted_keys.add(str(v))
     for k, v in (saved_state.get("tg_entry_msgid") or {}).items():
@@ -456,6 +466,12 @@ def run(base_url: str, force_live: bool) -> None:
             })
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
+
+    def _save_spread_stats() -> None:
+        try:
+            kv.put_json("motif_bot_spread_stats", spread_stats)
+        except Exception as e:
+            log.warning(f"spread stats save failed: {e}")
 
     try:
         decision_events: list[dict] = list((kv.get_json("motif_bot_decision_log") or {}).get("events") or [])
@@ -528,6 +544,21 @@ def run(base_url: str, force_live: bool) -> None:
                     _record_decision(fpair, fk, "filtered", reason=why)
             last_plan = nowt
 
+            # Sample REAL spread on every pair the strategy trades, not just
+            # this instance's currently-enabled ones -- a pair the static
+            # table (or a stale live average) currently excludes still needs
+            # fresh ticks flowing in so it can earn its way back in once
+            # MIN_LIVE_SAMPLES is reached, rather than being stuck excluded
+            # forever for lack of data. Real reads only: paper mode's
+            # `broker.spread()` is a configured constant, not a market
+            # observation, and would just quietly re-teach the table its own
+            # assumption back as if it were measured.
+            if not paper:
+                for pr in RETAIL_SPREAD_PIPS:
+                    spr = broker.spread(pr)
+                    if spr is not None and spr > 0:
+                        update_pair_stats(spread_stats, pr, spr / I.pip_size(pr), nowt)
+
         if nowt - last_status >= cfg.get("status_secs", 30):
             try:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json("motif_bot_config") or cfg)
@@ -554,6 +585,7 @@ def run(base_url: str, force_live: bool) -> None:
                 log.warning(f"status push failed: {e}")
             _save_state()
             _flush_decision_log()
+            _save_spread_stats()
             last_status = nowt
 
         bal = broker.account_balance() or 0.0

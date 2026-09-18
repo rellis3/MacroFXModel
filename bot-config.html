@@ -5352,6 +5352,31 @@ python fib_atlas_bot_v2/fib_atlas_bot_v2.py --live --url &lt;dashboard-url&gt;</
       </div>
     </div>
 
+    <!-- Live spread stats -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#fb923c">Live Spread — motif_bot_spread_stats</span>
+        <span class="bot-banner-sub" style="margin:0">real MT5 bid/ask, sampled by this bot every plan-poll cycle — overrides the modelled RETAIL_SPREAD_PIPS estimate in the best-config filter once a pair has enough samples</span>
+        <button onclick="loadMtSpreadStats()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer;margin-left:auto">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:280px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:right">Live avg (pips)</th>
+              <th style="padding:6px 10px;text-align:right">Samples</th>
+              <th style="padding:6px 10px;text-align:center">Trusted?</th>
+              <th style="padding:6px 10px;text-align:left">Last sample</th>
+            </tr>
+          </thead>
+          <tbody id="mtSpreadBody">
+            <tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3)">No live samples yet — needs a running --live bot connected to MT5</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Decision audit log -->
     <div class="card" style="padding:0">
       <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">

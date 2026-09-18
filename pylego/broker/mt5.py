@@ -205,6 +205,22 @@ class Mt5Broker:
             pass
         return None
 
+    def spread(self, pair: str) -> float | None:
+        """Live bid/ask spread for `pair`, in PRICE units (ask - bid), or None
+        when unavailable. Mirrors `PaperBroker.spread()`'s units/name so a
+        caller (e.g. a rolling spread-stats sampler) can read spread the same
+        way regardless of paper/live mode -- paper's version is a configured
+        constant, this is a real tick read."""
+        if not self.available:
+            return None
+        try:
+            tick = self.mt5.symbol_info_tick(self.resolve(pair))
+            if tick and tick.bid > 0 and tick.ask >= tick.bid:
+                return round(tick.ask - tick.bid, 6)
+        except Exception:
+            pass
+        return None
+
     def atr(self, pair: str, tf: str = '5m', period: int = 30, alpha: float = 0.15) -> float | None:
         """EMA-ATR from MT5 bars (alpha=0.15, matches dashboard vol.js)."""
         if not self.available:

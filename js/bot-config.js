@@ -7020,6 +7020,7 @@ async function loadMtLiveStatus() {
     }
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
   loadMtPlan();
+  loadMtSpreadStats();
   loadMtDecisionLog();
   loadMtLife();
   loadMtPairs();
@@ -7200,6 +7201,38 @@ async function loadMtPlan() {
   } catch (e) { body.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
+// Display-only mirror of pylego.spread_stats.MIN_LIVE_SAMPLES -- the actual
+// gate (whether motif_track.py trusts this over the static RETAIL_SPREAD_PIPS
+// estimate) is enforced in Python; a drift here would only mis-color this
+// table's "Trusted?" column, never change what the bot actually does.
+const MT_MIN_LIVE_SPREAD_SAMPLES = 200;
+
+async function loadMtSpreadStats() {
+  const body = document.getElementById('mtSpreadBody');
+  if (!body) return;
+  try {
+    const stats = await kvGet('motif_bot_spread_stats') || {};
+    const pairs = Object.keys(stats).sort();
+    if (!pairs.length) {
+      body.innerHTML = '<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3)">No live samples yet — needs a running --live bot connected to MT5</td></tr>';
+      return;
+    }
+    body.innerHTML = pairs.map(p => {
+      const row = stats[p] || {};
+      const n = row.n ?? 0;
+      const trusted = n >= MT_MIN_LIVE_SPREAD_SAMPLES;
+      const last = row.updated_at ? new Date(row.updated_at * 1000).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${p.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:right">${row.avg_pips != null ? row.avg_pips.toFixed(2) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:var(--text3)">${n}</td>
+        <td style="padding:5px 10px;text-align:center;color:${trusted ? 'var(--green)' : 'var(--text3)'}">${trusted ? '✓' : `${n}/${MT_MIN_LIVE_SPREAD_SAMPLES}`}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${last}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
 const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', filtered: 'var(--text3)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
 async function loadMtDecisionLog() {
   const body = document.getElementById('mtDecisionBody');
@@ -7232,6 +7265,7 @@ async function loadMtDecisionLog() {
 window.saveMtConfig = saveMtConfig; window.saveMtCreds = saveMtCreds;
 window.resetMtDefaults = resetMtDefaults; window.testMtTelegram = testMtTelegram;
 window.loadMtLiveStatus = loadMtLiveStatus; window.loadMtPlan = loadMtPlan; window.loadMtDecisionLog = loadMtDecisionLog;
+window.loadMtSpreadStats = loadMtSpreadStats;
 document.querySelector('.tab-btn[data-tab="motifbot"]')?.addEventListener('click', loadMtLiveStatus);
 loadMtConfig();
 loadMtCreds();

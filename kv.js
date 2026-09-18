@@ -256,6 +256,10 @@ const _CF_EXACT = new Set([
   'motif_bot_plan',        // Motif Bot live plan (currently-open motifs passing the best-config filter, pushed by AnalogML/motif_track.py's own hourly scan, NOT a server.js interval) — keep last good plan across a redeploy
   'motif_bot_state',       // Motif Bot one-shot state (acted motif_keys, tg message ids, dedup sets) — survives BOT restarts via KV
   'motif_bot_decision_log', // Motif Bot per-motif decision audit (entered/rejected/blocked + why), capped rolling window — bot-config.html's Decision Timeline
+  'motif_bot_spread_stats', // Motif Bot per-pair live spread averages (real MT5 ticks, motif_bot.py's own sampler) — must survive redeploys, it's accumulated data motif_track.py's best-config filter reads back.
+                            // NOT the same store as spread_profile_v1 below: this is a live EWMA of THIS account's real
+                            // broker fills, wired directly into passes_best_config's live override; spread_profile_v1 is a
+                            // passive per-UTC-hour OANDA-quote diagnostic for a human to consult, not auto-applied anywhere.
   'egress_audit',          // js/egressMeter.js ledger — bytes out by route/KV key/R2 prefix + per-day series; the whole point is surviving redeploys
   'spread_profile_v1',     // js/spreadProfile.js — measured spread per pair per UTC hour, weeks of accumulation; the motif spread gate's evidence base
   // NOTE: motif_bot_status is deliberately NOT here — the bot rewrites it every ~30s (same reason as fib_atlas_bot_status below)
