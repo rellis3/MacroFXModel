@@ -17119,14 +17119,19 @@ if (process.env.OANDA_KEY) {
 // `comment` (Mt5Broker/paper.py both emit it) — "FA[<dedupeTag>]",
 // asiaLivePlanZones/mondayLivePlanZones's own tag, `${a|m}_${side[0]}${level}`
 // — into ladder/side/rung at READ time, for `/api/fib-atlas-bot/trade-log` below.
-function _parseFibAtlasDedupeTag(comment) {
+function _parseFibAtlasDedupeTag(comment, prefix = 'FA') {
   // Rung is a fib multiple (asiaFibAtlasEngine.js's RUNGS_ABOVE/BELOW), so it
   // is routinely fractional (-0.5, -0.25, 1.25, 1.5, 2.5, ...) -- the
   // original `-?\d+` (integer-only) silently failed to match any of those,
   // decoding 63% of real trades (2026-09-12 live/backtest reconciliation
   // check) to ladder:null/side:null/rung:null. `(?:\.\d+)?` makes the
   // fractional part optional so integer rungs (FA[a_a2]) still match too.
-  const m = /FA\[([am])_([ab])(-?\d+(?:\.\d+)?)\]/.exec(comment || '');
+  // `prefix` (2026-09-18, Fib Atlas v2 fork): v2's own MT5 order comment is
+  // "FA2[...]" not "FA[...]" (a bare "FA[" match would ALSO match inside
+  // "FA2[", but the capture groups shift, so it must be passed explicitly,
+  // not left to a substring coincidence).
+  const re = new RegExp(`${prefix}\\[([am])_([ab])(-?\\d+(?:\\.\\d+)?)\\]`);
+  const m = re.exec(comment || '');
   if (!m) return { ladder: null, side: null, rung: null };
   return {
     ladder: m[1] === 'a' ? 'asia' : 'monday',
@@ -17513,6 +17518,22 @@ app.post('/api/fib-atlas-bot/telegram-test', async (_req, res) => {
   }
 });
 
+// Fib Atlas v2's own copy — same convention, own config key. The owner's
+// intent for v2 is the SAME Telegram chat as the original bot (2026-09-18),
+// which is a config-page value to copy over, not something this route
+// assumes or defaults to.
+app.post('/api/fib-atlas-bot-v2/telegram-test', async (_req, res) => {
+  try {
+    const cfgRaw = await kv.get('fib_atlas_bot_v2_config').catch(() => null);
+    const cfg = cfgRaw ? (JSON.parse(cfgRaw).data ?? JSON.parse(cfgRaw)) : {};
+    if (!cfg.tg_token || !cfg.tg_chat_id) return res.json({ ok: false, error: 'no tg_token/tg_chat_id saved on the Fib Atlas Bot v2 config yet' });
+    const sent = await sendTelegram(cfg.tg_token, cfg.tg_chat_id, '✅ Fib Atlas Bot v2 — test alert. Entered/skipped/rejected + SL/TP close alerts will use this bot.');
+    res.json({ ok: sent, error: sent ? undefined : 'Telegram API call failed' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /api/fib-atlas-bot/trade-log?from=YYYY-MM-DD&to=YYYY-MM-DD — the
 // durable closed-trade log (`_fibAtlasBotAccumulateTradeLog` above) PLUS the
 // matching decision-log events (entered/rejected/skipped, now carrying the
@@ -17554,6 +17575,46 @@ app.get('/api/fib-atlas-bot/trade-log', async (req, res) => {
       return { ...t, key, ladder, side, rung };
     });
     const decRaw = await kv.get('fib_atlas_bot_decision_log').catch(() => null);
+    const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
+      .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));
+    res.json({ ok: true, from, to, trades, decisions });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// Fib Atlas v2's own copy of the trade-log route above — same reconciliation
+// need (compare v2's REAL decisions against the offline backtest) applies
+// just as much to a local-decision-engine bot as the original, arguably
+// more so since parity is the whole point being validated. Reads v2's own
+// KV buckets and MT5 comment prefix ("FA2[...]", not "FA[...]").
+app.get('/api/fib-atlas-bot-v2/trade-log', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = req.query.from ? String(req.query.from) : today;
+    const to = req.query.to ? String(req.query.to) : from;
+    const inRange = (dateStr) => {
+      if (!dateStr) return true;
+      return dateStr >= from && dateStr <= to;
+    };
+    const dates = [];
+    for (let d = new Date(`${from}T00:00:00Z`); d <= new Date(`${to}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const perDay = await Promise.all(dates.map(async dt => {
+      try {
+        const raw = await kv.get(`trade_hist_fib_atlas_bot_v2_status_${dt}`);
+        return raw ? JSON.parse(raw).map(t => ({ ...t, date: dt })) : [];
+      } catch { return []; }
+    }));
+    const trades = perDay.flat().map(t => {
+      const { ladder, side, rung } = _parseFibAtlasDedupeTag(t.comment, 'FA2');
+      let key = null;
+      try { key = resolveKey(t.symbol) || String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      catch { key = String(t.symbol || '').toLowerCase().replace(/[/_]/g, ''); }
+      return { ...t, key, ladder, side, rung };
+    });
+    const decRaw = await kv.get('fib_atlas_bot_v2_decision_log').catch(() => null);
     const decisions = (((decRaw ? (JSON.parse(decRaw).data ?? JSON.parse(decRaw)) : null)?.events) || [])
       .filter(d => inRange(d.t ? new Date(d.t * 1000).toISOString().slice(0, 10) : null));
     res.json({ ok: true, from, to, trades, decisions });
