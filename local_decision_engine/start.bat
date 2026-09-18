@@ -16,6 +16,14 @@ REM ============================================================================
 setlocal
 cd /d "%~dp0"
 
+REM sync.mjs defaults DASHBOARD_URL to http://localhost:3000, which has
+REM nothing listening unless you're also running server.js locally -- point
+REM it at the real deployed dashboard by default instead (same production
+REM URL already used by oi_recon's own launchers). Set DASHBOARD_URL
+REM yourself before running this .bat if you actually want localhost.
+if not defined DASHBOARD_URL set DASHBOARD_URL=https://macrofxmodel-production.up.railway.app
+echo Using DASHBOARD_URL=%DASHBOARD_URL%
+
 echo Starting sync.mjs --loop (pulls book/M1 tail from Railway)...
 start "local-decision-sync" cmd /k node sync.mjs --loop
 
