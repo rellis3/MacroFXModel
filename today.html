@@ -2654,8 +2654,13 @@ function tradeGate(r) {
   // Do the agreeing reads actually agree with EACH OTHER, or merely each exist?
   const sides = agreeing.map(a => a.side);
   const netUp = sides.filter(x => x === 'up').length, netDn = sides.filter(x => x === 'down').length;
-  const consensus = Math.max(netUp, netDn);
-  const conflicted = netUp > 0 && netDn > 0;
+  const consensus = Math.max(netUp, netDn), minority = Math.min(netUp, netDn);
+  // "Conflicted" used to mean ANY dissent -- 3 up and 1 down was LEAN_ONLY, and
+  // since the weekly and monthly outlooks disagree with each other on most pairs
+  // most days, LEAN_ONLY was the resting state and every card read NO TRADE for
+  // a week (2026-09-18). A conflict is a MATERIAL split: the minority is at least
+  // half the majority (2-1, 2-2, 3-2). A clear majority (2-0, 3-1, 4-1) is not.
+  const conflicted = minority > 0 && minority * 2 >= consensus;
 
   // Stop floor. Expected day range in PRICE terms, so a stop can be checked.
   const pipSz = _pipSz(d);
