@@ -5688,6 +5688,450 @@ loadFaConfig();
 loadFaCreds();
 loadFaLiveStatus();
 
+// ══════════════════════════════════════════════════════════════════════════
+// fib_atlas_bot_v2 (local decision engine fork, 2026-09-18) — mirrors the
+// Fa-prefixed block above field-for-field (same DEFAULT_CFG shape — engine.py
+// and the risk/sizing/broker logic are copied verbatim, only the plan source
+// differs). Genuinely different: no fib_atlas_bot_v2_plan KV key exists (the
+// local engine IS the plan source), so "Today's Levels" reads the bot's OWN
+// status.lines instead of a separate plan fetch, plan_secs/plan_max_age_hours
+// default tighter (same-machine call, should respond fast). Reuses rather
+// than duplicates whatever is genuinely shared, non-bot-specific data: the
+// pair universe constants (FA_PAIRS/FA_RECOMMENDED_EXCLUDE/FA_DEFAULT_CHECKED),
+// the backtest daily-trade reference (FA_DAILY_TRADE_REFERENCE — same
+// backtest), the decision-matching helper (_faMatchDecision — generic), and
+// book freshness (same underlying book both bots read, view-only here — use
+// the original tab's "Refresh book now" button, it benefits both).
+// ══════════════════════════════════════════════════════════════════════════
+
+const FA2_DEFAULTS = {
+  paper_mode: true, kill_switch: false,
+  ladders: { asia: true, monday: true },
+  risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
+  max_spread_pips: 2.0,
+  enabled_pairs: [...FA_DEFAULT_CHECKED],
+  ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
+  throttle_enabled: false, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
+  max_open_risk_pct: 0,
+  // Tighter than FA_DEFAULTS' 2h/45s (fib_atlas_bot_v2.py's own DEFAULT_CFG) —
+  // plan_secs is now a same-machine HTTP call, not a Railway round-trip, and
+  // plan_max_age_hours exists to catch a STALLED source, which should be
+  // caught fast when that source is a local process this machine also owns.
+  plan_max_age_hours: 1 / 6,
+  tick_secs: 3, status_secs: 30, plan_secs: 3,
+  tg_enabled: true, tg_token: '', tg_chat_id: '',
+};
+let _fa2Cfg = { ...FA2_DEFAULTS };
+let _fa2LastStatus = null;
+
+function _fa2RenderPairChecks() {
+  const el = document.getElementById('fa2PairChecks');
+  if (!el) return;
+  const checked = new Set(_fa2Cfg.enabled_pairs?.length ? _fa2Cfg.enabled_pairs : FA_DEFAULT_CHECKED);
+  el.innerHTML = FA_PAIRS.map(p => `<label style="display:flex;align-items:center;gap:5px;padding:3px 0"><input type="checkbox" data-fa2-pair="${p}" ${checked.has(p) ? 'checked' : ''}>${p.toUpperCase()}</label>`).join('');
+}
+function _fa2ReadPairChecks() {
+  const boxes = document.querySelectorAll('#fa2PairChecks input[data-fa2-pair]');
+  return Array.from(boxes).filter(b => b.checked).map(b => b.dataset.fa2Pair);
+}
+function fa2SelectAllPairs() {
+  document.querySelectorAll('#fa2PairChecks input[data-fa2-pair]').forEach(b => { b.checked = true; });
+}
+function fa2SelectRecommendedPairs() {
+  document.querySelectorAll('#fa2PairChecks input[data-fa2-pair]').forEach(b => { b.checked = !FA_RECOMMENDED_EXCLUDE.has(b.dataset.fa2Pair); });
+}
+
+function renderFa2Form() {
+  const chk = (id, v) => { const e = document.getElementById(id); if (e) e.checked = !!v; };
+  const set = (id, v) => { const e = document.getElementById(id); if (e && v != null) e.value = v; };
+  chk('fa2_paper_mode',  _fa2Cfg.paper_mode ?? true);
+  chk('fa2_kill_switch', _fa2Cfg.kill_switch);
+  chk('fa2_ladder_asia',   _fa2Cfg.ladders?.asia ?? true);
+  chk('fa2_ladder_monday', _fa2Cfg.ladders?.monday ?? true);
+  set('fa2_risk_pct',            _fa2Cfg.risk_pct            ?? FA2_DEFAULTS.risk_pct);
+  set('fa2_max_lot',             _fa2Cfg.max_lot             ?? FA2_DEFAULTS.max_lot);
+  set('fa2_max_open',            _fa2Cfg.max_open            ?? FA2_DEFAULTS.max_open);
+  set('fa2_max_concurrent_per_pair', _fa2Cfg.max_concurrent_per_pair ?? FA2_DEFAULTS.max_concurrent_per_pair);
+  set('fa2_max_spread_pips',     _fa2Cfg.max_spread_pips     ?? FA2_DEFAULTS.max_spread_pips);
+  set('fa2_ddlimit',             _fa2Cfg.ddlimit             ?? FA2_DEFAULTS.ddlimit);
+  set('fa2_monthlydd',           _fa2Cfg.monthlydd           ?? FA2_DEFAULTS.monthlydd);
+  set('fa2_lockout',             _fa2Cfg.lockout             ?? FA2_DEFAULTS.lockout);
+  set('fa2_cooldown',            _fa2Cfg.cooldown            ?? FA2_DEFAULTS.cooldown);
+  chk('fa2_throttle_enabled',    _fa2Cfg.throttle_enabled ?? FA2_DEFAULTS.throttle_enabled);
+  set('fa2_throttle_trigger_dd', _fa2Cfg.throttle_trigger_dd ?? FA2_DEFAULTS.throttle_trigger_dd);
+  set('fa2_throttle_restore_dd', _fa2Cfg.throttle_restore_dd ?? FA2_DEFAULTS.throttle_restore_dd);
+  set('fa2_throttle_mult',       _fa2Cfg.throttle_mult ?? FA2_DEFAULTS.throttle_mult);
+  set('fa2_max_open_risk_pct',   _fa2Cfg.max_open_risk_pct  ?? FA2_DEFAULTS.max_open_risk_pct);
+  set('fa2_tick_secs',           _fa2Cfg.tick_secs          ?? FA2_DEFAULTS.tick_secs);
+  set('fa2_status_secs',         _fa2Cfg.status_secs        ?? FA2_DEFAULTS.status_secs);
+  set('fa2_plan_secs',           _fa2Cfg.plan_secs          ?? FA2_DEFAULTS.plan_secs);
+  set('fa2_plan_max_age_hours',  _fa2Cfg.plan_max_age_hours ?? FA2_DEFAULTS.plan_max_age_hours);
+  chk('fa2_tg_enabled',          _fa2Cfg.tg_enabled ?? FA2_DEFAULTS.tg_enabled);
+  set('fa2_tg_token',            _fa2Cfg.tg_token ?? FA2_DEFAULTS.tg_token);
+  set('fa2_tg_chat_id',          _fa2Cfg.tg_chat_id ?? FA2_DEFAULTS.tg_chat_id);
+  _fa2RenderPairChecks();
+}
+
+function readFa2Form() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id)?.value); return Number.isFinite(v) ? v : d; };
+  _fa2Cfg.paper_mode           = !!document.getElementById('fa2_paper_mode')?.checked;
+  _fa2Cfg.kill_switch          = !!document.getElementById('fa2_kill_switch')?.checked;
+  _fa2Cfg.ladders = {
+    asia:   !!document.getElementById('fa2_ladder_asia')?.checked,
+    monday: !!document.getElementById('fa2_ladder_monday')?.checked,
+  };
+  _fa2Cfg.risk_pct             = num('fa2_risk_pct', FA2_DEFAULTS.risk_pct);
+  _fa2Cfg.max_lot              = num('fa2_max_lot', FA2_DEFAULTS.max_lot);
+  _fa2Cfg.max_open             = Math.round(num('fa2_max_open', FA2_DEFAULTS.max_open));
+  _fa2Cfg.max_concurrent_per_pair = Math.round(num('fa2_max_concurrent_per_pair', FA2_DEFAULTS.max_concurrent_per_pair));
+  _fa2Cfg.max_spread_pips      = num('fa2_max_spread_pips', FA2_DEFAULTS.max_spread_pips);
+  _fa2Cfg.ddlimit               = num('fa2_ddlimit', FA2_DEFAULTS.ddlimit);
+  _fa2Cfg.monthlydd             = num('fa2_monthlydd', FA2_DEFAULTS.monthlydd);
+  _fa2Cfg.lockout                = num('fa2_lockout', FA2_DEFAULTS.lockout);
+  _fa2Cfg.cooldown               = num('fa2_cooldown', FA2_DEFAULTS.cooldown);
+  _fa2Cfg.throttle_enabled     = !!document.getElementById('fa2_throttle_enabled')?.checked;
+  _fa2Cfg.throttle_trigger_dd  = num('fa2_throttle_trigger_dd', FA2_DEFAULTS.throttle_trigger_dd);
+  _fa2Cfg.throttle_restore_dd  = num('fa2_throttle_restore_dd', FA2_DEFAULTS.throttle_restore_dd);
+  _fa2Cfg.throttle_mult        = num('fa2_throttle_mult', FA2_DEFAULTS.throttle_mult);
+  _fa2Cfg.max_open_risk_pct    = num('fa2_max_open_risk_pct', FA2_DEFAULTS.max_open_risk_pct);
+  _fa2Cfg.tick_secs            = Math.round(num('fa2_tick_secs', FA2_DEFAULTS.tick_secs));
+  _fa2Cfg.status_secs          = Math.round(num('fa2_status_secs', FA2_DEFAULTS.status_secs));
+  _fa2Cfg.plan_secs            = Math.round(num('fa2_plan_secs', FA2_DEFAULTS.plan_secs));
+  _fa2Cfg.plan_max_age_hours   = num('fa2_plan_max_age_hours', FA2_DEFAULTS.plan_max_age_hours);
+  _fa2Cfg.tg_enabled           = !!document.getElementById('fa2_tg_enabled')?.checked;
+  _fa2Cfg.tg_token             = (document.getElementById('fa2_tg_token')?.value || '').trim();
+  _fa2Cfg.tg_chat_id           = (document.getElementById('fa2_tg_chat_id')?.value || '').trim();
+  _fa2Cfg.enabled_pairs        = _fa2ReadPairChecks();
+}
+
+async function loadFa2Config() {
+  try { const stored = await kvGet('fib_atlas_bot_v2_config'); if (stored) _fa2Cfg = { ...FA2_DEFAULTS, ...stored, ladders: { ...FA2_DEFAULTS.ladders, ...(stored.ladders || {}) } }; renderFa2Form(); } catch (e) {}
+}
+async function saveFa2Config() {
+  readFa2Form();
+  const el = document.getElementById('fa2SaveStatus');
+  if (el) { el.textContent = 'Saving…'; el.style.color = 'var(--text3)'; }
+  try { await kvSet('fib_atlas_bot_v2_config', _fa2Cfg);
+    if (el) { el.textContent = 'Saved ✓'; el.style.color = '#f472b6'; setTimeout(() => { el.textContent = ''; }, 3000); }
+  } catch (e) { if (el) { el.textContent = `Error: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+async function testFa2Telegram() {
+  const el = document.getElementById('fa2SaveStatus');
+  if (el) { el.textContent = 'Sending test…'; el.style.color = 'var(--text3)'; }
+  try {
+    const r = await fetch('/api/fib-atlas-bot-v2/telegram-test', { method: 'POST' });
+    const d = await r.json();
+    if (el) { el.textContent = d.ok ? 'Test sent ✓' : `Test failed: ${d.error || ''}`; el.style.color = d.ok ? '#f472b6' : 'var(--red)'; }
+  } catch (e) { if (el) { el.textContent = `Test failed: ${e.message}`; el.style.color = 'var(--red)'; } }
+}
+function resetFa2Defaults() {
+  _fa2Cfg = { ...FA2_DEFAULTS, ladders: { ...FA2_DEFAULTS.ladders } }; renderFa2Form();
+  const el = document.getElementById('fa2SaveStatus');
+  if (el) { el.textContent = 'Defaults restored — click Save to apply'; el.style.color = 'var(--text3)'; }
+}
+async function loadFa2Creds() { try { _applyCredsToForm(await kvGet('fib_atlas_bot_v2_credentials'), 'fa2_', 'fa2_mt5_password'); } catch (e) {} }
+async function saveFa2Creds() { await _saveCreds('fib_atlas_bot_v2_credentials', 'fa2_', 'fa2_mt5_password', 'fa2CredsStatus'); }
+
+async function loadFa2LiveStatus() {
+  const ageEl = document.getElementById('fa2LiveAge'), modeEl = document.getElementById('fa2LiveMode');
+  const balEl = document.getElementById('fa2LiveBal'), openEl = document.getElementById('fa2OpenN');
+  const uniEl = document.getElementById('fa2UniN');
+  let st = null;
+  try {
+    st = await kvGet('fib_atlas_bot_v2_status');
+    _fa2LastStatus = st || null;
+    if (!st) { if (ageEl) ageEl.textContent = 'Bot not running — no status yet'; }
+    else {
+      if (ageEl)  ageEl.textContent  = st.running ? 'Running' : 'Idle';
+      if (modeEl) { modeEl.textContent = st.mode === 'live' ? '🟢 LIVE' : '📄 PAPER'; modeEl.style.color = st.mode === 'live' ? 'var(--green)' : 'var(--amber)'; }
+      if (balEl)  balEl.textContent  = st.balance != null ? `Balance ${st.balance}` : '';
+      const positions = st.mt5_positions || [];
+      if (openEl) openEl.textContent = positions.length;
+      const tradesEl = document.getElementById('fa2TradesN');
+      if (tradesEl) tradesEl.textContent = (st.today_closed_trades || []).length;
+      if (uniEl)  uniEl.textContent  = (st.universe || []).length;
+
+      const throttleEl = document.getElementById('fa2Throttle');
+      if (throttleEl) {
+        const th = st.throttle;
+        if (!th || th.peak == null) { throttleEl.textContent = 'no data yet'; throttleEl.style.color = 'var(--text3)'; }
+        else if (th.throttled) { throttleEl.textContent = `⚠ ENGAGED — sizing cut (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--amber,#e0a93b)'; }
+        else { throttleEl.textContent = `clear (peak ${th.peak.toFixed(2)})`; throttleEl.style.color = 'var(--green)'; }
+      }
+      const guardEl = document.getElementById('fa2RiskGuard');
+      if (guardEl) {
+        const rg = st.risk_guard;
+        if (!rg) { guardEl.textContent = 'no data yet'; guardEl.style.color = 'var(--text3)'; }
+        else if (rg.locked) { guardEl.textContent = `🔒 LOCKED — ${rg.locked_mins_remaining}m remaining (day DD ${rg.day_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--red)'; }
+        else { guardEl.textContent = `clear (day DD ${rg.day_dd_pct ?? '—'}% / month ${rg.month_dd_pct ?? '—'}%)`; guardEl.style.color = 'var(--green)'; }
+      }
+      const heatEl = document.getElementById('fa2Heat');
+      if (heatEl) {
+        const used = st.portfolio_heat_pct ?? 0, cap = st.portfolio_heat_cap_pct ?? 0;
+        if (!cap) { heatEl.textContent = `${used.toFixed(2)}% used (cap off)`; heatEl.style.color = 'var(--text3)'; }
+        else {
+          const pctOfCap = used / cap * 100;
+          heatEl.textContent = `${used.toFixed(2)}% / ${cap.toFixed(2)}% cap (${pctOfCap.toFixed(0)}%)`;
+          heatEl.style.color = pctOfCap >= 90 ? 'var(--red)' : pctOfCap >= 60 ? 'var(--amber,#e0a93b)' : 'var(--green)';
+        }
+      }
+      const planGateEl = document.getElementById('fa2PlanGate');
+      if (planGateEl) {
+        if (st.plan_age_blocked) { planGateEl.textContent = '⚠ BLOCKED — plan stale, no new entries'; planGateEl.style.color = 'var(--red)'; }
+        else { planGateEl.textContent = 'fresh'; planGateEl.style.color = 'var(--green)'; }
+      }
+
+      const openBody = document.getElementById('fa2OpenBody');
+      if (openBody) {
+        if (!positions.length) {
+          openBody.innerHTML = '<tr><td colspan="6" style="padding:12px;text-align:center;color:var(--text3)">No open positions</td></tr>';
+        } else {
+          const dp = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+          openBody.innerHTML = positions.map(p => {
+            const buy = (p.direction || '').toUpperCase() === 'BUY';
+            const pnl = +(p.profit || 0);
+            return `<tr>
+              <td style="padding:5px 10px;font-weight:600;text-align:left">${(p.symbol || '?').toUpperCase()}</td>
+              <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+              <td style="padding:5px 10px;text-align:right">${(+(p.lots || 0)).toFixed(2)}</td>
+              <td style="padding:5px 10px;text-align:right;color:var(--text3)">${dp(p.symbol, p.open_price)}</td>
+              <td style="padding:5px 10px;text-align:right">${dp(p.symbol, p.price)}</td>
+              <td style="padding:5px 10px;text-align:right;color:${pnl >= 0 ? 'var(--green)' : 'var(--red)'}">${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)}</td>
+            </tr>`;
+          }).join('');
+        }
+      }
+    }
+  } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
+
+  // Today's Levels table is sourced from the BOT'S OWN status.lines (not a
+  // separate plan fetch — there's no fib_atlas_bot_v2_plan KV key, the local
+  // decision engine IS the plan source, and the bot already flattens its
+  // currently-loaded plan into `lines` for exactly this purpose — see
+  // fib_atlas_bot_v2.py's own _instr_lines()).
+  const pa = document.getElementById('fa2PlanAge');
+  if (pa) pa.textContent = st?.generatedAt ? new Date(st.generatedAt).toISOString().slice(0, 19).replace('T', ' ') + 'Z' : '—';
+  const body = document.getElementById('fa2LinesBody');
+  if (body) {
+    const rows = (st?.lines || []).slice();
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="10" style="padding:14px;text-align:center;color:var(--text3)">No armed zones right now — bot may not be running, or nothing currently clears the vote margin</td></tr>';
+    } else {
+      rows.sort((a, b) => (b.margin ?? 0) - (a.margin ?? 0));
+      const d = (sym, v) => v == null ? '—' : (+v).toFixed(/jpy/i.test(sym) ? 3 : 5);
+      body.innerHTML = rows.map(r => `<tr>
+          <td style="padding:5px 10px;font-weight:600;text-align:left">${(r.pair || '').toUpperCase()}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+          <td style="padding:5px 10px;text-align:left">${r.side === 'above' ? '↑ above' : '↓ below'}</td>
+          <td style="padding:5px 10px;text-align:left">${r.rung ?? '—'}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.decision === 'fade' ? 'var(--amber)' : 'var(--blue,#60a5fa)'}">${r.decision || '—'}</td>
+          <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+          <td style="padding:5px 10px;text-align:right">${d(r.pair, r.entry)}</td>
+          <td style="padding:5px 10px;text-align:right;color:var(--red)">${d(r.pair, r.sl)}</td>
+          <td style="padding:5px 10px;text-align:right;color:var(--green)">${d(r.pair, r.tp)}</td>
+          <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.rationale || '—'}</td>
+        </tr>`).join('');
+    }
+  }
+  loadFa2DecisionLog();
+  loadFa2FrequencyCheck();
+  loadFa2EntrySlippage();
+  loadFa2Staleness();
+}
+
+// Shared book data (same underlying source both bots read) — view-only here,
+// no "Refresh book now" button: use the original Fib Atlas tab's, it
+// benefits both bots since they share the same book.
+async function loadFa2Staleness() {
+  const el = document.getElementById('fa2Staleness');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/fib-atlas-bot/staleness');
+    const j = await r.json();
+    if (!j.ok || j.oldestAgeHours == null) { el.textContent = 'no data yet'; el.style.color = 'var(--text3)'; return; }
+    const days = (j.oldestAgeHours / 24).toFixed(1);
+    if (j.oldestAgeHours > 15) {
+      el.textContent = `⚠ ${j.oldestPair?.toUpperCase()} (${j.oldestLadder}) ${days}d stale`;
+      el.style.color = 'var(--red)';
+    } else {
+      el.textContent = `fresh (oldest: ${j.oldestPair?.toUpperCase()} ${j.oldestLadder} ${j.oldestAgeHours.toFixed(0)}h)`;
+      el.style.color = 'var(--green)';
+    }
+  } catch (e) { el.textContent = 'check failed'; el.style.color = 'var(--red)'; }
+}
+
+// Same FA_DAILY_TRADE_REFERENCE the original bot's tab uses — it's the same
+// backtest, judging a different bot instance against it is the whole point.
+async function loadFa2FrequencyCheck() {
+  const body = document.getElementById('fa2FreqBody');
+  if (!body) return;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/fib-atlas-bot-v2/trade-log?from=${from}&to=${today}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = j.error || 'failed to load'; return; }
+    const byDate = {};
+    for (const t of (j.trades || [])) byDate[t.date] = (byDate[t.date] || 0) + 1;
+    const todayCount = byDate[today] || 0;
+    const ref = FA_DAILY_TRADE_REFERENCE;
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      days.push({ date: d, count: byDate[d] || 0 });
+    }
+    const todayColor = todayCount >= ref.median ? 'var(--green)' : 'var(--text3)';
+    const last7Str = days.map(d => {
+      const c = d.count;
+      const color = c === 0 ? 'var(--text3)' : (c >= ref.median ? 'var(--green)' : 'var(--amber,#e0a93b)');
+      return `<span style="color:${color}">${d.date.slice(5)}:${c}</span>`;
+    }).join('&nbsp;&nbsp;');
+    body.innerHTML = `
+      <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">
+        <div>Today: <b style="color:${todayColor}">${todayCount}</b></div>
+        <div>Backtest median (active days): <b>${ref.median}</b> <span style="color:var(--text3)">(p10 ${ref.p10} / p90 ${ref.p90}, mean ${ref.mean})</span></div>
+        <div style="color:var(--text3)">~${ref.zeroDayRatePct}% of ALL days see zero trades historically — one quiet day alone isn't unusual on its own</div>
+      </div>
+      <div>last 7 days: ${last7Str}</div>
+    `;
+  } catch (e) { body.innerHTML = e.message; }
+}
+
+function fa2DecShiftDay(delta) {
+  const input = document.getElementById('fa2DecDate');
+  if (!input) return;
+  const base = input.value ? new Date(input.value + 'T00:00:00Z') : new Date();
+  base.setUTCDate(base.getUTCDate() + delta);
+  input.value = base.toISOString().slice(0, 10);
+  loadFa2DecisionLog();
+}
+function fa2DecClearDate() {
+  const input = document.getElementById('fa2DecDate');
+  if (input) input.value = '';
+  loadFa2DecisionLog();
+}
+async function loadFa2DecisionLog() {
+  const body = document.getElementById('fa2DecisionBody');
+  if (!body) return;
+  const filter = (document.getElementById('fa2DecFilter')?.value || '').trim().toLowerCase();
+  const dateFilter = document.getElementById('fa2DecDate')?.value || '';
+  try {
+    const log = await kvGet('fib_atlas_bot_v2_decision_log');
+    let events = (log?.events || []).slice().reverse();
+    if (filter) events = events.filter(e => (e.pair || '').toLowerCase().includes(filter));
+    if (dateFilter) events = events.filter(e => e.t && new Date(e.t * 1000).toISOString().slice(0, 10) === dateFilter);
+    if (!events.length) {
+      const why = dateFilter ? `No events for ${dateFilter}${filter ? ` (pair ${filter})` : ''}` : (filter ? 'No events for that pair yet' : 'No decision events logged yet');
+      body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      return;
+    }
+    body.innerHTML = events.slice(0, 300).map(e => {
+      const ts = e.t ? new Date(e.t * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = e.decision === 'follow' ? 'var(--blue,#60a5fa)' : e.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(e.pair || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${e.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${e.ladder === 'asia' ? 'Asia' : e.ladder === 'monday' ? 'Monday' : '—'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.side ? (e.side === 'above' ? '↑ above' : '↓ below') : '—'}</td>
+        <td style="padding:5px 10px;text-align:left">${e.rung ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${e.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${e.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${FA_DEC_STATUS_COLOR[e.status] || 'var(--text3)'}">${e.status || '—'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${e.reason || '—'}</td>
+      </tr>`;
+    }).join('') + (events.length > 300 ? `<tr><td colspan="9" style="padding:8px;text-align:center;color:var(--text3)">…${events.length - 300} older event(s) not shown</td></tr>` : '');
+  } catch (e) { body.innerHTML = `<tr><td colspan="9" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
+}
+
+// Reuses _faMatchDecision (generic pair/ladder/side/rung/time matching, not
+// bot-specific) and FA_SLIP_LOOKBACK_DAYS/FA_SLIP_MATCH_WINDOW_SECS.
+async function loadFa2EntrySlippage() {
+  const body = document.getElementById('fa2SlipBody');
+  const kpiEl = document.getElementById('fa2SlipKpi');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>';
+  try {
+    const to = new Date().toISOString().slice(0, 10);
+    const from = new Date(Date.now() - FA_SLIP_LOOKBACK_DAYS * 86400_000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/fib-atlas-bot-v2/trade-log?from=${from}&to=${to}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'fetch failed');
+    const rows = [];
+    let unmatched = 0;
+    for (const t of j.trades || []) {
+      if (t.ladder == null || t.side == null) continue;
+      const d = _faMatchDecision(t, j.decisions || []);
+      if (!d) { unmatched++; continue; }
+      if (d.entry == null || t.open_price == null) continue;
+      let pip;
+      try { pip = getPipSize(t.symbol); } catch { continue; }
+      if (!(pip > 0)) continue;
+      const slipPips = ((t.direction === 'BUY' ? (t.open_price - d.entry) : (d.entry - t.open_price)) / pip);
+      rows.push({ ...t, decision: d.decision, margin: d.margin, plannedEntry: d.entry, slipPips });
+    }
+
+    if (!rows.length) {
+      const why = unmatched ? `${unmatched} trade(s) found but none matched a decision-log entry within ${FA_SLIP_MATCH_WINDOW_SECS}s (decision logging may have started after these fills)` : 'No matched fills in the last ' + FA_SLIP_LOOKBACK_DAYS + ' days';
+      body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${why}</td></tr>`;
+      if (kpiEl) kpiEl.innerHTML = '';
+      return;
+    }
+
+    const byDecision = {};
+    for (const row of rows) (byDecision[row.decision || '?'] ??= []).push(row.slipPips);
+    const summarize = xs => {
+      const n = xs.length;
+      const mean = xs.reduce((a, b) => a + b, 0) / n;
+      const sorted = [...xs].sort((a, b) => a - b);
+      return { n, mean, min: sorted[0], max: sorted[n - 1] };
+    };
+    const allSlip = rows.map(r => r.slipPips);
+    const overall = summarize(allSlip);
+    const kpiCell = (label, s) => `<div>
+        ${label} avg slip: <b style="color:${s.mean > 0 ? 'var(--red)' : s.mean < 0 ? 'var(--green)' : 'var(--text3)'}">${s.mean >= 0 ? '+' : ''}${s.mean.toFixed(2)}p</b>
+        <span style="color:var(--text3)">(n=${s.n}, range ${s.min.toFixed(1)} to ${s.max.toFixed(1)}p)</span>
+      </div>`;
+    const cells = [kpiCell('All', overall)];
+    for (const [dec, xs] of Object.entries(byDecision)) cells.push(kpiCell(dec, summarize(xs)));
+    if (kpiEl) {
+      kpiEl.innerHTML = `<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:6px">${cells.join('')}</div>
+        <div style="color:var(--text3)">positive = real fill worse than the plan's modeled entry (paid more on a buy, sold for less on a sell) · ${unmatched} fill(s) had no matching decision-log entry within ${FA_SLIP_MATCH_WINDOW_SECS}s, excluded above</div>`;
+    }
+
+    rows.sort((a, b) => (b.time_open ?? 0) - (a.time_open ?? 0));
+    body.innerHTML = rows.slice(0, 200).map(row => {
+      const ts = row.time_open ? new Date((row.time_open - (row.tz_offset_sec ?? 0)) * 1000).toISOString().slice(0, 19).replace('T', ' ') : '—';
+      const decColor = row.decision === 'follow' ? 'var(--blue,#60a5fa)' : row.decision === 'fade' ? 'var(--amber,#e0a93b)' : 'var(--text3)';
+      const slipColor = row.slipPips > 0 ? 'var(--red)' : row.slipPips < 0 ? 'var(--green)' : 'var(--text3)';
+      return `<tr>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${ts}</td>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(row.key || row.symbol || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${row.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${row.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${row.decision || '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${row.plannedEntry != null ? (+row.plannedEntry).toFixed(5) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right">${row.open_price != null ? (+row.open_price).toFixed(5) : '—'}</td>
+        <td style="padding:5px 10px;text-align:right;color:${slipColor}">${row.slipPips >= 0 ? '+' : ''}${row.slipPips.toFixed(2)}p</td>
+      </tr>`;
+    }).join('') + (rows.length > 200 ? `<tr><td colspan="7" style="padding:8px;text-align:center;color:var(--text3)">…${rows.length - 200} older matched fill(s) not shown</td></tr>` : '');
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="7" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`;
+    if (kpiEl) kpiEl.innerHTML = '';
+  }
+}
+
+window.saveFa2Config = saveFa2Config; window.resetFa2Defaults = resetFa2Defaults;
+window.saveFa2Creds = saveFa2Creds; window.loadFa2LiveStatus = loadFa2LiveStatus;
+window.loadFa2DecisionLog = loadFa2DecisionLog;
+window.fa2DecShiftDay = fa2DecShiftDay; window.fa2DecClearDate = fa2DecClearDate;
+window.testFa2Telegram = testFa2Telegram;
+window.fa2SelectAllPairs = fa2SelectAllPairs; window.fa2SelectRecommendedPairs = fa2SelectRecommendedPairs;
+window.loadFa2EntrySlippage = loadFa2EntrySlippage; window.loadFa2FrequencyCheck = loadFa2FrequencyCheck;
+
+document.querySelector('.tab-btn[data-tab="fibatlas2"]')?.addEventListener('click', loadFa2LiveStatus);
+loadFa2Config();
+loadFa2Creds();
+loadFa2LiveStatus();
+
 // ── Range-Line Bot config (mirrors the volatility bot) ────────────────────────
 const RL_DEFAULTS = {
   paper_mode: true, kill_switch: false, risk_pct: 0.5, max_lot: 2.0, max_open: 12,
