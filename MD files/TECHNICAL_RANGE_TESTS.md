@@ -112,6 +112,44 @@ NAS100 vs matched controls; next-5 direction as a base rate.
 Queued, not run (data not held): options walls as range fences (needs the OI
 archive to reach 200+ sessions).
 
+## T7 — The band read: reach-the-next-band odds by hour (pre-registered 2026-09-18, before running)
+
+The owner's ask: on the pair card, at London open and through the day, "I'd expect
+price to reach (or stop at) the median / 75th band, usually at hour x" — updated
+through the day, as the colleague's dashboard does. Four base-rate questions, no
+pass bar, every cell with an interval and n; nothing here is an entry (the fade at
+extension levels is a banked null, RANGE_EXTENSION_FINDINGS.md, and so is the
+level touch).
+
+**Bands.** For each London session: open = first M1 bar; UP-med / UP-75 / UP-90 =
+open × (1 + q) where q is the trailing-250-session empirical p50 / p75 / p90 of
+(high − open) / open; DOWN bands likewise from (open − low) / open. These are the
+quantities the vol forecaster's O-H / O-L bands estimate (its live hit rates run
+~55-62% for the median and ~24% for the 75th, matching the quantile definitions),
+so the results transfer to the page's bands to the extent the forecaster is
+calibrated — stated, not assumed.
+
+**Checkpoints.** 07:00, 08:00, 09:00, 10:30, 12:00, 13:30, 15:00, 16:30 UK. At each
+checkpoint c the state is the furthest UP band reached so far (none / med / 75) and
+the same for DOWN.
+
+1. **From here.** P(UP-75 reached before close | at c, UP-med reached, UP-75 not),
+   and P(UP-med reached before close | at c, UP-med not reached). Same for DOWN.
+   The unconditional P(reach after c | not yet) is the comparison line.
+2. **Stall.** P(session high ends within 20% of the med→75 gap above UP-med |
+   UP-med reached by c) — "the median band was (nearly) the day's high". Same for
+   the 75th and for DOWN.
+3. **Clock.** Median UK time of the first touch of each band, p25/p75.
+4. **Asia.** Asia range (00:00–07:00 UK) / ATR14 in terciles: P(UP-med after 07:00),
+   P(UP-75 after 07:00), by tercile. A difference of ≥ 15pp between top and bottom
+   terciles with intervals clear is a finding; less is "Asia does not change the
+   odds".
+
+Instruments: the eight of T1–T6. Output: a generated parameter table
+(`js/bandReachParams.js`) the drawer reads at the current hour and state, plus the
+usual JSON. What ships: a "Band read · as at HH:MM" block in the drawer's day
+section, wording "reached in n% of days like this", never "fade".
+
 ## What a pass changes on the page
 
 A validated T1 or T3 range effect earns a ✓ chip on the day tier, worded as range
