@@ -1,0 +1,7 @@
+{
+  "pairs": [
+    "eurusd", "gbpusd", "usdjpy", "audusd", "nzdusd", "usdcad", "usdchf",
+    "eurgbp", "euraud", "gbpaud", "audjpy", "audnzd", "audcad", "cadjpy", "nzdjpy", "gold"
+  ],
+  "ladders": ["asia", "monday"]
+}

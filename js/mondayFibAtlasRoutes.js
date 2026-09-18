@@ -8,7 +8,7 @@
  * other reference engine here (`/run`, `/status`, `/vote-trades`, `/live`).
  */
 import { loadM1ForPair } from './volBacktestM1Engine.js';
-import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder, mondayRungBarrierPips } from './mondayFibAtlasEngine.js';
+import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder } from './mondayFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
 import { matchLiveContext } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision, applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
@@ -22,6 +22,10 @@ import { oandaSymbol } from './instrumentRegistry.js';
 import { gapFillPacked } from './m1GapFill.js';
 import { fetchM1Range } from './volBacktestEngine.js';
 import { costForPair } from './perLineStrategy.js';
+import {
+  FIB_ATLAS_MONDAY_MIN_MARGIN, FIB_ATLAS_MONDAY_MIN_COST_RATIO, FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC, FIB_ATLAS_MONDAY_MAX_GAP_MIN,
+  zonesFromLiveAndBook,
+} from './mondayFibAtlasZonePricer.js';
 
 const PREFIX = 'monday-fib-atlas';
 const DEFAULT_REARM = 0.3;
@@ -228,61 +232,12 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
 // state). Monday's own frozen cost-efficiency ratio is 4x (Asia's is 3x —
 // analysis/fib_atlas_cost_efficiency_filter.mjs, each ladder chose its own
 // under the same pre-stated "maximize IS Sharpe" rule).
-export const FIB_ATLAS_MONDAY_MIN_MARGIN = 2;
-export const FIB_ATLAS_MONDAY_MIN_COST_RATIO = 4;
-export const FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC = 0.9;
-// Whiplash-gap filter (2026-09-03, owner-validated — see LEGO_MODULES.md's
-// fib_atlas_gap_filter_backtest.mjs entry) — same mechanism as Asia's own
-// (asiaFibAtlasRoutes.js's FIB_ATLAS_MAX_GAP_MIN), but Monday's optimum is
-// MUCH wider: its ladder trades far less densely (a weekly range vs a daily
-// session), so "recent" naturally means hours here, not minutes. Pooled
-// Sharpe peaks at 180m and only THERE does per-pair agreement reach 26/26 —
-// tighter cutoffs (30-150m) leave several pairs worse off, unlike Asia
-// where the tightest cutoff tested was already unanimous.
-export const FIB_ATLAS_MONDAY_MAX_GAP_MIN = 180;
-
-// Pure core — Monday's own copy of asiaFibAtlasRoutes.js's
-// `zonesFromLiveAndBook`, extracted the same day for the same reason: the
-// nightly rebuild (runOne below) can seed the bot's plan straight from its
-// own freshly-built `live`+`book`, reusing this EXACT scoring/pricing path
-// instead of a second implementation.
-export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MONDAY_MIN_MARGIN, minCostRatio = FIB_ATLAS_MONDAY_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MONDAY_MAX_GAP_MIN } = {}) {
-  const nowSec = Date.now() / 1000;
-  const zones = [];
-  for (const rung of live.ladder) {
-    const vd = voteDecision(book, rung);
-    if (!vd || vd.margin < minMargin) continue;
-    // See asiaLivePlanZones' identical doc — lastTouchTime is always real
-    // here too, since margin>=2 structurally requires prevOutcomeSameDay.
-    if (maxGapMin != null && rung.lastTouchTime != null) {
-      const gapMin = (nowSec - rung.lastTouchTime) / 60;
-      if (gapMin > maxGapMin) continue;
-    }
-    const { innerDistPips, outerDistPips } = mondayRungBarrierPips(rung.side, rung.level, live.boundary, rung.pip);
-    const targetPips = vd.decision === 'fade' ? innerDistPips : outerDistPips;
-    const sizingStopPips = vd.decision === 'fade' ? outerDistPips : innerDistPips;
-    if (targetPips == null || sizingStopPips == null) continue;
-    if (cost > 0 && minCostRatio > 1) {
-      const targetPnlPct = targetPips * rung.pip / rung.price * 100;
-      if (targetPnlPct / cost < minCostRatio) continue;
-    }
-    const stopPips = (vd.decision === 'fade' && stopTightenFrac != null && stopTightenFrac < 1)
-      ? +(sizingStopPips * stopTightenFrac).toFixed(1) : sizingStopPips;
-    const sgn = rung.side === 'above' ? 1 : -1;
-    const sl = rung.price - sgn * stopPips * rung.pip;
-    const sizingSl = rung.price - sgn * sizingStopPips * rung.pip;
-    const tp = rung.price + sgn * targetPips * rung.pip;
-    zones.push({
-      side: rung.side, rung: rung.level, decision: vd.decision, margin: vd.margin,
-      entry: rung.price, sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
-      targetPips, stopPips, sizingStopPips, pip: rung.pip, rearmFrac: DEFAULT_REARM,
-      touchedToday: rung.touchedToday,
-      dedupeTag: `m_${rung.side[0]}${rung.level}`,   // "m" prefix — see asiaLivePlanZones' own dedupeTag doc
-      rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
-    });
-  }
-  return zones;
-}
+// `FIB_ATLAS_MONDAY_MIN_MARGIN`/`FIB_ATLAS_MONDAY_MIN_COST_RATIO`/
+// `FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC`/`FIB_ATLAS_MONDAY_MAX_GAP_MIN`/
+// `zonesFromLiveAndBook` moved to `mondayFibAtlasZonePricer.js` (2026-09-18,
+// local-decision-engine build) — see asiaFibAtlasRoutes.js's identical note.
+// Re-exported here unchanged via the import above.
+export { FIB_ATLAS_MONDAY_MIN_MARGIN, FIB_ATLAS_MONDAY_MIN_COST_RATIO, FIB_ATLAS_MONDAY_STOP_TIGHTEN_FRAC, FIB_ATLAS_MONDAY_MAX_GAP_MIN, zonesFromLiveAndBook };
 
 export async function mondayLivePlanZones(pair, opts = {}) {
   const live = await getFastLive(pair);
@@ -590,6 +545,22 @@ export function mountMondayFibAtlasRoutes(app, express) {
       if (req.query.maxGapMin) opts.maxGapMin = Number(req.query.maxGapMin);
       const plan = await mondayLivePlanZones(pair, opts);
       res.json({ ok: true, instrument: pair.toUpperCase(), ...plan });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  });
+
+  // GET /api/monday-fib-atlas/book/EURUSD — the FULL book (every dimension,
+  // all buckets). Mirrors asiaFibAtlasRoutes.js's identical route exactly;
+  // added 2026-09-18 — Monday never had this (only Asia did), which meant
+  // `fib_local_decision_engine`'s daily book sync had a source for Asia's
+  // ladder but no way to pull Monday's at all.
+  app.get('/api/monday-fib-atlas/book/:instrument', async (req, res) => {
+    try {
+      const pair = String(req.params.instrument).toLowerCase();
+      const stored = await getJSON(`${PREFIX}/${pair}.json`);
+      if (!stored) return res.status(404).json({ ok: false, error: `no atlas data for ${req.params.instrument} yet` });
+      res.json({ ok: true, instrument: stored.instrument, generatedAt: stored.generatedAt, book: stored.book });
     } catch (e) {
       res.status(500).json({ ok: false, error: e.message });
     }
