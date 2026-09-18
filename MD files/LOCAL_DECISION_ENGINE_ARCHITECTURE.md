@@ -107,17 +107,37 @@ built.
 
 ### Serving decisions fast without blocking on a live recompute
 
-`atlasWalk` over a 100-day/pair window costs ~500-800ms of CPU — trivial
-once, but a naive "recompute on request if the cache looks stale" design
-still means every request lands in a ~14-19s slow window (17 pairs
-sequentially) once a minute, whenever the M1 tail's last bar advances. This
-is exactly what happened on the real end-to-end test: the bot's own 5s
-HTTP client timed out against a synchronous recompute. Fixed with a
-background refresh loop (`local_decision_engine/server.mjs`) that keeps the
-cache warm on its own schedule — HTTP handlers only ever read whatever's
-already cached (confirmed live: 0.137s for a full 17-pair `/plan` once
-warm) or compute once, synchronously, for a pair that's never been seen
+`atlasWalk` over a 100-day/pair window is NOT the ~500-800ms this doc
+originally estimated — measured live 2026-09-18 on the real machine: real
+per-pair cost is **1.3-2.8s** (occasionally spiking to 7s+ under
+contention), 2-4x the original assumption, and a full 17-pair cold
+warm-up took 31-47s. Whatever machine you're building on, re-measure this
+rather than trust the number above — it's clearly hardware/load-dependent.
+
+A naive "recompute on request if the cache looks stale" design means every
+request lands in that slow window once a minute, whenever the M1 tail's
+last bar advances — exactly what timed out the bot's own HTTP client on
+the real end-to-end test. First fix: a background refresh loop
+(`local_decision_engine/server.mjs`) that keeps the cache warm on its own
+schedule — HTTP handlers only ever read whatever's already cached (a Map
+lookup, near-instant) or compute once for a pair that's never been seen
 before.
+
+That first fix was NOT sufficient on its own. A background loop still runs
+the actual `computeZones` call SYNCHRONOUSLY on the server's single JS
+thread — at a real per-pair cost of 1.3-2.8s+, even one such call landing
+under an incoming request is enough to approach a client's timeout, and a
+batch of several (e.g. every pair's M1 tail advancing in the same sync
+cycle) compounds it. Yielding between pairs (`setImmediate`) only
+interleaves opportunities to serve a request from cache; it does not
+shrink how long any single blocking call takes, and measurably did not
+eliminate the timeouts. **The actual fix: run `computeZones` on a separate
+thread** (`local_decision_engine/lib/computeWorker.mjs`, via Node's
+`worker_threads`) — the main thread dispatches a job and awaits the
+result asynchronously, so it is NEVER blocked by the compute regardless of
+how slow it is. Confirmed live: `/health` stayed at single-digit
+milliseconds throughout a full 17-pair cold warm-up, including one pair
+that spiked to 7.2s on its own thread.
 
 ### The shared core vs the per-strategy adapter — DESIGN INTENT, NOT YET BUILT
 
@@ -194,18 +214,30 @@ Vote-Atlas-specific in practice today, see above):
 - `lib/localStore.mjs` — local book/M1 persistence (`saveBook`/`loadBook`/
   `saveM1`/`loadM1`/`m1Age`/`bookAge`), reusing `packToBinary`/
   `packFromBinary` from `js/volBacktestM1Engine.js` for the M1 tail's
-  compact binary format.
+  compact binary format. `saveBook`/`loadBook` also carry the server's own
+  `sourceGeneratedAt` so `sync.mjs` can skip a rewrite when unchanged.
+- `lib/computeWorker.mjs` — runs `computeZones` on a separate
+  `worker_threads` thread so it can never block `server.mjs`'s main event
+  loop. Measured real cost 1.3-2.8s+/pair (2-4x this doc's original
+  estimate) made that necessary, not optional — see "Serving decisions
+  fast" above.
 - `server.mjs` — a `WATCHED_PAIRS` set loaded from `config.json`, a
   background `refreshOne`/`refreshAll` loop (`setInterval`, default 5s) that
   recomputes each pair's cache only when `lastBarTime`/`bookSavedAt`
-  changed, `GET /decide?pair=X`, `GET /plan?pairs=a,b,c`, `GET /health`.
+  changed (dispatching the actual compute to `computeWorker.mjs`, never
+  running it inline), `GET /decide?pair=X`, `GET /plan?pairs=a,b,c`,
+  `GET /health`. Logs any compute or request over 800ms (`SLOW_MS`).
   Binds `127.0.0.1` only, no auth — never expose this off the machine.
 - `sync.mjs` — a PURE PULL, zero OANDA dependency: `syncBook(pair)` hits
-  `GET {DASHBOARD_URL}/api/level-atlas/book/:pair`, `syncM1(pair)` hits
-  `GET {DASHBOARD_URL}/api/level-atlas/m1-tail/:pair?days=100` (handles a
-  `202 warming` response by logging and skipping that cycle). `--loop` runs
-  two independent `setInterval`s sized against real measured egress (book
-  daily, M1 every 15 min).
+  `GET {DASHBOARD_URL}/api/level-atlas/book/:pair` and skips the local
+  write if the server's `generatedAt` hasn't changed; `syncM1(pair)` hits
+  `GET {DASHBOARD_URL}/api/level-atlas/m1-tail/:pair?since=<lastLocalBar>`
+  once a local file already exists (falls back to a full `days=100` pull
+  for a pair's first-ever sync) and merges the response onto the local
+  file ONLY if it's confirmed strictly newer than what's already saved —
+  otherwise replaces, to survive a not-really-incremental response (see
+  Gotchas). `--loop` runs two independent `setInterval`s sized against
+  real measured egress (book daily, M1 every 15 min).
 - `parity_test.mjs` — date-independent: finds yesterday's first resolved
   touch for a small pair list, computes it both locally and via the stored
   `vote-trades` route, compares decision+margin. A REAL regression test, not
@@ -323,10 +355,42 @@ Plus `TAB_BOT_KEY_MAP.volatilityv3` entry and the tab-button/init wiring.
   "produces nothing," and the failure mode (`zoneCount:0, skipped:"no live
   coverage yet"`) looks identical to "not synced yet."
 - **A naive per-request recompute is too slow even when "cached."** If you
-  see 14-19s responses that should be instant, check for a genuinely stale
-  server process first (a `kill` that silently failed to kill the right
-  PID) before assuming the caching logic itself is wrong — that's what
-  actually happened here.
+  see multi-second responses that should be instant, check for a genuinely
+  stale server process first (a `kill` that silently failed to kill the
+  right PID) before assuming the caching logic itself is wrong.
+- **Yielding between pairs in a background refresh loop reduces but does
+  NOT eliminate request blocking.** A single synchronous `computeZones`
+  call at its real measured cost (1.3-2.8s+, see above) can alone approach
+  a client's timeout; a `setImmediate` between pairs only gives a pending
+  request a CHANCE to be served from cache between calls, it doesn't
+  shrink any individual call's own duration. Confirmed live: timeouts
+  persisted through two rounds of this kind of tuning. The actual fix was
+  running the compute on a separate thread (`worker_threads`) so the main
+  thread literally cannot be blocked by it — verified by holding `/health`
+  at single-digit-ms latency through a full cold 17-pair warm-up,
+  including one pair that spiked to 7.2s.
+- **A startup routine that "always refreshes X" (not "refresh X only if
+  stale") silently re-triggers whatever work depends on X changing.**
+  `sync.mjs`'s book sync ran unconditionally on every process start (not
+  just the `--loop` timer's 24h interval), rewriting every book file with
+  a fresh LOCAL timestamp even when the book's own content hadn't changed.
+  `server.mjs`'s cache was keyed off that timestamp, so every restart made
+  it think every pair's book had changed and force-recomputed all of them
+  — directly compounding the blocking issue above every time the operator
+  restarted the sync process while troubleshooting something unrelated.
+  Fixed by comparing the server's own stable `generatedAt` against what's
+  already saved and skipping the write when unchanged.
+- **An "incremental" fetch that silently falls back to a full response
+  (e.g. mid-deploy, old server code not yet recognizing a new query param)
+  will corrupt a naive merge-by-concatenation.** Confirmed live: the first
+  incremental M1 sync after this route change landed on Railway before the
+  deploy had finished rolling out; the old code ignored the unrecognized
+  `since` param and returned the full window, and blindly appending that
+  onto the existing full window doubled every pair's local file (found via
+  a backward timestamp jump in the saved binary). Any incremental-fetch
+  design needs to verify the response is actually incremental (e.g. its
+  first record is strictly after what was requested) before merging, and
+  replace instead of append when that check fails.
 - **Credentials-on-Railway is a hard constraint, not a preference**, if this
   repo's owner is involved: the local machine must never hold a live-trading
   credential (OANDA key, broker key). Design the freshness mechanism to

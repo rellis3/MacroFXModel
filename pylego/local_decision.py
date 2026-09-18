@@ -27,11 +27,20 @@ def _is_transient(exc: Exception) -> bool:
 
 
 class LocalDecisionClient:
-    def __init__(self, base_url: str = 'http://127.0.0.1:4500', http=None, timeout: int = 5,
+    def __init__(self, base_url: str = 'http://127.0.0.1:4500', http=None, timeout: int = 8,
                  retries: int = 2, backoff: float = 0.5, sleep=time.sleep):
         # Short timeout/backoff on purpose — this is a same-machine call, not
         # a Railway round-trip; a slow local process should fail fast so the
         # bot's own tick loop isn't stalled waiting on it.
+        # 5 -> 8s, 2026-09-18: real live runs kept hitting "Read timed out"
+        # even after fixing two confirmed causes of the local engine
+        # blocking its own event loop (a background recompute burst, and a
+        # needless book-file rewrite on every sync.mjs restart) -- a THIRD
+        # cause is still unconfirmed (server.mjs now logs any compute/request
+        # over 800ms to find it). Until that's nailed down, 8s trades a
+        # little "fail fast" for fewer false-positive "keeping current plan"
+        # fallbacks on a genuinely fine local engine that was just briefly
+        # busy, not dead.
         self.base = base_url.rstrip('/')
         self.timeout = timeout
         self.retries = max(1, retries)
