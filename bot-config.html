@@ -4981,6 +4981,52 @@ python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
       </div>
     </div>
 
+    <!-- All lines -- unfiltered, every rung the engine currently carries for
+         both ladders, touched or not, regardless of vote margin. "Today's
+         Levels" above only shows what's CURRENTLY armed AND clears margin>=2
+         (the same filter the bot itself trades on) -- this answers "what's
+         close, what almost qualified" the way the original Fib Atlas tab's
+         own All Lines card does, and Vote Atlas v3's tab does for its own
+         local-engine bot (loadVb3AllLines, same pattern: reads the SAME
+         server-side shared preview data both bot instances draw from, not a
+         separate per-bot computation -- there's only ONE underlying vote
+         grid, this bot and the original just execute against it differently). -->
+    <div class="card" style="padding:0">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 6px">
+        <span style="font-size:12px;font-weight:600;color:#f472b6">All Lines — every rung, watched or not</span>
+        <span class="bot-banner-sub" style="margin:0">unfiltered — includes margin&lt;2 and "no decision" lines, across BOTH ladders. Same underlying data as the original Fib Atlas tab's own All Lines card (one shared vote grid, not a second computation).</span>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-left:auto">
+          Pair <input type="text" id="fa2AllLinesFilter" placeholder="all" style="width:70px;background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px" oninput="loadFa2AllLines()">
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)">
+          Sort <select id="fa2AllLinesSort" onchange="loadFa2AllLines()" style="background:var(--s3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:2px 6px;font-size:11px">
+            <option value="margin">Margin (high→low)</option>
+            <option value="pair">Pair (A→Z)</option>
+          </select>
+        </label>
+        <button onclick="loadFa2AllLines()" style="background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--text3);padding:3px 10px;font-size:11px;cursor:pointer">↺ Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'DM Mono',monospace">
+          <thead>
+            <tr style="background:var(--s2);color:var(--text3)">
+              <th style="padding:6px 10px;text-align:left">Pair</th>
+              <th style="padding:6px 10px;text-align:left">Ladder</th>
+              <th style="padding:6px 10px;text-align:left">Side</th>
+              <th style="padding:6px 10px;text-align:left">Rung</th>
+              <th style="padding:6px 10px;text-align:left">Status</th>
+              <th style="padding:6px 10px;text-align:left">Decision</th>
+              <th style="padding:6px 10px;text-align:right">Margin</th>
+              <th style="padding:6px 10px;text-align:center">Tradeable now</th>
+            </tr>
+          </thead>
+          <tbody id="fa2AllLinesBody">
+            <tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Trade frequency vs. backtest -->
     <div class="card" style="padding:12px 16px;margin-bottom:14px;font-size:12px" id="fa2FreqCard">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">

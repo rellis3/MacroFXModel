@@ -5933,10 +5933,67 @@ async function loadFa2LiveStatus() {
         </tr>`).join('');
     }
   }
+  loadFa2AllLines();
   loadFa2DecisionLog();
   loadFa2FrequencyCheck();
   loadFa2EntrySlippage();
   loadFa2Staleness();
+}
+
+// Unfiltered companion to the Today's Levels table above — same route as the
+// original Fib Atlas tab's own loadFaAllLines() (/api/fib-atlas-bot/all-lines,
+// server-side, reads the ONE shared vote grid both bot instances execute
+// against — there's no separate "v2's own all-lines", the underlying
+// computation is identical either way, only which zones get ACTED on
+// differs). Same pattern Vote Atlas v3's tab uses for its own All Lines card.
+async function loadFa2AllLines() {
+  const body = document.getElementById('fa2AllLinesBody');
+  if (!body) return;
+  const pairs = _fa2Cfg.enabled_pairs?.length ? _fa2Cfg.enabled_pairs : [...FA_DEFAULT_CHECKED];
+  const filter = (document.getElementById('fa2AllLinesFilter')?.value || '').trim().toLowerCase();
+  body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">loading ${pairs.length} pair(s) × 2 ladders…</td></tr>`;
+  try {
+    const r = await fetch(`/api/fib-atlas-bot/all-lines?pairs=${encodeURIComponent(pairs.join(','))}`);
+    const j = await r.json();
+    if (!j.ok) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${j.error || 'failed to load'}</td></tr>`; return; }
+    let rows = [];
+    for (const [pair, inst] of Object.entries(j.instruments || {})) {
+      for (const [ladder, res] of [['asia', inst.asia], ['monday', inst.monday]]) {
+        if (res?.warming) { rows.push({ pair, ladder, warming: true }); continue; }
+        for (const l of (res?.lines || [])) rows.push({ pair, ladder, ...l });
+      }
+    }
+    if (filter) rows = rows.filter(r => r.pair.toLowerCase().includes(filter));
+    if (!rows.length) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${filter ? 'No lines for that pair yet' : 'No live coverage yet'}</td></tr>`; return; }
+    const sortBy = document.getElementById('fa2AllLinesSort')?.value || 'margin';
+    if (sortBy === 'pair') rows.sort((a, b) => a.pair.localeCompare(b.pair) || a.ladder.localeCompare(b.ladder) || (b.margin ?? -1) - (a.margin ?? -1));
+    else rows.sort((a, b) => (b.margin ?? -1) - (a.margin ?? -1));
+    body.innerHTML = rows.map(r => {
+      if (r.warming) {
+        return `<tr>
+          <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+          <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+          <td colspan="6" style="padding:5px 10px;text-align:left;color:var(--text3)">warming (cold cache) — not evaluated yet</td>
+        </tr>`;
+      }
+      const strong = r.tradeableNow;
+      const decLabel = !r.decision ? '🪙 no decision' : (r.decision === 'follow' ? '↗ follow' : '↘ fade');
+      const decColor = !r.decision ? 'var(--text3)' : (r.decision === 'follow' ? 'var(--blue,#60a5fa)' : 'var(--amber)');
+      const gapBlocked = !strong && (r.margin ?? 0) >= 2 && r.gapMin != null;
+      const tradeCell = strong ? '✓' : (gapBlocked ? `⏱ ${r.gapMin}m gap` : '—');
+      const tradeColor = strong ? 'var(--green)' : (gapBlocked ? 'var(--amber,#e0a93b)' : 'var(--text3)');
+      return `<tr>
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${r.pair.toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${r.ladder === 'asia' ? '#38bdf8' : '#4fd1c5'}">${r.ladder === 'asia' ? 'Asia' : 'Monday'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.side === 'above' ? '↑ above' : '↓ below'}</td>
+        <td style="padding:5px 10px;text-align:left">${r.rung}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${r.status}</td>
+        <td style="padding:5px 10px;text-align:left;color:${decColor}">${decLabel}</td>
+        <td style="padding:5px 10px;text-align:right">${r.margin ?? '—'}</td>
+        <td style="padding:5px 10px;text-align:center;color:${tradeColor}">${tradeCell}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) { body.innerHTML = `<tr><td colspan="8" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
 // Shared book data (same underlying source both bots read) — view-only here,
@@ -6126,6 +6183,7 @@ window.fa2DecShiftDay = fa2DecShiftDay; window.fa2DecClearDate = fa2DecClearDate
 window.testFa2Telegram = testFa2Telegram;
 window.fa2SelectAllPairs = fa2SelectAllPairs; window.fa2SelectRecommendedPairs = fa2SelectRecommendedPairs;
 window.loadFa2EntrySlippage = loadFa2EntrySlippage; window.loadFa2FrequencyCheck = loadFa2FrequencyCheck;
+window.loadFa2AllLines = loadFa2AllLines;
 
 document.querySelector('.tab-btn[data-tab="fibatlas2"]')?.addEventListener('click', loadFa2LiveStatus);
 loadFa2Config();
