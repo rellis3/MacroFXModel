@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { fredSpecFor, referenceDate, vintageWindow, actualFromVintage, priorAgrees, pendingRows, fetchStart } from './fredActuals.js';
+import { fredSpecFor, referenceDate, vintageWindow, actualFromVintage, priorAgrees, pendingRows, fetchStart, revisionOf } from './fredActuals.js';
 
 const ms = s => Date.parse(s);
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -85,5 +85,11 @@ t('pending rows: US, mapped, 45 min old, within 3 weeks, no actual', () => {
     { country: 'US', event: 'CPI m/m', ms: now - 5 * 3600e3, actual: '0.3%' },
   ];
   assert.equal(pendingRows(rows, now).length, 1);
+});
+t('revisions: null when equal, signed delta in the series unit otherwise', () => {
+  assert.equal(revisionOf('0.2%', '0.2%'), null);
+  assert.deepEqual(revisionOf('12K', '155K'), { was: '12K', now: '155K', delta: '+143K' });
+  assert.deepEqual(revisionOf('1.24M', '1.31M'), { was: '1.24M', now: '1.31M', delta: '+0.07M' });
+  assert.deepEqual(revisionOf('0.5%', '0.4%'), { was: '0.5%', now: '0.4%', delta: '−0.1%' });
 });
 console.log(`fredActuals: ${n} groups, all passed`);

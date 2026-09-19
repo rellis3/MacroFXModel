@@ -200,6 +200,16 @@ export function priorAgrees(ffPrev, fredPrev) {
   return Math.abs(a - b) <= 1.5 * Math.pow(10, -dp) + 1e-9;
 }
 
+// A revision: the previous release's first print against the same period as the
+// market now sees it (the prior in this release's vintage). Null when they agree
+// numerically; otherwise the two strings and the change in the series' own unit.
+export function revisionOf(firstPrint, priorNow) {
+  const a = num(firstPrint), b = num(priorNow); if (a == null || b == null || Math.abs(a - b) < 1e-9) return null;
+  const unit = (String(priorNow).match(/[%KMB]$/) ?? [''])[0];
+  const dp = (String(priorNow).split('.')[1] ?? '').replace(/[^\d]/g, '').length;
+  return { was: String(firstPrint), now: String(priorNow), delta: `${b - a >= 0 ? '+' : '−'}${Math.abs(b - a).toFixed(dp)}${unit}` };
+}
+
 // Which rows are worth asking FRED about: US, on the map, released at least 45
 // minutes ago (FRED posts within minutes of the print), within the last three
 // weeks, and still without an actual.

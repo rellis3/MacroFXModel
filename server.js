@@ -137,7 +137,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
-import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
@@ -13726,6 +13726,15 @@ async function _fillActualsFromFred(events, stored) {
       if (!a?.actual) continue;   // not on FRED yet; the next hourly pass asks again
       ev.actual = a.actual; ev.src = `fred:${spec.id}`; filled++;
       const agree = a.prior != null && ev.prev != null ? _fredPriorAgrees(ev.prev, a.prior) : null;
+      // The revision: the previous print of this series, as it was first reported,
+      // against the same period as this vintage now carries it. Written on both rows
+      // -- this release "revised the prior", the earlier release "was later revised".
+      if (a.prior != null) {
+        const key = `${String(ev.country).toUpperCase()}|${String(ev.event).trim().toLowerCase()}`;
+        const earlier = (stored ?? []).filter(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}` === key && x.ms < ev.ms && x.actual != null && x.actual !== '').sort((p, q) => q.ms - p.ms)[0];
+        const rev = earlier ? _fredRevisionOf(earlier.actual, a.prior) : null;
+        if (rev) { ev.revision = { of: earlier.ms, ...rev }; earlier.revised = a.prior; earlier.revisedAt = ev.ms; earlier.revisedDelta = rev.delta; notes.push(`${ev.event}: prior revised ${rev.was} → ${rev.now} (${rev.delta})`); }
+      }
       notes.push(`${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; prior ${a.prior ?? '-'} vs FF ${ev.prev ?? '?'}${agree === false ? ' MISMATCH' : ''})`);
     } catch (e) { notes.push(`${ev.event}: ${e.message}`); }
     await new Promise(r => setTimeout(r, 300));

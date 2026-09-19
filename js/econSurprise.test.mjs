@@ -119,6 +119,14 @@ test('econSurprise', async t => {
     assert.equal(second.updated, 1);
     assert.equal(second.rows.length, 3, 'a revision updates in place, it does not duplicate');
     assert.equal(second.rows.at(-1).actual, '999');
+
+    // what a later release said about a print (revised, src, revision) survives the feed row coming round again
+    const marked = second.rows.map(r => ({ ...r }));
+    marked[0].revised = '0.4%'; marked[0].revisedAt = NOW; marked[0].revisedDelta = '+0.1%'; marked[0].src = 'fred:X';
+    const third = mergeReleases(marked, [{ ...week[0] }], { now: NOW });
+    assert.equal(third.rows[0].revised, '0.4%');
+    assert.equal(third.rows[0].revisedDelta, '+0.1%');
+    assert.equal(third.rows[0].src, 'fred:X');
   });
 
   await t.test('the store is bounded — rows past maxAgeDays are dropped', () => {

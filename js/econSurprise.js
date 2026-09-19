@@ -258,6 +258,8 @@ export function seriesHistory(events = [], opts = {}) {
       time: ev.time ?? null, ms: ev.ms, actual: ev.actual, estimate: ev.estimate,
       beat: (act != null && est != null) ? (act > est ? 'above' : act < est ? 'below' : 'inline') : null,
       z: zBy.get(`${k}|${ev.ms}`) ?? null,
+      ...(ev.revised != null ? { revised: ev.revised, revisedAt: ev.revisedAt ?? null, revisedDelta: ev.revisedDelta ?? null } : {}),
+      ...(ev.revision ? { revision: ev.revision } : {}),
     });
   }
   const out = {};
@@ -296,10 +298,15 @@ export function mergeReleases(stored = [], incoming = [], opts = {}) {
       impact: String(e.impact ?? '').toLowerCase(), time: e.time ?? null, ms: e.ms,
       estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null,
       ...(e.src ? { src: e.src } : {}),   // where the actual came from ('fred:CPIAUCSL'); absent for the feed's own
+      ...(e.revision ? { revision: e.revision } : {}),   // this release revised the previous print: {of, was, now, delta}
     };
     if (map.has(id)) {
       const prevRow = map.get(id);
       if (prevRow.actual !== keep.actual || prevRow.estimate !== keep.estimate) updated++;
+      // what a later release said about this print survives a re-merge of the feed row
+      if (prevRow.revised != null && keep.revised == null) { keep.revised = prevRow.revised; keep.revisedAt = prevRow.revisedAt; keep.revisedDelta = prevRow.revisedDelta; }
+      if (prevRow.revision && !keep.revision) keep.revision = prevRow.revision;
+      if (prevRow.src && !keep.src) keep.src = prevRow.src;
     } else added++;
     map.set(id, keep);
   }

@@ -840,6 +840,7 @@
   .tl-col.ahead{border-style:dashed}
   .tl-h{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;display:flex;justify-content:space-between;gap:6px}
   .tl-h b{color:var(--text)}
+  .tl-rev{color:var(--amber);font-weight:600}
   .tl-lead{font-size:12px;font-weight:600;line-height:1.45;margin:3px 0 5px;color:var(--text)}
   .tl-lead .up{color:var(--bull)} .tl-lead .dn{color:var(--red)}
   .tl-big{font-size:13px;font-weight:800;margin:3px 0 4px;font-variant-numeric:tabular-nums}
@@ -4381,7 +4382,7 @@ function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
   const put = (cc, name, ms, f) => { const day = _tlDay(ms); const ago = _tlAgo(day); if (ago < fromAgo || ago >= toAgo || ms > now) return; if (ccys && !ccys.includes(cc)) return; const k = `${cc}|${String(name).toLowerCase()}|${day}`; by.set(k, { ...(by.get(k) ?? { cc, name, day }), ...f }); };
   for (const e of events ?? []) if ((e.impact ?? '').toLowerCase() === 'high') put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
   for (const d of _tl.snapshots ?? []) for (const e of d.released ?? []) put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
-  for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z)) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name }); }
+  for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z) || x.actual != null) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name, revised: x.revised, revisedDelta: x.revisedDelta, revision: x.revision }); }
   const out = [...by.values()].map(x => { const fam = _tlFam(x.name); const imp = fam ? window.eventImpactBrick?.eventImpact(x.cc, fam) : null; return { ...x, fam, imp, size: pairName ? imp?.instruments?.[pairName] : null }; })
     .filter(x => x.actual != null || x.estimate != null || x.imp);
   return out.sort((a, b) => ((b.size?.spike ?? b.imp?.medSpike ?? 0) - (a.size?.spike ?? a.imp?.medSpike ?? 0)) || (Math.abs(b.z ?? 0) - Math.abs(a.z ?? 0)) || (a.day < b.day ? 1 : -1)).slice(0, limit);
@@ -4395,7 +4396,8 @@ function _tlRelLine(x) {
   const same = String(x.actual ?? '').trim() === String(x.estimate ?? '').trim();
   const sw = Number.isFinite(x.z) ? (Math.abs(x.z) < 0.25 && !same && x.estimate != null ? `close to the ${esc0(x.estimate)} expected` : _tlSurpriseWord(x.z) + (Math.abs(x.z) >= 0.25 && x.estimate != null ? ` the ${esc0(x.estimate)} expected` : '')) : x.estimate != null ? `vs ${esc0(x.estimate)} expected` : '';
   const nums = x.actual != null ? `<b>${esc0(x.actual)}</b>${sw ? `, ${sw}` : ''}` : `${esc0(x.estimate ?? '?')} expected${x.prev != null ? `, was ${esc0(x.prev)}` : ''}`;
-  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}</div>`;
+  const rev = x.revised != null ? ` · <span class="tl-rev">later revised to ${esc0(x.revised)}${x.revisedDelta ? ` (${esc0(x.revisedDelta)})` : ''}</span>` : x.revision ? ` · <span class="tl-rev">the prior was revised ${esc0(x.revision.was)} → ${esc0(x.revision.now)}</span>` : '';
+  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}${rev}</div>`;
 }
 function _tlWatchLines(fromAgo, toAgo, insts = null) {
   return (deskWatch?.log ?? []).filter(f => { const ago = _tlAgo(f.at.slice(0, 10)); return f.event === 'started' && ago >= fromAgo && ago < toAgo && (!insts || !f.instruments?.length || f.instruments.some(i => insts.includes(i))); }).slice(0, 4)
