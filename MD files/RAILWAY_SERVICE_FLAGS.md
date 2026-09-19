@@ -289,7 +289,7 @@ already landed on `main`:
 | Landed | What was missing | What it cost |
 |---|---|---|
 | `c17cfee` daily snapshot | bare `setInterval`, no row | an hourly job nobody could switch off |
-| `a51bd7e` nowcasts | `svcInterval('nowcast', …)`, no row | **the whole site** — see below |
+| `a51bd7e` nowcasts | `svcInterval('nowcast', …)`, no row | **the whole site**, ~2h, until `f207ca0` added the row — see below |
 
 The second one is why `svcEnabled` in `server.js` now FAILS OPEN. The registry
 throws on an unknown id deliberately (a typo must never read as "off"), but
