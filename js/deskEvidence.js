@@ -27,7 +27,7 @@ export const DESK_EVIDENCE = [
   {
     id: 'surprise-size', domain: 'events', verdict: 'validated', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S7',
     claim: 'The size of a data surprise (actual vs consensus, in sigma) widens the release session, by family',
-    result: 'Rate decisions: EUR/USD +0.42 ATR on the day, USD/JPY +0.27 (surprise size adds little -- the decision is the event). Employment: top-tercile surprises AUD/USD +0.19, EUR/USD +0.16 (≈2× the all-release effect). CPI: the release day is marginal, the NEXT session is wider (EUR/USD +0.27, USD/JPY +0.25). GDP: EUR/USD +0.22 on big surprises. PMI: USD/JPY +0.22. Retail sales: nothing. 7,932 pair-releases, 2017→.',
+    result: 'Re-run 2026-09-19 on the robust sigma (7,938 pair-releases): rate decisions EUR/USD +0.38 ATR on the day, +0.51 on big surprises, GBP/USD +0.38 the session after, USD/JPY +0.24; employment EUR/USD +0.17 on big surprises (≈2× the all-release +0.07), USD/JPY +0.16 the session after; CPI shows up the SESSION AFTER on EUR/USD (+0.16) and USD/CAD (+0.14), on the day for GBP/USD (+0.17); GDP USD/CAD +0.26 on big surprises; PMI USD/JPY +0.21. Retail sales marginal (+0.11/+0.12, at the bar). The first run had AUD/USD employment +0.19 and EUR/USD CPI-next +0.27; both smaller now -- the tercile membership moved with the scale.',
     use: 'Scale the expected range on the release session for employment / rate decisions; for CPI, on the session AFTER. Never a direction.',
     instruments: ['EURUSD', 'USDJPY', 'GBPUSD', 'AUDUSD', 'USDCAD'],
   },
@@ -286,8 +286,8 @@ export const DESK_EVIDENCE = [
   {
     id: 'nowcast-gap-gdp', domain: 'events', verdict: 'context', date: '2026-09-19', doc: 'MD files/NOWCAST_TESTS.md#N2',
     claim: 'When GDPNow sits above consensus, the advance GDP print is more likely to beat',
-    result: 'Only 30 decisive calls (ALFRED vintages start 2016). 20 of 30 right (67%, interval 50-84%), 14 of 18 at |gap| >= 0.6 -- but GDPNow MAE 0.82 vs consensus 0.69 and n under the 40-call bar.',
-    use: 'Direction worth re-testing on the Atlanta Fed history workbook (~55 releases). Until then GDPNow is shown as a number, not a lean.',
+    result: 'Atlanta Fed track record 2011-2025, 53 calls: 29 of 44 right at |gap| >= 0.2 (66%, interval 52-80%), 19 of 24 at >= 0.6 (79%). The hit-rate bar clears, but the pre-registered falsifier fires too: GDPNow forecasts the level worse than consensus (MAE 0.76 vs 0.61). ALFRED-only sample (2016+, 30 calls) had said the same.',
+    use: 'A base rate, not a pass: the side GDPNow sits on has matched the side the print landed two times in three. Shown as context on the GDP line; never a lean.',
   },
   {
     id: 'band-reach-from-here', domain: 'price', verdict: 'validated', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T7',

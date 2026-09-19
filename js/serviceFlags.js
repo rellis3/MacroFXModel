@@ -217,6 +217,8 @@ export const SERVICES = [
     feeds: 'analog cone forward-track stats' },
   { id: 'surpriseStore', where: 'server', label: 'Economic-surprise store refresh',
     cadence: 'hourly', cost: 'low', lean: false, on: true, feeds: 'surprise index pages, TDE macro context' },
+  { id: 'nowcast', where: 'server', label: 'Nowcast refresh (Cleveland Fed inflation, Atlanta GDPNow)',
+    cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'the third number on a release line (context only, N1/N2)' },
   { id: 'surpriseAlerts', where: 'server', label: 'Surprise alert scan',
     cadence: 'every 20 min', legacyEnv: ['SURPRISE_ALERT_AUTO'], cost: 'low', lean: false, on: true,
     feeds: 'Telegram surprise alerts' },

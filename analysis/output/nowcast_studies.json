@@ -1,5 +1,5 @@
 {
- "ranAt": "2026-09-19T11:45:58.923Z",
+ "ranAt": "2026-09-19T14:07:11.209Z",
  "N1": {
   "CPI m/m": {
    "label": "CPI m/m",
@@ -315,6 +315,75 @@
     "ref": "2024-10-01",
     "nowcast": 2.27,
     "nowcastAsOf": "2025-01-29",
+    "consensus": 2.7,
+    "actual": 2.3,
+    "gap": -0.43,
+    "surprise": -1
+   }
+  ]
+ },
+ "N2b": {
+  "label": "Advance GDP q/q (track record)",
+  "n": 53,
+  "maeNowcast": 0.762,
+  "maeConsensus": 0.613,
+  "byThreshold": [
+   {
+    "threshold": 0.2,
+    "calls": 46,
+    "inline": 2,
+    "n": 44,
+    "hits": 29,
+    "hitRate": 0.659,
+    "lo": 0.519,
+    "hi": 0.799
+   },
+   {
+    "threshold": 0.4,
+    "calls": 35,
+    "inline": 1,
+    "n": 34,
+    "hits": 22,
+    "hitRate": 0.647,
+    "lo": 0.486,
+    "hi": 0.808
+   },
+   {
+    "threshold": 0.6,
+    "calls": 25,
+    "inline": 1,
+    "n": 24,
+    "hits": 19,
+    "hitRate": 0.792,
+    "lo": 0.629,
+    "hi": 0.954
+   }
+  ],
+  "verdict": "hit rate clears, but nowcast MAE worse than consensus",
+  "releases": 73,
+  "sample": [
+   {
+    "day": "2024-04-25",
+    "ref": "2024-03-31",
+    "nowcast": 2.71,
+    "consensus": 2.5,
+    "actual": 1.6,
+    "gap": 0.21,
+    "surprise": -1
+   },
+   {
+    "day": "2024-07-25",
+    "ref": "2024-06-30",
+    "nowcast": 2.61,
+    "consensus": 2,
+    "actual": 2.8,
+    "gap": 0.61,
+    "surprise": 1
+   },
+   {
+    "day": "2025-01-30",
+    "ref": "2024-12-31",
+    "nowcast": 2.27,
     "consensus": 2.7,
     "actual": 2.3,
     "gap": -0.43,

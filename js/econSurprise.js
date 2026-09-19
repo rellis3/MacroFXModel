@@ -149,13 +149,25 @@ export function scoreReleases(events = [], opts = {}) {
     const raws = rows.map(r => r.raw);
     const mean = raws.reduce((a, x) => a + x, 0) / raws.length;
     const sd = Math.sqrt(raws.reduce((a, x) => a + (x - mean) ** 2, 0) / Math.max(1, raws.length - 1));
-    if (!(sd > 0)) {
+    // Robust scale. The history reaches back eleven years, so it holds 2020: claims
+    // surprises of a million against a normal week's ten thousand. A standard
+    // deviation over that made an 11K claims miss read as 0.1 sigma. The median
+    // absolute deviation (x1.4826, the normal-equivalent) is what a typical
+    // surprise looks like; the standard deviation is the fallback only when the
+    // series almost never surprises (rate decisions: most raws are exactly zero).
+    const sorted = [...raws].sort((a, b) => a - b);
+    const med = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+    const devs = raws.map(x => Math.abs(x - med)).sort((a, b) => a - b);
+    const mad = devs.length % 2 ? devs[(devs.length - 1) / 2] : (devs[devs.length / 2 - 1] + devs[devs.length / 2]) / 2;
+    const robust = mad > 0;
+    const centre = robust ? med : mean, scale = robust ? 1.4826 * mad : sd;
+    if (!(scale > 0)) {
       skipped.push({ series: key, n: rows.length, reason: 'series never surprises — zero dispersion' });
       continue;
     }
     for (const r of rows) {
       const pol = polarityFor(r.ev.event);
-      const z = ((r.raw - mean) / sd) * pol.sign;
+      const z = ((r.raw - centre) / scale) * pol.sign;
       scored.push({
         series: key, country: String(r.ev.country ?? '').toUpperCase(), event: r.ev.event,
         time: r.ev.time ?? null, ms: r.ev.ms, impact: r.ev.impact ?? null,
@@ -258,6 +270,8 @@ export function seriesHistory(events = [], opts = {}) {
       time: ev.time ?? null, ms: ev.ms, actual: ev.actual, estimate: ev.estimate,
       beat: (act != null && est != null) ? (act > est ? 'above' : act < est ? 'below' : 'inline') : null,
       z: zBy.get(`${k}|${ev.ms}`) ?? null,
+      ...(ev.revised != null ? { revised: ev.revised, revisedAt: ev.revisedAt ?? null, revisedDelta: ev.revisedDelta ?? null } : {}),
+      ...(ev.revision ? { revision: ev.revision } : {}),
     });
   }
   const out = {};
@@ -296,10 +310,15 @@ export function mergeReleases(stored = [], incoming = [], opts = {}) {
       impact: String(e.impact ?? '').toLowerCase(), time: e.time ?? null, ms: e.ms,
       estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null,
       ...(e.src ? { src: e.src } : {}),   // where the actual came from ('fred:CPIAUCSL'); absent for the feed's own
+      ...(e.revision ? { revision: e.revision } : {}),   // this release revised the previous print: {of, was, now, delta}
     };
     if (map.has(id)) {
       const prevRow = map.get(id);
       if (prevRow.actual !== keep.actual || prevRow.estimate !== keep.estimate) updated++;
+      // what a later release said about this print survives a re-merge of the feed row
+      if (prevRow.revised != null && keep.revised == null) { keep.revised = prevRow.revised; keep.revisedAt = prevRow.revisedAt; keep.revisedDelta = prevRow.revisedDelta; }
+      if (prevRow.revision && !keep.revision) keep.revision = prevRow.revision;
+      if (prevRow.src && !keep.src) keep.src = prevRow.src;
     } else added++;
     map.set(id, keep);
   }

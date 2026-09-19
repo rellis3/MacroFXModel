@@ -840,6 +840,7 @@
   .tl-col.ahead{border-style:dashed}
   .tl-h{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;display:flex;justify-content:space-between;gap:6px}
   .tl-h b{color:var(--text)}
+  .tl-rev{color:var(--amber);font-weight:600}
   .tl-lead{font-size:12px;font-weight:600;line-height:1.45;margin:3px 0 5px;color:var(--text)}
   .tl-lead .up{color:var(--bull)} .tl-lead .dn{color:var(--red)}
   .tl-big{font-size:13px;font-weight:800;margin:3px 0 4px;font-variant-numeric:tabular-nums}
@@ -4161,7 +4162,7 @@ function renderMarketRead() {
   if (econSurprise?.health) {
     const h = econSurprise.health; const ageD = h.latestPrintAt ? (Date.now() - Date.parse(h.latestPrintAt)) / 864e5 : null;
     const stale = ageD == null || ageD > 9;
-    srNote += `<div class="muted" style="font-size:10.5px;margin-top:4px${stale ? ';color:var(--amber)' : ''}">${stale ? '⚠ ' : ''}Live prints: US releases only (consensus from the calendar, the actual rebuilt from FRED on release day; UK/EU/JP and the ISM/PMI family have no actual source, so they do not score). ${h.latestPrintAt ? `Last live print ${new Date(h.latestPrintAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, ${h.last30d} in 30 days.` : 'No live print yet since the 2025 backfill.'}${stale ? ' Older than nine days on a working calendar means the fill has stopped.' : ''}</div>`;
+    srNote += `<div class="muted" style="font-size:10.5px;margin-top:4px${stale ? ';color:var(--amber)' : ''}">${stale ? '⚠ ' : ''}Live prints: US releases and the ECB, BoE, BoC and RBA rate decisions (consensus from the calendar, the actual from FRED vintages or the central bank's own feed). Other UK/EU/JP/AU data and the ISM/PMI family have no actual source, so they do not score. ${h.latestPrintAt ? `Last live print ${new Date(h.latestPrintAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, ${h.last30d} in 30 days.` : 'No live print yet since the 2025 backfill.'}${stale ? ' Older than nine days on a working calendar means the fill has stopped.' : ''}</div>`;
   }
   if (!srScored.length && econSurprise) {
     srNote += `<div class="muted" style="font-size:10.5px">Surprise index is still collecting release history (${econSurprise.storedReleases ?? 0} stored). It is built one week at a time because the calendar feed only ever exposes the current week — nothing is shown until a series has enough history to standardise against.</div>`;
@@ -4381,7 +4382,7 @@ function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
   const put = (cc, name, ms, f) => { const day = _tlDay(ms); const ago = _tlAgo(day); if (ago < fromAgo || ago >= toAgo || ms > now) return; if (ccys && !ccys.includes(cc)) return; const k = `${cc}|${String(name).toLowerCase()}|${day}`; by.set(k, { ...(by.get(k) ?? { cc, name, day }), ...f }); };
   for (const e of events ?? []) if ((e.impact ?? '').toLowerCase() === 'high') put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
   for (const d of _tl.snapshots ?? []) for (const e of d.released ?? []) put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
-  for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z)) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name }); }
+  for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z) || x.actual != null) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name, revised: x.revised, revisedDelta: x.revisedDelta, revision: x.revision }); }
   const out = [...by.values()].map(x => { const fam = _tlFam(x.name); const imp = fam ? window.eventImpactBrick?.eventImpact(x.cc, fam) : null; return { ...x, fam, imp, size: pairName ? imp?.instruments?.[pairName] : null }; })
     .filter(x => x.actual != null || x.estimate != null || x.imp);
   return out.sort((a, b) => ((b.size?.spike ?? b.imp?.medSpike ?? 0) - (a.size?.spike ?? a.imp?.medSpike ?? 0)) || (Math.abs(b.z ?? 0) - Math.abs(a.z ?? 0)) || (a.day < b.day ? 1 : -1)).slice(0, limit);
@@ -4395,7 +4396,8 @@ function _tlRelLine(x) {
   const same = String(x.actual ?? '').trim() === String(x.estimate ?? '').trim();
   const sw = Number.isFinite(x.z) ? (Math.abs(x.z) < 0.25 && !same && x.estimate != null ? `close to the ${esc0(x.estimate)} expected` : _tlSurpriseWord(x.z) + (Math.abs(x.z) >= 0.25 && x.estimate != null ? ` the ${esc0(x.estimate)} expected` : '')) : x.estimate != null ? `vs ${esc0(x.estimate)} expected` : '';
   const nums = x.actual != null ? `<b>${esc0(x.actual)}</b>${sw ? `, ${sw}` : ''}` : `${esc0(x.estimate ?? '?')} expected${x.prev != null ? `, was ${esc0(x.prev)}` : ''}`;
-  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}</div>`;
+  const rev = x.revised != null ? ` · <span class="tl-rev">later revised to ${esc0(x.revised)}${x.revisedDelta ? ` (${esc0(x.revisedDelta)})` : ''}</span>` : x.revision ? ` · <span class="tl-rev">the prior was revised ${esc0(x.revision.was)} → ${esc0(x.revision.now)}</span>` : '';
+  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}${rev}</div>`;
 }
 function _tlWatchLines(fromAgo, toAgo, insts = null) {
   return (deskWatch?.log ?? []).filter(f => { const ago = _tlAgo(f.at.slice(0, 10)); return f.event === 'started' && ago >= fromAgo && ago < toAgo && (!insts || !f.instruments?.length || f.instruments.some(i => insts.includes(i))); }).slice(0, 4)
@@ -4445,7 +4447,7 @@ function nowcastFor(country, event, ms) {
     const key = t === 'CPI m/m' ? 'cpi' : t === 'Core CPI m/m' ? 'core' : t === 'Core PCE Price Index m/m' ? 'corepce' : t === 'PCE Price Index m/m' ? 'pce' : null;
     if (key && pickMonth()?.[key] != null) return { who: 'Cleveland Fed model', value: `${pickMonth()[key].toFixed(2)}%`, asOf: pickMonth().asOf, month: pickMonth().month, note: 'tested: the gap to consensus does not predict the beat (N1, null)' };
   }
-  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested: 67% on 30 calls -- under the sample bar (N2)' };
+  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested on 53 releases: the side the model sits on matched the print two times in three (66%, interval 52-80%), but the model forecasts the level worse than consensus -- a base rate, not a lean (N2)' };
   return null;
 }
 function nowcastText(country, event, ms) { const n = nowcastFor(country, event, ms); return n ? ` · ${n.who} says <b>${esc0(n.value)}</b>` : ''; }
@@ -7092,11 +7094,12 @@ function _clockTier(r) {
 // carries the width (the print lands late in the OANDA session). Range, never
 // direction -- the size of the surprise is not known until the print.
 const EVENT_RANGE_EFFECT = {
-  'rate decision': { EURUSD: '+0.42 on the day', USDJPY: '+0.27 on the day', GBPUSD: '+0.37 the session AFTER' },
-  employment:      { AUDUSD: '+0.19 on the day (big surprises)', EURUSD: '+0.16 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', USDCAD: '+0.11 on the day' },
-  cpi:             { EURUSD: '+0.27 the session AFTER', USDJPY: '+0.25 the session AFTER', GBPUSD: '+0.19 on the day' },
-  gdp:             { EURUSD: '+0.22 on the day (big surprises)', USDCAD: '+0.16 on the day' },
-  pmi:             { USDJPY: '+0.22 on the day' },
+  'rate decision': { EURUSD: '+0.38 on the day (+0.51 on big surprises)', USDJPY: '+0.24 on the day', GBPUSD: '+0.38 the session AFTER', AUDUSD: '+0.13 on the day' },
+  employment:      { EURUSD: '+0.17 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', AUDUSD: '+0.12 on the day', USDCAD: '+0.12 on the day' },
+  cpi:             { EURUSD: '+0.16 the session AFTER', GBPUSD: '+0.17 on the day', AUDUSD: '+0.14 on the day (big surprises)', USDCAD: '+0.14 the session AFTER' },
+  gdp:             { EURUSD: '+0.14 on the day', USDCAD: '+0.26 on the day (big surprises)' },
+  pmi:             { USDJPY: '+0.21 on the day (big surprises)' },
+  'retail sales':  { GBPUSD: '+0.11 on the day', AUDUSD: '+0.12 on the day' },
 };
 const EVENT_FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i]];
 function eventRangeChip(r) {
