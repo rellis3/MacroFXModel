@@ -1910,6 +1910,7 @@ async function loadGate() {
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
+  setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
@@ -2280,7 +2281,7 @@ function renderGate() {
     const cd = i === nextIdx && mins < 600 ? `<span class="cal-cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : '';
     return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · est ${esc0(e.estimate)}` : ''}${e.prev != null ? ` · prev ${esc0(e.prev)}` : ''}">
       <span class="cal-t">${hh(e.ts)}</span>
-      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}</span>
+      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}${(() => { const n = nowcastFor(e.country, e.event, e.ts); return n ? ` <span class="muted help" style="font-size:10px" title="${esc0(`${n.who}: ${n.value} for ${n.month}${n.asOf ? `, as of ${n.asOf}` : ''}${e.estimate != null ? ` · consensus ${e.estimate}` : ''}. ${n.note}. Context, not a lean.`)}">model ${esc0(n.value)}</span>` : ''; })()}</span>
       ${cd}
     </div>`;
   }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '');
@@ -4405,7 +4406,7 @@ function _tlLedgerLine(fromAgo, toAgo, pair = null) {
 function _tlAheadEvents(fromDays, toDays, ccys = null, pairName = null) {
   const now = Date.now();
   return (events ?? []).filter(e => { const dd = (e.ms - now) / 864e5; return (e.impact ?? '').toLowerCase() === 'high' && dd >= fromDays && dd < toDays && (!ccys || ccys.includes(e.country)); }).slice(0, 5)
-    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? ` (cons. ${esc0(e.estimate)})` : ''}${size ? ` · <b>${size.spike}×</b> an ordinary half-hour here, n=${size.n}` : imp ? ` · ${imp.medSpike}× median impact` : ''}</div>`; }).join('');
+    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? ` (cons. ${esc0(e.estimate)})` : ''}${nowcastText(e.country, e.event, e.ms)}${size ? ` · <b>${size.spike}×</b> an ordinary half-hour here, n=${size.n}` : imp ? ` · ${imp.medSpike}× median impact` : ''}</div>`; }).join('');
 }
 // The calendar feed covers the current week only; on a weekend the week ahead is not published yet.
 function _tlNoCal(fromDays, toDays) {
@@ -4420,6 +4421,26 @@ function _tlTopBias(rs, hz) {
   const up = top('BULLISH'), dn = top('BEARISH'); if (!up && !dn) return '';
   return `<div class="tl-l"><span class="k">clearest</span>${up ? `↑ ${esc0(up)}` : ''}${up && dn ? ' · ' : ''}${dn ? `↓ ${esc0(dn)}` : ''} <span class="muted">(outlook engine — context, not a validated signal)</span></div>`;
 }
+// The third number. Consensus is the street; the nowcast is a Fed model's live
+// estimate. Tested here (N1/N2): the gap does not carry the surprise sign, so
+// this is stated as context and never as a direction.
+let nowcast = null;
+async function loadNowcast() { try { const j = await jget('/api/nowcast'); if (j?.ok) { nowcast = j; render(); } } catch { /* stays absent */ } }
+function nowcastFor(country, event, ms) {
+  if (!nowcast || String(country).toUpperCase() !== 'US') return null;
+  const t = String(event ?? '').trim(); const c = nowcast.cleveland;
+  // a print on the 12th reports the month before, so match the chart to the
+  // release's reference month, not simply the latest chart
+  const ref = ms ? (() => { const d = new Date(ms); const m = d.getUTCMonth(); return `${d.getUTCFullYear() + (m === 0 ? -1 : 0)}-${String(((m + 11) % 12) + 1).padStart(2, '0')}`; })() : null;
+  const pickMonth = () => !ref ? c : c?.month === ref ? c : c?.previousMonth?.month === ref ? c.previousMonth : null;
+  if (c) {
+    const key = t === 'CPI m/m' ? 'cpi' : t === 'Core CPI m/m' ? 'core' : t === 'Core PCE Price Index m/m' ? 'corepce' : t === 'PCE Price Index m/m' ? 'pce' : null;
+    if (key && pickMonth()?.[key] != null) return { who: 'Cleveland Fed model', value: `${pickMonth()[key].toFixed(2)}%`, asOf: pickMonth().asOf, month: pickMonth().month, note: 'tested: the gap to consensus does not predict the beat (N1, null)' };
+  }
+  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested: 67% on 30 calls -- under the sample bar (N2)' };
+  return null;
+}
+function nowcastText(country, event, ms) { const n = nowcastFor(country, event, ms); return n ? ` · ${n.who} says <b>${esc0(n.value)}</b>` : ''; }
 function _tlFomcAhead() {
   const list = Array.isArray(_tl.fomc) ? _tl.fomc : (_tl.fomc?.meetings ?? []);
   const nx = list.map(m => m.date ?? m).filter(d => typeof d === 'string' && Date.parse(d) > Date.now()).sort()[0];

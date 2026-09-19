@@ -57,3 +57,29 @@ with no direction attached. Either way it is a base rate with an interval,
 never a trade.
 
 ---
+
+## Results (run 2026-09-19; design frozen above before running)
+
+Harness `analysis/nowcast_studies.mjs`; output `analysis/output/nowcast_studies.json`.
+
+**N1 — NULL.** 140 CPI m/m releases 2013-08 → 2025-04, 139 with a nowcast the
+day before. Calls at |gap| ≥ 0.05: **23 of 43 right = 53% [39–68]**; at ≥ 0.10,
+8 of 19 = 42%. And the model is the *worse* forecaster: nowcast MAE 0.105 vs
+consensus 0.086. Core CPI the same shape (54% [38–70], MAE 0.105 vs 0.087);
+core PCE 54% [34–74] on 24 calls with MAE 0.064 vs 0.043. A quarter of calls
+landed on an in-line print. The gap between the Cleveland model and the street
+is noise around a forecast the street already beats.
+
+**N2 — insufficient, direction noted.** ALFRED's GDPNow vintages only start
+2016-05, so 35 of the 73 advance prints match (30 decisive calls). Hit rate
+**20 of 30 = 67% [50–84]**, rising with the gap (16/24 at ≥0.4, 14/18 = 78% at
+≥0.6) — but GDPNow's MAE is worse than the consensus's (0.82 vs 0.69) and n is
+under the bar. Not a pass. The Atlanta Fed's own history workbook would give
+~55 releases; it sat behind an HTML interstitial when fetched, so this is queued
+rather than forced.
+
+**What shipped.** As the pre-registration said: the third number as context,
+never a direction. `/api/nowcast` (daily) carries the Cleveland month values and
+GDPNow; the calendar row for a covered US release shows *"model 0.43%"* with the
+verdict in the hover, and the timeline's ahead lines say *"Cleveland Fed model
+says 0.43%"* next to the consensus. Nothing leans on it.

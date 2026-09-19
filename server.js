@@ -13624,6 +13624,49 @@ svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn
 // Cold start is honest, not hidden: until a series has enough history to have a
 // dispersion, it is excluded, and until a currency has enough scored releases it
 // reports null with a `pending` count. An empty index says "collecting", never 0.
+// ── Nowcasts: the third number on a release line ────────────────────────────
+// Consensus is what the street expects; the actual is what printed; the nowcast
+// is a Fed model's live estimate before the print. Two are free: the Cleveland
+// Fed's daily inflation nowcast (CPI / core CPI / PCE / core PCE, m/m) and the
+// Atlanta Fed's GDPNow. Tested 2026-09-19 (MD files/NOWCAST_TESTS.md): the gap
+// between nowcast and consensus does NOT predict the sign of the CPI surprise
+// (53%, interval through 50%, and the model's error is larger than the
+// consensus's), and GDPNow's 67% on 30 calls is under the sample bar. So this is
+// context -- "the model says 0.43%" -- never a lean. Refreshed once a day; the
+// Cleveland file is ~7 MB, so only the current month's last values are kept.
+let _nowcast = { at: 0, cleveland: null, gdpnow: null, error: null };
+async function _refreshNowcast() {
+  const out = { at: Date.now(), cleveland: null, gdpnow: null, error: null };
+  try {
+    const r = await fetch('https://www.clevelandfed.org/-/media/files/webcharts/inflationnowcasting/nowcast_month.json?sc_lang=en', { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(60_000) });
+    if (!r.ok) throw new Error(`Cleveland HTTP ${r.status}`);
+    const charts = await r.json();
+    const pick = (c) => {
+      const [yy, mm] = String(c.chart.subcaption).split('-').map(Number);
+      const labels = c.categories[0].category.map(x => x.label);
+      const last = {}; let asOf = null;
+      for (const d of c.dataset) {
+        const key = { 'CPI Inflation': 'cpi', 'Core CPI Inflation': 'core', 'PCE Inflation': 'pce', 'Core PCE Inflation': 'corepce' }[d.seriesname]; if (!key) continue;
+        for (let i = d.data.length - 1; i >= 0; i--) { const v = d.data[i]?.value; if (v !== '' && v != null) { last[key] = +(+v).toFixed(3); const m = labels[i]?.match?.(/^(\d{2})\/(\d{2})$/); if (m && !asOf) { let y = yy; const M = +m[1]; if (M < mm - 1) y = yy + 1; if (mm === 12 && M === 1) y = yy + 1; asOf = `${y}-${m[1]}-${m[2]}`; } break; } }
+      }
+      return { month: `${yy}-${String(mm).padStart(2, '0')}`, asOf, ...last };
+    };
+    // the latest month chart, and the one before it in case the latest has no values yet
+    const latest = charts.slice(-2).map(pick).filter(x => x.cpi != null);
+    out.cleveland = latest.length ? latest[latest.length - 1] : null; if (latest.length === 2) out.cleveland.previousMonth = latest[0];
+  } catch (e) { out.error = e.message; }
+  try {
+    const r = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPNOW', { signal: AbortSignal.timeout(20_000) });
+    if (r.ok) { const lines = (await r.text()).trim().split('\n').slice(1).map(l => l.split(',')).filter(([, v]) => v && v !== '.'); const [date, v] = lines[lines.length - 1] ?? []; if (date) out.gdpnow = { quarter: date, value: +(+v).toFixed(2) }; }
+  } catch (e) { out.error = (out.error ? out.error + '; ' : '') + e.message; }
+  if (out.cleveland || out.gdpnow) _nowcast = out; else if (out.error) console.warn('[nowcast]', out.error);
+  return _nowcast;
+}
+app.get('/api/nowcast', async (_req, res) => {
+  try { if (Date.now() - _nowcast.at > 24 * 3600_000) await _refreshNowcast(); res.json({ ok: true, ..._nowcast, tested: 'NOWCAST_TESTS.md N1 null, N2 insufficient: context, not a lean' }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('nowcast', () => _refreshNowcast().catch(e => console.error('[nowcast]', e.message)), 24 * 3600_000);
 const _SURPRISE_KV = 'econ_surprise_v1';
 const _SURPRISE_REFRESH_MS = 60 * 60_000;   // releases print hourly at most; the feed itself caches
 
@@ -31642,6 +31685,7 @@ _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.
 // triggers read it); after kv.load() because the store is read-modify-write.
 setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);
 setTimeout(() => _dailySnapshotTick().catch(e => console.error('[snapshot] first pass failed (store left untouched):', e.message)), 8 * 60_000);
+setTimeout(() => _refreshNowcast().catch(e => console.error('[nowcast] first pass failed:', e.message)), 11 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
