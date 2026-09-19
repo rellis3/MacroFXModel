@@ -660,9 +660,10 @@ failed with `spawn /usr/local/bin/python3 ENOENT` (Python installs via
 (`PYTHON_BIN` → `/usr/local/bin/python3` → `/usr/bin/python3` → … → bare
 `python3`), so the second candidate resolves. Fixed in `8f36eeb`
 (2026-09-11); this paragraph was stale until 2026-09-15. The consequence
-matters for cost, not just correctness: SessionResearch really does spawn
-26 Python processes an hour (and 26 full studies a day), which is why it
-leads the "heavy end" table in `MD files/RAILWAY_SERVICE_FLAGS.md` §4.
-Verified by reading the code, not by observing a Railway run — if you need
-certainty that it is working in production, check `/api/services` for
-`sessionResearchLive`'s `errors` count.
+really does run: `/api/services` shows 8 clean runs, 0 errors, in a 7-hour
+window on 2026-09-19.
+**But it is not the cost centre the code-read assumed.** Those 8 runs cost
+3m54s of wall time — 0.9%, an order of magnitude below `fibAtlasPlan`,
+`mveLog` and `volatilityV2Plan`. The measured ranking is
+`RAILWAY_SERVICE_FLAGS.md` §4; treat any cost claim here that was reasoned
+from cadence rather than read off the meter as superseded by it.
