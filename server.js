@@ -324,10 +324,34 @@ function _svcStat(id) {
   return s;
 }
 
-/** `serviceEnabled` + a record that this process knows about the service. */
+/**
+ * `serviceEnabled` + a record that this process knows about the service.
+ *
+ * FAIL-OPEN on an unregistered id, exactly like start.sh's `svc_on`. The
+ * registry throws on an unknown id on purpose -- a typo must not read as
+ * "off" -- but a throw HERE is a throw at module scope, and on 2026-09-19 that
+ * took the entire site down: `a51bd7e` scheduled `svcInterval('nowcast', ...)`
+ * without adding the row, and server.js died on boot with "unknown service id",
+ * taking every route and every node-scheduled job with it (Railway then
+ * crash-loops). The trade this file wants is the one the bash side already
+ * made: an unregistered job RUNS, ungated and loudly logged, rather than
+ * killing the process. `js/serviceFlags.test.mjs` still fails the commit that
+ * forgets the row, which is where that mistake should surface.
+ */
+const _svcUnknown = new Set();
 function svcEnabled(id) {
   const st = _svcStat(id);
-  const on = serviceEnabled(id);
+  let on;
+  try {
+    on = serviceEnabled(id);
+  } catch (e) {
+    if (!_svcUnknown.has(id)) {
+      _svcUnknown.add(id);
+      console.error(`[services] ${e.message} — running '${id}' UNGATED so the process still boots; it cannot be switched off and /api/services cannot see it.`);
+    }
+    st.unregistered = true;
+    on = true;
+  }
   st.enabled = on;
   return on;
 }

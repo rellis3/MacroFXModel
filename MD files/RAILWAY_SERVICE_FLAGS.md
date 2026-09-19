@@ -278,5 +278,23 @@ Register it in `js/serviceFlags.js` (id, label, cadence, cost, lean, feeds),
 then start it with `svcInterval('yourId', fn, ms)` in `server.js` or
 `start_bot yourId "label" cmd…` in `start.sh`. `node js/serviceFlags.test.mjs`
 fails if a registered service is gated nowhere, if a `start_bot` line names an
-unregistered id, or if a bare `setInterval` reappears in `server.js` — so an
-unswitchable job cannot be added by accident.
+unregistered id, if `server.js` gates on an id the registry has never heard of,
+or if a bare `setInterval` reappears in `server.js` — so an unswitchable job
+cannot be added by accident.
+
+**Run the suite before you push.** This repo has no CI, so those guards only
+fire when someone remembers, and twice now they have caught a job after it had
+already landed on `main`:
+
+| Landed | What was missing | What it cost |
+|---|---|---|
+| `c17cfee` daily snapshot | bare `setInterval`, no row | an hourly job nobody could switch off |
+| `a51bd7e` nowcasts | `svcInterval('nowcast', …)`, no row | **the whole site** — see below |
+
+The second one is why `svcEnabled` in `server.js` now FAILS OPEN. The registry
+throws on an unknown id deliberately (a typo must never read as "off"), but
+`svcInterval` is called at module scope, so that throw killed `server.js` on
+boot: every route, every node-scheduled job, and then a Railway crash-loop,
+because a job that only wanted a flag had none. Now an unregistered id logs
+loudly and runs ungated — the same trade `start.sh`'s `svc_on` already made.
+The test is where that mistake is supposed to surface, not production.
