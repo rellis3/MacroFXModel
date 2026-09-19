@@ -142,6 +142,7 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
 import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
 import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
@@ -13870,6 +13871,36 @@ svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn
 // Cold start is honest, not hidden: until a series has enough history to have a
 // dispersion, it is excluded, and until a currency has enough scored releases it
 // reports null with a `pending` count. An empty index says "collecting", never 0.
+// ── Regime: growth x inflation, monthly ─────────────────────────────────────
+// The label is recomputed daily from FRED (no key: fredgraph.csv); the asset
+// table and transitions come from analysis/output/regime.json, which the study
+// writes (MD files/REGIME.md). Served together; the page and the brief read it.
+let _macroRegime = { at: 0, history: null, now: null, error: null };
+async function _fredCsv(id) {
+  const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
+  return (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value));
+}
+async function _refreshRegime() {
+  try {
+    const [cfnai, claims, indpro, payems, corecpi, corepce, bei5] = await Promise.all(['CFNAI', 'ICSA', 'INDPRO', 'PAYEMS', 'CPILFESL', 'PCEPILFE', 'T5YIE'].map(_fredCsv));
+    const history = _regimeHistory({ cfnai, claims, indpro, payems, corecpi, corepce, bei5 });
+    _macroRegime = { at: Date.now(), history, now: _regimeNow(history), error: null };
+  } catch (e) { _macroRegime.error = e.message; console.warn('[regime]', e.message); }
+  return _macroRegime;
+}
+function _regimeTable() { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'regime.json'), 'utf8')); } catch { return null; } }
+app.get('/api/regime', async (_req, res) => {
+  try {
+    if (Date.now() - _macroRegime.at > 24 * 3600_000) await _refreshRegime();
+    const t = _regimeTable(); const hist = _macroRegime.history ?? t?.history ?? null;
+    if (!hist) return res.status(503).json({ ok: false, error: _macroRegime.error ?? 'no regime history yet' });
+    const share = {}; for (const r of hist) share[r.regime] = (share[r.regime] ?? 0) + 1;
+    res.json({ ok: true, now: _macroRegime.now ?? t?.now ?? null, history: hist.slice(-240), share, spells: _regimeSpells(hist).slice(-60), table: t?.table ?? null, transitions: t?.transitions ?? null, ranAt: t?.ranAt ?? null, liveAt: _macroRegime.at ? new Date(_macroRegime.at).toISOString() : null, spec: 'MD files/REGIME.md' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('regime', () => _refreshRegime().catch(e => console.error('[regime]', e.message)), 24 * 3600_000);
+setTimeout(() => _refreshRegime().catch(e => console.error('[regime] first pass failed:', e.message)), 12 * 60_000);
+
 // ── Nowcasts: the third number on a release line ────────────────────────────
 // Consensus is what the street expects; the actual is what printed; the nowcast
 // is a Fed model's live estimate before the print. Two are free: the Cleveland

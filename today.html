@@ -985,6 +985,7 @@
     <div class="main-col">
       <div class="mbrief" id="mbrief" style="display:none"></div>
 
+      <div class="mread" id="regimeLine" style="display:none"></div>
       <div class="mread" id="deskWatch" style="display:none"></div>
 
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
@@ -1925,6 +1926,7 @@ async function loadGate() {
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
   setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
   setTimeout(() => loadReleaseCalls(), 3500);                      // your calls and the just-printed cards
+  setTimeout(() => loadRegime(), 4000);                            // the regime line
   // The sidebar is taller than the window, so a plain sticky top pinned its head
   // and hid its tail until the main column ran out. Pin it by its BOTTOM instead
   // when it is taller than the viewport: it scrolls with the page until its last
@@ -5596,6 +5598,27 @@ function buildMacro() {
 let deskWatch = null;
 async function loadDeskWatch() {
   try { const r = await jget('/api/desk-watch'); if (r?.ok) { deskWatch = r; renderDeskWatch(); } } catch { /* strip stays hidden */ }
+}
+// ── The regime, one line ────────────────────────────────────────────────────
+// Growth x inflation, monthly, from FRED (regime.html has the whole table).
+// A backdrop, not a forecast: which way the current has been running, how
+// long, what the usual next move is and what its tell is.
+let regime = null;
+async function loadRegime() { try { const j = await jget('/api/regime'); if (j?.ok) { regime = j; renderRegimeLine(); } } catch { /* stays hidden */ } }
+function renderRegimeLine() {
+  const el = $('regimeLine'); if (!el) return; const n = regime?.now; if (!n) { el.style.display = 'none'; return; }
+  const W = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
+  const col = { goldilocks: 'var(--amber)', reflation: 'var(--bear)', stagflation: 'var(--red)', deflation: 'var(--blue)' }[n.regime] ?? 'var(--text)';
+  const t = regime.table; const tilt = t ? Object.entries(t).filter(([, row]) => row[n.regime]?.tilt && row[n.regime].tilt !== 'none').map(([k, row]) => `${({ SPX500: 'S&P', NQ: 'Nasdaq', GOLD: 'gold', WTI: 'oil', COPPER: 'copper', DXY: 'the dollar', US10Y: '10-year', EURUSD: 'EUR/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD' })[k] ?? k} ${row[n.regime].tilt === 'up' ? '↑' : '↓'} (${row[n.regime].mean >= 0 ? '+' : ''}${row[n.regime].mean}%/mo, n=${row[n.regime].n})`) : [];
+  const widest = t ? Object.entries(t).filter(([, row]) => row[n.regime]?.range != null && row.all?.range).map(([k, row]) => ({ k, r: row[n.regime].range / row.all.range })).sort((a, b) => b.r - a.r)[0] : null;
+  el.style.display = 'block';
+  el.innerHTML = `<div class="riskverdict" style="margin:0" title="Growth x inflation, both as rate of change, from free public series (Chicago Fed activity index, claims, industrial production, payrolls; core CPI, core PCE, breakevens). Labels use only numbers that had printed. Spells here run a median of three months, so read the direction of travel across several months. Full table on regime.html.">
+    <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-right:8px">Regime</span>
+    <b style="color:${col}">${esc0(W[n.regime] ?? n.regime)}</b>, month ${n.months} — ${esc0(n.what)}.
+    ${tilt.length ? ` In this backdrop since 2007: ${esc0(tilt.join(', '))}; the rest no tilt.` : ' No market carries a tilt in this backdrop on our data.'}
+    ${widest ? ` Ranges run ${widest.r >= 1.1 ? 'wider' : widest.r <= 0.9 ? 'narrower' : 'about normal'} here.` : ''}
+    ${n.watchFor ? ` The usual next move is <b>${esc0(W[n.watchFor.to].toLowerCase())}</b>; its tell is ${esc0(n.watchFor.tells)}.` : ''}
+    <a href="regime.html" target="_blank" style="margin-left:6px;font-size:11px">the table →</a></div>`;
 }
 function renderDeskWatch() {
   const el = $('deskWatch'); if (!el) return;

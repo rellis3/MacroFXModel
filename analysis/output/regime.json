@@ -1,0 +1,7369 @@
+{
+ "ranAt": "2026-09-19T18:17:45.417Z",
+ "spec": "MD files/REGIME.md",
+ "history": [
+  {
+   "m": "1971-04",
+   "growth": 1.382,
+   "inflation": -1.75,
+   "gComp": -0.172,
+   "iComp": 0.228,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1971-05",
+   "growth": 1.144,
+   "inflation": -1.171,
+   "gComp": -0.177,
+   "iComp": 0.413,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1971-06",
+   "growth": 0.829,
+   "inflation": -0.231,
+   "gComp": 0.201,
+   "iComp": 0.698,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1971-07",
+   "growth": 0.838,
+   "inflation": 1,
+   "gComp": 0.362,
+   "iComp": 1.228,
+   "regime": "reflation"
+  },
+  {
+   "m": "1971-08",
+   "growth": 0.786,
+   "inflation": 0.579,
+   "gComp": -0.024,
+   "iComp": 0.991,
+   "regime": "reflation"
+  },
+  {
+   "m": "1971-09",
+   "growth": 0.507,
+   "inflation": -0.326,
+   "gComp": -0.434,
+   "iComp": 0.372,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1971-10",
+   "growth": 0.278,
+   "inflation": -1.611,
+   "gComp": 0.006,
+   "iComp": -0.383,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1971-11",
+   "growth": 0.146,
+   "inflation": -1.669,
+   "gComp": 0.31,
+   "iComp": -0.677,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1971-12",
+   "growth": 0.295,
+   "inflation": -0.944,
+   "gComp": 0.77,
+   "iComp": -0.572,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1972-01",
+   "growth": 0.408,
+   "inflation": 0.216,
+   "gComp": 0.809,
+   "iComp": -0.167,
+   "regime": "reflation"
+  },
+  {
+   "m": "1972-02",
+   "growth": 0.705,
+   "inflation": 1.078,
+   "gComp": 1.504,
+   "iComp": 0.4,
+   "regime": "reflation"
+  },
+  {
+   "m": "1972-03",
+   "growth": 0.899,
+   "inflation": 1.015,
+   "gComp": 1.565,
+   "iComp": 0.443,
+   "regime": "reflation"
+  },
+  {
+   "m": "1972-04",
+   "growth": 0.969,
+   "inflation": 0.218,
+   "gComp": 1.414,
+   "iComp": 0.051,
+   "regime": "reflation"
+  },
+  {
+   "m": "1972-05",
+   "growth": 0.692,
+   "inflation": -0.618,
+   "gComp": 0.957,
+   "iComp": -0.218,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1972-06",
+   "growth": 0.388,
+   "inflation": -0.717,
+   "gComp": 0.803,
+   "iComp": -0.274,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1972-07",
+   "growth": 0.084,
+   "inflation": -0.096,
+   "gComp": 0.547,
+   "iComp": -0.045,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1972-08",
+   "growth": -0.23,
+   "inflation": 0.005,
+   "gComp": 0.028,
+   "iComp": -0.213,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1972-09",
+   "growth": -0.409,
+   "inflation": 0.251,
+   "gComp": 0.503,
+   "iComp": -0.023,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1972-10",
+   "growth": -0.441,
+   "inflation": -0.043,
+   "gComp": 0.599,
+   "iComp": -0.088,
+   "regime": "deflation"
+  },
+  {
+   "m": "1972-11",
+   "growth": -0.077,
+   "inflation": -0.197,
+   "gComp": 1.388,
+   "iComp": -0.41,
+   "regime": "deflation"
+  },
+  {
+   "m": "1972-12",
+   "growth": 0.131,
+   "inflation": -0.788,
+   "gComp": 1.246,
+   "iComp": -0.811,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1973-01",
+   "growth": 0.377,
+   "inflation": -0.321,
+   "gComp": 1.514,
+   "iComp": -0.409,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1973-02",
+   "growth": 0.371,
+   "inflation": -0.24,
+   "gComp": 1.326,
+   "iComp": -0.65,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1973-03",
+   "growth": 0.443,
+   "inflation": 0.692,
+   "gComp": 1.426,
+   "iComp": -0.119,
+   "regime": "reflation"
+  },
+  {
+   "m": "1973-04",
+   "growth": 0.324,
+   "inflation": 0.425,
+   "gComp": 1.072,
+   "iComp": 0.016,
+   "regime": "reflation"
+  },
+  {
+   "m": "1973-05",
+   "growth": 0.094,
+   "inflation": 1.625,
+   "gComp": 0.53,
+   "iComp": 0.975,
+   "regime": "reflation"
+  },
+  {
+   "m": "1973-06",
+   "growth": -0.305,
+   "inflation": 1.169,
+   "gComp": 0.038,
+   "iComp": 1.05,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1973-07",
+   "growth": -0.644,
+   "inflation": 0.815,
+   "gComp": -0.108,
+   "iComp": 0.831,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1973-08",
+   "growth": -0.845,
+   "inflation": -0.377,
+   "gComp": -0.108,
+   "iComp": 0.598,
+   "regime": "deflation"
+  },
+  {
+   "m": "1973-09",
+   "growth": -0.916,
+   "inflation": -0.361,
+   "gComp": -0.402,
+   "iComp": 0.689,
+   "regime": "deflation"
+  },
+  {
+   "m": "1973-10",
+   "growth": -0.921,
+   "inflation": 0.404,
+   "gComp": -0.362,
+   "iComp": 1.235,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1973-11",
+   "growth": -0.749,
+   "inflation": 1.01,
+   "gComp": 0.079,
+   "iComp": 1.608,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1973-12",
+   "growth": -0.391,
+   "inflation": 0.906,
+   "gComp": 0.483,
+   "iComp": 1.595,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-01",
+   "growth": -0.137,
+   "inflation": 0.163,
+   "gComp": 0.025,
+   "iComp": 1.398,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-02",
+   "growth": -0.238,
+   "inflation": -0.325,
+   "gComp": -0.74,
+   "iComp": 1.282,
+   "regime": "deflation"
+  },
+  {
+   "m": "1974-03",
+   "growth": -0.599,
+   "inflation": 0.074,
+   "gComp": -1.272,
+   "iComp": 1.669,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-04",
+   "growth": -0.807,
+   "inflation": 0.938,
+   "gComp": -1.156,
+   "iComp": 2.335,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-05",
+   "growth": -0.772,
+   "inflation": 1.493,
+   "gComp": -1.026,
+   "iComp": 2.776,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-06",
+   "growth": -0.52,
+   "inflation": 1.934,
+   "gComp": -0.7,
+   "iComp": 3.604,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-07",
+   "growth": -0.321,
+   "inflation": 1.477,
+   "gComp": -0.708,
+   "iComp": 3.812,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-08",
+   "growth": -0.162,
+   "inflation": 1.243,
+   "gComp": -0.695,
+   "iComp": 4.019,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-09",
+   "growth": -0.297,
+   "inflation": 0.271,
+   "gComp": -1.339,
+   "iComp": 3.875,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1974-10",
+   "growth": -0.451,
+   "inflation": -0.298,
+   "gComp": -1.441,
+   "iComp": 3.514,
+   "regime": "deflation"
+  },
+  {
+   "m": "1974-11",
+   "growth": -0.644,
+   "inflation": -0.796,
+   "gComp": -1.728,
+   "iComp": 3.223,
+   "regime": "deflation"
+  },
+  {
+   "m": "1974-12",
+   "growth": -0.806,
+   "inflation": -1.425,
+   "gComp": -2.592,
+   "iComp": 2.45,
+   "regime": "deflation"
+  },
+  {
+   "m": "1975-01",
+   "growth": -1.269,
+   "inflation": -1.456,
+   "gComp": -3.784,
+   "iComp": 2.058,
+   "regime": "deflation"
+  },
+  {
+   "m": "1975-02",
+   "growth": -1.758,
+   "inflation": -1.676,
+   "gComp": -4.01,
+   "iComp": 1.547,
+   "regime": "deflation"
+  },
+  {
+   "m": "1975-03",
+   "growth": -1.889,
+   "inflation": -0.829,
+   "gComp": -3.556,
+   "iComp": 1.621,
+   "regime": "deflation"
+  },
+  {
+   "m": "1975-04",
+   "growth": -1.403,
+   "inflation": -0.907,
+   "gComp": -2.716,
+   "iComp": 1.151,
+   "regime": "deflation"
+  },
+  {
+   "m": "1975-05",
+   "growth": -0.66,
+   "inflation": -0.504,
+   "gComp": -2.032,
+   "iComp": 1.042,
+   "regime": "deflation"
+  },
+  {
+   "m": "1975-06",
+   "growth": 0.186,
+   "inflation": -1.267,
+   "gComp": -1.127,
+   "iComp": 0.354,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1975-07",
+   "growth": 0.934,
+   "inflation": -0.706,
+   "gComp": -0.391,
+   "iComp": 0.445,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1975-08",
+   "growth": 1.598,
+   "inflation": -0.638,
+   "gComp": 0.177,
+   "iComp": 0.404,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1975-09",
+   "growth": 2.019,
+   "inflation": -0.042,
+   "gComp": 0.63,
+   "iComp": 0.312,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1975-10",
+   "growth": 2.256,
+   "inflation": -0.099,
+   "gComp": 0.905,
+   "iComp": 0.346,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1975-11",
+   "growth": 2.271,
+   "inflation": -0.042,
+   "gComp": 0.873,
+   "iComp": 0.362,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1975-12",
+   "growth": 2.008,
+   "inflation": 0.614,
+   "gComp": 0.653,
+   "iComp": 0.926,
+   "regime": "reflation"
+  },
+  {
+   "m": "1976-01",
+   "growth": 1.604,
+   "inflation": 0.617,
+   "gComp": 0.85,
+   "iComp": 0.963,
+   "regime": "reflation"
+  },
+  {
+   "m": "1976-02",
+   "growth": 1.277,
+   "inflation": 0.727,
+   "gComp": 1.193,
+   "iComp": 1.089,
+   "regime": "reflation"
+  },
+  {
+   "m": "1976-03",
+   "growth": 1.12,
+   "inflation": -0.252,
+   "gComp": 1.428,
+   "iComp": 0.674,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1976-04",
+   "growth": 0.9,
+   "inflation": -0.578,
+   "gComp": 1.157,
+   "iComp": 0.385,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1976-05",
+   "growth": 0.519,
+   "inflation": -1.116,
+   "gComp": 0.745,
+   "iComp": -0.027,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1976-06",
+   "growth": 0.034,
+   "inflation": -0.641,
+   "gComp": 0.34,
+   "iComp": 0.033,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1976-07",
+   "growth": -0.346,
+   "inflation": -0.423,
+   "gComp": 0.152,
+   "iComp": -0.038,
+   "regime": "deflation"
+  },
+  {
+   "m": "1976-08",
+   "growth": -0.566,
+   "inflation": 0.407,
+   "gComp": 0.056,
+   "iComp": 0.38,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1976-09",
+   "growth": -0.587,
+   "inflation": 0.435,
+   "gComp": 0.158,
+   "iComp": 0.468,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1976-10",
+   "growth": -0.514,
+   "inflation": 0.801,
+   "gComp": 0.193,
+   "iComp": 0.763,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1976-11",
+   "growth": -0.48,
+   "inflation": 0.172,
+   "gComp": -0.077,
+   "iComp": 0.552,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1976-12",
+   "growth": -0.424,
+   "inflation": -0.187,
+   "gComp": 0.215,
+   "iComp": 0.28,
+   "regime": "deflation"
+  },
+  {
+   "m": "1977-01",
+   "growth": -0.283,
+   "inflation": -0.673,
+   "gComp": 0.538,
+   "iComp": 0.09,
+   "regime": "deflation"
+  },
+  {
+   "m": "1977-02",
+   "growth": -0.008,
+   "inflation": -0.226,
+   "gComp": 0.601,
+   "iComp": 0.326,
+   "regime": "deflation"
+  },
+  {
+   "m": "1977-03",
+   "growth": 0.199,
+   "inflation": 0.455,
+   "gComp": 0.638,
+   "iComp": 0.736,
+   "regime": "reflation"
+  },
+  {
+   "m": "1977-04",
+   "growth": 0.289,
+   "inflation": 0.645,
+   "gComp": 0.692,
+   "iComp": 0.735,
+   "regime": "reflation"
+  },
+  {
+   "m": "1977-05",
+   "growth": 0.427,
+   "inflation": 0.135,
+   "gComp": 1.104,
+   "iComp": 0.46,
+   "regime": "reflation"
+  },
+  {
+   "m": "1977-06",
+   "growth": 0.474,
+   "inflation": -0.533,
+   "gComp": 0.926,
+   "iComp": 0.203,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1977-07",
+   "growth": 0.452,
+   "inflation": -0.238,
+   "gComp": 0.782,
+   "iComp": 0.498,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1977-08",
+   "growth": 0.252,
+   "inflation": 0.013,
+   "gComp": 0.654,
+   "iComp": 0.473,
+   "regime": "reflation"
+  },
+  {
+   "m": "1977-09",
+   "growth": 0.078,
+   "inflation": 0.237,
+   "gComp": 0.486,
+   "iComp": 0.439,
+   "regime": "reflation"
+  },
+  {
+   "m": "1977-10",
+   "growth": -0.071,
+   "inflation": -0.387,
+   "gComp": 0.381,
+   "iComp": 0.111,
+   "regime": "deflation"
+  },
+  {
+   "m": "1977-11",
+   "growth": -0.208,
+   "inflation": -0.507,
+   "gComp": 0.352,
+   "iComp": -0.034,
+   "regime": "deflation"
+  },
+  {
+   "m": "1977-12",
+   "growth": -0.237,
+   "inflation": -0.458,
+   "gComp": 0.459,
+   "iComp": -0.019,
+   "regime": "deflation"
+  },
+  {
+   "m": "1978-01",
+   "growth": -0.213,
+   "inflation": 0.087,
+   "gComp": 0.426,
+   "iComp": 0.198,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1978-02",
+   "growth": -0.293,
+   "inflation": 0.6,
+   "gComp": -0.05,
+   "iComp": 0.566,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1978-03",
+   "growth": -0.389,
+   "inflation": 0.435,
+   "gComp": 0.012,
+   "iComp": 0.416,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1978-04",
+   "growth": -0.362,
+   "inflation": 0.23,
+   "gComp": 0.445,
+   "iComp": 0.429,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1978-05",
+   "growth": 0.113,
+   "inflation": 0.022,
+   "gComp": 1.469,
+   "iComp": 0.589,
+   "regime": "reflation"
+  },
+  {
+   "m": "1978-06",
+   "growth": 0.545,
+   "inflation": 0.49,
+   "gComp": 1.436,
+   "iComp": 0.907,
+   "regime": "reflation"
+  },
+  {
+   "m": "1978-07",
+   "growth": 0.757,
+   "inflation": 0.594,
+   "gComp": 1.178,
+   "iComp": 1.022,
+   "regime": "reflation"
+  },
+  {
+   "m": "1978-08",
+   "growth": 0.439,
+   "inflation": 0.223,
+   "gComp": 0.468,
+   "iComp": 0.812,
+   "regime": "reflation"
+  },
+  {
+   "m": "1978-09",
+   "growth": 0.104,
+   "inflation": -0.048,
+   "gComp": 0.415,
+   "iComp": 0.858,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1978-10",
+   "growth": -0.213,
+   "inflation": -0.052,
+   "gComp": 0.175,
+   "iComp": 0.971,
+   "regime": "deflation"
+  },
+  {
+   "m": "1978-11",
+   "growth": -0.227,
+   "inflation": 0.397,
+   "gComp": 0.448,
+   "iComp": 1.209,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1978-12",
+   "growth": -0.202,
+   "inflation": 0.205,
+   "gComp": 0.503,
+   "iComp": 1.064,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1979-01",
+   "growth": -0.094,
+   "inflation": -0.359,
+   "gComp": 0.523,
+   "iComp": 0.611,
+   "regime": "deflation"
+  },
+  {
+   "m": "1979-02",
+   "growth": -0.223,
+   "inflation": -0.844,
+   "gComp": 0.097,
+   "iComp": 0.365,
+   "regime": "deflation"
+  },
+  {
+   "m": "1979-03",
+   "growth": -0.412,
+   "inflation": -0.591,
+   "gComp": -0.088,
+   "iComp": 0.473,
+   "regime": "deflation"
+  },
+  {
+   "m": "1979-04",
+   "growth": -0.544,
+   "inflation": 0.249,
+   "gComp": 0.021,
+   "iComp": 0.861,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1979-05",
+   "growth": -0.52,
+   "inflation": 0.889,
+   "gComp": -0.264,
+   "iComp": 1.253,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1979-06",
+   "growth": -0.372,
+   "inflation": 1.063,
+   "gComp": -0.005,
+   "iComp": 1.536,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1979-07",
+   "growth": -0.331,
+   "inflation": 0.509,
+   "gComp": -0.201,
+   "iComp": 1.37,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1979-08",
+   "growth": -0.18,
+   "inflation": -0.225,
+   "gComp": 0.095,
+   "iComp": 1.028,
+   "regime": "deflation"
+  },
+  {
+   "m": "1979-09",
+   "growth": -0.253,
+   "inflation": -0.428,
+   "gComp": -0.434,
+   "iComp": 1.108,
+   "regime": "deflation"
+  },
+  {
+   "m": "1979-10",
+   "growth": -0.311,
+   "inflation": -0.078,
+   "gComp": -0.56,
+   "iComp": 1.292,
+   "regime": "deflation"
+  },
+  {
+   "m": "1979-11",
+   "growth": -0.406,
+   "inflation": 0.541,
+   "gComp": -0.402,
+   "iComp": 1.569,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1979-12",
+   "growth": -0.306,
+   "inflation": 0.382,
+   "gComp": -0.347,
+   "iComp": 1.49,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1980-01",
+   "growth": -0.165,
+   "inflation": 0.459,
+   "gComp": -0.358,
+   "iComp": 1.751,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1980-02",
+   "growth": -0.117,
+   "inflation": 0.401,
+   "gComp": -0.375,
+   "iComp": 1.97,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1980-03",
+   "growth": -0.104,
+   "inflation": 0.731,
+   "gComp": -0.382,
+   "iComp": 2.221,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1980-04",
+   "growth": -0.128,
+   "inflation": 0.724,
+   "gComp": -0.58,
+   "iComp": 2.475,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1980-05",
+   "growth": -0.376,
+   "inflation": 0.1,
+   "gComp": -1.404,
+   "iComp": 2.071,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1980-06",
+   "growth": -0.815,
+   "inflation": -0.547,
+   "gComp": -2.262,
+   "iComp": 1.674,
+   "regime": "deflation"
+  },
+  {
+   "m": "1980-07",
+   "growth": -1.288,
+   "inflation": -1.249,
+   "gComp": -2.599,
+   "iComp": 1.226,
+   "regime": "deflation"
+  },
+  {
+   "m": "1980-08",
+   "growth": -1.363,
+   "inflation": -1.536,
+   "gComp": -2.206,
+   "iComp": 0.534,
+   "regime": "deflation"
+  },
+  {
+   "m": "1980-09",
+   "growth": -0.923,
+   "inflation": -1.308,
+   "gComp": -1.112,
+   "iComp": 0.366,
+   "regime": "deflation"
+  },
+  {
+   "m": "1980-10",
+   "growth": -0.136,
+   "inflation": -0.704,
+   "gComp": -0.131,
+   "iComp": 0.522,
+   "regime": "deflation"
+  },
+  {
+   "m": "1980-11",
+   "growth": 0.74,
+   "inflation": 0.896,
+   "gComp": 0.697,
+   "iComp": 1.431,
+   "regime": "reflation"
+  },
+  {
+   "m": "1980-12",
+   "growth": 1.333,
+   "inflation": 1.368,
+   "gComp": 1.007,
+   "iComp": 1.734,
+   "regime": "reflation"
+  },
+  {
+   "m": "1981-01",
+   "growth": 1.584,
+   "inflation": 0.999,
+   "gComp": 0.949,
+   "iComp": 1.521,
+   "regime": "reflation"
+  },
+  {
+   "m": "1981-02",
+   "growth": 1.449,
+   "inflation": -0.19,
+   "gComp": 0.513,
+   "iComp": 1.24,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1981-03",
+   "growth": 1.097,
+   "inflation": -0.853,
+   "gComp": 0.062,
+   "iComp": 0.881,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1981-04",
+   "growth": 0.709,
+   "inflation": -1.054,
+   "gComp": -0.092,
+   "iComp": 0.467,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1981-05",
+   "growth": 0.388,
+   "inflation": -0.923,
+   "gComp": -0.131,
+   "iComp": 0.317,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1981-06",
+   "growth": 0.165,
+   "inflation": -0.41,
+   "gComp": -0.056,
+   "iComp": 0.471,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1981-07",
+   "growth": -0.06,
+   "inflation": 0.141,
+   "gComp": -0.156,
+   "iComp": 0.608,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1981-08",
+   "growth": -0.205,
+   "inflation": 0.633,
+   "gComp": -0.021,
+   "iComp": 0.95,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1981-09",
+   "growth": -0.338,
+   "inflation": 0.488,
+   "gComp": -0.237,
+   "iComp": 0.959,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1981-10",
+   "growth": -0.445,
+   "inflation": 0.642,
+   "gComp": -0.59,
+   "iComp": 1.25,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1981-11",
+   "growth": -0.652,
+   "inflation": -0.323,
+   "gComp": -1.092,
+   "iComp": 0.628,
+   "regime": "deflation"
+  },
+  {
+   "m": "1981-12",
+   "growth": -0.848,
+   "inflation": -0.762,
+   "gComp": -1.435,
+   "iComp": 0.197,
+   "regime": "deflation"
+  },
+  {
+   "m": "1982-01",
+   "growth": -0.98,
+   "inflation": -1.739,
+   "gComp": -1.63,
+   "iComp": -0.489,
+   "regime": "deflation"
+  },
+  {
+   "m": "1982-02",
+   "growth": -1.048,
+   "inflation": -1.112,
+   "gComp": -1.898,
+   "iComp": -0.484,
+   "regime": "deflation"
+  },
+  {
+   "m": "1982-03",
+   "growth": -0.856,
+   "inflation": -0.818,
+   "gComp": -1.167,
+   "iComp": -0.621,
+   "regime": "deflation"
+  },
+  {
+   "m": "1982-04",
+   "growth": -0.558,
+   "inflation": -0.344,
+   "gComp": -0.951,
+   "iComp": -0.833,
+   "regime": "deflation"
+  },
+  {
+   "m": "1982-05",
+   "growth": -0.105,
+   "inflation": -0.252,
+   "gComp": -0.672,
+   "iComp": -0.736,
+   "regime": "deflation"
+  },
+  {
+   "m": "1982-06",
+   "growth": -0.002,
+   "inflation": 0.15,
+   "gComp": -1.125,
+   "iComp": -0.471,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1982-07",
+   "growth": 0.03,
+   "inflation": 0.802,
+   "gComp": -1.089,
+   "iComp": -0.03,
+   "regime": "reflation"
+  },
+  {
+   "m": "1982-08",
+   "growth": 0.015,
+   "inflation": 0.805,
+   "gComp": -0.952,
+   "iComp": 0.069,
+   "regime": "reflation"
+  },
+  {
+   "m": "1982-09",
+   "growth": 0.107,
+   "inflation": 0.231,
+   "gComp": -1.051,
+   "iComp": -0.24,
+   "regime": "reflation"
+  },
+  {
+   "m": "1982-10",
+   "growth": 0.172,
+   "inflation": -0.77,
+   "gComp": -0.997,
+   "iComp": -0.8,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1982-11",
+   "growth": 0.13,
+   "inflation": -1.105,
+   "gComp": -1.07,
+   "iComp": -1.036,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1982-12",
+   "growth": 0.146,
+   "inflation": -1.313,
+   "gComp": -0.863,
+   "iComp": -1.553,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-01",
+   "growth": 0.186,
+   "inflation": -0.94,
+   "gComp": -0.623,
+   "iComp": -1.74,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-02",
+   "growth": 0.45,
+   "inflation": -0.589,
+   "gComp": 0.26,
+   "iComp": -1.625,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-03",
+   "growth": 0.745,
+   "inflation": 0.305,
+   "gComp": 0.42,
+   "iComp": -1.248,
+   "regime": "reflation"
+  },
+  {
+   "m": "1983-04",
+   "growth": 1.065,
+   "inflation": 0.437,
+   "gComp": 0.768,
+   "iComp": -1.302,
+   "regime": "reflation"
+  },
+  {
+   "m": "1983-05",
+   "growth": 1.088,
+   "inflation": -0.121,
+   "gComp": 0.663,
+   "iComp": -1.746,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-06",
+   "growth": 1.119,
+   "inflation": -0.786,
+   "gComp": 1.057,
+   "iComp": -2.034,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-07",
+   "growth": 1.06,
+   "inflation": -0.254,
+   "gComp": 1.151,
+   "iComp": -1.557,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-08",
+   "growth": 1.085,
+   "inflation": 0.738,
+   "gComp": 1.3,
+   "iComp": -1.008,
+   "regime": "reflation"
+  },
+  {
+   "m": "1983-09",
+   "growth": 0.907,
+   "inflation": 1.448,
+   "gComp": 1.048,
+   "iComp": -0.586,
+   "regime": "reflation"
+  },
+  {
+   "m": "1983-10",
+   "growth": 0.787,
+   "inflation": 0.955,
+   "gComp": 1.389,
+   "iComp": -0.601,
+   "regime": "reflation"
+  },
+  {
+   "m": "1983-11",
+   "growth": 0.56,
+   "inflation": -0.228,
+   "gComp": 1.179,
+   "iComp": -1.236,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1983-12",
+   "growth": 0.472,
+   "inflation": -0.829,
+   "gComp": 1.335,
+   "iComp": -1.416,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1984-01",
+   "growth": 0.188,
+   "inflation": -1.201,
+   "gComp": 0.922,
+   "iComp": -1.803,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1984-02",
+   "growth": 0.1,
+   "inflation": -0.242,
+   "gComp": 1.135,
+   "iComp": -1.478,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1984-03",
+   "growth": -0.012,
+   "inflation": 0.254,
+   "gComp": 1.193,
+   "iComp": -1.162,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1984-04",
+   "growth": 0.018,
+   "inflation": 1.036,
+   "gComp": 1.091,
+   "iComp": -0.767,
+   "regime": "reflation"
+  },
+  {
+   "m": "1984-05",
+   "growth": -0.111,
+   "inflation": 0.743,
+   "gComp": 0.776,
+   "iComp": -0.734,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1984-06",
+   "growth": -0.26,
+   "inflation": 0.077,
+   "gComp": 0.645,
+   "iComp": -1.085,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1984-07",
+   "growth": -0.376,
+   "inflation": -0.461,
+   "gComp": 0.606,
+   "iComp": -1.228,
+   "regime": "deflation"
+  },
+  {
+   "m": "1984-08",
+   "growth": -0.4,
+   "inflation": -0.53,
+   "gComp": 0.505,
+   "iComp": -1.264,
+   "regime": "deflation"
+  },
+  {
+   "m": "1984-09",
+   "growth": -0.457,
+   "inflation": -0.067,
+   "gComp": 0.283,
+   "iComp": -1.152,
+   "regime": "deflation"
+  },
+  {
+   "m": "1984-10",
+   "growth": -0.534,
+   "inflation": -0.01,
+   "gComp": 0.038,
+   "iComp": -1.237,
+   "regime": "deflation"
+  },
+  {
+   "m": "1984-11",
+   "growth": -0.631,
+   "inflation": -0.254,
+   "gComp": -0.109,
+   "iComp": -1.518,
+   "regime": "deflation"
+  },
+  {
+   "m": "1984-12",
+   "growth": -0.631,
+   "inflation": -0.591,
+   "gComp": -0.066,
+   "iComp": -1.743,
+   "regime": "deflation"
+  },
+  {
+   "m": "1985-01",
+   "growth": -0.582,
+   "inflation": -0.204,
+   "gComp": -0.062,
+   "iComp": -1.441,
+   "regime": "deflation"
+  },
+  {
+   "m": "1985-02",
+   "growth": -0.456,
+   "inflation": 0.412,
+   "gComp": -0.021,
+   "iComp": -1.107,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1985-03",
+   "growth": -0.359,
+   "inflation": 1.239,
+   "gComp": -0.095,
+   "iComp": -0.504,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1985-04",
+   "growth": -0.242,
+   "inflation": 0.89,
+   "gComp": 0.018,
+   "iComp": -0.551,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1985-05",
+   "growth": -0.198,
+   "inflation": 0.067,
+   "gComp": -0.108,
+   "iComp": -1.039,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1985-06",
+   "growth": -0.117,
+   "inflation": -0.838,
+   "gComp": -0.02,
+   "iComp": -1.342,
+   "regime": "deflation"
+  },
+  {
+   "m": "1985-07",
+   "growth": -0.129,
+   "inflation": -0.853,
+   "gComp": -0.225,
+   "iComp": -1.404,
+   "regime": "deflation"
+  },
+  {
+   "m": "1985-08",
+   "growth": -0.1,
+   "inflation": -0.161,
+   "gComp": -0.195,
+   "iComp": -1.201,
+   "regime": "deflation"
+  },
+  {
+   "m": "1985-09",
+   "growth": -0.12,
+   "inflation": 0.308,
+   "gComp": -0.2,
+   "iComp": -1.034,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1985-10",
+   "growth": -0.053,
+   "inflation": 0.188,
+   "gComp": -0.047,
+   "iComp": -1.217,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1985-11",
+   "growth": -0.038,
+   "inflation": -0.028,
+   "gComp": -0.164,
+   "iComp": -1.229,
+   "regime": "deflation"
+  },
+  {
+   "m": "1985-12",
+   "growth": -0.016,
+   "inflation": -0.315,
+   "gComp": -0.156,
+   "iComp": -1.349,
+   "regime": "deflation"
+  },
+  {
+   "m": "1986-01",
+   "growth": -0.019,
+   "inflation": 0.018,
+   "gComp": -0.053,
+   "iComp": -1.199,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1986-02",
+   "growth": 0.113,
+   "inflation": 0.434,
+   "gComp": 0.317,
+   "iComp": -0.795,
+   "regime": "reflation"
+  },
+  {
+   "m": "1986-03",
+   "growth": 0.171,
+   "inflation": 0.404,
+   "gComp": 0.053,
+   "iComp": -0.945,
+   "regime": "reflation"
+  },
+  {
+   "m": "1986-04",
+   "growth": 0.126,
+   "inflation": 0.294,
+   "gComp": -0.257,
+   "iComp": -0.905,
+   "regime": "reflation"
+  },
+  {
+   "m": "1986-05",
+   "growth": -0.088,
+   "inflation": -0.525,
+   "gComp": -0.397,
+   "iComp": -1.32,
+   "regime": "deflation"
+  },
+  {
+   "m": "1986-06",
+   "growth": -0.158,
+   "inflation": -0.502,
+   "gComp": -0.2,
+   "iComp": -1.447,
+   "regime": "deflation"
+  },
+  {
+   "m": "1986-07",
+   "growth": -0.133,
+   "inflation": -0.527,
+   "gComp": -0.17,
+   "iComp": -1.432,
+   "regime": "deflation"
+  },
+  {
+   "m": "1986-08",
+   "growth": -0.019,
+   "inflation": -0.089,
+   "gComp": -0.006,
+   "iComp": -1.41,
+   "regime": "deflation"
+  },
+  {
+   "m": "1986-09",
+   "growth": 0.008,
+   "inflation": 0.199,
+   "gComp": -0.093,
+   "iComp": -1.248,
+   "regime": "reflation"
+  },
+  {
+   "m": "1986-10",
+   "growth": 0.114,
+   "inflation": 0.285,
+   "gComp": 0.215,
+   "iComp": -1.148,
+   "regime": "reflation"
+  },
+  {
+   "m": "1986-11",
+   "growth": 0.105,
+   "inflation": 0.427,
+   "gComp": 0.01,
+   "iComp": -0.983,
+   "regime": "reflation"
+  },
+  {
+   "m": "1986-12",
+   "growth": 0.167,
+   "inflation": 0.228,
+   "gComp": 0.174,
+   "iComp": -1.019,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-01",
+   "growth": 0.173,
+   "inflation": -0.103,
+   "gComp": 0.329,
+   "iComp": -1.25,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1987-02",
+   "growth": 0.233,
+   "inflation": -0.394,
+   "gComp": 0.147,
+   "iComp": -1.377,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1987-03",
+   "growth": 0.304,
+   "inflation": -0.342,
+   "gComp": 0.499,
+   "iComp": -1.362,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1987-04",
+   "growth": 0.252,
+   "inflation": 0.113,
+   "gComp": 0.316,
+   "iComp": -1.137,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-05",
+   "growth": 0.356,
+   "inflation": 0.625,
+   "gComp": 0.743,
+   "iComp": -0.752,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-06",
+   "growth": 0.308,
+   "inflation": 0.736,
+   "gComp": 0.54,
+   "iComp": -0.625,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-07",
+   "growth": 0.327,
+   "inflation": 0.396,
+   "gComp": 0.557,
+   "iComp": -0.741,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-08",
+   "growth": 0.231,
+   "inflation": -0.284,
+   "gComp": 0.609,
+   "iComp": -1.036,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1987-09",
+   "growth": 0.182,
+   "inflation": -0.347,
+   "gComp": 0.551,
+   "iComp": -0.972,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1987-10",
+   "growth": 0.153,
+   "inflation": 0.037,
+   "gComp": 0.557,
+   "iComp": -0.704,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-11",
+   "growth": 0.138,
+   "inflation": 0.585,
+   "gComp": 0.747,
+   "iComp": -0.451,
+   "regime": "reflation"
+  },
+  {
+   "m": "1987-12",
+   "growth": 0.151,
+   "inflation": 0.355,
+   "gComp": 0.73,
+   "iComp": -0.617,
+   "regime": "reflation"
+  },
+  {
+   "m": "1988-01",
+   "growth": 0.185,
+   "inflation": -0.174,
+   "gComp": 0.768,
+   "iComp": -0.878,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1988-02",
+   "growth": -0.014,
+   "inflation": -0.426,
+   "gComp": 0.153,
+   "iComp": -0.877,
+   "regime": "deflation"
+  },
+  {
+   "m": "1988-03",
+   "growth": -0.161,
+   "inflation": -0.253,
+   "gComp": 0.219,
+   "iComp": -0.87,
+   "regime": "deflation"
+  },
+  {
+   "m": "1988-04",
+   "growth": -0.346,
+   "inflation": 0.307,
+   "gComp": 0.178,
+   "iComp": -0.571,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1988-05",
+   "growth": -0.221,
+   "inflation": 0.37,
+   "gComp": 0.458,
+   "iComp": -0.506,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1988-06",
+   "growth": -0.194,
+   "inflation": 0.54,
+   "gComp": 0.219,
+   "iComp": -0.33,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1988-07",
+   "growth": -0.144,
+   "inflation": 0.241,
+   "gComp": 0.253,
+   "iComp": -0.33,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1988-08",
+   "growth": -0.224,
+   "inflation": 0.016,
+   "gComp": 0.086,
+   "iComp": -0.49,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1988-09",
+   "growth": -0.214,
+   "inflation": -0.235,
+   "gComp": 0.146,
+   "iComp": -0.565,
+   "regime": "deflation"
+  },
+  {
+   "m": "1988-10",
+   "growth": -0.251,
+   "inflation": -0.033,
+   "gComp": 0.003,
+   "iComp": -0.362,
+   "regime": "deflation"
+  },
+  {
+   "m": "1988-11",
+   "growth": -0.153,
+   "inflation": 0.157,
+   "gComp": 0.258,
+   "iComp": -0.333,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1988-12",
+   "growth": -0.046,
+   "inflation": 0.262,
+   "gComp": 0.381,
+   "iComp": -0.303,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1989-01",
+   "growth": 0.147,
+   "inflation": -0.263,
+   "gComp": 0.522,
+   "iComp": -0.625,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1989-02",
+   "growth": 0.182,
+   "inflation": -0.172,
+   "gComp": 0.433,
+   "iComp": -0.505,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1989-03",
+   "growth": 0.121,
+   "inflation": -0.216,
+   "gComp": 0.19,
+   "iComp": -0.519,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1989-04",
+   "growth": -0.039,
+   "inflation": 0.13,
+   "gComp": -0.005,
+   "iComp": -0.495,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1989-05",
+   "growth": -0.184,
+   "inflation": -0.181,
+   "gComp": -0.155,
+   "iComp": -0.687,
+   "regime": "deflation"
+  },
+  {
+   "m": "1989-06",
+   "growth": -0.307,
+   "inflation": -0.071,
+   "gComp": -0.312,
+   "iComp": -0.59,
+   "regime": "deflation"
+  },
+  {
+   "m": "1989-07",
+   "growth": -0.388,
+   "inflation": -0.115,
+   "gComp": -0.415,
+   "iComp": -0.611,
+   "regime": "deflation"
+  },
+  {
+   "m": "1989-08",
+   "growth": -0.527,
+   "inflation": 0.013,
+   "gComp": -0.79,
+   "iComp": -0.674,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1989-09",
+   "growth": -0.52,
+   "inflation": -0.313,
+   "gComp": -0.434,
+   "iComp": -0.903,
+   "regime": "deflation"
+  },
+  {
+   "m": "1989-10",
+   "growth": -0.495,
+   "inflation": -0.251,
+   "gComp": -0.457,
+   "iComp": -0.862,
+   "regime": "deflation"
+  },
+  {
+   "m": "1989-11",
+   "growth": -0.275,
+   "inflation": 0.065,
+   "gComp": -0.259,
+   "iComp": -0.609,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1989-12",
+   "growth": -0.18,
+   "inflation": 0.52,
+   "gComp": -0.325,
+   "iComp": -0.383,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1990-01",
+   "growth": -0.033,
+   "inflation": 0.48,
+   "gComp": -0.195,
+   "iComp": -0.382,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1990-02",
+   "growth": 0.073,
+   "inflation": 0.16,
+   "gComp": -0.067,
+   "iComp": -0.449,
+   "regime": "reflation"
+  },
+  {
+   "m": "1990-03",
+   "growth": 0.213,
+   "inflation": 0.211,
+   "gComp": 0.063,
+   "iComp": -0.171,
+   "regime": "reflation"
+  },
+  {
+   "m": "1990-04",
+   "growth": 0.321,
+   "inflation": 0.591,
+   "gComp": 0.172,
+   "iComp": 0.21,
+   "regime": "reflation"
+  },
+  {
+   "m": "1990-05",
+   "growth": 0.326,
+   "inflation": 0.594,
+   "gComp": -0.015,
+   "iComp": 0.145,
+   "regime": "reflation"
+  },
+  {
+   "m": "1990-06",
+   "growth": 0.219,
+   "inflation": 0.027,
+   "gComp": -0.239,
+   "iComp": -0.144,
+   "regime": "reflation"
+  },
+  {
+   "m": "1990-07",
+   "growth": 0.017,
+   "inflation": -0.502,
+   "gComp": -0.442,
+   "iComp": -0.292,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1990-08",
+   "growth": -0.161,
+   "inflation": -0.361,
+   "gComp": -0.469,
+   "iComp": -0.216,
+   "regime": "deflation"
+  },
+  {
+   "m": "1990-09",
+   "growth": -0.298,
+   "inflation": 0.297,
+   "gComp": -0.72,
+   "iComp": 0.153,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1990-10",
+   "growth": -0.439,
+   "inflation": 0.279,
+   "gComp": -1.002,
+   "iComp": -0.013,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1990-11",
+   "growth": -0.623,
+   "inflation": 0.201,
+   "gComp": -1.274,
+   "iComp": -0.015,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1990-12",
+   "growth": -0.855,
+   "inflation": -0.776,
+   "gComp": -1.779,
+   "iComp": -0.623,
+   "regime": "deflation"
+  },
+  {
+   "m": "1991-01",
+   "growth": -1.022,
+   "inflation": -0.811,
+   "gComp": -1.94,
+   "iComp": -0.824,
+   "regime": "deflation"
+  },
+  {
+   "m": "1991-02",
+   "growth": -1.063,
+   "inflation": -0.317,
+   "gComp": -1.84,
+   "iComp": -0.332,
+   "regime": "deflation"
+  },
+  {
+   "m": "1991-03",
+   "growth": -0.887,
+   "inflation": 0.725,
+   "gComp": -1.691,
+   "iComp": 0.102,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1991-04",
+   "growth": -0.645,
+   "inflation": 0.818,
+   "gComp": -1.675,
+   "iComp": -0.005,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1991-05",
+   "growth": -0.375,
+   "inflation": -0.466,
+   "gComp": -1.37,
+   "iComp": -0.798,
+   "regime": "deflation"
+  },
+  {
+   "m": "1991-06",
+   "growth": -0.004,
+   "inflation": -0.924,
+   "gComp": -0.689,
+   "iComp": -0.822,
+   "regime": "deflation"
+  },
+  {
+   "m": "1991-07",
+   "growth": 0.517,
+   "inflation": -0.652,
+   "gComp": -0.003,
+   "iComp": -0.658,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1991-08",
+   "growth": 0.988,
+   "inflation": 0.386,
+   "gComp": 0.213,
+   "iComp": -0.413,
+   "regime": "reflation"
+  },
+  {
+   "m": "1991-09",
+   "growth": 1.186,
+   "inflation": 0.388,
+   "gComp": 0.112,
+   "iComp": -0.434,
+   "regime": "reflation"
+  },
+  {
+   "m": "1991-10",
+   "growth": 1.127,
+   "inflation": 0.551,
+   "gComp": 0.096,
+   "iComp": -0.106,
+   "regime": "reflation"
+  },
+  {
+   "m": "1991-11",
+   "growth": 0.942,
+   "inflation": -0.045,
+   "gComp": -0.032,
+   "iComp": -0.458,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1991-12",
+   "growth": 0.715,
+   "inflation": -0.294,
+   "gComp": -0.166,
+   "iComp": -0.728,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1992-01",
+   "growth": 0.372,
+   "inflation": -0.895,
+   "gComp": -0.598,
+   "iComp": -1.001,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1992-02",
+   "growth": 0.046,
+   "inflation": -0.323,
+   "gComp": -0.732,
+   "iComp": -0.781,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1992-03",
+   "growth": -0.173,
+   "inflation": -0.116,
+   "gComp": -0.533,
+   "iComp": -0.844,
+   "regime": "deflation"
+  },
+  {
+   "m": "1992-04",
+   "growth": -0.131,
+   "inflation": 0.167,
+   "gComp": -0.072,
+   "iComp": -0.834,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1992-05",
+   "growth": 0.067,
+   "inflation": 0.063,
+   "gComp": 0.274,
+   "iComp": -0.719,
+   "regime": "reflation"
+  },
+  {
+   "m": "1992-06",
+   "growth": 0.264,
+   "inflation": 0.116,
+   "gComp": 0.307,
+   "iComp": -0.728,
+   "regime": "reflation"
+  },
+  {
+   "m": "1992-07",
+   "growth": 0.308,
+   "inflation": -0.465,
+   "gComp": 0.078,
+   "iComp": -1.299,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1992-08",
+   "growth": 0.198,
+   "inflation": -0.366,
+   "gComp": -0.143,
+   "iComp": -1.085,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1992-09",
+   "growth": -0.004,
+   "inflation": -0.722,
+   "gComp": -0.438,
+   "iComp": -1.451,
+   "regime": "deflation"
+  },
+  {
+   "m": "1992-10",
+   "growth": -0.121,
+   "inflation": -0.1,
+   "gComp": -0.395,
+   "iComp": -1.399,
+   "regime": "deflation"
+  },
+  {
+   "m": "1992-11",
+   "growth": -0.077,
+   "inflation": -0.028,
+   "gComp": -0.002,
+   "iComp": -1.113,
+   "regime": "deflation"
+  },
+  {
+   "m": "1992-12",
+   "growth": 0.165,
+   "inflation": 0.708,
+   "gComp": 0.44,
+   "iComp": -0.743,
+   "regime": "reflation"
+  },
+  {
+   "m": "1993-01",
+   "growth": 0.434,
+   "inflation": 0.962,
+   "gComp": 0.747,
+   "iComp": -0.438,
+   "regime": "reflation"
+  },
+  {
+   "m": "1993-02",
+   "growth": 0.555,
+   "inflation": 0.107,
+   "gComp": 0.726,
+   "iComp": -1.005,
+   "regime": "reflation"
+  },
+  {
+   "m": "1993-03",
+   "growth": 0.537,
+   "inflation": -0.161,
+   "gComp": 0.692,
+   "iComp": -0.903,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1993-04",
+   "growth": 0.313,
+   "inflation": -0.724,
+   "gComp": 0.125,
+   "iComp": -1.162,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1993-05",
+   "growth": 0.103,
+   "inflation": 0.012,
+   "gComp": 0.036,
+   "iComp": -0.993,
+   "regime": "reflation"
+  },
+  {
+   "m": "1993-06",
+   "growth": -0.148,
+   "inflation": 0.054,
+   "gComp": -0.186,
+   "iComp": -0.85,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1993-07",
+   "growth": -0.152,
+   "inflation": 0.218,
+   "gComp": 0.125,
+   "iComp": -0.943,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1993-08",
+   "growth": -0.191,
+   "inflation": -0.75,
+   "gComp": -0.058,
+   "iComp": -1.743,
+   "regime": "deflation"
+  },
+  {
+   "m": "1993-09",
+   "growth": -0.178,
+   "inflation": -1.047,
+   "gComp": -0.052,
+   "iComp": -1.897,
+   "regime": "deflation"
+  },
+  {
+   "m": "1993-10",
+   "growth": -0.231,
+   "inflation": -1.111,
+   "gComp": 0.086,
+   "iComp": -2.054,
+   "regime": "deflation"
+  },
+  {
+   "m": "1993-11",
+   "growth": -0.139,
+   "inflation": 0.085,
+   "gComp": 0.291,
+   "iComp": -1.657,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1993-12",
+   "growth": 0.06,
+   "inflation": 0.42,
+   "gComp": 0.581,
+   "iComp": -1.477,
+   "regime": "reflation"
+  },
+  {
+   "m": "1994-01",
+   "growth": 0.31,
+   "inflation": 0.8,
+   "gComp": 0.865,
+   "iComp": -1.254,
+   "regime": "reflation"
+  },
+  {
+   "m": "1994-02",
+   "growth": 0.417,
+   "inflation": -0.221,
+   "gComp": 0.573,
+   "iComp": -1.878,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1994-03",
+   "growth": 0.392,
+   "inflation": -0.739,
+   "gComp": 0.447,
+   "iComp": -2.216,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1994-04",
+   "growth": 0.26,
+   "inflation": -0.147,
+   "gComp": 0.583,
+   "iComp": -1.401,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1994-05",
+   "growth": 0.313,
+   "inflation": 0.656,
+   "gComp": 0.965,
+   "iComp": -1.222,
+   "regime": "reflation"
+  },
+  {
+   "m": "1994-06",
+   "growth": 0.428,
+   "inflation": 1.171,
+   "gComp": 1.117,
+   "iComp": -1.044,
+   "regime": "reflation"
+  },
+  {
+   "m": "1994-07",
+   "growth": 0.431,
+   "inflation": 0.105,
+   "gComp": 0.746,
+   "iComp": -1.296,
+   "regime": "reflation"
+  },
+  {
+   "m": "1994-08",
+   "growth": 0.259,
+   "inflation": 0.222,
+   "gComp": 0.62,
+   "iComp": -1.001,
+   "regime": "reflation"
+  },
+  {
+   "m": "1994-09",
+   "growth": 0.077,
+   "inflation": -0.189,
+   "gComp": 0.778,
+   "iComp": -1.234,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1994-10",
+   "growth": 0,
+   "inflation": -0.217,
+   "gComp": 0.66,
+   "iComp": -1.513,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1994-11",
+   "growth": 0.031,
+   "inflation": -0.436,
+   "gComp": 0.853,
+   "iComp": -1.437,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1994-12",
+   "growth": 0.041,
+   "inflation": -0.039,
+   "gComp": 0.883,
+   "iComp": -1.273,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1995-01",
+   "growth": 0.192,
+   "inflation": -0.405,
+   "gComp": 1.195,
+   "iComp": -1.918,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1995-02",
+   "growth": 0.186,
+   "inflation": 0.122,
+   "gComp": 0.925,
+   "iComp": -1.315,
+   "regime": "reflation"
+  },
+  {
+   "m": "1995-03",
+   "growth": 0.027,
+   "inflation": -0.08,
+   "gComp": 0.39,
+   "iComp": -1.353,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1995-04",
+   "growth": -0.343,
+   "inflation": 1.593,
+   "gComp": -0.081,
+   "iComp": -0.325,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1995-05",
+   "growth": -0.712,
+   "inflation": 0.68,
+   "gComp": -0.564,
+   "iComp": -0.636,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1995-06",
+   "growth": -0.896,
+   "inflation": 0.597,
+   "gComp": -0.588,
+   "iComp": -0.756,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1995-07",
+   "growth": -0.942,
+   "inflation": -0.916,
+   "gComp": -0.541,
+   "iComp": -1.241,
+   "regime": "deflation"
+  },
+  {
+   "m": "1995-08",
+   "growth": -0.845,
+   "inflation": -1.02,
+   "gComp": -0.573,
+   "iComp": -1.655,
+   "regime": "deflation"
+  },
+  {
+   "m": "1995-09",
+   "growth": -0.575,
+   "inflation": -0.59,
+   "gComp": 0.037,
+   "iComp": -1.346,
+   "regime": "deflation"
+  },
+  {
+   "m": "1995-10",
+   "growth": -0.324,
+   "inflation": 0.007,
+   "gComp": 0.062,
+   "iComp": -1.234,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1995-11",
+   "growth": -0.019,
+   "inflation": 0.884,
+   "gComp": 0.173,
+   "iComp": -0.771,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1995-12",
+   "growth": -0.046,
+   "inflation": 0.067,
+   "gComp": -0.352,
+   "iComp": -1.278,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1996-01",
+   "growth": -0.064,
+   "inflation": -0.395,
+   "gComp": -0.39,
+   "iComp": -1.629,
+   "regime": "deflation"
+  },
+  {
+   "m": "1996-02",
+   "growth": -0.216,
+   "inflation": -0.975,
+   "gComp": -0.682,
+   "iComp": -1.746,
+   "regime": "deflation"
+  },
+  {
+   "m": "1996-03",
+   "growth": -0.06,
+   "inflation": -0.298,
+   "gComp": 0.022,
+   "iComp": -1.576,
+   "regime": "deflation"
+  },
+  {
+   "m": "1996-04",
+   "growth": 0.023,
+   "inflation": 0.649,
+   "gComp": -0.16,
+   "iComp": -0.98,
+   "regime": "reflation"
+  },
+  {
+   "m": "1996-05",
+   "growth": 0.396,
+   "inflation": 0.317,
+   "gComp": 0.771,
+   "iComp": -1.429,
+   "regime": "reflation"
+  },
+  {
+   "m": "1996-06",
+   "growth": 0.467,
+   "inflation": 0.376,
+   "gComp": 0.511,
+   "iComp": -1.2,
+   "regime": "reflation"
+  },
+  {
+   "m": "1996-07",
+   "growth": 0.734,
+   "inflation": -0.53,
+   "gComp": 1.032,
+   "iComp": -1.51,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1996-08",
+   "growth": 0.624,
+   "inflation": 0.164,
+   "gComp": 0.779,
+   "iComp": -1.265,
+   "regime": "reflation"
+  },
+  {
+   "m": "1996-09",
+   "growth": 0.608,
+   "inflation": -0.346,
+   "gComp": 0.606,
+   "iComp": -1.546,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1996-10",
+   "growth": 0.386,
+   "inflation": 0.562,
+   "gComp": 0.469,
+   "iComp": -0.948,
+   "regime": "reflation"
+  },
+  {
+   "m": "1996-11",
+   "growth": 0.23,
+   "inflation": 0.43,
+   "gComp": 0.355,
+   "iComp": -0.835,
+   "regime": "reflation"
+  },
+  {
+   "m": "1996-12",
+   "growth": 0.128,
+   "inflation": 0.93,
+   "gComp": 0.518,
+   "iComp": -0.616,
+   "regime": "reflation"
+  },
+  {
+   "m": "1997-01",
+   "growth": 0.046,
+   "inflation": -0.554,
+   "gComp": 0.428,
+   "iComp": -1.502,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1997-02",
+   "growth": -0.008,
+   "inflation": -0.789,
+   "gComp": 0.482,
+   "iComp": -1.624,
+   "regime": "deflation"
+  },
+  {
+   "m": "1997-03",
+   "growth": -0.018,
+   "inflation": -0.959,
+   "gComp": 0.647,
+   "iComp": -1.575,
+   "regime": "deflation"
+  },
+  {
+   "m": "1997-04",
+   "growth": 0.033,
+   "inflation": 0.454,
+   "gComp": 0.825,
+   "iComp": -1.047,
+   "regime": "reflation"
+  },
+  {
+   "m": "1997-05",
+   "growth": 0.144,
+   "inflation": 0.879,
+   "gComp": 0.83,
+   "iComp": -0.745,
+   "regime": "reflation"
+  },
+  {
+   "m": "1997-06",
+   "growth": 0.093,
+   "inflation": 0.581,
+   "gComp": 0.49,
+   "iComp": -0.994,
+   "regime": "reflation"
+  },
+  {
+   "m": "1997-07",
+   "growth": 0.013,
+   "inflation": -0.222,
+   "gComp": 0.433,
+   "iComp": -1.269,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1997-08",
+   "growth": 0.016,
+   "inflation": -0.975,
+   "gComp": 0.861,
+   "iComp": -1.719,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1997-09",
+   "growth": 0.099,
+   "inflation": -1.117,
+   "gComp": 0.782,
+   "iComp": -2.111,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1997-10",
+   "growth": 0.259,
+   "inflation": -0.466,
+   "gComp": 1.064,
+   "iComp": -1.735,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1997-11",
+   "growth": 0.253,
+   "inflation": 0.275,
+   "gComp": 1.005,
+   "iComp": -1.445,
+   "regime": "reflation"
+  },
+  {
+   "m": "1997-12",
+   "growth": 0.348,
+   "inflation": 0.931,
+   "gComp": 1.25,
+   "iComp": -1.18,
+   "regime": "reflation"
+  },
+  {
+   "m": "1998-01",
+   "growth": 0.259,
+   "inflation": 0.299,
+   "gComp": 0.918,
+   "iComp": -1.436,
+   "regime": "reflation"
+  },
+  {
+   "m": "1998-02",
+   "growth": 0.127,
+   "inflation": 0.035,
+   "gComp": 0.652,
+   "iComp": -1.41,
+   "regime": "reflation"
+  },
+  {
+   "m": "1998-03",
+   "growth": -0.14,
+   "inflation": 0.001,
+   "gComp": 0.383,
+   "iComp": -1.179,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1998-04",
+   "growth": -0.347,
+   "inflation": 0.254,
+   "gComp": 0.121,
+   "iComp": -1.182,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1998-05",
+   "growth": -0.473,
+   "inflation": 0.195,
+   "gComp": 0.089,
+   "iComp": -1.215,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1998-06",
+   "growth": -0.489,
+   "inflation": 0.104,
+   "gComp": 0.282,
+   "iComp": -1.075,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1998-07",
+   "growth": -0.526,
+   "inflation": -0.309,
+   "gComp": -0.133,
+   "iComp": -1.491,
+   "regime": "deflation"
+  },
+  {
+   "m": "1998-08",
+   "growth": -0.64,
+   "inflation": -0.075,
+   "gComp": -0.622,
+   "iComp": -1.29,
+   "regime": "deflation"
+  },
+  {
+   "m": "1998-09",
+   "growth": -0.695,
+   "inflation": 0.092,
+   "gComp": -0.105,
+   "iComp": -0.983,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1998-10",
+   "growth": -0.457,
+   "inflation": 0.621,
+   "gComp": 0.422,
+   "iComp": -0.87,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1998-11",
+   "growth": 0.085,
+   "inflation": 0.159,
+   "gComp": 1.002,
+   "iComp": -1.13,
+   "regime": "reflation"
+  },
+  {
+   "m": "1998-12",
+   "growth": 0.278,
+   "inflation": -0.584,
+   "gComp": 0.215,
+   "iComp": -1.567,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1999-01",
+   "growth": 0.301,
+   "inflation": 0.117,
+   "gComp": 0.35,
+   "iComp": -0.753,
+   "regime": "reflation"
+  },
+  {
+   "m": "1999-02",
+   "growth": 0.071,
+   "inflation": 0.284,
+   "gComp": 0.2,
+   "iComp": -0.846,
+   "regime": "reflation"
+  },
+  {
+   "m": "1999-03",
+   "growth": 0.177,
+   "inflation": 0.206,
+   "gComp": 0.58,
+   "iComp": -1.361,
+   "regime": "reflation"
+  },
+  {
+   "m": "1999-04",
+   "growth": 0.182,
+   "inflation": -1.375,
+   "gComp": 0.449,
+   "iComp": -2.128,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1999-05",
+   "growth": 0.26,
+   "inflation": -0.607,
+   "gComp": 0.55,
+   "iComp": -1.453,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "1999-06",
+   "growth": 0.193,
+   "inflation": 0.39,
+   "gComp": 0.41,
+   "iComp": -0.971,
+   "regime": "reflation"
+  },
+  {
+   "m": "1999-07",
+   "growth": 0.121,
+   "inflation": 1.219,
+   "gComp": 0.356,
+   "iComp": -0.909,
+   "regime": "reflation"
+  },
+  {
+   "m": "1999-08",
+   "growth": -0.019,
+   "inflation": 0.302,
+   "gComp": 0.38,
+   "iComp": -1.151,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1999-09",
+   "growth": -0.099,
+   "inflation": -0.254,
+   "gComp": 0.26,
+   "iComp": -1.225,
+   "regime": "deflation"
+  },
+  {
+   "m": "1999-10",
+   "growth": -0.171,
+   "inflation": 0.522,
+   "gComp": 0.047,
+   "iComp": -0.387,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1999-11",
+   "growth": -0.109,
+   "inflation": 0.551,
+   "gComp": 0.418,
+   "iComp": -0.6,
+   "regime": "stagflation"
+  },
+  {
+   "m": "1999-12",
+   "growth": -0.054,
+   "inflation": 0.833,
+   "gComp": 0.496,
+   "iComp": -0.392,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-01",
+   "growth": 0.243,
+   "inflation": -0.479,
+   "gComp": 1.137,
+   "iComp": -0.867,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2000-02",
+   "growth": 0.252,
+   "inflation": 0.197,
+   "gComp": 0.524,
+   "iComp": -0.404,
+   "regime": "reflation"
+  },
+  {
+   "m": "2000-03",
+   "growth": 0.197,
+   "inflation": -0.103,
+   "gComp": 0.25,
+   "iComp": -0.495,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2000-04",
+   "growth": -0.108,
+   "inflation": 0.876,
+   "gComp": 0.144,
+   "iComp": 0.01,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-05",
+   "growth": -0.141,
+   "inflation": -0.293,
+   "gComp": 0.384,
+   "iComp": -0.697,
+   "regime": "deflation"
+  },
+  {
+   "m": "2000-06",
+   "growth": -0.098,
+   "inflation": 0.052,
+   "gComp": 0.369,
+   "iComp": -0.444,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-07",
+   "growth": -0.165,
+   "inflation": -0.974,
+   "gComp": -0.191,
+   "iComp": -0.964,
+   "regime": "deflation"
+  },
+  {
+   "m": "2000-08",
+   "growth": -0.426,
+   "inflation": 0.246,
+   "gComp": -0.661,
+   "iComp": -0.45,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-09",
+   "growth": -0.789,
+   "inflation": 0.055,
+   "gComp": -1.046,
+   "iComp": -0.389,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-10",
+   "growth": -0.924,
+   "inflation": 1.006,
+   "gComp": -0.813,
+   "iComp": 0.042,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-11",
+   "growth": -0.923,
+   "inflation": 0.149,
+   "gComp": -1.018,
+   "iComp": -0.301,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2000-12",
+   "growth": -0.781,
+   "inflation": 0.358,
+   "gComp": -0.99,
+   "iComp": -0.03,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2001-01",
+   "growth": -0.809,
+   "inflation": -0.72,
+   "gComp": -1.576,
+   "iComp": -0.678,
+   "regime": "deflation"
+  },
+  {
+   "m": "2001-02",
+   "growth": -0.904,
+   "inflation": 0.668,
+   "gComp": -1.911,
+   "iComp": 0.367,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2001-03",
+   "growth": -1.125,
+   "inflation": 0.428,
+   "gComp": -2.286,
+   "iComp": 0.397,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2001-04",
+   "growth": -1.229,
+   "inflation": 1.295,
+   "gComp": -2.566,
+   "iComp": 0.617,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2001-05",
+   "growth": -1.27,
+   "inflation": -0.676,
+   "gComp": -2.841,
+   "iComp": -0.309,
+   "regime": "deflation"
+  },
+  {
+   "m": "2001-06",
+   "growth": -1.16,
+   "inflation": -1.635,
+   "gComp": -2.728,
+   "iComp": -1.238,
+   "regime": "deflation"
+  },
+  {
+   "m": "2001-07",
+   "growth": -1.012,
+   "inflation": -0.828,
+   "gComp": -2.77,
+   "iComp": -0.212,
+   "regime": "deflation"
+  },
+  {
+   "m": "2001-08",
+   "growth": -0.721,
+   "inflation": 0.393,
+   "gComp": -2.401,
+   "iComp": 0.084,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2001-09",
+   "growth": -0.447,
+   "inflation": 1.596,
+   "gComp": -2.195,
+   "iComp": 0.358,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2001-10",
+   "growth": -0.203,
+   "inflation": -2.183,
+   "gComp": -2.446,
+   "iComp": -2.395,
+   "regime": "deflation"
+  },
+  {
+   "m": "2001-11",
+   "growth": -0.096,
+   "inflation": -1.406,
+   "gComp": -2.432,
+   "iComp": -1.322,
+   "regime": "deflation"
+  },
+  {
+   "m": "2001-12",
+   "growth": -0.152,
+   "inflation": -0.474,
+   "gComp": -2.821,
+   "iComp": -0.116,
+   "regime": "deflation"
+  },
+  {
+   "m": "2002-01",
+   "growth": 0.013,
+   "inflation": 3.761,
+   "gComp": -2.076,
+   "iComp": 1.366,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-02",
+   "growth": 0.302,
+   "inflation": 0.888,
+   "gComp": -1.45,
+   "iComp": -0.434,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-03",
+   "growth": 0.871,
+   "inflation": -0.936,
+   "gComp": -0.723,
+   "iComp": -1.052,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2002-04",
+   "growth": 1.233,
+   "inflation": -2.519,
+   "gComp": -0.465,
+   "iComp": -1.153,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2002-05",
+   "growth": 1.373,
+   "inflation": 0.329,
+   "gComp": -0.426,
+   "iComp": -0.105,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-06",
+   "growth": 1.333,
+   "inflation": 0.525,
+   "gComp": -0.216,
+   "iComp": -0.527,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-07",
+   "growth": 1.306,
+   "inflation": 0.948,
+   "gComp": 0.195,
+   "iComp": -0.206,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-08",
+   "growth": 1.256,
+   "inflation": -0.709,
+   "gComp": 0.035,
+   "iComp": -0.814,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2002-09",
+   "growth": 1.117,
+   "inflation": 0.566,
+   "gComp": -0.117,
+   "iComp": 0.038,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-10",
+   "growth": 0.679,
+   "inflation": 0.26,
+   "gComp": -0.674,
+   "iComp": 0.055,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-11",
+   "growth": 0.281,
+   "inflation": 0.325,
+   "gComp": -0.733,
+   "iComp": -0.489,
+   "regime": "reflation"
+  },
+  {
+   "m": "2002-12",
+   "growth": -0.046,
+   "inflation": -1.209,
+   "gComp": -0.525,
+   "iComp": -1.17,
+   "regime": "deflation"
+  },
+  {
+   "m": "2003-01",
+   "growth": -0.188,
+   "inflation": -1.431,
+   "gComp": -0.775,
+   "iComp": -1.376,
+   "regime": "deflation"
+  },
+  {
+   "m": "2003-02",
+   "growth": -0.141,
+   "inflation": -0.72,
+   "gComp": -0.306,
+   "iComp": -1.209,
+   "regime": "deflation"
+  },
+  {
+   "m": "2003-03",
+   "growth": -0.216,
+   "inflation": -0.507,
+   "gComp": -0.757,
+   "iComp": -1.677,
+   "regime": "deflation"
+  },
+  {
+   "m": "2003-04",
+   "growth": -0.176,
+   "inflation": -0.426,
+   "gComp": -0.718,
+   "iComp": -1.802,
+   "regime": "deflation"
+  },
+  {
+   "m": "2003-05",
+   "growth": -0.485,
+   "inflation": -0.905,
+   "gComp": -1.501,
+   "iComp": -2.114,
+   "regime": "deflation"
+  },
+  {
+   "m": "2003-06",
+   "growth": -0.582,
+   "inflation": 0.207,
+   "gComp": -1.327,
+   "iComp": -1.47,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2003-07",
+   "growth": -0.571,
+   "inflation": 0.213,
+   "gComp": -0.979,
+   "iComp": -1.589,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2003-08",
+   "growth": -0.149,
+   "inflation": 1.71,
+   "gComp": -0.325,
+   "iComp": -0.404,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2003-09",
+   "growth": 0.199,
+   "inflation": 0.621,
+   "gComp": -0.34,
+   "iComp": -0.849,
+   "regime": "reflation"
+  },
+  {
+   "m": "2003-10",
+   "growth": 0.474,
+   "inflation": 1.027,
+   "gComp": 0.022,
+   "iComp": -0.562,
+   "regime": "reflation"
+  },
+  {
+   "m": "2003-11",
+   "growth": 0.541,
+   "inflation": -0.527,
+   "gComp": 0.078,
+   "iComp": -0.931,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2003-12",
+   "growth": 0.775,
+   "inflation": -0.304,
+   "gComp": 0.655,
+   "iComp": -1.153,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2004-01",
+   "growth": 0.832,
+   "inflation": -0.452,
+   "gComp": 0.52,
+   "iComp": -1.015,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2004-02",
+   "growth": 0.899,
+   "inflation": 0.337,
+   "gComp": 0.472,
+   "iComp": -0.594,
+   "regime": "reflation"
+  },
+  {
+   "m": "2004-03",
+   "growth": 0.725,
+   "inflation": 1.143,
+   "gComp": 0.428,
+   "iComp": -0.01,
+   "regime": "reflation"
+  },
+  {
+   "m": "2004-04",
+   "growth": 0.618,
+   "inflation": 1.812,
+   "gComp": 0.506,
+   "iComp": 0.797,
+   "regime": "reflation"
+  },
+  {
+   "m": "2004-05",
+   "growth": 0.503,
+   "inflation": 1.405,
+   "gComp": 0.668,
+   "iComp": 0.811,
+   "regime": "reflation"
+  },
+  {
+   "m": "2004-06",
+   "growth": 0.448,
+   "inflation": 0.747,
+   "gComp": 0.795,
+   "iComp": 0.737,
+   "regime": "reflation"
+  },
+  {
+   "m": "2004-07",
+   "growth": 0.267,
+   "inflation": -0.424,
+   "gComp": 0.275,
+   "iComp": 0.373,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2004-08",
+   "growth": 0.094,
+   "inflation": -1.239,
+   "gComp": 0.309,
+   "iComp": -0.428,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2004-09",
+   "growth": -0.23,
+   "inflation": -1.817,
+   "gComp": -0.121,
+   "iComp": -1.081,
+   "regime": "deflation"
+  },
+  {
+   "m": "2004-10",
+   "growth": -0.267,
+   "inflation": -1.015,
+   "gComp": 0.21,
+   "iComp": -0.642,
+   "regime": "deflation"
+  },
+  {
+   "m": "2004-11",
+   "growth": -0.271,
+   "inflation": 0.457,
+   "gComp": 0.368,
+   "iComp": 0.029,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2004-12",
+   "growth": -0.079,
+   "inflation": 2.205,
+   "gComp": 0.389,
+   "iComp": 1.124,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2005-01",
+   "growth": 0.101,
+   "inflation": 1.057,
+   "gComp": 0.827,
+   "iComp": 0.415,
+   "regime": "reflation"
+  },
+  {
+   "m": "2005-02",
+   "growth": 0.144,
+   "inflation": 0.853,
+   "gComp": 0.505,
+   "iComp": 0.882,
+   "regime": "reflation"
+  },
+  {
+   "m": "2005-03",
+   "growth": 0.265,
+   "inflation": -0.418,
+   "gComp": 0.86,
+   "iComp": 0.706,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2005-04",
+   "growth": 0.09,
+   "inflation": 1.354,
+   "gComp": 0.233,
+   "iComp": 1.769,
+   "regime": "reflation"
+  },
+  {
+   "m": "2005-05",
+   "growth": 0.074,
+   "inflation": -0.416,
+   "gComp": 0.388,
+   "iComp": 0.465,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2005-06",
+   "growth": -0.156,
+   "inflation": -0.277,
+   "gComp": -0.036,
+   "iComp": 0.429,
+   "regime": "deflation"
+  },
+  {
+   "m": "2005-07",
+   "growth": -0.098,
+   "inflation": -2.962,
+   "gComp": 0.45,
+   "iComp": -1.193,
+   "regime": "deflation"
+  },
+  {
+   "m": "2005-08",
+   "growth": -0.156,
+   "inflation": -1.193,
+   "gComp": 0.184,
+   "iComp": -0.728,
+   "regime": "deflation"
+  },
+  {
+   "m": "2005-09",
+   "growth": -0.06,
+   "inflation": -1.717,
+   "gComp": 0.375,
+   "iComp": -1.288,
+   "regime": "deflation"
+  },
+  {
+   "m": "2005-10",
+   "growth": -0.386,
+   "inflation": 0.592,
+   "gComp": -0.776,
+   "iComp": -0.601,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2005-11",
+   "growth": -0.512,
+   "inflation": 1.282,
+   "gComp": -0.381,
+   "iComp": 0.554,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2005-12",
+   "growth": -0.595,
+   "inflation": 2.904,
+   "gComp": 0.039,
+   "iComp": 1.616,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2006-01",
+   "growth": 0.019,
+   "inflation": 1.576,
+   "gComp": 1.144,
+   "iComp": 0.975,
+   "regime": "reflation"
+  },
+  {
+   "m": "2006-02",
+   "growth": 0.449,
+   "inflation": 0.148,
+   "gComp": 1.047,
+   "iComp": 0.703,
+   "regime": "reflation"
+  },
+  {
+   "m": "2006-03",
+   "growth": 0.668,
+   "inflation": -1.163,
+   "gComp": 0.64,
+   "iComp": 0.454,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2006-04",
+   "growth": 0.454,
+   "inflation": 0.211,
+   "gComp": 0.591,
+   "iComp": 1.186,
+   "regime": "reflation"
+  },
+  {
+   "m": "2006-05",
+   "growth": 0.198,
+   "inflation": 0.805,
+   "gComp": 0.245,
+   "iComp": 1.507,
+   "regime": "reflation"
+  },
+  {
+   "m": "2006-06",
+   "growth": -0.038,
+   "inflation": 1.416,
+   "gComp": -0.08,
+   "iComp": 1.87,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2006-07",
+   "growth": -0.266,
+   "inflation": 0.335,
+   "gComp": -0.276,
+   "iComp": 1.521,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2006-08",
+   "growth": -0.422,
+   "inflation": -0.598,
+   "gComp": -0.357,
+   "iComp": 0.91,
+   "regime": "deflation"
+  },
+  {
+   "m": "2006-09",
+   "growth": -0.384,
+   "inflation": -1.253,
+   "gComp": -0.08,
+   "iComp": 0.617,
+   "regime": "deflation"
+  },
+  {
+   "m": "2006-10",
+   "growth": -0.414,
+   "inflation": -1.356,
+   "gComp": -0.227,
+   "iComp": 0.165,
+   "regime": "deflation"
+  },
+  {
+   "m": "2006-11",
+   "growth": -0.424,
+   "inflation": -0.699,
+   "gComp": -0.39,
+   "iComp": 0.211,
+   "regime": "deflation"
+  },
+  {
+   "m": "2006-12",
+   "growth": -0.556,
+   "inflation": -0.92,
+   "gComp": -0.65,
+   "iComp": -0.303,
+   "regime": "deflation"
+  },
+  {
+   "m": "2007-01",
+   "growth": -0.436,
+   "inflation": -0.604,
+   "gComp": -0.205,
+   "iComp": -0.439,
+   "regime": "deflation"
+  },
+  {
+   "m": "2007-02",
+   "growth": -0.241,
+   "inflation": 0.041,
+   "gComp": -0.089,
+   "iComp": 0.252,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2007-03",
+   "growth": 0.107,
+   "inflation": 1.217,
+   "gComp": 0.315,
+   "iComp": 0.914,
+   "regime": "reflation"
+  },
+  {
+   "m": "2007-04",
+   "growth": 0.26,
+   "inflation": 1.349,
+   "gComp": 0.14,
+   "iComp": 0.91,
+   "regime": "reflation"
+  },
+  {
+   "m": "2007-05",
+   "growth": 0.417,
+   "inflation": -0.094,
+   "gComp": 0.43,
+   "iComp": 0.158,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2007-06",
+   "growth": 0.366,
+   "inflation": -1.29,
+   "gComp": 0.241,
+   "iComp": -0.376,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2007-07",
+   "growth": 0.304,
+   "inflation": -1.103,
+   "gComp": 0.033,
+   "iComp": -0.192,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2007-08",
+   "growth": 0.053,
+   "inflation": -0.428,
+   "gComp": -0.313,
+   "iComp": -0.27,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2007-09",
+   "growth": -0.151,
+   "inflation": 0.02,
+   "gComp": -0.471,
+   "iComp": -0.357,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2007-10",
+   "growth": -0.286,
+   "inflation": 0.28,
+   "gComp": -0.421,
+   "iComp": 0.088,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2007-11",
+   "growth": -0.33,
+   "inflation": 0.856,
+   "gComp": -0.46,
+   "iComp": 0.587,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2007-12",
+   "growth": -0.318,
+   "inflation": 1.252,
+   "gComp": -0.364,
+   "iComp": 0.895,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2008-01",
+   "growth": -0.356,
+   "inflation": 0.75,
+   "gComp": -0.646,
+   "iComp": 0.838,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2008-02",
+   "growth": -0.387,
+   "inflation": 0.081,
+   "gComp": -0.708,
+   "iComp": 0.668,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2008-03",
+   "growth": -0.545,
+   "inflation": -0.715,
+   "gComp": -1.222,
+   "iComp": 0.181,
+   "regime": "deflation"
+  },
+  {
+   "m": "2008-04",
+   "growth": -0.692,
+   "inflation": -0.803,
+   "gComp": -1.496,
+   "iComp": 0.035,
+   "regime": "deflation"
+  },
+  {
+   "m": "2008-05",
+   "growth": -0.865,
+   "inflation": -1.32,
+   "gComp": -1.78,
+   "iComp": -0.652,
+   "regime": "deflation"
+  },
+  {
+   "m": "2008-06",
+   "growth": -0.901,
+   "inflation": -0.316,
+   "gComp": -1.849,
+   "iComp": -0.136,
+   "regime": "deflation"
+  },
+  {
+   "m": "2008-07",
+   "growth": -0.84,
+   "inflation": 0.118,
+   "gComp": -1.763,
+   "iComp": 0.153,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2008-08",
+   "growth": -0.739,
+   "inflation": 0.994,
+   "gComp": -1.867,
+   "iComp": 0.343,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2008-09",
+   "growth": -0.751,
+   "inflation": 0.144,
+   "gComp": -2.357,
+   "iComp": 0.008,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2008-10",
+   "growth": -1.137,
+   "inflation": -1.348,
+   "gComp": -3.755,
+   "iComp": -1.195,
+   "regime": "deflation"
+  },
+  {
+   "m": "2008-11",
+   "growth": -1.397,
+   "inflation": -3.471,
+   "gComp": -3.376,
+   "iComp": -3.128,
+   "regime": "deflation"
+  },
+  {
+   "m": "2008-12",
+   "growth": -1.544,
+   "inflation": -3.662,
+   "gComp": -3.609,
+   "iComp": -3.653,
+   "regime": "deflation"
+  },
+  {
+   "m": "2009-01",
+   "growth": -1.154,
+   "inflation": -1.996,
+   "gComp": -3.231,
+   "iComp": -3.191,
+   "regime": "deflation"
+  },
+  {
+   "m": "2009-02",
+   "growth": -1.115,
+   "inflation": 0.826,
+   "gComp": -4.107,
+   "iComp": -2.302,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2009-03",
+   "growth": -0.921,
+   "inflation": 1.961,
+   "gComp": -3.631,
+   "iComp": -1.692,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2009-04",
+   "growth": -0.801,
+   "inflation": 2.228,
+   "gComp": -3.328,
+   "iComp": -0.963,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2009-05",
+   "growth": -0.226,
+   "inflation": 1.843,
+   "gComp": -2.583,
+   "iComp": -0.459,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2009-06",
+   "growth": 0.275,
+   "inflation": 1.206,
+   "gComp": -2.222,
+   "iComp": -0.486,
+   "regime": "reflation"
+  },
+  {
+   "m": "2009-07",
+   "growth": 0.866,
+   "inflation": 0.33,
+   "gComp": -1.483,
+   "iComp": -0.633,
+   "regime": "reflation"
+  },
+  {
+   "m": "2009-08",
+   "growth": 1.394,
+   "inflation": -0.692,
+   "gComp": -0.709,
+   "iComp": -1.151,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2009-09",
+   "growth": 1.927,
+   "inflation": -0.578,
+   "gComp": -0.045,
+   "iComp": -1.064,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2009-10",
+   "growth": 2.212,
+   "inflation": -0.04,
+   "gComp": 0.414,
+   "iComp": -0.673,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2009-11",
+   "growth": 2.273,
+   "inflation": 1.453,
+   "gComp": 0.425,
+   "iComp": 0.302,
+   "regime": "reflation"
+  },
+  {
+   "m": "2009-12",
+   "growth": 2.124,
+   "inflation": 1.254,
+   "gComp": 0.543,
+   "iComp": 0.19,
+   "regime": "reflation"
+  },
+  {
+   "m": "2010-01",
+   "growth": 1.862,
+   "inflation": 0.664,
+   "gComp": 0.584,
+   "iComp": -0.009,
+   "regime": "reflation"
+  },
+  {
+   "m": "2010-02",
+   "growth": 1.581,
+   "inflation": -1.499,
+   "gComp": 0.81,
+   "iComp": -1.197,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2010-03",
+   "growth": 1.252,
+   "inflation": -1.435,
+   "gComp": 0.616,
+   "iComp": -1.245,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2010-04",
+   "growth": 0.988,
+   "inflation": -1.215,
+   "gComp": 0.834,
+   "iComp": -1.223,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2010-05",
+   "growth": 0.72,
+   "inflation": 0.148,
+   "gComp": 0.87,
+   "iComp": -1.049,
+   "regime": "reflation"
+  },
+  {
+   "m": "2010-06",
+   "growth": 0.656,
+   "inflation": 0.159,
+   "gComp": 1.305,
+   "iComp": -1.086,
+   "regime": "reflation"
+  },
+  {
+   "m": "2010-07",
+   "growth": 0.497,
+   "inflation": 0.062,
+   "gComp": 0.968,
+   "iComp": -1.161,
+   "regime": "reflation"
+  },
+  {
+   "m": "2010-08",
+   "growth": 0.324,
+   "inflation": -0.121,
+   "gComp": 0.706,
+   "iComp": -1.17,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2010-09",
+   "growth": -0.051,
+   "inflation": -0.184,
+   "gComp": 0.254,
+   "iComp": -1.27,
+   "regime": "deflation"
+  },
+  {
+   "m": "2010-10",
+   "growth": -0.276,
+   "inflation": -0.051,
+   "gComp": 0.254,
+   "iComp": -1.212,
+   "regime": "deflation"
+  },
+  {
+   "m": "2010-11",
+   "growth": -0.408,
+   "inflation": 0.256,
+   "gComp": 0.27,
+   "iComp": -0.914,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2010-12",
+   "growth": -0.368,
+   "inflation": 0.581,
+   "gComp": 0.32,
+   "iComp": -0.689,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-01",
+   "growth": -0.258,
+   "inflation": 0.587,
+   "gComp": 0.584,
+   "iComp": -0.625,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-02",
+   "growth": -0.146,
+   "inflation": 0.713,
+   "gComp": 0.539,
+   "iComp": -0.201,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-03",
+   "growth": -0.071,
+   "inflation": 0.718,
+   "gComp": 0.52,
+   "iComp": 0.029,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-04",
+   "growth": -0.048,
+   "inflation": 0.938,
+   "gComp": 0.594,
+   "iComp": 0.313,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-05",
+   "growth": -0.025,
+   "inflation": 0.495,
+   "gComp": 0.52,
+   "iComp": 0.294,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-06",
+   "growth": 0.023,
+   "inflation": 0.2,
+   "gComp": 0.45,
+   "iComp": 0.229,
+   "regime": "reflation"
+  },
+  {
+   "m": "2011-07",
+   "growth": -0.042,
+   "inflation": 0.077,
+   "gComp": 0.21,
+   "iComp": 0.39,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-08",
+   "growth": -0.054,
+   "inflation": 0.171,
+   "gComp": 0.411,
+   "iComp": 0.465,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-09",
+   "growth": -0.051,
+   "inflation": 0.171,
+   "gComp": 0.526,
+   "iComp": 0.4,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2011-10",
+   "growth": 0.006,
+   "inflation": -0.379,
+   "gComp": 0.425,
+   "iComp": 0.012,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2011-11",
+   "growth": 0.012,
+   "inflation": -0.572,
+   "gComp": 0.479,
+   "iComp": -0.106,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2011-12",
+   "growth": -0.054,
+   "inflation": -0.73,
+   "gComp": 0.331,
+   "iComp": -0.329,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-01",
+   "growth": -0.013,
+   "inflation": -0.04,
+   "gComp": 0.534,
+   "iComp": -0.029,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-02",
+   "growth": 0.029,
+   "inflation": 0.723,
+   "gComp": 0.631,
+   "iComp": 0.616,
+   "regime": "reflation"
+  },
+  {
+   "m": "2012-03",
+   "growth": 0.17,
+   "inflation": 0.674,
+   "gComp": 0.831,
+   "iComp": 0.345,
+   "regime": "reflation"
+  },
+  {
+   "m": "2012-04",
+   "growth": 0.196,
+   "inflation": 0.339,
+   "gComp": 0.618,
+   "iComp": 0.311,
+   "regime": "reflation"
+  },
+  {
+   "m": "2012-05",
+   "growth": 0.138,
+   "inflation": -0.589,
+   "gComp": 0.435,
+   "iComp": 0.028,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2012-06",
+   "growth": -0.032,
+   "inflation": -0.415,
+   "gComp": 0.279,
+   "iComp": -0.07,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-07",
+   "growth": -0.16,
+   "inflation": -0.537,
+   "gComp": 0.242,
+   "iComp": -0.226,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-08",
+   "growth": -0.239,
+   "inflation": -0.351,
+   "gComp": 0.127,
+   "iComp": -0.323,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-09",
+   "growth": -0.285,
+   "inflation": -0.304,
+   "gComp": 0.013,
+   "iComp": -0.374,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-10",
+   "growth": -0.321,
+   "inflation": -0.012,
+   "gComp": 0.035,
+   "iComp": -0.238,
+   "regime": "deflation"
+  },
+  {
+   "m": "2012-11",
+   "growth": -0.309,
+   "inflation": 0.355,
+   "gComp": 0.058,
+   "iComp": 0.031,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2012-12",
+   "growth": -0.229,
+   "inflation": 0.463,
+   "gComp": 0.228,
+   "iComp": 0.088,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2013-01",
+   "growth": -0.107,
+   "inflation": 0.247,
+   "gComp": 0.355,
+   "iComp": 0.009,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2013-02",
+   "growth": 0.001,
+   "inflation": 0.117,
+   "gComp": 0.299,
+   "iComp": 0.148,
+   "regime": "reflation"
+  },
+  {
+   "m": "2013-03",
+   "growth": 0.108,
+   "inflation": 0.011,
+   "gComp": 0.455,
+   "iComp": 0.099,
+   "regime": "reflation"
+  },
+  {
+   "m": "2013-04",
+   "growth": 0.131,
+   "inflation": 0.011,
+   "gComp": 0.36,
+   "iComp": 0.02,
+   "regime": "reflation"
+  },
+  {
+   "m": "2013-05",
+   "growth": 0.171,
+   "inflation": -0.864,
+   "gComp": 0.412,
+   "iComp": -0.716,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2013-06",
+   "growth": 0.108,
+   "inflation": -1.027,
+   "gComp": 0.264,
+   "iComp": -0.928,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2013-07",
+   "growth": 0.092,
+   "inflation": -0.754,
+   "gComp": 0.335,
+   "iComp": -0.734,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2013-08",
+   "growth": 0.017,
+   "inflation": 0.563,
+   "gComp": 0.209,
+   "iComp": -0.153,
+   "regime": "reflation"
+  },
+  {
+   "m": "2013-09",
+   "growth": 0.019,
+   "inflation": 0.942,
+   "gComp": 0.356,
+   "iComp": 0.015,
+   "regime": "reflation"
+  },
+  {
+   "m": "2013-10",
+   "growth": 0.023,
+   "inflation": 0.638,
+   "gComp": 0.45,
+   "iComp": -0.096,
+   "regime": "reflation"
+  },
+  {
+   "m": "2013-11",
+   "growth": 0.093,
+   "inflation": -0.112,
+   "gComp": 0.54,
+   "iComp": -0.264,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2013-12",
+   "growth": 0.115,
+   "inflation": -0.217,
+   "gComp": 0.486,
+   "iComp": -0.202,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2014-01",
+   "growth": 0.072,
+   "inflation": -0.103,
+   "gComp": 0.309,
+   "iComp": -0.199,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2014-02",
+   "growth": -0.042,
+   "inflation": -0.045,
+   "gComp": 0.166,
+   "iComp": -0.309,
+   "regime": "deflation"
+  },
+  {
+   "m": "2014-03",
+   "growth": -0.133,
+   "inflation": -0.45,
+   "gComp": 0.132,
+   "iComp": -0.652,
+   "regime": "deflation"
+  },
+  {
+   "m": "2014-04",
+   "growth": -0.111,
+   "inflation": -0.38,
+   "gComp": 0.378,
+   "iComp": -0.578,
+   "regime": "deflation"
+  },
+  {
+   "m": "2014-05",
+   "growth": 0.014,
+   "inflation": 0.168,
+   "gComp": 0.584,
+   "iComp": -0.14,
+   "regime": "reflation"
+  },
+  {
+   "m": "2014-06",
+   "growth": 0.134,
+   "inflation": 0.908,
+   "gComp": 0.569,
+   "iComp": 0.256,
+   "regime": "reflation"
+  },
+  {
+   "m": "2014-07",
+   "growth": 0.16,
+   "inflation": 0.7,
+   "gComp": 0.497,
+   "iComp": 0.122,
+   "regime": "reflation"
+  },
+  {
+   "m": "2014-08",
+   "growth": 0.14,
+   "inflation": 0.181,
+   "gComp": 0.627,
+   "iComp": 0.04,
+   "regime": "reflation"
+  },
+  {
+   "m": "2014-09",
+   "growth": 0.104,
+   "inflation": -0.749,
+   "gComp": 0.498,
+   "iComp": -0.494,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2014-10",
+   "growth": 0.1,
+   "inflation": -0.613,
+   "gComp": 0.493,
+   "iComp": -0.491,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2014-11",
+   "growth": 0.042,
+   "inflation": -0.657,
+   "gComp": 0.427,
+   "iComp": -0.617,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2014-12",
+   "growth": 0.083,
+   "inflation": -0.044,
+   "gComp": 0.664,
+   "iComp": -0.537,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2015-01",
+   "growth": 0.094,
+   "inflation": -0.408,
+   "gComp": 0.602,
+   "iComp": -0.899,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2015-02",
+   "growth": 0.071,
+   "inflation": -0.616,
+   "gComp": 0.421,
+   "iComp": -1.233,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2015-03",
+   "growth": -0.133,
+   "inflation": -0.461,
+   "gComp": 0.024,
+   "iComp": -0.998,
+   "regime": "deflation"
+  },
+  {
+   "m": "2015-04",
+   "growth": -0.321,
+   "inflation": 0.429,
+   "gComp": -0.076,
+   "iComp": -0.47,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2015-05",
+   "growth": -0.412,
+   "inflation": 1.56,
+   "gComp": 0.004,
+   "iComp": 0.327,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2015-06",
+   "growth": -0.325,
+   "inflation": 1.252,
+   "gComp": 0.191,
+   "iComp": 0.254,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2015-07",
+   "growth": -0.221,
+   "inflation": 0.518,
+   "gComp": 0.149,
+   "iComp": 0.048,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2015-08",
+   "growth": -0.084,
+   "inflation": -0.63,
+   "gComp": 0.343,
+   "iComp": -0.303,
+   "regime": "deflation"
+  },
+  {
+   "m": "2015-09",
+   "growth": -0.034,
+   "inflation": -0.753,
+   "gComp": 0.289,
+   "iComp": -0.499,
+   "regime": "deflation"
+  },
+  {
+   "m": "2015-10",
+   "growth": 0.028,
+   "inflation": -0.495,
+   "gComp": 0.281,
+   "iComp": -0.447,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2015-11",
+   "growth": -0.05,
+   "inflation": -0.231,
+   "gComp": 0.002,
+   "iComp": -0.533,
+   "regime": "deflation"
+  },
+  {
+   "m": "2015-12",
+   "growth": -0.098,
+   "inflation": 0.249,
+   "gComp": -0.029,
+   "iComp": -0.25,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-01",
+   "growth": -0.158,
+   "inflation": -0.085,
+   "gComp": -0.064,
+   "iComp": -0.531,
+   "regime": "deflation"
+  },
+  {
+   "m": "2016-02",
+   "growth": -0.108,
+   "inflation": 0.18,
+   "gComp": 0.061,
+   "iComp": -0.353,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-03",
+   "growth": -0.084,
+   "inflation": 0.11,
+   "gComp": 0.052,
+   "iComp": -0.14,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-04",
+   "growth": -0.061,
+   "inflation": 0.756,
+   "gComp": 0.032,
+   "iComp": 0.225,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-05",
+   "growth": -0.075,
+   "inflation": 0.967,
+   "gComp": 0.023,
+   "iComp": 0.614,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-06",
+   "growth": -0.073,
+   "inflation": 0.731,
+   "gComp": 0.014,
+   "iComp": 0.592,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-07",
+   "growth": -0.002,
+   "inflation": 0.262,
+   "gComp": 0.277,
+   "iComp": 0.487,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2016-08",
+   "growth": 0.11,
+   "inflation": -0.647,
+   "gComp": 0.364,
+   "iComp": -0.033,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2016-09",
+   "growth": 0.232,
+   "inflation": -0.618,
+   "gComp": 0.413,
+   "iComp": -0.026,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2016-10",
+   "growth": 0.251,
+   "inflation": -0.344,
+   "gComp": 0.349,
+   "iComp": 0.143,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2016-11",
+   "growth": 0.186,
+   "inflation": 0.23,
+   "gComp": 0.223,
+   "iComp": 0.197,
+   "regime": "reflation"
+  },
+  {
+   "m": "2016-12",
+   "growth": 0.093,
+   "inflation": -0.165,
+   "gComp": 0.189,
+   "iComp": -0.191,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2017-01",
+   "growth": 0.053,
+   "inflation": -0.312,
+   "gComp": 0.326,
+   "iComp": -0.168,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2017-02",
+   "growth": 0.077,
+   "inflation": 0.181,
+   "gComp": 0.374,
+   "iComp": 0.378,
+   "regime": "reflation"
+  },
+  {
+   "m": "2017-03",
+   "growth": 0.148,
+   "inflation": 0.986,
+   "gComp": 0.521,
+   "iComp": 0.795,
+   "regime": "reflation"
+  },
+  {
+   "m": "2017-04",
+   "growth": 0.15,
+   "inflation": 0.165,
+   "gComp": 0.431,
+   "iComp": -0.003,
+   "regime": "reflation"
+  },
+  {
+   "m": "2017-05",
+   "growth": 0.195,
+   "inflation": -0.707,
+   "gComp": 0.669,
+   "iComp": -0.329,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2017-06",
+   "growth": 0.174,
+   "inflation": -1.638,
+   "gComp": 0.608,
+   "iComp": -0.843,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2017-07",
+   "growth": 0.184,
+   "inflation": -0.202,
+   "gComp": 0.524,
+   "iComp": -0.205,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2017-08",
+   "growth": 0.038,
+   "inflation": -0.158,
+   "gComp": 0.186,
+   "iComp": -0.487,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2017-09",
+   "growth": -0.106,
+   "inflation": 0.658,
+   "gComp": 0.098,
+   "iComp": -0.185,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2017-10",
+   "growth": -0.248,
+   "inflation": 0.023,
+   "gComp": 0.012,
+   "iComp": -0.182,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2017-11",
+   "growth": -0.216,
+   "inflation": 1.132,
+   "gComp": 0.302,
+   "iComp": 0.644,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2017-12",
+   "growth": -0.12,
+   "inflation": 0.467,
+   "gComp": 0.45,
+   "iComp": 0.282,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2018-01",
+   "growth": 0.035,
+   "inflation": 0.816,
+   "gComp": 0.529,
+   "iComp": 0.635,
+   "regime": "reflation"
+  },
+  {
+   "m": "2018-02",
+   "growth": 0.035,
+   "inflation": 0.359,
+   "gComp": 0.277,
+   "iComp": 1.004,
+   "regime": "reflation"
+  },
+  {
+   "m": "2018-03",
+   "growth": 0.046,
+   "inflation": 1.232,
+   "gComp": 0.471,
+   "iComp": 1.514,
+   "regime": "reflation"
+  },
+  {
+   "m": "2018-04",
+   "growth": 0.05,
+   "inflation": 0.962,
+   "gComp": 0.577,
+   "iComp": 1.597,
+   "regime": "reflation"
+  },
+  {
+   "m": "2018-05",
+   "growth": 0.232,
+   "inflation": -0.041,
+   "gComp": 0.875,
+   "iComp": 0.962,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2018-06",
+   "growth": 0.257,
+   "inflation": -0.621,
+   "gComp": 0.526,
+   "iComp": 0.893,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2018-07",
+   "growth": 0.25,
+   "inflation": -1.208,
+   "gComp": 0.566,
+   "iComp": 0.389,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2018-08",
+   "growth": 0.052,
+   "inflation": -0.752,
+   "gComp": 0.312,
+   "iComp": 0.21,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2018-09",
+   "growth": 0.029,
+   "inflation": -1.31,
+   "gComp": 0.579,
+   "iComp": -0.417,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2018-10",
+   "growth": -0.052,
+   "inflation": -0.388,
+   "gComp": 0.425,
+   "iComp": 0.001,
+   "regime": "deflation"
+  },
+  {
+   "m": "2018-11",
+   "growth": -0.06,
+   "inflation": -0.027,
+   "gComp": 0.284,
+   "iComp": 0.183,
+   "regime": "deflation"
+  },
+  {
+   "m": "2018-12",
+   "growth": -0.233,
+   "inflation": 1.169,
+   "gComp": -0.072,
+   "iComp": 0.753,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2019-01",
+   "growth": -0.395,
+   "inflation": 0.601,
+   "gComp": -0.258,
+   "iComp": 0.602,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2019-02",
+   "growth": -0.596,
+   "inflation": 0.644,
+   "gComp": -0.517,
+   "iComp": 0.827,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2019-03",
+   "growth": -0.725,
+   "inflation": -0.139,
+   "gComp": -0.769,
+   "iComp": 0.614,
+   "regime": "deflation"
+  },
+  {
+   "m": "2019-04",
+   "growth": -0.762,
+   "inflation": -0.492,
+   "gComp": -0.683,
+   "iComp": 0.11,
+   "regime": "deflation"
+  },
+  {
+   "m": "2019-05",
+   "growth": -0.687,
+   "inflation": -0.68,
+   "gComp": -0.682,
+   "iComp": 0.147,
+   "regime": "deflation"
+  },
+  {
+   "m": "2019-06",
+   "growth": -0.504,
+   "inflation": -0.915,
+   "gComp": -0.469,
+   "iComp": -0.302,
+   "regime": "deflation"
+  },
+  {
+   "m": "2019-07",
+   "growth": -0.406,
+   "inflation": -0.113,
+   "gComp": -0.707,
+   "iComp": -0.002,
+   "regime": "deflation"
+  },
+  {
+   "m": "2019-08",
+   "growth": -0.303,
+   "inflation": -0.271,
+   "gComp": -0.6,
+   "iComp": -0.124,
+   "regime": "deflation"
+  },
+  {
+   "m": "2019-09",
+   "growth": -0.139,
+   "inflation": 0.261,
+   "gComp": -0.161,
+   "iComp": -0.041,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2019-10",
+   "growth": 0.028,
+   "inflation": -0.353,
+   "gComp": -0.419,
+   "iComp": -0.355,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2019-11",
+   "growth": 0.042,
+   "inflation": 0.008,
+   "gComp": -0.838,
+   "iComp": -0.116,
+   "regime": "reflation"
+  },
+  {
+   "m": "2019-12",
+   "growth": -0.176,
+   "inflation": -0.168,
+   "gComp": -1.061,
+   "iComp": -0.209,
+   "regime": "deflation"
+  },
+  {
+   "m": "2020-01",
+   "growth": -0.369,
+   "inflation": 0.748,
+   "gComp": -1.247,
+   "iComp": 0.393,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2020-02",
+   "growth": -0.33,
+   "inflation": 0.581,
+   "gComp": -0.79,
+   "iComp": 0.465,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2020-03",
+   "growth": -0.214,
+   "inflation": 0.79,
+   "gComp": -0.691,
+   "iComp": 0.582,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2020-04",
+   "growth": -1.601,
+   "inflation": -2.221,
+   "gComp": -6.983,
+   "iComp": -1.828,
+   "regime": "deflation"
+  },
+  {
+   "m": "2020-05",
+   "growth": -3.89,
+   "inflation": -4.837,
+   "gComp": -9.984,
+   "iComp": -4.371,
+   "regime": "deflation"
+  },
+  {
+   "m": "2020-06",
+   "growth": -5.487,
+   "inflation": -5.185,
+   "gComp": -7.152,
+   "iComp": -4.603,
+   "regime": "deflation"
+  },
+  {
+   "m": "2020-07",
+   "growth": -4.108,
+   "inflation": -1.206,
+   "gComp": -3.56,
+   "iComp": -3.034,
+   "regime": "deflation"
+  },
+  {
+   "m": "2020-08",
+   "growth": -0.273,
+   "inflation": 4.846,
+   "gComp": 2.229,
+   "iComp": 0.475,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2020-09",
+   "growth": 2.58,
+   "inflation": 6.544,
+   "gComp": 1.93,
+   "iComp": 1.94,
+   "regime": "reflation"
+  },
+  {
+   "m": "2020-10",
+   "growth": 3.948,
+   "inflation": 4.742,
+   "gComp": 0.863,
+   "iComp": 1.708,
+   "regime": "reflation"
+  },
+  {
+   "m": "2020-11",
+   "growth": 3.294,
+   "inflation": 0.079,
+   "gComp": 0.638,
+   "iComp": 0.553,
+   "regime": "reflation"
+  },
+  {
+   "m": "2020-12",
+   "growth": 2.696,
+   "inflation": -1.93,
+   "gComp": 0.534,
+   "iComp": 0.01,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2021-01",
+   "growth": 2.469,
+   "inflation": -1.263,
+   "gComp": 0.658,
+   "iComp": 0.445,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2021-02",
+   "growth": 2.358,
+   "inflation": 0.529,
+   "gComp": 0.671,
+   "iComp": 1.083,
+   "regime": "reflation"
+  },
+  {
+   "m": "2021-03",
+   "growth": 2.197,
+   "inflation": 1.3,
+   "gComp": 0.298,
+   "iComp": 1.31,
+   "regime": "reflation"
+  },
+  {
+   "m": "2021-04",
+   "growth": 1.528,
+   "inflation": 1.379,
+   "gComp": 0.53,
+   "iComp": 1.824,
+   "regime": "reflation"
+  },
+  {
+   "m": "2021-05",
+   "growth": 0.575,
+   "inflation": 2.221,
+   "gComp": 0.411,
+   "iComp": 3.304,
+   "regime": "reflation"
+  },
+  {
+   "m": "2021-06",
+   "growth": 0.12,
+   "inflation": 2.818,
+   "gComp": 0.962,
+   "iComp": 4.128,
+   "regime": "reflation"
+  },
+  {
+   "m": "2021-07",
+   "growth": -0.193,
+   "inflation": 2.437,
+   "gComp": 0.64,
+   "iComp": 4.261,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2021-08",
+   "growth": 0.05,
+   "inflation": 0.081,
+   "gComp": 0.777,
+   "iComp": 3.385,
+   "regime": "reflation"
+  },
+  {
+   "m": "2021-09",
+   "growth": 0.053,
+   "inflation": -1.697,
+   "gComp": 0.651,
+   "iComp": 2.43,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2021-10",
+   "growth": 0.012,
+   "inflation": -2.716,
+   "gComp": 0.401,
+   "iComp": 1.545,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2021-11",
+   "growth": -0.069,
+   "inflation": -1.126,
+   "gComp": 0.499,
+   "iComp": 2.258,
+   "regime": "deflation"
+  },
+  {
+   "m": "2021-12",
+   "growth": -0.074,
+   "inflation": 0.374,
+   "gComp": 0.669,
+   "iComp": 2.804,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2022-01",
+   "growth": 0.053,
+   "inflation": 1.894,
+   "gComp": 0.825,
+   "iComp": 3.439,
+   "regime": "reflation"
+  },
+  {
+   "m": "2022-02",
+   "growth": 0.069,
+   "inflation": 0.84,
+   "gComp": 0.506,
+   "iComp": 3.099,
+   "regime": "reflation"
+  },
+  {
+   "m": "2022-03",
+   "growth": -0.022,
+   "inflation": 0.208,
+   "gComp": 0.427,
+   "iComp": 3.012,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2022-04",
+   "growth": -0.142,
+   "inflation": -0.848,
+   "gComp": 0.443,
+   "iComp": 2.591,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-05",
+   "growth": -0.166,
+   "inflation": -0.81,
+   "gComp": 0.441,
+   "iComp": 2.289,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-06",
+   "growth": -0.168,
+   "inflation": -1.094,
+   "gComp": 0.242,
+   "iComp": 1.918,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-07",
+   "growth": -0.243,
+   "inflation": -0.483,
+   "gComp": 0.078,
+   "iComp": 2.108,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-08",
+   "growth": -0.302,
+   "inflation": -0.367,
+   "gComp": 0.091,
+   "iComp": 1.921,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-09",
+   "growth": -0.31,
+   "inflation": 0.021,
+   "gComp": 0.076,
+   "iComp": 1.938,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2022-10",
+   "growth": -0.276,
+   "inflation": -0.704,
+   "gComp": 0.105,
+   "iComp": 1.404,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-11",
+   "growth": -0.25,
+   "inflation": -0.059,
+   "gComp": 0.06,
+   "iComp": 1.862,
+   "regime": "deflation"
+  },
+  {
+   "m": "2022-12",
+   "growth": -0.221,
+   "inflation": -0.642,
+   "gComp": -0.004,
+   "iComp": 1.296,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-01",
+   "growth": -0.233,
+   "inflation": -0.405,
+   "gComp": -0.185,
+   "iComp": 0.998,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-02",
+   "growth": -0.231,
+   "inflation": -0.802,
+   "gComp": -0.079,
+   "iComp": 1.06,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-03",
+   "growth": -0.2,
+   "inflation": 0.133,
+   "gComp": -0.027,
+   "iComp": 1.429,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2023-04",
+   "growth": -0.082,
+   "inflation": 0.26,
+   "gComp": 0.079,
+   "iComp": 1.258,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2023-05",
+   "growth": -0.028,
+   "inflation": -0.017,
+   "gComp": -0.034,
+   "iComp": 1.043,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-06",
+   "growth": -0.016,
+   "inflation": -0.626,
+   "gComp": -0.07,
+   "iComp": 0.803,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-07",
+   "growth": -0.074,
+   "inflation": -0.539,
+   "gComp": -0.153,
+   "iComp": 0.719,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-08",
+   "growth": -0.087,
+   "inflation": -0.631,
+   "gComp": -0.129,
+   "iComp": 0.412,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-09",
+   "growth": -0.085,
+   "inflation": -0.741,
+   "gComp": -0.108,
+   "iComp": 0.062,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-10",
+   "growth": -0.017,
+   "inflation": -0.51,
+   "gComp": 0.03,
+   "iComp": 0.209,
+   "regime": "deflation"
+  },
+  {
+   "m": "2023-11",
+   "growth": 0.005,
+   "inflation": -0.023,
+   "gComp": -0.102,
+   "iComp": 0.39,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2023-12",
+   "growth": 0.036,
+   "inflation": 0.234,
+   "gComp": -0.02,
+   "iComp": 0.296,
+   "regime": "reflation"
+  },
+  {
+   "m": "2024-01",
+   "growth": -0.001,
+   "inflation": -0.082,
+   "gComp": -0.046,
+   "iComp": 0.127,
+   "regime": "deflation"
+  },
+  {
+   "m": "2024-02",
+   "growth": -0.012,
+   "inflation": 0.159,
+   "gComp": -0.152,
+   "iComp": 0.549,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2024-03",
+   "growth": -0.027,
+   "inflation": 0.538,
+   "gComp": -0.077,
+   "iComp": 0.835,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2024-04",
+   "growth": -0.021,
+   "inflation": 0.946,
+   "gComp": -0.065,
+   "iComp": 1.074,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2024-05",
+   "growth": 0.05,
+   "inflation": 0.25,
+   "gComp": 0.093,
+   "iComp": 0.798,
+   "regime": "reflation"
+  },
+  {
+   "m": "2024-06",
+   "growth": 0.077,
+   "inflation": -0.449,
+   "gComp": 0.028,
+   "iComp": 0.386,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2024-07",
+   "growth": 0.083,
+   "inflation": -1.088,
+   "gComp": -0.014,
+   "iComp": -0.015,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2024-08",
+   "growth": 0.012,
+   "inflation": -0.995,
+   "gComp": -0.115,
+   "iComp": -0.197,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2024-09",
+   "growth": -0.046,
+   "inflation": -0.486,
+   "gComp": -0.159,
+   "iComp": -0.1,
+   "regime": "deflation"
+  },
+  {
+   "m": "2024-10",
+   "growth": -0.088,
+   "inflation": 0.128,
+   "gComp": -0.198,
+   "iComp": 0.113,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2024-11",
+   "growth": -0.091,
+   "inflation": 0.681,
+   "gComp": -0.13,
+   "iComp": 0.484,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2024-12",
+   "growth": -0.08,
+   "inflation": 0.507,
+   "gComp": -0.162,
+   "iComp": 0.407,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2025-01",
+   "growth": -0.005,
+   "inflation": 0.155,
+   "gComp": 0.054,
+   "iComp": 0.268,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2025-02",
+   "growth": 0.042,
+   "inflation": -0.03,
+   "gComp": 0.064,
+   "iComp": 0.454,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2025-03",
+   "growth": 0.134,
+   "inflation": 0.328,
+   "gComp": 0.178,
+   "iComp": 0.735,
+   "regime": "reflation"
+  },
+  {
+   "m": "2025-04",
+   "growth": 0.123,
+   "inflation": 0.308,
+   "gComp": 0.049,
+   "iComp": 0.577,
+   "regime": "reflation"
+  },
+  {
+   "m": "2025-05",
+   "growth": 0.129,
+   "inflation": -0.327,
+   "gComp": 0.077,
+   "iComp": 0.126,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2025-06",
+   "growth": 0.053,
+   "inflation": -0.83,
+   "gComp": -0.075,
+   "iComp": -0.095,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2025-07",
+   "growth": 0.019,
+   "inflation": -0.463,
+   "gComp": -0.066,
+   "iComp": 0.114,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2025-08",
+   "growth": -0.016,
+   "inflation": 0.175,
+   "gComp": 0.001,
+   "iComp": 0.302,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2025-09",
+   "growth": -0.006,
+   "inflation": 0.519,
+   "gComp": -0.005,
+   "iComp": 0.424,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2025-10",
+   "growth": -0.012,
+   "inflation": 0.194,
+   "gComp": -0.049,
+   "iComp": 0.308,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2025-11",
+   "growth": -0.067,
+   "inflation": 0.024,
+   "gComp": -0.176,
+   "iComp": 0.326,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2025-12",
+   "growth": -0.113,
+   "inflation": -0.585,
+   "gComp": -0.138,
+   "iComp": -0.161,
+   "regime": "deflation"
+  },
+  {
+   "m": "2026-01",
+   "growth": -0.11,
+   "inflation": -0.362,
+   "gComp": -0.067,
+   "iComp": -0.054,
+   "regime": "deflation"
+  },
+  {
+   "m": "2026-02",
+   "growth": -0.051,
+   "inflation": 0.504,
+   "gComp": -0.02,
+   "iComp": 0.83,
+   "regime": "stagflation"
+  },
+  {
+   "m": "2026-03",
+   "growth": 0.032,
+   "inflation": 0.793,
+   "gComp": 0.089,
+   "iComp": 0.632,
+   "regime": "reflation"
+  },
+  {
+   "m": "2026-04",
+   "growth": 0.069,
+   "inflation": 0.711,
+   "gComp": 0.042,
+   "iComp": 0.657,
+   "regime": "reflation"
+  },
+  {
+   "m": "2026-05",
+   "growth": 0.131,
+   "inflation": -0.202,
+   "gComp": 0.194,
+   "iComp": 0.628,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2026-06",
+   "growth": 0.119,
+   "inflation": -0.147,
+   "gComp": 0.096,
+   "iComp": 0.485,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2026-07",
+   "growth": 0.126,
+   "inflation": -0.634,
+   "gComp": 0.107,
+   "iComp": 0.023,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2026-08",
+   "growth": 0.065,
+   "inflation": -0.742,
+   "gComp": 0.015,
+   "iComp": -0.113,
+   "regime": "goldilocks"
+  },
+  {
+   "m": "2026-09",
+   "growth": 0.041,
+   "inflation": -0.585,
+   "gComp": 0.035,
+   "iComp": -0.1,
+   "regime": "goldilocks"
+  }
+ ],
+ "spells": [
+  {
+   "regime": "goldilocks",
+   "from": "1971-04",
+   "to": "1971-06",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1971-07",
+   "to": "1971-08",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1971-09",
+   "to": "1971-12",
+   "months": 4
+  },
+  {
+   "regime": "reflation",
+   "from": "1972-01",
+   "to": "1972-04",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1972-05",
+   "to": "1972-07",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1972-08",
+   "to": "1972-09",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1972-10",
+   "to": "1972-11",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1972-12",
+   "to": "1973-02",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1973-03",
+   "to": "1973-05",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1973-06",
+   "to": "1973-07",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1973-08",
+   "to": "1973-09",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1973-10",
+   "to": "1974-01",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1974-02",
+   "to": "1974-02",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1974-03",
+   "to": "1974-09",
+   "months": 7
+  },
+  {
+   "regime": "deflation",
+   "from": "1974-10",
+   "to": "1975-05",
+   "months": 8
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1975-06",
+   "to": "1975-11",
+   "months": 6
+  },
+  {
+   "regime": "reflation",
+   "from": "1975-12",
+   "to": "1976-02",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1976-03",
+   "to": "1976-06",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1976-07",
+   "to": "1976-07",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1976-08",
+   "to": "1976-11",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1976-12",
+   "to": "1977-02",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1977-03",
+   "to": "1977-05",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1977-06",
+   "to": "1977-07",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "1977-08",
+   "to": "1977-09",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1977-10",
+   "to": "1977-12",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1978-01",
+   "to": "1978-04",
+   "months": 4
+  },
+  {
+   "regime": "reflation",
+   "from": "1978-05",
+   "to": "1978-08",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1978-09",
+   "to": "1978-09",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1978-10",
+   "to": "1978-10",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1978-11",
+   "to": "1978-12",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1979-01",
+   "to": "1979-03",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1979-04",
+   "to": "1979-07",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1979-08",
+   "to": "1979-10",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1979-11",
+   "to": "1980-05",
+   "months": 7
+  },
+  {
+   "regime": "deflation",
+   "from": "1980-06",
+   "to": "1980-10",
+   "months": 5
+  },
+  {
+   "regime": "reflation",
+   "from": "1980-11",
+   "to": "1981-01",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1981-02",
+   "to": "1981-06",
+   "months": 5
+  },
+  {
+   "regime": "stagflation",
+   "from": "1981-07",
+   "to": "1981-10",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1981-11",
+   "to": "1982-05",
+   "months": 7
+  },
+  {
+   "regime": "stagflation",
+   "from": "1982-06",
+   "to": "1982-06",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1982-07",
+   "to": "1982-09",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1982-10",
+   "to": "1983-02",
+   "months": 5
+  },
+  {
+   "regime": "reflation",
+   "from": "1983-03",
+   "to": "1983-04",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1983-05",
+   "to": "1983-07",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1983-08",
+   "to": "1983-10",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1983-11",
+   "to": "1984-02",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "1984-03",
+   "to": "1984-03",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1984-04",
+   "to": "1984-04",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1984-05",
+   "to": "1984-06",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1984-07",
+   "to": "1985-01",
+   "months": 7
+  },
+  {
+   "regime": "stagflation",
+   "from": "1985-02",
+   "to": "1985-05",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1985-06",
+   "to": "1985-08",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1985-09",
+   "to": "1985-10",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1985-11",
+   "to": "1985-12",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1986-01",
+   "to": "1986-01",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1986-02",
+   "to": "1986-04",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "1986-05",
+   "to": "1986-08",
+   "months": 4
+  },
+  {
+   "regime": "reflation",
+   "from": "1986-09",
+   "to": "1986-12",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1987-01",
+   "to": "1987-03",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1987-04",
+   "to": "1987-07",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1987-08",
+   "to": "1987-09",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "1987-10",
+   "to": "1987-12",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1988-01",
+   "to": "1988-01",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1988-02",
+   "to": "1988-03",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1988-04",
+   "to": "1988-08",
+   "months": 5
+  },
+  {
+   "regime": "deflation",
+   "from": "1988-09",
+   "to": "1988-10",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1988-11",
+   "to": "1988-12",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1989-01",
+   "to": "1989-03",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1989-04",
+   "to": "1989-04",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1989-05",
+   "to": "1989-07",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1989-08",
+   "to": "1989-08",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1989-09",
+   "to": "1989-10",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1989-11",
+   "to": "1990-01",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1990-02",
+   "to": "1990-06",
+   "months": 5
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1990-07",
+   "to": "1990-07",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1990-08",
+   "to": "1990-08",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1990-09",
+   "to": "1990-11",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "1990-12",
+   "to": "1991-02",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1991-03",
+   "to": "1991-04",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1991-05",
+   "to": "1991-06",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1991-07",
+   "to": "1991-07",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1991-08",
+   "to": "1991-10",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1991-11",
+   "to": "1992-02",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1992-03",
+   "to": "1992-03",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1992-04",
+   "to": "1992-04",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1992-05",
+   "to": "1992-06",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1992-07",
+   "to": "1992-08",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1992-09",
+   "to": "1992-11",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1992-12",
+   "to": "1993-02",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1993-03",
+   "to": "1993-04",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "1993-05",
+   "to": "1993-05",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1993-06",
+   "to": "1993-07",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "1993-08",
+   "to": "1993-10",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1993-11",
+   "to": "1993-11",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1993-12",
+   "to": "1994-01",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1994-02",
+   "to": "1994-04",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1994-05",
+   "to": "1994-08",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1994-09",
+   "to": "1995-01",
+   "months": 5
+  },
+  {
+   "regime": "reflation",
+   "from": "1995-02",
+   "to": "1995-02",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1995-03",
+   "to": "1995-03",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1995-04",
+   "to": "1995-06",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "1995-07",
+   "to": "1995-09",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "1995-10",
+   "to": "1995-12",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "1996-01",
+   "to": "1996-03",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "1996-04",
+   "to": "1996-06",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1996-07",
+   "to": "1996-07",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1996-08",
+   "to": "1996-08",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1996-09",
+   "to": "1996-09",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1996-10",
+   "to": "1996-12",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1997-01",
+   "to": "1997-01",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1997-02",
+   "to": "1997-03",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "1997-04",
+   "to": "1997-06",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1997-07",
+   "to": "1997-10",
+   "months": 4
+  },
+  {
+   "regime": "reflation",
+   "from": "1997-11",
+   "to": "1998-02",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "1998-03",
+   "to": "1998-06",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "1998-07",
+   "to": "1998-08",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1998-09",
+   "to": "1998-10",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "1998-11",
+   "to": "1998-11",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1998-12",
+   "to": "1998-12",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "1999-01",
+   "to": "1999-03",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "1999-04",
+   "to": "1999-05",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "1999-06",
+   "to": "1999-07",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "1999-08",
+   "to": "1999-08",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "1999-09",
+   "to": "1999-09",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "1999-10",
+   "to": "1999-12",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2000-01",
+   "to": "2000-01",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2000-02",
+   "to": "2000-02",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2000-03",
+   "to": "2000-03",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2000-04",
+   "to": "2000-04",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2000-05",
+   "to": "2000-05",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2000-06",
+   "to": "2000-06",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2000-07",
+   "to": "2000-07",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2000-08",
+   "to": "2000-12",
+   "months": 5
+  },
+  {
+   "regime": "deflation",
+   "from": "2001-01",
+   "to": "2001-01",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2001-02",
+   "to": "2001-04",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2001-05",
+   "to": "2001-07",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "2001-08",
+   "to": "2001-09",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "2001-10",
+   "to": "2001-12",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2002-01",
+   "to": "2002-02",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2002-03",
+   "to": "2002-04",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "2002-05",
+   "to": "2002-07",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2002-08",
+   "to": "2002-08",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2002-09",
+   "to": "2002-11",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2002-12",
+   "to": "2003-05",
+   "months": 6
+  },
+  {
+   "regime": "stagflation",
+   "from": "2003-06",
+   "to": "2003-08",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2003-09",
+   "to": "2003-10",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2003-11",
+   "to": "2004-01",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2004-02",
+   "to": "2004-06",
+   "months": 5
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2004-07",
+   "to": "2004-08",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "2004-09",
+   "to": "2004-10",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "2004-11",
+   "to": "2004-12",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "2005-01",
+   "to": "2005-02",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2005-03",
+   "to": "2005-03",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2005-04",
+   "to": "2005-04",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2005-05",
+   "to": "2005-05",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2005-06",
+   "to": "2005-09",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "2005-10",
+   "to": "2005-12",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2006-01",
+   "to": "2006-02",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2006-03",
+   "to": "2006-03",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2006-04",
+   "to": "2006-05",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "2006-06",
+   "to": "2006-07",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "2006-08",
+   "to": "2007-01",
+   "months": 6
+  },
+  {
+   "regime": "stagflation",
+   "from": "2007-02",
+   "to": "2007-02",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2007-03",
+   "to": "2007-04",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2007-05",
+   "to": "2007-08",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "2007-09",
+   "to": "2008-02",
+   "months": 6
+  },
+  {
+   "regime": "deflation",
+   "from": "2008-03",
+   "to": "2008-06",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "2008-07",
+   "to": "2008-09",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2008-10",
+   "to": "2009-01",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "2009-02",
+   "to": "2009-05",
+   "months": 4
+  },
+  {
+   "regime": "reflation",
+   "from": "2009-06",
+   "to": "2009-07",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2009-08",
+   "to": "2009-10",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2009-11",
+   "to": "2010-01",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2010-02",
+   "to": "2010-04",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2010-05",
+   "to": "2010-07",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2010-08",
+   "to": "2010-08",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2010-09",
+   "to": "2010-10",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "2010-11",
+   "to": "2011-05",
+   "months": 7
+  },
+  {
+   "regime": "reflation",
+   "from": "2011-06",
+   "to": "2011-06",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2011-07",
+   "to": "2011-09",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2011-10",
+   "to": "2011-11",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "2011-12",
+   "to": "2012-01",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "2012-02",
+   "to": "2012-04",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2012-05",
+   "to": "2012-05",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2012-06",
+   "to": "2012-10",
+   "months": 5
+  },
+  {
+   "regime": "stagflation",
+   "from": "2012-11",
+   "to": "2013-01",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2013-02",
+   "to": "2013-04",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2013-05",
+   "to": "2013-07",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2013-08",
+   "to": "2013-10",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2013-11",
+   "to": "2014-01",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2014-02",
+   "to": "2014-04",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2014-05",
+   "to": "2014-08",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2014-09",
+   "to": "2015-02",
+   "months": 6
+  },
+  {
+   "regime": "deflation",
+   "from": "2015-03",
+   "to": "2015-03",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2015-04",
+   "to": "2015-07",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "2015-08",
+   "to": "2015-09",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2015-10",
+   "to": "2015-10",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2015-11",
+   "to": "2015-11",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2015-12",
+   "to": "2015-12",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2016-01",
+   "to": "2016-01",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2016-02",
+   "to": "2016-07",
+   "months": 6
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2016-08",
+   "to": "2016-10",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2016-11",
+   "to": "2016-11",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2016-12",
+   "to": "2017-01",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "2017-02",
+   "to": "2017-04",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2017-05",
+   "to": "2017-08",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "2017-09",
+   "to": "2017-12",
+   "months": 4
+  },
+  {
+   "regime": "reflation",
+   "from": "2018-01",
+   "to": "2018-04",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2018-05",
+   "to": "2018-09",
+   "months": 5
+  },
+  {
+   "regime": "deflation",
+   "from": "2018-10",
+   "to": "2018-11",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "2018-12",
+   "to": "2019-02",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2019-03",
+   "to": "2019-08",
+   "months": 6
+  },
+  {
+   "regime": "stagflation",
+   "from": "2019-09",
+   "to": "2019-09",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2019-10",
+   "to": "2019-10",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2019-11",
+   "to": "2019-11",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2019-12",
+   "to": "2019-12",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2020-01",
+   "to": "2020-03",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2020-04",
+   "to": "2020-07",
+   "months": 4
+  },
+  {
+   "regime": "stagflation",
+   "from": "2020-08",
+   "to": "2020-08",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2020-09",
+   "to": "2020-11",
+   "months": 3
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2020-12",
+   "to": "2021-01",
+   "months": 2
+  },
+  {
+   "regime": "reflation",
+   "from": "2021-02",
+   "to": "2021-06",
+   "months": 5
+  },
+  {
+   "regime": "stagflation",
+   "from": "2021-07",
+   "to": "2021-07",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2021-08",
+   "to": "2021-08",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2021-09",
+   "to": "2021-10",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "2021-11",
+   "to": "2021-11",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2021-12",
+   "to": "2021-12",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2022-01",
+   "to": "2022-02",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "2022-03",
+   "to": "2022-03",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2022-04",
+   "to": "2022-08",
+   "months": 5
+  },
+  {
+   "regime": "stagflation",
+   "from": "2022-09",
+   "to": "2022-09",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2022-10",
+   "to": "2023-02",
+   "months": 5
+  },
+  {
+   "regime": "stagflation",
+   "from": "2023-03",
+   "to": "2023-04",
+   "months": 2
+  },
+  {
+   "regime": "deflation",
+   "from": "2023-05",
+   "to": "2023-10",
+   "months": 6
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2023-11",
+   "to": "2023-11",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2023-12",
+   "to": "2023-12",
+   "months": 1
+  },
+  {
+   "regime": "deflation",
+   "from": "2024-01",
+   "to": "2024-01",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2024-02",
+   "to": "2024-04",
+   "months": 3
+  },
+  {
+   "regime": "reflation",
+   "from": "2024-05",
+   "to": "2024-05",
+   "months": 1
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2024-06",
+   "to": "2024-08",
+   "months": 3
+  },
+  {
+   "regime": "deflation",
+   "from": "2024-09",
+   "to": "2024-09",
+   "months": 1
+  },
+  {
+   "regime": "stagflation",
+   "from": "2024-10",
+   "to": "2025-01",
+   "months": 4
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2025-02",
+   "to": "2025-02",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2025-03",
+   "to": "2025-04",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2025-05",
+   "to": "2025-07",
+   "months": 3
+  },
+  {
+   "regime": "stagflation",
+   "from": "2025-08",
+   "to": "2025-11",
+   "months": 4
+  },
+  {
+   "regime": "deflation",
+   "from": "2025-12",
+   "to": "2026-01",
+   "months": 2
+  },
+  {
+   "regime": "stagflation",
+   "from": "2026-02",
+   "to": "2026-02",
+   "months": 1
+  },
+  {
+   "regime": "reflation",
+   "from": "2026-03",
+   "to": "2026-04",
+   "months": 2
+  },
+  {
+   "regime": "goldilocks",
+   "from": "2026-05",
+   "to": "2026-09",
+   "months": 5
+  }
+ ],
+ "share": {
+  "goldilocks": 153,
+  "reflation": 161,
+  "stagflation": 178,
+  "deflation": 174
+ },
+ "table": {
+  "SPX500": {
+   "goldilocks": {
+    "n": 56,
+    "mean": 1.22,
+    "median": 1.87,
+    "lo": 0.31,
+    "hi": 2.03,
+    "posShare": 0.7,
+    "range": 5.97,
+    "tilt": "up"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": 1.49,
+    "median": 2.07,
+    "lo": 0.47,
+    "hi": 2.53,
+    "posShare": 0.69,
+    "range": 6.81,
+    "tilt": "up"
+   },
+   "stagflation": {
+    "n": 67,
+    "mean": 0.15,
+    "median": 0.91,
+    "lo": -1.24,
+    "hi": 1.43,
+    "posShare": 0.57,
+    "range": 8.39,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 59,
+    "mean": 0.28,
+    "median": 0.74,
+    "lo": -0.95,
+    "hi": 1.57,
+    "posShare": 0.58,
+    "range": 7.89,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 230,
+    "mean": 0.72,
+    "range": 7.34
+   }
+  },
+  "NQ": {
+   "goldilocks": {
+    "n": 56,
+    "mean": 1.43,
+    "median": 1.96,
+    "lo": 0.25,
+    "hi": 2.44,
+    "posShare": 0.64,
+    "range": 7.64,
+    "tilt": "up"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": 2.38,
+    "median": 2.9,
+    "lo": 1.12,
+    "hi": 3.75,
+    "posShare": 0.75,
+    "range": 8.52,
+    "tilt": "up"
+   },
+   "stagflation": {
+    "n": 67,
+    "mean": 0.29,
+    "median": 1.29,
+    "lo": -1.31,
+    "hi": 1.79,
+    "posShare": 0.6,
+    "range": 10.02,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 59,
+    "mean": 1.01,
+    "median": 0.82,
+    "lo": -0.61,
+    "hi": 2.63,
+    "posShare": 0.58,
+    "range": 9.76,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 230,
+    "mean": 1.19,
+    "range": 9.06
+   }
+  },
+  "GOLD": {
+   "goldilocks": {
+    "n": 54,
+    "mean": 0.54,
+    "median": 1.12,
+    "lo": -0.93,
+    "hi": 1.87,
+    "posShare": 0.56,
+    "range": 7.68,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": -0.36,
+    "median": -0.32,
+    "lo": -1.46,
+    "hi": 0.73,
+    "posShare": 0.44,
+    "range": 7.03,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 60,
+    "mean": 0.46,
+    "median": 0.13,
+    "lo": -0.94,
+    "hi": 1.79,
+    "posShare": 0.5,
+    "range": 8.55,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 55,
+    "mean": 2.3,
+    "median": 2.04,
+    "lo": 1.11,
+    "hi": 3.4,
+    "posShare": 0.65,
+    "range": 7.89,
+    "tilt": "up"
+   },
+   "all": {
+    "n": 217,
+    "mean": 0.77,
+    "range": 7.83
+   }
+  },
+  "US10Y": {
+   "goldilocks": {
+    "n": 58,
+    "mean": -0.02,
+    "median": -0.02,
+    "lo": -0.37,
+    "hi": 0.33,
+    "posShare": 0.5,
+    "range": 2.23,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": 0,
+    "median": 0.13,
+    "lo": -0.44,
+    "hi": 0.4,
+    "posShare": 0.56,
+    "range": 2.27,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 67,
+    "mean": -0.01,
+    "median": -0.13,
+    "lo": -0.4,
+    "hi": 0.39,
+    "posShare": 0.46,
+    "range": 2.71,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 59,
+    "mean": 0.03,
+    "median": -0.27,
+    "lo": -0.52,
+    "hi": 0.55,
+    "posShare": 0.47,
+    "range": 2.85,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 232,
+    "mean": 0,
+    "range": 2.53
+   }
+  },
+  "COPPER": {
+   "goldilocks": {
+    "n": 54,
+    "mean": 1.08,
+    "median": 1.05,
+    "lo": -0.53,
+    "hi": 2.83,
+    "posShare": 0.57,
+    "range": 10.79,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": 0.61,
+    "median": 0.49,
+    "lo": -1.06,
+    "hi": 2.29,
+    "posShare": 0.56,
+    "range": 10.04,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 64,
+    "mean": -0.27,
+    "median": 0.51,
+    "lo": -2.63,
+    "hi": 2,
+    "posShare": 0.53,
+    "range": 12.05,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 59,
+    "mean": 0.13,
+    "median": 0.88,
+    "lo": -1.43,
+    "hi": 1.79,
+    "posShare": 0.58,
+    "range": 10.52,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 225,
+    "mean": 0.35,
+    "range": 10.92
+   }
+  },
+  "EURUSD": {
+   "goldilocks": {
+    "n": 54,
+    "mean": -0.31,
+    "median": -0.33,
+    "lo": -1,
+    "hi": 0.36,
+    "posShare": 0.46,
+    "range": 3.64,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": -0.32,
+    "median": -0.57,
+    "lo": -0.98,
+    "hi": 0.36,
+    "posShare": 0.46,
+    "range": 3.57,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 58,
+    "mean": 0.15,
+    "median": -0.02,
+    "lo": -0.49,
+    "hi": 0.78,
+    "posShare": 0.5,
+    "range": 4.06,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 54,
+    "mean": 0.24,
+    "median": 0.25,
+    "lo": -0.49,
+    "hi": 1,
+    "posShare": 0.54,
+    "range": 4.09,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 214,
+    "mean": -0.05,
+    "range": 3.85
+   }
+  },
+  "USDJPY": {
+   "goldilocks": {
+    "n": 54,
+    "mean": 0.08,
+    "median": -0.02,
+    "lo": -0.65,
+    "hi": 0.77,
+    "posShare": 0.48,
+    "range": 4.19,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": 0.27,
+    "median": -0.23,
+    "lo": -0.49,
+    "hi": 0.99,
+    "posShare": 0.48,
+    "range": 4.01,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 58,
+    "mean": 0.42,
+    "median": 0.28,
+    "lo": -0.21,
+    "hi": 1.06,
+    "posShare": 0.55,
+    "range": 4.54,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 53,
+    "mean": 0.25,
+    "median": 0.01,
+    "lo": -0.54,
+    "hi": 1.07,
+    "posShare": 0.51,
+    "range": 4.14,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 213,
+    "mean": 0.26,
+    "range": 4.23
+   }
+  },
+  "AUDUSD": {
+   "goldilocks": {
+    "n": 54,
+    "mean": -0.03,
+    "median": 0.35,
+    "lo": -0.92,
+    "hi": 0.83,
+    "posShare": 0.52,
+    "range": 4.73,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 48,
+    "mean": -0.16,
+    "median": -0.3,
+    "lo": -1,
+    "hi": 0.82,
+    "posShare": 0.48,
+    "range": 4.64,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 58,
+    "mean": 0.05,
+    "median": -0.25,
+    "lo": -0.89,
+    "hi": 1,
+    "posShare": 0.47,
+    "range": 5.63,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 55,
+    "mean": 0.23,
+    "median": 0.49,
+    "lo": -0.51,
+    "hi": 1.08,
+    "posShare": 0.62,
+    "range": 5.11,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 215,
+    "mean": 0.03,
+    "range": 5.05
+   }
+  },
+  "DXY": {
+   "goldilocks": {
+    "n": 59,
+    "mean": 0.09,
+    "median": -0.19,
+    "lo": -0.3,
+    "hi": 0.54,
+    "posShare": 0.44,
+    "range": 1.91,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 54,
+    "mean": 0.02,
+    "median": 0,
+    "lo": -0.39,
+    "hi": 0.43,
+    "posShare": 0.48,
+    "range": 1.83,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 70,
+    "mean": 0.23,
+    "median": -0.12,
+    "lo": -0.23,
+    "hi": 0.74,
+    "posShare": 0.46,
+    "range": 2.26,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 65,
+    "mean": -0.08,
+    "median": -0.14,
+    "lo": -0.45,
+    "hi": 0.28,
+    "posShare": 0.43,
+    "range": 1.97,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 248,
+    "mean": 0.07,
+    "range": 2.01
+   }
+  },
+  "WTI": {
+   "goldilocks": {
+    "n": 109,
+    "mean": 1.1,
+    "median": 1.71,
+    "lo": -0.76,
+    "hi": 2.86,
+    "posShare": 0.58,
+    "range": 11.49,
+    "tilt": "none"
+   },
+   "reflation": {
+    "n": 128,
+    "mean": 1.02,
+    "median": 1.58,
+    "lo": -0.62,
+    "hi": 2.46,
+    "posShare": 0.57,
+    "range": 11.7,
+    "tilt": "none"
+   },
+   "stagflation": {
+    "n": 128,
+    "mean": -0.89,
+    "median": -0.18,
+    "lo": -3.29,
+    "hi": 1.47,
+    "posShare": 0.49,
+    "range": 16.13,
+    "tilt": "none"
+   },
+   "deflation": {
+    "n": 123,
+    "mean": 0.27,
+    "median": -0.05,
+    "lo": -1.77,
+    "hi": 2.44,
+    "posShare": 0.5,
+    "range": 14.29,
+    "tilt": "none"
+   },
+   "all": {
+    "n": 488,
+    "mean": 0.35,
+    "range": 13.47
+   }
+  }
+ },
+ "transitions": [
+  {
+   "from": "goldilocks",
+   "to": "reflation",
+   "tells": "wages accelerating, commodities rising, breakevens widening",
+   "typical": "3-6 months",
+   "observed": 33,
+   "medianSpellBefore": 2
+  },
+  {
+   "from": "reflation",
+   "to": "stagflation",
+   "tells": "PMIs rolling over with inflation sticky, curve flattening",
+   "typical": "2-4 months",
+   "observed": 9,
+   "medianSpellBefore": 2
+  },
+  {
+   "from": "stagflation",
+   "to": "deflation",
+   "tells": "credit spreads widening, breakevens falling, PMIs contracting",
+   "typical": "1-3 months, often fast -- credit-led",
+   "observed": 38,
+   "medianSpellBefore": 3
+  },
+  {
+   "from": "deflation",
+   "to": "goldilocks",
+   "tells": "PMIs troughing, credit narrowing, central banks easing",
+   "typical": "3-6 months",
+   "observed": 5,
+   "medianSpellBefore": 2
+  }
+ ],
+ "now": {
+  "regime": "goldilocks",
+  "label": "Goldilocks",
+  "what": "growth improving, inflation easing",
+  "usual": "the backdrop that lets central banks sit still: risk assets have liked it, gold and the dollar have not",
+  "months": 5,
+  "since": "2026-05",
+  "previous": {
+   "regime": "reflation",
+   "months": 2
+  },
+  "watchFor": {
+   "to": "reflation",
+   "tells": "wages accelerating, commodities rising, breakevens widening",
+   "typical": "3-6 months"
+  },
+  "scores": {
+   "growth": 0.041,
+   "inflation": -0.585
+  }
+ }
+}

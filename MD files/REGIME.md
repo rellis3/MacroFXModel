@@ -53,3 +53,40 @@ tell is credit, which is quiet"*), each number carrying its n and interval.
 If a cell's interval spans zero it is shown as "no tilt".
 
 ---
+
+## Results (run 2026-09-19; construction frozen above before running)
+
+`analysis/regime_study.mjs` → `analysis/output/regime.json`; `js/regimeCore.js`
+is the labeller the server runs daily; `regime.html` is the screen.
+
+**The labels are choppy, as a zero-threshold momentum rule must be.** 666
+months since 1971-04: goldilocks 23%, reflation 24%, stagflation 27%,
+deflation 26%. 250 spells, median length 3 months, half under three. The page
+says so and asks the reader to watch the direction of travel over several
+months. A confirmation rule (two months, or a dead band) is a follow-up
+registration, not a tweak to this one.
+
+**The asset table, 2007 → 2026, next-month returns with bootstrap intervals
+(n per cell 48–70):**
+
+| | goldilocks | reflation | stagflation | deflation |
+|---|---|---|---|---|
+| S&P 500 | **+1.2%** [0.3, 2.0] | **+1.5%** [0.5, 2.5] | +0.2% | +0.3% |
+| Nasdaq | **+1.4%** [0.3, 2.4] | **+2.4%** [1.1, 3.8] | +0.3% | +1.0% |
+| Gold | +0.5% | −0.4% | +0.5% | **+2.3%** [1.1, 3.4] |
+| 10-year (price), copper, oil, dollar, EUR/USD, USD/JPY, AUD/USD | no tilt in any label |
+
+**Ranges** (mean monthly high−low as % of price) are widest in stagflation for
+every market — S&P 8.4% vs 6.0% in goldilocks, Nasdaq 10.0% vs 7.6%, oil 16% vs
+11.5% — the range finding again, and the part of this table worth acting on.
+
+**Transitions observed:** goldilocks→reflation 33×, stagflation→deflation 38×
+(the notes' "fast, credit-led" move; the prior spell here ran a median of 3
+months), reflation→stagflation 9×, deflation→goldilocks 5×.
+
+**What shipped:** the screen; `/api/regime` (labels recomputed daily from FRED,
+table from the study); one line on today.html above the desk watch — *"Regime:
+Goldilocks, month 5 — growth improving, inflation easing. In this backdrop
+since 2007: S&P ↑ (+1.2%/mo, n=56), Nasdaq ↑; the rest no tilt. The usual next
+move is reflation; its tell is wages, commodities, breakevens."* Context; the FX
+cells are no-tilt, which is the desk's standing result restated.
