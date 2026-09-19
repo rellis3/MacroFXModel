@@ -3298,6 +3298,10 @@ async function _dailySnapshotTick() {
   try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
   try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
   try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
+  // The day's high-impact releases, kept so a look-back beyond the calendar feed's
+  // one-week window still knows what news came (the surprise store only carries
+  // prints with actuals; the live feed rarely supplies them).
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const d0 = Date.parse(day + 'T00:00:00Z'); row.released = (r.events ?? []).filter(e => e.ms >= d0 && e.ms < d0 + 864e5 && e.impact === 'high' && e.ms <= Date.now()).slice(0, 12).map(e => ({ country: e.country, event: e.event, ms: e.ms, estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null })); } catch { /* skipped */ }
   try { const raw = await kv.get(_FRED_DASH_KV); const f = raw ? (JSON.parse(raw)?.d ?? JSON.parse(raw)) : {}; row.levels = Object.fromEntries(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy', 'wti'].map(k => [k, f?.[k]?.value ?? null])); } catch { /* skipped */ }
   const i = store.days.findIndex(d => d.day === day);
   if (i >= 0) store.days[i] = { ...store.days[i], ...row }; else store.days.push(row);
@@ -3305,6 +3309,26 @@ async function _dailySnapshotTick() {
   store.days = store.days.slice(-_SNAP_KEEP);
   await kv.put(_SNAP_KV, JSON.stringify(store));
 }
+// The page's forward plan for the day -- outlook biases, aims, leans with their
+// falsifiers, expected ranges, grouped trades -- posted by the browser once a day
+// (the outlook engine and the aim lines live client-side). Merged into the day's
+// row under `plan`; first post of the day wins so a later refresh cannot rewrite
+// what was planned in the morning.
+app.post('/api/daily-snapshot/plan', async (req, res) => {
+  try {
+    const plan = req.body?.plan; if (!plan || typeof plan !== 'object') return res.status(400).json({ ok: false, error: 'Missing plan' });
+    const store = await _loadSnapStore(); if (!store) return res.status(503).json({ ok: false, error: 'snapshot store unreadable; refusing to overwrite' });
+    const day = new Date().toISOString().slice(0, 10);
+    let i = store.days.findIndex(d => d.day === day);
+    if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
+    if (store.days[i].plan) return res.json({ ok: true, kept: true, plannedAt: store.days[i].plan.at });
+    const compact = JSON.parse(JSON.stringify(plan)); compact.at = new Date().toISOString();
+    if (JSON.stringify(compact).length > 60_000) return res.status(413).json({ ok: false, error: 'plan too large' });
+    store.days[i].plan = compact;
+    await kv.put(_SNAP_KV, JSON.stringify(store));
+    res.json({ ok: true, kept: false, plannedAt: compact.at });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/daily-snapshot', async (req, res) => {
   try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -13707,7 +13731,10 @@ app.get('/api/econ-surprise', async (req, res) => {
     // release actually did rather than only naming the next one. ?history=1 returns
     // every scored print per series -- the research harness reads the full store
     // through this (analysis/market_sense_studies.mjs S7), nothing else needs it.
-    const series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
+    let series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
+    // ?since=YYYY-MM-DD trims every series to prints on or after that day (the timeline
+    // wants 25 days of releases, not the whole archive).
+    if (req.query.since && /^\d{4}-\d{2}-\d{2}$/.test(req.query.since)) { const ms = Date.parse(req.query.since + 'T00:00:00Z'); series = Object.fromEntries(Object.entries(series).map(([k, v]) => [k, v.filter(x => (x.ms ?? 0) >= ms)]).filter(([, v]) => v.length)); }
     res.json({ ok: true, storedReleases: rows.length, ...idx, series, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

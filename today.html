@@ -813,6 +813,23 @@
   .chain-r.open .chain-w{display:block}
   .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
   @media (max-width:560px){.chain-p,.chain-w{margin-left:0}}
+  .tl{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:6px}
+  .tl-col{border:1px solid var(--border);border-radius:8px;padding:8px 9px;background:var(--card2);min-width:0}
+  .tl-col.now{border-color:var(--blue);background:color-mix(in srgb,var(--blue) 7%,var(--card2))}
+  .tl-col.ahead{border-style:dashed}
+  .tl-h{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;display:flex;justify-content:space-between;gap:6px}
+  .tl-h b{color:var(--text)}
+  .tl-big{font-size:13px;font-weight:800;margin:3px 0 4px;font-variant-numeric:tabular-nums}
+  .tl-big.up,.tl-big .up{color:var(--bull)} .tl-big.dn,.tl-big .dn{color:var(--red)}
+  .tl-l{font-size:11px;line-height:1.5;color:var(--text2);padding:2px 0;border-top:1px dashed var(--border)}
+  .tl-l:first-of-type{border-top:0}
+  .tl-l .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:4px}
+  .tl-l b{color:var(--text);font-weight:600}
+  .tl-l.hit b.r{color:var(--bull)} .tl-l.miss b.r{color:var(--red)}
+  .tl-chart{width:100%;height:auto;display:block;margin:4px 0 6px}
+  .tl-chart text{font-size:9px;fill:var(--text3);font-family:inherit}
+  .tl-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:6px}
+  @media (max-width:760px){.tl{grid-template-columns:1fr 1fr}.tl-col.now{grid-column:1/3}}
   .dw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:8px}
   .dw-r{border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--card2);display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;cursor:help}
   .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)}
@@ -941,6 +958,7 @@
       <div class="mread" id="mread" style="display:none"></div>
 
       <div class="mread" id="outlookPanel" style="display:none"></div>
+      <div class="mread" id="timelinePanel" style="display:none"></div>
 
       <div class="qstrip" id="weekCtx" style="display:none"></div>
       <div class="qstrip" id="concentration" style="display:none"></div>
@@ -1180,6 +1198,10 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 <div class="dr-pending" id="drFlowPending" style="display:none"><b>No flow data for this instrument</b><p>Neither an options board nor a CFTC contract is wired for it.</p><p class="dr-pending-links"><a href="oi-dashboard.html" target="_blank">OI dashboard &rarr;</a> &middot; <a href="cot-extremes.html" target="_blank">COT extremes &rarr;</a></p></div>
   </div>
   <div class="dr-pane" id="drPane-why" role="tabpanel" aria-labelledby="drTab-why" hidden>
+  <div class="dr-sec" id="drTimelineSec" data-seckey="timeline" style="display:none">
+    <h3 class="help" title="Twenty sessions back to twenty ahead, for this pair. Look-back: the path, each release with its surprise and the size it produced, chain links that broke, watch fires and their after-scores, and the leans this page published and how they scored. Look-forward: the calendar with the size each release has produced here, the 5- and 20-day expected bands, the outlook and the aim. Measured where marked; the plan is what the page thinks today, kept so it can be checked later."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Timeline — 20 back, 20 ahead</span><i class="ev c" title="context — measured, not predictive">~</i></h3>
+    <div class="dr-sec-body"><div id="drTimeline"></div></div>
+  </div>
   <div class="dr-sec" id="drFactorSec" data-seckey="factor" style="display:none">
     <h3 class="help" title="The base currency's factor scores minus the quote's, factor by factor, then averaged equally. Says which factor carries the fundamental case and whether the others agree. Explanation, never prediction — macro as a signal is a banked null here.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Fundamental gap — the factor read</span><i class="ev c" title="context — explanation, not prediction">~</i>
@@ -1866,6 +1888,9 @@ async function loadGate() {
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
+  setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
+  setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
+  setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
@@ -4238,6 +4263,186 @@ function outlookBiasListHtml(rs, key) {
     ? `<div style="margin:0 0 6px"><b style="color:var(${colorVar})">${label} (${arr.length}):</b> <span style="font-size:12px">${arr.map(pill).join(', ')}</span></div>`
     : '';
   return `<div style="font-size:12.5px;line-height:1.6;margin-bottom:8px">${row('Bullish', '--bull', bull)}${row('Bearish', '--bear', bear)}</div>`;
+}
+// ── Timeline: twenty sessions back, twenty ahead ─────────────────────────────
+// Five columns -- -20d · -5d · today · +5d · +20d -- built from what the page
+// already measures: releases with their surprise and the size they produced
+// (surprise store + Event Response Book), chain links that broke (watch log),
+// watch fires and their after-scores, the leans published and how they scored
+// (ledger), what the page thought on those days (daily snapshot), and ahead:
+// the calendar with expected sizes, the 5/20-day bands from the forecaster,
+// the outlook, the aim. Global at the top of the read; per pair in the drawer.
+const _tl = { surprises: null, snapshots: null, fomc: null, loadedAt: 0, closes: {} };
+async function loadTimelineData() {
+  if (Date.now() - _tl.loadedAt < 30 * 60_000) return;
+  _tl.loadedAt = Date.now();
+  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const [sp, sn, fc] = await Promise.all([
+    jget(`/api/econ-surprise?history=1&since=${since}`).catch(() => null),
+    jget('/api/daily-snapshot?days=45').catch(() => null),
+    jget('/api/fomc/calendar').catch(() => null),
+  ]);
+  _tl.surprises = sp?.series ?? null; _tl.snapshots = sn?.days ?? null; _tl.fomc = fc?.meetings ?? fc?.calendar ?? fc ?? null;
+  renderTimelinePanel(); if (drName) { try { renderDrawerTimeline(allRows().find(x => x.name === drName)); } catch {} }
+}
+const _tlFam = ev => (window.deskWatchBrick?.EVENT_FAMILY_RE ?? EVENT_FAMILY_RE).find(([, re]) => re.test(ev ?? ''))?.[0] ?? null;
+const _tlDay = ms => new Date(ms).toISOString().slice(0, 10);
+const _tlAgo = d => Math.round((Date.now() - Date.parse(d + 'T12:00:00Z')) / 864e5);
+// Releases in a window of days-ago [from, to), for a set of currencies (null = all), biggest surprises first.
+// Three sources, merged by country|event|day: the week's calendar (this week's
+// high-impact rows, already past), the daily snapshot's `released` rows (older
+// days), and the surprise store (adds the z-score and the actual where a print
+// with an actual was stored). Ranked by the measured size of the family on this
+// pair (Event Response Book), then by surprise.
+function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
+  const by = new Map(); const now = Date.now();
+  const put = (cc, name, ms, f) => { const day = _tlDay(ms); const ago = _tlAgo(day); if (ago < fromAgo || ago >= toAgo || ms > now) return; if (ccys && !ccys.includes(cc)) return; const k = `${cc}|${String(name).toLowerCase()}|${day}`; by.set(k, { ...(by.get(k) ?? { cc, name, day }), ...f }); };
+  for (const e of events ?? []) if ((e.impact ?? '').toLowerCase() === 'high') put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
+  for (const d of _tl.snapshots ?? []) for (const e of d.released ?? []) put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
+  for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z)) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name }); }
+  const out = [...by.values()].map(x => { const fam = _tlFam(x.name); const imp = fam ? window.eventImpactBrick?.eventImpact(x.cc, fam) : null; return { ...x, fam, imp, size: pairName ? imp?.instruments?.[pairName] : null }; })
+    .filter(x => x.actual != null || x.estimate != null || x.imp);
+  return out.sort((a, b) => ((b.size?.spike ?? b.imp?.medSpike ?? 0) - (a.size?.spike ?? a.imp?.medSpike ?? 0)) || (Math.abs(b.z ?? 0) - Math.abs(a.z ?? 0)) || (a.day < b.day ? 1 : -1)).slice(0, limit);
+}
+function _tlRelLine(x) {
+  const sz = x.size ? ` · has moved this pair <b>${x.size.spike}×</b> an ordinary half-hour (n=${x.size.n})` : x.imp ? ` · a ${esc0(x.fam)} print, ${x.imp.medSpike}× median impact` : '';
+  const nums = x.actual != null ? `<b>${esc0(x.actual)}</b> vs ${esc0(x.estimate ?? '?')} consensus${Number.isFinite(x.z) ? ` (surprise ${x.z >= 0 ? '+' : ''}${x.z.toFixed(1)}σ)` : ''}` : `consensus ${esc0(x.estimate ?? '?')}${x.prev != null ? `, prior ${esc0(x.prev)}` : ''}`;
+  return `<div class="tl-l"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}</div>`;
+}
+function _tlWatchLines(fromAgo, toAgo, insts = null) {
+  return (deskWatch?.log ?? []).filter(f => { const ago = _tlAgo(f.at.slice(0, 10)); return f.event === 'started' && ago >= fromAgo && ago < toAgo && (!insts || !f.instruments?.length || f.instruments.some(i => insts.includes(i))); }).slice(0, 4)
+    .map(f => `<div class="tl-l"><span class="k">${esc0(f.at.slice(5, 10))}</span>${f.kind === 'tested' ? '✓' : '~'} ${esc0(f.label)}${f.after5 ? ` → next 5 ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5} ATR`).join(', ')}` : ''}</div>`).join('');
+}
+function _tlSnapLines(fromAgo, toAgo) {
+  return (_tl.snapshots ?? []).filter(d => { const ago = _tlAgo(d.day); return ago >= fromAgo && ago < toAgo && d.brief?.regime; }).slice(-2)
+    .map(d => `<div class="tl-l"><span class="k">${esc0(d.day.slice(5))} we said</span>${esc0(String(d.brief.regime).slice(0, 140))}${d.chainRead?.hook ? ` · <i>${esc0(String(d.chainRead.hook).slice(0, 110))}</i>` : ''}</div>`).join('');
+}
+function _tlLedgerLine(fromAgo, toAgo, pair = null) {
+  const days = (_ledgerSummary?.byDay ?? []).filter(d => { const ago = _tlAgo(d.day); return ago >= fromAgo && ago < toAgo; });
+  if (!days.length) return '';
+  const n = days.reduce((s, d) => s + (d.h1?.n ?? 0), 0), hits = days.reduce((s, d) => s + (d.h1?.hits ?? 0), 0);
+  return n ? `<div class="tl-l ${hits / n >= 0.55 ? 'hit' : hits / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span><b class="r">${hits} of ${n}</b> direction calls right at the next close</div>` : '';
+}
+function _tlAheadEvents(fromDays, toDays, ccys = null, pairName = null) {
+  const now = Date.now();
+  return (events ?? []).filter(e => { const dd = (e.ms - now) / 864e5; return (e.impact ?? '').toLowerCase() === 'high' && dd >= fromDays && dd < toDays && (!ccys || ccys.includes(e.country)); }).slice(0, 5)
+    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? ` (cons. ${esc0(e.estimate)})` : ''}${size ? ` · <b>${size.spike}×</b> an ordinary half-hour here, n=${size.n}` : imp ? ` · ${imp.medSpike}× median impact` : ''}</div>`; }).join('');
+}
+// The calendar feed covers the current week only; on a weekend the week ahead is not published yet.
+function _tlNoCal(fromDays, toDays) {
+  const wk = [...(events ?? [])].sort((a, b) => b.ms - a.ms)[0]; const end = wk ? new Date(wk.ms) : null;
+  const covered = end && (end.getTime() - Date.now()) / 864e5 >= toDays;
+  return covered ? `<div class="tl-l"><span class="k">calendar</span>no high-impact release in the window</div>` : `<div class="tl-l"><span class="k">calendar</span>${fromDays ? 'beyond the one-week calendar window' : 'the coming week publishes on Sunday'}${end ? ` (feed runs to ${end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })})` : ''}</div>`;
+}
+// The outlook engine's clearest reads, each way, so the plan column names pairs, not just a count.
+function _tlTopBias(rs, hz) {
+  const list = rs.map(r => ({ r, o: pairOutlook(r, hz) })).filter(x => x.o?.bias && x.o.bias !== 'NEUTRAL' && !x.o.noRead && Number.isFinite(x.o.confidence));
+  const top = dir => list.filter(x => x.o.bias === dir).sort((a, b) => b.o.confidence - a.o.confidence).slice(0, 3).map(x => `${dispName(x.r.name)} ${x.o.confidence}%`).join(', ');
+  const up = top('BULLISH'), dn = top('BEARISH'); if (!up && !dn) return '';
+  return `<div class="tl-l"><span class="k">clearest</span>${up ? `↑ ${esc0(up)}` : ''}${up && dn ? ' · ' : ''}${dn ? `↓ ${esc0(dn)}` : ''} <span class="muted">(outlook engine — context, not a validated signal)</span></div>`;
+}
+function _tlFomcAhead() {
+  const list = Array.isArray(_tl.fomc) ? _tl.fomc : (_tl.fomc?.meetings ?? []);
+  const nx = list.map(m => m.date ?? m).filter(d => typeof d === 'string' && Date.parse(d) > Date.now()).sort()[0];
+  return nx ? `<div class="tl-l"><span class="k">${nx.slice(5)}</span>FOMC · decision days run ~1.3 ATR whether or not priced (tested)</div>` : '';
+}
+// Path + cone: the last 20 closes and the forecaster's 5- and 20-day bands ahead.
+function _tlChart(closes, fc, dp) {
+  if (!closes?.length || closes.length < 10) return '';
+  const last = closes[closes.length - 1].value;
+  const lw = fc?.ladder_weekly, lm = fc?.ladder_monthly;
+  const band = (l) => l?.oh?.p50 != null && l?.ol?.p50 != null ? { hi50: last * (1 + l.oh.p50 / 100), lo50: last * (1 - l.ol.p50 / 100), hi75: last * (1 + (l.oh.p75 ?? l.oh.p50) / 100), lo75: last * (1 - (l.ol.p75 ?? l.ol.p50) / 100) } : null;
+  const b5 = band(lw), b20 = band(lm);
+  const vals = closes.map(c => c.value).concat(b20 ? [b20.hi75, b20.lo75] : b5 ? [b5.hi75, b5.lo75] : []);
+  const mn = Math.min(...vals), mx = Math.max(...vals), pad = (mx - mn) * 0.08 || 1;
+  const W = 600, H = 120, L = 10, R = 10, T = 12, B = 14; const n = closes.length;
+  const xPast = i => L + (i / (n - 1)) * (W * 0.55 - L), xNow = W * 0.55, x5 = W * 0.55 + (W * 0.45 - R) * 0.25, x20 = W - R;
+  const y = v => T + (1 - (v - mn + pad) / (mx - mn + 2 * pad)) * (H - T - B);
+  const path = closes.map((c, i) => `${i ? 'L' : 'M'}${xPast(i).toFixed(1)},${y(c.value).toFixed(1)}`).join(' ');
+  const cone = b20 && b5 ? `<path d="M${xNow},${y(last)} L${x5},${y(b5.hi75)} L${x20},${y(b20.hi75)} L${x20},${y(b20.lo75)} L${x5},${y(b5.lo75)} Z" fill="var(--blue)" opacity=".10"/><path d="M${xNow},${y(last)} L${x5},${y(b5.hi50)} L${x20},${y(b20.hi50)} L${x20},${y(b20.lo50)} L${x5},${y(b5.lo50)} Z" fill="var(--blue)" opacity=".16"/>` : '';
+  const f = v => fmtN(v, dp);
+  return `<svg class="tl-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Last twenty closes and the expected 5- and 20-day bands">
+    ${cone}
+    <path d="${path}" fill="none" stroke="var(--text)" stroke-width="1.6"/>
+    <line x1="${xNow}" y1="${T}" x2="${xNow}" y2="${H - B}" stroke="var(--blue)" stroke-dasharray="3 3"/>
+    <circle cx="${xNow}" cy="${y(last)}" r="3" fill="var(--blue)"/>
+    <text x="${L}" y="${H - 2}">${closes[0].date.slice(5)}</text><text x="${xNow}" y="${T - 3}" text-anchor="middle">today ${f(last)}</text>
+    ${b5 ? `<text x="${x5}" y="${H - 2}" text-anchor="middle">+5d ${f(b5.lo50)}–${f(b5.hi50)}</text>` : ''}${b20 ? `<text x="${x20}" y="${H - 2}" text-anchor="end">+20d ${f(b20.lo50)}–${f(b20.hi50)}</text>` : ''}
+    ${b20 ? `<text x="${x20}" y="${T - 2}" text-anchor="end">band = median, shaded to the 75th</text>` : ''}
+  </svg>`;
+}
+function _tlDelta(closes, k, dp) {
+  if (!closes || closes.length <= k) return null;
+  const a = closes[closes.length - 1 - k].value, b = closes[closes.length - 1].value;
+  return { pct: (b / a - 1) * 100, from: a, to: b };
+}
+// ── the global strip ──
+function renderTimelinePanel() {
+  const el = $('timelinePanel'); if (!el) return;
+  if (!events && !deskWatch && !_ledgerSummary) { el.style.display = 'none'; return; }
+  const mm = _macroMovedByKey();
+  const mv = (k, w) => mm[k]?.deltas?.[w]; const bp = v => v == null ? '?' : `${v >= 0 ? '+' : ''}${Math.round(v)}bp`; const pt = v => v == null ? '?' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
+  const chainNow = (deskWatch?.states ?? []).filter(t => t.id.startsWith('chain-') && t.firing).map(t => t.label.replace('Chain link broken: ', ''));
+  const firing = (deskWatch?.states ?? []).filter(t => t.firing && !t.id.startsWith('chain-'));
+  const rs = allRows(); let bull5 = 0, bear5 = 0, bull20 = 0, bear20 = 0;
+  for (const r of rs) { const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); if (w?.bias === 'BULLISH') bull5++; if (w?.bias === 'BEARISH') bear5++; if (m?.bias === 'BULLISH') bull20++; if (m?.bias === 'BEARISH') bear20++; }
+  const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-big">${big}</div>` : ''}${body}</div>`;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">🕰 Timeline — 20 sessions back, 20 ahead</span>${secChev('timelinePanel')}</div>
+    ${secBody('timelinePanel', `
+    <div class="tl">
+      ${col('', '−20d → −5d', `10Y ${bp(mv('us10y', 20))} · 2Y ${bp(mv('us2y', 20))} · $ ${pt(mv('dxy', 20))}`, _tlReleases(5, 21, null, 4).map(_tlRelLine).join('') + _tlWatchLines(5, 21) + _tlSnapLines(5, 21) + _tlLedgerLine(5, 21))}
+      ${col('', '−5d → today', `10Y ${bp(mv('us10y', 5))} · 2Y ${bp(mv('us2y', 5))} · VIX ${pt(mv('vix', 5))}`, _tlReleases(0, 5, null, 4).map(_tlRelLine).join('') + _tlWatchLines(0, 5) + _tlSnapLines(1, 5) + _tlLedgerLine(1, 5))}
+      ${col('now', 'today', `${firing.length} condition${firing.length === 1 ? '' : 's'} firing`, (chainNow.length ? `<div class="tl-l"><span class="k">chain broken</span>${chainNow.map(esc0).join(' · ')}</div>` : '<div class="tl-l"><span class="k">chain</span>no link broken</div>') + firing.slice(0, 4).map(t => `<div class="tl-l">${t.kind === 'tested' ? '✓' : '~'} ${esc0(t.label)}${t.expect?.length ? ` → ${t.expect.slice(0, 2).map(e => `${dispName(e.inst)} ~${e.after}${e.unit}`).join(', ')}` : ''}</div>`).join('') + (_ledgerSummary?.byDay?.[0] ? _tlLedgerLine(0, 2) : ''))}
+      ${col('ahead', 'today → +5d', `outlook ${bull5}↑ ${bear5}↓ of ${rs.length}`, (_tlAheadEvents(0, 5) || _tlNoCal(0, 5)) + _tlTopBias(rs, 'weekly') + `<div class="tl-l"><span class="k">leans</span>${esc0(leanGroupsText())}</div>`)}
+      ${col('ahead', '+5d → +20d', `outlook ${bull20}↑ ${bear20}↓ of ${rs.length}`, (_tlAheadEvents(5, 20) || _tlNoCal(5, 20)) + _tlTopBias(rs, 'monthly') + _tlFomcAhead() + `<div class="tl-l"><span class="k">20d</span>quiet days cluster and wide days cluster (tested) — the regime you are in is the best guess for the regime you will be in</div>`)}
+    </div>
+    <div class="tl-foot">Look-back is measured: releases from the surprise store with the size each has produced (Event Response Book), chain and watch transitions from the watch log with their after-scores, and this page's own calls scored by the ledger. "We said" lines come from the daily snapshot, kept from 19 Sep 2026. Look-forward is the plan: the calendar with expected sizes, the outlook engine's biases, the forecaster's bands. Nothing here predicts direction.</div>`)}`;
+}
+function leanGroupsText() {
+  const html = leanGroupsHtml(); if (!html) return 'no grouped leans';
+  return html.replace(/<[^>]+>/g, '').replace(/^Leans grouped as trades: /, '').replace(/\s+/g, ' ').trim();
+}
+// ── the per-pair strip in the drawer ──
+async function renderDrawerTimeline(r) {
+  const sec = $('drTimelineSec'), box = $('drTimeline'); if (!sec || !box || !r) return;
+  sec.style.display = '';
+  const d = r.d, ccys = PAIR_NEWS_CC[r.name] ?? null;
+  let closes = _tl.closes[d.sym];
+  if (!closes) { try { const oh = await jget(`/api/ohlc?symbol=${encodeURIComponent(d.sym.replace('_', '/'))}`); closes = (oh?.values ?? []).map(v => ({ date: String(v.datetime ?? '').slice(0, 10), value: Number(v.close) })).filter(v => v.date && Number.isFinite(v.value)).sort((a, b) => a.date < b.date ? -1 : 1).slice(-21); _tl.closes[d.sym] = closes; } catch { closes = null; } }
+  if (drName !== r.name) return;
+  const d20 = _tlDelta(closes, 20, d.dp), d5 = _tlDelta(closes, 5, d.dp);
+  const atr = r.d.levels?.hl_med?.range_pts ?? null;
+  const dl = x => x ? `<span class="${x.pct >= 0 ? 'up' : 'dn'}">${x.pct >= 0 ? '+' : ''}${x.pct.toFixed(2)}%</span> <span class="muted" style="font-size:10px">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>` : '—';
+  const rowsL = (_ledgerRows[r.name] ?? []);
+  const led = (fromAgo, toAgo) => { const rs = rowsL.filter(x => { const ago = _tlAgo(x.d); return ago >= fromAgo && ago < toAgo && x.out && (x.dir === 'up' || x.dir === 'down'); }); if (!rs.length) return ''; const h = rs.filter(x => x.out?.h1?.hit).length, n = rs.filter(x => x.out?.h1?.hit != null).length; return n ? `<div class="tl-l ${h / n >= 0.55 ? 'hit' : h / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span><b class="r">${h} of ${n}</b> right at the next close (${rs.map(x => x.dir === 'up' ? '↑' : '↓').join('')})</div>` : ''; };
+  const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const aim = bandAimFor(r); const wrong = wrongAtFor(r); const dir = directionFor(r);
+  const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-big ${/^\+/.test(big) ? 'up' : /^−|^-/.test(big) ? 'dn' : ''}">${big}</div>` : ''}${body}</div>`;
+  const chainMine = (deskWatch?.log ?? []).filter(f => f.id.startsWith('chain-') && f.event === 'started').slice(0, 3).map(f => `<div class="tl-l"><span class="k">${f.at.slice(5, 10)}</span>${esc0(f.label)}</div>`).join('');
+  box.innerHTML = _tlChart(closes, r.fc, d.dp) + `<div class="tl">
+    ${col('', '−20d → −5d', d20 ? dl(d20) : '', _tlReleases(5, 21, ccys, 3, r.name).map(_tlRelLine).join('') + chainMine + led(5, 21))}
+    ${col('', '−5d → today', d5 ? dl(d5) : '', _tlReleases(0, 5, ccys, 3, r.name).map(_tlRelLine).join('') + _tlWatchLines(0, 5, [r.name]) + led(1, 5))}
+    ${col('now', 'today', dir?.direction ? `${dir.direction === 'up' ? '↑' : dir.direction === 'down' ? '↓' : '—'} ${dir.agree}/${dir.total}` : 'no lean', (wrong ? `<div class="tl-l"><span class="k">wrong</span>${wrong.side} <b>${fmtN(wrong.price, d.dp)}</b></div>` : '') + (aim ? `<div class="tl-l"><span class="k">aim</span>${esc0(aim.text)}</div>` : '') + `<div class="tl-l"><span class="k">expected range</span>${atr != null ? `<b>${atr}</b> ${d.ac === 'fx' ? 'pips' : 'pts'} (median day)` : '—'}</div>`)}
+    ${col('ahead', 'today → +5d', w?.bias ? `${w.bias.toLowerCase()} ${w.confidence != null ? w.confidence + '%' : ''}` : 'no read', _tlAheadEvents(0, 5, ccys, r.name) + (r.fc?.ladder_weekly?.hl?.p50 != null ? `<div class="tl-l"><span class="k">5d band</span>median ±${r.fc.ladder_weekly.oh.p50}% / −${r.fc.ladder_weekly.ol.p50}% from here (75th ${r.fc.ladder_weekly.oh.p75}%)</div>` : '') + (w?.drivers?.length ? `<div class="tl-l"><span class="k">drivers</span>${esc0(w.drivers.filter(x => Number.isFinite(x.score) && x.score !== 0).slice(0, 3).map(x => `${x.label} ${x.score > 0 ? '↑' : '↓'}`).join(', '))}</div>` : ''))}
+    ${col('ahead', '+5d → +20d', m?.bias ? `${m.bias.toLowerCase()} ${m.confidence != null ? m.confidence + '%' : ''}` : 'no read', _tlAheadEvents(5, 20, ccys, r.name) + _tlFomcAhead() + (r.fc?.ladder_monthly?.oh?.p50 != null ? `<div class="tl-l"><span class="k">20d band</span>median +${r.fc.ladder_monthly.oh.p50}% / −${r.fc.ladder_monthly.ol.p50}% from here (75th ${r.fc.ladder_monthly.oh.p75}%)</div>` : ''))}
+  </div>
+  <div class="tl-foot">Path: the last twenty closes; shaded: the forecaster's expected bands at 5 and 20 sessions (median, lighter to the 75th). Releases show actual vs consensus, the surprise in sigma, and the size that release has produced on this pair. "Our calls" are this page's direction tags, scored at the next close. The plan columns are what the page thinks today; the daily snapshot keeps them so next month's look-back can grade them.</div>`;
+}
+let _ledgerRows = {};
+async function loadLedgerRowsFor(pair) { if (_ledgerRows[pair]) return; try { const j = await jget(`/api/ledger?pair=${encodeURIComponent(pair)}`); if (j?.ok) _ledgerRows[pair] = j.rows ?? []; } catch { /* stays empty */ } }
+// ── the plan, captured once a day ──
+let _planPosted = null;
+async function postDailyPlan() {
+  const day = new Date().toISOString().slice(0, 10); if (_planPosted === day) return;
+  const rs = allRows(); if (!rs.length || !window.outlookBrick) return;
+  const pairs = {};
+  for (const r of rs) {
+    const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const dir = directionFor(r); const wrong = wrongAtFor(r); const aim = bandAimFor(r);
+    pairs[r.name] = { price: r.d.current_price ?? null, lean: dir?.direction ?? null, agree: dir ? `${dir.agree}/${dir.total}` : null, wrongAt: wrong?.price ?? null, aim: aim ? { target: aim.target, side: aim.side, lift: aim.lift != null ? +aim.lift.toFixed(2) : null } : null, o5: w?.bias ?? null, o5c: w?.confidence ?? null, o20: m?.bias ?? null, o20c: m?.confidence ?? null, expRange: r.d.levels?.hl_med?.range_pts ?? null, band5: r.fc?.ladder_weekly?.oh?.p50 != null ? [r.fc.ladder_weekly.ol.p50, r.fc.ladder_weekly.oh.p50] : null, band20: r.fc?.ladder_monthly?.oh?.p50 != null ? [r.fc.ladder_monthly.ol.p50, r.fc.ladder_monthly.oh.p50] : null };
+  }
+  const plan = { pairs, groups: leanGroupsText(), firing: (deskWatch?.states ?? []).filter(t => t.firing).map(t => t.id), aheadHigh: (events ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.ms > Date.now() && e.ms < Date.now() + 5 * 864e5).slice(0, 12).map(e => `${e.country} ${e.event}`) };
+  try { const j = await fetch('/api/daily-snapshot/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan }) }).then(x => x.json()); if (j?.ok) _planPosted = day; } catch { /* retried next cycle */ }
 }
 function renderOutlookPanel() {
   const el = $('outlookPanel');
@@ -7344,6 +7549,7 @@ function render() {
   renderConcentration();
   renderWhenToWatch();
   renderMacro();
+  try { renderTimelinePanel(); } catch (e) { const t = $('timelinePanel'); if (t) t.style.display = 'none'; }
   renderWeekAhead();
   renderRegimePanel();
   renderConcept();
@@ -7518,6 +7724,7 @@ async function openDrawer(name) {
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
   renderDrawerLedger(r).catch(() => { $('drLedgerSec').style.display = 'none'; });
   try { renderDrawerFactor(r); } catch (e) { $('drFactorSec').style.display = 'none'; }
+  loadLedgerRowsFor(r.name).then(() => renderDrawerTimeline(r)).catch(() => {}); try { renderDrawerTimeline(r); } catch (e) { $('drTimelineSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
   loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); } catch {} }).catch(() => {});
