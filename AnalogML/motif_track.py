@@ -884,7 +884,7 @@ def run(args: argparse.Namespace) -> None:
                         # motif was really filtered.
                         spread = live_pips if live_pips is not None else RETAIL_SPREAD_PIPS.get(pair)
                         why = (f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p" if spread is not None and spread > BEST_CONFIG["max_spread_pips"]
-                               else f"swing regime = {swing_regime} (with-trend: PF 0.98 in backtest)")
+                               else f"swing regime = {swing_regime} (with-trend -- best-config skips)")
                         plan_filtered.append({
                             "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
                             "n_touches": t["n_touches"], "is_top": t["is_top"], "level": t["level"],

@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from swing_structure import atr, classify_swing_structure, pivot_highs, pivot_lows, regime_at
+from swing_structure import atr, classify_swing_structure, pivot_highs, pivot_lows, regime_at, regime_known_at
 
 
 def _bars(highs, lows=None, closes=None, opens=None):
@@ -114,3 +114,62 @@ if __name__ == '__main__':
             print(f'FAIL {fn.__name__}: {type(e).__name__}: {e}')
     print(f'\n{len(fns) - failed}/{len(fns)} passed')
     sys.exit(1 if failed else 0)
+
+
+# ── regime_known_at: the knowability property (2026-09-19) ──────────────────
+# A pivot at bar i needs bars i-n..i+n, so a regime change it produces is not
+# knowable until bar i+n closes. `regime_at` (by pivot bar) hands a caller at
+# bar i changes it could not have seen -- 21% of the motif strategy's confirm
+# bars relabelled between backtest (full history) and live (data ending at
+# the bar). `regime_known_at` must make the two views agree.
+
+def _zigzag(n_bars, period=6, amp=5.0, drift=0.0, flip_every=None):
+    """A wave with drift; `flip_every` reverses the drift every that-many
+    bars so the swing regime actually changes (HH+HL -> LH+LL -> ...)."""
+    import math
+    highs, level = [], 100.0
+    for i in range(n_bars):
+        d = drift if (flip_every is None or (i // flip_every) % 2 == 0) else -drift
+        level += d
+        highs.append(level + amp * math.sin(2 * math.pi * i / period))
+    return _bars(highs, lows=[h - 2 for h in highs])
+
+
+def test_known_idx_is_pivot_plus_pivot_n():
+    bars = _zigzag(120, period=8, drift=0.4)
+    for p in classify_swing_structure(bars, pivot_n=3)[1:]:
+        assert p.known_idx == p.idx + 3
+
+
+def test_regime_known_at_never_uses_an_unconfirmed_pivot():
+    bars = _zigzag(120, period=8, drift=0.4)
+    series = classify_swing_structure(bars, pivot_n=3)
+    for i in range(len(bars)):
+        r = regime_known_at(series, i)
+        assert r is not None and r.known_idx <= i
+
+
+def test_truncated_and_full_history_agree_at_the_same_bar():
+    """The property that makes backtest == live: the regime knowable at bar i
+    must be the same whether the series was built from data ending at i or
+    from the whole history. regime_at (hindsight) fails this; regime_known_at
+    must pass it on every bar."""
+    full = _zigzag(240, period=9, drift=0.6, flip_every=45)
+    series_full = classify_swing_structure(full, pivot_n=3)
+    assert len(series_full) > 3, 'test data must actually change regime'
+    mismatches_known = mismatches_hindsight = 0
+    for i in range(40, len(full)):
+        series_trunc = classify_swing_structure(full.iloc[: i + 1], pivot_n=3)
+        a, b = regime_known_at(series_full, i), regime_known_at(series_trunc, i)
+        if (a.regime, a.dir) != (b.regime, b.dir):
+            mismatches_known += 1
+        h1, h2 = regime_at(series_full, i), regime_at(series_trunc, i)
+        if (h1.regime, h1.dir) != (h2.regime, h2.dir):
+            mismatches_hindsight += 1
+    assert mismatches_known == 0, f"regime_known_at disagreed on {mismatches_known} bars"
+    # And the bug is real on this data: the hindsight lookup DOES disagree.
+    assert mismatches_hindsight > 0
+
+
+def test_regime_known_at_empty_series():
+    assert regime_known_at([], 5) is None
