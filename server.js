@@ -137,7 +137,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
-import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
@@ -13974,6 +13974,26 @@ async function _fetchPolicySeries(source, id, fromIso) {
   }
   throw new Error(`unknown policy source ${source}`);
 }
+// The statistics offices' own endpoints, each to [{date, value, realtime_start}].
+async function _fetchIntlSeries(spec) {
+  const ua = { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(30_000) };
+  if (spec.source === 'ons') {
+    const r = await fetch(`https://www.ons.gov.uk/${spec.path}/timeseries/${spec.id}/${spec.dataset}/data`, ua); if (!r.ok) throw new Error(`ONS ${spec.id} HTTP ${r.status}`);
+    return _onsSeries(await r.json());
+  }
+  if (spec.source === 'statcan') {
+    const r = await fetch('https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, body: JSON.stringify([{ vectorId: spec.id, latestN: 18 }]), signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`StatCan v${spec.id} HTTP ${r.status}`);
+    return _statcanSeries(await r.json());
+  }
+  if (spec.source === 'eurostat') {
+    const r = await fetch(`https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/${spec.id}?${spec.params}&lastTimePeriod=18`, ua); if (!r.ok) throw new Error(`Eurostat ${spec.id} HTTP ${r.status}`);
+    const j = await r.json(); const rows = _jsonStatSeries(j); const upd = String(j.updated ?? '').slice(0, 10);
+    // only the newest period is known to carry the dataset's update stamp
+    return rows.map((o, i) => ({ ...o, realtime_start: i === rows.length - 1 ? upd : '' }));
+  }
+  throw new Error(`unknown intl source ${spec.source}`);
+}
 let _fredFillWarned = false;
 async function _fillActualsFromFred(events, stored) {
   const key = process.env.FRED_KEY;
@@ -13985,6 +14005,14 @@ async function _fillActualsFromFred(events, stored) {
     const spec = _fredSpecFor(ev.country, ev.event); if (!spec) continue;
     tried++;
     try {
+      if (['ons', 'statcan', 'eurostat'].includes(spec.source)) {
+        const obs = await _fetchIntlSeries(spec);
+        const a = _fredActual(spec, ev.ms, obs);   // same vintage rule: newest observation, published on or after the release day
+        if (!a?.actual) continue;
+        ev.actual = a.actual; ev.src = `${spec.source}:${spec.id}`; filled++;
+        notes.push(`${ev.country} ${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; prior ${a.prior ?? '-'} vs FF ${ev.prev ?? '?'})`);
+        await new Promise(r => setTimeout(r, 300)); continue;
+      }
       if (spec.source && spec.source !== 'fred') {
         const obs = await _fetchPolicySeries(spec.source, spec.id, new Date(ev.ms - 10 * 864e5).toISOString().slice(0, 10));
         const a = _policyActual(spec, ev.ms, obs);

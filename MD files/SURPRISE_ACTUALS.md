@@ -117,3 +117,25 @@ a series almost never surprises (rate decisions). This week under the new
 scale: claims 196K vs 207K = +0.67σ, retail sales 1.2% vs 0.8% = +1.12σ, CPI
 0.4% vs 0.3% = +0.67σ. S7 (surprise size → range) is to be re-run on the
 rescaled history once deployed; its verdict is recorded below when done.
+
+## Addendum 2026-09-19 (evening): non-US data actuals
+
+Sources, all free, none needing a key: **ONS** (the site's timeseries JSON —
+the API proper was retired Nov 2024; every observation carries `updateDate`,
+stamped midnight London, rolled to the release day), **StatCan** Web Data
+Service (every point carries `releaseTime`), **Eurostat** JSON-stat (dataset
+`updated` only, so the join demands the release's exact reference period —
+otherwise a flash would be filled with the previous month's final). Same
+vintage rule as FRED where stamps exist.
+
+Validated against the archive (latest vintage, so revised series may drift a
+tick): GB CPI y/y **6/6**, GB core CPI **6/6**, GB unemployment 2 exact + 4
+one-tick revisions; CA CPI m/m **6/6**, CA common core 5/6, CA unemployment
+and GDP within a tick, CA employment change same sign within revision range;
+EA HICP flash 4/6 within a tick, core flash 4/6. **Dropped** for not
+validating: GB claimant count, average earnings, retail sales, manufacturing,
+monthly GDP (all far off — wrong series or heavy revision, either way not
+trusted); CA retail sales (discontinued vector); nothing for AU/JP/NZ/CH data
+yet. Live dry run on this week: nine non-US prints filled with priors agreeing
+— CA CPI −0.1% as expected, GB CPI 3.1% as expected, GB unemployment 4.9% vs
+5.0%, EA final HICP 3.2% vs 3.3%.
