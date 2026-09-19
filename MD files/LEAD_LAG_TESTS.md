@@ -65,3 +65,45 @@ chase breakouts on the 29th–31st."*
   rebuilt on this desk's data; OpEx week vs the week after (range).
 
 ---
+
+## Results (run 2026-09-19; design frozen above before running)
+
+Harness `analysis/lead_lag_studies.mjs`; output `analysis/output/lead_lag_studies.json`.
+Hourly bars 2012-01 → 2026-09: 61,015 shared hours for EUR/USD, 33,269 for GBP/USD.
+
+**L1a — the spread and the currency move in the same hour, and that is all.**
+EUR/USD: ρ(0) = **−0.30** (the textbook sign, every year 2012–2026, −0.12 to
+−0.44), then ρ(+1h) = −0.015 against a placebo 95th percentile of 0.013 — one
+hour of spillover at the edge of noise — and ρ(+2h…+48h) all inside ±0.005.
+GBP/USD: ρ(0) = −0.14, ρ(+1h) +0.004, nothing after. No year shows a 24-hour
+lead (ρ(+24h) between −0.03 and +0.04 in every year).
+
+**L1b — the lesson's divergence setup does not carry a catch-up.** EUR/USD:
+727 non-overlapping divergences (spread moved ≥ 1σ over 24h, spot did not
+follow). Next 24 hours in the spread's direction **379 of 727 = 52% [48.5–55.8]**,
+mean +0.05σ [−0.05, +0.14]. The *aligned* control — spot had already moved with
+the spread — scored the same: 52% [49–55], +0.06σ. Big divergences (|z| ≥ 2,
+n=52) went the other way: 35% [22–48], **−0.47σ** — the spread gave back, the
+currency did not catch up. GBP/USD: 47% [43–50] on 736 setups, −0.13σ; aligned
+47%. **NULL on both pairs.**
+
+Reading: the 17–18 Feb 2026 case is one episode. Across 3,300 divergences in
+fourteen years the currency's next day is a coin flip, and the biggest gaps
+closed from the spread's side. This matches the desk's daily-bar verdicts
+(`yields-to-fx-direction`, `price-vs-spread-divergence`) at the one horizon they
+had not covered. The relationship is real and contemporaneous; it is not a lead.
+The lesson's own §3.5 roadmap (rolling lag, Granger) would find the same: the
+optimal lag is zero.
+
+**L2 — no month-end drag.** 229 months of SPX500 (2007-08 → 2026-08), quintiles
+of 45. After the strongest months the last three sessions returned **+0.11%**
+[−0.32, +0.50], negative 21 of 45 (47% [32–61]); after the weakest, +0.65%
+[−0.14, +1.53], negative 36%; ordinary months −0.06%, any three sessions +0.11%.
+Under the sample bar, and the direction is not even the one claimed. **NULL as a
+base rate.**
+
+**What changes on the page.** Nothing new is added; two more lines go into the
+evidence book so the AI reads and the divergence panel never say "the spread
+moved first, the currency will follow". The spread stays what it was: the
+same-hour explanation of a move, and — as a z-scored 2-year spread over weeks —
+the one validated macro sleeve.

@@ -278,6 +278,20 @@ export const DESK_EVIDENCE = [
     use: 'The divergence panel may describe the shape; nothing may be claimed about the week after.',
   },
   {
+    id: 'spread-leads-fx-hours', domain: 'macro', verdict: 'null', date: '2026-09-19', doc: 'MD files/LEAD_LAG_TESTS.md#L1',
+    claim: 'The DE-US 10-year spread leads EUR/USD by hours: when the spread moves and spot does not, spot catches up within a day',
+    result: 'Hourly bars 2012-2026 (61k hours). Same-hour correlation -0.30 every year; +1h -0.015 (placebo 0.013); +2h to +48h zero. The divergence setup (727 non-overlapping): next 24h in the spread's direction 52% [48-56], +0.05 sigma -- identical to the aligned control. Big divergences (n=52) went the other way (35%, -0.47 sigma): the spread gave back. GBP/USD 47%.',
+    use: 'The spread explains a move in the same hour; it does not announce one. Never write "rates moved first, the currency will follow". The Feb 2026 case in the course notes is one episode.',
+    instruments: ['EURUSD', 'GBPUSD'],
+  },
+  {
+    id: 'month-end-rebalance', domain: 'price', verdict: 'null', date: '2026-09-19', doc: 'MD files/LEAD_LAG_TESTS.md#L2',
+    claim: 'After a strong month, rebalancing sells stocks in the final two or three sessions',
+    result: 'SPX500 2007-2026, 229 months. After top-quintile months the last three sessions returned +0.11% [-0.32, +0.50], negative 47% of the time; after bottom-quintile months +0.65%. Ordinary months -0.06%.',
+    use: 'No month-end drag to trade or to warn about. Month-end stays a calendar note, not a lean.',
+    instruments: ['SPX500'],
+  },
+  {
     id: 'nowcast-gap-cpi', domain: 'events', verdict: 'null', date: '2026-09-19', doc: 'MD files/NOWCAST_TESTS.md#N1',
     claim: 'When the Cleveland Fed inflation nowcast sits above consensus, the CPI print is more likely to beat',
     result: '139 CPI m/m releases 2013-2025. Calls at |gap| >= 0.05: 23 of 43 right (53%, interval 39-68%); at >= 0.10, 8 of 19 (42%). The nowcast forecasts worse than the consensus (MAE 0.105 vs 0.086). Core CPI and core PCE the same shape.',
