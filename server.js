@@ -136,7 +136,8 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
-import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
+import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
@@ -3428,6 +3429,10 @@ async function _dailySnapshotTick() {
   try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
   try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
   try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
+  // The day's high-impact releases, kept so a look-back beyond the calendar feed's
+  // one-week window still knows what news came (the surprise store only carries
+  // prints with actuals; the live feed rarely supplies them).
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const d0 = Date.parse(day + 'T00:00:00Z'); row.released = (r.events ?? []).filter(e => e.ms >= d0 && e.ms < d0 + 864e5 && e.impact === 'high' && e.ms <= Date.now()).slice(0, 12).map(e => ({ country: e.country, event: e.event, ms: e.ms, estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null })); } catch { /* skipped */ }
   try { const raw = await kv.get(_FRED_DASH_KV); const f = raw ? (JSON.parse(raw)?.d ?? JSON.parse(raw)) : {}; row.levels = Object.fromEntries(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy', 'wti'].map(k => [k, f?.[k]?.value ?? null])); } catch { /* skipped */ }
   const i = store.days.findIndex(d => d.day === day);
   if (i >= 0) store.days[i] = { ...store.days[i], ...row }; else store.days.push(row);
@@ -3435,6 +3440,26 @@ async function _dailySnapshotTick() {
   store.days = store.days.slice(-_SNAP_KEEP);
   await kv.put(_SNAP_KV, JSON.stringify(store));
 }
+// The page's forward plan for the day -- outlook biases, aims, leans with their
+// falsifiers, expected ranges, grouped trades -- posted by the browser once a day
+// (the outlook engine and the aim lines live client-side). Merged into the day's
+// row under `plan`; first post of the day wins so a later refresh cannot rewrite
+// what was planned in the morning.
+app.post('/api/daily-snapshot/plan', async (req, res) => {
+  try {
+    const plan = req.body?.plan; if (!plan || typeof plan !== 'object') return res.status(400).json({ ok: false, error: 'Missing plan' });
+    const store = await _loadSnapStore(); if (!store) return res.status(503).json({ ok: false, error: 'snapshot store unreadable; refusing to overwrite' });
+    const day = new Date().toISOString().slice(0, 10);
+    let i = store.days.findIndex(d => d.day === day);
+    if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
+    if (store.days[i].plan) return res.json({ ok: true, kept: true, plannedAt: store.days[i].plan.at });
+    const compact = JSON.parse(JSON.stringify(plan)); compact.at = new Date().toISOString();
+    if (JSON.stringify(compact).length > 60_000) return res.status(413).json({ ok: false, error: 'plan too large' });
+    store.days[i].plan = compact;
+    await kv.put(_SNAP_KV, JSON.stringify(store));
+    res.json({ ok: true, kept: false, plannedAt: compact.at });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 app.get('/api/daily-snapshot', async (req, res) => {
   try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -13758,11 +13783,50 @@ async function _readSurpriseStore() {
   return Array.isArray(rows) ? rows : [];
 }
 
+// ForexFactory's free feed has no `actual` field, so from the 2025-04 backfill to
+// 2026-09-19 this store took no live print at all ("nothing new, store untouched",
+// hourly, for seventeen months). The actual for the US releases FRED publishes is
+// rebuilt from FRED *vintages*: the data as known in the three days after the
+// release, whose newest observation -- if it was published inside that window --
+// is the first print. Validated against the ForexFactory archive: 179 of 181
+// first prints exact (js/fredActuals.js). Non-US and proprietary US series
+// (ISM, PMIs, Conference Board) still have no actual; they are simply not scored.
+const _FRED_FILL_MAX = 40;   // lookups per hourly pass; FRED allows 120/min
+let _fredFillWarned = false;
+async function _fillActualsFromFred(events, stored) {
+  const key = process.env.FRED_KEY;
+  if (!key) { if (!_fredFillWarned) { console.warn('[surprise] FRED_KEY not set -- live actuals cannot be filled'); _fredFillWarned = true; } return { filled: 0, tried: 0 }; }
+  const have = new Set((stored ?? []).filter(x => x.actual != null && x.actual !== '').map(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`));
+  const pend = _fredPending((events ?? []).filter(e => !have.has(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`))).slice(0, _FRED_FILL_MAX);
+  let filled = 0, tried = 0; const notes = [];
+  for (const ev of pend) {
+    const spec = _fredSpecFor(ev.country, ev.event); if (!spec) continue;
+    tried++;
+    try {
+      const w = _fredVintageWindow(ev.ms, Date.now());
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${spec.id}&api_key=${key}&file_type=json&observation_start=${_fredFetchStart(spec, ev.ms)}&realtime_start=${w.realtime_start}&realtime_end=${w.realtime_end}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) { notes.push(`${ev.event}: HTTP ${res.status}`); if (res.status === 429) break; continue; }
+      const j = await res.json();
+      const obs = (j.observations ?? []).map(o => ({ date: o.date, value: o.value === '.' ? NaN : parseFloat(o.value), realtime_start: o.realtime_start }));
+      const a = _fredActual(spec, ev.ms, obs);
+      if (!a?.actual) continue;   // not on FRED yet; the next hourly pass asks again
+      ev.actual = a.actual; ev.src = `fred:${spec.id}`; filled++;
+      const agree = a.prior != null && ev.prev != null ? _fredPriorAgrees(ev.prev, a.prior) : null;
+      notes.push(`${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; prior ${a.prior ?? '-'} vs FF ${ev.prev ?? '?'}${agree === false ? ' MISMATCH' : ''})`);
+    } catch (e) { notes.push(`${ev.event}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  if (tried) console.log(`[surprise] FRED actuals: ${filled} filled of ${tried} pending${notes.length ? ' -- ' + notes.slice(0, 8).join('; ') : ''}`);
+  return { filled, tried };
+}
 async function _refreshSurpriseStore() {
   const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
   if (!r.ok) throw new Error(`calendar feed unavailable: ${r.error || 'unknown'}`);
   const stored = await _readSurpriseStore();
-  const merged = _mergeReleases(stored, r.events ?? []);
+  const events = (r.events ?? []).map(e => ({ ...e }));   // copy: the feed's cache must not carry our fills
+  await _fillActualsFromFred(events, stored);
+  const merged = _mergeReleases(stored, events);
   // The store carries ~26k backfilled releases, so it is a multi-megabyte value.
   // Rewriting it hourly when nothing printed is pure churn — most hours the calendar
   // has no new actuals at all.
@@ -13837,8 +13901,17 @@ app.get('/api/econ-surprise', async (req, res) => {
     // release actually did rather than only naming the next one. ?history=1 returns
     // every scored print per series -- the research harness reads the full store
     // through this (analysis/market_sense_studies.mjs S7), nothing else needs it.
-    const series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
-    res.json({ ok: true, storedReleases: rows.length, ...idx, series, generatedAt: new Date().toISOString() });
+    let series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
+    // ?since=YYYY-MM-DD trims every series to prints on or after that day (the timeline
+    // wants 25 days of releases, not the whole archive).
+    if (req.query.since && /^\d{4}-\d{2}-\d{2}$/.test(req.query.since)) { const ms = Date.parse(req.query.since + 'T00:00:00Z'); series = Object.fromEntries(Object.entries(series).map(([k, v]) => [k, v.filter(x => (x.ms ?? 0) >= ms)]).filter(([, v]) => v.length)); }
+    // Live-feed health, so a store that stops growing is visible on the page and not
+    // only in an hourly log line that reads as healthy.
+    const backfillEnd = Date.parse('2025-04-05T00:00:00Z');
+    const live = rows.filter(x => x.ms > backfillEnd && x.actual != null && x.actual !== '');
+    const latest = live.length ? live.reduce((m, x) => x.ms > m ? x.ms : m, 0) : null;
+    const health = { livePrints: live.length, last30d: live.filter(x => x.ms > Date.now() - 30 * 864e5).length, latestPrintAt: latest ? new Date(latest).toISOString() : null, source: 'ForexFactory consensus + FRED vintage actuals (US only)' };
+    res.json({ ok: true, storedReleases: rows.length, ...idx, series, health, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/econ-surprise/refresh', async (_req, res) => {

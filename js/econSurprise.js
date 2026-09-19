@@ -295,6 +295,7 @@ export function mergeReleases(stored = [], incoming = [], opts = {}) {
       country: String(e.country ?? '').toUpperCase(), event: e.event ?? '',
       impact: String(e.impact ?? '').toLowerCase(), time: e.time ?? null, ms: e.ms,
       estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null,
+      ...(e.src ? { src: e.src } : {}),   // where the actual came from ('fred:CPIAUCSL'); absent for the feed's own
     };
     if (map.has(id)) {
       const prevRow = map.get(id);
