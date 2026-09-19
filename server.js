@@ -31991,6 +31991,10 @@ if (process.env.OANDA_KEY) {
         console.error(`[reference-engine-rebuild] ${label} trigger failed:`, e.message);
       }
     }
+    // Stamped BEFORE anything runs so the follow-on healing pass (after
+    // Session Handoff, below) can tell "never touched tonight" apart from
+    // "touched tonight, just early" — see that pass's own doc.
+    const _rebuildTickStartedAt = Date.now();
     await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
     // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
@@ -32042,9 +32046,65 @@ if (process.env.OANDA_KEY) {
     await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
     await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+
+    // Follow-on healing pass (2026-09-19, direct owner request after tracing
+    // AUDNZD's repeated overnight failure): the batch job above still dies
+    // on SOME pair most nights (never root-caused — needs Railway logs), but
+    // a solo re-run of just that pair, done by hand, completed with zero
+    // errors both times tried (AUDNZD: 34,569 Asia + 22,207 Monday touch-
+    // records, clean). That rules out bad data/a broken symbol — it only
+    // fails competing for memory with the rest of the batch. So: after the
+    // WHOLE main chain has finished (strictly sequential, never overlapping
+    // it — the owner's explicit condition was "as long as it doesn't
+    // corrupt the book builds", and two writers touching the same pair's
+    // book file at once is exactly the kind of thing that could), check
+    // which (pair, ladder) books this run actually touched and solo-retry
+    // only the ones it didn't — same runOne() code path as the batch job
+    // and the manual "Regenerate" button, so there is no second/different
+    // write path that could produce a differently-shaped book.
+    //
+    // Deliberately CAPPED (_FIB_HEAL_MAX) rather than healing everyone
+    // stale: if the batch job dropped more than a handful of pairs, that's
+    // a bigger problem than one unlucky pair and deserves to be VISIBLE
+    // (loud staleness alert, investigate) rather than quietly patched over
+    // one-by-one, which could also just extend how long this tick keeps a
+    // memory-constrained container busy.
+    try {
+      const _FIB_HEAL_MAX = 5;
+      const _fibHealLadders = [
+        { label: 'asia', prefix: 'asia-fib-atlas', starter: _startAsiaFibAtlasRunJob },
+        { label: 'monday', prefix: 'monday-fib-atlas', starter: _startMondayFibAtlasRunJob },
+      ];
+      const missed = [];
+      for (const pairUpper of fibAtlasPairsBase) {
+        const pair = pairUpper.toLowerCase();
+        for (const l of _fibHealLadders) {
+          try {
+            const book = await _r2GetJSON(`${l.prefix}/${pair}-votetrades.json`);
+            const genAt = book?.generatedAt ? Date.parse(book.generatedAt) : 0;
+            if (!genAt || genAt < _rebuildTickStartedAt) missed.push({ pair: pairUpper, ...l });
+          } catch (e) {
+            missed.push({ pair: pairUpper, ...l }); // couldn't even read it -- treat as missed, not silently skip
+          }
+        }
+      }
+      if (!missed.length) {
+        console.log('[reference-engine-rebuild] healing pass: every (pair,ladder) was touched by tonight\'s run — nothing to heal');
+      } else if (missed.length > _FIB_HEAL_MAX) {
+        console.error(`[reference-engine-rebuild] healing pass: ${missed.length} (pair,ladder) constituents missed tonight — over the ${_FIB_HEAL_MAX} cap, NOT auto-healing (this is a bigger failure than one unlucky pair; investigate instead): ${missed.map(m => `${m.pair}|${m.label}`).join(', ')}`);
+      } else {
+        console.log(`[reference-engine-rebuild] healing pass: ${missed.length} (pair,ladder) constituent(s) missed tonight, solo-retrying: ${missed.map(m => `${m.pair}|${m.label}`).join(', ')}`);
+        for (const m of missed) {
+          await runSeq(`heal ${m.pair}|${m.label}`, () => m.starter({ instruments: [m.pair] }));
+        }
+      }
+    } catch (e) {
+      console.error('[reference-engine-rebuild] healing pass failed:', e.message);
+    }
+
     console.log('[reference-engine-rebuild] nightly tick complete');
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Asia/Monday Fib Atlas + Session Path + Session Handoff, then a follow-on healing pass that solo-retries any Fib Atlas (pair,ladder) the run itself missed, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
