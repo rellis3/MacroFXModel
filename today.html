@@ -713,6 +713,16 @@
   .cal-row .cal-ev{color:var(--text2);flex:1;line-height:1.35}
   .cal-row .cal-ev b{color:var(--text)}
   .cal-row .cal-cd{font-size:10px;font-weight:700;color:var(--amber);flex-shrink:0}
+  .cal-call{display:inline-flex;gap:2px;margin-left:4px;vertical-align:middle}
+  .cal-call button{font:inherit;font-size:9.5px;font-weight:700;line-height:1;padding:2px 5px;border:1px solid var(--border2);background:var(--card2);color:var(--text3);border-radius:4px;cursor:pointer}
+  .cal-call button:hover{color:var(--text);border-color:var(--blue)}
+  .cal-call button.on{color:var(--text);background:color-mix(in srgb,var(--blue) 18%,var(--card2));border-color:var(--blue)}
+  .cal-res{font-size:10px;font-weight:700;margin-left:4px} .cal-res.hit{color:var(--bull)} .cal-res.miss{color:var(--red)} .cal-res.push{color:var(--text3)}
+  .sc-card{margin-top:8px;padding:7px 9px;border-left:2px solid var(--blue);background:var(--card2);border-radius:0 6px 6px 0;font-size:11px;line-height:1.5;color:var(--text2)}
+  .sc-card .sc-h{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:2px}
+  .sc-card b{color:var(--text)}
+  .sc-you{font-size:10.5px;color:var(--text3);margin-top:6px;line-height:1.5}
+  .sc-you b{color:var(--text)}
   .cal-watch{font-size:10.5px;color:var(--text3);line-height:1.5}
   .cal-watch b{color:var(--text2)}
   .sess-timeline{display:flex;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
@@ -1914,6 +1924,8 @@ async function loadGate() {
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
   setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
+  setTimeout(() => loadReleaseCalls(), 3500);                      // your calls and the just-printed cards
+  setInterval(() => loadReleaseCalls(), 5 * 60_000);
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
@@ -2264,6 +2276,40 @@ function riskLight() {
 // Lives in the sidebar's "Today's Calendar" card (#calList) — moved off the
 // main column's #gate chip strip into a compact row list with a flag icon
 // per event and a live countdown badge on the next release.
+// ── Your call before the print, and the card after it ───────────────────────
+// Every high-impact release with a consensus takes a two-button call -- higher
+// or lower than the number expected -- until the print. Thirty minutes after,
+// the server's scorecard measures what each pair did against the Event Response
+// Book and scores the call. The page shows the card and a running tally: you,
+// against the Fed models where they exist, with consensus as the bar.
+let releaseCalls = null;   // /api/release-calls: { calls, summary, scorecards }
+async function loadReleaseCalls() { try { const j = await jget('/api/release-calls?days=60'); if (j?.ok) { releaseCalls = j; renderGate(); } } catch { /* stays absent */ } }
+async function makeReleaseCall(country, event, ms, call, ev) {
+  ev?.stopPropagation?.();
+  const n = nowcastFor(country, event, ms); let model = null;
+  if (n) { const B = window.releaseScorecardBrick; const e = (events ?? []).find(x => x.country === country && x.event === event && x.ms === ms); const side = B?.sideOf(n.value, e?.estimate); model = side === 'higher' || side === 'lower' ? side : null; }
+  try {
+    const j = await fetch('/api/release-call', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ country, event, ms, call, model }) }).then(r => r.json());
+    if (j?.ok) { releaseCalls = releaseCalls ?? { calls: [], summary: null, scorecards: [] }; releaseCalls.calls = [...releaseCalls.calls.filter(c => c.key !== j.call.key), j.call]; renderGate(); }
+  } catch { /* the buttons stay as they were */ }
+}
+function _callFor(country, ms) { const key = `${String(country).toUpperCase()}|${ms}`; return (releaseCalls?.calls ?? []).find(c => c.key === key) ?? null; }
+function _scorecardFor(country, ms) { const key = `${String(country).toUpperCase()}|${ms}`; return (releaseCalls?.scorecards ?? []).find(c => c.key === key) ?? null; }
+function callButtonsHtml(e) {
+  if (e.estimate == null) return '';
+  const c = _callFor(e.country, e.ts ?? e.ms); const ms = e.ts ?? e.ms;
+  if (ms <= Date.now()) { return c?.result ? `<span class="cal-res ${c.result}" title="Your call: ${esc0(c.call)} than ${esc0(e.estimate)}">${c.result === 'hit' ? '✓ ' + c.call : c.result === 'miss' ? '✗ ' + c.call : '= push'}</span>` : c ? `<span class="cal-res push" title="Your call, waiting for the print to be scored">${esc0(c.call)}</span>` : ''; }
+  const b = (side, lbl) => `<button class="${c?.call === side ? 'on' : ''}" title="Your call: the print comes in ${side} than the ${esc0(e.estimate)} expected. Scored thirty minutes after the release." onclick="makeReleaseCall('${esc0(e.country)}', '${esc0(e.event).replace(/'/g, '&#39;')}', ${ms}, '${side}', event)">${lbl}</button>`;
+  return `<span class="cal-call" title="Call it before the print: higher or lower than ${esc0(e.estimate)}">${b('higher', '▲')}${b('lower', '▼')}</span>`;
+}
+function scorecardsHtml() {
+  const B = window.releaseScorecardBrick; const today = new Date().toISOString().slice(0, 10);
+  const cards = (releaseCalls?.scorecards ?? []).filter(c => c.day === today || Date.now() - c.ms < 18 * 3600e3).slice(-3).reverse();
+  const you = releaseCalls?.summary;
+  const tally = you && you.n ? `<div class="sc-you">Your calls, 60 days: <b>${you.hits} of ${you.n}</b> right (${Math.round(you.hitRate * 100)}%, ${Math.round(you.lo * 100)}–${Math.round(you.hi * 100)}%)${you.pushes ? `, ${you.pushes} in line` : ''}${you.model?.n ? ` · the Fed models: <b>${you.model.hits} of ${you.model.n}</b> on the same prints` : ''} · consensus is the bar: 50% is guessing.</div>` : `<div class="sc-you">Call the next print ▲ higher or ▼ lower than consensus; it is scored thirty minutes after the release. The Fed models are scored beside you where they exist.</div>`;
+  if (!cards.length) return tally;
+  return cards.map(c => `<div class="sc-card"><div class="sc-h">Just printed · ${new Date(c.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} UK</div>${(B ? B.formatScorecard(c, { html: true }) : esc0(JSON.stringify(c))).split('\n').map(l => `<div>${l}</div>`).join('')}</div>`).join('') + tally;
+}
 function renderGate() {
   const el = $('calList');
   if (!el) return;
@@ -2274,7 +2320,7 @@ function renderGate() {
     .sort((a, b) => a.ts - b.ts);
   const his = evs.filter(e => (e.impact ?? '').toLowerCase() === 'high');
   const medCount = evs.filter(e => (e.impact ?? '').toLowerCase() === 'medium').length;
-  if (!his.length && !medCount) { el.innerHTML = '<div class="muted">No high/medium-impact releases today.</div>'; return; }
+  if (!his.length && !medCount) { el.innerHTML = '<div class="muted">No high/medium-impact releases today.</div>' + scorecardsHtml(); return; }
   const now = Date.now();
   const nextIdx = his.findIndex(e => e.ts > now);
   const hh = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2282,12 +2328,12 @@ function renderGate() {
     const mins = Math.round((e.ts - now) / 60000);
     const cls = e.ts < now ? 'cal-row past' : '';
     const cd = i === nextIdx && mins < 600 ? `<span class="cal-cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : '';
-    return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · est ${esc0(e.estimate)}` : ''}${e.prev != null ? ` · prev ${esc0(e.prev)}` : ''}">
+    return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · ${esc0(e.estimate)} expected` : ''}${e.prev != null ? ` · was ${esc0(e.prev)}` : ''}">
       <span class="cal-t">${hh(e.ts)}</span>
       <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}${(() => { const n = nowcastFor(e.country, e.event, e.ts); return n ? ` <span class="muted help" style="font-size:10px" title="${esc0(`${n.who}: ${n.value} for ${n.month}${n.asOf ? `, as of ${n.asOf}` : ''}${e.estimate != null ? ` · consensus ${e.estimate}` : ''}. ${n.note}. Context, not a lean.`)}">model ${esc0(n.value)}</span>` : ''; })()}</span>
-      ${cd}
+      ${callButtonsHtml(e)}${cd}
     </div>`;
-  }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '');
+  }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '') + scorecardsHtml();
 }
 
 // ══ Daily-check zoom levels ══════════════════════════════════════════════════
@@ -4379,7 +4425,7 @@ const _tlAgo = d => Math.round((Date.now() - Date.parse(d + 'T12:00:00Z')) / 864
 // pair (Event Response Book), then by surprise.
 function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
   const by = new Map(); const now = Date.now();
-  const put = (cc, name, ms, f) => { const day = _tlDay(ms); const ago = _tlAgo(day); if (ago < fromAgo || ago >= toAgo || ms > now) return; if (ccys && !ccys.includes(cc)) return; const k = `${cc}|${String(name).toLowerCase()}|${day}`; by.set(k, { ...(by.get(k) ?? { cc, name, day }), ...f }); };
+  const put = (cc, name, ms, f) => { const day = _tlDay(ms); const ago = _tlAgo(day); if (ago < fromAgo || ago >= toAgo || ms > now) return; if (ccys && !ccys.includes(cc)) return; const k = `${cc}|${String(name).toLowerCase()}|${day}`; by.set(k, { ...(by.get(k) ?? { cc, name, day, ms }), ...f }); };
   for (const e of events ?? []) if ((e.impact ?? '').toLowerCase() === 'high') put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
   for (const d of _tl.snapshots ?? []) for (const e of d.released ?? []) put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
   for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z) || x.actual != null) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name, revised: x.revised, revisedDelta: x.revisedDelta, revision: x.revision }); }
@@ -4396,8 +4442,10 @@ function _tlRelLine(x) {
   const same = String(x.actual ?? '').trim() === String(x.estimate ?? '').trim();
   const sw = Number.isFinite(x.z) ? (Math.abs(x.z) < 0.25 && !same && x.estimate != null ? `close to the ${esc0(x.estimate)} expected` : _tlSurpriseWord(x.z) + (Math.abs(x.z) >= 0.25 && x.estimate != null ? ` the ${esc0(x.estimate)} expected` : '')) : x.estimate != null ? `vs ${esc0(x.estimate)} expected` : '';
   const nums = x.actual != null ? `<b>${esc0(x.actual)}</b>${sw ? `, ${sw}` : ''}` : `${esc0(x.estimate ?? '?')} expected${x.prev != null ? `, was ${esc0(x.prev)}` : ''}`;
+  const sc = _scorecardFor(x.cc, x.ms); const top = sc?.reactions?.length ? [...sc.reactions].sort((a, b) => (b.ratio ?? 0) - (a.ratio ?? 0))[0] : null;
+  const react = top ? ` · ${esc0(top.name.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2'))} moved <b>${top.ratio}×</b> a normal half-hour${top.book ? ` (book ${top.book.spike}×)` : ''}` : '';
   const rev = x.revised != null ? ` · <span class="tl-rev">later revised to ${esc0(x.revised)}${x.revisedDelta ? ` (${esc0(x.revisedDelta)})` : ''}</span>` : x.revision ? ` · <span class="tl-rev">the prior was revised ${esc0(x.revision.was)} → ${esc0(x.revision.now)}</span>` : '';
-  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}${rev}</div>`;
+  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}${react}${rev}</div>`;
 }
 function _tlWatchLines(fromAgo, toAgo, insts = null) {
   return (deskWatch?.log ?? []).filter(f => { const ago = _tlAgo(f.at.slice(0, 10)); return f.event === 'started' && ago >= fromAgo && ago < toAgo && (!insts || !f.instruments?.length || f.instruments.some(i => insts.includes(i))); }).slice(0, 4)
@@ -11092,6 +11140,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as EconSurprise from './js/econSurprise.js';
   window.econSurpriseBrick = EconSurprise;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- Release scorecard (js/releaseScorecard.js): the card's words are the brick's, so
+     the page and the Telegram line cannot disagree. -->
+<script type="module">
+  import * as ReleaseScorecard from './js/releaseScorecard.js';
+  window.releaseScorecardBrick = ReleaseScorecard;
+  try { window.renderGate?.(); } catch (e) {}
 </script>
 <!-- Same pattern for the pair-composite brick (js/pairCompositeEngine.js) —
      combines technical/COT/macro/carry legs this page already computes into

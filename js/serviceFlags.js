@@ -214,6 +214,8 @@ export const SERVICES = [
     feeds: 'analog cone forward-track stats' },
   { id: 'surpriseStore', where: 'server', label: 'Economic-surprise store refresh',
     cadence: 'hourly', cost: 'low', lean: false, on: true, feeds: 'surprise index pages, TDE macro context' },
+  { id: 'releaseScorecard', where: 'server', label: 'Release scorecard (30 min after a high-impact print)',
+    cadence: 'every 5 min', cost: 'low', lean: false, on: true, feeds: 'the Just-printed card, your-call scoring, one Telegram line per event' },
   { id: 'nowcast', where: 'server', label: 'Nowcast refresh (Cleveland Fed inflation, Atlanta GDPNow)',
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'the third number on a release line (context only, N1/N2)' },
   { id: 'surpriseAlerts', where: 'server', label: 'Surprise alert scan',

@@ -142,6 +142,7 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
 import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
@@ -3484,6 +3485,97 @@ app.post('/api/daily-snapshot/plan', async (req, res) => {
     res.json({ ok: true, kept: false, plannedAt: compact.at });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+// ── Release scorecard: the book closing its own loop, every print ─────────────
+// Thirty minutes after a high-impact release: the actual (filled from FRED / the
+// central-bank feed if it is not on the calendar), each answering pair's 30-minute
+// move against its ordinary half-hour and against the Event Response Book, and the
+// user's call made before the print. Kept on the day's snapshot row
+// (`scorecards`, `calls`), sent to Telegram from here, never from anywhere else.
+const _SC_MAX_INSTRUMENTS = 6;
+const _scM30Cache = new Map();   // name -> { at, bars }
+async function _scCandles(sym, gran, params) {
+  if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured');
+  const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(sym)}/candles?granularity=${gran}&price=M&${params}`, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA ${sym} ${gran} HTTP ${r.status}`);
+  return ((await r.json()).candles ?? []).filter(c => c.complete && c.mid).map(c => ({ time: Date.parse(c.time), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+}
+async function _scReaction(name, releaseMs) {
+  const sym = _scSym(name);
+  const from = new Date(releaseMs - 40 * 60_000).toISOString(), to = new Date(releaseMs + 35 * 60_000).toISOString();
+  const m5 = await _scCandles(sym, 'M5', `from=${from}&to=${to}`);
+  let ref = _scM30Cache.get(name);
+  if (!ref || Date.now() - ref.at > 6 * 3600_000) { ref = { at: Date.now(), bars: await _scCandles(sym, 'M30', 'count=1500') }; _scM30Cache.set(name, ref); }
+  return _scMeasure(name, releaseMs, m5, ref.bars);
+}
+async function _snapUpdateDay(day, fn) {
+  const store = await _loadSnapStore(); if (!store) throw new Error('snapshot store unreadable; refusing to overwrite');
+  let i = store.days.findIndex(d => d.day === day);
+  if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
+  const out = await fn(store.days[i]);
+  store.days = store.days.slice(-_SNAP_KEEP);
+  await kv.put(_SNAP_KV, JSON.stringify(store));
+  return out;
+}
+let _scRunning = false;
+async function _releaseScorecardTick() {
+  if (_scRunning) return; _scRunning = true;
+  try {
+    const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+    const groups = _scGroup(feed.events ?? []);
+    if (!groups.length) return;
+    const snap = await _loadSnapStore(); if (!snap) return;
+    const done = new Set((snap.days ?? []).flatMap(d => (d.scorecards ?? []).map(c => c.key)));
+    for (const g of groups.filter(g => !done.has(g.key))) {
+      // the actual, if the calendar does not carry it: same fill as the surprise store
+      const stored = await _readSurpriseStore().catch(() => []);
+      const evs = g.prints.map(p => ({ country: g.country, event: p.event, ms: g.ms, estimate: p.estimate, prev: p.prev, actual: p.actual }));
+      const seen = new Map(stored.filter(x => x.actual != null).map(x => [`${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`, x.actual]));
+      for (const e of evs) if (e.actual == null) e.actual = seen.get(`${g.country}|${String(e.event).trim().toLowerCase()}|${g.ms}`) ?? null;
+      try { await _fillActualsFromFred(evs.filter(e => e.actual == null), stored); } catch { /* the card says "not on the feed yet" */ }
+      g.prints.forEach((p, i) => { p.actual = evs[i].actual ?? null; });
+      // the reactions, book-ranked, capped
+      const names = (_SC_INSTRUMENTS[g.country] ?? []).map(n => ({ n, book: _scBook(g.country, g.prints[0]?.family, n) })).sort((a, b) => (b.book?.spike ?? 0) - (a.book?.spike ?? 0)).slice(0, _SC_MAX_INSTRUMENTS);
+      g.reactions = [];
+      for (const { n, book } of names) { try { const r = await _scReaction(n, g.ms); if (r) g.reactions.push({ ...r, book }); } catch (e) { console.warn('[scorecard]', n, e.message); } }
+      // the user's call, made before the print, scored on the first print with a consensus
+      const day = new Date(g.ms).toISOString().slice(0, 10);
+      const row = (snap.days ?? []).find(d => d.day === day); const call = row?.calls?.[g.key] ?? null;
+      if (call) { const p = g.prints.find(x => x.estimate != null && x.actual != null) ?? g.prints[0]; call.result = _scScore(call.call, p?.actual, p?.estimate); call.modelResult = call.model ? _scScore(call.model, p?.actual, p?.estimate) : null; g.call = call; }
+      g.at = new Date().toISOString();
+      await _snapUpdateDay(day, async r => { r.scorecards = [...(r.scorecards ?? []).filter(c => c.key !== g.key), g].slice(-20); if (call) { r.calls = r.calls ?? {}; r.calls[g.key] = call; } });
+      // one Telegram line per event, from Railway
+      if (state.tg?.token && state.tg?.chatId && svcEnabled('releaseScorecard')) {
+        const txt = `📊 <b>Just printed</b> · ${new Date(g.ms).toISOString().slice(11, 16)} UTC\n` + _scFormat(g, { html: true });
+        await sendTelegram(state.tg.token, state.tg.chatId, txt);
+      }
+      console.log(`[scorecard] ${g.country} ${g.prints.map(p => p.event).join(', ')}: ${g.reactions.map(r => `${r.name} ${r.ratio ?? '?'}x`).join(' ')}`);
+    }
+  } finally { _scRunning = false; }
+}
+svcInterval('releaseScorecard', () => _releaseScorecardTick().catch(e => console.error('[scorecard]', e.message)), 5 * 60_000);
+// The call before the print: "higher" or "lower" than consensus, keyed to the
+// event; changeable until the print, then scored by the tick above.
+app.post('/api/release-call', async (req, res) => {
+  try {
+    const { country, event, ms, call, model } = req.body ?? {};
+    if (!country || !event || !Number.isFinite(+ms) || !['higher', 'lower'].includes(call)) return res.status(400).json({ ok: false, error: 'country, event, ms and call (higher|lower) required' });
+    if (+ms <= Date.now()) return res.status(400).json({ ok: false, error: 'the print is out -- calls close at release time' });
+    const key = `${String(country).toUpperCase()}|${+ms}`; const day = new Date(+ms).toISOString().slice(0, 10);
+    const saved = await _snapUpdateDay(day, async r => { r.calls = r.calls ?? {}; r.calls[key] = { key, event, call, model: ['higher', 'lower'].includes(model) ? model : null, at: new Date().toISOString(), result: null, modelResult: null }; return r.calls[key]; });
+    res.json({ ok: true, call: saved });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/release-calls', async (req, res) => {
+  try {
+    const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '60', 10) || 60));
+    const days = (st?.days ?? []).slice(-n);
+    const calls = days.flatMap(d => Object.values(d.calls ?? {}).map(c => ({ ...c, day: d.day })));
+    const scorecards = days.flatMap(d => (d.scorecards ?? []).map(c => ({ ...c, day: d.day })));
+    res.json({ ok: true, calls, summary: _scSummarise(calls), scorecards: scorecards.slice(-30) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/release-scorecard/tick', async (_req, res) => { try { await _releaseScorecardTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
 app.get('/api/daily-snapshot', async (req, res) => {
   try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
