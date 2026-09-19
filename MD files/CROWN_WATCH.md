@@ -354,3 +354,20 @@ as covered, not re-run.
   remains the one open, untested form — and it needs a validated primary
   edge to condition, which this repo does not yet have validated intraday
   (same open item `VWAP_REVERSION_FINDINGS.md` already flagged).
+
+**Follow-up, same day — built as an alert, not an entry.** Owner: not
+worried about building systems out of every clip, worried about whether a
+clip's a nugget worth showing/alerting on. Applying that lens back onto
+this entry's own §7 finding (real, cross-instrument, never asked whether it
+belonged on a page): built `js/vwapStretchCore.js` + a live `vwapStretch`
+input wired into `js/deskWatch.js`'s `evaluateTriggers` (one `~ context`
+trigger per instrument — gold, EURUSD, GBPUSD, USDJPY — firing at a 2σ+
+session-VWAP stretch, citing the tested return-to-VWAP base rate and the
+NY-vs-Asia/London session caveat, and explicitly disclaiming that no
+VWAP-anchored entry built on this desk has ever passed after costs). Full
+account, including the two deliberate efficiency choices (σ cached once
+per pair per UTC day; the live reading uses M15 not M1, reusing this desk's
+own "VWAP is near timeframe-invariant" finding) in `LEGO_MODULES.md`'s
+2026-09-19 entry. Not verifiable from this sandbox — same OANDA-egress
+limit as everything else live here — validated via `node --check` and full
+synthetic test suites instead.

@@ -142,6 +142,7 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
 import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
 import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
@@ -3602,6 +3603,47 @@ async function _loadWatchStore() {
   try { const raw = await kv.getStrict(_WATCH_KV); if (!raw) return { states: [], log: [] }; const p = JSON.parse(raw); return { states: Array.isArray(p?.states) ? p.states : [], log: Array.isArray(p?.log) ? p.log : [] }; }
   catch (e) { console.warn('[desk-watch] store unreadable, not touching it:', e.message); return null; }
 }
+// ── VWAP stretch (js/vwapStretchCore.js) — context for desk watch, not a
+// signal. σ is frozen at session open, so recomputing it every 15-min tick
+// from the full M1 archive would be pure waste (and heavy R2/parquet I/O
+// four pairs deep); cache it per pair per UTC day, in memory only, and only
+// re-fetch the small live M15 window (today's session so far) each tick.
+const VWAP_STRETCH_PAIRS = ['gold', 'eurusd', 'gbpusd', 'usdjpy'];
+const _vwapSigmaCache = new Map();   // `${pairKey}|${utcDate}` -> frozen-sigma result | null
+async function _vwapFrozenSigma(key, nowEpoch) {
+  const utcDate = new Date(nowEpoch * 1000).toISOString().slice(0, 10);
+  const cacheKey = `${key}|${utcDate}`;
+  if (_vwapSigmaCache.has(cacheKey)) return _vwapSigmaCache.get(cacheKey);
+  let result = null;
+  try { result = _vwapFrozenSigmaCore(await loadM1ForPair(key, BT_M1_DIR), { now: nowEpoch }); }
+  catch (e) { console.warn(`[desk-watch] vwap-stretch sigma ${key}: ${e.message}`); }
+  for (const k of _vwapSigmaCache.keys()) if (!k.endsWith(`|${utcDate}`)) _vwapSigmaCache.delete(k);   // keep only today's entries
+  _vwapSigmaCache.set(cacheKey, result);
+  return result;
+}
+async function _fetchVwapStretchInputs(nowMs) {
+  const nowEpoch = Math.floor(nowMs / 1000);
+  const out = {};
+  for (const key of VWAP_STRETCH_PAIRS) {
+    try {
+      const oanda = OANDA_INSTRUMENT_MAP[key]; if (!oanda) continue;
+      const frozen = await _vwapFrozenSigma(key, nowEpoch);
+      if (!frozen) continue;   // insufficient history -> this pair's trigger stays silently disabled
+      // M15, not M1: a live per-tick fetch across 4 instruments every 15
+      // minutes; VWAP is documented in this repo as near timeframe-invariant
+      // (LEGO_MODULES.md's "multi-timeframe VWAP" note: M1- vs M15-computed
+      // VWAP differ by a small amount), so this is a deliberate, justified
+      // approximation, not a shortcut.
+      const todayStart = new Date(nowEpoch * 1000); todayStart.setUTCHours(0, 0, 0, 0);
+      const todayBars = await fetchIntraday(oanda, 'M15', { from: todayStart.toISOString().replace(/\.\d+Z$/, 'Z') });
+      const snap = _vwapStretchSnapshot({ todayBars, sigma: frozen.sigma, now: nowEpoch });
+      if (snap) out[key.toUpperCase()] = snap;
+    } catch (e) { console.warn(`[desk-watch] vwap-stretch ${key}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  return out;
+}
+
 async function _watchInputs() {
   const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
   const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
@@ -3622,7 +3664,8 @@ async function _watchInputs() {
   let stockBond = null; try { stockBond = await _stockBondCorr(); } catch { /* optional */ }
   let events = []; try { const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const now = Date.now(); events = (res.events ?? []).filter(e => e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3); } catch { /* optional */ }
   const fomcDates = _fomcAllMeetings().map(m => m.date);
-  return { fred, hist, series, chain, stockBond, events, fomcDates, now: Date.now() };
+  let vwapStretch = {}; try { vwapStretch = await _fetchVwapStretchInputs(Date.now()); } catch (e) { console.warn(`[desk-watch] vwap-stretch: ${e.message}`); }
+  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
 // sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
