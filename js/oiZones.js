@@ -923,3 +923,73 @@ export function buildOIZones(inst, price, cfg = {}) {
 
   return out.sort((a, b) => Math.abs(a.entry - price) - Math.abs(b.entry - price));
 }
+
+
+// ── sizeBreakdown outcome tracking (2026-09-19) ─────────────────────────────────
+// The generalised sibling of wallHoldScore's own forward-test calibration
+// (oi_hold_calibration, server.js), extended from hold's four INPUT components to
+// the rest of add()'s multiplier chain (js/oiZones.js's sizeBreakdown: vanna,
+// blocker, reach, hold's OVERALL output, conviction, localRegime, the aggregate
+// cap). Pure — server.js does the KV read of oi_bot_trade_log and the write of the
+// report; this just turns already-joined {features:{sizeBreakdown}, profit} rows
+// into bucketed win-rate stats. Kept here, not inline in server.js, for the same
+// reason wallHoldScore is a pure export: a computation this consequential (it is
+// what a person reviewing "are the multipliers right" will actually read) needs to
+// be independently, deterministically testable — see js/oiZones.test.mjs.
+//
+// DIAGNOSTIC ONLY. Unlike oi_hold_calibration, nothing reads this output back into
+// buildOIZones — it was asked for explicitly as a one-week READ a person reviews by
+// hand, not an auto-apply. This function has no opinion on that; it just reports.
+//
+// Two split methods, chosen per component by how that component actually
+// distributes, not one method reused mechanically everywhere:
+//   MEDIAN  (continuous-ish: hold, conviction) — high vs low half, mirroring
+//           oi_hold_calibration's own method exactly.
+//   GATED   (vanna, blocker, reach, localRegime — exactly 1/off on most rows,
+//           moving only when a specific condition fires) — FIRED (!=1) vs
+//           NOT-FIRED (==1). A median split on a field that is 1 on 80%+ of rows
+//           just splits "1 vs 1" and reports nothing.
+//   BOOLEAN (capped) — its own two buckets directly.
+// Every bucket below `minBucket` rows is reported (n, winRate where computable) but
+// its `separation` is null — small-sample noise reported as a real read is worse
+// than an honest "too few rows yet", which is the whole point of a time-gated check.
+export const OI_SIZE_AUDIT_CONTINUOUS = ['hold', 'conviction'];
+export const OI_SIZE_AUDIT_GATED = ['vanna', 'blocker', 'reach', 'localRegime'];
+
+export function oiSizeCalibrationStats(rows, { minBucket = 10 } = {}) {
+  const wr = a => a.length ? +(a.filter(r => r.profit > 0).length / a.length).toFixed(2) : null;
+  const components = {};
+
+  for (const k of OI_SIZE_AUDIT_CONTINUOUS) {
+    const have = rows.filter(r => Number.isFinite(r?.features?.sizeBreakdown?.[k]) && Number.isFinite(r?.profit));
+    if (have.length < minBucket * 2) { components[k] = { split: 'median', n: have.length, note: 'too few rows yet' }; continue; }
+    const vals = have.map(r => r.features.sizeBreakdown[k]).sort((a, b) => a - b);
+    const med = vals[Math.floor(vals.length / 2)];
+    const hi = have.filter(r => r.features.sizeBreakdown[k] >= med), lo = have.filter(r => r.features.sizeBreakdown[k] < med);
+    components[k] = { split: 'median', n: have.length, median: +med.toFixed(2),
+      hi: { n: hi.length, winRate: wr(hi) }, lo: { n: lo.length, winRate: wr(lo) },
+      separation: (hi.length >= minBucket && lo.length >= minBucket) ? +(wr(hi) - wr(lo)).toFixed(2) : null };
+  }
+
+  for (const k of OI_SIZE_AUDIT_GATED) {
+    const have = rows.filter(r => Number.isFinite(r?.features?.sizeBreakdown?.[k]) && Number.isFinite(r?.profit));
+    const fired = have.filter(r => Math.abs(r.features.sizeBreakdown[k] - 1) > 1e-9);
+    const quiet = have.filter(r => Math.abs(r.features.sizeBreakdown[k] - 1) <= 1e-9);
+    components[k] = { split: 'fired-vs-not', n: have.length,
+      fired: { n: fired.length, winRate: wr(fired) }, notFired: { n: quiet.length, winRate: wr(quiet) },
+      separation: (fired.length >= minBucket && quiet.length >= minBucket) ? +(wr(fired) - wr(quiet)).toFixed(2) : null,
+      note: (fired.length < minBucket) ? `only ${fired.length} fired trade(s) so far` : undefined };
+  }
+
+  {
+    const have = rows.filter(r => typeof r?.features?.sizeBreakdown?.capped === 'boolean' && Number.isFinite(r?.profit));
+    const capped = have.filter(r => r.features.sizeBreakdown.capped === true);
+    const uncapped = have.filter(r => r.features.sizeBreakdown.capped === false);
+    components.capped = { split: 'boolean', n: have.length,
+      capped: { n: capped.length, winRate: wr(capped) }, uncapped: { n: uncapped.length, winRate: wr(uncapped) },
+      capRate: have.length ? +(capped.length / have.length).toFixed(2) : null,
+      separation: (capped.length >= minBucket && uncapped.length >= minBucket) ? +(wr(capped) - wr(uncapped)).toFixed(2) : null };
+  }
+
+  return components;
+}

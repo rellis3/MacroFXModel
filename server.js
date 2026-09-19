@@ -173,7 +173,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
-import { buildOIZones, explainNoZones } from './js/oiZones.js';
+import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
@@ -17900,6 +17900,74 @@ async function _refreshOIHoldCalibration() {
 }
 svcInterval('oiBot', _refreshOIHoldCalibration, 6 * 60 * 60_000);   // the log grows a few rows a day — 6h is plenty
 setTimeout(_refreshOIHoldCalibration, 70_000);
+
+// ── OI size-multiplier TRACKING (2026-09-19, review not auto-apply) ──────────
+// The sibling of the hold-score job above, generalised to the REST of sizeBreakdown
+// (js/oiZones.js's add()) -- vanna, blocker, reach, conviction, localRegime, the
+// aggregate cap, and hold's OVERALL multiplier (distinct from oi_hold_calibration,
+// which fits hold's four INPUT components; this asks whether the multiplier hold
+// PRODUCES actually correlates with outcome, a different question). Same join, same
+// method (js/oiZones.js's oiSizeCalibrationStats — kept there, not inline here, so
+// the computation itself is independently unit-tested; this is I/O only), NOT the
+// same behaviour: oi_hold_calibration writes fitted weights the producer auto-
+// applies on its next refresh. This does not — it was asked for explicitly as a
+// one-week READ, reviewed by a person, before anything about the multipliers
+// changes. It never writes back to the planner; it only ever writes a report.
+//
+// TIME-GATED, not (only) count-gated. oi_hold_calibration waits for >=30 resolved
+// wall trades before saying anything, which took long enough that its own key sits
+// at 17 today — fine for a slow-accumulating auto-apply, wrong for "check back in a
+// week": a person asking on day 7 should see what exists on day 7, not a silent
+// "collecting" banner with no date on it. windowStartedAt is stamped ONCE (first run
+// after this shipped) and never moves, so elapsed days is exact even in a slow week.
+const OI_SIZE_AUDIT_MIN_BUCKET = 10;    // per-bucket floor before a split is reported (matches oi_hold_calibration)
+async function _refreshOISizeCalibration() {
+  try {
+    const raw0 = await kv.get('oi_size_calibration').catch(() => null);
+    const prev = raw0 ? (JSON.parse(raw0).data ?? JSON.parse(raw0)) : null;
+    const windowStartedAt = prev?.windowStartedAt || new Date().toISOString();
+
+    const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    // Only rows carrying sizeBreakdown — trades opened before this shipped have no
+    // such field at all (undefined), which must never be read as "multiplier = 1,
+    // off"; that would be asserting every pre-fix trade had a neutral breakdown when
+    // it simply predates the field existing. oiSizeCalibrationStats itself is
+    // agnostic to WHERE its rows came from — filtering here keeps that pre-existence
+    // question a server.js/trade-log concern, not something the pure function has
+    // to know about.
+    const rows = log.filter(t => t?.features?.sizeBreakdown && Number.isFinite(t.profit));
+    const n = rows.length;
+    const daysTracked = +((Date.now() - new Date(windowStartedAt).getTime()) / 86400_000).toFixed(1);
+    const components = _oiSizeCalibrationStats(rows, { minBucket: OI_SIZE_AUDIT_MIN_BUCKET });
+
+    const anySeparation = Object.values(components).some(c => Number.isFinite(c.separation));
+    const explain = n === 0
+      ? `${daysTracked}d into tracking, 0 resolved trades carry sizeBreakdown yet — either nothing has closed since `
+        + `this shipped, or the bot has been idle. Nothing to review yet.`
+      : `${daysTracked}d into tracking, ${n} resolved trade(s) carry the full multiplier breakdown. `
+        + (anySeparation
+          ? `At least one component has enough rows on both sides to report a real separation — see componentStats. `
+          : `Still below the ${OI_SIZE_AUDIT_MIN_BUCKET}-per-bucket floor everywhere — every number below is descriptive, not yet a verdict. `)
+        + `This report NEVER auto-applies — read it, decide by hand, then edit js/oiZones.js's defaults if a `
+        + `multiplier looks wrong. (Compare against oi_hold_calibration for hold's own INPUT components, a `
+        + `different question from hold's overall multiplier here.)`;
+
+    const data = { windowStartedAt, daysTracked, n, componentStats: components, explain, updatedAt: new Date().toISOString() };
+    await kv.put('oi_size_calibration', JSON.stringify({ data, timestamp: Date.now() }));
+    return data;
+  } catch (e) { console.error('[oi-size-calib] refresh failed:', e.message); return { error: e.message }; }
+}
+svcInterval('oiBot', _refreshOISizeCalibration, 6 * 60 * 60_000);   // same cadence as oi_hold_calibration -- the log grows a few rows a day
+setTimeout(_refreshOISizeCalibration, 80_000);
+
+app.get('/api/oi-bot/size-calibration', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_size_calibration').catch(() => null);
+    if (!raw) { const r = await _refreshOISizeCalibration(); return res.json({ ok: true, ...(r || {}) }); }
+    res.json({ ok: true, ...(JSON.parse(raw).data ?? JSON.parse(raw)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/oi-bot/hold-calibration', async (req, res) => {
   try {

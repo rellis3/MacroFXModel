@@ -1,6 +1,6 @@
 // Synthetic test for the OI bot strategy (regime-switch planner). No network.
 //   node js/oiZones.test.mjs
-import { buildOIZones, explainNoZones, wallHoldScore, gexShareAtStrike } from './oiZones.js';
+import { buildOIZones, explainNoZones, wallHoldScore, gexShareAtStrike, oiSizeCalibrationStats } from './oiZones.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -769,6 +769,90 @@ console.log('[Aggregate sizeFactor cap — max_lot must not silently become the 
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));
+
+console.log('[oiSizeCalibrationStats — outcome tracking for the review-1 sizeBreakdown fields]');
+{
+  const row = (sb, profit) => ({ profit, features: { sizeBreakdown: sb } });
+  const base1 = { base: 1, vanna: 1, blocker: 1, reach: 1, hold: 1, conviction: 1, localRegime: 1, capped: false };
+
+  ok('empty rows -> every component reported, all "too few rows"',
+    (() => { const c = oiSizeCalibrationStats([]); return c.hold.n === 0 && c.hold.note === 'too few rows yet' && c.vanna.n === 0 && c.capped.n === 0; })());
+
+  // hold: 12 rows at 1.3 (9 wins), 12 at 0.7 (3 wins) -> median 1.3, hi=1.3-group,
+  // lo=0.7-group, winHi 0.75, winLo 0.25, separation +0.50.
+  const holdRows = [
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, hold: 1.3 }, i < 9 ? 1 : -1)),
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, hold: 0.7 }, i < 3 ? 1 : -1)),
+  ];
+  const hc = oiSizeCalibrationStats(holdRows).hold;
+  ok('continuous (median split): median resolves to the high group\'s value', hc.median === 1.3, JSON.stringify(hc));
+  ok('hi/lo bucket sizes correct (12/12)', hc.hi.n === 12 && hc.lo.n === 12, JSON.stringify(hc));
+  ok('win rates correct per bucket (0.75 hi, 0.25 lo)', hc.hi.winRate === 0.75 && hc.lo.winRate === 0.25, JSON.stringify(hc));
+  ok('separation = winHi - winLo = 0.50 (enough rows both sides)', hc.separation === 0.5, JSON.stringify(hc));
+
+  // Same shape but only 5 a side -> below the default minBucket(10)*2 threshold entirely.
+  const thinRows = [row({ ...base1, hold: 1.3 }, 1), row({ ...base1, hold: 1.3 }, 1),
+                    row({ ...base1, hold: 0.7 }, -1), row({ ...base1, hold: 0.7 }, -1), row({ ...base1, hold: 0.7 }, -1)];
+  const thin = oiSizeCalibrationStats(thinRows).hold;
+  ok('below 2×minBucket total -> "too few rows yet", no split attempted at all', thin.note === 'too few rows yet' && thin.separation === undefined, JSON.stringify(thin));
+
+  // vanna (gated): 12 fired (≠1) with 10 wins, 12 not-fired (==1) with 4 wins.
+  const vannaRows = [
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, vanna: 1.15 }, i < 10 ? 1 : -1)),
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, vanna: 1 }, i < 4 ? 1 : -1)),
+  ];
+  const vc = oiSizeCalibrationStats(vannaRows).vanna;
+  ok('gated split: fired vs not-fired bucket sizes (12/12)', vc.fired.n === 12 && vc.notFired.n === 12, JSON.stringify(vc));
+  ok('gated win rates (0.83 fired, 0.33 not)', vc.fired.winRate === 0.83 && vc.notFired.winRate === 0.33, JSON.stringify(vc));
+  ok('gated separation ≈ 0.50', Math.abs(vc.separation - 0.5) < 0.01, JSON.stringify(vc));
+
+  // reach with only 3 fired trades -> named explicitly, separation withheld.
+  const thinFire = [row({ ...base1, reach: 0.7 }, 1), row({ ...base1, reach: 0.7 }, 1), row({ ...base1, reach: 0.7 }, -1),
+                     ...Array.from({ length: 12 }, () => row({ ...base1, reach: 1 }, 1))];
+  const rc = oiSizeCalibrationStats(thinFire).reach;
+  ok('few-fired case names the exact count and withholds separation',
+    rc.note === 'only 3 fired trade(s) so far' && rc.separation === null, JSON.stringify(rc));
+
+  // capped: 12 capped with 3 wins (0.25), 12 uncapped with 9 wins (0.75) -> capping
+  // correlates with WORSE outcomes here, separation negative — direction matters,
+  // not just magnitude, and this proves the sign survives the computation.
+  const cappedRows = [
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, capped: true }, i < 3 ? 1 : -1)),
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, capped: false }, i < 9 ? 1 : -1)),
+  ];
+  const cc = oiSizeCalibrationStats(cappedRows).capped;
+  ok('capped bucket win rate lower than uncapped here (0.25 vs 0.75)', cc.capped.winRate === 0.25 && cc.uncapped.winRate === 0.75, JSON.stringify(cc));
+  ok('cap rate reported (12/24 = 0.5)', cc.capRate === 0.5, JSON.stringify(cc));
+  ok('separation carries the correct NEGATIVE sign (capping looked worse, not better)', cc.separation === -0.5, JSON.stringify(cc));
+
+  // minBucket override: a clean, EVEN 2-vs-2 split (avoids the median landing inside
+  // the larger group on an odd/unbalanced count — sorted [0.7,0.7,1.3,1.3], median
+  // is the 1.3 boundary, hi/lo split exactly in half). Below the default floor
+  // (2×10=20 needed, only 4 present) -> "too few rows yet"; with minBucket:2
+  // (2×2=4 needed, exactly met, and each bucket's 2 rows clears the per-bucket
+  // floor too) -> a real split.
+  const evenThin = [row({ ...base1, hold: 1.3 }, 1), row({ ...base1, hold: 1.3 }, 1),
+                     row({ ...base1, hold: 0.7 }, -1), row({ ...base1, hold: 0.7 }, -1)];
+  ok('default floor (needs 20) blocks a 4-row sample entirely',
+    oiSizeCalibrationStats(evenThin).hold.note === 'too few rows yet');
+  const relaxed = oiSizeCalibrationStats(evenThin, { minBucket: 2 }).hold;
+  ok('minBucket is a real parameter, not a hardcoded floor — the same 4 rows split cleanly once lowered',
+    relaxed.hi.n === 2 && relaxed.lo.n === 2 && relaxed.separation === 1, JSON.stringify(relaxed));
+
+  // Malformed / partial rows must never crash the computation — they simply do not
+  // count toward any bucket (undefined sizeBreakdown, no profit, wrong shape, or the
+  // row itself being null/undefined — a real possibility from a sparse trade log).
+  const messy = [
+    { profit: 1 },                                    // no features at all
+    { profit: 1, features: {} },                       // features present, no sizeBreakdown
+    { features: { sizeBreakdown: { ...base1 } } },      // sizeBreakdown present, no profit
+    { profit: 'not-a-number', features: { sizeBreakdown: { ...base1 } } },
+    null, undefined,                                   // the row itself missing — NOT pre-filtered here
+  ];
+  ok('malformed rows (incl. null/undefined array entries) never throw, and contribute to nothing',
+    (() => { try { const c = oiSizeCalibrationStats(messy); return c.hold.n === 0 && c.capped.n === 0; }
+      catch { return false; } })());
+}
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
