@@ -3440,7 +3440,7 @@ app.get('/api/daily-snapshot', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/daily-snapshot/tick', async (_req, res) => { try { await _dailySnapshotTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
-setInterval(() => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
+svcInterval('dailySnapshot', () => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
 
 // ── Desk watch: the early-warning layer ──────────────────────────────────────
 // Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
