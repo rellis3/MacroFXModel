@@ -659,9 +659,9 @@ failed with `spawn /usr/local/bin/python3 ENOENT` (Python installs via
 `execFileSync` and genuinely walks its candidate list
 (`PYTHON_BIN` → `/usr/local/bin/python3` → `/usr/bin/python3` → … → bare
 `python3`), so the second candidate resolves. Fixed in `8f36eeb`
-(2026-09-11); this paragraph was stale until 2026-09-15. The consequence
-really does run: `/api/services` shows 8 clean runs, 0 errors, in a 7-hour
-window on 2026-09-19.
+(2026-09-11); this paragraph was stale until 2026-09-15. SessionResearch
+really does run now: `/api/services` shows 8 clean runs, 0 errors, in a
+7-hour window on 2026-09-19.
 **But it is not the cost centre the code-read assumed.** Those 8 runs cost
 3m54s of wall time — 0.9%, an order of magnitude below `fibAtlasPlan`,
 `mveLog` and `volatilityV2Plan`. The measured ranking is
