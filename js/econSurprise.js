@@ -149,13 +149,25 @@ export function scoreReleases(events = [], opts = {}) {
     const raws = rows.map(r => r.raw);
     const mean = raws.reduce((a, x) => a + x, 0) / raws.length;
     const sd = Math.sqrt(raws.reduce((a, x) => a + (x - mean) ** 2, 0) / Math.max(1, raws.length - 1));
-    if (!(sd > 0)) {
+    // Robust scale. The history reaches back eleven years, so it holds 2020: claims
+    // surprises of a million against a normal week's ten thousand. A standard
+    // deviation over that made an 11K claims miss read as 0.1 sigma. The median
+    // absolute deviation (x1.4826, the normal-equivalent) is what a typical
+    // surprise looks like; the standard deviation is the fallback only when the
+    // series almost never surprises (rate decisions: most raws are exactly zero).
+    const sorted = [...raws].sort((a, b) => a - b);
+    const med = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
+    const devs = raws.map(x => Math.abs(x - med)).sort((a, b) => a - b);
+    const mad = devs.length % 2 ? devs[(devs.length - 1) / 2] : (devs[devs.length / 2 - 1] + devs[devs.length / 2]) / 2;
+    const robust = mad > 0;
+    const centre = robust ? med : mean, scale = robust ? 1.4826 * mad : sd;
+    if (!(scale > 0)) {
       skipped.push({ series: key, n: rows.length, reason: 'series never surprises — zero dispersion' });
       continue;
     }
     for (const r of rows) {
       const pol = polarityFor(r.ev.event);
-      const z = ((r.raw - mean) / sd) * pol.sign;
+      const z = ((r.raw - centre) / scale) * pol.sign;
       scored.push({
         series: key, country: String(r.ev.country ?? '').toUpperCase(), event: r.ev.event,
         time: r.ev.time ?? null, ms: r.ev.ms, impact: r.ev.impact ?? null,

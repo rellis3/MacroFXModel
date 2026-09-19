@@ -109,3 +109,11 @@ first attempt was reading the old rate). Late fills find the event through the
 daily snapshot's released rows, since the calendar feed only shows the current
 week. BoJ, RBNZ, SNB: no clean open feed found (RBNZ 403, BoJ HTML only) —
 unscored, said so on the page.
+
+**Scale.** The per-series sigma was a standard deviation over eleven years of
+surprises, so 2020 dominated it: an 11K claims miss scored +0.1σ. Now the median
+absolute deviation (×1.4826), falling back to the standard deviation only when
+a series almost never surprises (rate decisions). This week under the new
+scale: claims 196K vs 207K = +0.67σ, retail sales 1.2% vs 0.8% = +1.12σ, CPI
+0.4% vs 0.3% = +0.67σ. S7 (surprise size → range) is to be re-run on the
+rescaled history once deployed; its verdict is recorded below when done.
