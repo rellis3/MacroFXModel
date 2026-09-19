@@ -266,6 +266,9 @@ import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
 import { serviceEnabled, servicesSnapshot, SERVICES } from './js/serviceFlags.js';
+import { dayKey as _svcDayKey, emptyStore as _svcEmptyStore, normalizeStore as _svcNormalizeStore,
+         mergeDeltas as _svcMergeDeltas, rollup as _svcRollup, pendingDeltas as _svcPendingDeltas,
+         DEFAULT_KEEP_DAYS as _SVC_KEEP_DAYS } from './js/serviceStats.js';
 import { runQmrV2 } from './js/qmrV2Engine.js';
 import { checkOISignals } from './cog-replication/engine/oiSignalCheck.js';
 import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as computeCogG3, combine as combineCogGates } from './cog-replication/engine/cogShadow.js';
@@ -312,14 +315,43 @@ const _svcStats = new Map();   // id → { runs, errors, totalMs, lastMs, lastAt
 
 function _svcStat(id) {
   let s = _svcStats.get(id);
-  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalMs: null, started: false }; _svcStats.set(id, s); }
+  // `intervalsMs` is an ARRAY because several services register more than one
+  // timer under one id (econPollers has 13, oiBot 5, tde 3). The old single
+  // `intervalMs` field reported whichever job happened to register last, which
+  // made `tde` look like a 20-second job when 20s is only its daily-backfill
+  // clock. Report them all, and how many there are.
+  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalsMs: [], started: false }; _svcStats.set(id, s); }
   return s;
 }
 
-/** `serviceEnabled` + a record that this process knows about the service. */
+/**
+ * `serviceEnabled` + a record that this process knows about the service.
+ *
+ * FAIL-OPEN on an unregistered id, exactly like start.sh's `svc_on`. The
+ * registry throws on an unknown id on purpose -- a typo must not read as
+ * "off" -- but a throw HERE is a throw at module scope, and on 2026-09-19 that
+ * took the entire site down: `a51bd7e` scheduled `svcInterval('nowcast', ...)`
+ * without adding the row, and server.js died on boot with "unknown service id",
+ * taking every route and every node-scheduled job with it (Railway then
+ * crash-loops). The trade this file wants is the one the bash side already
+ * made: an unregistered job RUNS, ungated and loudly logged, rather than
+ * killing the process. `js/serviceFlags.test.mjs` still fails the commit that
+ * forgets the row, which is where that mistake should surface.
+ */
+const _svcUnknown = new Set();
 function svcEnabled(id) {
   const st = _svcStat(id);
-  const on = serviceEnabled(id);
+  let on;
+  try {
+    on = serviceEnabled(id);
+  } catch (e) {
+    if (!_svcUnknown.has(id)) {
+      _svcUnknown.add(id);
+      console.error(`[services] ${e.message} — running '${id}' UNGATED so the process still boots; it cannot be switched off and /api/services cannot see it.`);
+    }
+    st.unregistered = true;
+    on = true;
+  }
   st.enabled = on;
   return on;
 }
@@ -331,6 +363,7 @@ function svcEnabled(id) {
  */
 function svcRun(id, fn) {
   const st = _svcStat(id);
+  st.started = true;   // a one-shot svcRun (e.g. volForecastScheduler's boot call) counts as started
   const t0 = Date.now();
   const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); };
   let out;
@@ -348,7 +381,7 @@ function svcInterval(id, fn, ms) {
   const st = _svcStat(id);
   if (!svcEnabled(id)) return null;
   st.started = true;
-  st.intervalMs = ms;
+  st.intervalsMs.push(ms);
   return setInterval(() => svcRun(id, fn), ms);
 }
 
@@ -357,6 +390,127 @@ function svcTimeout(id, fn, ms) {
   if (!svcEnabled(id)) return null;
   _svcStat(id).started = true;
   return setTimeout(() => svcRun(id, fn), ms);
+}
+
+// ── Making the meter survive a redeploy ──────────────────────────────────────
+// The counters above live in the process, and Railway redeploys on every push
+// to `main`. On a repo with several pushes a day that meant the meter was reset
+// before it ever measured a day — the first real read after shipping it showed
+// `uptimeSec: 17`, every row zero. So the counters are flushed to R2 as UTC day
+// buckets (js/serviceStats.js owns the merge; this owns the I/O) and reloaded
+// on boot. R2 rather than CF KV on purpose: this writes ~96×/day, and the CF KV
+// free-plan write quota is exactly why `CLAUDE.md` says to keep churny keys out
+// of `_CF_EXACT`. R2 has no equivalent per-write concern (same reasoning the
+// Level Atlas snapshots already run on).
+const SVC_STATS_R2_KEY   = process.env.SVC_STATS_R2_KEY || 'ops/service-stats.json';   // overridable so a test run never touches production's history
+const SVC_STATS_FLUSH_MS = parseInt(process.env.SVC_STATS_FLUSH_MS || String(15 * 60_000));
+
+// WRITES ONLY FROM THE REAL SERVICE. R2 credentials are present in dev sandboxes
+// too, so without this a local `node server.js` merges its own boot-run numbers
+// into production's history — which happened once while building this, and is
+// the same class of mistake CLAUDE.md's "never let a sandbox run write back to
+// R2" rule exists for. Railway injects RAILWAY_ENVIRONMENT/SERVICE_ID/PROJECT_ID
+// into every deploy; absent those we read but never write. `SVC_STATS_PERSIST=1`
+// forces writes on anywhere (and `=0` off), and the boot log says which mode is
+// live so a silent no-persist is diagnosable at a glance rather than by
+// wondering why `today` is empty tomorrow.
+const SVC_STATS_PERSIST = (() => {
+  const explicit = (process.env.SVC_STATS_PERSIST ?? '').trim().toLowerCase();
+  if (explicit) return !['0', 'false', 'off', 'no'].includes(explicit);
+  return !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_PROJECT_ID);
+})();
+let _svcStore        = _svcEmptyStore();
+let _svcFlushed      = {};        // cumulative counters the last SUCCESSFUL flush persisted
+let _svcStoreLoaded  = null;      // ISO, or null if we never got the store
+let _svcLastFlushAt  = null;
+let _svcFlushing     = false;
+
+async function svcStatsLoad() {
+  if (!_r2Ok()) { console.log('[service-stats] R2 not configured — history will not survive this process'); return; }
+  if (!SVC_STATS_PERSIST) console.log('[service-stats] read-only here (not a Railway deploy) — set SVC_STATS_PERSIST=1 to write');
+  try {
+    _svcStore = _svcNormalizeStore(await _r2GetJSON(SVC_STATS_R2_KEY));
+    _svcStoreLoaded = new Date().toISOString();
+    const days = Object.keys(_svcStore.days).length;
+    console.log(`[service-stats] loaded ${days} day bucket(s) from R2 (last update ${_svcStore.updatedAt ?? 'never'})`);
+  } catch (e) {
+    console.warn(`[service-stats] load failed, starting a fresh store: ${e.message}`);
+    _svcStore = _svcEmptyStore();
+  }
+}
+
+/**
+ * Persist everything accrued since the last successful flush.
+ *
+ * The merge happens on a COPY and the copy is only adopted once the R2 write
+ * lands. A failed write therefore leaves both `_svcStore` and `_svcFlushed`
+ * untouched, so the next flush retries the same deltas whole — without that,
+ * a transient R2 error would merge the deltas locally, fail, and merge them
+ * again next tick, double-counting the very numbers this exists to get right.
+ */
+async function svcStatsFlush(reason = 'interval') {
+  if (_svcFlushing || !_r2Ok() || !SVC_STATS_PERSIST) return false;
+  _svcFlushing = true;
+  try {
+    const [deltas, next] = _svcPendingDeltas(_svcStats, _svcFlushed);
+    if (!Object.keys(deltas).length) return false;
+    const candidate = _svcMergeDeltas(structuredClone(_svcStore), deltas, { keepDays: _SVC_KEEP_DAYS });
+    await _r2PutJSON(SVC_STATS_R2_KEY, candidate);
+    _svcStore      = candidate;
+    _svcFlushed    = next;
+    _svcLastFlushAt = new Date().toISOString();
+    return true;
+  } catch (e) {
+    console.warn(`[service-stats] flush (${reason}) failed, will retry whole next tick: ${e.message}`);
+    return false;
+  } finally {
+    _svcFlushing = false;
+  }
+}
+
+// A redeploy is a SIGTERM, and it is the single most common way this process
+// dies — so flush on the way out rather than losing up to a whole interval of
+// measurements every push. The bail-out timer means a slow/hung R2 write can
+// never hold a deploy open; the exit codes are the ones Node would have used
+// with no handler at all (128+signal), so nothing downstream sees a change.
+let _svcShuttingDown = false;
+for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
+  process.on(sig, () => {
+    if (_svcShuttingDown) return;
+    _svcShuttingDown = true;
+    console.log(`[service-stats] ${sig} — flushing before exit`);
+    const bail = setTimeout(() => process.exit(code), 4_000);
+    svcStatsFlush(sig).finally(() => { clearTimeout(bail); process.exit(code); });
+  });
+}
+
+/** Today + the trailing window, persisted buckets PLUS whatever has not been flushed yet. */
+function svcStatsView() {
+  const [pending] = _svcPendingDeltas(_svcStats, _svcFlushed);
+  const merge = (base) => {
+    const out = {};
+    for (const [id, v] of Object.entries(base)) out[id] = { ...v };
+    for (const [id, d] of Object.entries(pending)) {
+      const cur = out[id] ?? (out[id] = { runs: 0, errors: 0, totalMs: 0 });
+      cur.runs += d.runs; cur.errors += d.errors; cur.totalMs += d.totalMs;
+    }
+    return out;
+  };
+  const today  = _svcRollup(_svcStore, { days: 1 });
+  const window = _svcRollup(_svcStore, { days: 7 });
+  return {
+    today:  { ...today,  services: merge(today.services) },
+    window: { ...window, services: merge(window.services) },
+    persistence: {
+      backend: _r2Ok() ? 'r2' : 'none',
+      key: SVC_STATS_R2_KEY,
+      loadedAt: _svcStoreLoaded,
+      lastFlushAt: _svcLastFlushAt,
+      flushEveryMs: SVC_STATS_FLUSH_MS,
+      daysStored: Object.keys(_svcStore.days).length,
+      keepDays: _SVC_KEEP_DAYS,
+    },
+  };
 }
 
 // ── Bounded TTL caches ───────────────────────────────────────────────────────
@@ -3335,7 +3489,7 @@ app.get('/api/daily-snapshot', async (req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/daily-snapshot/tick', async (_req, res) => { try { await _dailySnapshotTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
-setInterval(() => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
+svcInterval('dailySnapshot', () => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
 
 // ── Desk watch: the early-warning layer ──────────────────────────────────────
 // Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
@@ -3439,7 +3593,7 @@ app.post('/api/desk-watch/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _deskWatchTick({ silent: req.query.silent === '1' })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-setInterval(() => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
+svcInterval('deskWatch', () => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
 
 // ── The chain, read aloud ────────────────────────────────────────────────────
 // The chain panel judges each textbook link on measured moves. This turns those
@@ -30794,35 +30948,57 @@ app.get('/api/trade-decision/log', (req, res) => {
 app.get('/api/services', (req, res) => {
   const bootedAt = _serverBootedAt;
   const upMs = Date.now() - bootedAt;
+  const view = svcStatsView();
+  const zero = { runs: 0, errors: 0, totalMs: 0 };
+  view.persistence.writing = SVC_STATS_PERSIST;
   let rows = servicesSnapshot().map(s => {
     const st = _svcStats.get(s.id) ?? {};
     const totalMs = st.totalMs ?? 0;
+    // A start.sh bot runs in its OWN process — this one cannot observe whether
+    // it is up, so reporting `started: false` (as the first version did) reads
+    // as "not running" when it is fine. Say "not observable" instead.
+    const observable = s.where === 'server';
     return {
       ...s,
-      started: st.started === true,
-      runs: st.runs ?? 0,
-      errors: st.errors ?? 0,
-      totalMs,
-      lastMs: st.lastMs ?? null,
-      lastAt: st.lastAt ?? null,
-      intervalMs: st.intervalMs ?? null,
-      // Share of wall-clock time this process spent inside this job. Single
-      // process, so these are comparable to each other; they are NOT CPU time
-      // (an awaiting job is idle, not burning CPU) and can sum past 100%.
-      busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
+      observable,
+      started: observable ? st.started === true : null,
+      jobs: (st.intervalsMs ?? []).length,
+      intervalsMs: st.intervalsMs ?? [],
+      sinceBoot: {
+        runs: st.runs ?? 0,
+        errors: st.errors ?? 0,
+        totalMs,
+        lastMs: st.lastMs ?? null,
+        lastAt: st.lastAt ?? null,
+        // Share of wall-clock time this process spent inside this job. Single
+        // process, so these are comparable to each other; they are NOT CPU time
+        // (an awaiting job is idle, not burning CPU) and can sum past 100%.
+        busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
+      },
+      today:  view.today.services[s.id]  ?? { ...zero },
+      window: view.window.services[s.id] ?? { ...zero },
     };
   });
   if (String(req.query.on ?? '') === '1') rows = rows.filter(r => r.enabled);
   const order = { high: 0, med: 1, low: 2 };
-  rows.sort((a, b) => (b.totalMs - a.totalMs) || (order[a.cost] - order[b.cost]) || a.id.localeCompare(b.id));
+  // Sort by TODAY's measured time — that survives restarts, so it is the column
+  // to cut from. Since-boot time only breaks ties.
+  rows.sort((a, b) => (b.today.totalMs - a.today.totalMs)
+    || (b.sinceBoot.totalMs - a.sinceBoot.totalMs)
+    || (order[a.cost] - order[b.cost])
+    || a.id.localeCompare(b.id));
   res.json({
     ok: true,
     bootedAt: new Date(bootedAt).toISOString(),
     uptimeSec: Math.round(upMs / 1000),
     profile: process.env.SERVICE_PROFILE || null,
     counts: { total: rows.length, enabled: rows.filter(r => r.enabled).length },
-    note: 'totalMs/busyPct are measured in THIS process since boot; start.sh bots report flag state only. '
-        + 'Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md) and redeploy.',
+    note: '`today` and `window` (7d) are UTC day totals persisted to R2, so they survive a redeploy — cut from those. '
+        + '`sinceBoot` is this process only. start.sh bots report flag state only (observable: false); '
+        + 'their CPU is not measured here. Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md).',
+    today: { date: view.today.to, span: view.today.days },
+    window: { from: view.window.from, to: view.window.to, days: view.window.days },
+    persistence: view.persistence,
     services: rows,
   });
 });
@@ -31746,6 +31922,12 @@ try {
 } catch (e) {
   console.error('[HMM5M-V2] Failed to load trained params:', e.message);
 }
+
+// Service-stat persistence: pull the day buckets R2 already holds, then flush
+// every SVC_STATS_FLUSH_MS (and once more on SIGTERM), so a push at 3pm no
+// longer throws away the morning's measurements.
+await svcStatsLoad();
+svcInterval('serviceStats', () => svcStatsFlush('interval'), SVC_STATS_FLUSH_MS);
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);

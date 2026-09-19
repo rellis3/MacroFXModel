@@ -168,4 +168,29 @@ t('no bare setInterval is left in server.js outside the svcInterval helper', () 
   assert.ok(stray.length <= 2, `unexpected ungated setInterval(s): ${stray.map(([n]) => n).join(', ')}`);
 });
 
+t('every id server.js gates on is in the registry', () => {
+  // The reverse of the test above, and the one that matters more: an id the
+  // registry has never heard of used to be FATAL. `a51bd7e` shipped
+  // `svcInterval('nowcast', ...)` with no row, and server.js died at module
+  // scope on boot -- whole site, every route, every scheduled job. svcEnabled
+  // now fails open, so the cost is back down to "one job nobody can switch
+  // off"; this test is what should catch it first.
+  const src = readRepo('server.js');
+  const ids = new Set(SERVICES.map(s => s.id));
+  const used = new Set([...src.matchAll(/svc(?:Interval|Timeout|Run|Enabled)\(\s*'([A-Za-z0-9_]+)'/g)].map(m => m[1]));
+  const orphans = [...used].filter(id => !ids.has(id));
+  assert.deepEqual(orphans, [], `server.js gates on ${orphans.join(', ')}, which ${orphans.length === 1 ? 'is' : 'are'} not in SERVICES — add the row`);
+});
+
+t('svcEnabled fails open rather than killing the process on an unknown id', () => {
+  // start.sh made this trade first (see its svc_on comment): a flag lookup that
+  // breaks must not stop the thing it was only supposed to gate.
+  const src = readRepo('server.js');
+  const fn = src.slice(src.indexOf('function svcEnabled(id) {'));
+  const body = fn.slice(0, fn.indexOf('\n}\n'));
+  assert.ok(/try\s*{/.test(body) && /catch/.test(body), 'svcEnabled must catch the registry throw');
+  assert.ok(/on = true/.test(body), 'svcEnabled must fall back to ON, so an unregistered job still runs');
+  assert.ok(!/throw/.test(body), 'svcEnabled must not rethrow — it is called at module scope');
+});
+
 console.log(`\n${pass} passed`);
