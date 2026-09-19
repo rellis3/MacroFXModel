@@ -124,23 +124,47 @@ figure is attached to any row, because none has been measured — see §3. The
 registry in `js/serviceFlags.js` carries the same table with the consumer of
 each output, which is the thing to check before switching one off.
 
-### The heavy end (where the money plausibly goes)
+### The heavy end — MEASURED (first real read, 2026-09-19)
 
-| Service | Cadence | What one tick does |
-|---|---|---|
-| `hmm5m` + `hmm5mV2` | **every 30s, each** | 500-bar OANDA fetch **per pair** + an HMM fit, ×2 engines. With 26 pairs that is ~5,000 fetch-and-fit operations an hour, continuously. |
-| `sessionResearchFull` | daily | 26 × `python -m SessionResearch.run_study`, each allowed up to **10 minutes**, plus a predict and a report per pair. The single largest scheduled job in the service. |
-| `sessionResearchLive` | hourly | 26 python spawns + an export, serially. |
-| `volatilityV2Plan`, `fibAtlasPlan` | **every 45s, each** | Rebuild a paper bot's ladder plan off the live cache — 80 wake-ups/hour each. |
-| `corrHistory` | every 6h | 5y of H4 bars for every pair; ~3 minutes of solid work per build. |
-| `levels` | every 30 min | Full OANDA recompute for every pair, v1 + v2 + a daily HMM fit per pair. |
-| `monitor` | every 3s | 1,200 wake-ups/hour. Cheap per tick and early-returns unless alerts are on — but it never sleeps. |
-| `tde` | 5 min | Per-pair refresh pulling macro + credit + OI context. |
-| 8 bot processes | continuous | Whole Python/Node processes, RAM resident, restarted forever by the supervisor. |
+A 7.19-hour window (`uptimeSec` 25,879, HMM already off). These are wall times
+inside each job, so they overlap and sum past 100%; they are not CPU. But the
+ranking is not in doubt, and **it is not the ranking the code-reading below
+predicted** — see the correction after the table.
 
-### The rest
+| Service | Runs | Total | Per run | Busy |
+|---|---:|---:|---:|---:|
+| `fibAtlasPlan` | 566 | **3h16m** | 20.8s on a **45s** timer | **45.4%** |
+| `mveLog` | 28 | **2h58m** | **381s** on a 15-min timer | **41.2%** |
+| `volatilityV2Plan` | 565 | **2h08m** | 13.5s on a **45s** timer | **29.6%** |
+| `oiBot` | 129 | 24m 30s | 11.4s | 5.7% |
+| `levels` | 15 | 6m 53s | 27.6s | 1.6% |
+| `sessionResearchLive` | 8 | 3m 54s | 29s | 0.9% |
+| everything else (40+ jobs) | — | < 1m 30s each | — | < 0.8% |
 
-Everything else is a clock-watcher or a slow refresh: 14 econ pollers at 10-min
+**Three jobs are 116% of the service's busy time.** Everything else, including
+every job the original code-read called "high cost", is rounding error.
+
+**Where the code-read was wrong, and why.** §4's first version ranked by
+*ticks × apparent work per tick* and put `hmm5m`/`hmm5mV2` at the top on
+frequency alone. Two corrections the measurement forced:
+
+- **`mveLog` was tiered "med" and is #2 at 41% busy.** One cycle takes **six
+  and a half minutes** — it reads state for every instrument in the MVE table,
+  six at a time, every 15 minutes. Nothing about "a logger" suggested that.
+- **The two 45-second plan producers each take 10–20 seconds per tick.** A 45s
+  cadence where the work costs 20s is self-defeating: the producer is running
+  roughly half of all wall-clock time to refresh a ladder that moves slowly.
+- `monitor` (1,200 wake-ups/hour, tiered "high") measured **0.32%**. Wake-up
+  count is a bad proxy for cost; time per tick is the thing.
+
+The lesson is the one `INFRASTRUCTURE_COST_ANALYSIS.md` §6 already stated:
+read the meter, don't rank from the code. The `cost` field in the registry is
+still a code-read estimate and should be treated as the weaker signal wherever
+`/api/services` disagrees with it.
+
+### The rest — confirmed cheap
+
+The measurement settled this too: 14 econ pollers at 10-min
 (for series that print once a day), 5 central-bank sentiment engines at 30-min
 (each run parses PDFs **and calls the Anthropic API** — that is `ANT_KEY` spend
 too), history recorders, Telegram alert scans, QMR gate monitors. Individually
