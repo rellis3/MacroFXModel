@@ -4081,8 +4081,16 @@ function renderMarketRead() {
     if (collecting.length) {
       srNote = `<div class="muted" style="font-size:10.5px;margin-top:4px">Still collecting: ${collecting.map(c => `${c.ccy} (${c.n}/${c.n + c.pending})`).join(', ')} — a surprise index needs release history, and the calendar feed only exposes one week at a time.</div>`;
     }
-  } else if (econSurprise) {
-    srNote = `<div class="muted" style="font-size:10.5px">Surprise index is still collecting release history (${econSurprise.storedReleases ?? 0} stored). It is built one week at a time because the calendar feed only ever exposes the current week — nothing is shown until a series has enough history to standardise against.</div>`;
+  }
+  // Feed health, in words: which prints are live and when the last one landed. A
+  // store that stops growing must be visible here, not only in a log line.
+  if (econSurprise?.health) {
+    const h = econSurprise.health; const ageD = h.latestPrintAt ? (Date.now() - Date.parse(h.latestPrintAt)) / 864e5 : null;
+    const stale = ageD == null || ageD > 9;
+    srNote += `<div class="muted" style="font-size:10.5px;margin-top:4px${stale ? ';color:var(--amber)' : ''}">${stale ? '⚠ ' : ''}Live prints: US releases only (consensus from the calendar, the actual rebuilt from FRED on release day; UK/EU/JP and the ISM/PMI family have no actual source, so they do not score). ${h.latestPrintAt ? `Last live print ${new Date(h.latestPrintAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, ${h.last30d} in 30 days.` : 'No live print yet since the 2025 backfill.'}${stale ? ' Older than nine days on a working calendar means the fill has stopped.' : ''}</div>`;
+  }
+  if (!srScored.length && econSurprise) {
+    srNote += `<div class="muted" style="font-size:10.5px">Surprise index is still collecting release history (${econSurprise.storedReleases ?? 0} stored). It is built one week at a time because the calendar feed only ever exposes the current week — nothing is shown until a series has enough history to standardise against.</div>`;
   }
 
   // ── Business-activity bars (a LEVEL — kept, under its own honest name) ──
