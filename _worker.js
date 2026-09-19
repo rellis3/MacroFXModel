@@ -1059,6 +1059,7 @@ export default {
             'oanda_book_history_v1',
             'pair_ledger_v1',
             'chain_read_v1',
+            'daily_snapshot_v1',
             'desk_watch_v1',
             // oi_auto_target decides whether the nightly sweep feeds the live bots. If it
             // expired it would silently revert to the shadow default, and a fortnight of

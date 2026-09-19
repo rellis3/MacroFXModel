@@ -3275,6 +3275,43 @@ Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
+// ── Daily snapshot: what the page thought, kept ──────────────────────────────
+// The morning brief overwrites itself; the chain, the watch and the deltas are
+// live. So "what did we think five days ago" was reconstructable for numbers
+// and not for reads. This keeps one compact row per UTC day -- the brief's
+// regime / what-changed / watch lines, the macro deltas, the chain verdicts,
+// the watch states, the board trade -- written once the morning brief exists
+// and refreshed through the day (last write wins, same day). The look-back
+// timeline reads it. Read-modify-write: refuse to write over an unparseable
+// store; never overwrite an older day.
+const _SNAP_KV = 'daily_snapshot_v1';
+const _SNAP_KEEP = 120;
+async function _loadSnapStore() {
+  try { const raw = await kv.getStrict(_SNAP_KV); if (!raw) return { days: [] }; const p = JSON.parse(raw); return { days: Array.isArray(p?.days) ? p.days : [] }; }
+  catch (e) { console.warn('[snapshot] store unreadable, not touching it:', e.message); return null; }
+}
+async function _dailySnapshotTick() {
+  const store = await _loadSnapStore(); if (!store) return;
+  const day = new Date().toISOString().slice(0, 10);
+  const row = { day, at: new Date().toISOString() };
+  try { const raw = await kv.get(_MORNING_BRIEF_KV); const b = raw ? JSON.parse(raw) : null; const a = b?.analysis; if (a) row.brief = { generatedAt: b.generatedAt, regime: a.regime ?? null, whatChanged: a.whatChanged ?? null, watch: Array.isArray(a.watch) ? a.watch.slice(0, 3) : a.watch ?? null, headline: a.headline ?? null, theme: typeof a.theme === 'string' ? a.theme.slice(0, 400) : null, boardTrade: a.boardTradeOfDay ? { pair: a.boardTradeOfDay.pair ?? null, direction: a.boardTradeOfDay.direction ?? null } : null }; } catch { /* no brief yet */ }
+  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
+  try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
+  try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
+  try { const raw = await kv.get(_FRED_DASH_KV); const f = raw ? (JSON.parse(raw)?.d ?? JSON.parse(raw)) : {}; row.levels = Object.fromEntries(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy', 'wti'].map(k => [k, f?.[k]?.value ?? null])); } catch { /* skipped */ }
+  const i = store.days.findIndex(d => d.day === day);
+  if (i >= 0) store.days[i] = { ...store.days[i], ...row }; else store.days.push(row);
+  store.days.sort((a, b) => a.day < b.day ? -1 : 1);
+  store.days = store.days.slice(-_SNAP_KEEP);
+  await kv.put(_SNAP_KV, JSON.stringify(store));
+}
+app.get('/api/daily-snapshot', async (req, res) => {
+  try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/daily-snapshot/tick', async (_req, res) => { try { await _dailySnapshotTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+setInterval(() => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
+
 // ── Desk watch: the early-warning layer ──────────────────────────────────────
 // Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
 // chain, the stock/bond correlation, the calendar), evaluate every trigger in
@@ -31531,6 +31568,7 @@ _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.
 // First desk-watch pass after the FRED history has had a chance to seed (the
 // triggers read it); after kv.load() because the store is read-modify-write.
 setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);
+setTimeout(() => _dailySnapshotTick().catch(e => console.error('[snapshot] first pass failed (store left untouched):', e.message)), 8 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
