@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 from pylego.indicators.vumanchu import align_htf_causal, ema, wave_trend
-from pylego.swing_structure import atr as compute_atr, classify_swing_structure, regime_at
+from pylego.swing_structure import atr as compute_atr, classify_swing_structure, regime_known_at
 
 APPROACH_BARS = 12    # how far back "how price arrived at the level" looks
 VOL_LOOKBACK = 500    # bars of trailing history a volatility regime is judged against
@@ -125,19 +125,27 @@ def compute_features(pair: str, bars: pd.DataFrame, args: argparse.Namespace) ->
     # "with" vs 1.167 "against"), so the trend question is asked structurally
     # instead: classify_swing_structure walks the actual swing highs/lows and
     # labels HH+HL / LH+LL / mixed. A pivot is only knowable pivot_n bars
-    # after it prints, which `regime_at` respects by construction (it returns
-    # whichever change-point was already in force at an index).
+    # after it prints. Until 2026-09-19 this read used `regime_at`, which
+    # looks up by the PIVOT bar -- so the backtest (full history) applied
+    # pivots from the 1-4 bars before a confirmation that the live tracker
+    # (data ending at the confirm bar) could not see: 21% of confirm bars
+    # relabelled, live taking ~13% more trades than the backtest. This
+    # feature is read at the confirm bar's CLOSE, where bars <= i are known,
+    # so the knowable change-point is the one with pivot + pivot_n <= i --
+    # `regime_known_at`. See MD files/MOTIF_REGIME_LOOKAHEAD_PREREG.md.
     swing = classify_swing_structure(bars, pivot_n=_p(args, 'pivot_n', PIVOT_N))
     swing_dir = np.zeros(n)
     for i in range(n):
-        rp = regime_at(swing, i)
+        rp = regime_known_at(swing, i)
         swing_dir[i] = 0 if (rp is None or rp.dir is None) else rp.dir
     # Daily structure, step-held causally onto H1 by close time.
     d1 = bars.resample("1D").agg({"open": "first", "high": "max", "low": "min", "close": "last"}).dropna()
     d1_close_s = (d1.index.astype("int64") // 10**9) + 86400
     if len(d1) > _p(args, 'pivot_n', PIVOT_N) * 4:
         d1_swing = classify_swing_structure(d1, pivot_n=_p(args, 'pivot_n', PIVOT_N))
-        d1_dir_raw = np.array([(lambda rp: 0 if (rp is None or rp.dir is None) else rp.dir)(regime_at(d1_swing, j))
+        # Same knowability rule on the daily series (a D1 pivot needs pivot_n
+        # DAYS after it); align_htf_causal then holds it by D1 close time.
+        d1_dir_raw = np.array([(lambda rp: 0 if (rp is None or rp.dir is None) else rp.dir)(regime_known_at(d1_swing, j))
                                for j in range(len(d1))], dtype=float)
     else:
         d1_dir_raw = np.zeros(len(d1))
