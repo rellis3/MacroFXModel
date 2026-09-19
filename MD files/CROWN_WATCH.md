@@ -223,3 +223,117 @@ testing whether SPX is quiet *right now*.
   questions the chain has to actually run to answer, same limit noted on the
   first entry's "is the 10Y dominating today" question — not something this
   log can settle by reading code.
+
+---
+
+## 2026-09-19 — "Institutional traders get paid to beat this line" (VWAP)
+
+> *"All institutional traders get paid to do one thing: beat this line...
+> the single most common benchmark the algorithms target is the VWAP...
+> above it, buyers are in control, below it, sellers are in control...
+> enter your long on the first pullback after a qualified break — the algos
+> that missed this next leg up are waiting, hungry to get the fill...
+> acceptance below the VWAP means the regime has changed: three consecutive
+> closes below VWAP and a retest of the line that holds, control has
+> shifted from buyers to sellers."*
+
+**1. The claim, stated plainly.** Three linked pieces: (a) rationale —
+agency execution desks are compensated for beating VWAP, so a large,
+systematic share of institutional flow works to trade at/near it, making it
+a real benchmark, not folklore; (b) descriptive regime read — price above
+VWAP means buyers control the session, below means sellers do; (c) two
+trading rules — enter long on the first pullback/retest of VWAP after a
+"qualified break" (unspecified three-part checklist, not available to us);
+and a regime-flip confirmation — three consecutive 5-minute closes below
+VWAP plus a retest that holds means control has shifted, adjust the
+position.
+
+**2. What's already on this desk.** More than any Crown clip audited here
+so far — this desk has tested VWAP as a trading signal **six separate
+times, in six mechanically distinct constructions, on up to four
+instruments each, all null**, before today:
+
+- `MD files/VWAP_REVERSION_FINDINGS.md` — the session VWAP ±2σ band,
+  fade/bounce/follow, real OANDA M1, 26 pairs, 2016–2026, costed IS/OOS:
+  **0/26 pairs OOS-positive on every mode**, gross return ≈ zero (not "a
+  real edge killed by costs" — no edge existed before costs either).
+- `education/jordan_vwap_session_reversion_backtest/RESULTS.md` — a
+  mechanically different VWAP-reversion pattern (fade the London session's
+  move back toward VWAP at the NY handoff), same 26 pairs: **1/26
+  OOS-positive** (noise), pooled gross ≈ zero.
+- `MD files/GOLD_VWAP_FIXED_SIGMA_FINDINGS.md` §6, `js/vwapImpulseEntryV1Engine.js`
+  — **this is Crown's rule (c) almost exactly**: a closed HTF impulse bar
+  (30m/1h/4h — the "qualified break") unlocks a with-impulse entry at the
+  session VWAP as price pulls back to it (`pullback_continuation` mode).
+  Pre-registered, run on gold M1 2016–2026: **null at every trigger
+  timeframe** (best OOS t +0.37, statistically indistinguishable from
+  zero); an exit-geometry pivot (§7d, time-stop instead of the impulse
+  extreme as target) was tried specifically because the entry looked like
+  it might just have the wrong exit — **also null** (OOS t −1.3 to −3.7).
+- The same doc's §14 — the closest match to rule (c)'s companion idea
+  (trade *with* a move away from VWAP once the regime has shifted, not
+  fade it back): a with-trend "follow" entry, gated on `bandSlope=
+  expanding` — the single best cross-instrument-replicated descriptive
+  finding in the entire 1,900-line study (real on gold, EURUSD, GBPUSD,
+  USDJPY). Even with the best available context filter switched on: **null
+  on every instrument** (OOS t −0.40 to −3.75).
+- §8b (`js/rangeFibVwapEntryV1Engine.js`) and §9/§9a
+  (`js/stackedFadeV1Engine.js`) — two more VWAP-anchored entry families
+  (range-fib levels near VWAP; a stacked-gate fade using the study's own
+  mined "best" conditions), gold + up to three FX majors: **null in every
+  variant**, including the fully-gated version that used the books' own
+  favourite conditions (worst cell of the batch — what over-selection on
+  mined data looks like).
+- Rule (b)'s descriptive framing (which side of VWAP is "in control") is
+  the closest thing to a live finding: §7 of the same doc found price
+  *does* return to VWAP from deep bands meaningfully more than a random
+  walk, especially outside the NY session — a real, cross-instrument
+  effect. But every attempt to convert that description into an after-cost
+  entry (five separate trade tests: §6, §8b, §9, §9a, §14) failed. This
+  desk's own standing conclusion, verbatim: "the descriptive structure in
+  these books, real as it is, does not convert into an after-cost entry by
+  gating touches."
+- One structural caveat that matters for rule (a)'s rationale specifically:
+  `VWAP_REVERSION_FINDINGS.md` already notes **FX "volume" on this desk is
+  tick count, not traded volume** — the real institutional participation
+  that gives an *equity* VWAP its meaning is absent from an FX VWAP. Crown
+  is talking about equity agency execution (pension funds, bank desks);
+  this desk's own tradable universe is mostly FX + gold, where that
+  rationale doesn't transfer as cleanly even before any backtest runs.
+
+**3. Trading claim or macro-understanding claim.** Trading claim — a
+specific, single-instrument intraday entry/exit rule, not a cross-market
+mechanism. Not chain material (`js/macroChain.js` models transmission
+between markets, not intraday execution mechanics within one).
+
+**4. Verdict and action: already covered, already nulled — not rebuilt.**
+Given six independent, honest, costed, OOS-split tests of VWAP-anchored
+entries already sitting in this repo, and the one closest to Crown's exact
+rule (impulse-qualified break → pullback-to-VWAP entry) already null
+including an exit-geometry pivot built specifically to rule out "the entry
+idea is right, the exit is wrong" — building a seventh near-identical
+VWAP-touch backtest is not the honest next move here. Per this repo's own
+"prefer validating what exists over adding surface" rule, this is reported
+as covered, not re-run.
+- **Not built, not pre-registered as new work.**
+- **Genuine, narrow gaps, noted as low-prior candidates, not run:** (i) the
+  exact "three consecutive 5-minute closes below VWAP + a retest that
+  holds" persistence-confirmation framing was never literally replicated —
+  every test used a single touch, a single impulse close, or a σ-band
+  event as the trigger, not a multi-bar acceptance count. §14's
+  `bandSlope=expanding`-gated follow entry is the closest existing analog
+  (trade with a VWAP-side regime shift) and it is null on every
+  instrument, so the prior for this variant is low, not zero. (ii) None of
+  this VWAP work has been run on NAS100/SPX500 — the index CFDs closest to
+  Crown's actual equity-flow rationale — only FX majors and gold. Both are
+  cheap to test if ever picked up (the engines and harness already exist);
+  neither is pre-registered here without being asked, given how uniformly
+  every prior VWAP construction has come back null.
+- **Not claimed:** that VWAP is "useless" in every conceivable form — only
+  that the specific fade/bounce/pullback/follow mechanisms actually
+  described (by Crown and by the "Jordan" transcripts this desk already
+  worked through) have been tested as standalone triggers and found
+  nothing. VWAP as a *conditioning filter* on an edge that already exists
+  remains the one open, untested form — and it needs a validated primary
+  edge to condition, which this repo does not yet have validated intraday
+  (same open item `VWAP_REVERSION_FINDINGS.md` already flagged).
