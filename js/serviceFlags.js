@@ -191,12 +191,21 @@ export const SERVICES = [
   { id: 'cogShadow', where: 'server', label: 'COG replication shadow run',
     cadence: '3 gates/weekday (60s clock)', cost: 'low', lean: false, on: true,
     feeds: 'Telegram shadow calls — explicitly "Shadow only - no orders placed"' },
-  { id: 'mveLog', where: 'server', label: 'Market-valuation-engine logger',
-    cadence: 'every VM_LOG_MIN (15 min default)', legacyEnv: ['VM_LOG_ENABLED'], cost: 'med', lean: false, on: true,
-    feeds: 'mve.html forward log' },
-  { id: 'mveHeartbeat', where: 'server', label: 'MVE daily Telegram heartbeat',
+  // NAME IS A MISNOMER, kept because SVC_MVE_LOG may already be set in Railway:
+  // `VM` here is VuManChu, NOT the Market Valuation Engine (`js/mve/*`, which has
+  // no background job at all and is computed per request). Mis-reading this cost
+  // the owner a wrong recommendation on 2026-09-19 — the id stays, the label does
+  // not lie.
+  { id: 'mveLog', where: 'server', label: 'VuManChu forward-validation logger (NOT the MVE)',
+    cadence: 'every VM_LOG_MIN (15 min default)', legacyEnv: ['VM_LOG_ENABLED'], cost: 'high', lean: false, on: true,
+    feeds: '/api/vumanchu/log + /api/vumanchu/health → forecast-reversion.html. js/vumanchuLogger.js calls itself "the only out-of-sample evidence this work will ever have": vumanchuLab/FINDINGS.md was all measured in-sample, so this records what the state table predicts BEFORE the fact and resolves it against what price did.',
+    note: 'MEASURED 2026-09-19: 381s per cycle, 41% of the service\'s busy time — the #2 job, not the "med" this row used to claim. '
+        + 'Per cycle it pulls 1,400 M1 bars per table instrument from OANDA (55s bar cache, so a 15-min cycle always misses) and computes VuManChu state across 3 timeframes. '
+        + 'Switching it off stops an out-of-sample record that cannot be reconstructed afterwards; raising VM_LOG_MIN thins the sample (horizon is 60 min, so 15 min = 4 samples/hour/instrument). '
+        + 'Cheaper per run is the better lever than either.' },
+  { id: 'mveHeartbeat', where: 'server', label: 'VuManChu log daily Telegram heartbeat (NOT the MVE)',
     cadence: '60s clock, fires once/day', legacyEnv: ['VM_HEARTBEAT'], cost: 'low', lean: false, on: true,
-    feeds: 'Telegram heartbeat only' },
+    feeds: 'Telegram heartbeat reporting how the VuManChu forward log is scoring vs its noise band. Same VM=VuManChu misnomer as mveLog above.' },
   { id: 'coneForward', where: 'server', label: 'Analog-cone forward record',
     cadence: 'every 30 min', legacyEnv: ['CONE_FWD_AUTO'], cost: 'low', lean: false, on: true,
     feeds: 'analog cone forward-track stats' },

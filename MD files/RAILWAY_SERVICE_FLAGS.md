@@ -149,8 +149,19 @@ every job the original code-read called "high cost", is rounding error.
 frequency alone. Two corrections the measurement forced:
 
 - **`mveLog` was tiered "med" and is #2 at 41% busy.** One cycle takes **six
-  and a half minutes** — it reads state for every instrument in the MVE table,
-  six at a time, every 15 minutes. Nothing about "a logger" suggested that.
+  and a half minutes**: 1,400 M1 bars per table instrument from OANDA (the bar
+  cache is 55s, so a 15-minute cycle always misses) plus VuManChu state across
+  three timeframes, six instruments at a time.
+  **And it is not the MVE.** `VM` here is VuManChu; the Market Valuation Engine
+  (`js/mve/*`) has no background job at all and is computed per request. The id
+  `mveLog` stays because `SVC_MVE_LOG` may already be set, but the registry
+  label no longer says "Market-valuation-engine". Reading the id as MVE produced
+  a wrong recommendation on 2026-09-19 — that this job feeds a
+  declared-null engine and could be thinned freely. It does the opposite: it is
+  the forward out-of-sample record for `vumanchuLab`, which
+  `CLAUDE.md` §5 calls the platform's real gap. Off ⇒ an evidence series that
+  cannot be rebuilt afterwards; a longer `VM_LOG_MIN` ⇒ fewer samples per
+  60-minute horizon. Making one cycle cheaper is the better lever than either.
 - **The two 45-second plan producers each take 10–20 seconds per tick.** A 45s
   cadence where the work costs 20s is self-defeating: the producer is running
   roughly half of all wall-clock time to refresh a ladder that moves slowly.
