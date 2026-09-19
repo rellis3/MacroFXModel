@@ -171,6 +171,11 @@ ok("tp2 rides the spec (scale-out runner target)", spec["tp2"] == 4100)
 spec2 = make_spec("gold", {**SELL_FADE, "hold": 0.72, "holdParts": {"gex": 0.9}, "conviction": 1.3})
 ok("hold score + components + conviction ride the spec (calibration features)",
    spec2["hold"] == 0.72 and spec2["hold_parts"] == {"gex": 0.9} and spec2["conviction"] == 1.3)
+spec3 = make_spec("gold", {**SELL_FADE, "sizeBreakdown": {"base": 1.8, "vanna": 1.15, "hold": 1.26, "capped": False}})
+ok("sizeBreakdown rides the spec as size_breakdown (the audit trail for a REAL fired trade)",
+   spec3["size_breakdown"] == {"base": 1.8, "vanna": 1.15, "hold": 1.26, "capped": False})
+ok("no sizeBreakdown on the zone (older plan shape) -> None, never a KeyError",
+   make_spec("gold", SELL_FADE)["size_breakdown"] is None)
 
 print("[guards]")
 ok("px None → no fire", OISession("gold", 4200, [SELL_FADE]).decide(None) == [])
