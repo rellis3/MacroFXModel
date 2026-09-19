@@ -83,3 +83,16 @@ never a direction. `/api/nowcast` (daily) carries the Cleveland month values and
 GDPNow; the calendar row for a covered US release shows *"model 0.43%"* with the
 verdict in the hover, and the timeline's ahead lines say *"Cleveland Fed model
 says 0.43%"* next to the consensus. Nothing leans on it.
+
+**N2b — the fuller sample, later the same day.** The Atlanta Fed's own workbook
+(`GDPTrackingModelDataAndForecasts.xlsx`, sheet `TrackRecord`; extract in
+`analysis/output/gdpnow_trackrecord.json`) carries the final model forecast
+before every advance release since 2011-Q3. Matched to the archive's consensus:
+**53 calls**. At |gap| ≥ 0.2: **29 of 44 = 66% [52–80]**; at ≥ 0.4, 22 of 34 =
+65%; at ≥ 0.6, 19 of 24 = 79% [63–95]. The hit-rate bar is now cleared with n
+above 40 — but the pre-registered falsifier also fires: GDPNow's error is worse
+than the consensus's (MAE 0.76 vs 0.61). Both are true at once: the model is a
+noisier level forecast whose *side* of the consensus still lands on the right
+side of the print two times in three. By the rules written above that is not a
+pass. It stays a base rate with an interval, shown as context, and it is a
+better one than the Cleveland gap. Not a lean.

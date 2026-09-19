@@ -4447,7 +4447,7 @@ function nowcastFor(country, event, ms) {
     const key = t === 'CPI m/m' ? 'cpi' : t === 'Core CPI m/m' ? 'core' : t === 'Core PCE Price Index m/m' ? 'corepce' : t === 'PCE Price Index m/m' ? 'pce' : null;
     if (key && pickMonth()?.[key] != null) return { who: 'Cleveland Fed model', value: `${pickMonth()[key].toFixed(2)}%`, asOf: pickMonth().asOf, month: pickMonth().month, note: 'tested: the gap to consensus does not predict the beat (N1, null)' };
   }
-  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested: 67% on 30 calls -- under the sample bar (N2)' };
+  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested on 53 releases: the side the model sits on matched the print two times in three (66%, interval 52-80%), but the model forecasts the level worse than consensus -- a base rate, not a lean (N2)' };
   return null;
 }
 function nowcastText(country, event, ms) { const n = nowcastFor(country, event, ms); return n ? ` · ${n.who} says <b>${esc0(n.value)}</b>` : ''; }

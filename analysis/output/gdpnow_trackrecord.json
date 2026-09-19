@@ -1,0 +1,366 @@
+{
+ "source": "Atlanta Fed GDPTrackingModelDataAndForecasts.xlsx, sheet TrackRecord",
+ "fetched": "2026-09-19",
+ "rows": [
+  {
+   "quarterEnd": "2026-06-30",
+   "modelForecast": 1.54,
+   "beaAdvance": 1.5,
+   "releaseDate": "2026-07-30"
+  },
+  {
+   "quarterEnd": "2026-03-31",
+   "modelForecast": 1.239,
+   "beaAdvance": 1.99,
+   "releaseDate": "2026-04-30"
+  },
+  {
+   "quarterEnd": "2025-12-31",
+   "modelForecast": 2.999,
+   "beaAdvance": 1.423,
+   "releaseDate": "2026-02-20"
+  },
+  {
+   "quarterEnd": "2025-09-30",
+   "modelForecast": 3.473,
+   "beaAdvance": 4.343,
+   "releaseDate": "2025-12-23"
+  },
+  {
+   "quarterEnd": "2025-06-30",
+   "modelForecast": 2.902,
+   "beaAdvance": 2.968,
+   "releaseDate": "2025-07-30"
+  },
+  {
+   "quarterEnd": "2025-03-31",
+   "modelForecast": -2.732,
+   "beaAdvance": -0.276,
+   "releaseDate": "2025-04-30"
+  },
+  {
+   "quarterEnd": "2024-12-31",
+   "modelForecast": 2.271,
+   "beaAdvance": 2.251,
+   "releaseDate": "2025-01-30"
+  },
+  {
+   "quarterEnd": "2024-09-30",
+   "modelForecast": 2.789,
+   "beaAdvance": 2.825,
+   "releaseDate": "2024-09-30"
+  },
+  {
+   "quarterEnd": "2024-06-30",
+   "modelForecast": 2.613,
+   "beaAdvance": 2.84,
+   "releaseDate": "2024-07-25"
+  },
+  {
+   "quarterEnd": "2024-03-31",
+   "modelForecast": 2.705,
+   "beaAdvance": 1.59,
+   "releaseDate": "2024-04-25"
+  },
+  {
+   "quarterEnd": "2023-12-31",
+   "modelForecast": 2.383,
+   "beaAdvance": 3.28,
+   "releaseDate": "2024-01-25"
+  },
+  {
+   "quarterEnd": "2023-09-30",
+   "modelForecast": 5.405,
+   "beaAdvance": 4.878,
+   "releaseDate": "2023-10-26"
+  },
+  {
+   "quarterEnd": "2023-06-30",
+   "modelForecast": 2.413,
+   "beaAdvance": 2.414,
+   "releaseDate": "2023-07-27"
+  },
+  {
+   "quarterEnd": "2023-03-31",
+   "modelForecast": 1.133,
+   "beaAdvance": 1.062,
+   "releaseDate": "2023-04-27"
+  },
+  {
+   "quarterEnd": "2022-12-31",
+   "modelForecast": 3.529,
+   "beaAdvance": 2.892,
+   "releaseDate": "2023-01-26"
+  },
+  {
+   "quarterEnd": "2022-09-30",
+   "modelForecast": 3.088,
+   "beaAdvance": 2.567,
+   "releaseDate": "2022-10-27"
+  },
+  {
+   "quarterEnd": "2022-06-30",
+   "modelForecast": -1.2,
+   "beaAdvance": -0.934,
+   "releaseDate": "2022-07-28"
+  },
+  {
+   "quarterEnd": "2022-03-31",
+   "modelForecast": 0.373,
+   "beaAdvance": -1.414,
+   "releaseDate": "2022-04-28"
+  },
+  {
+   "quarterEnd": "2021-12-31",
+   "modelForecast": 6.499,
+   "beaAdvance": 6.887,
+   "releaseDate": "2022-01-27"
+  },
+  {
+   "quarterEnd": "2021-09-30",
+   "modelForecast": 0.195,
+   "beaAdvance": 2.016,
+   "releaseDate": "2021-10-28"
+  },
+  {
+   "quarterEnd": "2021-06-30",
+   "modelForecast": 6.427,
+   "beaAdvance": 6.503,
+   "releaseDate": "2021-07-29"
+  },
+  {
+   "quarterEnd": "2021-03-31",
+   "modelForecast": 7.869,
+   "beaAdvance": 6.388,
+   "releaseDate": "2021-04-29"
+  },
+  {
+   "quarterEnd": "2020-12-31",
+   "modelForecast": 7.16,
+   "beaAdvance": 4.012,
+   "releaseDate": "2021-01-28"
+  },
+  {
+   "quarterEnd": "2020-09-30",
+   "modelForecast": 36.971,
+   "beaAdvance": 33.083,
+   "releaseDate": "2020-10-30"
+  },
+  {
+   "quarterEnd": "2020-06-30",
+   "modelForecast": -32.084,
+   "beaAdvance": -32.904,
+   "releaseDate": "2020-07-30"
+  },
+  {
+   "quarterEnd": "2020-03-31",
+   "modelForecast": -0.969,
+   "beaAdvance": -4.783,
+   "releaseDate": "2020-04-29"
+  },
+  {
+   "quarterEnd": "2019-12-31",
+   "modelForecast": 1.739,
+   "beaAdvance": 2.081,
+   "releaseDate": "2020-01-30"
+  },
+  {
+   "quarterEnd": "2019-09-30",
+   "modelForecast": 1.675,
+   "beaAdvance": 1.919,
+   "releaseDate": "2019-10-30"
+  },
+  {
+   "quarterEnd": "2019-06-30",
+   "modelForecast": 1.333,
+   "beaAdvance": 2.056,
+   "releaseDate": "2019-07-26"
+  },
+  {
+   "quarterEnd": "2019-03-31",
+   "modelForecast": 2.671,
+   "beaAdvance": 3.172,
+   "releaseDate": "2019-04-26"
+  },
+  {
+   "quarterEnd": "2018-12-31",
+   "modelForecast": 1.847,
+   "beaAdvance": 2.589,
+   "releaseDate": "2019-02-28"
+  },
+  {
+   "quarterEnd": "2018-09-30",
+   "modelForecast": 3.554,
+   "beaAdvance": 3.501,
+   "releaseDate": "2018-10-26"
+  },
+  {
+   "quarterEnd": "2018-06-30",
+   "modelForecast": 3.822,
+   "beaAdvance": 4.06,
+   "releaseDate": "2018-07-27"
+  },
+  {
+   "quarterEnd": "2018-03-31",
+   "modelForecast": 1.983,
+   "beaAdvance": 2.318,
+   "releaseDate": "2018-04-27"
+  },
+  {
+   "quarterEnd": "2017-12-31",
+   "modelForecast": 3.406,
+   "beaAdvance": 2.555,
+   "releaseDate": "2018-01-26"
+  },
+  {
+   "quarterEnd": "2017-09-30",
+   "modelForecast": 2.52,
+   "beaAdvance": 2.989,
+   "releaseDate": "2017-10-27"
+  },
+  {
+   "quarterEnd": "2017-06-30",
+   "modelForecast": 2.819,
+   "beaAdvance": 2.568,
+   "releaseDate": "2017-07-28"
+  },
+  {
+   "quarterEnd": "2017-03-31",
+   "modelForecast": 0.17,
+   "beaAdvance": 0.693,
+   "releaseDate": "2017-04-28"
+  },
+  {
+   "quarterEnd": "2016-12-31",
+   "modelForecast": 2.881,
+   "beaAdvance": 1.873,
+   "releaseDate": "2017-01-27"
+  },
+  {
+   "quarterEnd": "2016-09-30",
+   "modelForecast": 2.095,
+   "beaAdvance": 2.901,
+   "releaseDate": "2016-10-28"
+  },
+  {
+   "quarterEnd": "2016-06-30",
+   "modelForecast": 1.833,
+   "beaAdvance": 1.218,
+   "releaseDate": "2016-07-28"
+  },
+  {
+   "quarterEnd": "2016-03-31",
+   "modelForecast": 0.621,
+   "beaAdvance": 0.538,
+   "releaseDate": "2016-04-28"
+  },
+  {
+   "quarterEnd": "2015-12-31",
+   "modelForecast": 1.018,
+   "beaAdvance": 0.691,
+   "releaseDate": "2016-01-29"
+  },
+  {
+   "quarterEnd": "2015-09-30",
+   "modelForecast": 1.064,
+   "beaAdvance": 1.493,
+   "releaseDate": "2015-10-29"
+  },
+  {
+   "quarterEnd": "2015-06-30",
+   "modelForecast": 2.433,
+   "beaAdvance": 2.322,
+   "releaseDate": "2015-07-30"
+  },
+  {
+   "quarterEnd": "2015-03-31",
+   "modelForecast": 0.099,
+   "beaAdvance": 0.248,
+   "releaseDate": "2015-04-29"
+  },
+  {
+   "quarterEnd": "2014-12-31",
+   "modelForecast": 3.492,
+   "beaAdvance": 2.642,
+   "releaseDate": "2015-01-30"
+  },
+  {
+   "quarterEnd": "2014-09-30",
+   "modelForecast": 2.7,
+   "beaAdvance": 3.549,
+   "releaseDate": "2014-10-30"
+  },
+  {
+   "quarterEnd": "2014-06-30",
+   "modelForecast": 2.667,
+   "beaAdvance": 3.95,
+   "releaseDate": "2014-07-30"
+  },
+  {
+   "quarterEnd": "2014-03-31",
+   "modelForecast": 0.349,
+   "beaAdvance": 0.108,
+   "releaseDate": "2014-04-30"
+  },
+  {
+   "quarterEnd": "2013-12-31",
+   "modelForecast": 3.125,
+   "beaAdvance": 3.228,
+   "releaseDate": "2014-01-30"
+  },
+  {
+   "quarterEnd": "2013-09-30",
+   "modelForecast": 2.323,
+   "beaAdvance": 2.846,
+   "releaseDate": "2013-11-07"
+  },
+  {
+   "quarterEnd": "2013-06-30",
+   "modelForecast": 1.3,
+   "beaAdvance": 1.674,
+   "releaseDate": "2013-07-31"
+  },
+  {
+   "quarterEnd": "2013-03-31",
+   "modelForecast": 2.872,
+   "beaAdvance": 2.502,
+   "releaseDate": "2013-04-26"
+  },
+  {
+   "quarterEnd": "2012-12-31",
+   "modelForecast": 0.078,
+   "beaAdvance": -0.143,
+   "releaseDate": "2013-01-30"
+  },
+  {
+   "quarterEnd": "2012-09-30",
+   "modelForecast": 1.849,
+   "beaAdvance": 2.014,
+   "releaseDate": "2012-10-26"
+  },
+  {
+   "quarterEnd": "2012-06-30",
+   "modelForecast": 0.224,
+   "beaAdvance": 1.537,
+   "releaseDate": "2012-07-27"
+  },
+  {
+   "quarterEnd": "2012-03-31",
+   "modelForecast": 3.015,
+   "beaAdvance": 2.204,
+   "releaseDate": "2012-04-27"
+  },
+  {
+   "quarterEnd": "2011-12-31",
+   "modelForecast": 5.168,
+   "beaAdvance": 2.752,
+   "releaseDate": "2012-01-27"
+  },
+  {
+   "quarterEnd": "2011-09-30",
+   "modelForecast": 3.244,
+   "beaAdvance": 2.464,
+   "releaseDate": "2011-10-27"
+  }
+ ]
+}

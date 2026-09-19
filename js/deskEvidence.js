@@ -286,8 +286,8 @@ export const DESK_EVIDENCE = [
   {
     id: 'nowcast-gap-gdp', domain: 'events', verdict: 'context', date: '2026-09-19', doc: 'MD files/NOWCAST_TESTS.md#N2',
     claim: 'When GDPNow sits above consensus, the advance GDP print is more likely to beat',
-    result: 'Only 30 decisive calls (ALFRED vintages start 2016). 20 of 30 right (67%, interval 50-84%), 14 of 18 at |gap| >= 0.6 -- but GDPNow MAE 0.82 vs consensus 0.69 and n under the 40-call bar.',
-    use: 'Direction worth re-testing on the Atlanta Fed history workbook (~55 releases). Until then GDPNow is shown as a number, not a lean.',
+    result: 'Atlanta Fed track record 2011-2025, 53 calls: 29 of 44 right at |gap| >= 0.2 (66%, interval 52-80%), 19 of 24 at >= 0.6 (79%). The hit-rate bar clears, but the pre-registered falsifier fires too: GDPNow forecasts the level worse than consensus (MAE 0.76 vs 0.61). ALFRED-only sample (2016+, 30 calls) had said the same.',
+    use: 'A base rate, not a pass: the side GDPNow sits on has matched the side the print landed two times in three. Shown as context on the GDP line; never a lean.',
   },
   {
     id: 'band-reach-from-here', domain: 'price', verdict: 'validated', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T7',

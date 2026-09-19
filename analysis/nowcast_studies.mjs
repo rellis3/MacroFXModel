@@ -99,9 +99,25 @@ if (KEY) {
   N2 = score(calls, 'Advance GDP q/q', [0.2, 0.4, 0.6]); N2.verdict = verdict(N2, 0.2, 40); N2.releases = rel.length; N2.sample = calls.slice(-3);
 }
 
+// ── N2b: the same test on the Atlanta Fed's own track record (2011 -> 2026), which
+// carries the final model forecast before every advance release; ALFRED's vintages
+// only start 2016 so this is the fuller sample the pre-registration asked for.
+let N2b = null;
+try {
+  const tr = JSON.parse(fs.readFileSync(path.join(ROOT, 'analysis/output/gdpnow_trackrecord.json'), 'utf8')).rows;
+  const byRelease = new Map(tr.map(r => [r.releaseDate, r]));
+  const rel = FF.filter(r => r.event === 'Advance GDP q/q' && r.estimate && r.actual);
+  const calls = rel.map(r => {
+    const day = iso(r.ms); const t = byRelease.get(day) ?? tr.find(x => Math.abs(Date.parse(x.releaseDate) - r.ms) < 3 * DAY);
+    const cons = num(r.estimate), act = num(r.actual); if (!t || cons == null || act == null) return null;
+    return { day, ref: t.quarterEnd, nowcast: +t.modelForecast.toFixed(2), consensus: cons, actual: act, gap: +(t.modelForecast - cons).toFixed(2), surprise: Math.sign(+(act - cons).toFixed(2)) };
+  }).filter(Boolean);
+  N2b = score(calls, 'Advance GDP q/q (track record)', [0.2, 0.4, 0.6]); N2b.verdict = verdict(N2b, 0.2, 40); N2b.releases = rel.length; N2b.sample = calls.slice(-3);
+} catch (e) { N2b = { error: e.message }; }
 fs.mkdirSync(path.join(ROOT, 'analysis/output'), { recursive: true });
-fs.writeFileSync(path.join(ROOT, 'analysis/output/nowcast_studies.json'), JSON.stringify({ ranAt: new Date().toISOString(), N1, N2 }, null, 1));
+fs.writeFileSync(path.join(ROOT, 'analysis/output/nowcast_studies.json'), JSON.stringify({ ranAt: new Date().toISOString(), N1, N2, N2b }, null, 1));
 const line = s => `${s.label.padEnd(26)} releases=${s.releases} calls=${s.n}  MAE nowcast ${s.maeNowcast} vs consensus ${s.maeConsensus}  ` + s.byThreshold.map(b => `|gap|≥${b.threshold}: ${b.hits}/${b.n} = ${b.hitRate} [${b.lo}–${b.hi}] (inline ${b.inline})`).join('  ') + `  → ${s.verdict}`;
 console.log('N1 Cleveland nowcast vs consensus'); for (const s of Object.values(N1)) console.log(' ', line(s));
 if (N2) { console.log('N2 GDPNow vs consensus'); console.log(' ', line(N2)); console.log('  sample', JSON.stringify(N2.sample)); } else console.log('N2 skipped: no FRED_KEY');
+if (N2b && !N2b.error) { console.log('N2b GDPNow track record vs consensus'); console.log(' ', line(N2b)); }
 console.log('  N1 sample', JSON.stringify(N1['CPI m/m'].sample));
