@@ -23,6 +23,9 @@
  *   stockBond { corr, asOf }                                                  20d SPY/TLT correlation
  *   events    [{ country, event, impact, ms, estimate }]                      next 48h + last 3h
  *   fomcDates ['2026-09-16', ...]
+ *   vwapStretch { GOLD:{z,side,band,session,price,vwap}, EURUSD, GBPUSD, USDJPY }
+ *             live session-VWAP-stretch reading (js/vwapStretchCore.js); an
+ *             instrument missing/null silently disables that one trigger
  *   now       epoch ms
  */
 
@@ -90,7 +93,7 @@ import { eventImpact } from './eventImpactMap.js';
  * `detail` is the plain-words message body used when the trigger starts firing.
  */
 export function evaluateTriggers(inp = {}) {
-  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], now = Date.now() } = inp;
+  const { fred = {}, hist = {}, series = {}, chain = [], stockBond = null, events = [], fomcDates = [], vwapStretch = {}, now = Date.now() } = inp;
   const out = [];
   const push = t => out.push({ firing: false, instruments: [], evidenceId: null, ...t });
   const atrBy = atrTable(series);
@@ -201,8 +204,31 @@ export function evaluateTriggers(inp = {}) {
     push({ id: 'fomc-window', kind: 'described', evidenceId: 'fed-two-moves', label: 'FOMC window', firing: !!near, value: { date: near ?? null },
       detail: near ? `FOMC decision ${near === today ? 'today' : near > today ? 'tomorrow' : 'yesterday'} (${near}). Tested here: decision days run ~1.3 ATR whether or not the move was "priced in"; the day-0 close has even odds of being half-undone within a month, same as any big day; a crowded bond short into the meeting has NOT been followed by a long-end rally.` : 'Outside the FOMC window.' });
   }
+  // ── described: stretched from session VWAP (tested: returns more than chance,
+  // less so during NY; NO entry built on this book has ever passed after costs) ──
+  for (const [inst, label] of Object.entries(VWAP_STRETCH_INSTR)) {
+    const s = vwapStretch[inst];
+    if (!s) continue;   // missing input silently disables this instrument's trigger
+    const firing = Math.abs(s.z) >= 2;
+    const base = VWAP_STRETCH_BASE_RATE[inst] ?? VWAP_STRETCH_BASE_RATE.fx;
+    const rate = s.band >= 3 ? base.b3 : base.b2;
+    push({ id: `vwap-stretch-${inst.toLowerCase()}`, kind: 'described', evidenceId: 'vwap-return', label: `${label}: stretched from session VWAP`, firing,
+      value: { z: s.z, band: s.band, side: s.side, session: s.session, price: s.price, vwap: s.vwap },
+      instruments: [inst],
+      detail: firing
+        ? `${label} is ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}σ from today's session VWAP (${s.session} session) — a ${s.band}σ+ stretch, σ frozen at session open from the trailing 20 sessions. Tested here (GOLD_VWAP_FIXED_SIGMA_FINDINGS.md §7): ${rate}. Stretches made during NY tend to stick; Asia/London stretches snap back more. Context, not a signal — no VWAP-anchored entry built on this book has ever passed after costs (CROWN_WATCH.md, 2026-09-19).`
+        : `${label} is back inside 2σ of session VWAP.` });
+  }
   return out;
 }
+// Cross-instrument-replicated in the same study (§7c); FX pairs read stronger
+// than gold's own headline, so text says so honestly rather than reusing gold's
+// exact percentages for a pair they were not measured on.
+const VWAP_STRETCH_INSTR = { GOLD: 'Gold', EURUSD: 'EUR/USD', GBPUSD: 'GBP/USD', USDJPY: 'USD/JPY' };
+const VWAP_STRETCH_BASE_RATE = {
+  GOLD: { b2: 'a 2σ stretch has returned to VWAP within 4h 39-46% of the time (OOS) vs 19.3% for a random walk', b3: 'a 3σ+ stretch has returned to VWAP within 4h ~29-30% of the time (OOS) vs 4.8% for a random walk' },
+  fx:   { b2: 'a 2σ+ stretch has returned to VWAP within 4h ~46-48% of the time — replicated even stronger than gold’s own 34% (vs gold’s 16% random-walk control)', b3: 'a deep stretch has returned to VWAP within 4h ~46-48% of the time — replicated even stronger than gold’s own 34% (vs gold’s 16% random-walk control)' },
+};
 
 /** Transitions between two evaluated lists: what started, what stopped. */
 export function diffStates(prev = [], curr = []) {

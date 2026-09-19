@@ -15,7 +15,8 @@ console.log('[evaluateTriggers]');
     chain: [{ id: 'real-dxy', short: 'real yields → dollar', textbook: 'Higher real yields pull capital in', verdict: 'broken', expected: 'up', a: { label: 'Real yield', text: '+15bp' }, b: { label: 'Dollar', text: '-0.7%' }, punch: 'Paid more, not buying the dollar.' }, { id: 'oil-bei', short: 'oil → inflation pricing', textbook: 'x', verdict: 'quiet', a: {}, b: {} }],
     stockBond: { corr: 0.35, asOf: '2026-09-16' },
     events: [{ country: 'GB', event: 'Official Bank Rate', impact: 'high', ms: NOW + 2 * 3600e3, estimate: '3.75%' }, { country: 'US', event: 'CPI m/m', impact: 'high', ms: NOW + 30 * 3600e3 }],
-    fomcDates: ['2026-09-16'] });
+    fomcDates: ['2026-09-16'],
+    vwapStretch: { GOLD: { z: 2.4, side: 'up', band: 2, session: 'London', price: 2650, vwap: 2600 }, EURUSD: { z: 0.8, side: 'up', band: 0, session: 'London', price: 1.09, vwap: 1.089 } } });
   const by = Object.fromEntries(t.map(x => [x.id, x]));
   ok('VIX inversion fires with the day count (2 days ≥ 3m)', by['vix-inversion'].firing && by['vix-inversion'].value.dayN === 2 && /\+0\.82 on Nasdaq/.test(by['vix-inversion'].detail));
   ok('Nasdaq down-week fires (−1.5%)', by['nq-down-week'].firing && by['nq-down-week'].value.wk < -1);
@@ -27,12 +28,26 @@ console.log('[evaluateTriggers]');
   ok('a broken chain link becomes a trigger; a quiet one does not fire', by['chain-real-dxy'].firing && by['chain-oil-bei'] && !by['chain-oil-bei'].firing);
   ok('oil moved without breakevens fires (+15.6% vs 0bp)', by['oil-without-breakevens'].firing);
   ok('FOMC window fires the day after', by['fomc-window'].firing && /yesterday/.test(by['fomc-window'].detail));
+  ok('gold 2.4σ stretch fires, names the band/session and the 2σ base rate, and disclaims it', by['vwap-stretch-gold'].firing && /\+2\.4σ/.test(by['vwap-stretch-gold'].detail) && /London session/.test(by['vwap-stretch-gold'].detail) && /39-46%/.test(by['vwap-stretch-gold'].detail) && /no VWAP-anchored entry.*has ever passed/.test(by['vwap-stretch-gold'].detail));
+  ok('EUR/USD 0.8σ (inside 2σ) does not fire and stays plain', !by['vwap-stretch-eurusd'].firing && /back inside 2σ/.test(by['vwap-stretch-eurusd'].detail));
+  ok('an instrument absent from the input has no trigger at all (missing input disables it)', !by['vwap-stretch-gbpusd'] && !by['vwap-stretch-usdjpy']);
   ok('Nasdaq down-week carries an expectation in points: ATR ~200, ordinary day ~200, after ~242', by['nq-down-week'].expect?.[0]?.inst === 'NQ' && Math.abs(by['nq-down-week'].expect[0].atr - 220) < 40 && by['nq-down-week'].expect[0].after > by['nq-down-week'].expect[0].base * 1.15, JSON.stringify(by['nq-down-week'].expect));
   ok('VIX inversion carries expectations only for instruments with bars (SPX500, NQ), over 5 sessions', by['vix-inversion'].expect.map(e => e.inst).sort().join() === 'NQ,SPX500' && by['vix-inversion'].expect.every(e => e.window === 5 && e.after > e.base));
   ok('expectText reads in units, either direction', /SPX500 ~\d+pts vs ~\d+pts on an ordinary week/.test(expectText(by['vix-inversion'].expect)) && /either direction/.test(expectText(by['vix-inversion'].expect)));
   ok('atr14 needs 15 bars with highs and lows', atr14(bars(Array(15).fill(1), 0.1)) > 0 && atr14(days(Array(15).fill(1))) === null && atr14(bars(Array(10).fill(1))) === null);
   ok('every trigger has a kind, label and detail; nothing mentions direction', t.every(x => ['tested', 'described'].includes(x.kind) && x.label && x.detail) && t.every(x => !/goes (up|down)|will rise|will fall/i.test(x.detail)));
   ok('missing inputs disable triggers rather than throwing', evaluateTriggers({}).length === 2 && evaluateTriggers({}).every(x => !x.firing));
+}
+
+console.log('[vwap-stretch band tiers]');
+{
+  const t3 = evaluateTriggers({ now: NOW, vwapStretch: { GOLD: { z: -3.2, side: 'dn', band: 3, session: 'NY', price: 2500, vwap: 2580 } } });
+  const gold3 = t3.find(x => x.id === 'vwap-stretch-gold');
+  ok('gold 3σ+ stretch cites the 3σ base rate, not the 2σ one', gold3.firing && /-3\.2σ/.test(gold3.detail) && /29-30%/.test(gold3.detail) && !/39-46%/.test(gold3.detail));
+
+  const tfx = evaluateTriggers({ now: NOW, vwapStretch: { GBPUSD: { z: 2.1, side: 'up', band: 2, session: 'Asia', price: 1.27, vwap: 1.26 } } });
+  const gbp = tfx.find(x => x.id === 'vwap-stretch-gbpusd');
+  ok('an FX major cites the (stronger, replicated) FX base rate, not gold’s numbers', gbp.firing && /46-48%/.test(gbp.detail) && /stronger than gold/.test(gbp.detail));
 }
 
 console.log('[diffStates + formatTelegram]');

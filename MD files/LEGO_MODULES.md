@@ -8050,3 +8050,50 @@ this session's effort budget — noted as a candidate in `CROWN_WATCH.md`'s
 chain reasons over price relationships, not policy headlines; the new link
 makes the price *shape* an intervention leaves visible, it does not identify
 intervention as the cause.
+
+### VWAP Stretch Watch — a display/alert nugget from a null trading study (2026-09-19)
+
+`js/vwapStretchCore.js` (new Tier-2 glue, pure, `js/vwapStretchCore.test.mjs`)
+— turns the one real, cross-instrument-validated *descriptive* finding from
+`GOLD_VWAP_FIXED_SIGMA_FINDINGS.md` §7 (a 2σ+ stretch from session VWAP
+returns within ~4h meaningfully more than a random walk — real on gold,
+EURUSD, GBPUSD, USDJPY; less so during NY) into one live reading per
+instrument: `{ z, side, band, session, price, vwap }`. Composes, copies
+nothing: `computeSessionVwap` (`vwapReversionEngine.js`), `groupUtcDays` +
+`sessionRmsFromVwap` + `DEFAULT_CFG` (`vwapFixedSigmaEngine.js` — the exact
+frozen-σ construction the §7 finding was measured on, not the *different*,
+already-null developing-σ construction `VWAP_REVERSION_FINDINGS.md` tested),
+`bisect` (`barUtils.js`). No new entry/exit logic anywhere — this module
+never proposes a trade, only reports the stretch itself.
+
+**Why this exists:** owner instruction, 2026-09-19 — Crown-watch clips aren't
+only about testing tradeable entries; a clip whose entry tests null can still
+carry a real descriptive nugget worth displaying or alerting on (see
+`CROWN_WATCH.md`'s new step 4). The VWAP entry work (2026-09-19 entry) found
+no tradeable touch/pullback edge anywhere across six constructions, but its
+own §7 return-to-VWAP book was real and never asked whether it belonged on
+a page. This is that "yes" — wired as an alert, not a display, per the
+owner's choice.
+
+**Live wiring:** `server.js`'s `_watchInputs()` (`_fetchVwapStretchInputs`,
+`_vwapFrozenSigma`) computes this for gold/EURUSD/GBPUSD/USDJPY every
+desk-watch tick (`_WATCH_EVERY_MS`, 15 min) and feeds it to
+`js/deskWatch.js`'s `evaluateTriggers` as a new `vwapStretch` input — one
+`kind:'described'` trigger per instrument (`vwap-stretch-gold` etc.), firing
+at |z|≥2σ, `~ context` framed, explicitly disclaiming that no VWAP-anchored
+entry built on this desk has ever passed after costs. Two deliberate
+efficiency choices, both stated in the code, not hidden: (1) σ is frozen at
+session open, so it's computed once per pair per UTC day and cached in
+memory — recomputing from the full M1 archive every 15-min tick would be
+pure waste; (2) today's live reading uses OANDA M15 candles (via the
+existing `js/oandaIntraday.js` — extended additively with a `volume` field
+for the VWAP weighting, previously dropped), not M1, reusing this repo's own
+documented "VWAP is near timeframe-invariant" finding rather than paying for
+a heavier live M1 pull across 4 instruments every tick.
+
+**Not verifiable from this sandbox.** Same standing limitation as every
+other OANDA-backed live path here: `fetchIntraday`/`loadM1ForPair` need
+`OANDA_KEY`/R2, both unreachable in a sandboxed session (403 by design).
+Validated here via `node --check` on every touched file and full synthetic
+test suites (`vwapStretchCore.test.mjs`, updated `deskWatch.test.mjs`) — the
+live fetch path itself can only be confirmed on Railway.
