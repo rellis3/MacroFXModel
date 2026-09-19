@@ -278,6 +278,18 @@ export const DESK_EVIDENCE = [
     use: 'The divergence panel may describe the shape; nothing may be claimed about the week after.',
   },
   {
+    id: 'nowcast-gap-cpi', domain: 'events', verdict: 'null', date: '2026-09-19', doc: 'MD files/NOWCAST_TESTS.md#N1',
+    claim: 'When the Cleveland Fed inflation nowcast sits above consensus, the CPI print is more likely to beat',
+    result: '139 CPI m/m releases 2013-2025. Calls at |gap| >= 0.05: 23 of 43 right (53%, interval 39-68%); at >= 0.10, 8 of 19 (42%). The nowcast forecasts worse than the consensus (MAE 0.105 vs 0.086). Core CPI and core PCE the same shape.',
+    use: 'The model number is shown as context on a release line ("model 0.43%"); it carries no direction. Do not read the gap as a lean.',
+  },
+  {
+    id: 'nowcast-gap-gdp', domain: 'events', verdict: 'context', date: '2026-09-19', doc: 'MD files/NOWCAST_TESTS.md#N2',
+    claim: 'When GDPNow sits above consensus, the advance GDP print is more likely to beat',
+    result: 'Only 30 decisive calls (ALFRED vintages start 2016). 20 of 30 right (67%, interval 50-84%), 14 of 18 at |gap| >= 0.6 -- but GDPNow MAE 0.82 vs consensus 0.69 and n under the 40-call bar.',
+    use: 'Direction worth re-testing on the Atlanta Fed history workbook (~55 releases). Until then GDPNow is shown as a number, not a lean.',
+  },
+  {
     id: 'band-reach-from-here', domain: 'price', verdict: 'validated', date: '2026-09-18', doc: 'MD files/TECHNICAL_RANGE_TESTS.md#T7',
     claim: 'Reaching the median daily band early raises the odds of reaching the 75th band before the close',
     result: 'Eight instruments, ~2,500 London sessions each. At 10:30 UK, median band reached vs the ordinary odds for the hour: NAS100 63% vs 23%, SPX500 59% vs 22%, USD/JPY 44% vs 17%, EUR/USD 43% vs 18%, gold 50% vs 21% (2.3-2.7×; n=260-450 per cell). Largest at the open, decaying through the day. Once reached, the median band was the day\'s extreme in only 4-10% of sessions, the 75th in 5-14%.',

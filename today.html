@@ -803,6 +803,27 @@
   .chain-ends{font-size:12px;color:var(--text2);display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
   .chain-n b{font-size:12.5px;font-weight:800} .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
   .chain-exp{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:.02em}
+  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
+  .chain-g svg{display:block;min-width:900px;width:100%;height:auto}
+  .chain-g .gn{cursor:pointer}
+  .chain-g .gn rect{fill:var(--card2);stroke:var(--border2);stroke-width:1.2;rx:8}
+  .chain-g .gn:hover rect,.chain-g .gn.sel rect{stroke:var(--blue);stroke-width:1.6}
+  .chain-g .gn text{font-family:inherit;pointer-events:none}
+  .chain-g .gn .nl{font-size:11.5px;font-weight:700;fill:var(--text)}
+  .chain-g .gn .nv{font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text2)}
+  .chain-g .gn .nv.up{fill:var(--bull)} .chain-g .gn .nv.dn{fill:var(--red)}
+  .chain-g .ge{fill:none;stroke-width:2;stroke:var(--border2)}
+  .chain-g .ge.hold{stroke:var(--bull);stroke-width:2.4} .chain-g .ge.broke{stroke:var(--amber);stroke-width:2.6}
+  .chain-g .ge.quiet{stroke:var(--text3);stroke-dasharray:5 4;opacity:.75} .chain-g .ge.none{stroke-dasharray:2 5;opacity:.6}
+  .chain-g .gl{font-size:10px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
+  .chain-g .gl.hold{fill:var(--bull)} .chain-g .gl.broke{fill:var(--amber);font-weight:700}
+  .chain-g .glb{fill:var(--card);opacity:.92}
+  .chain-legend{font-size:10.5px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;margin:-4px 0 8px}
+  .chain-legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--border2);vertical-align:middle;margin-right:5px}
+  .chain-legend i.hold{border-color:var(--bull)} .chain-legend i.broke{border-color:var(--amber)} .chain-legend i.quiet{border-top-style:dashed}
+  .chain-node-card{border-left:2px solid var(--blue);padding:6px 10px;margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--text2);background:var(--card2);border-radius:0 6px 6px 0}
+  .chain-node-card b{color:var(--text)}
+  .chain-node-card .x{float:right;cursor:pointer;color:var(--text3);font-size:11px}
   .chain-arrow{font-size:12px;color:var(--text3)}
   .chain-p{font-size:12px;line-height:1.5;margin:2px 0 0 72px;color:var(--text2)}
   .chain-p.broke{color:var(--text);font-weight:600}
@@ -819,6 +840,8 @@
   .tl-col.ahead{border-style:dashed}
   .tl-h{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;display:flex;justify-content:space-between;gap:6px}
   .tl-h b{color:var(--text)}
+  .tl-lead{font-size:12px;font-weight:600;line-height:1.45;margin:3px 0 5px;color:var(--text)}
+  .tl-lead .up{color:var(--bull)} .tl-lead .dn{color:var(--red)}
   .tl-big{font-size:13px;font-weight:800;margin:3px 0 4px;font-variant-numeric:tabular-nums}
   .tl-big.up,.tl-big .up{color:var(--bull)} .tl-big.dn,.tl-big .dn{color:var(--red)}
   .tl-l{font-size:11px;line-height:1.5;color:var(--text2);padding:2px 0;border-top:1px dashed var(--border)}
@@ -1889,6 +1912,7 @@ async function loadGate() {
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
+  setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
@@ -2259,7 +2283,7 @@ function renderGate() {
     const cd = i === nextIdx && mins < 600 ? `<span class="cal-cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : '';
     return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · est ${esc0(e.estimate)}` : ''}${e.prev != null ? ` · prev ${esc0(e.prev)}` : ''}">
       <span class="cal-t">${hh(e.ts)}</span>
-      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}</span>
+      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}${(() => { const n = nowcastFor(e.country, e.event, e.ts); return n ? ` <span class="muted help" style="font-size:10px" title="${esc0(`${n.who}: ${n.value} for ${n.month}${n.asOf ? `, as of ${n.asOf}` : ''}${e.estimate != null ? ` · consensus ${e.estimate}` : ''}. ${n.note}. Context, not a lean.`)}">model ${esc0(n.value)}</span>` : ''; })()}</span>
       ${cd}
     </div>`;
   }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '');
@@ -3032,6 +3056,55 @@ function chainReadHtml() {
     <div class="chain-foot">${(() => { const d = _chainRead.data; const age = d?.ageMin; const stale = age != null && age >= 30; return `Written from the numbers on the page${d?.headlineCount ? ` and ${d.headlineCount} headlines` : ''}${when ? ` at <b>${when}</b>` : ''}${age != null && age >= 2 ? ` — <b>${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago</b>${stale ? '; the numbers in it are from then, the rows below are current' : ''}` : ''}. Last read kept until you write a new one. An opinion in a trader's voice, not a forecast.`; })()}</div>
   </div>`;
 }
+// ── The chain as a picture ──────────────────────────────────────────────────
+// Same links, same verdicts as the rows below, drawn as boxes and lines so the
+// order of causation reads at a glance: green = holding, amber = broken, dashed
+// = quiet (an end inside its noise floor), dotted = no data. Rebuilt from the
+// live 20-day moves on every render; no model call. Click a box for what that
+// thing is and how it sits in the chain today (from the brick's own words).
+const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run between boxes, not through them
+  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
+  usdcad: [0, 1], us2y: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
+  vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
+};
+// Short edge labels that fit the gap between boxes; the full name is in the hover.
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nominal→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'copper→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→credit', 'dxy-btc': '$→BTC' };
+let _chainNodeSel = null;
+function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
+function chainGraphHtml(links) {
+  const B = window.macroChainBrick; if (!B || !links.length) return '';
+  const PX = 212, PY = 96, BW = 140, BH = 44, OX = 16, OY = 12; const W = OX * 2 + PX * 5 + BW, H = OY * 2 + PY * 2 + BH;
+  const cx = k => OX + CHAIN_POS[k][0] * PX + BW / 2, cy = k => OY + CHAIN_POS[k][1] * PY + BH / 2;
+  const ends = {}; for (const l of links) { if (l.a?.key) ends[l.a.key] = l.a; if (l.b?.key) ends[l.b.key] = l.b; }
+  const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none' };
+  // where a straight centre-to-centre line leaves a box: clip to the box edge
+  const clip = (x0, y0, x1, y1) => { const dx = x1 - x0, dy = y1 - y0; const tx = dx ? (BW / 2) / Math.abs(dx) : Infinity, ty = dy ? (BH / 2) / Math.abs(dy) : Infinity; const t = Math.min(tx, ty); return [x0 + dx * t, y0 + dy * t]; };
+  const edges = links.filter(l => CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]).map(l => {
+    const x0 = cx(l.a.key), y0 = cy(l.a.key), x1 = cx(l.b.key), y1 = cy(l.b.key);
+    const [sx, sy] = clip(x0, y0, x1, y1), [ex, ey] = clip(x1, y1, x0, y0);
+    const mx = (sx + ex) / 2, my = (sy + ey) / 2; const diag = sx !== ex && sy !== ey;
+    const lbl = CHAIN_EDGE_LABEL[l.id] ?? l.short.replace(/\s*→\s*/g, '→'); const lw = lbl.length * 6.3 + 10;
+    const title = `${l.textbook}. Today: ${l.verdict}${l.punch ? ' — ' + l.punch : ''}`;
+    return `<g class="ge-g"><title>${esc0(title)}</title><line class="ge ${vcls[l.verdict]}" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}"/>${`<rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="15" rx="3"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text>`}</g>`;
+  }).join('');
+  const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '';
+  const nodes = Object.keys(CHAIN_POS).map(k => {
+    const n = B.CHAIN_NODES[k]; if (!n) return ''; const e = ends[k];
+    const x = cx(k) - BW / 2, y = cy(k) - BH / 2;
+    const val = e?.delta == null ? 'no data' : `${e.text} ${e.moved ? arrow(e.dir) : ''}${e.moved ? '' : ' · quiet'}`;
+    const cls = e?.delta == null || !e.moved ? '' : e.dir === 'up' ? 'up' : 'dn';
+    const short = n.label.replace(/ \(.*\)$/, '').replace('Inflation expectations', 'Infl. pricing').replace('Real yield', 'Real yield').replace('Dollar', 'Dollar').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX');
+    return `<g class="gn${_chainNodeSel === k ? ' sel' : ''}" onclick="selectChainNode('${k}', event)"><title>${esc0(n.what)}</title><rect x="${x}" y="${y}" width="${BW}" height="${BH}"/><text class="nl" x="${x + 10}" y="${y + 18}">${esc0(short)}</text><text class="nv ${cls}" x="${x + 10}" y="${y + 34}">${esc0(val)}</text></g>`;
+  }).join('');
+  const sel = _chainNodeSel && B.CHAIN_NODES[_chainNodeSel] ? (() => {
+    const n = B.CHAIN_NODES[_chainNodeSel]; const e = ends[_chainNodeSel];
+    const mine = links.filter(l => l.a?.key === _chainNodeSel || l.b?.key === _chainNodeSel);
+    const today = mine.map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${l.verdict === 'unmeasured' ? 'no data' : l.verdict}</span> ${esc0(l.short)}${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div></div>`;
+  })() : '';
+  return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: boxes are the things that move, lines are the textbook links, coloured by whether they held">${edges}${nodes}</svg></div>
+    <div class="chain-legend"><span><i class="hold"></i>holding · moved the textbook way</span><span><i class="broke"></i>broken · both moved, the wrong way round</span><span><i class="quiet"></i>quiet · one end inside its noise floor, not judged</span><span>click a box for what it is</span></div>${sel}`;
+}
 function chainHtml() {
   const B = window.macroChainBrick;
   const links = chainLinks();
@@ -3065,6 +3138,7 @@ function chainHtml() {
   return `<div class="chain">
     <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· textbook links vs ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
     <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
+    ${chainGraphHtml(links)}
     ${chainReadHtml()}
     ${links.map(l => {
       const judged = l.verdict === 'holding' || l.verdict === 'broken';
@@ -4312,14 +4386,20 @@ function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
     .filter(x => x.actual != null || x.estimate != null || x.imp);
   return out.sort((a, b) => ((b.size?.spike ?? b.imp?.medSpike ?? 0) - (a.size?.spike ?? a.imp?.medSpike ?? 0)) || (Math.abs(b.z ?? 0) - Math.abs(a.z ?? 0)) || (a.day < b.day ? 1 : -1)).slice(0, limit);
 }
+// Surprise and impact in words. The numbers stay in the hover.
+const _tlSurpriseWord = z => !Number.isFinite(z) ? '' : Math.abs(z) < 0.25 ? 'as expected' : Math.abs(z) < 0.75 ? `a touch ${z > 0 ? 'above' : 'below'}` : Math.abs(z) < 1.5 ? `clearly ${z > 0 ? 'above' : 'below'}` : `a big ${z > 0 ? 'beat' : 'miss'}`;
+const _tlImpactWord = m => m == null ? '' : m >= 4 ? 'a big market mover' : m >= 2 ? 'moves markets' : m >= 1.3 ? 'a modest mover' : 'rarely moves much';
 function _tlRelLine(x) {
-  const sz = x.size ? ` · has moved this pair <b>${x.size.spike}×</b> an ordinary half-hour (n=${x.size.n})` : x.imp ? ` · a ${esc0(x.fam)} print, ${x.imp.medSpike}× median impact` : '';
-  const nums = x.actual != null ? `<b>${esc0(x.actual)}</b> vs ${esc0(x.estimate ?? '?')} consensus${Number.isFinite(x.z) ? ` (surprise ${x.z >= 0 ? '+' : ''}${x.z.toFixed(1)}σ)` : ''}` : `consensus ${esc0(x.estimate ?? '?')}${x.prev != null ? `, prior ${esc0(x.prev)}` : ''}`;
-  return `<div class="tl-l"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}</div>`;
+  const tip = [x.estimate != null ? `consensus ${x.estimate}` : '', x.prev != null ? `prior ${x.prev}` : '', Number.isFinite(x.z) ? `surprise ${x.z >= 0 ? '+' : ''}${x.z.toFixed(1)}σ against this series' own history` : '', x.size ? `has moved this pair ${x.size.spike}× an ordinary half-hour (n=${x.size.n})` : x.imp ? `${x.imp.medSpike}× the median 30-minute move across instruments` : ''].filter(Boolean).join(' · ');
+  const sz = x.size ? ` — ${_tlImpactWord(x.size.spike)} for this pair` : x.imp ? ` — ${_tlImpactWord(x.imp.medSpike)}` : '';
+  const same = String(x.actual ?? '').trim() === String(x.estimate ?? '').trim();
+  const sw = Number.isFinite(x.z) ? (Math.abs(x.z) < 0.25 && !same && x.estimate != null ? `close to the ${esc0(x.estimate)} expected` : _tlSurpriseWord(x.z) + (Math.abs(x.z) >= 0.25 && x.estimate != null ? ` the ${esc0(x.estimate)} expected` : '')) : x.estimate != null ? `vs ${esc0(x.estimate)} expected` : '';
+  const nums = x.actual != null ? `<b>${esc0(x.actual)}</b>${sw ? `, ${sw}` : ''}` : `${esc0(x.estimate ?? '?')} expected${x.prev != null ? `, was ${esc0(x.prev)}` : ''}`;
+  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}</div>`;
 }
 function _tlWatchLines(fromAgo, toAgo, insts = null) {
   return (deskWatch?.log ?? []).filter(f => { const ago = _tlAgo(f.at.slice(0, 10)); return f.event === 'started' && ago >= fromAgo && ago < toAgo && (!insts || !f.instruments?.length || f.instruments.some(i => insts.includes(i))); }).slice(0, 4)
-    .map(f => `<div class="tl-l"><span class="k">${esc0(f.at.slice(5, 10))}</span>${f.kind === 'tested' ? '✓' : '~'} ${esc0(f.label)}${f.after5 ? ` → next 5 ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5} ATR`).join(', ')}` : ''}</div>`).join('');
+    .map(f => `<div class="tl-l"><span class="k">${esc0(f.at.slice(5, 10))}</span>${f.kind === 'tested' ? '✓' : '~'} ${esc0(f.label)}${f.after5 ? ` → the five days after ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5 >= 5.5 ? 'wide' : a.range5 <= 3.5 ? 'quiet' : 'normal'} (${a.range5} ATR)`).join(', ')}` : ''}</div>`).join('');
 }
 function _tlSnapLines(fromAgo, toAgo) {
   return (_tl.snapshots ?? []).filter(d => { const ago = _tlAgo(d.day); return ago >= fromAgo && ago < toAgo && d.brief?.regime; }).slice(-2)
@@ -4329,30 +4409,50 @@ function _tlLedgerLine(fromAgo, toAgo, pair = null) {
   const days = (_ledgerSummary?.byDay ?? []).filter(d => { const ago = _tlAgo(d.day); return ago >= fromAgo && ago < toAgo; });
   if (!days.length) return '';
   const n = days.reduce((s, d) => s + (d.h1?.n ?? 0), 0), hits = days.reduce((s, d) => s + (d.h1?.hits ?? 0), 0);
-  return n ? `<div class="tl-l ${hits / n >= 0.55 ? 'hit' : hits / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span><b class="r">${hits} of ${n}</b> direction calls right at the next close</div>` : '';
+  return n ? `<div class="tl-l ${hits / n >= 0.55 ? 'hit' : hits / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span>we were right <b class="r">${hits} times in ${n}</b> at the next close${hits / n >= 0.55 ? ' — a good stretch' : hits / n <= 0.45 ? ' — a poor stretch' : ' — a coin flip'}</div>` : '';
 }
 function _tlAheadEvents(fromDays, toDays, ccys = null, pairName = null) {
   const now = Date.now();
   return (events ?? []).filter(e => { const dd = (e.ms - now) / 864e5; return (e.impact ?? '').toLowerCase() === 'high' && dd >= fromDays && dd < toDays && (!ccys || ccys.includes(e.country)); }).slice(0, 5)
-    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? ` (cons. ${esc0(e.estimate)})` : ''}${size ? ` · <b>${size.spike}×</b> an ordinary half-hour here, n=${size.n}` : imp ? ` · ${imp.medSpike}× median impact` : ''}</div>`; }).join('');
+    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? `: ${esc0(e.estimate)} expected` : ''}${nowcastText(e.country, e.event, e.ms)}${size ? ` — ${_tlImpactWord(size.spike)} for this pair` : imp ? ` — ${_tlImpactWord(imp.medSpike)}` : ''}</div>`; }).join('');
 }
 // The calendar feed covers the current week only; on a weekend the week ahead is not published yet.
 function _tlNoCal(fromDays, toDays) {
   const wk = [...(events ?? [])].sort((a, b) => b.ms - a.ms)[0]; const end = wk ? new Date(wk.ms) : null;
   const covered = end && (end.getTime() - Date.now()) / 864e5 >= toDays;
-  return covered ? `<div class="tl-l"><span class="k">calendar</span>no high-impact release in the window</div>` : `<div class="tl-l"><span class="k">calendar</span>${fromDays ? 'beyond the one-week calendar window' : 'the coming week publishes on Sunday'}${end ? ` (feed runs to ${end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })})` : ''}</div>`;
+  return covered ? `<div class="tl-l"><span class="k">calendar</span>nothing big scheduled</div>` : `<div class="tl-l"><span class="k">calendar</span>${fromDays ? 'too far out for the calendar feed' : 'next week\u2019s calendar is published on Sunday'}${end ? ` (feed runs to ${end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })})` : ''}</div>`;
 }
 // The outlook engine's clearest reads, each way, so the plan column names pairs, not just a count.
 function _tlTopBias(rs, hz) {
   const list = rs.map(r => ({ r, o: pairOutlook(r, hz) })).filter(x => x.o?.bias && x.o.bias !== 'NEUTRAL' && !x.o.noRead && Number.isFinite(x.o.confidence));
-  const top = dir => list.filter(x => x.o.bias === dir).sort((a, b) => b.o.confidence - a.o.confidence).slice(0, 3).map(x => `${dispName(x.r.name)} ${x.o.confidence}%`).join(', ');
+  const top = dir => list.filter(x => x.o.bias === dir).sort((a, b) => b.o.confidence - a.o.confidence).slice(0, 3).map(x => `${dispName(x.r.name)}${x.o.confidence >= 70 ? ' (' + x.o.confidence + '%)' : ''}`).join(', ');
   const up = top('BULLISH'), dn = top('BEARISH'); if (!up && !dn) return '';
-  return `<div class="tl-l"><span class="k">clearest</span>${up ? `↑ ${esc0(up)}` : ''}${up && dn ? ' · ' : ''}${dn ? `↓ ${esc0(dn)}` : ''} <span class="muted">(outlook engine — context, not a validated signal)</span></div>`;
+  return `<div class="tl-l help" title="The outlook engine's composite, by confidence. Context, not a validated signal."><span class="k">strongest reads</span>${up ? `up on ${esc0(up)}` : ''}${up && dn ? '; ' : ''}${dn ? `down on ${esc0(dn)}` : ''}</div>`;
 }
+// The third number. Consensus is the street; the nowcast is a Fed model's live
+// estimate. Tested here (N1/N2): the gap does not carry the surprise sign, so
+// this is stated as context and never as a direction.
+let nowcast = null;
+async function loadNowcast() { try { const j = await jget('/api/nowcast'); if (j?.ok) { nowcast = j; render(); } } catch { /* stays absent */ } }
+function nowcastFor(country, event, ms) {
+  if (!nowcast || String(country).toUpperCase() !== 'US') return null;
+  const t = String(event ?? '').trim(); const c = nowcast.cleveland;
+  // a print on the 12th reports the month before, so match the chart to the
+  // release's reference month, not simply the latest chart
+  const ref = ms ? (() => { const d = new Date(ms); const m = d.getUTCMonth(); return `${d.getUTCFullYear() + (m === 0 ? -1 : 0)}-${String(((m + 11) % 12) + 1).padStart(2, '0')}`; })() : null;
+  const pickMonth = () => !ref ? c : c?.month === ref ? c : c?.previousMonth?.month === ref ? c.previousMonth : null;
+  if (c) {
+    const key = t === 'CPI m/m' ? 'cpi' : t === 'Core CPI m/m' ? 'core' : t === 'Core PCE Price Index m/m' ? 'corepce' : t === 'PCE Price Index m/m' ? 'pce' : null;
+    if (key && pickMonth()?.[key] != null) return { who: 'Cleveland Fed model', value: `${pickMonth()[key].toFixed(2)}%`, asOf: pickMonth().asOf, month: pickMonth().month, note: 'tested: the gap to consensus does not predict the beat (N1, null)' };
+  }
+  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested: 67% on 30 calls -- under the sample bar (N2)' };
+  return null;
+}
+function nowcastText(country, event, ms) { const n = nowcastFor(country, event, ms); return n ? ` · ${n.who} says <b>${esc0(n.value)}</b>` : ''; }
 function _tlFomcAhead() {
   const list = Array.isArray(_tl.fomc) ? _tl.fomc : (_tl.fomc?.meetings ?? []);
   const nx = list.map(m => m.date ?? m).filter(d => typeof d === 'string' && Date.parse(d) > Date.now()).sort()[0];
-  return nx ? `<div class="tl-l"><span class="k">${nx.slice(5)}</span>FOMC · decision days run ~1.3 ATR whether or not priced (tested)</div>` : '';
+  return nx ? `<div class="tl-l help" title="Tested on this desk: FOMC decision days run about 1.3x a normal day's range whether or not the move was priced"><span class="k">${nx.slice(5)}</span>Fed decision — expect a bigger-than-normal day, priced or not</div>` : '';
 }
 // Path + cone: the last 20 closes and the forecaster's 5- and 20-day bands ahead.
 function _tlChart(closes, fc, dp) {
@@ -4394,19 +4494,28 @@ function renderTimelinePanel() {
   const firing = (deskWatch?.states ?? []).filter(t => t.firing && !t.id.startsWith('chain-'));
   const rs = allRows(); let bull5 = 0, bear5 = 0, bull20 = 0, bear20 = 0;
   for (const r of rs) { const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); if (w?.bias === 'BULLISH') bull5++; if (w?.bias === 'BEARISH') bear5++; if (m?.bias === 'BULLISH') bull20++; if (m?.bias === 'BEARISH') bear20++; }
-  const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-big">${big}</div>` : ''}${body}</div>`;
+  const col = (cls, head, lead, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${lead ? `<div class="tl-lead">${lead}</div>` : ''}${body}</div>`;
+  // The lead sentences: what the numbers say, in one line each. Rates first because
+  // they moved most; the dollar only when it did something.
+  const ratesWord = (w) => { const y2 = mv('us2y', w), y10 = mv('us10y', w); if (y2 == null && y10 == null) return 'No rates data.'; const big = Math.max(Math.abs(y2 ?? 0), Math.abs(y10 ?? 0)); const dir = (y2 ?? y10) > 0 ? 'rose' : 'fell'; const lead = Math.abs(y2 ?? 0) > Math.abs(y10 ?? 0) ? 'the front end leading' : 'the long end leading'; return big < 8 ? `Rates went nowhere (2Y ${bp(y2)}, 10Y ${bp(y10)})` : `Rates ${big >= 25 ? dir + ' hard' : dir} (2Y ${bp(y2)}, 10Y ${bp(y10)}), ${lead}`; };
+  const dollarWord = (w) => { const v = mv('dxy', w); return v == null ? '' : Math.abs(v) < 0.5 ? '; the dollar barely moved' : `; the dollar ${v > 0 ? 'strengthened' : 'weakened'} ${Math.abs(v).toFixed(1)}%`; };
+  const fearWord = (w) => { const v = mv('vix', w); return v == null ? '' : Math.abs(v) < 1.5 ? '' : `; fear ${v > 0 ? 'rose' : 'eased'} (VIX ${pt(v)})`; };
+  const lead20 = `${ratesWord(20)}${dollarWord(20)}.`;
+  const lead5 = `${ratesWord(5)}${dollarWord(5)}${fearWord(5)}.`;
+  const leadNow = `${chainNow.length ? `${chainNow.length} chain link${chainNow.length === 1 ? '' : 's'} broken` : 'Nothing broken in the chain'}; ${firing.length ? `${firing.length} watch condition${firing.length === 1 ? '' : 's'} on` : 'no watch condition on'}.`;
+  const outlookWord = (b, d) => b + d === 0 ? 'The outlook engine has no lean either way' : `The outlook engine leans ${d > b ? 'down' : 'up'} on ${Math.max(b, d)} of ${rs.length} pairs, ${d > b ? 'up' : 'down'} on ${Math.min(b, d)}`;
   el.style.display = 'block';
   el.innerHTML = `
     <div class="sec-hd-row"><span class="sec-title">🕰 Timeline — 20 sessions back, 20 ahead</span>${secChev('timelinePanel')}</div>
     ${secBody('timelinePanel', `
     <div class="tl">
-      ${col('', '−20d → −5d', `10Y ${bp(mv('us10y', 20))} · 2Y ${bp(mv('us2y', 20))} · $ ${pt(mv('dxy', 20))}`, _tlReleases(5, 21, null, 4).map(_tlRelLine).join('') + _tlWatchLines(5, 21) + _tlSnapLines(5, 21) + _tlLedgerLine(5, 21))}
-      ${col('', '−5d → today', `10Y ${bp(mv('us10y', 5))} · 2Y ${bp(mv('us2y', 5))} · VIX ${pt(mv('vix', 5))}`, _tlReleases(0, 5, null, 4).map(_tlRelLine).join('') + _tlWatchLines(0, 5) + _tlSnapLines(1, 5) + _tlLedgerLine(1, 5))}
-      ${col('now', 'today', `${firing.length} condition${firing.length === 1 ? '' : 's'} firing`, (chainNow.length ? `<div class="tl-l"><span class="k">chain broken</span>${chainNow.map(esc0).join(' · ')}</div>` : '<div class="tl-l"><span class="k">chain</span>no link broken</div>') + firing.slice(0, 4).map(t => `<div class="tl-l">${t.kind === 'tested' ? '✓' : '~'} ${esc0(t.label)}${t.expect?.length ? ` → ${t.expect.slice(0, 2).map(e => `${dispName(e.inst)} ~${e.after}${e.unit}`).join(', ')}` : ''}</div>`).join('') + (_ledgerSummary?.byDay?.[0] ? _tlLedgerLine(0, 2) : ''))}
-      ${col('ahead', 'today → +5d', `outlook ${bull5}↑ ${bear5}↓ of ${rs.length}`, (_tlAheadEvents(0, 5) || _tlNoCal(0, 5)) + _tlTopBias(rs, 'weekly') + `<div class="tl-l"><span class="k">leans</span>${esc0(leanGroupsText())}</div>`)}
-      ${col('ahead', '+5d → +20d', `outlook ${bull20}↑ ${bear20}↓ of ${rs.length}`, (_tlAheadEvents(5, 20) || _tlNoCal(5, 20)) + _tlTopBias(rs, 'monthly') + _tlFomcAhead() + `<div class="tl-l"><span class="k">20d</span>quiet days cluster and wide days cluster (tested) — the regime you are in is the best guess for the regime you will be in</div>`)}
+      ${col('', 'three weeks ago → last week', lead20, _tlReleases(5, 21, null, 4).map(_tlRelLine).join('') + _tlWatchLines(5, 21) + _tlSnapLines(5, 21) + _tlLedgerLine(5, 21))}
+      ${col('', 'this week', lead5, _tlReleases(0, 5, null, 4).map(_tlRelLine).join('') + _tlWatchLines(0, 5) + _tlSnapLines(1, 5) + _tlLedgerLine(1, 5))}
+      ${col('now', 'today', leadNow, (chainNow.length ? `<div class="tl-l"><span class="k">broken</span>${chainNow.map(esc0).join(' · ')}</div>` : '') + firing.slice(0, 4).map(t => `<div class="tl-l">${t.kind === 'tested' ? '✓' : '~'} ${esc0(t.label)}${t.expect?.length ? ` → expect ${t.expect.slice(0, 2).map(e => `${dispName(e.inst)} ~${e.after}${e.unit}`).join(', ')}` : ''}</div>`).join('') + (_ledgerSummary?.byDay?.[0] ? _tlLedgerLine(0, 2) : ''))}
+      ${col('ahead', 'next week', `${outlookWord(bull5, bear5)}.`, (_tlAheadEvents(0, 5) || _tlNoCal(0, 5)) + _tlTopBias(rs, 'weekly') + `<div class="tl-l"><span class="k">leans</span>${esc0(leanGroupsText())}</div>`)}
+      ${col('ahead', 'the month after', `${outlookWord(bull20, bear20)}.`, (_tlAheadEvents(5, 20) || _tlNoCal(5, 20)) + _tlTopBias(rs, 'monthly') + _tlFomcAhead() + `<div class="tl-l help" title="Tested on this desk: day-range quantiles cluster; the current regime is the best predictor of the next"><span class="k">rule</span>quiet stretches stay quiet and wild ones stay wild, more often than not</div>`)}
     </div>
-    <div class="tl-foot">Look-back is measured: releases from the surprise store with the size each has produced (Event Response Book), chain and watch transitions from the watch log with their after-scores, and this page's own calls scored by the ledger. "We said" lines come from the daily snapshot, kept from 19 Sep 2026. Look-forward is the plan: the calendar with expected sizes, the outlook engine's biases, the forecaster's bands. Nothing here predicts direction.</div>`)}`;
+    <div class="tl-foot">The left is measured (releases, watch fires, our own calls scored); the right is the plan (calendar, outlook engine, forecaster bands). Hover any line for the numbers. Nothing here predicts direction.</div>`)}`;
 }
 function leanGroupsText() {
   const html = leanGroupsHtml(); if (!html) return 'no grouped leans';
@@ -4426,14 +4535,19 @@ async function renderDrawerTimeline(r) {
   const rowsL = (_ledgerRows[r.name] ?? []);
   const led = (fromAgo, toAgo) => { const rs = rowsL.filter(x => { const ago = _tlAgo(x.d); return ago >= fromAgo && ago < toAgo && x.out && (x.dir === 'up' || x.dir === 'down'); }); if (!rs.length) return ''; const h = rs.filter(x => x.out?.h1?.hit).length, n = rs.filter(x => x.out?.h1?.hit != null).length; return n ? `<div class="tl-l ${h / n >= 0.55 ? 'hit' : h / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span><b class="r">${h} of ${n}</b> right at the next close (${rs.map(x => x.dir === 'up' ? '↑' : '↓').join('')})</div>` : ''; };
   const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const aim = bandAimFor(r); const wrong = wrongAtFor(r); const dir = directionFor(r);
-  const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-big ${/^\+/.test(big) ? 'up' : /^−|^-/.test(big) ? 'dn' : ''}">${big}</div>` : ''}${body}</div>`;
+  const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-lead">${big}</div>` : ''}${body}</div>`;
+  // how big a move was, against this pair's own 20-day band
+  const band20 = r.fc?.ladder_monthly?.oh?.p50 != null ? (r.fc.ladder_monthly.oh.p50 + r.fc.ladder_monthly.ol.p50) / 2 : null;
+  const moveWord = (x, days) => { if (!x) return ''; const a = Math.abs(x.pct); const rel = band20 ? a / (band20 * (days === 5 ? 0.5 : 1)) : null; const size = rel == null ? '' : rel >= 1.3 ? 'a big move for it' : rel >= 0.6 ? 'an ordinary move' : 'a small move'; return `${dispName(r.name)} ${x.pct >= 0 ? 'rose' : 'fell'} <span class="${x.pct >= 0 ? 'up' : 'dn'}">${a.toFixed(2)}%</span>${size ? `, ${size}` : ''} <span class="muted" style="font-size:10px;font-weight:400">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>`; };
+  const leanWord = dir?.direction === 'up' || dir?.direction === 'down' ? `Leaning ${dir.direction}, ${dir.agree} of ${dir.total} reads agree` : 'No lean today';
+  const biasWord = o => !o?.bias || o.noRead ? 'No read' : o.bias === 'NEUTRAL' ? 'No lean either way' : `${o.bias === 'BULLISH' ? 'Leans up' : 'Leans down'}${o.confidence != null ? `, ${o.confidence}% confidence` : ''}`;
   const chainMine = (deskWatch?.log ?? []).filter(f => f.id.startsWith('chain-') && f.event === 'started').slice(0, 3).map(f => `<div class="tl-l"><span class="k">${f.at.slice(5, 10)}</span>${esc0(f.label)}</div>`).join('');
   box.innerHTML = _tlChart(closes, r.fc, d.dp) + `<div class="tl">
-    ${col('', '−20d → −5d', d20 ? dl(d20) : '', _tlReleases(5, 21, ccys, 3, r.name).map(_tlRelLine).join('') + chainMine + led(5, 21))}
-    ${col('', '−5d → today', d5 ? dl(d5) : '', _tlReleases(0, 5, ccys, 3, r.name).map(_tlRelLine).join('') + _tlWatchLines(0, 5, [r.name]) + led(1, 5))}
-    ${col('now', 'today', dir?.direction ? `${dir.direction === 'up' ? '↑' : dir.direction === 'down' ? '↓' : '—'} ${dir.agree}/${dir.total}` : 'no lean', (wrong ? `<div class="tl-l"><span class="k">wrong</span>${wrong.side} <b>${fmtN(wrong.price, d.dp)}</b></div>` : '') + (aim ? `<div class="tl-l"><span class="k">aim</span>${esc0(aim.text)}</div>` : '') + `<div class="tl-l"><span class="k">expected range</span>${atr != null ? `<b>${atr}</b> ${d.ac === 'fx' ? 'pips' : 'pts'} (median day)` : '—'}</div>`)}
-    ${col('ahead', 'today → +5d', w?.bias ? `${w.bias.toLowerCase()} ${w.confidence != null ? w.confidence + '%' : ''}` : 'no read', _tlAheadEvents(0, 5, ccys, r.name) + (r.fc?.ladder_weekly?.hl?.p50 != null ? `<div class="tl-l"><span class="k">5d band</span>median ±${r.fc.ladder_weekly.oh.p50}% / −${r.fc.ladder_weekly.ol.p50}% from here (75th ${r.fc.ladder_weekly.oh.p75}%)</div>` : '') + (w?.drivers?.length ? `<div class="tl-l"><span class="k">drivers</span>${esc0(w.drivers.filter(x => Number.isFinite(x.score) && x.score !== 0).slice(0, 3).map(x => `${x.label} ${x.score > 0 ? '↑' : '↓'}`).join(', '))}</div>` : ''))}
-    ${col('ahead', '+5d → +20d', m?.bias ? `${m.bias.toLowerCase()} ${m.confidence != null ? m.confidence + '%' : ''}` : 'no read', _tlAheadEvents(5, 20, ccys, r.name) + _tlFomcAhead() + (r.fc?.ladder_monthly?.oh?.p50 != null ? `<div class="tl-l"><span class="k">20d band</span>median +${r.fc.ladder_monthly.oh.p50}% / −${r.fc.ladder_monthly.ol.p50}% from here (75th ${r.fc.ladder_monthly.oh.p75}%)</div>` : ''))}
+    ${col('', 'three weeks ago → last week', d20 ? moveWord(d20, 20) : '', _tlReleases(5, 21, ccys, 3, r.name).map(_tlRelLine).join('') + chainMine + led(5, 21))}
+    ${col('', 'this week', d5 ? moveWord(d5, 5) : '', _tlReleases(0, 5, ccys, 3, r.name).map(_tlRelLine).join('') + _tlWatchLines(0, 5, [r.name]) + led(1, 5))}
+    ${col('now', 'today', leanWord, (wrong ? `<div class="tl-l"><span class="k">wrong if</span>price goes ${wrong.side} <b>${fmtN(wrong.price, d.dp)}</b> — the ${wrong.tag}</div>` : '') + (aim ? `<div class="tl-l"><span class="k">aim</span>${esc0(aim.text)}</div>` : '') + `<div class="tl-l"><span class="k">normal day</span>${atr != null ? `about <b>${atr}</b> ${d.ac === 'fx' ? 'pips' : 'points'} high to low` : '—'}</div>`)}
+    ${col('ahead', 'next week', biasWord(w), _tlAheadEvents(0, 5, ccys, r.name) + (r.fc?.ladder_weekly?.hl?.p50 != null ? `<div class="tl-l help" title="From the forecaster: the median week reaches +${r.fc.ladder_weekly.oh.p50}% above and −${r.fc.ladder_weekly.ol.p50}% below here; one week in four reaches ${r.fc.ladder_weekly.oh.p75}%"><span class="k">room</span>a normal week travels about ${Math.max(r.fc.ladder_weekly.oh.p50, r.fc.ladder_weekly.ol.p50).toFixed(1)}% either way from here</div>` : '') + (w?.drivers?.length ? `<div class="tl-l"><span class="k">because</span>${esc0(w.drivers.filter(x => Number.isFinite(x.score) && x.score !== 0).slice(0, 3).map(x => `${x.label} ${x.score > 0 ? 'up' : 'down'}`).join(', '))}</div>` : ''))}
+    ${col('ahead', 'the month after', biasWord(m), _tlAheadEvents(5, 20, ccys, r.name) + _tlFomcAhead() + (r.fc?.ladder_monthly?.oh?.p50 != null ? `<div class="tl-l help" title="From the forecaster: the median month reaches +${r.fc.ladder_monthly.oh.p50}% above and −${r.fc.ladder_monthly.ol.p50}% below here; one month in four reaches ${r.fc.ladder_monthly.oh.p75}%"><span class="k">room</span>a normal month travels about ${Math.max(r.fc.ladder_monthly.oh.p50, r.fc.ladder_monthly.ol.p50).toFixed(1)}% either way</div>` : ''))}
   </div>
   <div class="tl-foot">Path: the last twenty closes; shaded: the forecaster's expected bands at 5 and 20 sessions (median, lighter to the 75th). Releases show actual vs consensus, the surprise in sigma, and the size that release has produced on this pair. "Our calls" are this page's direction tags, scored at the next close. The plan columns are what the page thinks today; the daily snapshot keeps them so next month's look-back can grade them.</div>`;
 }
