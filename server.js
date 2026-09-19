@@ -137,7 +137,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
-import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
@@ -13705,6 +13705,29 @@ async function _readSurpriseStore() {
 // first prints exact (js/fredActuals.js). Non-US and proprietary US series
 // (ISM, PMIs, Conference Board) still have no actual; they are simply not scored.
 const _FRED_FILL_MAX = 40;   // lookups per hourly pass; FRED allows 120/min
+// The central banks' own daily policy-rate feeds (BoE IADB, BoC Valet, RBA F1),
+// parsed to [{date, value}]. One fetch per source per pass.
+async function _fetchPolicySeries(source, id, fromIso) {
+  const ua = { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(25_000) };
+  if (source === 'boc') {
+    const r = await fetch(`https://www.bankofcanada.ca/valet/observations/${id}/json?start_date=${fromIso}`, ua); if (!r.ok) throw new Error(`BoC HTTP ${r.status}`);
+    const j = await r.json(); return (j.observations ?? []).map(o => ({ date: o.d, value: parseFloat(o[id]?.v) })).filter(o => Number.isFinite(o.value));
+  }
+  if (source === 'boe') {
+    const d = new Date(fromIso); const from = `${String(d.getUTCDate()).padStart(2, '0')}/${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}/${d.getUTCFullYear()}`;
+    const r = await fetch(`https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=${from}&Dateto=now&SeriesCodes=${id}&CSVF=TN&UsingCodes=Y&VPD=Y&VFD=N`, ua); if (!r.ok) throw new Error(`BoE HTTP ${r.status}`);
+    const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+    return (await r.text()).trim().split('\n').slice(1).map(l => { const [dt, v] = l.split(','); const m = String(dt).trim().match(/^(\d{2}) (\w{3}) (\d{4})$/); return m ? { date: `${m[3]}-${MON[m[2]]}-${m[1]}`, value: parseFloat(v) } : null; }).filter(o => o && Number.isFinite(o.value));
+  }
+  if (source === 'rba') {
+    const r = await fetch('https://www.rba.gov.au/statistics/tables/csv/f1-data.csv', ua); if (!r.ok) throw new Error(`RBA HTTP ${r.status}`);
+    const lines = (await r.text()).split('\n'); const hdr = lines.find(l => l.startsWith('Series ID')); if (!hdr) throw new Error('RBA: no Series ID row');
+    const col = hdr.split(',').indexOf(id); if (col < 0) throw new Error(`RBA: ${id} not in file`);
+    const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+    return lines.map(l => { const c = l.split(','); const m = String(c[0]).match(/^(\d{2})-(\w{3})-(\d{4})$/); if (!m) return null; const date = `${m[3]}-${MON[m[2]]}-${m[1]}`; return date >= fromIso ? { date, value: parseFloat(c[col]) } : null; }).filter(o => o && Number.isFinite(o.value));
+  }
+  throw new Error(`unknown policy source ${source}`);
+}
 let _fredFillWarned = false;
 async function _fillActualsFromFred(events, stored) {
   const key = process.env.FRED_KEY;
@@ -13716,7 +13739,15 @@ async function _fillActualsFromFred(events, stored) {
     const spec = _fredSpecFor(ev.country, ev.event); if (!spec) continue;
     tried++;
     try {
-      const w = _fredVintageWindow(ev.ms, Date.now());
+      if (spec.source && spec.source !== 'fred') {
+        const obs = await _fetchPolicySeries(spec.source, spec.id, new Date(ev.ms - 10 * 864e5).toISOString().slice(0, 10));
+        const a = _policyActual(spec, ev.ms, obs);
+        if (!a?.actual) continue;   // not dated past the decision yet
+        ev.actual = a.actual; ev.src = `${spec.source}:${spec.id}`; filled++;
+        notes.push(`${ev.country} ${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'})`);
+        await new Promise(r => setTimeout(r, 300)); continue;
+      }
+      const w = _fredVintageWindow(ev.ms, Date.now(), spec.lagDays ?? 0);
       const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${spec.id}&api_key=${key}&file_type=json&observation_start=${_fredFetchStart(spec, ev.ms)}&realtime_start=${w.realtime_start}&realtime_end=${w.realtime_end}`;
       const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
       if (!res.ok) { notes.push(`${ev.event}: HTTP ${res.status}`); if (res.status === 429) break; continue; }
@@ -13747,6 +13778,13 @@ async function _refreshSurpriseStore() {
   if (!r.ok) throw new Error(`calendar feed unavailable: ${r.error || 'unknown'}`);
   const stored = await _readSurpriseStore();
   const events = (r.events ?? []).map(e => ({ ...e }));   // copy: the feed's cache must not carry our fills
+  // The feed only shows the current week, but some actuals land later than that
+  // (the ECB's rate applies six days after the decision). The daily snapshot keeps
+  // each day's high-impact releases, so recent ones join the candidates.
+  try {
+    const snap = await _loadSnapStore(); const seen = new Set(events.map(e => `${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`));
+    for (const d of (snap?.days ?? []).slice(-21)) for (const e of d.released ?? []) { const k = `${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`; if (!seen.has(k) && _fredSpecFor(e.country, e.event)) { seen.add(k); events.push({ country: e.country, event: e.event, impact: 'high', time: new Date(e.ms).toISOString().slice(0, 19).replace('T', ' '), ms: e.ms, estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null }); } }
+  } catch { /* the feed alone, then */ }
   await _fillActualsFromFred(events, stored);
   const merged = _mergeReleases(stored, events);
   // The store carries ~26k backfilled releases, so it is a multi-megabyte value.

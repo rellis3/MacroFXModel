@@ -76,9 +76,33 @@ export const FRED_ACTUALS = {
   'Federal Funds Rate':              { id: 'DFEDTARU',         kind: 'level_pct', ref: 'day', dp: 2 },
 };
 
+// Non-US policy rates. FRED only carries the ECB's daily; the others come from
+// the central banks' own open feeds (all daily, all free, none revised). The join
+// is the same idea without vintages: the first observation dated AFTER the
+// decision day carries the new rate (the BoE stamps the decision day itself, the
+// RBA the next day, the BoC the announcement day -- waiting a day covers all).
+export const POLICY_RATES = {
+  // the ECB's new rate applies from the next maintenance period, six days after the decision
+  'EU|Main Refinancing Rate': { id: 'ECBMRRFR', source: 'fred', kind: 'level_pct', ref: 'day', dp: 2, lagDays: 6 },
+  'GB|Official Bank Rate':    { id: 'IUDBEDR',  source: 'boe',  kind: 'level_pct', ref: 'day', dp: 2 },
+  'CA|Overnight Rate':        { id: 'V39079',   source: 'boc',  kind: 'level_pct', ref: 'day', dp: 2 },
+  'AU|Cash Rate':             { id: 'FIRMMCRTD', source: 'rba', kind: 'level_pct', ref: 'day', dp: 2 },
+};
 export function fredSpecFor(country, event) {
-  if (String(country).toUpperCase() !== 'US') return null;
-  return FRED_ACTUALS[String(event ?? '').trim()] ?? null;
+  const cc = String(country ?? '').toUpperCase(), t = String(event ?? '').trim();
+  if (cc === 'US') { const f = FRED_ACTUALS[t]; return f ? { ...f, source: 'fred' } : null; }
+  return POLICY_RATES[`${cc}|${t}`] ?? null;
+}
+
+// A daily policy-rate series without vintages -> the actual for a decision:
+// the newest observation dated after the decision day, inside six days.
+export function policyActualFrom(spec, releaseMs, obs) {
+  if (!spec) return null;
+  const day0 = iso(new Date(releaseMs));
+  const rows = (Array.isArray(obs) ? obs : []).filter(o => o && o.date > day0 && Number.isFinite(o.value) && Date.parse(o.date) <= releaseMs + 6 * DAY).sort((a, b) => a.date < b.date ? -1 : 1);
+  if (!rows.length) return null;
+  const v = rows[rows.length - 1].value;
+  return { actual: `${v.toFixed(spec.dp ?? 2)}%`, prior: null, refDate: rows[rows.length - 1].date, publishedOn: rows[rows.length - 1].date };
 }
 
 const iso = d => d.toISOString().slice(0, 10);
@@ -117,9 +141,9 @@ export function referenceDate(releaseMs, ref) {
 // Latest-vintage data would not do: payrolls, retail sales and GDP are revised by
 // tenths and tens of thousands, so a rebuild from today's numbers disagrees with
 // what printed on the day.
-export function vintageWindow(releaseMs, now = Date.now()) {
+export function vintageWindow(releaseMs, now = Date.now(), lagDays = 0) {
   const day0 = iso(new Date(releaseMs));
-  const end = new Date(Math.min(releaseMs + 3 * DAY, now));
+  const end = new Date(Math.min(releaseMs + (3 + lagDays) * DAY, now));
   return { realtime_start: day0, realtime_end: iso(end) < day0 ? day0 : iso(end) };
 }
 
@@ -144,7 +168,7 @@ function _plausible(spec, releaseMs, date) {
     case 'm0': case 'm1': case 'm2': return date >= iso(utc(y, m - 3)) && date <= iso(utc(y, m));
     case 'q1': return date >= iso(utc(y, m - 8)) && date < iso(new Date(releaseMs));
     case 'wk': case 'wed': return Date.parse(date) >= releaseMs - 14 * DAY && Date.parse(date) < releaseMs;
-    case 'day': return date > iso(d) && Date.parse(date) <= releaseMs + 4 * DAY;
+    case 'day': { const lag = (spec.lagDays ?? 0) * DAY; return date > iso(new Date(releaseMs + lag)) && Date.parse(date) <= releaseMs + lag + 4 * DAY; }
     default: return false;
   }
 }
@@ -177,7 +201,7 @@ function _format(spec, rows, i) {
 export function actualFromVintage(spec, releaseMs, obs) {
   if (!spec) return null;
   const rows = _asOf(obs); if (!rows.length) return null;
-  const { realtime_start } = vintageWindow(releaseMs, releaseMs + 3 * DAY);
+  const { realtime_start } = vintageWindow(releaseMs, releaseMs + 3 * DAY, spec.lagDays ?? 0);
   const i = rows.length - 1, newest = rows[i];
   if ((newest.realtime_start ?? '') < realtime_start) return null;   // nothing new since the release: not out on FRED yet
   if (!_plausible(spec, releaseMs, newest.date)) return null;
