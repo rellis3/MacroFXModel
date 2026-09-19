@@ -280,7 +280,7 @@ export const DESK_EVIDENCE = [
   {
     id: 'spread-leads-fx-hours', domain: 'macro', verdict: 'null', date: '2026-09-19', doc: 'MD files/LEAD_LAG_TESTS.md#L1',
     claim: 'The DE-US 10-year spread leads EUR/USD by hours: when the spread moves and spot does not, spot catches up within a day',
-    result: 'Hourly bars 2012-2026 (61k hours). Same-hour correlation -0.30 every year; +1h -0.015 (placebo 0.013); +2h to +48h zero. The divergence setup (727 non-overlapping): next 24h in the spread's direction 52% [48-56], +0.05 sigma -- identical to the aligned control. Big divergences (n=52) went the other way (35%, -0.47 sigma): the spread gave back. GBP/USD 47%.',
+    result: 'Hourly bars 2012-2026 (61k hours). Same-hour correlation -0.30 every year; +1h -0.015 (placebo 0.013); +2h to +48h zero. The divergence setup (727 non-overlapping): next 24h in the direction the spread pointed 52% [48-56], +0.05 sigma -- identical to the aligned control. Big divergences (n=52) went the other way (35%, -0.47 sigma): the spread gave back. GBP/USD 47%.',
     use: 'The spread explains a move in the same hour; it does not announce one. Never write "rates moved first, the currency will follow". The Feb 2026 case in the course notes is one episode.',
     instruments: ['EURUSD', 'GBPUSD'],
   },
