@@ -91,7 +91,7 @@
     <span id="filterBanner"></span>
     <br><br>
     <code>AnalogML/motif_alert_backtest.py</code> replays the bot's own emission path bar by bar over
-    2016–2026 — one live touch-run per pair, the <code>provisional</code> refusal, one nearing alert
+    <span id="dataSpan">the export's data window</span> — one live touch-run per pair, the <code>provisional</code> refusal, one nearing alert
     per run, entry only once an H1 close confirms — and races exactly those alerts through
     <code>pylego.barrier_race</code>, the same walker the tracked record uses. It re-tunes nothing.
     <br><br>
@@ -1468,6 +1468,12 @@ function render() {
     `Export: ${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
     `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
     `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}`;
+  // The data window is whatever the export was built on -- Railway's parquet
+  // is a 5-year window (2021->), the earlier export was 10 years; say which.
+  if ($('dataSpan') && DATA.trades?.length) {
+    const ds = DATA.trades.map(t => t.date).filter(Boolean);
+    $('dataSpan').textContent = `${ds[0].slice(0, 4)}–${ds[ds.length - 1].slice(0, 4)} (${ds[0]} → ${ds[ds.length - 1]})`;
+  }
   render();
 })();
 </script>
