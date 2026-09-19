@@ -1925,6 +1925,12 @@ async function loadGate() {
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
   setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
   setTimeout(() => loadReleaseCalls(), 3500);                      // your calls and the just-printed cards
+  // The sidebar is taller than the window, so a plain sticky top pinned its head
+  // and hid its tail until the main column ran out. Pin it by its BOTTOM instead
+  // when it is taller than the viewport: it scrolls with the page until its last
+  // card is in view, then holds while the main column carries on.
+  const _stickSidebar = () => { const sb = $('sidebarCol'); if (!sb) return; const h = sb.offsetHeight, vh = window.innerHeight; sb.style.top = h + 28 > vh ? `${Math.round(vh - h - 14)}px` : '14px'; };
+  _stickSidebar(); window.addEventListener('resize', _stickSidebar); try { new ResizeObserver(_stickSidebar).observe($('sidebarCol')); } catch { /* old browser: top stays 14px */ }
   setInterval(() => loadReleaseCalls(), 5 * 60_000);
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
