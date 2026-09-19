@@ -3405,6 +3405,43 @@ Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
+// ── Daily snapshot: what the page thought, kept ──────────────────────────────
+// The morning brief overwrites itself; the chain, the watch and the deltas are
+// live. So "what did we think five days ago" was reconstructable for numbers
+// and not for reads. This keeps one compact row per UTC day -- the brief's
+// regime / what-changed / watch lines, the macro deltas, the chain verdicts,
+// the watch states, the board trade -- written once the morning brief exists
+// and refreshed through the day (last write wins, same day). The look-back
+// timeline reads it. Read-modify-write: refuse to write over an unparseable
+// store; never overwrite an older day.
+const _SNAP_KV = 'daily_snapshot_v1';
+const _SNAP_KEEP = 120;
+async function _loadSnapStore() {
+  try { const raw = await kv.getStrict(_SNAP_KV); if (!raw) return { days: [] }; const p = JSON.parse(raw); return { days: Array.isArray(p?.days) ? p.days : [] }; }
+  catch (e) { console.warn('[snapshot] store unreadable, not touching it:', e.message); return null; }
+}
+async function _dailySnapshotTick() {
+  const store = await _loadSnapStore(); if (!store) return;
+  const day = new Date().toISOString().slice(0, 10);
+  const row = { day, at: new Date().toISOString() };
+  try { const raw = await kv.get(_MORNING_BRIEF_KV); const b = raw ? JSON.parse(raw) : null; const a = b?.analysis; if (a) row.brief = { generatedAt: b.generatedAt, regime: a.regime ?? null, whatChanged: a.whatChanged ?? null, watch: Array.isArray(a.watch) ? a.watch.slice(0, 3) : a.watch ?? null, headline: a.headline ?? null, theme: typeof a.theme === 'string' ? a.theme.slice(0, 400) : null, boardTrade: a.boardTradeOfDay ? { pair: a.boardTradeOfDay.pair ?? null, direction: a.boardTradeOfDay.direction ?? null } : null }; } catch { /* no brief yet */ }
+  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
+  try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
+  try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
+  try { const raw = await kv.get(_FRED_DASH_KV); const f = raw ? (JSON.parse(raw)?.d ?? JSON.parse(raw)) : {}; row.levels = Object.fromEntries(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy', 'wti'].map(k => [k, f?.[k]?.value ?? null])); } catch { /* skipped */ }
+  const i = store.days.findIndex(d => d.day === day);
+  if (i >= 0) store.days[i] = { ...store.days[i], ...row }; else store.days.push(row);
+  store.days.sort((a, b) => a.day < b.day ? -1 : 1);
+  store.days = store.days.slice(-_SNAP_KEEP);
+  await kv.put(_SNAP_KV, JSON.stringify(store));
+}
+app.get('/api/daily-snapshot', async (req, res) => {
+  try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/daily-snapshot/tick', async (_req, res) => { try { await _dailySnapshotTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+setInterval(() => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
+
 // ── Desk watch: the early-warning layer ──────────────────────────────────────
 // Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
 // chain, the stock/bond correlation, the calendar), evaluate every trigger in
@@ -31683,6 +31720,7 @@ _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.
 // First desk-watch pass after the FRED history has had a chance to seed (the
 // triggers read it); after kv.load() because the store is read-modify-write.
 setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);
+setTimeout(() => _dailySnapshotTick().catch(e => console.error('[snapshot] first pass failed (store left untouched):', e.message)), 8 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
@@ -32149,6 +32187,10 @@ if (process.env.OANDA_KEY) {
         console.error(`[reference-engine-rebuild] ${label} trigger failed:`, e.message);
       }
     }
+    // Stamped BEFORE anything runs so the follow-on healing pass (after
+    // Session Handoff, below) can tell "never touched tonight" apart from
+    // "touched tonight, just early" — see that pass's own doc.
+    const _rebuildTickStartedAt = Date.now();
     await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
     // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
@@ -32200,9 +32242,65 @@ if (process.env.OANDA_KEY) {
     await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
     await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+
+    // Follow-on healing pass (2026-09-19, direct owner request after tracing
+    // AUDNZD's repeated overnight failure): the batch job above still dies
+    // on SOME pair most nights (never root-caused — needs Railway logs), but
+    // a solo re-run of just that pair, done by hand, completed with zero
+    // errors both times tried (AUDNZD: 34,569 Asia + 22,207 Monday touch-
+    // records, clean). That rules out bad data/a broken symbol — it only
+    // fails competing for memory with the rest of the batch. So: after the
+    // WHOLE main chain has finished (strictly sequential, never overlapping
+    // it — the owner's explicit condition was "as long as it doesn't
+    // corrupt the book builds", and two writers touching the same pair's
+    // book file at once is exactly the kind of thing that could), check
+    // which (pair, ladder) books this run actually touched and solo-retry
+    // only the ones it didn't — same runOne() code path as the batch job
+    // and the manual "Regenerate" button, so there is no second/different
+    // write path that could produce a differently-shaped book.
+    //
+    // Deliberately CAPPED (_FIB_HEAL_MAX) rather than healing everyone
+    // stale: if the batch job dropped more than a handful of pairs, that's
+    // a bigger problem than one unlucky pair and deserves to be VISIBLE
+    // (loud staleness alert, investigate) rather than quietly patched over
+    // one-by-one, which could also just extend how long this tick keeps a
+    // memory-constrained container busy.
+    try {
+      const _FIB_HEAL_MAX = 5;
+      const _fibHealLadders = [
+        { label: 'asia', prefix: 'asia-fib-atlas', starter: _startAsiaFibAtlasRunJob },
+        { label: 'monday', prefix: 'monday-fib-atlas', starter: _startMondayFibAtlasRunJob },
+      ];
+      const missed = [];
+      for (const pairUpper of fibAtlasPairsBase) {
+        const pair = pairUpper.toLowerCase();
+        for (const l of _fibHealLadders) {
+          try {
+            const book = await _r2GetJSON(`${l.prefix}/${pair}-votetrades.json`);
+            const genAt = book?.generatedAt ? Date.parse(book.generatedAt) : 0;
+            if (!genAt || genAt < _rebuildTickStartedAt) missed.push({ pair: pairUpper, ...l });
+          } catch (e) {
+            missed.push({ pair: pairUpper, ...l }); // couldn't even read it -- treat as missed, not silently skip
+          }
+        }
+      }
+      if (!missed.length) {
+        console.log('[reference-engine-rebuild] healing pass: every (pair,ladder) was touched by tonight\'s run — nothing to heal');
+      } else if (missed.length > _FIB_HEAL_MAX) {
+        console.error(`[reference-engine-rebuild] healing pass: ${missed.length} (pair,ladder) constituents missed tonight — over the ${_FIB_HEAL_MAX} cap, NOT auto-healing (this is a bigger failure than one unlucky pair; investigate instead): ${missed.map(m => `${m.pair}|${m.label}`).join(', ')}`);
+      } else {
+        console.log(`[reference-engine-rebuild] healing pass: ${missed.length} (pair,ladder) constituent(s) missed tonight, solo-retrying: ${missed.map(m => `${m.pair}|${m.label}`).join(', ')}`);
+        for (const m of missed) {
+          await runSeq(`heal ${m.pair}|${m.label}`, () => m.starter({ instruments: [m.pair] }));
+        }
+      }
+    } catch (e) {
+      console.error('[reference-engine-rebuild] healing pass failed:', e.message);
+    }
+
     console.log('[reference-engine-rebuild] nightly tick complete');
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Asia/Monday Fib Atlas + Session Path + Session Handoff, then a follow-on healing pass that solo-retries any Fib Atlas (pair,ladder) the run itself missed, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.
