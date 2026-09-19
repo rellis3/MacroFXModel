@@ -1,6 +1,6 @@
 // Synthetic test for the OI bot strategy (regime-switch planner). No network.
 //   node js/oiZones.test.mjs
-import { buildOIZones, explainNoZones, wallHoldScore } from './oiZones.js';
+import { buildOIZones, explainNoZones, wallHoldScore, gexShareAtStrike } from './oiZones.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -237,6 +237,75 @@ console.log('[Persistence — across-expiry durability boosts rank + size (break
   const z0 = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, persistenceWeight: 0 });
   ok('persistenceWeight 0 → pure-OI ranking (near wall wins)',
     z0.find(x => x.mode === 'break' && x.side === 'buy')?.level === 4250, `${z0.find(x => x.mode === 'break' && x.side === 'buy')?.level}`);
+}
+
+console.log('[gexShareAtStrike — the shared per-strike gamma read]');
+{
+  const gp = [{ strike: 4250, netGex: 3000 }, { strike: 4300, netGex: -3000 }];
+  ok('nearest-strike, strongly positive local netGex -> share = 1 (long gamma, holds)',
+    gexShareAtStrike(4250, gp) === 1, `${gexShareAtStrike(4250, gp)}`);
+  ok('nearest-strike, strongly negative local netGex -> share = 0 (short gamma, breaks run)',
+    gexShareAtStrike(4300, gp) === 0, `${gexShareAtStrike(4300, gp)}`);
+  ok('no gexProfile at all -> null, never a guessed neutral 0.5', gexShareAtStrike(4300, null) === null);
+  ok('empty gexProfile -> null', gexShareAtStrike(4300, []) === null);
+  ok('a strike far outside the profile still resolves to its nearest row',
+    gexShareAtStrike(0, gp) === 1, `${gexShareAtStrike(0, gp)}`);   // 0 is nearer 4250 (dist 4250) than 4300 (dist 4300)
+}
+
+console.log('[Break-mode selection is now gamma-aware, not OI-only — the review finding, fixed]');
+{
+  // Wall A has MORE open interest; wall B has LESS. Pure OI x durability (the
+  // pre-fix ranking) picks A. But A sits in a strongly LONG-gamma pocket (dealers
+  // there hedge counter-cyclically -- a break "may stall", per wallHoldScore's own
+  // rationale for break zones) while B sits in a strongly SHORT-gamma pocket
+  // (dealers hedge pro-cyclically -- a break there runs). A third, farther wall (C)
+  // exists purely so the TP-target lookup has real structure to find.
+  const inst = { ...base, exposures: { gex: -5000 },   // -GEX -> BREAKOUT
+    callWalls: [
+      { strike: 4250, oi: 9000, tier: 'strong', mult: 3.1, persistence: 1 },   // A: more OI, long-gamma pocket
+      { strike: 4300, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 },   // B: less OI, short-gamma pocket
+      { strike: 4400, oi: 7000, tier: 'strong', mult: 2.9, persistence: 1 },   // C: TP-target structure only
+    ],
+    putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 }],
+    gexProfile: [{ strike: 4250, netGex: 3000 }, { strike: 4300, netGex: -3000 }, { strike: 4400, netGex: 0 }] };
+
+  const withFix = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1 })
+    .find(x => x.mode === 'break' && x.side === 'buy');
+  ok('the SHORT-gamma wall (less OI) is preferred for the single break-candidate slot',
+    withFix && withFix.level === 4300, `${withFix?.level}`);
+  // TP1-target search deliberately still reads the PLAIN (non-gamma-weighted) `calls`
+  // list, not `breakCalls` — under maxZonesPerSide:1 that plain list is capped down to
+  // just wall A (4250, the OI leader), so B's TP1 correctly finds nothing above it and
+  // is null; that null IS the proof nothing widened Mode B's target search. Re-run
+  // with a cap wide enough for the plain list to include wall C confirms TP1 still
+  // finds real structure (4400) when it is actually there to find.
+  ok('under a tight cap, TP1 correctly finds nothing beyond wall A in the (also-capped) plain list — proves TP1 was not switched to the gamma-reordered list',
+    withFix && withFix.tp1 === null, `${withFix?.tp1}`);
+  const wideCap = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 3 })
+    .find(x => x.mode === 'break' && x.side === 'buy' && x.level === 4300);
+  ok('with room for wall C in the plain list too, B\'s TP1 correctly targets it (4400)',
+    wideCap && wideCap.tp1 === 4400, `${wideCap?.tp1}`);
+  ok('the local-gamma read is disclosed in the rationale', /local gamma short \(favours the break\)/.test(withFix.rationale), withFix.rationale);
+
+  // breakGexFloor:1 turns the weighting off -- pure OI x durability again, matching
+  // the pre-fix behaviour exactly. This is the regression guard: it proves the
+  // change above came from the new weighting, not from something else moving.
+  const withoutFix = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, breakGexFloor: 1 })
+    .find(x => x.mode === 'break' && x.side === 'buy');
+  ok('breakGexFloor:1 (off) reverts to the higher-OI wall — the documented pre-fix ranking',
+    withoutFix && withoutFix.level === 4250, `${withoutFix?.level}`);
+
+  // Symmetric check on the put side (wall D fewer OI / short-gamma should still win
+  // over a higher-OI / long-gamma put wall).
+  const instP = { ...base, exposures: { gex: -5000 },
+    callWalls: [{ strike: 4300, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 }],
+    putWalls: [
+      { strike: 4150, oi: 9000, tier: 'strong', mult: 3.1, persistence: 1 },   // more OI, long-gamma pocket
+      { strike: 4100, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 },   // less OI, short-gamma pocket
+    ],
+    gexProfile: [{ strike: 4150, netGex: 3000 }, { strike: 4100, netGex: -3000 }] };
+  const dn = buildOIZones(instP, 4200, { ...cfg, maxZonesPerSide: 1 }).find(x => x.mode === 'break' && x.side === 'sell');
+  ok('put side: the short-gamma wall wins the slot too', dn && dn.level === 4100, `${dn?.level}`);
 }
 
 console.log('[PIN nearest-primary — the active pin boundary is the NEAREST strong wall]');
@@ -657,6 +726,24 @@ console.log('[Aggregate sizeFactor cap — max_lot must not silently become the 
   ok('default cap (2.0×) clamps the same stacked zone', capped.sizeFactor === 2, `${capped.sizeFactor}`);
   ok('the clamp is disclosed in the rationale, with the pre-cap value',
     capped.rationale.includes(`sizeFactor capped ${uncapped.sizeFactor}× → 2×`), capped.rationale);
+  // sizeBreakdown (2026-09-19) — the structured, queryable form of the same
+  // multiplier chain the rationale string already discloses in prose. Cross-checked
+  // against THIS fixture specifically because its expected numbers are already
+  // pinned by the assertions above, not freshly asserted from scratch.
+  ok('sizeBreakdown is attached to every zone', capped.sizeBreakdown && typeof capped.sizeBreakdown === 'object', JSON.stringify(capped.sizeBreakdown));
+  ok('uncapped.sizeBreakdown.preCap matches the actual uncapped sizeFactor (same number, two representations)',
+    uncapped.sizeBreakdown.preCap === uncapped.sizeFactor, `${uncapped.sizeBreakdown.preCap} === ${uncapped.sizeFactor}`);
+  ok('capped.sizeBreakdown.capped is true; uncapped.sizeBreakdown.capped is false',
+    capped.sizeBreakdown.capped === true && uncapped.sizeBreakdown.capped === false);
+  ok('capped.sizeBreakdown.preCap preserves the PRE-clamp value even though sizeFactor itself was clamped',
+    capped.sizeBreakdown.preCap === uncapped.sizeFactor, `${capped.sizeBreakdown.preCap} === ${uncapped.sizeFactor}`);
+  ok('the individual multipliers replay to the same pre-cap total the rationale already asserts',
+    Math.round(capped.sizeBreakdown.base * capped.sizeBreakdown.vanna * capped.sizeBreakdown.blocker
+      * capped.sizeBreakdown.reach * capped.sizeBreakdown.hold * capped.sizeBreakdown.conviction
+      * capped.sizeBreakdown.localRegime * 100) === Math.round(uncapped.sizeFactor * 100),
+    JSON.stringify(capped.sizeBreakdown));
+  ok('vanna headwind (a boost, on this fade) is captured and > 1', capped.sizeBreakdown.vanna > 1, `${capped.sizeBreakdown.vanna}`);
+  ok('hold multiplier captured and > 1 (positive local GEX -> strong hold)', capped.sizeBreakdown.hold > 1, `${capped.sizeBreakdown.hold}`);
   // An ordinary (moderate tier, dispersed, unremarkable multiple) zone must be
   // completely unaffected — note even `base`'s plain strong+concentrated wall
   // isn't a fair "ordinary" control here: hold-score's mult-only component (no
@@ -668,6 +755,10 @@ console.log('[Aggregate sizeFactor cap — max_lot must not silently become the 
   const plain = buildOIZones(ordinary, 4200, { ...cfg, minTier: 'moderate' }).find(x => x.side === 'sell');
   ok('an ordinary zone under the cap is untouched (no rationale note, no size change)',
     plain.sizeFactor < 2 && !/sizeFactor capped/.test(plain.rationale), `${plain.sizeFactor}`);
+  ok('an ordinary zone with nothing firing carries an all-1 breakdown apart from base',
+    plain.sizeBreakdown.vanna === 1 && plain.sizeBreakdown.blocker === 1 && plain.sizeBreakdown.reach === 1
+      && plain.sizeBreakdown.conviction === 1 && plain.sizeBreakdown.localRegime === 1 && plain.sizeBreakdown.capped === false,
+    JSON.stringify(plain.sizeBreakdown));
   // A custom, tighter cap is honoured too.
   const tight = buildOIZones(stacked, 4200,
     { ...cfg, gexMedianAbs: 4200, vannaState: { state: 'headwind', firing: true }, maxSizeFactor: 1.5 })
