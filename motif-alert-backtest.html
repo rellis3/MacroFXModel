@@ -1421,7 +1421,7 @@ function render() {
   // tighter stop, a breakeven stop and a Chandelier trail were each tested on
   // the M1 path and none beat simply trading smaller once verified.
   $('bestCfgBtn').onclick = () => {
-    $('filterSel').value = 'nowith';
+    $('filterSel').value = 'no3t';   // 2026-09-19: was 'nowith' -- see pylego/motif_policy.py BEST_CONFIG
     $('costSel').value = 'retail';
     // Drop pairs whose realistic spread eats the edge: at 2.0 pips the
     // round-trip is already 0.10R against a 1.5R target, and every pair above

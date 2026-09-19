@@ -14,8 +14,25 @@ def test_tight_pair_with_range_regime_passes():
     assert passes_best_config("eurusd", "range") is True
 
 
-def test_with_trend_regime_fails_regardless_of_spread():
-    assert passes_best_config("eurusd", "with") is False
+def test_with_trend_regime_no_longer_gates():
+    # 2026-09-19: the regime gate was retired (its selection carried pivot
+    # lookahead); a with-trend 2-touch on a tight pair now trades.
+    assert passes_best_config("eurusd", "with", n_touches=2) is True
+
+
+def test_three_touch_motif_is_skipped_regardless_of_regime_or_spread():
+    assert passes_best_config("eurusd", "range", n_touches=3) is False
+    assert passes_best_config("eurusd", "against", spread_pips=0.5, n_touches=3) is False
+
+
+def test_two_touch_motif_passes():
+    assert passes_best_config("eurusd", "range", n_touches=2) is True
+
+
+def test_missing_n_touches_fails_open():
+    # A caller that could not read the touch count must not silently drop
+    # the trade -- same convention as a missing regime read.
+    assert passes_best_config("eurusd", "range") is True
 
 
 def test_wide_static_spread_pair_fails():
@@ -36,8 +53,8 @@ def test_spread_pips_override_can_pass_a_normally_failing_pair():
     assert passes_best_config("gbpcad", "range", spread_pips=1.8) is True
 
 
-def test_spread_pips_override_does_not_bypass_the_swing_regime_filter():
-    assert passes_best_config("gbpcad", "with", spread_pips=0.1) is False
+def test_spread_pips_override_does_not_bypass_the_touch_filter():
+    assert passes_best_config("gbpcad", "range", spread_pips=0.1, n_touches=3) is False
 
 
 if __name__ == "__main__":

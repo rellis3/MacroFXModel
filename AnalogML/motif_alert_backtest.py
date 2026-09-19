@@ -498,7 +498,8 @@ def replay_risk_guard(trades: list[dict], cfg: dict, starting_balance: float,
     would live have taken", not a guess at different numbers.
     """
     gated = [t for t in trades
-             if motif_policy.passes_best_config(t["pair"], t.get("features", {}).get("swing_regime"))]
+             if motif_policy.passes_best_config(t["pair"], t.get("features", {}).get("swing_regime"),
+                                                n_touches=t.get("n_touches"))]
     keyed = [(pd.Timestamp(t["entry_date"]).timestamp(), t["pair"], t["r"], t["motif_key"]) for t in gated]
     keyed.sort(key=lambda k: k[0])
     sim_trades = [(epoch, pair, r) for epoch, pair, r, _ in keyed]

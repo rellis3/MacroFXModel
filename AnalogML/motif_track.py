@@ -34,7 +34,7 @@ record); the third is KV, for the live execution bot:
     already-measured aggregate, never a fabricated per-instance probability.
   - KV key `motif_bot_plan` (2026-09-16) -- every currently-`open` trade
     (from motif_trades.json above) that passes `pylego.motif_policy.
-    passes_best_config` (skip swing_regime=with, drop pairs whose realistic
+    passes_best_config` (skip 3-touch motifs, drop pairs whose realistic
     spread exceeds 2.0 pips -- the same validated filter the backtest
     viewer's ⭐ Best Config button applies). This is `motif_bot/motif_bot.py`'s
     ONLY input -- that bot NEVER computes a vote/level/stop/direction from
@@ -597,7 +597,7 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
 
     regime_line = ""
     if swing_regime is not None:
-        acted = passes_best_config(pair, swing_regime, spread_pips=live_spread_override)
+        acted = passes_best_config(pair, swing_regime, spread_pips=live_spread_override, n_touches=m.n_touches)
         tag = "✅ bot would act on this" if acted else "⏸️ bot skips (best-config filter)"
         regime_line = f"\U0001f4d0 Swing regime  <b>{swing_regime}</b> · {tag}\n"
 
@@ -874,7 +874,7 @@ def run(args: argparse.Namespace) -> None:
                 direction = 1 if t["direction"] == "BUY" else -1
                 swing_regime = _swing_regime(t["entry_idx"] - 1, direction, t["level"])
                 live_pips = live_spread_pips(live_spreads, pair)
-                if not passes_best_config(pair, swing_regime, live_pips):
+                if not passes_best_config(pair, swing_regime, live_pips, n_touches=t["n_touches"]):
                     if _hours_since(t["entry_date"]) <= FILTERED_WINDOW_HOURS:
                         # Report whichever spread figure the decision above
                         # actually used -- a live-measured average once this
@@ -883,8 +883,12 @@ def run(args: argparse.Namespace) -> None:
                         # this reason text can never disagree with why the
                         # motif was really filtered.
                         spread = live_pips if live_pips is not None else RETAIL_SPREAD_PIPS.get(pair)
-                        why = (f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p" if spread is not None and spread > BEST_CONFIG["max_spread_pips"]
-                               else f"swing regime = {swing_regime} (with-trend -- best-config skips)")
+                        if spread is not None and spread > BEST_CONFIG["max_spread_pips"]:
+                            why = f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p"
+                        elif BEST_CONFIG.get("skip_n_touches") is not None and t["n_touches"] == BEST_CONFIG["skip_n_touches"]:
+                            why = f"{t['n_touches']}-touch motif (best-config trades 2-touch only)"
+                        else:
+                            why = f"swing regime = {swing_regime} (best-config skips)"
                         plan_filtered.append({
                             "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
                             "n_touches": t["n_touches"], "is_top": t["is_top"], "level": t["level"],

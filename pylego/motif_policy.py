@@ -37,12 +37,23 @@ RETAIL_SPREAD_PIPS = {
 # The two adjustments selected IN-SAMPLE (pre-2023) and held OUT-OF-SAMPLE
 # (2023+) on the M1-resolved backtest (PR #1462): skip with-trend swing
 # regime, drop pairs whose realistic spread exceeds this many pips. Verified
-# OOS PF 1.268, 13,480 trades, +46.5%/yr at 0.25% risk, -12.5% worst drawdown.
+# (Historical note: the original selection quoted OOS PF 1.268 on 13,480 trades --
+# a figure since shown to carry regime lookahead; see the 2026-09-19 note below.)
 # No exit-rule adjustment is in this policy -- a tighter stop, a breakeven
 # stop and a Chandelier trail were each tested on the M1 path and none beat
 # simply trading smaller once verified OOS, so none belongs in "best".
+# 2026-09-19: "skip with-trend" replaced by "skip 3-touch motifs". The
+# with-trend filter was selected on a swing_regime label that carried 5-bar
+# pivot lookahead (MD files/MOTIF_REGIME_LOOKAHEAD_PREREG.md); on causal
+# labels it fell to PF 1.145 (spread<=2p, retail cost, 2021-26). Skipping
+# 3-touch motifs never depended on the regime: PF 1.175 on the same trades,
+# unchanged by the fix, and 1.193 on 2016-2021 -- two independent periods,
+# both ahead of unfiltered (1.103), and n_touches is known at confirmation
+# by construction. It beats "skip with" on PF, win rate, avg R, total R and
+# trade count. Owner's call, taken 2026-09-19.
 BEST_CONFIG = {
-    "skip_swing_regime": "with",
+    "skip_n_touches": 3,        # 3-touch motifs are skipped; 2-touch trade
+    "skip_swing_regime": None,  # regime no longer gates (kept as a key so a future re-selection is one line)
     "max_spread_pips": 2.0,
 }
 
@@ -64,15 +75,19 @@ RISK_GUARD_DEFAULTS = {
 
 
 def passes_best_config(pair: str, swing_regime: str | None,
-                       spread_pips: float | None = None) -> bool:
-    """True if a confirmed motif on `pair` with this `swing_regime` is part of
-    the validated best config -- i.e. should be paper-tracked as "actionable"
-    and offered to the live execution bot. `swing_regime` is one of
-    "with"/"against"/"range"/"unknown"/None (the causal H1-vs-D1 structural
-    read at the confirm bar, AnalogML.motif_features.bucket_trade's own
-    field) -- None/"unknown" passes (fail OPEN on a missing feature read
-    rather than silently dropping a trade the strategy would otherwise take;
-    the spread half of the filter is unaffected either way).
+                       spread_pips: float | None = None,
+                       n_touches: int | None = None) -> bool:
+    """True if a confirmed motif on `pair` is part of the validated best
+    config -- i.e. should be paper-tracked as "actionable" and offered to
+    the live execution bot. Two gates: the pair's spread (static estimate or
+    the live override below) must be <= max_spread_pips, and the motif's
+    `n_touches` must not equal skip_n_touches (3-touch motifs are skipped
+    since 2026-09-19; see BEST_CONFIG). `swing_regime` is still accepted --
+    "with"/"against"/"range"/"unknown"/None, the causal structural read at
+    the confirm bar -- and is gated only if BEST_CONFIG names a regime to
+    skip (currently None). None/"unknown" on either feature passes: fail
+    OPEN on a missing read rather than silently dropping a trade the
+    strategy would otherwise take; the spread half is unaffected either way.
 
     `spread_pips` (2026-09-18), when given, OVERRIDES the static
     RETAIL_SPREAD_PIPS estimate for this call -- pass a live-measured average
@@ -85,6 +100,8 @@ def passes_best_config(pair: str, swing_regime: str | None,
     spread = spread_pips if spread_pips is not None else RETAIL_SPREAD_PIPS.get(pair.lower())
     if spread is not None and spread > BEST_CONFIG["max_spread_pips"]:
         return False
-    if swing_regime == BEST_CONFIG["skip_swing_regime"]:
+    if BEST_CONFIG.get("skip_swing_regime") is not None and swing_regime == BEST_CONFIG["skip_swing_regime"]:
+        return False
+    if BEST_CONFIG.get("skip_n_touches") is not None and n_touches == BEST_CONFIG["skip_n_touches"]:
         return False
     return True
