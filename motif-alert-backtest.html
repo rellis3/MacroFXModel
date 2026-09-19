@@ -1105,6 +1105,7 @@ function statRow(label, s) {
 /** The confluence study, if its export is present. Read-only: it reports what
  *  a filter WOULD have done, and changes nothing about the trades above. */
 let CONF = null;
+let BUDGET = null;   // pylego/motif_spread_budget.json -- per-pair spread budgets (2026-09-19)
 function renderConfluence() {
   if (!CONF) { $('confCard').style.display = 'none'; return; }
   $('confCard').style.display = '';
@@ -1399,6 +1400,7 @@ function render() {
   }
   // Optional companion export — the page works fine without it.
   try { CONF = await (await fetch('./AnalogML/data/motif_confluence_study.json')).json(); } catch { CONF = null; }
+  try { BUDGET = await (await fetch('./pylego/motif_spread_budget.json')).json(); } catch { BUDGET = null; }
   SELECTED = new Set(DATA.pairs);
   $('pairChecks').innerHTML = DATA.pairs.map(p =>
     `<label class="pair-check"><input type="checkbox" data-pair="${p}" checked>${p}</label>`).join('');
@@ -1423,11 +1425,13 @@ function render() {
   $('bestCfgBtn').onclick = () => {
     $('filterSel').value = 'no3t';   // 2026-09-19: was 'nowith' -- see pylego/motif_policy.py BEST_CONFIG
     $('costSel').value = 'retail';
-    // Drop pairs whose realistic spread eats the edge: at 2.0 pips the
-    // round-trip is already 0.10R against a 1.5R target, and every pair above
-    // that line is at or below breakeven once costed honestly.
+    // Drop pairs whose realistic spread exceeds THEIR OWN budget
+    // (pylego/motif_spread_budget.json: 20 x (gross avgR - 0.05R), capped
+    // 3.0p) -- the same per-pair rule pylego.motif_policy applies live since
+    // 2026-09-19. Falls back to the flat ceiling if the budget file is absent.
+    const budgetOf = p => BUDGET?.pairs?.[p]?.budget_pips ?? BEST_MAX_SPREAD_PIPS;
     const wide = new Set(DATA.pairs.filter(p =>
-      (DATA.retail_spread_pips?.[p] ?? 0) > BEST_MAX_SPREAD_PIPS));
+      (DATA.retail_spread_pips?.[p] ?? 0) > budgetOf(p)));
     SELECTED = new Set(DATA.pairs.filter(p => !wide.has(p)));
     $('pairChecks').querySelectorAll('input').forEach(i => {
       i.checked = SELECTED.has(i.dataset.pair);

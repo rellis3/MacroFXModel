@@ -76,16 +76,16 @@ DEFAULT_CFG = {
     "kill_switch": False,
     "paper_mode": True,             # HARDCODED default -- same discipline as every other bot: never start fresh live.
     "enabled_pairs": [],            # [] -> whatever pairs motif_bot_plan carries (the plan's own best-config
-                                     # filter -- skip swing_regime=with, spread<=2.0p -- is the REAL strategy gate).
+                                     # filter -- 2-touch only, spread within the PAIR's budget -- is the REAL strategy gate).
                                      # Non-empty here further restricts which of the plan's pairs THIS instance acts on.
-    "risk_pct": 0.25,               # matches this session's OOS-validated sizing: skip-with-trend + spread<=2.0
-                                     # at 0.25%/trade -> OOS PF 1.268, +46.5%/yr, worst drawdown -12.5%.
+    "risk_pct": 0.25,               # ~1/28 Kelly on the causal 2-touch population (2026-09-19): bootstrapped
+                                     # median DD -12%, 5% tail -17.5% -- see MD files/MOTIF_REGIME_LOOKAHEAD_PREREG.md.
     "max_lot": 5.0,
     "max_open": 20,
     "max_concurrent_per_pair": 2,   # distinct confirmed motifs (different touch runs) CAN legitimately overlap
                                      # on one pair -- this is not a re-arming zone, each motif_key fires once ever.
     "max_spread_pips": 3.0,         # bot-local execution safety net -- the PLAN already excludes pairs whose
-                                     # modelled spread exceeds 2.0p (pylego.motif_policy.BEST_CONFIG); this guards
+                                     # spread exceeds their own budget (pylego/motif_spread_budget.json); this guards
                                      # an included pair whose spread has temporarily widened, same role
                                      # max_spread_pips plays in every other bot's config.
     **RISK_GUARD_DEFAULTS,           # ddlimit/monthlydd/lockout/cooldown -- shared with the backtest's
@@ -467,9 +467,16 @@ def run(base_url: str, force_live: bool) -> None:
         except Exception as e:
             log.warning(f"one-shot state save failed: {e} (restart double-entry protection degraded)")
 
+    SPREAD_STATS_FLUSH_SECS = 300   # the per-hour ledger is ~100s of KB; every 30s would be ~1 GB/day of KV egress for a number the tracker reads hourly
+    last_spread_flush = 0.0
+
     def _save_spread_stats() -> None:
+        nonlocal last_spread_flush
+        if time.time() - last_spread_flush < SPREAD_STATS_FLUSH_SECS:
+            return
         try:
             kv.put_json("motif_bot_spread_stats", spread_stats)
+            last_spread_flush = time.time()
         except Exception as e:
             log.warning(f"spread stats save failed: {e}")
 

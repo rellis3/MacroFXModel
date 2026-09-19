@@ -129,7 +129,7 @@ from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
-from pylego.motif_policy import passes_best_config, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
+from pylego.motif_policy import passes_best_config, spread_budget_pips, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
 from pylego.spread_stats import live_spread_pips  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
@@ -883,8 +883,9 @@ def run(args: argparse.Namespace) -> None:
                         # this reason text can never disagree with why the
                         # motif was really filtered.
                         spread = live_pips if live_pips is not None else RETAIL_SPREAD_PIPS.get(pair)
-                        if spread is not None and spread > BEST_CONFIG["max_spread_pips"]:
-                            why = f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p"
+                        if spread is not None and spread > spread_budget_pips(pair):
+                            why = (f"spread {spread}p > this pair's budget {spread_budget_pips(pair)}p"
+                                   f"{' (live-measured)' if live_pips is not None else ' (table estimate)'}")
                         elif BEST_CONFIG.get("skip_n_touches") is not None and t["n_touches"] == BEST_CONFIG["skip_n_touches"]:
                             why = f"{t['n_touches']}-touch motif (best-config trades 2-touch only)"
                         else:
@@ -935,12 +936,18 @@ def run(args: argparse.Namespace) -> None:
                 "strategy": "motif-touch",
                 "entries": plan_entries,
                 "filtered": plan_filtered,
-                # Per-pair eligibility under the spread half of best-config, so
-                # the dashboard's pairs board can say "excluded: spread 2.4p"
-                # for a pair that will never appear in entries.
-                "universe": [{"pair": p, "spread_pips": RETAIL_SPREAD_PIPS.get(p),
-                              "eligible": (RETAIL_SPREAD_PIPS.get(p) is None
-                                           or RETAIL_SPREAD_PIPS.get(p) <= BEST_CONFIG["max_spread_pips"])}
+                # Per-pair spread picture for the dashboard's pairs board: the
+                # static estimate, the live-measured entry-hours average (when
+                # trusted), this pair's own budget, and whether the spread the
+                # gate actually uses clears it -- so "excluded" always comes
+                # with the two numbers that decided it.
+                "universe": [{"pair": p,
+                              "spread_pips": RETAIL_SPREAD_PIPS.get(p),
+                              "live_spread_pips": live_spread_pips(live_spreads, p),
+                              "budget_pips": spread_budget_pips(p),
+                              "eligible": (lambda sp: sp is None or sp <= spread_budget_pips(p))(
+                                  live_spread_pips(live_spreads, p) if live_spread_pips(live_spreads, p) is not None
+                                  else RETAIL_SPREAD_PIPS.get(p))}
                              for p in pairs],
                 # Proof-of-life for the dashboard: what this scan actually did.
                 "scan": {

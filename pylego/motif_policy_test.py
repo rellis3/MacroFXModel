@@ -48,9 +48,23 @@ def test_spread_pips_override_can_fail_a_normally_passing_pair():
 
 
 def test_spread_pips_override_can_pass_a_normally_failing_pair():
-    # gbpcad's static estimate (2.9p) fails the cap; a tighter live reading
-    # (e.g. this account's real spread) should be allowed to pass instead.
-    assert passes_best_config("gbpcad", "range", spread_pips=1.8) is True
+    # gbpcad's static estimate (2.9p) fails its budget (1.4p); a tighter live
+    # reading (this account's real spread) under the budget should pass.
+    assert passes_best_config("gbpcad", "range", spread_pips=1.2) is True
+
+
+def test_budget_is_per_pair_not_one_number():
+    # 2026-09-19: eurjpy earns ~0.28R gross -> budget 3.0p; eurcad ~0.09R ->
+    # budget 0.8p. The same 1.5p spread trades one and not the other.
+    from pylego.motif_policy import spread_budget_pips
+    assert spread_budget_pips("eurjpy") > 2.0 > spread_budget_pips("eurcad")
+    assert passes_best_config("eurjpy", "range", spread_pips=1.5, n_touches=2) is True
+    assert passes_best_config("eurcad", "range", spread_pips=1.5, n_touches=2) is False
+
+
+def test_unknown_pair_falls_back_to_the_flat_ceiling():
+    from pylego.motif_policy import spread_budget_pips, BEST_CONFIG
+    assert spread_budget_pips("not_a_real_pair") == BEST_CONFIG["max_spread_pips"]
 
 
 def test_spread_pips_override_does_not_bypass_the_touch_filter():

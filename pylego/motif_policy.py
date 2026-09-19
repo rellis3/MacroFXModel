@@ -54,8 +54,30 @@ RETAIL_SPREAD_PIPS = {
 BEST_CONFIG = {
     "skip_n_touches": 3,        # 3-touch motifs are skipped; 2-touch trade
     "skip_swing_regime": None,  # regime no longer gates (kept as a key so a future re-selection is one line)
-    "max_spread_pips": 2.0,
+    "max_spread_pips": 2.0,     # FALLBACK ceiling only, for a pair with no entry in the per-pair budget below
 }
+
+# Per-pair spread BUDGET (2026-09-19) -- replaces the uniform 2.0p cut-off.
+# The strategy's cost is linear in spread (20-pip stop -> each pip = 0.05R),
+# so a pair earning +0.28R gross per trade can pay ~3p and one earning +0.09R
+# cannot pay 1p; one number for both was wrong in both directions. Generated
+# by AnalogML/motif_spread_budget.py from the backtest export(s) -- never
+# hand-edited -- as budget = sl_pips * (gross_avg_r - 0.05R), capped at 3.0p.
+# Re-run that script whenever the export is regenerated.
+import json as _json
+from pathlib import Path as _Path
+_BUDGET_PATH = _Path(__file__).resolve().parent / "motif_spread_budget.json"
+try:
+    _BUDGET_DOC = _json.loads(_BUDGET_PATH.read_text(encoding="utf-8"))
+except Exception:      # missing/corrupt file -> every pair falls back to max_spread_pips
+    _BUDGET_DOC = {"pairs": {}}
+SPREAD_BUDGET_PIPS = {p: r["budget_pips"] for p, r in _BUDGET_DOC.get("pairs", {}).items()}
+
+
+def spread_budget_pips(pair: str) -> float:
+    """The most spread `pair` can pay and still clear +0.05R net per trade;
+    BEST_CONFIG['max_spread_pips'] for a pair the budget file doesn't know."""
+    return float(SPREAD_BUDGET_PIPS.get(pair.lower(), BEST_CONFIG["max_spread_pips"]))
 
 
 # motif_bot's shipped RiskGuard defaults (daily/monthly DD lockout + cooldown),
@@ -80,7 +102,8 @@ def passes_best_config(pair: str, swing_regime: str | None,
     """True if a confirmed motif on `pair` is part of the validated best
     config -- i.e. should be paper-tracked as "actionable" and offered to
     the live execution bot. Two gates: the pair's spread (static estimate or
-    the live override below) must be <= max_spread_pips, and the motif's
+    the live override below) must be <= that PAIR's own budget
+    (`spread_budget_pips`, from motif_spread_budget.json), and the motif's
     `n_touches` must not equal skip_n_touches (3-touch motifs are skipped
     since 2026-09-19; see BEST_CONFIG). `swing_regime` is still accepted --
     "with"/"against"/"range"/"unknown"/None, the causal structural read at
@@ -98,7 +121,7 @@ def passes_best_config(pair: str, swing_regime: str | None,
     None (the default) keeps the static table -- unchanged behaviour for
     every caller that hasn't been given a live reading."""
     spread = spread_pips if spread_pips is not None else RETAIL_SPREAD_PIPS.get(pair.lower())
-    if spread is not None and spread > BEST_CONFIG["max_spread_pips"]:
+    if spread is not None and spread > spread_budget_pips(pair):
         return False
     if BEST_CONFIG.get("skip_swing_regime") is not None and swing_regime == BEST_CONFIG["skip_swing_regime"]:
         return False
