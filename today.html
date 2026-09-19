@@ -8171,7 +8171,15 @@ async function loadDrawerPath(name) {
     ['shaky at', hrs(s.shakyHours)],
     ['release windows ahead', s.upcomingEvents?.length ? s.upcomingEvents.join(' · ') + (s.eventSteps ? ' (σ widened now)' : '') : 'none in next 12h'],
   ];
-  el.innerHTML = rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">${k}</span><b>${v}</b></div>`).join('')
+  // In words first; the key/value rows underneath are the evidence.
+  const dbOk = db && db.reliable !== false && db.rangeSoFarPct != null;
+  const budgetW = dbOk ? `Today has used <b>${db.rangeSoFarPct}%</b> of a typical full day's range (${db.typicalFullPct}%), which is ${db.consumedPercentile != null ? (db.consumedPercentile >= 75 ? 'a lot for this hour -- three days in four had used less' : db.consumedPercentile <= 25 ? 'little for this hour -- three days in four had used more' : 'ordinary for this hour') : 'so far'}; a typical day still has about <b>${db.remainingTypicalPct}%</b> to come. ` : '';
+  const spW = s.surprise ? `Against the day-open cone, price sits at the ${s.surprise.pct}th percentile${Math.abs(s.surprise.z) > 1.15 ? ' -- an unusual place to be, the cone is being stretched' : Math.abs(s.surprise.z) > 0.67 ? ' -- on the edge of ordinary' : ' -- well inside ordinary'}. ` : '';
+  const envW = s.p75HalfPct != null ? `Over the next four hours the calibrated envelope is <b>±${s.p75HalfPct}%</b> (${s.p75Lo?.toFixed?.(5) ?? '?'} to ${s.p75Hi?.toFixed?.(5) ?? '?'}); on this pair's own history that band has contained price ${s.calib?.c75Final != null ? Math.round(s.calib.c75Final * 100) + '% of the time against a 75% claim' : 'at its claimed rate'}${s.calib?.n ? ` (n=${s.calib.n})` : ''}. ` : '';
+  const evW = s.upcomingEvents?.length ? `Release windows ahead: ${s.upcomingEvents.join(', ')}${s.eventSteps ? ' -- the envelope is already widened for them' : ''}. ` : 'No release window in the next 12 hours. ';
+  const trustW = s.shakyHours?.length ? `The cone is least trustworthy around ${hrs(s.shakyHours)}. ` : '';
+  el.innerHTML = `<div class="ccy-explain" style="margin-bottom:8px">${budgetW}${spW}${envW}${evW}${trustW}Range and timing only -- this engine's own calibration shows its direction call is a coin flip.</div>`
+    + rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">${k}</span><b>${v}</b></div>`).join('')
     + `<div id="drTrendBias" style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">trend bias (daily)</span><b class="muted">…</b></div>`
     + `<div class="muted" style="font-size:10px;margin-top:4px">P75 containment on this pair's history: ${s.calib?.c75Final != null ? Math.round(s.calib.c75Final * 100) + '% (claim 75%, n=' + s.calib.n + ')' : '—'} · <a href="forecast-path.html?pair=${encodeURIComponent(name)}&gran=M15" target="_blank" style="color:var(--accent, #5b9dff)">open in Forecast Path →</a></div>`;
   loadDrawerTrendBias(name);
@@ -8531,7 +8539,14 @@ function renderDrawerCone(r) {
   const sk = fc.realised_skew;
   const skChip = (!sk || sk.label === 'insufficient_data') ? '' : `<span class="chip ${sk.label === 'downside-heavy' ? 'warn' : sk.label === 'upside-heavy' ? 'neu' : 'dim'}" title="Downside vs upside move magnitude, ratio ${sk.ratio}. This pair's down days tend to run ${sk.label === 'downside-heavy' ? 'BIGGER than its up days' : sk.label === 'upside-heavy' ? 'SMALLER than its up days' : 'about the same size as its up days'} — a symmetric cone can be the wrong shape for a skewed pair.">${sk.label === 'downside-heavy' ? '▼ FALLS FASTER' : sk.label === 'upside-heavy' ? '▲ RISES FASTER' : 'SYMMETRIC'}</span>`;
 
+  // In words first. The dots are the evidence; the sentence is what they say.
+  const P = v => v == null ? null : Math.round(v);
+  const rank = v => v == null ? '' : v >= 80 ? 'among the wildest' : v >= 60 ? 'on the wild side of' : v <= 20 ? 'among the quietest' : v <= 40 ? 'on the quiet side of' : 'about the middle of';
+  const words = gap == null
+    ? `Not enough short-window history to say whether volatility is building or cooling.`
+    : `Volatility is <b>${gap >= 15 ? 'building' : gap <= -15 ? 'cooling' : 'steady'}</b>: the last week's swings rank ${rank(fc.cone_5d)} this market's year (P${P(fc.cone_5d)}), the last month P${P(fc.cone_21d)}, the year itself P${P(fc.vol_pct)}${fc.vol_annual != null ? ` — about ${fc.vol_annual.toFixed(0)}% annualised` : ''}. ${gap >= 15 ? 'Expect ranges bigger than the yearly number suggests; widen stops, reduce size.' : gap <= -15 ? 'Expect ranges smaller than the yearly number suggests — a compression stretch, and quiet days cluster (tested).' : 'The forecast\'s range assumption is not being contradicted by the recent tape.'}${ivPct != null ? ` Options are pricing 1-month protection at P${P(ivPct)} of its five years${ivPct > (fc.vol_pct ?? 0) + 15 ? ' — dearer than the realised rows, i.e. the market expects more than it is getting' : ivPct < (fc.vol_pct ?? 100) - 15 ? ' — cheaper than the realised rows' : ', in line with realised'}.` : ''} A sizing fact, not a direction.`;
   el.innerHTML =
+    `<div class="ccy-explain" style="margin-bottom:8px">${words}</div>` +
     `<div class="cone-verdict">
        <span class="chip ${verdict[1]}" title="${verdict[2]}">${verdict[0]}</span>${reChip}${skChip}
        <span class="muted">σ ${fc.vol_annual != null ? fc.vol_annual.toFixed(1) + '% annualised' : ''}${fc.vol_vov_label ? ` · swings themselves: ${fc.vol_vov_label.toLowerCase()}` : ''}</span>
@@ -8557,6 +8572,13 @@ function renderDrawerCostCarry(r) {
   if (!vi || (vi.cost_ratio == null && vi.carry_to_vol == null)) { sec.style.display = 'none'; return; }
 
   let html = '';
+  {
+    const pct = vi.cost_ratio != null ? vi.cost_ratio * 100 : null;
+    const cv = vi.carry_to_vol;
+    const costW = pct == null ? '' : `The spread is <b>${vi.spread_pips ?? '?'} pips — ${pct.toFixed(1)}% of today's expected range</b>, which is ${pct < 3 ? 'cheap: cost is not the constraint today' : pct < 8 ? 'ordinary: cost is a tax, not a wall' : 'expensive: the spread eats a meaningful slice of any intraday idea'} (tested here: above 15% of ATR nothing short-horizon survives). `;
+    const carryW = cv == null ? '' : `Carry: the rate gap pays <b>${vi.carry_pct != null ? (vi.carry_pct >= 0 ? '+' : '') + vi.carry_pct + ' points a year' : '?'}</b> to hold the ${cv >= 0 ? 'long' : 'short'} side, ${Math.abs(cv) >= 0.5 ? 'a real income against this pair\'s swings' : Math.abs(cv) >= 0.2 ? 'modest against this pair\'s swings' : 'a rounding error against this pair\'s swings'} (${cv.toFixed(2)} of annualised vol). Carry is the one macro read that weakly led price here; still not a signal.`;
+    if (costW || carryW) html += `<div class="ccy-explain" style="margin-bottom:8px">${costW}${carryW}</div>`;
+  }
   if (vi.cost_ratio != null) {
     const pct = vi.cost_ratio * 100;
     const verdict = pct < 3 ? ['CHEAP', 'bull'] : pct < 8 ? ['NORMAL', 'neu'] : ['EXPENSIVE', 'bear'];
@@ -8601,6 +8623,7 @@ function renderDrawerTimeBudget(r) {
   const verdict  = stale ? ['RUNNING LONG', 'warn'] : ['ON SCHEDULE', 'bull'];
 
   el.innerHTML = `
+    <div class="ccy-explain" style="margin-bottom:8px">${stale ? `Price is <b>running long</b>: ${elapsedH.toFixed(1)} hours into the session and the median target is still not reached, against the ~${medianH.toFixed(1)} hours a driftless path would typically need${p75H != null ? ` (three days in four get there inside ~${p75H.toFixed(1)}h)` : ''}. The longer a target waits, the less a "it just needs time" story explains it. Timing context, not backtested.` : `<b>On schedule</b>: ${elapsedH.toFixed(1)} hours into the session, still inside the ~${medianH.toFixed(1)} hours a driftless path typically needs to reach the median target${p75H != null ? ` (three in four inside ~${p75H.toFixed(1)}h)` : ''}. Nothing to read into the clock yet. Timing context, not backtested.`}</div>
     <div class="cone-verdict">
       <span class="chip ${verdict[1]}" title="Elapsed time (${elapsedH.toFixed(1)}h) vs the median first-passage time (${medianH.toFixed(1)}h) a driftless model expects for reaching the O-C median target, given today's remaining distance and σ. This is a reference line, not a backtested claim.">${verdict[0]}</span>
       <span class="muted">${elapsedH.toFixed(1)}h elapsed · median ~${medianH.toFixed(1)}h · P75 ~${p75H != null ? p75H.toFixed(1) : '?'}h</span>
@@ -9420,7 +9443,12 @@ function loadDrawerCorr(name) {
   const cotAgainst = cotPartners.filter(p => p.v <= -0.3).slice(-3).reverse();
   const cotChip = (p, cls) => `<span class="corrchip ${cls}" title="${ccyFull(p.leg)} and ${ccyFull(p.other)} speculative positioning, week-over-week change in OI-normalised spec share, correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — funds have been ${p.v >= 0 ? 'building/reducing these two together' : 'moving these two in opposite directions'}.${whyText(explainRelationship(p.leg, p.other))}">${ccyFull(p.leg)}↔${ccyFull(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
 
+  const nm = o => (typeof corrDisp === 'function' ? corrDisp(o) : String(o).replace('_', '/'));
+  const corrWords = (withIt.length || against.length)
+    ? `Over the last ten days this market has moved <b>with</b> ${withIt.length ? withIt.map(p => `${nm(p.other)} (${p.v.toFixed(2)})`).join(', ') : 'nothing in particular'} -- holding those together is one bet, not diversification -- and <b>against</b> ${against.length ? against.map(p => `${nm(p.other)} (${p.v.toFixed(2)})`).join(', ') : 'nothing strongly'}${against.length ? ', a cushion that tends to vanish in a real risk-off' : ''}. A sizing fact.`
+    : 'No strong ten-day co-movement with anything tracked here -- this market has been trading its own story.';
   box.innerHTML =
+    `<div class="ccy-explain" style="margin-bottom:8px">${corrWords}</div>` +
     (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos', p.other)).join(' ')}</div>` : '') +
     (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg', p.other)).join(' ')}</div>` : '') +
     (bLine ? `<div class="corrline"><span class="clbl help" title="Sensitivity (regression beta) of this market to each driver over the window. |β|>1 means it amplifies that driver; sign shows direction. What actually pushes this pair around.">Driven by</span> <span class="muted">${bLine}</span></div>` : '') +
