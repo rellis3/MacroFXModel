@@ -803,6 +803,27 @@
   .chain-ends{font-size:12px;color:var(--text2);display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
   .chain-n b{font-size:12.5px;font-weight:800} .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
   .chain-exp{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:.02em}
+  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
+  .chain-g svg{display:block;min-width:900px;width:100%;height:auto}
+  .chain-g .gn{cursor:pointer}
+  .chain-g .gn rect{fill:var(--card2);stroke:var(--border2);stroke-width:1.2;rx:8}
+  .chain-g .gn:hover rect,.chain-g .gn.sel rect{stroke:var(--blue);stroke-width:1.6}
+  .chain-g .gn text{font-family:inherit;pointer-events:none}
+  .chain-g .gn .nl{font-size:11.5px;font-weight:700;fill:var(--text)}
+  .chain-g .gn .nv{font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text2)}
+  .chain-g .gn .nv.up{fill:var(--bull)} .chain-g .gn .nv.dn{fill:var(--red)}
+  .chain-g .ge{fill:none;stroke-width:2;stroke:var(--border2)}
+  .chain-g .ge.hold{stroke:var(--bull);stroke-width:2.4} .chain-g .ge.broke{stroke:var(--amber);stroke-width:2.6}
+  .chain-g .ge.quiet{stroke:var(--text3);stroke-dasharray:5 4;opacity:.75} .chain-g .ge.none{stroke-dasharray:2 5;opacity:.6}
+  .chain-g .gl{font-size:10px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
+  .chain-g .gl.hold{fill:var(--bull)} .chain-g .gl.broke{fill:var(--amber);font-weight:700}
+  .chain-g .glb{fill:var(--card);opacity:.92}
+  .chain-legend{font-size:10.5px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;margin:-4px 0 8px}
+  .chain-legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--border2);vertical-align:middle;margin-right:5px}
+  .chain-legend i.hold{border-color:var(--bull)} .chain-legend i.broke{border-color:var(--amber)} .chain-legend i.quiet{border-top-style:dashed}
+  .chain-node-card{border-left:2px solid var(--blue);padding:6px 10px;margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--text2);background:var(--card2);border-radius:0 6px 6px 0}
+  .chain-node-card b{color:var(--text)}
+  .chain-node-card .x{float:right;cursor:pointer;color:var(--text3);font-size:11px}
   .chain-arrow{font-size:12px;color:var(--text3)}
   .chain-p{font-size:12px;line-height:1.5;margin:2px 0 0 72px;color:var(--text2)}
   .chain-p.broke{color:var(--text);font-weight:600}
@@ -3032,6 +3053,55 @@ function chainReadHtml() {
     <div class="chain-foot">${(() => { const d = _chainRead.data; const age = d?.ageMin; const stale = age != null && age >= 30; return `Written from the numbers on the page${d?.headlineCount ? ` and ${d.headlineCount} headlines` : ''}${when ? ` at <b>${when}</b>` : ''}${age != null && age >= 2 ? ` — <b>${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago</b>${stale ? '; the numbers in it are from then, the rows below are current' : ''}` : ''}. Last read kept until you write a new one. An opinion in a trader's voice, not a forecast.`; })()}</div>
   </div>`;
 }
+// ── The chain as a picture ──────────────────────────────────────────────────
+// Same links, same verdicts as the rows below, drawn as boxes and lines so the
+// order of causation reads at a glance: green = holding, amber = broken, dashed
+// = quiet (an end inside its noise floor), dotted = no data. Rebuilt from the
+// live 20-day moves on every render; no model call. Click a box for what that
+// thing is and how it sits in the chain today (from the brick's own words).
+const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run between boxes, not through them
+  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
+  usdcad: [0, 1], us2y: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
+  vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
+};
+// Short edge labels that fit the gap between boxes; the full name is in the hover.
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nominal→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'copper→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→credit', 'dxy-btc': '$→BTC' };
+let _chainNodeSel = null;
+function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
+function chainGraphHtml(links) {
+  const B = window.macroChainBrick; if (!B || !links.length) return '';
+  const PX = 212, PY = 96, BW = 140, BH = 44, OX = 16, OY = 12; const W = OX * 2 + PX * 5 + BW, H = OY * 2 + PY * 2 + BH;
+  const cx = k => OX + CHAIN_POS[k][0] * PX + BW / 2, cy = k => OY + CHAIN_POS[k][1] * PY + BH / 2;
+  const ends = {}; for (const l of links) { if (l.a?.key) ends[l.a.key] = l.a; if (l.b?.key) ends[l.b.key] = l.b; }
+  const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none' };
+  // where a straight centre-to-centre line leaves a box: clip to the box edge
+  const clip = (x0, y0, x1, y1) => { const dx = x1 - x0, dy = y1 - y0; const tx = dx ? (BW / 2) / Math.abs(dx) : Infinity, ty = dy ? (BH / 2) / Math.abs(dy) : Infinity; const t = Math.min(tx, ty); return [x0 + dx * t, y0 + dy * t]; };
+  const edges = links.filter(l => CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]).map(l => {
+    const x0 = cx(l.a.key), y0 = cy(l.a.key), x1 = cx(l.b.key), y1 = cy(l.b.key);
+    const [sx, sy] = clip(x0, y0, x1, y1), [ex, ey] = clip(x1, y1, x0, y0);
+    const mx = (sx + ex) / 2, my = (sy + ey) / 2; const diag = sx !== ex && sy !== ey;
+    const lbl = CHAIN_EDGE_LABEL[l.id] ?? l.short.replace(/\s*→\s*/g, '→'); const lw = lbl.length * 6.3 + 10;
+    const title = `${l.textbook}. Today: ${l.verdict}${l.punch ? ' — ' + l.punch : ''}`;
+    return `<g class="ge-g"><title>${esc0(title)}</title><line class="ge ${vcls[l.verdict]}" x1="${sx.toFixed(1)}" y1="${sy.toFixed(1)}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}"/>${`<rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="15" rx="3"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text>`}</g>`;
+  }).join('');
+  const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '';
+  const nodes = Object.keys(CHAIN_POS).map(k => {
+    const n = B.CHAIN_NODES[k]; if (!n) return ''; const e = ends[k];
+    const x = cx(k) - BW / 2, y = cy(k) - BH / 2;
+    const val = e?.delta == null ? 'no data' : `${e.text} ${e.moved ? arrow(e.dir) : ''}${e.moved ? '' : ' · quiet'}`;
+    const cls = e?.delta == null || !e.moved ? '' : e.dir === 'up' ? 'up' : 'dn';
+    const short = n.label.replace(/ \(.*\)$/, '').replace('Inflation expectations', 'Infl. pricing').replace('Real yield', 'Real yield').replace('Dollar', 'Dollar').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX');
+    return `<g class="gn${_chainNodeSel === k ? ' sel' : ''}" onclick="selectChainNode('${k}', event)"><title>${esc0(n.what)}</title><rect x="${x}" y="${y}" width="${BW}" height="${BH}"/><text class="nl" x="${x + 10}" y="${y + 18}">${esc0(short)}</text><text class="nv ${cls}" x="${x + 10}" y="${y + 34}">${esc0(val)}</text></g>`;
+  }).join('');
+  const sel = _chainNodeSel && B.CHAIN_NODES[_chainNodeSel] ? (() => {
+    const n = B.CHAIN_NODES[_chainNodeSel]; const e = ends[_chainNodeSel];
+    const mine = links.filter(l => l.a?.key === _chainNodeSel || l.b?.key === _chainNodeSel);
+    const today = mine.map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${l.verdict === 'unmeasured' ? 'no data' : l.verdict}</span> ${esc0(l.short)}${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div></div>`;
+  })() : '';
+  return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: boxes are the things that move, lines are the textbook links, coloured by whether they held">${edges}${nodes}</svg></div>
+    <div class="chain-legend"><span><i class="hold"></i>holding · moved the textbook way</span><span><i class="broke"></i>broken · both moved, the wrong way round</span><span><i class="quiet"></i>quiet · one end inside its noise floor, not judged</span><span>click a box for what it is</span></div>${sel}`;
+}
 function chainHtml() {
   const B = window.macroChainBrick;
   const links = chainLinks();
@@ -3065,6 +3135,7 @@ function chainHtml() {
   return `<div class="chain">
     <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· textbook links vs ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
     <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
+    ${chainGraphHtml(links)}
     ${chainReadHtml()}
     ${links.map(l => {
       const judged = l.verdict === 'holding' || l.verdict === 'broken';
