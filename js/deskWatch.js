@@ -40,11 +40,12 @@ export const EVENT_FAMILY_RE = [
 ];
 // Validated S7 cells: family → pair → effect text. Kept in step with today.html.
 export const EVENT_RANGE_EFFECT = {
-  'rate decision': { EURUSD: '+0.42 ATR on the day', USDJPY: '+0.27 ATR on the day', GBPUSD: '+0.37 ATR the session after' },
-  employment:      { AUDUSD: '+0.19 ATR on the day (big surprises)', EURUSD: '+0.16 ATR on the day (big surprises)', USDJPY: '+0.16 ATR the session after', USDCAD: '+0.11 ATR on the day' },
-  cpi:             { EURUSD: '+0.27 ATR the session after', USDJPY: '+0.25 ATR the session after', GBPUSD: '+0.19 ATR on the day' },
-  gdp:             { EURUSD: '+0.22 ATR on the day (big surprises)', USDCAD: '+0.16 ATR on the day' },
-  pmi:             { USDJPY: '+0.22 ATR on the day' },
+  'rate decision': { EURUSD: '+0.38 ATR on the day (+0.51 on big surprises)', USDJPY: '+0.24 ATR on the day', GBPUSD: '+0.38 ATR the session after', AUDUSD: '+0.13 ATR on the day' },
+  employment:      { EURUSD: '+0.17 ATR on the day (big surprises)', USDJPY: '+0.16 ATR the session after', AUDUSD: '+0.12 ATR on the day', USDCAD: '+0.12 ATR on the day' },
+  cpi:             { EURUSD: '+0.16 ATR the session after', GBPUSD: '+0.17 ATR on the day', AUDUSD: '+0.14 ATR on the day (big surprises)', USDCAD: '+0.14 ATR the session after' },
+  gdp:             { EURUSD: '+0.14 ATR on the day', USDCAD: '+0.26 ATR on the day (big surprises)' },
+  pmi:             { USDJPY: '+0.21 ATR on the day (big surprises)' },
+  'retail sales':  { GBPUSD: '+0.11 ATR on the day', AUDUSD: '+0.12 ATR on the day' },
 };
 const CCY_PAIRS = { US: ['EURUSD', 'USDJPY'], GB: ['GBPUSD'], EU: ['EURUSD'], JP: ['USDJPY'], AU: ['AUDUSD'], CA: ['USDCAD'] };
 

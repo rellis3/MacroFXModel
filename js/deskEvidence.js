@@ -27,7 +27,7 @@ export const DESK_EVIDENCE = [
   {
     id: 'surprise-size', domain: 'events', verdict: 'validated', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S7',
     claim: 'The size of a data surprise (actual vs consensus, in sigma) widens the release session, by family',
-    result: 'Rate decisions: EUR/USD +0.42 ATR on the day, USD/JPY +0.27 (surprise size adds little -- the decision is the event). Employment: top-tercile surprises AUD/USD +0.19, EUR/USD +0.16 (≈2× the all-release effect). CPI: the release day is marginal, the NEXT session is wider (EUR/USD +0.27, USD/JPY +0.25). GDP: EUR/USD +0.22 on big surprises. PMI: USD/JPY +0.22. Retail sales: nothing. 7,932 pair-releases, 2017→.',
+    result: 'Re-run 2026-09-19 on the robust sigma (7,938 pair-releases): rate decisions EUR/USD +0.38 ATR on the day, +0.51 on big surprises, GBP/USD +0.38 the session after, USD/JPY +0.24; employment EUR/USD +0.17 on big surprises (≈2× the all-release +0.07), USD/JPY +0.16 the session after; CPI shows up the SESSION AFTER on EUR/USD (+0.16) and USD/CAD (+0.14), on the day for GBP/USD (+0.17); GDP USD/CAD +0.26 on big surprises; PMI USD/JPY +0.21. Retail sales marginal (+0.11/+0.12, at the bar). The first run had AUD/USD employment +0.19 and EUR/USD CPI-next +0.27; both smaller now -- the tercile membership moved with the scale.',
     use: 'Scale the expected range on the release session for employment / rate decisions; for CPI, on the session AFTER. Never a direction.',
     instruments: ['EURUSD', 'USDJPY', 'GBPUSD', 'AUDUSD', 'USDCAD'],
   },

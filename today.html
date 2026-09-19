@@ -7094,11 +7094,12 @@ function _clockTier(r) {
 // carries the width (the print lands late in the OANDA session). Range, never
 // direction -- the size of the surprise is not known until the print.
 const EVENT_RANGE_EFFECT = {
-  'rate decision': { EURUSD: '+0.42 on the day', USDJPY: '+0.27 on the day', GBPUSD: '+0.37 the session AFTER' },
-  employment:      { AUDUSD: '+0.19 on the day (big surprises)', EURUSD: '+0.16 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', USDCAD: '+0.11 on the day' },
-  cpi:             { EURUSD: '+0.27 the session AFTER', USDJPY: '+0.25 the session AFTER', GBPUSD: '+0.19 on the day' },
-  gdp:             { EURUSD: '+0.22 on the day (big surprises)', USDCAD: '+0.16 on the day' },
-  pmi:             { USDJPY: '+0.22 on the day' },
+  'rate decision': { EURUSD: '+0.38 on the day (+0.51 on big surprises)', USDJPY: '+0.24 on the day', GBPUSD: '+0.38 the session AFTER', AUDUSD: '+0.13 on the day' },
+  employment:      { EURUSD: '+0.17 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', AUDUSD: '+0.12 on the day', USDCAD: '+0.12 on the day' },
+  cpi:             { EURUSD: '+0.16 the session AFTER', GBPUSD: '+0.17 on the day', AUDUSD: '+0.14 on the day (big surprises)', USDCAD: '+0.14 the session AFTER' },
+  gdp:             { EURUSD: '+0.14 on the day', USDCAD: '+0.26 on the day (big surprises)' },
+  pmi:             { USDJPY: '+0.21 on the day (big surprises)' },
+  'retail sales':  { GBPUSD: '+0.11 on the day', AUDUSD: '+0.12 on the day' },
 };
 const EVENT_FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i]];
 function eventRangeChip(r) {

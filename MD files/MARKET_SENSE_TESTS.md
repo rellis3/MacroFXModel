@@ -373,6 +373,24 @@ range vs matched non-release control:
 | PMI | USD/JPY **+0.22** [+0.10, +0.36] top-\|z\|; others null | |
 | retail sales | nothing clears +0.10 with a clean CI | null |
 
+**S7 re-run 2026-09-19, after the surprise sigma moved from a standard
+deviation to a median absolute deviation** (the sd over eleven years let 2020
+own the scale: an 11K claims miss read +0.1σ — see SURPRISE_ACTUALS.md). Same
+design, 7,938 pair-releases; the tercile membership shifted, so the cells did.
+Verdict unchanged — **surprise size widens the release session, by family, range
+only** — with these cells now the ones that clear +0.10 with a clean interval:
+
+| family | cells (diff in ATR, 95% CI) | change vs the first run |
+|---|---|---|
+| rate decision | EUR/USD **+0.38** all [+0.24, +0.54], **+0.51** top-\|z\| [+0.29, +0.77]; USD/JPY +0.24 all; GBP/USD next session **+0.38**; AUD/USD all +0.13 | same story, AUD/USD joins |
+| employment | EUR/USD top-\|z\| **+0.17** [+0.07, +0.27], next session +0.11; USD/JPY next session **+0.16**; AUD/USD all +0.12, next session top +0.14; USD/CAD all +0.12 | AUD/USD's day-0 "big surprise" cell (+0.19) no longer clears (+0.11, CI through zero); "top tercile ≈ 2× all" holds on EUR/USD (+0.17 vs +0.07), not on AUD/USD |
+| CPI | EUR/USD next session **+0.16** [+0.07, +0.25]; GBP/USD all +0.17; AUD/USD top +0.14 and next +0.15; USD/CAD next +0.14 | EUR/USD next-session effect smaller (+0.27 → +0.16); USD/JPY next session drops out (+0.14, CI through zero) |
+| GDP | USD/CAD top-\|z\| **+0.26** [+0.10, +0.40]; EUR/USD all +0.14 | EUR/USD "big surprise" cell (+0.22) becomes +0.11 null; USD/CAD's strengthens |
+| PMI | USD/JPY top **+0.21**, all +0.15 | same |
+| retail sales | GBP/USD all +0.11, AUD/USD all +0.12 — both at the bar's edge | was null; treat as marginal |
+
+The desk-watch and card effect tables were updated to these numbers.
+
 ### S8 — Rotation underneath a quiet index. **NULL.**
 140 top-decile extremes of the 20-day NAS100 − US2000 relative return (≥ 6.1pp).
 Next-20d range NAS100 −0.31 [−0.86, +0.22], SPX500 −0.23; next-5d +0.15 [−0.06,
