@@ -1,8 +1,13 @@
 # Crown watch — a running log
 
 Nicholas Crown clips get dropped into this thread as they come, before the
-owner reads or hears the same idea somewhere else. Each one gets the same
-four-question pass, in order, every time:
+owner reads or hears the same idea somewhere else. **The point of this log is
+not to turn every clip into a trading system** (owner, 2026-09-19) — it's to
+mine the clips for durable market-mechanics understanding: how one thing
+moves, how X relates to Y, what's worth showing on the page or triggering an
+alert on. A clip that yields no tradeable entry can still yield a real,
+displayable nugget; those are different questions and both get asked. Each
+clip gets the same pass, in order, every time:
 
 1. **What's the actual claim** — stated as something that could be true or
    false, not as a vibe.
@@ -11,14 +16,26 @@ four-question pass, in order, every time:
    an existing result (S10 already nulled a Crown crowding claim outright).
 3. **Is it a trading claim or a macro-understanding claim.** Trading claims
    go through the pre-registration discipline in `MARKET_SENSE_TESTS.md`
-   (state the reading rule before running). Macro-understanding claims — "how
-   does one market explain another" — are what `js/macroChain.js` (the
-   chain on `today.html`) exists for, and mostly don't need a statistical
-   test to act on, just an honest audit of whether the chain already covers
-   the mechanism described.
-4. **Verdict and action** — built now (cheap, unambiguous), pre-registered
-   for later (needs a real test), or noted as already covered / already
-   nulled, with a pointer to where.
+   (state the reading rule before running) *if and only if* someone wants the
+   entry itself tested. Macro-understanding claims — "how does one market
+   explain another" — are what `js/macroChain.js` (the chain on `today.html`)
+   exists for, and mostly don't need a statistical test to act on, just an
+   honest audit of whether the chain already covers the mechanism described.
+4. **Is there a display/alert nugget, independent of #3's verdict.** Ask this
+   on every clip, even a pure trading claim whose entry tests null: is there a
+   real, already-established-or-establishable *descriptive* fact here — a
+   base rate, a "this reads as X" context line — worth putting on a page or
+   wiring into desk watch as a trigger? Same standard the chain already uses:
+   `~ context`, explains rather than predicts, never dressed up as a signal.
+   A null entry doesn't kill this — e.g. the VWAP entry work (2026-09-19
+   entry) found no tradeable touch/pullback edge anywhere, but its own §7
+   "return to VWAP" book is a real, cross-instrument-replicated base rate
+   that was never asked whether it belonged on a page.
+5. **Verdict and action** — built now (cheap, unambiguous), pre-registered
+   for later (needs a real test), noted as already covered / already nulled
+   with a pointer to where, and/or proposed as a display or desk-watch item
+   per #4 (state it, don't build a new live feature unasked — confirm scope
+   first if it's a real addition, not a one-line chain edit).
 
 Nothing here is a trading signal. The chain is stamped `~ context` on the
 page for a reason: it explains, it does not predict — see `macroChain.js`'s
