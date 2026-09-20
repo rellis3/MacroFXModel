@@ -150,7 +150,15 @@
     </div>
 
     <div class="panel">
-      <h2>Trade detail — real M1 candles</h2>
+      <h2>Trade detail</h2>
+      <div style="margin-bottom:8px">
+        <label style="display:inline-block; width:auto; margin-right:8px">Resolution
+          <select id="chartResSel" style="width:auto; display:inline-block">
+            <option value="daily" selected>Daily (what this strategy actually trades on)</option>
+            <option value="m1">M1 (intrabar — where MAE/MFE come from, not what the strategy sees)</option>
+          </select>
+        </label>
+      </div>
       <div class="muted" id="chartMeta" style="margin-bottom:8px">Click a row in the trade log above.</div>
       <div id="tradeChart" style="height:420px"></div>
     </div>
@@ -162,6 +170,7 @@
 import { backtestStats, portfolioStats } from './js/backtestStats.js';
 import { summarizeTrades } from './js/metricsCore.js';
 import { createLevelChart } from './js/levelChart.js';
+import { resampleTo } from './js/barUtils.js';
 
 const $ = id => document.getElementById(id);
 const fmt = (v, d=2) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
@@ -420,29 +429,60 @@ try { tradeChartView = createLevelChart(document.getElementById('tradeChart'), {
 catch (e) { document.getElementById('tradeChart').outerHTML = `<div class="muted">Candlestick chart unavailable: ${e.message}</div>`; }
 const isoToEpoch = iso => Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000);
 
+// This sleeve decides and marks its entry/exit on the DAILY close — it never
+// looks at, or reacts to, anything intrabar. Charting it in M1 would show
+// detail the strategy itself never sees and imply a precision it doesn't have
+// (CLAUDE.md's own anti-pattern list warns against exactly this shape of
+// mismatch for backtest FILLS; the same principle applies to how a trade is
+// DISPLAYED). Daily is therefore the default and honest view — entry/exit
+// land exactly on a real daily candle's close, because that IS what they are.
+// M1 is kept, opt-in only, for one legitimate purpose: showing the intrabar
+// path the MAE/MFE numbers actually came from (js/multiSpreadEngine.js's
+// intrabarExcursion) — never presented as what the strategy traded off.
+//
+// Resampled client-side from the SAME fetched M1 bars via js/barUtils.js's
+// resampleTo(bars, 1440) — its fixed-modulo bucketing lands on UTC midnight,
+// the identical boundary buildDayIndex/dailyClosesFrom already use server-side
+// to build this engine's own `daily` array, so the resampled close values are
+// the real thing, not a re-derived approximation.
+let lastM1Bars = [];   // cached so the Daily/M1 toggle re-renders without refetching
+let chartRes = 'daily';
+
+function renderTradeChart(t) {
+  if (!tradeChartView || !lastM1Bars.length) return;
+  const bars = chartRes === 'daily' ? resampleTo(lastM1Bars, 1440) : lastM1Bars;
+  tradeChartView.setCandles(bars);
+  const win = t.pnlPct >= 0;
+  tradeChartView.setLevels([
+    { price: t.entryClose, kind: 'voteEntry', label: `Entry ${t.dir} @ ${t.entryClose}` },
+    { price: t.exitClose, kind: win ? 'voteTarget' : 'voteStop', label: `Exit (${win ? 'WIN' : 'LOSS'}, ${t.exitReason}) @ ${t.exitClose}` },
+  ]);
+  tradeChartView.fit();
+  $('chartMeta').innerHTML = `${t.pair} ${t.book} ${t.dir} — entered ${t.date} @ ${t.entryClose}, exited ${t.exitDate} @ ${t.exitClose}
+    (${t.exitReason}, ${t.holdDays}d hold). <b class="${win ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</b>, MAE ${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}.
+    <span class="muted">No SL/TP drawn — this sleeve has neither; the exit line marks where the z-reversion/time-stop actually closed, not a predetermined level.
+    ${chartRes === 'daily' ? 'Daily candles — the resolution this strategy actually trades on.' : 'M1 candles — intrabar detail only, shown to inspect where the MAE/MFE above came from; the strategy never sees or reacts to this.'}</span>`;
+}
+
 async function loadTradeChart(t) {
   if (!tradeChartView) return;
   $('chartMeta').textContent = `Loading ${t.pair} ${t.date} → ${t.exitDate}…`;
   try {
-    const pad = 3; // calendar days of context either side
+    const pad = chartRes === 'daily' ? 10 : 2; // calendar days of context either side
     const from = new Date(Date.parse(t.date + 'T00:00:00Z') - pad * 86400000).toISOString().slice(0, 10);
     const to = new Date(Date.parse(t.exitDate + 'T00:00:00Z') + pad * 86400000).toISOString().slice(0, 10);
     const r = await fetch(`/api/vol-backtest/candles/${t.pair.toLowerCase()}?from=${from}&to=${to}`);
     const j = await r.json();
     if (!j.ok) { $('chartMeta').textContent = `Candles unavailable: ${j.error}`; return; }
-    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
-    tradeChartView.setCandles(bars);
-    const win = t.pnlPct >= 0;
-    tradeChartView.setLevels([
-      { price: t.entryClose, kind: 'voteEntry', label: `Entry ${t.dir} @ ${t.entryClose}` },
-      { price: t.exitClose, kind: win ? 'voteTarget' : 'voteStop', label: `Exit (${win ? 'WIN' : 'LOSS'}, ${t.exitReason}) @ ${t.exitClose}` },
-    ]);
-    tradeChartView.fit();
-    $('chartMeta').innerHTML = `${t.pair} ${t.book} ${t.dir} — entered ${t.date} @ ${t.entryClose}, exited ${t.exitDate} @ ${t.exitClose}
-      (${t.exitReason}, ${t.holdDays}d hold). <b class="${win ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</b>, MAE ${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}.
-      <span class="muted">No SL/TP drawn — this sleeve has neither; the exit line marks where the z-reversion/time-stop actually closed, not a predetermined level.</span>`;
+    lastM1Bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    window._lastTrade = t;
+    renderTradeChart(t);
   } catch (e) { $('chartMeta').textContent = `Chart load failed: ${e.message}`; }
 }
+$('chartResSel')?.addEventListener('change', (e) => {
+  chartRes = e.target.value;
+  if (window._lastTrade) loadTradeChart(window._lastTrade);   // re-fetch: M1 needs a tighter window than daily's wide context
+});
 $('tradeLog').addEventListener('click', (e) => {
   const row = e.target.closest('tr[data-idx]');
   if (!row) return;
