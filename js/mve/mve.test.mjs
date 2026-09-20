@@ -19,7 +19,7 @@ import { fitLoadings, factorImpliedReturn, coherenceCheck } from './factorModel.
 import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRateReality } from './confidence.js';
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
-import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL, fetchPriceOnly } from './liveAdapter.js';
+import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL, fetchPriceOnly, PUB_LAG_DAYS, shiftObsForward } from './liveAdapter.js';
 import { validateInstrument, oosMispricingSeries, poolConsistency, validateMechanicalAnchor, oosMispricingSeriesKalman } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
@@ -269,6 +269,9 @@ console.log('\n── live adapter (pure builder, no network) ──');
   const ctx = buildContext('EUR/USD', bars, fred);
   ok('buildContext produces price + 3 factors', ctx.price.length > 200 && ctx.factors.length === 3, `rows=${ctx.price.length}`);
   ok('factor names as specified', ctx.factors.map(f => f.name).join(',') === 'rate_diff_10y,rate_diff_2y,breakeven');
+  ok('buildContext exposes dates aligned 1:1 with price/factors (needed for any date-based split)',
+    Array.isArray(ctx.dates) && ctx.dates.length === ctx.price.length && ctx.dates[ctx.dates.length - 1] === ctx.asOf,
+    `dates=${ctx.dates?.length} price=${ctx.price.length}`);
   ok('marketPrice = last close', near(ctx.marketPrice, bars[bars.length - 1].close, 1e-9));
   const v = runMVE(ctx);
   ok('end-to-end live-shaped ctx values ok', v.ok === true && Number.isFinite(v.fairValue) && v.sigma > 0);
@@ -280,6 +283,44 @@ console.log('\n── live adapter (pure builder, no network) ──');
   const filled = ffAlign(idx, sparse);
   ok('ffAlign: NaN before first obs', Number.isNaN(filled[0]));
   ok('ffAlign: carries value forward', filled[2] === 2.0 && filled[4] === 3.0, `=${filled.join(',')}`);
+
+  // ── publication lag — the fix for the lookahead MVE_RUN_GUIDE.md's own "Honest
+  // caveat" flagged and RESIDUAL_REVERSION_FX_TEST.md registers as fixed before the
+  // FX branch's first real run ──
+  {
+    const shifted = shiftObsForward(sparse, 45);
+    ok('shiftObsForward moves every date forward by N days', [...shifted.keys()].join(',') === '2023-02-19,2023-03-22', `=${[...shifted.keys()].join(',')}`);
+    ok('shiftObsForward values unchanged, just re-dated', shifted.get('2023-02-19') === 2.0 && shifted.get('2023-03-22') === 3.0);
+    ok('shiftObsForward(obs, 0) is a no-op (returns the same reference)', shiftObsForward(sparse, 0) === sparse);
+
+    // A value nominally dated 2023-01-05 should NOT be visible on 2023-01-05 itself
+    // once lagged 45d — that's the exact lookahead this fixes. Before the fix,
+    // ffAlign(idx, sparse) directly would show 2.0 as of 2023-01-05 (filled[1]).
+    const laggedIdx = ffAlign(idx, shiftObsForward(sparse, 45));
+    ok('with a 45d lag, the Jan-5 value is NOT yet known on Jan-5 (still NaN)', Number.isNaN(laggedIdx[1]), `=${laggedIdx.join(',')}`);
+    ok('…nor by Jan-20 (45d has not elapsed)', Number.isNaN(laggedIdx[2]), `=${laggedIdx.join(',')}`);
+
+    // buildContext: pubLag defaults ON and actually changes the aligned factor vs
+    // pubLag:false — proves the option is really wired through, not just accepted.
+    const us = new Map(), de = new Map();
+    let d2 = new Date(Date.UTC(2023, 0, 2)), uv = 3.8, dv = 2.4;
+    const bars2 = [];
+    for (let i = 0; i < 250; i++) {
+      do { d2 = new Date(d2.getTime() + 86400000); } while (d2.getUTCDay() === 0 || d2.getUTCDay() === 6);
+      const iso = d2.toISOString().slice(0, 10);
+      uv += 0.01; dv -= 0.01;   // steadily diverging, so a date shift is numerically visible
+      us.set(iso, uv); de.set(iso, dv);
+      bars2.push({ date: iso, close: 1.1 - 0.05 * (uv - dv) });
+    }
+    const fred2 = { us10y: us, de10y: de, us2y: us, de_s: de, bei: us };
+    const withLag = buildContext('EUR/USD', bars2, fred2);
+    const noLag = buildContext('EUR/USD', bars2, fred2, { pubLag: false });
+    ok('buildContext records pubLag:true in meta by default', withLag.meta.pubLag === true);
+    ok('buildContext records pubLag:false when disabled', noLag.meta.pubLag === false);
+    ok('pubLag on vs off produce DIFFERENT factor series on a trending input (lag is really applied, not a no-op)',
+      withLag.factors[0].series[100] !== noLag.factors[0].series[100 + (withLag.meta.warmupTrimmed - noLag.meta.warmupTrimmed)],
+      `withLag[100]=${withLag.factors[0].series[100]} noLag[100]=${noLag.factors[0].series[100]}`);
+  }
 
   ok('normalizeSym strips punctuation', normalizeSym('EUR/USD') === 'EURUSD' && normalizeSym('xau usd') === 'XAUUSD');
   ok('gold spec uses real_yield + dxy', FACTOR_SPEC.XAUUSD.fred.join(',') === 'tips,dxy');
@@ -365,6 +406,12 @@ console.log('\n── OOS validation (does mispricing predict returns?) ──')
   ok('verdict is a string with a call', typeof rep.verdict === 'string' && /SURVIVES|WEAK|NULL/.test(rep.verdict));
   ok('deflated Sharpe present', rep.strategy.deflatedSharpe != null);
   ok('report exposes benchmark IC per horizon', Object.values(rep.perHorizon).every(h => h.insufficient || h.icBenchmark != null));
+  ok('bestTrPnls absent by default (no payload bloat)', rep.strategy.bestTrPnls === undefined);
+  const repTrades = validateInstrument({ instrument: 'TEST', price, factors: [{ name: 'f1', series: f1 }, { name: 'f2', series: f2 }] }, { horizons: [1, 5, 10, 20], includeTrades: true });
+  ok('includeTrades:true exposes the best config\'s per-trade pnls, pre-cost',
+    Array.isArray(repTrades.strategy.bestTrPnls) && repTrades.strategy.bestTrPnls.length === repTrades.strategy.trades,
+    `n=${repTrades.strategy.bestTrPnls?.length} trades=${repTrades.strategy.trades}`);
+  ok('includeTrades:true does not change the scored numbers themselves', repTrades.strategy.annualizedSharpe === rep.strategy.annualizedSharpe && repTrades.verdict === rep.verdict);
 
   // CASE 2: a random walk with NO relationship to the factors. The factor fair value
   // must NOT beat the trailing-mean benchmark — icEDGE ≈ 0 — even though the RAW

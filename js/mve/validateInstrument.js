@@ -140,13 +140,14 @@ export function validateMechanicalAnchor(price, { instrument = 'UNKNOWN', window
                                                     horizons = [1, 5, 10, 20, 60],
                                                     thresholds = [0.5, 1.0, 1.5, 2.0],
                                                     actionableZ = 1.0,
-                                                    periodsPerYear = 252 } = {}) {
+                                                    periodsPerYear = 252,
+                                                    includeTrades = false } = {}) {
   if (!price || price.length < minTrain + Math.max(...horizons) + 10) {
     return { ok: false, error: `need ≥ ${minTrain + Math.max(...horizons) + 10} bars, got ${price?.length ?? 0}` };
   }
   const { idx, z, zBench } = oosMispricingSeriesKalman(price, { window, minTrain, rWindow, qFrac });
   return scoreMispricing({
-    instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear,
+    instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear, includeTrades,
     sourceLabel: 'the KALMAN mechanical fair value (price-only, no macro factors)',
     sourceShort: 'mechanical/Kalman-anchor',
   });
@@ -157,13 +158,14 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
                                           horizons = [1, 5, 10, 20, 60],
                                           thresholds = [0.5, 1.0, 1.5, 2.0],
                                           actionableZ = 1.0,
-                                          periodsPerYear = 252 } = {}) {
+                                          periodsPerYear = 252,
+                                          includeTrades = false } = {}) {
   const price = ctx.price, factors = ctx.factors;
   if (!price || price.length < minTrain + Math.max(...horizons) + 10 || !factors?.length) {
     return { ok: false, error: `need ≥ ${minTrain + Math.max(...horizons) + 10} bars, got ${price?.length ?? 0}` };
   }
   const { idx, z, zBench } = oosMispricingSeries(price, factors, { window, minTrain });
-  return scoreMispricing({ instrument: ctx.instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear });
+  return scoreMispricing({ instrument: ctx.instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear, includeTrades });
 }
 
 // ── Shared scoring tail — the IC/edge/deflated-Sharpe/verdict machinery, generic
@@ -176,7 +178,8 @@ export function scoreMispricing({ instrument, idx, z, zBench, price, window = 15
                                    actionableZ = 1.0,
                                    periodsPerYear = 252,
                                    sourceLabel = 'the FACTOR fair value',   // verdict wording — override per fair-value source
-                                   sourceShort = 'macro-factor' }) {
+                                   sourceShort = 'macro-factor',
+                                   includeTrades = false }) {   // expose the best config's per-trade pnls (pre-cost) for a downstream cost overlay — see MD files/RESIDUAL_REVERSION_FX_TEST.md
   if (idx.length < 30) return { ok: false, error: `only ${idx.length} OOS points` };
 
   // ── IC + hit rate per horizon, vs the trailing-mean benchmark ──────────────
@@ -255,6 +258,7 @@ export function scoreMispricing({ instrument, idx, z, zBench, price, window = 15
     deflatedSharpe: dsr ? dsr.dsr : null,   // P(true Sharpe>0) after trials adjustment (holds × thresholds)
     nConfigsTried: configs.length,
     perConfig: configs.map(({ trPnls, perTradeSR, ...c }) => c),
+    ...(includeTrades ? { bestTrPnls: best?.trPnls ?? null } : {}),   // pre-cost; caller applies its own cost assumption
   };
 
   // ── Honest verdict — keyed off icEDGE (beating the spurious trailing anchor) ──
