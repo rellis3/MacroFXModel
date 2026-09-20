@@ -842,6 +842,7 @@
   .chain-g .gah{fill:var(--border2)} .chain-g .gah.hold{fill:var(--bull)} .chain-g .gah.broke{fill:var(--amber)} .chain-g .gah.quiet{fill:var(--text3)} .chain-g .gah.none{fill:var(--text3);opacity:.5}
   .chain-g .gl{font-size:10px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
   .chain-g .gl.hold{fill:var(--bull)} .chain-g .gl.broke{fill:var(--amber);font-weight:700}
+  .chain-g .ge-g{cursor:pointer} .chain-g .ge-g:hover .glb,.chain-g .ge-g.sel .glb{stroke:var(--blue);stroke-width:1.4}
   .chain-g .glb{fill:var(--card);stroke:var(--border);stroke-width:1;opacity:.96}
   @keyframes chainflow{to{stroke-dashoffset:-24}}
   @keyframes chainpulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -3156,8 +3157,9 @@ const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run betw
 };
 // Short edge labels that fit the gap between boxes; the full name is in the hover.
 const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear' };
-let _chainNodeSel = null;
-function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
+let _chainNodeSel = null, _chainLinkSel = null;
+function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainLinkSel = null; _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
+function selectChainLink(id, ev) { ev?.stopPropagation?.(); _chainNodeSel = null; _chainLinkSel = _chainLinkSel === id ? null : id; render(); }
 function chainGraphHtml(links) {
   const B = window.macroChainBrick; if (!B || !links.length) return '';
   // The domino board: chips with an icon ring, curved links that flow in the
@@ -3179,7 +3181,7 @@ function chainGraphHtml(links) {
     const d = straightOn ? `M${sx.toFixed(1)},${sy.toFixed(1)} C${(sx + (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(sy + (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${(ex - (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(ey - (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}` : `M${sx.toFixed(1)},${sy.toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)}`;
     const mx = (sx + ex) / 2, my = (sy + ey) / 2; const lbl = CHAIN_EDGE_LABEL[l.id] ?? l.short.replace(/\s*→\s*/g, '→'); const lw = lbl.length * 6.3 + 12;
     const title = `${l.textbook}. Today: ${l.verdict}${l.punch ? ' — ' + l.punch : ''}`;
-    return `<g class="ge-g ${vcls[l.verdict]}"><title>${esc0(title)}</title><path class="ge-halo" d="${d}"/><path class="ge ${vcls[l.verdict]}" d="${d}" marker-end="url(#chain-arrow-${vcls[l.verdict]})"/><rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text></g>`;
+    return `<g class="ge-g ${vcls[l.verdict]}${_chainLinkSel === l.id ? ' sel' : ''}" onclick="selectChainLink('${l.id}', event)"><title>${esc0(title)} — tap for why</title><path class="ge-halo" d="${d}"/><path class="ge ${vcls[l.verdict]}" d="${d}" marker-end="url(#chain-arrow-${vcls[l.verdict]})"/><rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text></g>`;
   }).join('');
   const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '';
   const nodes = Object.keys(CHAIN_POS).map(k => {
@@ -3191,15 +3193,36 @@ function chainGraphHtml(links) {
     return `<g class="gn ${ring}${_chainNodeSel === k ? ' sel' : ''}" onclick="selectChainNode('${k}', event)"><title>${esc0(n.what)}</title><rect class="chip" x="${x}" y="${y}" width="${BW}" height="${BH}" rx="23"/><circle class="ring" cx="${x + 23}" cy="${y + BH / 2}" r="${R}"/><g transform="translate(${x + 23 - 8},${y + BH / 2 - 8}) scale(0.667)">${CHAIN_ICON[k] ?? CHAIN_ICON._}</g><text class="nl" x="${x + 44}" y="${y + 19}">${esc0(short)}</text><text class="nv ${ring === 'up' ? 'up' : ring === 'dn' ? 'dn' : ''}" x="${x + 44}" y="${y + 35}">${esc0(val)}</text></g>`;
   }).join('');
   const sum = B.summariseChain(links);
+  const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data' };
+  // the link card: the textbook, which way, why in the desk's words, today's verdict, and teach-me
+  const selLink = _chainLinkSel ? links.find(l => l.id === _chainLinkSel) : null;
+  const linkCard = selLink ? (() => {
+    const l = selLink; const A = B.CHAIN_NODES[l.a.key], Bn = B.CHAIN_NODES[l.b.key];
+    const way = l.sign > 0 ? `<b>the same way</b>: when ${esc0(A.label)} rises, ${esc0(Bn.label)} should rise; when it falls, so should ${esc0(Bn.label)}` : `<b>the opposite way</b>: when ${esc0(A.label)} rises, ${esc0(Bn.label)} should fall, and the reverse`;
+    const arr = d => d === 'up' ? '↑' : '↓';
+    const status = l.verdict === 'holding' ? `<b style="color:var(--bull)">Holding today.</b> ${esc0(l.a.label)} ${esc0(l.a.text)} ${arr(l.a.dir)} and ${esc0(l.b.label)} ${esc0(l.b.text)} ${arr(l.b.dir)} — ${esc0(l.read ?? '')}`
+      : l.verdict === 'broken' ? `<b style="color:var(--amber)">Broken today.</b> ${esc0(l.a.label)} ${esc0(l.a.text)} ${arr(l.a.dir)} but ${esc0(l.b.label)} ${esc0(l.b.text)} ${arr(l.b.dir)}, the wrong way round. ${esc0(l.read ?? '')}`
+      : l.verdict === 'quiet' ? `<b>Quiet today — not judged.</b> ${esc0((l.punch ?? l.read ?? '').replace(/\.?$/, '.'))} A link is only judged when both ends have moved past their noise floors (${esc0(l.a.floorText ?? '')} for ${esc0(A.label)}, ${esc0(l.b.floorText ?? '')} for ${esc0(Bn.label)}); below that a move is noise and the textbook has nothing to answer for.`
+      : `<b>No data</b> on one end today.`;
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainLink(null, event)">close ✕</span>
+      <b>${esc0(A.label)} → ${esc0(Bn.label)}</b> · <span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span><br>
+      <b>The textbook:</b> ${esc0(l.textbook)}. They should move ${way}.<br>
+      <b>Why:</b> ${esc0(A.what)} <span class="muted">→</span> ${esc0(Bn.what)}<br>
+      <div style="margin-top:5px">${status}</div>
+      <div style="margin-top:6px"><span class="chain-more chain-q-link" role="button" tabindex="0" onclick="explainThis('link:${l.id}', event)" title="A plain-words explanation of this link from the model: a paid call, cached for the day, nothing runs until you tap">🎓 teach me this link</span></div>${explainBoxHtml(`link:${l.id}`)}</div>`;
+  })() : '';
   const sel = _chainNodeSel && B.CHAIN_NODES[_chainNodeSel] ? (() => {
     const n = B.CHAIN_NODES[_chainNodeSel]; const e = ends[_chainNodeSel];
-    const mine = links.filter(l => l.a?.key === _chainNodeSel || l.b?.key === _chainNodeSel);
-    const today = mine.map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${l.verdict === 'unmeasured' ? 'no data' : l.verdict}</span> ${esc0(l.short)}${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
-    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div></div>`;
+    const outs = links.filter(l => l.a?.key === _chainNodeSel), ins = links.filter(l => l.b?.key === _chainNodeSel);
+    // which way, for what: the textbook direction of every link leaving this node
+    const ways = outs.length ? `<div style="margin-top:5px"><b>What it moves, and which way</b> (textbook): when ${esc0(n.label)} rises, ${outs.map(l => `${esc0(B.CHAIN_NODES[l.b.key]?.label ?? l.b.key)} should go <b>${l.sign > 0 ? 'up' : 'down'}</b>`).join('; ')}.</div>` : '';
+    const from = ins.length ? `<div style="margin-top:3px"><b>What moves it:</b> ${ins.map(l => `${esc0(B.CHAIN_NODES[l.a.key]?.label ?? l.a.key)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
+    const today = [...ins, ...outs].map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span> <span class="chain-q-link" style="cursor:pointer" onclick="selectChainLink('${l.id}', event)">${esc0(l.short)}</span>${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is</span></div>${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span></div>${linkCard}${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
