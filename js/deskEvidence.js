@@ -120,6 +120,20 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
   },
   {
+    id: 'multi-spread-sleeve', domain: 'macro', verdict: 'validated', date: '2026-09-20', doc: 'MD files/MULTI_SPREAD_SLEEVE.md',
+    claim: 'The identical yield-spread-sleeve mechanism, run on the US-vs-foreign 10Y nominal differential instead of the validated 2Y, finds an independent edge that genuinely diversifies the 2Y sleeve rather than relabeling it',
+    result: 'Bar A (10Y on its own): 12-cell sweep (entry |z| 2.0-2.75 x window 90/126/252) all 12 profitable, PF 1.06-3.44, broad multi-year coverage -- a plateau, not a spike, weakest at window=252/z=2.0 (PF 1.06, 2/5 years). Bar B (diversification): 15.7% trade overlap with the validated 2Y sleeve (well under 50%), 0.300 daily-return correlation, equal-risk combined Sharpe 1.15 beats either leg alone (y2 1.02, y10 0.81). Both pre-registered bars pass.',
+    use: 'A second, independently-diversifying spread-sleeve leg alongside yield-spread-sleeve, same discipline (rare entries, publication lags on, cost-inclusive). Like that sleeve, this is in-sample/OOS backtest evidence only -- not forward-proven. The 252-day window is the weak corner (thin margin over cost); prefer 90-126-day windows until a cost-stress re-check.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
+  },
+  {
+    id: 'residual-reversion-fx', domain: 'macro', verdict: 'null', date: '2026-09-20', doc: 'MD files/RESIDUAL_REVERSION_FX_TEST.md',
+    claim: 'Mean-reversion of the residual (actual price minus an OLS macro fair value) predicts forward FX returns, out-of-sample, net of a naive trailing-mean benchmark',
+    result: 'The MVE\'s cross-instrument pool (js/mve/validateInstrument.js, publication-lag-honest -- fixed same day, no prior real-data FX number predates it), 6 instruments: only 1/6 (EURUSD) clears both a real icEdge and an above-coin-flip hit rate, which poolConsistency itself reads as chance-level, not corroboration (mean icEdge -0.030, mean hit rate 0.485). NQ (-0.246) replicates July\'s "null and worse than inert" finding on this exact instrument. USDJPY shows positive icEdge but a below-50% hit rate -- internally inconsistent, not corroborating. GBPUSD\'s deflated Sharpe (0.796) is the closest to tradeable but its icEdge sits under the pooling threshold.',
+    use: 'The residual-fair-value framing (as opposed to the validated yield-spread-sleeve\'s spread-level z-score) still shows no tradeable, cross-sectionally-corroborated edge on FX -- consistent with the object having no anchoring economic force to close the gap, unlike a policy-rate spread. A pre-registered 2022-24 regime split (does a rate-divergence-supercycle window hide edge a full-sample pool would miss) is built (validateInstrumentWithRegimeSplit) but not yet run for any pair -- do not treat this as the final word on EURUSD specifically until that runs.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'NQ'],
+  },
+  {
     id: 'price-vs-spread-divergence', domain: 'macro', verdict: 'null', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S11',
     claim: 'A pair moving against its yield spread (divergence) gets punished afterwards; moving with it (alignment) is safer',
     result: 'EUR/USD (Bund vs T-note) and GBP/USD (Gilt vs T-note), 2007→. Next-20-session range after a divergence: −0.51 ATR [−1.21, +0.19] and +0.16 [−0.86, +1.16] vs matched days; after alignment +0.10 / −0.28. The gap halves within 20 sessions 64-71% of the time, but the pair reversing toward the spread happened 48% / 39% vs 49% / 50% unconditionally -- no tendency about which leg gives.',

@@ -236,14 +236,28 @@ export async function runSpreadSweep(spreadType, opts = {}, grid = {}) {
     for (const entryThreshold of thresholds) {
       const cf = { ...base, zWindow, entryThreshold };
       const allTrades = [];
-      for (const pd of pairDataList) allTrades.push(...simulateSpreadPair(pd, cf).trades);
-      const { oos } = splitByDate(allTrades, cf.splitFrac);
+      // Honest daily-MTM Sharpe per cell (mirrors js/yieldSpreadEngine.js's
+      // runYieldSpreadSweep's portfolioSharpeOos) — a PF/win-rate/years-only sweep
+      // table can't be checked against MULTI_SPREAD_SLEEVE.md §2's own pass bar
+      // ("OOS Sharpe > 0.5 across it"), which this used to silently skip.
+      const combinedDaily = {};
+      const dateSet = new Set();
+      for (const pd of pairDataList) {
+        const r = simulateSpreadPair(pd, cf);
+        allTrades.push(...r.trades);
+        for (const d of r.dates) dateSet.add(d);
+        for (const dt in r.dailyByDate) combinedDaily[dt] = (combinedDaily[dt] || 0) + r.dailyByDate[dt];
+      }
+      const { splitDate, oos } = splitByDate(allTrades, cf.splitFrac);
+      const sortedDates = [...dateSet].sort();
+      const cRetOos = sortedDates.filter(d => splitDate && d >= splitDate).map(d => combinedDaily[d] || 0);
       const ppy = Math.max(1, allTrades.length / yrs);
       const o = summarizeYieldSpread(oos, { costPct: cf.costPct, periodsPerYear: ppy });
       const years = Object.values(perYearBreakdown(oos, { costPct: cf.costPct }));
       cells.push({
         zWindow, entryThreshold,
         n: o.n, winRate: o.winRate, profitFactor: o.profitFactor, totalRetPct: o.totalRetPct,
+        portfolioSharpeOos: sharpeFromDaily(cRetOos),
         yearsPositive: years.filter(y => y.totalRetPct > 0).length, yearsTotal: years.length,
       });
     }

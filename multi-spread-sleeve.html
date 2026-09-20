@@ -119,11 +119,22 @@ function y10Verdict(book) {
   const o = book.combined.oos;
   const years = Object.values(book.combined.perYearOos || {});
   const yearsPos = years.filter(y => y.totalRetPct > 0).length;
-  const works = o.profitFactor > 1.1 && o.totalRetPct > 0 && o.n >= 30;
-  const cls2 = works ? 'good' : 'bad';
-  return `<div class="verdict ${cls2}">${works ? '✓' : '✗'} y10 ${works ? 'shows' : 'does NOT show'} edge OOS on its own
+  const looksGood = o.profitFactor > 1.1 && o.totalRetPct > 0;
+  const thinSample = o.n < 30;
+  // A single cell's own n<30 is NOT the pre-registered Bar A test — the ROBUSTNESS
+  // SWEEP is (MULTI_SPREAD_SLEEVE.md §2: "checks whether a good cell is a broad
+  // plateau or a lucky spike"). This box used to read "Does not clear Bar A" purely
+  // off n<30 at one arbitrary cell, contradicting a strong sweep sitting right next
+  // to it — don't declare Bar A from this card alone.
+  const cls2 = !looksGood ? 'bad' : thinSample ? 'warn' : 'good';
+  const headline = !looksGood ? '✗ y10 does NOT look profitable at this cell'
+    : thinSample ? '⚠ y10 looks profitable here, but this ONE cell is thin'
+    : '✓ y10 looks profitable at this cell';
+  return `<div class="verdict ${cls2}">${headline}
     (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades, ${yearsPos}/${years.length} OOS years positive).
-    ${works ? 'Clears Bar A — check Bar B below before combining it with y2.' : 'Does not clear Bar A — Bar B is moot regardless of what it shows.'}</div>`;
+    ${!looksGood ? 'Run the sweep below before writing y10 off — one cell is not the pre-registered Bar A test.'
+      : thinSample ? `n=${o.n} is under the usual ≥30 bar for THIS cell alone — that is not a Bar A verdict by itself. Run the robustness sweep below: Bar A is a broad plateau across the grid, not one cell's trade count.`
+      : 'Check the sweep below for breadth before calling Bar A passed on this cell alone.'}</div>`;
 }
 
 function diversificationTable(portfolio, overlap) {
@@ -184,15 +195,21 @@ $('runBtn').addEventListener('click', run);
 function sweepTable(cells){
   if(!cells || !cells.length) return '<div class="muted">no data</div>';
   let rows='';
+  let sharpePass = 0, sharpeTotal = 0;
   for(const c of cells){
-    if(c.error){ rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td colspan="5" class="neg">${c.error}</td></tr>`; continue; }
+    if(c.error){ rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td colspan="6" class="neg">${c.error}</td></tr>`; continue; }
     const broad = c.yearsTotal>0 && c.yearsPositive/c.yearsTotal >= 0.6;
+    sharpeTotal++; if (c.portfolioSharpeOos > 0.5) sharpePass++;
     rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td>${c.n}</td><td>${fmt(c.winRate,1)}%</td>
       <td class="${c.profitFactor>=1?'pos':'neg'}">${fmt(c.profitFactor,2)}</td>
       <td class="${cls(c.totalRetPct)}">${fmt(c.totalRetPct,1)}%</td>
+      <td class="${c.portfolioSharpeOos>0.5?'pos':(c.portfolioSharpeOos<=0?'neg':'')}">${fmt(c.portfolioSharpeOos,2)}</td>
       <td class="${broad?'pos':''}">${c.yearsPositive}/${c.yearsTotal}</td></tr>`;
   }
-  return `<table><thead><tr><th>Entry |z|</th><th>z-window</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Years+</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const table = `<table><thead><tr><th>Entry |z|</th><th>z-window</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Portfolio Sharpe</th><th>Years+</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const readingCls = sharpePass === sharpeTotal ? 'good' : sharpePass >= sharpeTotal * 0.6 ? 'warn' : 'bad';
+  const reading = `<div class="verdict ${readingCls}">MD files/MULTI_SPREAD_SLEEVE.md §2's Bar A pass bar: OOS Sharpe &gt; 0.5 across the grid. ${sharpePass}/${sharpeTotal} cells clear it${sharpePass===sharpeTotal ? ' — a broad plateau, not a lucky spike.' : sharpePass >= sharpeTotal*0.6 ? ' — mostly a plateau, with a weaker corner worth a second look before trusting the whole grid.' : ' — this does not read as a robust region.'}</div>`;
+  return table + reading;
 }
 async function sweep(){
   $('sweepBtn').disabled=true; $('runBtn').disabled=true; $('status').textContent='Starting y10 sweep…'; $('sweepResults').style.display='none';
