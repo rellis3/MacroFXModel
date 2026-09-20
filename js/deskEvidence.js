@@ -278,6 +278,12 @@ export const DESK_EVIDENCE = [
     use: 'The divergence panel may describe the shape; nothing may be claimed about the week after.',
   },
   {
+    id: 'regime-divergence-fx', domain: 'macro', verdict: 'null', date: '2026-09-20', doc: 'MD files/REGIME.md#R2',
+    claim: 'When two economies sit in different growth/inflation regimes (policy divergence), their currency pair runs wider or tilts',
+    result: 'Per-currency labels (USD, GBP, EUR, CAD) 2008-2026. Diverging vs aligned months: EUR/USD range +0.03pp [-0.48, +0.52], GBP/USD -0.33pp [-0.86, +0.23], USD/CAD -0.09pp, EUR/GBP -0.11pp; return differences all through zero.',
+    use: 'State the two economies’ regimes as the backdrop of a pair; never call divergence a setup or a warning.',
+  },
+  {
     id: 'repo-stress-range', domain: 'macro', verdict: 'context', date: '2026-09-20', doc: 'MD files/PLUMBING.md#P1',
     claim: 'Repo stress (the SOFR 99th percentile 10bp or more above the Fed floor) precedes a wider week',
     result: '26 episodes 2018-2026, first session of each. Next-five-session range vs matched control: SPX500 +0.14 ATR [-0.54, +0.98], EUR/USD +0.13 [-0.37, +0.65], USD/JPY +0.08 [-0.76, +0.93]; the dollar moved LESS than usual (0.45% vs 0.59%). And the setup fires on a quarter of all sessions since 2024 -- it is month-end plumbing, not stress.',

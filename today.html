@@ -834,6 +834,7 @@
   .chain-g .gn .nl{font-size:11.5px;font-weight:700;fill:var(--text)}
   .chain-g .gn .nv{font-size:10.5px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
   .chain-g .gn .nv.up{fill:var(--bull)} .chain-g .gn .nv.dn{fill:var(--red)}
+  .chain-g .ge-halo{fill:none;stroke:var(--card);stroke-width:6;opacity:.9}
   .chain-g .ge{fill:none;stroke-width:2;stroke:var(--border2)}
   .chain-g .ge.hold{stroke:var(--bull);stroke-width:2.4;stroke-dasharray:7 5;animation:chainflow 1.6s linear infinite}
   .chain-g .ge.broke{stroke:var(--amber);stroke-width:2.6;animation:chainpulse 1.2s ease-in-out 2}
@@ -1250,6 +1251,9 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 <div class="dr-pending" id="drFlowPending" style="display:none"><b>No flow data for this instrument</b><p>Neither an options board nor a CFTC contract is wired for it.</p><p class="dr-pending-links"><a href="oi-dashboard.html" target="_blank">OI dashboard &rarr;</a> &middot; <a href="cot-extremes.html" target="_blank">COT extremes &rarr;</a></p></div>
   </div>
   <div class="dr-pane" id="drPane-why" role="tabpanel" aria-labelledby="drTab-why" hidden>
+  <div class="dr-sec" id="drRegimeSec" data-seckey="regimepair" style="display:none">
+    <div class="dr-sec-body" style="padding-top:0"><div id="drRegimePair" class="ccy-explain"></div></div>
+  </div>
   <div class="dr-sec" id="drTimelineSec" data-seckey="timeline" style="display:none">
     <h3 class="help" title="Twenty sessions back to twenty ahead, for this pair. Look-back: the path, each release with its surprise and the size it produced, chain links that broke, watch fires and their after-scores, and the leans this page published and how they scored. Look-forward: the calendar with the size each release has produced here, the 5- and 20-day expected bands, the outlook and the aim. Measured where marked; the plan is what the page thinks today, kept so it can be checked later."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Timeline — 20 back, 20 ahead</span><i class="ev c" title="context — measured, not predictive">~</i></h3>
     <div class="dr-sec-body"><div id="drTimeline"></div></div>
@@ -3169,11 +3173,13 @@ function chainGraphHtml(links) {
   const edges = links.filter(l => CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]).map(l => {
     const x0 = cx(l.a.key), y0 = cy(l.a.key), x1 = cx(l.b.key), y1 = cy(l.b.key);
     const [sx, sy] = clip(x0, y0, x1, y1), [ex, ey] = clip(x1, y1, x0, y0);
-    const horiz = Math.abs(ex - sx) >= Math.abs(ey - sy); const h = horiz ? Math.max(30, Math.abs(ex - sx) * 0.4) : 0, v = horiz ? 0 : Math.max(24, Math.abs(ey - sy) * 0.4);
-    const d = `M${sx.toFixed(1)},${sy.toFixed(1)} C${(sx + (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(sy + (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${(ex - (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(ey - (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}`;
+    // straight-on links get a gentle curve; diagonals stay straight so a link can
+    // never bulge into a chip it does not touch and read as passing through it
+    const straightOn = Math.abs(ex - sx) < 2 || Math.abs(ey - sy) < 2; const horiz = Math.abs(ex - sx) >= Math.abs(ey - sy); const h = horiz ? Math.max(30, Math.abs(ex - sx) * 0.4) : 0, v = horiz ? 0 : Math.max(24, Math.abs(ey - sy) * 0.4);
+    const d = straightOn ? `M${sx.toFixed(1)},${sy.toFixed(1)} C${(sx + (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(sy + (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${(ex - (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(ey - (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}` : `M${sx.toFixed(1)},${sy.toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)}`;
     const mx = (sx + ex) / 2, my = (sy + ey) / 2; const lbl = CHAIN_EDGE_LABEL[l.id] ?? l.short.replace(/\s*→\s*/g, '→'); const lw = lbl.length * 6.3 + 12;
     const title = `${l.textbook}. Today: ${l.verdict}${l.punch ? ' — ' + l.punch : ''}`;
-    return `<g class="ge-g ${vcls[l.verdict]}"><title>${esc0(title)}</title><path class="ge ${vcls[l.verdict]}" d="${d}" marker-end="url(#chain-arrow-${vcls[l.verdict]})"/><rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text></g>`;
+    return `<g class="ge-g ${vcls[l.verdict]}"><title>${esc0(title)}</title><path class="ge-halo" d="${d}"/><path class="ge ${vcls[l.verdict]}" d="${d}" marker-end="url(#chain-arrow-${vcls[l.verdict]})"/><rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text></g>`;
   }).join('');
   const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '';
   const nodes = Object.keys(CHAIN_POS).map(k => {
@@ -3193,7 +3199,7 @@ function chainGraphHtml(links) {
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>tap a chip for what it is</span></div>${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is</span></div>${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
@@ -4636,6 +4642,20 @@ function renderTimelinePanel() {
 function leanGroupsText() {
   const html = leanGroupsHtml(); if (!html) return 'no grouped leans';
   return html.replace(/<[^>]+>/g, '').replace(/^Leans grouped as trades: /, '').replace(/\s+/g, ' ').trim();
+}
+// The pair as a regime differential: two economies, two labels, aligned or
+// diverging. Tested (R2): the differential made no difference to the next
+// month's range or return -- so this is a description of the backdrop.
+function renderDrawerRegimePair(r) {
+  const sec = $('drRegimeSec'), box = $('drRegimePair'); if (!sec || !box) return;
+  const C = regime?.currencies; const cc = PAIR_CCY[r.name]; if (!C || !cc) { sec.style.display = 'none'; return; }
+  const [b, q] = [cc[0], cc[1]]; const B = C[b]?.now, Q = C[q]?.now;
+  const W = { goldilocks: 'goldilocks', reflation: 'reflation', stagflation: 'stagflation', deflation: 'deflation / risk-off' };
+  if (!B && !Q) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const side = (c, n) => n ? `<b>${c}</b> is in <b>${W[n.regime]}</b> (${esc0(n.what)}, month ${n.months})` : `<b>${c}</b> has no regime read (its free data is a stale mirror)`;
+  const pt = regime?.pairTable?.[r.name];
+  box.innerHTML = `<span class="lbl" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-right:6px">Backdrop</span>${side(b, B)}; ${side(q, Q)}${B && Q ? ` — the two economies are <b>${B.regime === Q.regime ? 'aligned' : 'diverging'}</b>.` : '.'}${pt ? ` Tested here since ${pt.from}: ${pt.diverging.n} diverging months ran a ${pt.diverging.range}% range against ${pt.aligned.range}% aligned (difference ${pt.rangeDiff.diff >= 0 ? '+' : ''}${pt.rangeDiff.diff}pp, interval ${pt.rangeDiff.lo} to ${pt.rangeDiff.hi}) — <b>no difference</b>, so this is a description, not a setup.` : ''} <a href="regime.html" target="_blank" style="font-size:11px">the table →</a>`;
 }
 // ── the per-pair strip in the drawer ──
 async function renderDrawerTimeline(r) {
@@ -8024,6 +8044,7 @@ async function openDrawer(name) {
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
   renderDrawerLedger(r).catch(() => { $('drLedgerSec').style.display = 'none'; });
   try { renderDrawerFactor(r); } catch (e) { $('drFactorSec').style.display = 'none'; }
+  try { renderDrawerRegimePair(r); } catch (e) { $('drRegimeSec').style.display = 'none'; }
   loadLedgerRowsFor(r.name).then(() => renderDrawerTimeline(r)).catch(() => {}); try { renderDrawerTimeline(r); } catch (e) { $('drTimelineSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.

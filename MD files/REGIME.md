@@ -124,3 +124,28 @@ lean. The one hypothesis worth stating in advance: **diverging months run a
 wider range than aligned months** (the notes' claim, restated as range). If the
 range difference's interval clears zero it goes on the page as a tested
 sentence; direction cells are reported and expected to be no-tilt.
+
+### R2 results (run 2026-09-20; design frozen above before running)
+
+`analysis/regime_pairs_study.mjs`; labels via `regimeCore.currencyRegime`.
+
+**Per-currency labels** (months of history): USD 666 (1971→), GBP 305
+(2001→), EUR 212 (2008→, Eurostat's HICP starts 2005 and the ten-year z needs
+three years), CAD 271 (2004→). Today: USD goldilocks, GBP goldilocks, EUR
+reflation, CAD goldilocks. Shares are balanced within each (each quadrant
+15–30%), so the construction is not degenerate on any of them.
+
+**The differential — NULL on all four pairs.** Next-month range and return,
+aligned vs diverging months, 2008 →:
+
+| pair | aligned n · range · ret | diverging n · range · ret | range diff [95%] | return diff [95%] |
+|---|---|---|---|---|
+| EUR/USD | 70 · 3.79% · +0.04% | 142 · 3.81% · −0.15% | +0.03pp [−0.48, +0.52] | −0.19pp [−0.93, +0.60] |
+| GBP/USD | 79 · 4.23% · +0.26% | 134 · 3.90% · −0.25% | −0.33pp [−0.86, +0.23] | −0.51pp [−1.18, +0.16] |
+| USD/CAD | 88 · 3.51% · +0.05% | 125 · 3.42% · +0.06% | −0.09pp [−0.53, +0.33] | +0.01pp [−0.65, +0.63] |
+| EUR/GBP | 93 · 3.30% · −0.16% | 119 · 3.19% · +0.03% | −0.11pp [−0.54, +0.32] | +0.19pp [−0.31, +0.76] |
+
+The notes' "policy-divergence regime" does not show up as wider months or as
+a tilt on this construction. The per-currency labels ship as description
+(regime.html "By currency", the pair's backdrop line in the drawer's Why tab),
+with the null printed beside them.

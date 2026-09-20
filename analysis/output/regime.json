@@ -7365,5 +7365,498 @@
    "growth": 0.041,
    "inflation": -0.585
   }
- }
+ },
+ "currencies": {
+  "USD": {
+   "from": "1971-04",
+   "to": "2026-09",
+   "months": 666,
+   "now": {
+    "m": "2026-09",
+    "growth": 0.041,
+    "inflation": -0.585,
+    "gComp": 0.035,
+    "iComp": -0.1,
+    "regime": "goldilocks"
+   }
+  },
+  "GBP": {
+   "from": "2001-03",
+   "to": "2026-07",
+   "months": 305,
+   "now": {
+    "m": "2026-07",
+    "growth": 0.117,
+    "inflation": -0.294,
+    "gComp": -0.675,
+    "iComp": -0.317,
+    "regime": "goldilocks"
+   }
+  },
+  "EUR": {
+   "from": "2008-12",
+   "to": "2026-07",
+   "months": 212,
+   "now": {
+    "m": "2026-07",
+    "growth": 0.029,
+    "inflation": 0.045,
+    "gComp": 0.529,
+    "iComp": 0.121,
+    "regime": "reflation"
+   }
+  },
+  "CAD": {
+   "from": "2004-01",
+   "to": "2026-07",
+   "months": 271,
+   "now": {
+    "m": "2026-07",
+    "growth": 0.114,
+    "inflation": -0.144,
+    "gComp": 0.15,
+    "iComp": -0.477,
+    "regime": "goldilocks"
+   }
+  }
+ },
+ "pairTable": {
+  "EURUSD": {
+   "base": "EUR",
+   "quote": "USD",
+   "n": 212,
+   "from": "2008-12",
+   "to": "2026-07",
+   "aligned": {
+    "n": 70,
+    "ret": 0.04,
+    "range": 3.79,
+    "up": 0.51
+   },
+   "diverging": {
+    "n": 142,
+    "ret": -0.15,
+    "range": 3.81,
+    "up": 0.48
+   },
+   "rangeDiff": {
+    "diff": 0.025,
+    "lo": -0.481,
+    "hi": 0.523
+   },
+   "retDiff": {
+    "diff": -0.194,
+    "lo": -0.932,
+    "hi": 0.603
+   },
+   "cells": {
+    "deflation|deflation": {
+     "n": 27,
+     "ret": 0.2,
+     "range": 4.02,
+     "up": 0.56
+    },
+    "deflation|stagflation": {
+     "n": 18,
+     "ret": -0.09,
+     "range": 4.68,
+     "up": 0.44
+    },
+    "stagflation|stagflation": {
+     "n": 9,
+     "ret": 0.05,
+     "range": 3.19,
+     "up": 0.44
+    },
+    "goldilocks|reflation": {
+     "n": 16,
+     "ret": -0.24,
+     "range": 3.6,
+     "up": 0.5
+    },
+    "goldilocks|goldilocks": {
+     "n": 20,
+     "ret": -0.39,
+     "range": 3.66,
+     "up": 0.45
+    },
+    "reflation|reflation": {
+     "n": 14,
+     "ret": 0.35,
+     "range": 3.89,
+     "up": 0.57
+    },
+    "reflation|goldilocks": {
+     "n": 21,
+     "ret": -0.34,
+     "range": 3.83,
+     "up": 0.48
+    },
+    "reflation|deflation": {
+     "n": 10,
+     "ret": -0.28,
+     "range": 3.38,
+     "up": 0.6
+    },
+    "reflation|stagflation": {
+     "n": 16,
+     "ret": 0.32,
+     "range": 4.6,
+     "up": 0.56
+    },
+    "goldilocks|stagflation": {
+     "n": 15,
+     "ret": 0.32,
+     "range": 3.26,
+     "up": 0.53
+    },
+    "stagflation|reflation": {
+     "n": 9,
+     "ret": -0.92,
+     "range": 3.15,
+     "up": 0.22
+    },
+    "stagflation|deflation": {
+     "n": 8,
+     "ret": -0.12,
+     "range": 4.01,
+     "up": 0.5
+    },
+    "deflation|reflation": {
+     "n": 9,
+     "ret": -0.92,
+     "range": 3.46,
+     "up": 0.44
+    },
+    "goldilocks|deflation": {
+     "n": 8,
+     "ret": 0.23,
+     "range": 3.7,
+     "up": 0.38
+    }
+   }
+  },
+  "GBPUSD": {
+   "base": "GBP",
+   "quote": "USD",
+   "n": 213,
+   "from": "2008-11",
+   "to": "2026-07",
+   "aligned": {
+    "n": 79,
+    "ret": 0.26,
+    "range": 4.23,
+    "up": 0.51
+   },
+   "diverging": {
+    "n": 134,
+    "ret": -0.25,
+    "range": 3.9,
+    "up": 0.48
+   },
+   "rangeDiff": {
+    "diff": -0.333,
+    "lo": -0.861,
+    "hi": 0.225
+   },
+   "retDiff": {
+    "diff": -0.506,
+    "lo": -1.176,
+    "hi": 0.16
+   },
+   "cells": {
+    "deflation|deflation": {
+     "n": 25,
+     "ret": 0.4,
+     "range": 4.76,
+     "up": 0.6
+    },
+    "deflation|stagflation": {
+     "n": 17,
+     "ret": 0.43,
+     "range": 4.01,
+     "up": 0.59
+    },
+    "stagflation|stagflation": {
+     "n": 19,
+     "ret": 0.03,
+     "range": 4.64,
+     "up": 0.37
+    },
+    "deflation|reflation": {
+     "n": 9,
+     "ret": -0.03,
+     "range": 3.76,
+     "up": 0.56
+    },
+    "goldilocks|reflation": {
+     "n": 21,
+     "ret": 0.06,
+     "range": 3.52,
+     "up": 0.52
+    },
+    "goldilocks|goldilocks": {
+     "n": 21,
+     "ret": 0.51,
+     "range": 3.53,
+     "up": 0.57
+    },
+    "reflation|reflation": {
+     "n": 14,
+     "ret": -0.05,
+     "range": 3.81,
+     "up": 0.43
+    },
+    "reflation|goldilocks": {
+     "n": 15,
+     "ret": -0.84,
+     "range": 3.84,
+     "up": 0.47
+    },
+    "goldilocks|deflation": {
+     "n": 14,
+     "ret": -0.96,
+     "range": 3.63,
+     "up": 0.29
+    },
+    "reflation|stagflation": {
+     "n": 12,
+     "ret": -1.19,
+     "range": 4.65,
+     "up": 0.33
+    },
+    "goldilocks|stagflation": {
+     "n": 10,
+     "ret": 0.53,
+     "range": 4.46,
+     "up": 0.4
+    },
+    "stagflation|goldilocks": {
+     "n": 9,
+     "ret": -0.17,
+     "range": 4.21,
+     "up": 0.56
+    },
+    "stagflation|deflation": {
+     "n": 9,
+     "ret": -1.04,
+     "range": 3.7,
+     "up": 0.33
+    },
+    "deflation|goldilocks": {
+     "n": 8,
+     "ret": -0.02,
+     "range": 3.64,
+     "up": 0.5
+    }
+   }
+  },
+  "USDCAD": {
+   "base": "USD",
+   "quote": "CAD",
+   "n": 213,
+   "from": "2008-11",
+   "to": "2026-07",
+   "aligned": {
+    "n": 88,
+    "ret": 0.05,
+    "range": 3.51,
+    "up": 0.5
+   },
+   "diverging": {
+    "n": 125,
+    "ret": 0.06,
+    "range": 3.42,
+    "up": 0.54
+   },
+   "rangeDiff": {
+    "diff": -0.093,
+    "lo": -0.534,
+    "hi": 0.325
+   },
+   "retDiff": {
+    "diff": 0.005,
+    "lo": -0.651,
+    "hi": 0.625
+   },
+   "cells": {
+    "deflation|deflation": {
+     "n": 25,
+     "ret": -0.12,
+     "range": 3.41,
+     "up": 0.44
+    },
+    "stagflation|deflation": {
+     "n": 24,
+     "ret": 0.06,
+     "range": 3.69,
+     "up": 0.63
+    },
+    "goldilocks|deflation": {
+     "n": 11,
+     "ret": -0.32,
+     "range": 2.82,
+     "up": 0.55
+    },
+    "goldilocks|goldilocks": {
+     "n": 20,
+     "ret": -0.5,
+     "range": 3.61,
+     "up": 0.5
+    },
+    "reflation|reflation": {
+     "n": 26,
+     "ret": 0.24,
+     "range": 3.3,
+     "up": 0.46
+    },
+    "goldilocks|reflation": {
+     "n": 17,
+     "ret": 1.11,
+     "range": 3.92,
+     "up": 0.71
+    },
+    "reflation|goldilocks": {
+     "n": 8,
+     "ret": -0.15,
+     "range": 2.95,
+     "up": 0.5
+    },
+    "deflation|reflation": {
+     "n": 9,
+     "ret": -0.41,
+     "range": 3.23,
+     "up": 0.33
+    },
+    "deflation|stagflation": {
+     "n": 11,
+     "ret": -0.42,
+     "range": 2.57,
+     "up": 0.45
+    },
+    "stagflation|stagflation": {
+     "n": 17,
+     "ret": 0.67,
+     "range": 3.84,
+     "up": 0.65
+    },
+    "stagflation|goldilocks": {
+     "n": 10,
+     "ret": 0.46,
+     "range": 3.58,
+     "up": 0.6
+    },
+    "deflation|goldilocks": {
+     "n": 9,
+     "ret": 0.94,
+     "range": 3.65,
+     "up": 0.56
+    }
+   }
+  },
+  "EURGBP": {
+   "base": "EUR",
+   "quote": "GBP",
+   "n": 212,
+   "from": "2008-12",
+   "to": "2026-07",
+   "aligned": {
+    "n": 93,
+    "ret": -0.16,
+    "range": 3.3,
+    "up": 0.45
+   },
+   "diverging": {
+    "n": 119,
+    "ret": 0.03,
+    "range": 3.19,
+    "up": 0.49
+   },
+   "rangeDiff": {
+    "diff": -0.114,
+    "lo": -0.537,
+    "hi": 0.323
+   },
+   "retDiff": {
+    "diff": 0.193,
+    "lo": -0.313,
+    "hi": 0.757
+   },
+   "cells": {
+    "deflation|deflation": {
+     "n": 30,
+     "ret": -0.29,
+     "range": 2.97,
+     "up": 0.43
+    },
+    "deflation|stagflation": {
+     "n": 11,
+     "ret": 0.62,
+     "range": 3.11,
+     "up": 0.64
+    },
+    "stagflation|deflation": {
+     "n": 9,
+     "ret": -0.18,
+     "range": 2.58,
+     "up": 0.33
+    },
+    "goldilocks|deflation": {
+     "n": 13,
+     "ret": -0.41,
+     "range": 2.76,
+     "up": 0.31
+    },
+    "goldilocks|goldilocks": {
+     "n": 26,
+     "ret": -0.19,
+     "range": 3.48,
+     "up": 0.42
+    },
+    "reflation|goldilocks": {
+     "n": 16,
+     "ret": -0.38,
+     "range": 3.41,
+     "up": 0.38
+    },
+    "goldilocks|reflation": {
+     "n": 12,
+     "ret": 1.19,
+     "range": 4.47,
+     "up": 0.5
+    },
+    "reflation|reflation": {
+     "n": 27,
+     "ret": -0.15,
+     "range": 3.38,
+     "up": 0.44
+    },
+    "goldilocks|stagflation": {
+     "n": 8,
+     "ret": 0.54,
+     "range": 2.66,
+     "up": 0.63
+    },
+    "reflation|stagflation": {
+     "n": 12,
+     "ret": 0.33,
+     "range": 3.77,
+     "up": 0.67
+    },
+    "deflation|goldilocks": {
+     "n": 17,
+     "ret": -0.17,
+     "range": 3.01,
+     "up": 0.53
+    },
+    "stagflation|stagflation": {
+     "n": 10,
+     "ret": 0.27,
+     "range": 3.59,
+     "up": 0.6
+    }
+   }
+  }
+ },
+ "r2RanAt": "2026-09-20T10:20:47.474Z"
 }

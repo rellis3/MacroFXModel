@@ -146,7 +146,7 @@ import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from
 import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
 import { PANEL as _WM_PANEL } from './js/weekMap.js';
 import { buildWeekMap as _buildWeekMap } from './js/weekMapBuild.js';   // every series scored against itself, and the weeks that sat like this
-import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
+import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells, currencyRegime as _currencyRegime, yoy as _yoy } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
 import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
 import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
@@ -13884,11 +13884,35 @@ async function _fredCsv(id) {
   const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
   return (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value));
 }
+// The other currencies' series (validated this week; see REGIME.md R2). A
+// quarterly series is held across its three months so the monthly composite
+// does not go missing two months in three.
+const _CCY_REGIME_SRC = {
+  gb_cpi:   { source: 'ons', id: 'd7g7', path: 'economy/inflationandpriceindices', dataset: 'mm23' },
+  gb_core:  { source: 'ons', id: 'dko8', path: 'economy/inflationandpriceindices', dataset: 'mm23' },
+  gb_unemp: { source: 'ons', id: 'mgsx', path: 'employmentandlabourmarket/peoplenotinwork/unemployment', dataset: 'lms' },
+  gb_gdp:   { source: 'ons', id: 'ecy2', path: 'economy/grossdomesticproductgdp', dataset: 'mgdp' },
+  ea_hicp:  { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=TOTAL', latestN: 260 },
+  ea_core:  { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=CP-HI00XEF', latestN: 260 },
+  ea_unemp: { source: 'eurostat', id: 'une_rt_m', params: 'geo=EA21&s_adj=SA&age=TOTAL&sex=T&unit=PC_ACT', latestN: 260 },
+  ea_gdp:   { source: 'eurostat', id: 'namq_10_gdp', params: 'geo=EA20&unit=CLV_PCH_PRE&s_adj=SCA&na_item=B1GQ', latestN: 90, quarterly: true },
+  ca_cpi:   { source: 'statcan', id: 41690973, latestN: 320 },
+  ca_trim:  { source: 'statcan', id: 108785715, latestN: 320 },
+  ca_median: { source: 'statcan', id: 108785714, latestN: 320 },
+  ca_unemp: { source: 'statcan', id: 2062815, latestN: 320 },
+  ca_gdp:   { source: 'statcan', id: 65201210, latestN: 320 },
+};
+const _heldMonthly = obs => obs.flatMap(o => { const d = new Date(o.date); return [0, 1, 2].map(k => ({ date: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1)).toISOString().slice(0, 10), value: o.value })); });
 async function _refreshRegime() {
   try {
     const [cfnai, claims, indpro, payems, corecpi, corepce, bei5] = await Promise.all(['CFNAI', 'ICSA', 'INDPRO', 'PAYEMS', 'CPILFESL', 'PCEPILFE', 'T5YIE'].map(_fredCsv));
     const history = _regimeHistory({ cfnai, claims, indpro, payems, corecpi, corepce, bei5 });
-    _macroRegime = { at: Date.now(), history, now: _regimeNow(history), error: null };
+    const raw = {};
+    for (const [k, spec] of Object.entries(_CCY_REGIME_SRC)) { try { const obs = await _fetchIntlSeries(spec); raw[k] = spec.quarterly ? _heldMonthly(obs) : obs.map(o => ({ date: o.date, value: o.value })); } catch (e) { console.warn('[regime]', k, e.message); } }
+    if (raw.ca_cpi) raw.ca_cpi_yoy = _yoy(raw.ca_cpi);
+    const currencies = { USD: history };
+    for (const ccy of ['GBP', 'EUR', 'CAD']) { const h = _currencyRegime(ccy, raw); if (h?.length) currencies[ccy] = h; }
+    _macroRegime = { at: Date.now(), history, now: _regimeNow(history), currencies: Object.fromEntries(Object.entries(currencies).map(([c, h]) => [c, { now: _regimeNow(h), history: h.slice(-60) }])), error: null };
   } catch (e) { _macroRegime.error = e.message; console.warn('[regime]', e.message); }
   return _macroRegime;
 }
@@ -13899,7 +13923,10 @@ app.get('/api/regime', async (_req, res) => {
     const t = _regimeTable(); const hist = _macroRegime.history ?? t?.history ?? null;
     if (!hist) return res.status(503).json({ ok: false, error: _macroRegime.error ?? 'no regime history yet' });
     const share = {}; for (const r of hist) share[r.regime] = (share[r.regime] ?? 0) + 1;
-    res.json({ ok: true, now: _macroRegime.now ?? t?.now ?? null, history: hist.slice(-240), share, spells: _regimeSpells(hist).slice(-60), table: t?.table ?? null, transitions: t?.transitions ?? null, ranAt: t?.ranAt ?? null, liveAt: _macroRegime.at ? new Date(_macroRegime.at).toISOString() : null, spec: 'MD files/REGIME.md' });
+    // the pair as a regime differential: aligned (same quadrant) or diverging
+    const C = _macroRegime.currencies ?? null; const PAIRS = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDCAD: ['USD', 'CAD'], EURGBP: ['EUR', 'GBP'] };
+    const pairs = C ? Object.fromEntries(Object.entries(PAIRS).filter(([, [a, b]]) => C[a]?.now && C[b]?.now).map(([p, [a, b]]) => [p, { base: a, quote: b, baseRegime: C[a].now.regime, quoteRegime: C[b].now.regime, aligned: C[a].now.regime === C[b].now.regime }])) : null;
+    res.json({ ok: true, now: _macroRegime.now ?? t?.now ?? null, history: hist.slice(-240), share, spells: _regimeSpells(hist).slice(-60), table: t?.table ?? null, transitions: t?.transitions ?? null, currencies: C, pairs, pairTable: t?.pairTable ?? null, ranAt: t?.ranAt ?? null, liveAt: _macroRegime.at ? new Date(_macroRegime.at).toISOString() : null, spec: 'MD files/REGIME.md' });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('regime', () => _refreshRegime().catch(e => console.error('[regime]', e.message)), 24 * 3600_000);
@@ -14169,12 +14196,12 @@ async function _fetchIntlSeries(spec) {
     return _onsSeries(await r.json());
   }
   if (spec.source === 'statcan') {
-    const r = await fetch('https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, body: JSON.stringify([{ vectorId: spec.id, latestN: 18 }]), signal: AbortSignal.timeout(30_000) });
+    const r = await fetch('https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, body: JSON.stringify([{ vectorId: spec.id, latestN: spec.latestN ?? 18 }]), signal: AbortSignal.timeout(30_000) });
     if (!r.ok) throw new Error(`StatCan v${spec.id} HTTP ${r.status}`);
     return _statcanSeries(await r.json());
   }
   if (spec.source === 'eurostat') {
-    const r = await fetch(`https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/${spec.id}?${spec.params}&lastTimePeriod=18`, ua); if (!r.ok) throw new Error(`Eurostat ${spec.id} HTTP ${r.status}`);
+    const r = await fetch(`https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/${spec.id}?${spec.params}&lastTimePeriod=${spec.latestN ?? 18}`, ua); if (!r.ok) throw new Error(`Eurostat ${spec.id} HTTP ${r.status}`);
     const j = await r.json(); const rows = _jsonStatSeries(j); const upd = String(j.updated ?? '').slice(0, 10);
     // only the newest period is known to carry the dataset's update stamp
     return rows.map((o, i) => ({ ...o, realtime_start: i === rows.length - 1 ? upd : '' }));
