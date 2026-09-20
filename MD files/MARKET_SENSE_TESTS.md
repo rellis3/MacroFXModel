@@ -290,6 +290,47 @@ oil file, confirmed by directory listing, and no oil price series exists
 anywhere else in this repo, confirmed by search). The harness is written in
 `analysis/market_sense_studies.mjs` (S17), committed and reviewed, unexecuted.
 
+**S18 — AI-capex names vs the 30Y: is MSFT's yield-beta measurably smaller?
+(pre-registered 2026-09-20, before running).** Claim (Crown, 2026-09-20): a
+~25bp rise in the 30-year hit AMD (-9%), Marvell (-10%) and Nvidia (-3.9%) on
+the day he cites, while Microsoft stayed insulated — credited to Azure
+(~$100bn/yr) plus its AI business (~$37bn/yr) self-funding the AI capex build
+rather than needing debt. Two parts: (a) a rationale (self-funded capex ⇒
+lower rate sensitivity), not directly testable from price alone; (b) a
+testable descriptive claim — does MSFT's realized daily sensitivity to 30Y
+yield changes sit measurably closer to zero than AMD/MRVL/NVDA's, across many
+days, not just the one day cited.
+
+**Definition, fixed now.** Daily log return (from Yahoo Finance `adjclose` —
+mandatory, not raw `close`, since NVDA split 10:1 in 2024) regressed on the
+same-day change in `DGS30` (FRED, this file's own keyless `fred()`, already
+used by S9/S10). Window: 2023-01-01 → present, the AI-capex-cycle period the
+clip is describing, stated as a judgment call — not the full multi-year
+history, which would dilute a recent-regime claim with years the mechanism
+did not apply to. Universe: AMD, MRVL, NVDA, MSFT — exactly the four names
+Crown named, no others added. ISO-week block bootstrap CI on the OLS slope
+("yield beta"), reported per +10bp move in the 30Y to match Crown's own 25bp
+framing.
+
+**Pass bar, fixed in advance.** MSFT's beta magnitude smaller than ALL THREE
+of AMD/MRVL/NVDA's, AND MSFT's CI includes zero, AND at least two of the
+other three have a CI that excludes zero (a real negative beta, not noise).
+Anything less is null — indistinguishable from "all four AI names answer to
+real yields together," which `real-nq` already covers at the index level.
+Not claimed: the CAUSAL mechanism (self-funded vs. debt-financed capex) is
+not testable from a return regression; only the descriptive dispersion is,
+and that is all this tests.
+
+**Status: NOT YET RUN.** Needs Yahoo Finance (`fetchYahooDaily`,
+`js/nasdaqDataSources.js` — already used elsewhere in this repo for NQ/gold
+futures, ticker-agnostic, no new plumbing needed) plus FRED `DGS30`. Both are
+typically network-blocked in this sandbox (`js/tradeLabDataSource.js`'s own
+header documents this). The harness also inherits `market_sense_studies.mjs`'s
+own unconditional top-level OANDA fetch (every study in this file needs
+`OANDA_KEY` just to start the script, S18 included, even though S18's own
+data comes from Yahoo/FRED) — so it is blocked twice over in this sandbox,
+not once. The harness is written (S18), committed and reviewed, unexecuted.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,

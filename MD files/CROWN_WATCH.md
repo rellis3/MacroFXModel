@@ -371,3 +371,80 @@ own "VWAP is near timeframe-invariant" finding) in `LEGO_MODULES.md`'s
 2026-09-19 entry. Not verifiable from this sandbox — same OANDA-egress
 limit as everything else live here — validated via `node --check` and full
 synthetic test suites instead.
+
+---
+
+## 2026-09-20 — "Who gets hit when the 30-year moves, and who stays insulated"
+
+> *"I ran the correlation between a basket of AI names and the 30-year
+> Treasury. The 30-year moves 25 bips north. Who gets hit? AMD moves 9%
+> south. Marvell moves 10% south. Nvidia moves about 3.9%. Who stays
+> insulated? The only company here is Microsoft... they do it because they
+> are printing money with Azure. Azure throws off 100 billion a year. Their
+> AI business throws off another 37. So their AI investment is being
+> self-funded. They don't need to go out and take on more and more
+> expensive debt."*
+
+**1. The claim, stated plainly.** Two parts: (a) a rationale — Microsoft's
+AI capex is self-funded from Azure + AI cash flow rather than debt, so it
+should carry less discount-rate sensitivity than debt-dependent AI names;
+(b) a descriptive claim built on that rationale — when the 30-year yield
+rises, AMD/Marvell/Nvidia sell off hard while Microsoft stays insulated, a
+real dispersion, not "growth stocks fall together."
+
+**2. What's already on this desk.** The chain (`js/macroChain.js`) already
+has `real-nq` (real yields → the Nasdaq) and `real-spx`, both mechanism
+links with a tested forward-predictiveness note — but both are INDEX-level.
+This clip's insight is a dispersion claim WITHIN that index: the same
+"real-nq"/"real-spx" quiet-index sentence from the first entry in this
+log ("a quiet SPX doesn't mean a quiet market — check the growth cohort")
+one layer deeper — even the growth cohort itself isn't uniform. Checked
+before assuming a gap: no single-stock (AMD/MRVL/NVDA/MSFT) data or
+analysis exists anywhere in this repo currently — this platform's own
+tracked universe is FX/gold/indices via OANDA, not individual equities.
+
+**The gap that mattered: is this even testable here, or blocked on missing
+data plumbing entirely (a bigger, structural gap, unlike S17's or the VWAP
+alert's OANDA/Railway-only limits)?** Checked `js/tradeLabDataSource.js`,
+`js/nasdaqDataSources.js`: this desk already has a ticker-agnostic Yahoo
+Finance fetcher (`fetchYahooDaily`, already used live for NQ/gold futures)
+and FRED's `DGS30` is already fetched elsewhere in this repo (S9/S10). No
+new data plumbing needed — AMD/MRVL/NVDA/MSFT are just tickers to the same
+existing fetcher.
+
+**3. Trading claim or macro-understanding claim.** A hybrid, closer to
+macro-understanding: Crown states it as an observation about WHY certain
+names answer differently to rates (a mechanism), then uses it to justify a
+book position — the mechanism claim is what's testable and interesting;
+his specific one-day numbers are an anecdote this log does not attempt to
+verify.
+
+**4. Is there a display/alert nugget, independent of any entry.** Not yet
+answerable — the descriptive dispersion claim itself hasn't been tested,
+so there's nothing validated to display or alert on. If S18 below comes
+back real, the natural next question is exactly this one.
+
+**5. Verdict and action.**
+- **Pre-registered as S18** in `MARKET_SENSE_TESTS.md`, before running:
+  OLS beta of each stock's daily log return (Yahoo `adjclose` — mandatory,
+  not `close`, since NVDA split 10:1 in 2024) on the same-day `DGS30`
+  change, 2023-01-01 → present (the AI-capex-cycle window, a stated
+  judgment call), ISO-week block bootstrap CI, reported per +10bp of 30Y
+  move. Pass bar: MSFT's beta smaller in magnitude than all three of
+  AMD/MRVL/NVDA's, MSFT's CI includes zero, and at least two of the other
+  three exclude zero — a real dispersion, not noise. Explicitly not
+  claimed: the CAUSAL story (self-funded vs. debt-financed capex) isn't
+  testable from a return regression, only the descriptive pattern is.
+- **Harness written, not run.** `analysis/market_sense_studies.mjs`'s S18
+  block (`bootSlope`/`olsSlope` added as new shared primitives, same file,
+  same discipline as every other study here) is committed and reviewed.
+  Registered in `market-sense.html`'s study catalog too, so a click can run
+  it once deployed. **Blocked twice over in this sandbox**: Yahoo Finance
+  is typically network-blocked here (`js/tradeLabDataSource.js`'s own
+  documented limitation), and separately, `market_sense_studies.mjs`
+  fetches OANDA bars unconditionally at the top of the file before any
+  study-specific gating — so even a Yahoo/FRED-only study needs `OANDA_KEY`
+  just to start the script. Needs Railway.
+- **Not claimed:** anything about whether Crown's specific cited numbers
+  (the one day, -9%/-10%/-3.9%) are accurate, or whether the dispersion
+  pattern is currently live. That needs the same run.

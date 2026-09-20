@@ -12,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { fetchD1 } from '../js/volBacktestEngine.js';
 import { allMeetings } from '../js/fomcHistory.js';
+import { fetchYahooDaily } from '../js/nasdaqDataSources.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(OUT_DIR(), 'market_sense_studies.json');
@@ -106,6 +107,24 @@ function bootMean(vals, groups, seed = SEED) {
   const rnd = mulberry32(seed); const keys = [...new Set(groups)]; const byG = new Map(); vals.forEach((v, i) => (byG.get(groups[i]) ?? byG.set(groups[i], []).get(groups[i])).push(v));
   const means = []; for (let k = 0; k < REPS; k++) { let s = 0, n = 0; for (let j = 0; j < keys.length; j++) for (const v of byG.get(keys[Math.floor(rnd() * keys.length)])) { s += v; n++; } means.push(s / n); }
   means.sort((a, b) => a - b); return { mean: vals.reduce((s, v) => s + v, 0) / vals.length, lo: means[Math.floor(REPS * 0.025)], hi: means[Math.floor(REPS * 0.975)] };
+}
+// OLS slope of y on x, and an ISO-week block bootstrap CI around it (used by S18).
+function olsSlope(xs, ys) {
+  const n = xs.length, mx = xs.reduce((s, v) => s + v, 0) / n, my = ys.reduce((s, v) => s + v, 0) / n;
+  let sxy = 0, sxx = 0; for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+  return sxx ? sxy / sxx : null;
+}
+function bootSlope(xs, ys, weeks, seed = SEED) {
+  const rnd = mulberry32(seed);
+  const byW = new Map(); weeks.forEach((w, i) => (byW.get(w) ?? byW.set(w, []).get(w)).push(i));
+  const wk = [...byW.keys()];
+  const slopes = [];
+  for (let k = 0; k < REPS; k++) {
+    const idx = []; for (let j = 0; j < wk.length; j++) for (const i of byW.get(wk[Math.floor(rnd() * wk.length)])) idx.push(i);
+    slopes.push(olsSlope(idx.map(i => xs[i]), idx.map(i => ys[i])));
+  }
+  slopes.sort((a, b) => a - b);
+  return { slope: olsSlope(xs, ys), lo: slopes[Math.floor(REPS * 0.025)], hi: slopes[Math.floor(REPS * 0.975)], n: xs.length };
 }
 const want = id => !ONLY || ONLY.has(id);
 const sinceR1 = r => r.date >= '2018-01-01';
@@ -664,6 +683,75 @@ if (want('S17')) {
     out[tag] = leg;
   }
   results.studies.S17 = out;
+}
+
+// ═══ S18 AI-capex names vs the 30Y: is MSFT's yield-beta measurably smaller? ═
+// Pre-registered 2026-09-20 (Crown clip): a ~25bp rise in the 30Y reportedly
+// hit AMD/MRVL/NVDA hard (his numbers: -9%/-10%/-3.9% on the day he cites)
+// while MSFT stayed insulated, credited to Azure (~$100bn/yr) plus AI
+// (~$37bn/yr) self-funding the capex rather than needing debt. Testable
+// piece, stated precisely: does MSFT's realized daily sensitivity to 30Y
+// yield changes ("yield beta") sit measurably closer to zero than
+// AMD/MRVL/NVDA's, across many days -- not just the one day Crown cites?
+// The CAUSAL story (self-funded vs. debt-financed capex) is not testable
+// from a return regression; only the descriptive dispersion is, and that is
+// all this claims to test.
+//
+// Data: FRED DGS30 (this file's own keyless `fred()`, already used by S9/
+// S10 for the same series) and Yahoo Finance daily adjusted closes
+// (`fetchYahooDaily`, `js/nasdaqDataSources.js` -- already used elsewhere in
+// this repo for NQ/gold futures; ticker-agnostic, so AMD/MRVL/NVDA/MSFT need
+// no new plumbing). `adjclose` is mandatory, not `close`: NVDA split 10:1 in
+// 2024 and a raw close would fake a ~-90% "return" on the split day.
+//
+// Window fixed now, stated as a judgment call: 2023-01-01 -> present, the
+// AI-capex-cycle window the clip is actually describing -- not the full
+// multi-year history, which would dilute a recent-regime claim with years
+// where the mechanism did not apply.
+//
+// Pass bar, fixed in advance: MSFT's beta magnitude smaller than ALL THREE
+// of AMD/MRVL/NVDA's, AND MSFT's CI includes zero, AND at least two of the
+// other three have a CI that excludes zero (a real negative beta, not
+// noise). Anything less is null -- indistinguishable from "all four AI names
+// answer to real yields together", which `real-nq` already covers at the
+// index level.
+if (want('S18')) {
+  log('\n═══ S18  AI-capex names vs 30Y yield: is MSFT’s yield-beta measurably smaller? ═══');
+  const START = '2023-01-01';
+  const dgs30 = await fred('DGS30');
+  const tickers = ['AMD', 'MRVL', 'NVDA', 'MSFT'];
+  const out = { start: START, tickers: {} };
+  for (const t of tickers) {
+    const bars = await fetchYahooDaily(t, { start: START });
+    if (!bars.length) { log(`  ${t}: no bars returned`); continue; }
+    log(`  ${t}: ${bars.length} bars ${new Date(bars[0].t).toISOString().slice(0, 10)} → ${new Date(bars.at(-1).t).toISOString().slice(0, 10)}`);
+    const rows = [];
+    for (let i = 1; i < bars.length; i++) {
+      const date = new Date(bars[i].t).toISOString().slice(0, 10), prevDate = new Date(bars[i - 1].t).toISOString().slice(0, 10);
+      const y = dgs30.get(date), yPrev = dgs30.get(prevDate);
+      if (y == null || yPrev == null) continue;
+      const ret = Math.log(bars[i].adjclose / bars[i - 1].adjclose) * 100;
+      const dy = (y - yPrev) * 100;   // bp
+      if (Number.isFinite(ret) && Number.isFinite(dy)) rows.push({ date, week: isoWeek(date), ret, dy });
+    }
+    const b = bootSlope(rows.map(r => r.dy), rows.map(r => r.ret), rows.map(r => r.week), SEED + 200 + tickers.indexOf(t));
+    const perTenBp = { slope: b.slope * 10, lo: b.lo * 10, hi: b.hi * 10, n: b.n };   // per +10bp move in the 30Y
+    log(`    n=${b.n}: return per +10bp 30Y ${fmt(perTenBp.slope, 2)}% [${fmt(perTenBp.lo, 2)}, ${fmt(perTenBp.hi, 2)}]`);
+    out.tickers[t] = perTenBp;
+  }
+  if (out.tickers.MSFT && ['AMD', 'MRVL', 'NVDA'].every(t => out.tickers[t])) {
+    const msft = out.tickers.MSFT, others = ['AMD', 'MRVL', 'NVDA'].map(t => out.tickers[t]);
+    const msftSmaller = others.every(o => Math.abs(msft.slope) < Math.abs(o.slope));
+    const msftNearZero = msft.lo <= 0 && msft.hi >= 0;
+    const othersExcludeZero = others.filter(o => o.hi < 0 || o.lo > 0).length >= 2;
+    const pass = msftSmaller && msftNearZero && othersExcludeZero;
+    log(`  MSFT smallest in magnitude: ${msftSmaller}; MSFT CI includes zero: ${msftNearZero}; ≥2 of the other three exclude zero: ${othersExcludeZero}  ${pass ? 'PASS (real dispersion, MSFT reads insulated)' : 'NULL (no clean dispersion by this bar)'}`);
+    out.pass = pass;
+  } else {
+    log('  one or more tickers returned no usable rows -- not scored');
+    out.pass = null;
+  }
+  results.studies.S18 = out;
 }
 
 // merge into the existing output rather than overwrite it when only some studies ran

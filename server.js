@@ -21951,6 +21951,7 @@ const MARKET_SENSE_STUDIES = [
   { id: 'S15', title: 'The non-reaction: a big surprise, no move', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
   { id: 'S16', title: 'Weird × technical, the conjunction', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
   { id: 'S17', title: 'Gold/oil ratio (ln WTI/gold, 126d z): extreme → which leg gives way?' },
+  { id: 'S18', title: 'AI-capex names vs 30Y yield: is MSFT’s yield-beta measurably smaller?' },
 ];
 const MS_RUNNABLE = new Set(MARKET_SENSE_STUDIES.filter(s => !s.disabled).map(s => s.id));
 const MS_SCRIPT = path.join(__dirname, 'analysis', 'market_sense_studies.mjs');
