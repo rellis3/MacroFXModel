@@ -142,6 +142,8 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
+import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
 import { PANEL as _WM_PANEL } from './js/weekMap.js';
 import { buildWeekMap as _buildWeekMap } from './js/weekMapBuild.js';   // every series scored against itself, and the weeks that sat like this
 import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
@@ -13975,6 +13977,85 @@ app.get('/api/weekmap', async (_req, res) => {
 });
 svcInterval('weekMap', () => _refreshWeekMap().catch(e => console.error('[weekmap]', e.message)), 24 * 3600_000);
 setTimeout(() => _refreshWeekMap().catch(e => console.error('[weekmap] first pass failed:', e.message)), 14 * 60_000);
+
+// ── The 07:00 digest, and the expected-range call scored at the close ────────
+// Five lines from what the desk already knows, sent once a day from Railway at
+// 07:00 London (the hourly check below), stored on the day's snapshot row with
+// the expected-range numbers. The next snapshot tick scores yesterday's ranges
+// against the realised session range so the one forecast the desk makes keeps
+// a record like the leans and the calls do.
+const _DIGEST_INSTR_SYM = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', USDJPY: 'USD_JPY', AUDUSD: 'AUD_USD', USDCAD: 'USD_CAD', GOLD: 'XAU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD' };
+const _DIGEST_UNIT_MULT = { EURUSD: 10000, GBPUSD: 10000, AUDUSD: 10000, USDCAD: 10000, USDJPY: 100, GOLD: 1, NQ: 1, SPX500: 1 };
+let _digestSentDay = null;
+async function _buildDigest() {
+  const now = new Date(); const day = now.toISOString().slice(0, 10);
+  const london = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: '2-digit', month: 'short' }).format(now);
+  const ws = await _loadWatchStore(); const states = ws?.states ?? [];
+  // ATR per instrument from the watch's own series (same numbers the triggers use)
+  const inputs = await _watchInputs().catch(() => null);
+  const atrBy = {}; if (inputs?.series) { for (const [inst, k] of Object.entries(_WATCH_INSTR_SYM)) { const bars = inputs.series[k]; if (!bars || bars.length < 15) continue; let sum = 0; for (let i = bars.length - 14; i < bars.length; i++) { const b = bars[i], p = bars[i - 1]; sum += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); } atrBy[inst] = sum / 14; } }
+  const ranges = _expectedRanges(states, atrBy);
+  // today's prints with the book's size and your call
+  const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }).catch(() => ({ events: [] }));
+  const snap = await _loadSnapStore(); const row = (snap?.days ?? []).find(d => d.day === day); const yRow = (snap?.days ?? []).filter(d => d.day < day).at(-1);
+  const prints = (feed.events ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.time?.startsWith(day)).sort((a, b) => a.ms - b.ms).slice(0, 8).map(e => {
+    const fam = (_scGroup([{ ...e }], { now: e.ms + 40 * 60_000 })[0]?.prints?.[0]?.family) ?? null; const imp = fam ? _eventImpact(e.country, fam) : null;
+    const top = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 2).map(([k, v]) => `${k.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2')} ${v.spike}×`).join(', ') : null;
+    const nc = (() => { const c = _nowcast.cleveland; if (!c || e.country !== 'US') return null; const key = { 'CPI m/m': 'cpi', 'Core CPI m/m': 'core', 'Core PCE Price Index m/m': 'corepce' }[e.event]; return key && c[key] != null ? `${c[key].toFixed(2)}%` : null; })();
+    const call = row?.calls?.[`${String(e.country).toUpperCase()}|${e.ms}`]?.call ?? null;
+    return { time: new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }), country: e.country, event: e.event, estimate: e.estimate ?? null, model: nc, size: top ? `${top} a normal half-hour` : null, call };
+  });
+  const yesterday = yRow ? { leans: null, ranges: (yRow.ranges ?? []).filter(r => r.realisedAtr != null).map(r => ({ inst: r.inst, expectedAtr: r.expectedAtr, realisedAtr: r.realisedAtr })), calls: Object.values(yRow.calls ?? {}).filter(c => c.result).map(c => ({ event: c.event, result: c.result })) } : null;
+  try { const led = await _readLedger(); const by = _ledgerSummary(led).byDay?.[0]; if (by && yesterday && by.h1?.n) yesterday.leans = { hits: by.h1.hits, n: by.h1.n }; } catch { /* no ledger line */ }
+  const weekUnusual = _weekMap.data ? Object.values(_weekMap.data.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).map(x => ({ label: x.label, z: x.latest.z })) : null;
+  const text = _formatDigest({ dateLabel: london, regime: _macroRegime.now, weekUnusual, states, prints, ranges, yesterday }, { html: true });
+  return { day, text, ranges: Object.values(ranges).map(r => ({ inst: r.inst, atr: r.atr, unit: r.unit, expectedAtr: r.expectedAtr, expected: r.expected, drivers: r.drivers.map(d => d.label), realisedAtr: null })) };
+}
+async function _sendDigest({ dry = false } = {}) {
+  const d = await _buildDigest();
+  if (!dry) {
+    await _snapUpdateDay(d.day, async r => { r.digest = d.text; r.digestAt = new Date().toISOString(); if (!r.ranges?.length) r.ranges = d.ranges; });
+    if (state.tg?.token && state.tg?.chatId && svcEnabled('digest')) await sendTelegram(state.tg.token, state.tg.chatId, d.text);
+    _digestSentDay = d.day;
+  }
+  return d;
+}
+async function _digestTick() {
+  const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(new Date());
+  const day = new Date().toISOString().slice(0, 10); const dow = new Date().getUTCDay();
+  if (h !== 7 || _digestSentDay === day || dow === 0 || dow === 6) return;
+  const snap = await _loadSnapStore(); if ((snap?.days ?? []).find(r => r.day === day)?.digestAt) { _digestSentDay = day; return; }
+  await _sendDigest();
+}
+// score yesterday's expected ranges against the realised session range
+async function _scoreRanges() {
+  const snap = await _loadSnapStore(); if (!snap) return;
+  const today = new Date().toISOString().slice(0, 10);
+  for (const row of (snap.days ?? []).filter(r => r.day < today && (r.ranges ?? []).some(x => x.realisedAtr == null)).slice(-5)) {
+    let changed = false;
+    for (const r of row.ranges) {
+      if (r.realisedAtr != null) continue; const sym = _DIGEST_INSTR_SYM[r.inst]; if (!sym) continue;
+      try { const bars = await _btFetchD1(sym, 8); const b = bars.find(x => x.date === row.day); if (!b || !r.atr) continue; const mult = _DIGEST_UNIT_MULT[r.inst] ?? 1; r.realisedAtr = +(((b.high - b.low) * mult) / r.atr).toFixed(2); r.realised = +((b.high - b.low) * mult).toFixed(r.unit === 'pips' ? 0 : 1); changed = true; } catch { /* next tick */ }
+    }
+    if (changed) await _snapUpdateDay(row.day, async x => { x.ranges = row.ranges; });
+  }
+}
+app.get('/api/digest', async (req, res) => { try { const d = await _sendDigest({ dry: req.query.send !== '1' }); res.json({ ok: true, ...d }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/range-calls', async (req, res) => {
+  try {
+    const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '60', 10) || 60));
+    const rows = (st?.days ?? []).slice(-n).flatMap(d => (d.ranges ?? []).map(r => ({ ...r, day: d.day })));
+    const scored = rows.filter(r => r.realisedAtr != null);
+    const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+    const byInst = {}; for (const r of scored) (byInst[r.inst] ??= []).push(r);
+    const summary = { n: scored.length, meanExpected: scored.length ? +mean(scored.map(r => r.expectedAtr)).toFixed(2) : null, meanRealised: scored.length ? +mean(scored.map(r => r.realisedAtr)).toFixed(2) : null,
+      flagged: (() => { const f = scored.filter(r => r.expectedAtr > 1.05), o = scored.filter(r => r.expectedAtr <= 1.05); return { n: f.length, realised: f.length ? +mean(f.map(r => r.realisedAtr)).toFixed(2) : null, ordinaryN: o.length, ordinaryRealised: o.length ? +mean(o.map(r => r.realisedAtr)).toFixed(2) : null }; })(),
+      byInstrument: Object.fromEntries(Object.entries(byInst).map(([k, v]) => [k, { n: v.length, expected: +mean(v.map(r => r.expectedAtr)).toFixed(2), realised: +mean(v.map(r => r.realisedAtr)).toFixed(2) }])) };
+    res.json({ ok: true, rows: rows.slice(-200), summary });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('digest', () => _digestTick().catch(e => console.error('[digest]', e.message)), 20 * 60_000);
+svcInterval('rangeScore', () => _scoreRanges().catch(e => console.error('[range-score]', e.message)), 60 * 60_000);
 
 // ── Nowcasts: the third number on a release line ────────────────────────────
 // Consensus is what the street expects; the actual is what printed; the nowcast
