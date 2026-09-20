@@ -44,33 +44,63 @@ function zTrail(series, win = 120) {
 const shift = (arr, k) => arr.map((_, i) => i - k >= 0 ? arr[i - k] : null);
 
 /**
- * series: { cfnai, claims, indpro, payems, corecpi, corepce, bei5 } each [{date, value}]
- * returns [{ m, growth, inflation, regime, gComp, iComp }] by publication month
+ * Generic: growth and inflation legs -> monthly labels. Each leg is
+ * { obs: [{date, value}], kind } with kind one of
+ *   mean3     the 3-month mean of the level (CFNAI)
+ *   negLogMom -(3m mean - 12m mean) of log level (claims: falling = stronger)
+ *   annLog3   3-month annualised log change of an index (production, payrolls, GDP levels, CPI index)
+ *   level     the level itself (a rate: CPI y/y, GDP q/q)
+ *   negLevel  minus the level (unemployment: lower = stronger)
+ * Growth score = the growth composite's 3-month mean minus its 12-month mean;
+ * inflation score = the inflation composite's 3-month change.
  */
-export function regimeHistory(series, { lagMonths = 1, zWin = 120 } = {}) {
-  const S = Object.fromEntries(Object.entries(series).map(([k, v]) => [k, monthEnd(v)]));
-  const months = [...new Set(Object.values(S).flatMap(a => a.map(x => x.m)))].sort();
-  const val = (k) => { const by = new Map(S[k].map(x => [x.m, x.v])); return months.map(m => by.get(m) ?? null); };
-  const cf = val('cfnai'), cl = val('claims'), ip = val('indpro'), pe = val('payems'), cc = val('corecpi'), cp = val('corepce'), be = val('bei5');
-  // growth legs (higher = stronger)
-  const g1 = cf.map((_, i) => meanLast(cf.map(x => x ?? NaN), i, 3)).map(x => Number.isFinite(x) ? x : null);
-  const g2 = cl.map((_, i) => { const a = meanLast(cl.map(x => x != null ? Math.log(x) : NaN), i, 3), b = meanLast(cl.map(x => x != null ? Math.log(x) : NaN), i, 12); return Number.isFinite(a) && Number.isFinite(b) ? -(a - b) * 100 : null; });
-  const g3 = ip.map((_, i) => annLog(ip.map(x => x ?? NaN), i, 3)).map(x => Number.isFinite(x) ? x : null);
-  const g4 = pe.map((_, i) => annLog(pe.map(x => x ?? NaN), i, 3)).map(x => Number.isFinite(x) ? x : null);
-  // inflation legs (higher = hotter)
-  const i1 = cc.map((_, i) => annLog(cc.map(x => x ?? NaN), i, 3)).map(x => Number.isFinite(x) ? x : null);
-  const i2 = cp.map((_, i) => annLog(cp.map(x => x ?? NaN), i, 3)).map(x => Number.isFinite(x) ? x : null);
-  const i3 = be;
-  const zs = [g1, g2, g3, g4].map(a => zTrail(a, zWin)), zi = [i1, i2, i3].map(a => zTrail(a, zWin));
-  const gComp = months.map((_, i) => { const v = zs.map(a => a[i]).filter(x => x != null); return v.length >= 3 ? mean(v) : null; });
-  const iComp = months.map((_, i) => { const v = zi.map(a => a[i]).filter(x => x != null); return v.length >= 2 ? mean(v) : null; });
+export function regimeFromLegs({ growth = [], inflation = [] }, { lagMonths = 1, zWin = 120, minGrowthLegs = 2, minInflLegs = 1 } = {}) {
+  const all = [...growth, ...inflation].map(l => monthEnd(l.obs));
+  const months = [...new Set(all.flatMap(a => a.map(x => x.m)))].sort();
+  const val = (me) => { const by = new Map(me.map(x => [x.m, x.v])); return months.map(m => by.get(m) ?? null); };
+  const derive = (leg, me) => {
+    const v = val(me); const nn = v.map(x => x ?? NaN);
+    switch (leg.kind) {
+      case 'mean3': return v.map((_, i) => { const x = meanLast(nn, i, 3); return Number.isFinite(x) ? x : null; });
+      case 'negLogMom': return v.map((_, i) => { const a = meanLast(nn.map(x => x > 0 ? Math.log(x) : NaN), i, 3), b = meanLast(nn.map(x => x > 0 ? Math.log(x) : NaN), i, 12); return Number.isFinite(a) && Number.isFinite(b) ? -(a - b) * 100 : null; });
+      case 'annLog3': return v.map((_, i) => { const x = annLog(nn, i, 3); return Number.isFinite(x) ? x : null; });
+      case 'negLevel': return v.map(x => x == null ? null : -x);
+      default: return v;
+    }
+  };
+  const gz = growth.map((l, i) => zTrail(derive(l, all[i]), zWin)), iz = inflation.map((l, i) => zTrail(derive(l, all[growth.length + i]), zWin));
+  const gComp = months.map((_, i) => { const v = gz.map(a => a[i]).filter(x => x != null); return v.length >= minGrowthLegs ? mean(v) : null; });
+  const iComp = months.map((_, i) => { const v = iz.map(a => a[i]).filter(x => x != null); return v.length >= minInflLegs ? mean(v) : null; });
   const gScore = gComp.map((_, i) => { const a = meanLast(gComp.map(x => x ?? NaN), i, 3), b = meanLast(gComp.map(x => x ?? NaN), i, 12); return Number.isFinite(a) && Number.isFinite(b) ? a - b : null; });
   const iScore = iComp.map((v, i) => v != null && iComp[i - 3] != null ? v - iComp[i - 3] : null);
-  // publication lag: the label for month m uses scores computed from data through m-lag
   const gL = shift(gScore, lagMonths), iL = shift(iScore, lagMonths), gcL = shift(gComp, lagMonths), icL = shift(iComp, lagMonths);
   return months.map((m, i) => ({ m, growth: gL[i] != null ? +gL[i].toFixed(3) : null, inflation: iL[i] != null ? +iL[i].toFixed(3) : null, gComp: gcL[i] != null ? +gcL[i].toFixed(3) : null, iComp: icL[i] != null ? +icL[i].toFixed(3) : null,
     regime: gL[i] != null && iL[i] != null ? REGIMES[`${gL[i] > 0 ? '+' : '-'}${iL[i] > 0 ? '+' : '-'}`] : null })).filter(r => r.regime);
 }
+
+/**
+ * The US: series { cfnai, claims, indpro, payems, corecpi, corepce, bei5 }.
+ */
+export function regimeHistory(series, opts = {}) {
+  return regimeFromLegs({
+    growth: [{ obs: series.cfnai, kind: 'mean3' }, { obs: series.claims, kind: 'negLogMom' }, { obs: series.indpro, kind: 'annLog3' }, { obs: series.payems, kind: 'annLog3' }],
+    inflation: [{ obs: series.corecpi, kind: 'annLog3' }, { obs: series.corepce, kind: 'annLog3' }, { obs: series.bei5, kind: 'level' }],
+  }, { minGrowthLegs: 3, minInflLegs: 2, ...opts });
+}
+// The other currencies, on the series validated this week. AUD/JPY/CHF/NZD: no read.
+export const CURRENCY_LEGS = {
+  GBP: { growth: [['gb_unemp', 'negLevel'], ['gb_gdp', 'annLog3']], inflation: [['gb_cpi', 'level'], ['gb_core', 'level']] },
+  EUR: { growth: [['ea_unemp', 'negLevel'], ['ea_gdp', 'level']], inflation: [['ea_hicp', 'level'], ['ea_core', 'level']] },
+  CAD: { growth: [['ca_unemp', 'negLevel'], ['ca_gdp', 'annLog3']], inflation: [['ca_cpi_yoy', 'level'], ['ca_trim', 'level'], ['ca_median', 'level']] },
+};
+export function currencyRegime(ccy, series, opts = {}) {
+  const L = CURRENCY_LEGS[ccy]; if (!L) return null;
+  const legs = k => L[k].map(([id, kind]) => ({ obs: series[id] ?? [], kind })).filter(l => l.obs.length);
+  const g = legs('growth'), i = legs('inflation'); if (g.length < 2 || i.length < 1) return null;
+  return regimeFromLegs({ growth: g, inflation: i }, { minGrowthLegs: 2, minInflLegs: 1, ...opts });
+}
+// y/y from a monthly index
+export const yoy = obs => { const me = monthEnd(obs); return me.map((x, i) => i >= 12 && me[i - 12].v ? { date: `${x.m}-01`, value: (x.v / me[i - 12].v - 1) * 100 } : null).filter(Boolean); };
 
 // spells: consecutive months in one regime
 export function spells(hist) {

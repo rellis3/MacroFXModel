@@ -90,3 +90,62 @@ Goldilocks, month 5 — growth improving, inflation easing. In this backdrop
 since 2007: S&P ↑ (+1.2%/mo, n=56), Nasdaq ↑; the rest no tilt. The usual next
 move is reflation; its tell is wages, commodities, breakevens."* Context; the FX
 cells are no-tilt, which is the desk's standing result restated.
+
+---
+
+## R2 — the regime per currency, and the pair as a regime *differential* (registered 2026-09-20, before running)
+
+The US-only table had no FX tilt, which is what a one-sided label should give:
+EUR/USD is not "US goldilocks", it is "US goldilocks *against* euro-area
+stagflation". This registers the two-sided version.
+
+**Per-currency labels** (same construction as the US one — rate of change,
+z over a trailing ten years, threshold zero, one-month publication lag), on
+series validated this week and nothing older:
+
+| currency | growth legs | inflation legs |
+|---|---|---|
+| USD | as above | as above |
+| GBP | −Δ unemployment (3m vs 12m), monthly GDP 3m annualised (ONS) | CPI y/y, core CPI y/y (ONS), scored as 3-month change |
+| EUR | −Δ unemployment, GDP q/q held monthly (Eurostat) | HICP y/y, core HICP y/y (Eurostat) |
+| CAD | −Δ unemployment, monthly GDP 3m annualised (StatCan) | CPI y/y (from the index), CPI-trim, CPI-median (StatCan) |
+| AUD, JPY, CHF, NZD | **no read** — the only free series are stale OECD mirrors | |
+
+**The differential:** for EUR/USD, GBP/USD, USD/CAD each month, the pair of
+labels (base, quote). Reported two ways: the full 4×4 grid, and the coarse
+split *aligned* (same quadrant) / *diverging* (different quadrant), which is
+the notes' "policy-divergence regime".
+
+**Outcomes:** next-month return and next-month range (high−low ÷ price), by
+cell, with n and a bootstrap interval, 2007 →.
+
+**What counts:** this is a base-rate table like the US one — no pass bar, no
+lean. The one hypothesis worth stating in advance: **diverging months run a
+wider range than aligned months** (the notes' claim, restated as range). If the
+range difference's interval clears zero it goes on the page as a tested
+sentence; direction cells are reported and expected to be no-tilt.
+
+### R2 results (run 2026-09-20; design frozen above before running)
+
+`analysis/regime_pairs_study.mjs`; labels via `regimeCore.currencyRegime`.
+
+**Per-currency labels** (months of history): USD 666 (1971→), GBP 305
+(2001→), EUR 212 (2008→, Eurostat's HICP starts 2005 and the ten-year z needs
+three years), CAD 271 (2004→). Today: USD goldilocks, GBP goldilocks, EUR
+reflation, CAD goldilocks. Shares are balanced within each (each quadrant
+15–30%), so the construction is not degenerate on any of them.
+
+**The differential — NULL on all four pairs.** Next-month range and return,
+aligned vs diverging months, 2008 →:
+
+| pair | aligned n · range · ret | diverging n · range · ret | range diff [95%] | return diff [95%] |
+|---|---|---|---|---|
+| EUR/USD | 70 · 3.79% · +0.04% | 142 · 3.81% · −0.15% | +0.03pp [−0.48, +0.52] | −0.19pp [−0.93, +0.60] |
+| GBP/USD | 79 · 4.23% · +0.26% | 134 · 3.90% · −0.25% | −0.33pp [−0.86, +0.23] | −0.51pp [−1.18, +0.16] |
+| USD/CAD | 88 · 3.51% · +0.05% | 125 · 3.42% · +0.06% | −0.09pp [−0.53, +0.33] | +0.01pp [−0.65, +0.63] |
+| EUR/GBP | 93 · 3.30% · −0.16% | 119 · 3.19% · +0.03% | −0.11pp [−0.54, +0.32] | +0.19pp [−0.31, +0.76] |
+
+The notes' "policy-divergence regime" does not show up as wider months or as
+a tilt on this construction. The per-currency labels ship as description
+(regime.html "By currency", the pair's backdrop line in the drawer's Why tab),
+with the null printed beside them.
