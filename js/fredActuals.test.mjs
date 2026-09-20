@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { fredSpecFor, referenceDate, vintageWindow, actualFromVintage, priorAgrees, pendingRows, fetchStart, revisionOf, policyActualFrom } from './fredActuals.js';
+import { fredSpecFor, referenceDate, vintageWindow, actualFromVintage, priorAgrees, pendingRows, fetchStart, revisionOf, policyActualFrom, onsSeries } from './fredActuals.js';
 
 const ms = s => Date.parse(s);
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
 t('map', () => {
   assert.equal(fredSpecFor('US', 'CPI m/m').id, 'CPIAUCSL');
-  assert.equal(fredSpecFor('GB', 'CPI m/m'), null);
+  assert.equal(fredSpecFor('GB', 'Halifax HPI m/m'), null); assert.equal(fredSpecFor('GB', 'CPI y/y').source, 'ons');
   assert.equal(fredSpecFor('US', 'ISM Manufacturing PMI'), null);
 });
 t('reference periods (documentation helpers)', () => {
@@ -80,7 +80,7 @@ t('pending rows: US, mapped, 45 min old, within 3 weeks, no actual', () => {
     { country: 'US', event: 'CPI m/m', ms: now - 3 * 3600e3, actual: null },
     { country: 'US', event: 'CPI m/m', ms: now - 10 * 60e3, actual: null },
     { country: 'US', event: 'CPI m/m', ms: now - 30 * 864e5, actual: null },
-    { country: 'GB', event: 'CPI m/m', ms: now - 3 * 3600e3, actual: null },
+    { country: 'GB', event: 'Halifax HPI m/m', ms: now - 3 * 3600e3, actual: null },
     { country: 'US', event: 'ISM Manufacturing PMI', ms: now - 3 * 3600e3, actual: null },
     { country: 'US', event: 'CPI m/m', ms: now - 5 * 3600e3, actual: '0.3%' },
   ];
@@ -96,11 +96,23 @@ t('non-US policy rates: mapped by country, joined on the day after the decision'
   assert.equal(fredSpecFor('GB', 'Official Bank Rate').source, 'boe');
   assert.equal(fredSpecFor('CA', 'Overnight Rate').id, 'V39079');
   assert.equal(fredSpecFor('EU', 'Main Refinancing Rate').source, 'fred');
-  assert.equal(fredSpecFor('GB', 'CPI y/y'), null);
+  assert.equal(fredSpecFor('GB', 'Halifax HPI m/m'), null);
   const spec = fredSpecFor('AU', 'Cash Rate'); const rel = ms('2026-09-15T04:30:00Z');
   const obs = [{ date: '2026-09-14', value: 4.35 }, { date: '2026-09-15', value: 4.35 }, { date: '2026-09-16', value: 4.10 }];
   assert.equal(policyActualFrom(spec, rel, obs).actual, '4.10%');
   assert.equal(policyActualFrom(spec, rel, obs.slice(0, 2)), null);   // nothing dated after the decision yet
   assert.equal(pendingRows([{ country: 'GB', event: 'Official Bank Rate', ms: rel, actual: null }], rel + 3 * 3600e3).length, 1);
+});
+t('international: ONS/StatCan stamps join like FRED; Eurostat needs the exact period', () => {
+  const gb = fredSpecFor('GB', 'CPI y/y'); const rel = ms('2026-09-16T06:00:00Z');
+  const ons = onsSeries({ months: [{ year: '2026', month: 'July', value: '2.9', updateDate: '2026-08-18T23:00:00.000Z' }, { year: '2026', month: 'August', value: '3.1', updateDate: '2026-09-15T23:00:00.000Z' }] });
+  assert.equal(ons[1].realtime_start, '2026-09-16');
+  assert.equal(actualFromVintage(gb, rel, ons).actual, '3.1%');
+  assert.equal(actualFromVintage(gb, rel, ons.slice(0, 1)), null);   // ONS not updated yet
+  const eu = fredSpecFor('EU', 'CPI Flash Estimate y/y'); const flash = ms('2026-09-02T09:00:00Z');   // September flash reports September
+  const es = [{ date: '2026-07-01', value: 2.9, realtime_start: '' }, { date: '2026-08-01', value: 3.2, realtime_start: '2026-09-17' }];
+  assert.equal(actualFromVintage(eu, flash, es), null);   // August is not September: never fill a flash with the previous month's final
+  assert.equal(actualFromVintage(eu, ms('2026-09-17T09:00:00Z'), es), null);   // the Final CPI spec (m1) would take it; the flash spec (m0) must not
+  assert.equal(actualFromVintage(fredSpecFor('EU', 'Final CPI y/y'), ms('2026-09-17T09:00:00Z'), es).actual, '3.2%');
 });
 console.log(`fredActuals: ${n} groups, all passed`);

@@ -216,6 +216,8 @@ export const SERVICES = [
     cadence: 'hourly', cost: 'low', lean: false, on: true, feeds: 'surprise index pages, TDE macro context' },
   { id: 'releaseScorecard', where: 'server', label: 'Release scorecard (30 min after a high-impact print)',
     cadence: 'every 5 min', cost: 'low', lean: false, on: true, feeds: 'the Just-printed card, your-call scoring, one Telegram line per event' },
+  { id: 'regime', where: 'server', label: 'Regime label refresh (growth x inflation from FRED)',
+    cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'regime.html, the regime line in the brief and the chain' },
   { id: 'nowcast', where: 'server', label: 'Nowcast refresh (Cleveland Fed inflation, Atlanta GDPNow)',
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'the third number on a release line (context only, N1/N2)' },
   { id: 'surpriseAlerts', where: 'server', label: 'Surprise alert scan',

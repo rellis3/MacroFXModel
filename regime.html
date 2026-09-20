@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regime</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#3d444d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;
+    --gold:#d29922;--refl:#f97316;--stag:#f85149;--defl:#4f7df0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1} .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 18px}
+  .intro{color:var(--text2);font-size:12.5px;line-height:1.65;margin-bottom:14px;max-width:72ch}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .card h2{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .now{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:700px){.now{grid-template-columns:1fr}}
+  .big{font-size:22px;font-weight:800;line-height:1.2}
+  .big.goldilocks{color:var(--gold)} .big.reflation{color:var(--refl)} .big.stagflation{color:var(--stag)} .big.deflation{color:var(--defl)}
+  .sub{color:var(--text2);font-size:12.5px;line-height:1.6;margin-top:4px}
+  .sub b{color:var(--text)}
+  .quad{position:relative;width:100%;aspect-ratio:1/1;max-width:340px;border:1px solid var(--border);border-radius:8px;background:var(--card2)}
+  .quad .q{position:absolute;width:50%;height:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .quad .q.on{color:var(--text);background:rgba(79,125,240,.10)}
+  .quad .ax{position:absolute;background:var(--border2)} .quad .ax.v{left:50%;top:0;bottom:0;width:1px} .quad .ax.h{top:50%;left:0;right:0;height:1px}
+  .quad .dot{position:absolute;width:12px;height:12px;border-radius:50%;background:var(--text);border:2px solid var(--bg);transform:translate(-50%,-50%);box-shadow:0 0 0 3px rgba(230,237,243,.25)}
+  .quad .trail{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--text3);transform:translate(-50%,-50%);opacity:.6}
+  .quad .lbl{position:absolute;font-size:9.5px;color:var(--text3)}
+  .strip{display:flex;height:22px;border-radius:6px;overflow:hidden;border:1px solid var(--border);margin-top:6px}
+  .strip i{display:block;height:100%} .strip .goldilocks{background:var(--gold)} .strip .reflation{background:var(--refl)} .strip .stagflation{background:var(--stag)} .strip .deflation{background:var(--defl)}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:4px}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+  td{padding:6px 8px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top;font-variant-numeric:tabular-nums}
+  td:first-child{color:var(--text);font-weight:600}
+  .cell{line-height:1.35} .cell b{color:var(--text)} .cell .n{font-size:10px;color:var(--text3)}
+  .cell.up b{color:var(--bull)} .cell.down b{color:var(--red)}
+  .tblwrap{overflow-x:auto}
+  .tr{display:grid;grid-template-columns:150px 1fr auto;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
+  .tr:last-child{border-bottom:none} .tr b{color:var(--text)} .tr .k{font-weight:700;color:var(--text)} .tr .ct{color:var(--text3);white-space:nowrap}
+  .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px;max-width:80ch}
+  @media (max-width:560px){.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>🧭 Regime</h1>
+  <span class="stamp" id="stamp">growth × inflation, monthly, on this desk's data</span>
+  <span class="spacer"></span>
+  <a class="hbtn" href="today.html">← Today</a>
+  <a class="hbtn" href="evidence.html">Evidence Book</a>
+</div>
+<div class="wrap">
+  <div class="intro">Every month gets one of four labels from two questions: is growth improving or fading, and is inflation rising or easing? Both are measured as <b>rate of change</b> (this quarter against the last year), from free public series, using only numbers that had printed by that month. The table below is what each market did in the month after each label — on this desk's own prices since 2007, with intervals — not a quote from a textbook. A regime is a backdrop, not a forecast: it tells you which way the current has been running, and how choppy the water usually is.</div>
+
+  <div class="card"><h2>Now</h2><div class="now" id="now">Loading…</div></div>
+  <div class="card"><h2>The last five years, month by month</h2><div id="strip"></div><div class="legend"><span><i style="background:var(--gold)"></i>goldilocks</span><span><i style="background:var(--refl)"></i>reflation</span><span><i style="background:var(--stag)"></i>stagflation</span><span><i style="background:var(--defl)"></i>deflation / risk-off</span></div><div class="sub" id="stripNote"></div></div>
+  <div class="card"><h2>What each market did in the month after each label · 2007 → today</h2><div class="tblwrap"><table id="tbl"></table></div><div class="sub" style="margin-top:8px">Mean monthly return, then the 95% interval and n. <b>Bold green or red</b> = the interval is clear of zero; grey = no tilt. The last column is the average monthly range — the part that is actually predictable.</div></div>
+  <div class="card"><h2>Transitions — the four moves, what has come before them here</h2><div id="trans"></div></div>
+  <div class="note" id="note"></div>
+</div>
+<script>
+const esc = s => String(s ?? '').replace(/</g, '&lt;');
+const WORDS = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
+const NAMES = { SPX500: 'S&P 500', NQ: 'Nasdaq', GOLD: 'Gold', US10Y: '10-year Treasury (price)', COPPER: 'Copper', WTI: 'Oil (WTI)', DXY: 'Dollar (broad)', EURUSD: 'EUR/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD' };
+async function main() {
+  const j = await (await fetch('/api/regime')).json();
+  if (!j.ok) { document.getElementById('now').textContent = j.error ?? 'unavailable'; return; }
+  const { now, history, table, transitions, share, spells, ranAt } = j;
+  document.getElementById('stamp').textContent = `labels through ${history.at(-1).m} · table run ${String(ranAt).slice(0, 10)}`;
+  // now
+  const g = now.scores.growth, i = now.scores.inflation;
+  const x = 50 + Math.max(-45, Math.min(45, g * 60)), y = 50 - Math.max(-45, Math.min(45, i * 60));   // growth →, inflation ↑
+  const trail = history.slice(-7, -1).map(h => `<span class="trail" style="left:${50 + Math.max(-45, Math.min(45, h.growth * 60))}%;top:${50 - Math.max(-45, Math.min(45, h.inflation * 60))}%" title="${h.m}: ${h.regime}"></span>`).join('');
+  document.getElementById('now').innerHTML = `
+    <div><div class="big ${now.regime}">${esc(now.label)}</div>
+      <div class="sub"><b>${esc(now.what)}</b> — ${esc(now.usual)}.</div>
+      <div class="sub">Month <b>${now.months}</b> of this spell (since ${now.since})${now.previous ? `, after ${now.previous.months} month${now.previous.months === 1 ? '' : 's'} of ${WORDS[now.previous.regime].toLowerCase()}` : ''}. Growth score <b>${g >= 0 ? '+' : ''}${g}</b>, inflation score <b>${i >= 0 ? '+' : ''}${i}</b> (zero is the line).</div>
+      ${now.watchFor ? `<div class="sub">The usual next move from here is <b>${WORDS[now.watchFor.to].toLowerCase()}</b>; its tells are ${esc(now.watchFor.tells)} (typically ${esc(now.watchFor.typical)}).</div>` : ''}
+      <div class="sub" style="color:var(--text3);font-size:11px">Spells here run a median of ${median(spells.map(s => s.months))} months and half last under three — the labels are honest about being choppy. Read the direction of travel across several months, not one flip.</div></div>
+    <div><div class="quad">
+      <div class="ax v"></div><div class="ax h"></div>
+      <div class="q ${now.regime === 'stagflation' ? 'on' : ''}" style="left:0;top:0">stagflation</div><div class="q ${now.regime === 'reflation' ? 'on' : ''}" style="left:50%;top:0">reflation</div>
+      <div class="q ${now.regime === 'deflation' ? 'on' : ''}" style="left:0;top:50%">deflation</div><div class="q ${now.regime === 'goldilocks' ? 'on' : ''}" style="left:50%;top:50%">goldilocks</div>
+      <span class="lbl" style="left:4px;top:50%;transform:translateY(-50%)">growth fading</span><span class="lbl" style="right:4px;top:50%;transform:translateY(-50%)">improving</span>
+      <span class="lbl" style="top:4px;left:50%;transform:translateX(-50%)">inflation rising</span><span class="lbl" style="bottom:4px;left:50%;transform:translateX(-50%)">easing</span>
+      ${trail}<span class="dot" style="left:${x}%;top:${y}%" title="now"></span></div></div>`;
+  // strip
+  const last = history.slice(-60);
+  document.getElementById('strip').innerHTML = `<div class="strip">${last.map(h => `<i class="${h.regime}" style="width:${100 / last.length}%" title="${h.m}: ${h.regime}"></i>`).join('')}</div><div class="legend" style="justify-content:space-between"><span>${last[0].m}</span><span>${last.at(-1).m}</span></div>`;
+  const tot = Object.values(share).reduce((a, b) => a + b, 0); document.getElementById('stripNote').textContent = `Since 1971: goldilocks ${Math.round(100 * share.goldilocks / tot)}% of months, reflation ${Math.round(100 * share.reflation / tot)}%, stagflation ${Math.round(100 * share.stagflation / tot)}%, deflation ${Math.round(100 * share.deflation / tot)}%.`;
+  // table
+  const regs = ['goldilocks', 'reflation', 'stagflation', 'deflation'];
+  const cell = c => c?.mean == null ? `<span class="n">n=${c?.n ?? 0}</span>` : `<div class="cell ${c.tilt}"><b>${c.mean >= 0 ? '+' : ''}${c.mean.toFixed(1)}%</b> <span class="n">[${c.lo.toFixed(1)}, ${c.hi.toFixed(1)}] n=${c.n}</span><br><span class="n">up ${Math.round(c.posShare * 100)}% · range ${c.range}%</span></div>`;
+  document.getElementById('tbl').innerHTML = `<tr><th>market</th>${regs.map(r => `<th>${WORDS[r]}</th>`).join('')}<th>all months</th></tr>` +
+    Object.entries(table).map(([k, row]) => `<tr><td>${NAMES[k] ?? k}</td>${regs.map(r => `<td>${cell(row[r])}</td>`).join('')}<td class="cell"><span class="n">${row.all.mean >= 0 ? '+' : ''}${row.all.mean}% · range ${row.all.range}% · n=${row.all.n}</span></td></tr>`).join('');
+  // transitions
+  document.getElementById('trans').innerHTML = transitions.map(t => `<div class="tr"><span class="k">${WORDS[t.from]} → ${WORDS[t.to]}</span><span>tells: ${esc(t.tells)} · the notes say ${esc(t.typical)}</span><span class="ct">seen here ${t.observed}×${t.medianSpellBefore ? `, after a spell of ~${t.medianSpellBefore} months` : ''}</span></div>`).join('');
+  document.getElementById('note').innerHTML = `Construction (frozen before running, <a href="MD%20files/REGIME.md">MD files/REGIME.md</a>): growth = the mean of four trailing-10-year z-scores (Chicago Fed activity index, initial claims, industrial production, payrolls), scored as its 3-month mean minus its 12-month mean; inflation = the mean z-score of core CPI, core PCE (both 3-month annualised) and the 5-year breakeven, scored as its 3-month change. Labels use data published by that month. Asset months are OANDA closes from 2007 (dollar and oil from FRED). What survives: equities carry a positive month in goldilocks and reflation, gold in deflation, and every market's range is widest in stagflation. Nothing here about FX direction — all four FX cells are no-tilt, which is the desk's standing result.`;
+}
+const median = a => { const s = [...a].sort((x, y) => x - y); return s.length ? s[Math.floor(s.length / 2)] : null; };
+main().catch(e => { document.getElementById('now').textContent = e.message; });
+</script>
+</body>
+</html>

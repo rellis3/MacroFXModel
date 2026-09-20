@@ -88,10 +88,84 @@ export const POLICY_RATES = {
   'CA|Overnight Rate':        { id: 'V39079',   source: 'boc',  kind: 'level_pct', ref: 'day', dp: 2 },
   'AU|Cash Rate':             { id: 'FIRMMCRTD', source: 'rba', kind: 'level_pct', ref: 'day', dp: 2 },
 };
+// Non-US data releases from the statistics offices' own open endpoints.
+// Validated 2026-09-19 against the ForexFactory archive (latest vintage, so
+// revised series can drift a tick): GB CPI 6/6, core 6/6, unemployment 2 exact +
+// 4 one-tick revisions; CA CPI 6/6, common core 5/6, unemployment/GDP within a
+// tick, employment change same sign within revision range; EA HICP flash 4/6
+// within a tick. Dropped as not validating: GB claimant count, AWE, retail,
+// manufacturing, monthly GDP; CA retail (discontinued vector). See
+// MD files/SURPRISE_ACTUALS.md. ONS and
+// StatCan stamp every observation with its publication date, so the vintage rule
+// applies unchanged (newest observation, published on or after the release day).
+// Eurostat stamps only the dataset; the newest period carries that stamp and the
+// older ones none, which makes the same rule hold.
+//   ons:      https://www.ons.gov.uk/<path>/timeseries/<id>/<dataset>/data (months[] / quarters[], updateDate)
+//   statcan:  Web Data Service getDataFromVectorsAndLatestNPeriods (refPer, releaseTime)
+//   eurostat: JSON-stat API, dataset `updated`
+export const INTL_ACTUALS = {
+  'GB|CPI y/y':                     { source: 'ons', id: 'd7g7', path: 'economy/inflationandpriceindices', dataset: 'mm23', kind: 'level_pct', ref: 'm1', dp: 1 },
+  'GB|Core CPI y/y':                { source: 'ons', id: 'dko8', path: 'economy/inflationandpriceindices', dataset: 'mm23', kind: 'level_pct', ref: 'm1', dp: 1 },
+  'GB|Unemployment Rate':           { source: 'ons', id: 'mgsx', path: 'employmentandlabourmarket/peoplenotinwork/unemployment', dataset: 'lms', kind: 'level_pct', ref: 'm1', dp: 1 },
+  'CA|Unemployment Rate':           { source: 'statcan', id: 2062815, kind: 'level_pct', ref: 'm1', dp: 1 },
+  'CA|Employment Change':           { source: 'statcan', id: 2062811, kind: 'diff_k', ref: 'm1' },
+  'CA|CPI m/m':                     { source: 'statcan', id: 41690973, kind: 'pct_mom', ref: 'm1' },
+  'CA|Median CPI y/y':              { source: 'statcan', id: 108785714, kind: 'level_pct', ref: 'm1', dp: 1 },
+  'CA|Trimmed CPI y/y':             { source: 'statcan', id: 108785715, kind: 'level_pct', ref: 'm1', dp: 1 },
+  'CA|Common CPI y/y':              { source: 'statcan', id: 108785713, kind: 'level_pct', ref: 'm1', dp: 1 },
+  'CA|GDP m/m':                     { source: 'statcan', id: 65201210, kind: 'pct_mom', ref: 'm2' },
+  'EU|CPI Flash Estimate y/y':      { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=TOTAL', kind: 'level_pct', ref: 'm0', dp: 1 , strictRef: true },
+  'EU|Final CPI y/y':               { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=TOTAL', kind: 'level_pct', ref: 'm1', dp: 1 , strictRef: true },
+  'EU|Core CPI Flash Estimate y/y': { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=CP-HI00XEF', kind: 'level_pct', ref: 'm0', dp: 1 , strictRef: true },
+  'EU|Final Core CPI y/y':          { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=CP-HI00XEF', kind: 'level_pct', ref: 'm1', dp: 1 , strictRef: true },
+  'EU|Flash GDP q/q':               { source: 'eurostat', id: 'namq_10_gdp', params: 'geo=EA20&unit=CLV_PCH_PRE&s_adj=SCA&na_item=B1GQ', kind: 'level_pct', ref: 'q1', dp: 1 , strictRef: true },
+  'EU|Unemployment Rate':           { source: 'eurostat', id: 'une_rt_m', params: 'geo=EA21&s_adj=SA&age=TOTAL&sex=T&unit=PC_ACT', kind: 'level_pct', ref: 'm2', dp: 1, strictRef: true },
+};
 export function fredSpecFor(country, event) {
   const cc = String(country ?? '').toUpperCase(), t = String(event ?? '').trim();
   if (cc === 'US') { const f = FRED_ACTUALS[t]; return f ? { ...f, source: 'fred' } : null; }
-  return POLICY_RATES[`${cc}|${t}`] ?? null;
+  return POLICY_RATES[`${cc}|${t}`] ?? INTL_ACTUALS[`${cc}|${t}`] ?? null;
+}
+
+// Validation helper: the formatted value at a given reference date from a
+// latest-vintage series (no publication stamps needed). Revised series may
+// disagree with the first print; that is the check's job to show.
+export function actualAtDate(spec, refDate, obs) {
+  const rows = _asOf(obs); const i = rows.findIndex(o => o.date === refDate);
+  return i >= 0 ? _format(spec, rows, i) : null;
+}
+
+// JSON-stat (Eurostat) -> [{date, value}] for a single-series query; the value
+// map is keyed by the flat index over the dimension sizes.
+export function jsonStatSeries(j) {
+  const ids = j.id ?? [], size = j.size ?? []; const tPos = ids.indexOf('time'); if (tPos < 0) return [];
+  const timeIdx = j.dimension.time.category.index; const times = Object.entries(timeIdx).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+  const strides = []; let acc = 1; for (let d = ids.length - 1; d >= 0; d--) { strides[d] = acc; acc *= size[d]; }
+  // every other dimension must be a single category (a filtered query); take its index 0
+  const out = [];
+  for (let ti = 0; ti < times.length; ti++) {
+    let flat = 0; for (let d = 0; d < ids.length; d++) flat += (d === tPos ? ti : 0) * strides[d];
+    const v = j.value?.[String(flat)]; if (v == null) continue;
+    const t = times[ti]; const date = /^\d{4}-Q[1-4]$/.test(t) ? `${t.slice(0, 4)}-${String((+t.slice(6) - 1) * 3 + 1).padStart(2, '0')}-01` : /^\d{4}-\d{2}$/.test(t) ? `${t}-01` : t;
+    out.push({ date, value: +v });
+  }
+  return out;
+}
+// ONS timeseries JSON -> [{date, value, realtime_start}]
+const ONS_MON = { January: '01', February: '02', March: '03', April: '04', May: '05', June: '06', July: '07', August: '08', September: '09', October: '10', November: '11', December: '12' };
+export function onsSeries(j) {
+  const rows = (j.months?.length ? j.months : j.quarters ?? []).map(m => {
+    const y = m.year; const mo = m.month ? ONS_MON[m.month] : m.quarter ? String((+m.quarter.replace(/\D/g, '') - 1) * 3 + 1).padStart(2, '0') : null; if (!y || !mo) return null;
+    // ONS stamps midnight London, which is 23:00 UTC the evening before the 07:00 release: roll it to the release day
+    const u = m.updateDate ? new Date(m.updateDate) : null; if (u && u.getUTCHours() >= 20) u.setUTCDate(u.getUTCDate() + 1);
+    return { date: `${y}-${mo}-01`, value: parseFloat(m.value), realtime_start: u ? u.toISOString().slice(0, 10) : '' };
+  }).filter(o => o && Number.isFinite(o.value));
+  return rows;
+}
+// StatCan WDS -> [{date, value, realtime_start}]
+export function statcanSeries(j) {
+  const pts = j?.[0]?.object?.vectorDataPoint ?? [];
+  return pts.map(p => ({ date: String(p.refPer).slice(0, 10), value: parseFloat(p.value), realtime_start: String(p.releaseTime ?? '').slice(0, 10) })).filter(o => Number.isFinite(o.value));
 }
 
 // A daily policy-rate series without vintages -> the actual for a decision:
@@ -163,6 +237,9 @@ function _asOf(obs) {
 // the three months before the release, quarterly on the previous quarter or two,
 // weekly inside a fortnight, a target rate on the decision day or after.
 function _plausible(spec, releaseMs, date) {
+  // a source with no per-observation stamp must match the release's own period
+  // exactly, or a flash release would be filled with the previous month's final
+  if (spec.strictRef) return date === referenceDate(releaseMs, spec.ref);
   const d = new Date(releaseMs), y = d.getUTCFullYear(), m = d.getUTCMonth();
   switch (spec.ref) {
     case 'm0': case 'm1': case 'm2': return date >= iso(utc(y, m - 3)) && date <= iso(utc(y, m));
