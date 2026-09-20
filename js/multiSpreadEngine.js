@@ -197,7 +197,8 @@ export async function runSpreadBook(spreadType, opts = {}, pairKeys = Object.key
   const ppy = Math.max(1, allTrades.length / yrs);
   const summ = recs => summarizeYieldSpread(recs, { costPct: cf.costPct, periodsPerYear: ppy });
   const cRetAll = sortedDates.map(d => combinedDaily[d] || 0);
-  const cRetOos = sortedDates.filter(d => splitDate && d >= splitDate).map(d => combinedDaily[d] || 0);
+  const oosDates = sortedDates.filter(d => splitDate && d >= splitDate);
+  const cRetOos = oosDates.map(d => combinedDaily[d] || 0);
   return {
     spreadType, perPair, trades: allTrades, log,
     combined: {
@@ -205,7 +206,12 @@ export async function runSpreadBook(spreadType, opts = {}, pairKeys = Object.key
       portfolioSharpe: { all: sharpeFromDaily(cRetAll), oos: sharpeFromDaily(cRetOos) },
       perYear: perYearBreakdown(allTrades, { costPct: cf.costPct }),
       perYearOos: perYearBreakdown(oos, { costPct: cf.costPct }),
+      // Full-sample flat-sized stream (IS+OOS) — for callers that want the whole
+      // history. `dailyOos` below is the one Bar B's combinedPortfolioStats should
+      // use: it must compare on the SAME OOS window as `portfolioSharpe.oos` above,
+      // or "combined beats y2 alone" is comparing two different time periods.
       daily: { dates: sortedDates, dailyReturns: sortedDates.map(d => combinedFlat[d] || 0) },
+      dailyOos: { dates: oosDates, dailyReturns: oosDates.map(d => combinedFlat[d] || 0) },
     },
   };
 }
@@ -254,9 +260,19 @@ export async function runMultiSpreadSleeve(opts = {}) {
   const books = {};
   for (const spreadType of SPREAD_TYPES) books[spreadType] = await runSpreadBook(spreadType, opts);
 
+  // OOS-only (matches portfolioSharpe.oos's window, not the full IS+OOS history —
+  // Bar B compares against the SAME period the validated sleeve's own OOS Sharpe is
+  // reported on) and 252 annualization: this is a genuinely DAILY return stream
+  // (one value per calendar day), the same convention js/yieldSpreadCore.js's
+  // sharpeFromDaily and runSpreadBook's own portfolioSharpe already use. A
+  // trade-frequency annualizer (~26/yr, right for summarizeYieldSpread's PER-TRADE
+  // Sharpe) does not apply here — using it understated every number in this section
+  // by ≈√(252/26)≈3.1x (found 2026-09-20 on the first real Railway run: "y2 alone
+  // Sharpe 0.13" here vs the correctly-annualized "Portfolio Sharpe (honest daily
+  // MTM) 0.99" shown per-book for the identical series).
   const dailyStreamsByType = {};
-  for (const t of SPREAD_TYPES) dailyStreamsByType[t] = books[t].combined.daily;
-  const portfolio = combinedPortfolioStats(dailyStreamsByType, { periodsPerYear: opts.periodsPerYear ?? 26 });
+  for (const t of SPREAD_TYPES) dailyStreamsByType[t] = books[t].combined.dailyOos;
+  const portfolio = combinedPortfolioStats(dailyStreamsByType, { periodsPerYear: opts.periodsPerYear ?? 252 });
 
   // Trade-overlap of every non-baseline tenor against the validated y2 sleeve.
   const overlapVsBaseline = {};

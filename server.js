@@ -28724,7 +28724,7 @@ app.post('/api/multi-spread-sleeve/run', (req, res) => {
     splitFrac: num(b.splitFrac, 0.6),
     autoOrient: b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
     overlapWindowDays: parseInt(b.overlapWindowDays) || 2,
-    periodsPerYear: num(b.periodsPerYear, 26),
+    periodsPerYear: num(b.periodsPerYear, 252),   // daily stream annualization, not a per-trade one — see js/multiSpreadEngine.js's runMultiSpreadSleeve comment
   };
   const jobId = `mss_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
