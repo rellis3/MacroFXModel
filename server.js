@@ -93,7 +93,7 @@ import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
-import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
+import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
@@ -252,6 +252,7 @@ import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceC
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
 import { runFullYieldSpread, runYieldSpreadSweep, computeYieldSpreadSignals, YIELD_SPREAD_DEFAULTS } from './js/yieldSpreadEngine.js';
+import { runMultiSpreadSleeve, runSpreadSweep, SPREAD_TYPES as _SPREAD_TYPES, SPREAD_DEFS as _SPREAD_DEFS } from './js/multiSpreadEngine.js';
 import { refreshYieldSpreadPlan, YIELD_SPREAD_BOT_DEFAULTS } from './js/yieldSpreadProducer.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
@@ -15028,6 +15029,37 @@ app.get('/api/mve-validate/:sym', async (req, res) => {
   }
 });
 
+// MVE full validation — /api/mve-validate/:sym's report PLUS the two pieces added
+// in MD files/RESIDUAL_REVERSION_FX_TEST.md: a 2022-24 rate-divergence-supercycle
+// regime split (CLAUDE.md: "disaggregate before declaring a pooled null") and a
+// cost overlay (the validated yield-spread sleeve's own 0.02% round-trip
+// assumption — an ASSUMPTION here, not a measured spread/ATR gate). Same
+// underlying fetch/fit as /api/mve-validate/:sym (shares its 6h cache key space
+// only in spirit, not literally — this has its own cache so the two endpoints'
+// TTLs don't fight). Reused by analysis/residual_reversion_fx.mjs — one function,
+// not two copies (Lego Principle 1).
+const _mveValFullCache = new Map();
+app.get('/api/mve-validate-full/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _mveValFullCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchContext({
+      sym, deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+      count: 5000, fromDate: '2004-01-01',
+    });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _mveValidateFull(built.ctx);
+    report.dataSource = built.dataSource;
+    if (report.ok) _mveValFullCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
 // MVE mechanical-anchor validation — the KALMAN branch (Garin's dog/owner "moving
 // fair value"): price's own recent path only, no macro factors, so no FRED_KEY
 // needed at all — OANDA D1 is the only dependency. Same gate discipline as
@@ -28394,6 +28426,87 @@ app.post('/api/yield-spread/sweep', (req, res) => {
       const msg = e?.message || String(e) || 'Unknown engine error';
       console.error('[yield-spread/sweep]', msg, e?.stack ?? '');
       yieldSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+// ── Multi-spread sleeve (MD files/MULTI_SPREAD_SLEEVE.md) — pre-registered, ISOLATED.
+// Generalizes the validated y2 sleeve above to a y10 tenor + the diversification
+// diagnostics (z-correlation, trade overlap, equal-risk combined Sharpe). Same
+// async-job pattern as /api/yield-spread/* (copied deliberately, not shared —
+// CLAUDE.md's house-conventions note: "copy an existing block"). NOT linked from
+// any dashboard until Bar A/B clear on real data — same posture as js/mve/.
+const multiSpreadJobs = new Map();
+function _purgeStaleMultiSpreadJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of multiSpreadJobs) if (job.startedAt < cutoff) multiSpreadJobs.delete(id);
+}
+
+app.get('/api/multi-spread-sleeve/defaults', (_req, res) => {
+  res.json({ ok: true, spreadTypes: _SPREAD_TYPES, defs: _SPREAD_DEFS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/multi-spread-sleeve/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch multi-spread data' });
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined, dateTo: b.dateTo || undefined,
+    zWindow: parseInt(b.zWindow) || 252,
+    entryThreshold: num(b.entryThreshold, 2.75),
+    zExit: num(b.zExit, 1.5),
+    maxHoldDays: parseInt(b.maxHoldDays) || 20,
+    costPct: num(b.costPct, 0.02),
+    splitFrac: num(b.splitFrac, 0.6),
+    autoOrient: b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
+    overlapWindowDays: parseInt(b.overlapWindowDays) || 2,
+    periodsPerYear: num(b.periodsPerYear, 26),
+  };
+  const jobId = `mss_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMultiSpreadJobs();
+  multiSpreadJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = await runMultiSpreadSleeve(opts);
+      multiSpreadJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[multi-spread-sleeve/run]', msg, e?.stack ?? '');
+      multiSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/multi-spread-sleeve/status/:jobId', (req, res) => {
+  const job = multiSpreadJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// Robustness sweep for the y10 tenor only (y2's own sweep already lives at
+// /api/yield-spread/sweep) — is a good cell a broad plateau or a lucky spike?
+app.post('/api/multi-spread-sleeve/sweep', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch multi-spread data' });
+  const b = req.body || {};
+  const opts = { dateFrom: b.dateFrom || undefined, dateTo: b.dateTo || undefined };
+  const jobId = `msss_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMultiSpreadJobs();
+  multiSpreadJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = await runSpreadSweep('y10', opts, {});
+      multiSpreadJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[multi-spread-sleeve/sweep]', msg, e?.stack ?? '');
+      multiSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
     }
   })();
   res.json({ ok: true, jobId });

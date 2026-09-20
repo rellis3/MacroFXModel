@@ -20,7 +20,7 @@ import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRat
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
 import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL, fetchPriceOnly, PUB_LAG_DAYS, shiftObsForward } from './liveAdapter.js';
-import { validateInstrument, oosMispricingSeries, poolConsistency, validateMechanicalAnchor, oosMispricingSeriesKalman } from './validateInstrument.js';
+import { validateInstrument, oosMispricingSeries, poolConsistency, validateMechanicalAnchor, oosMispricingSeriesKalman, validateInstrumentWithRegimeSplit, costOverlay } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
 const ok = (name, cond, extra = '') => { tests++; console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -412,6 +412,45 @@ console.log('\n── OOS validation (does mispricing predict returns?) ──')
     Array.isArray(repTrades.strategy.bestTrPnls) && repTrades.strategy.bestTrPnls.length === repTrades.strategy.trades,
     `n=${repTrades.strategy.bestTrPnls?.length} trades=${repTrades.strategy.trades}`);
   ok('includeTrades:true does not change the scored numbers themselves', repTrades.strategy.annualizedSharpe === rep.strategy.annualizedSharpe && repTrades.verdict === rep.verdict);
+
+  // ── costOverlay — pure math, no network ──
+  ok('costOverlay: null on empty/missing trades', costOverlay(null, 0.02) === null && costOverlay([], 0.02) === null);
+  {
+    const co = costOverlay([0.01, 0.02, -0.005, 0.015], 0.02);
+    ok('costOverlay: haircuts every trade by costRtPct/100', co.meanPreCost === +((0.01 + 0.02 - 0.005 + 0.015) / 4).toFixed(5) && co.meanPostCost < co.meanPreCost, JSON.stringify(co));
+    ok('costOverlay: n matches input length, costRtPct echoed', co.n === 4 && co.costRtPct === 0.02);
+  }
+
+  // ── validateInstrumentWithRegimeSplit — a fixture where the reverting behaviour is
+  // CONCENTRATED in one date window and ABSENT outside it, so the split should read
+  // "regime-concentrated" — the exact pooled-null-hides-a-subset-edge case this
+  // function exists to catch (MD files/RESIDUAL_REVERSION_FX_TEST.md §2). ──
+  {
+    const r2 = rng(97);
+    const N2 = 900, g1 = [], g2 = [], price2 = [], dates2 = [];
+    let dev2 = 0, d = new Date(Date.UTC(2020, 0, 2));
+    const REGIME_FROM = '2022-01-01', REGIME_TO = '2022-12-31';
+    for (let i = 0; i < N2; i++) {
+      do { d = new Date(d.getTime() + 86400000); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+      const iso = d.toISOString().slice(0, 10);
+      dates2.push(iso);
+      const a = Math.sin(i / 30), b = Math.cos(i / 22);
+      g1.push(a); g2.push(b);
+      const inRegime = iso >= REGIME_FROM && iso <= REGIME_TO;
+      dev2 = inRegime ? dev2 * 0.85 + 0.6 * gauss(r2) : dev2 + 0.15 * gauss(r2);   // reverts ONLY inside the window; drifts (no reversion) outside
+      price2.push(100 + 5 * a + 3 * b + dev2);
+    }
+    const ctx2 = { instrument: 'REGIME_TEST', price: price2, dates: dates2, factors: [{ name: 'g1', series: g1 }, { name: 'g2', series: g2 }] };
+    const full = validateInstrumentWithRegimeSplit(ctx2, { regime: { from: REGIME_FROM, to: REGIME_TO, label: 'test window' }, regimeHorizons: [20, 60], costRtPct: 0.02 });
+    ok('validateInstrumentWithRegimeSplit runs and returns a base report', full.ok === true && full.base?.ok === true, full.error || '');
+    ok('regime split reports n in both slices', full.regime.nInWindow > 20 && full.regime.nOutOfWindow > 20, `in=${full.regime.nInWindow} out=${full.regime.nOutOfWindow}`);
+    ok('costOverlay attached from the base report\'s bestTrPnls', full.costOverlay == null || full.costOverlay.n === full.base.strategy.trades);
+    ok('reading is a non-empty string naming the comparison', typeof full.regime.reading === 'string' && full.regime.reading.length > 10);
+
+    // Missing/misaligned ctx.dates must degrade gracefully, not throw.
+    const noDates = validateInstrumentWithRegimeSplit({ ...ctx2, dates: undefined });
+    ok('missing ctx.dates degrades gracefully (base still scored, regime reports the gap)', noDates.ok === true && noDates.regime.ok === false && /dates/.test(noDates.regime.error));
+  }
 
   // CASE 2: a random walk with NO relationship to the factors. The factor fair value
   // must NOT beat the trailing-mean benchmark — icEDGE ≈ 0 — even though the RAW

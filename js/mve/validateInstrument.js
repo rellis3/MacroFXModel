@@ -168,6 +168,76 @@ export function validateInstrument(ctx, { window = 150, minTrain = 180,
   return scoreMispricing({ instrument: ctx.instrument, idx, z, zBench, price, window, horizons, thresholds, actionableZ, periodsPerYear, includeTrades });
 }
 
+// ── Cost overlay — an ASSUMPTION, not a measured spread/ATR gate ────────────────
+// Haircuts a best-config trade-pnl series by a flat round-trip cost. Used with a
+// cost borrowed from elsewhere (e.g. the validated yield-spread sleeve's 0.02%) —
+// callers must label it as such; this function does not know or claim it is this
+// instrument's real cost. See MD files/RESIDUAL_REVERSION_FX_TEST.md §3.
+export function costOverlay(trPnls, costRtPct) {
+  if (!Array.isArray(trPnls) || !trPnls.length) return null;
+  const cost = costRtPct / 100;
+  const net = trPnls.map(p => p - cost);
+  const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+  const sd = a => { const m = mean(a); return Math.sqrt(a.reduce((s, v) => s + (v - m) ** 2, 0) / a.length); };
+  const m = mean(net), s = sd(net);
+  return { n: net.length, costRtPct, meanPreCost: +mean(trPnls).toFixed(5), meanPostCost: +m.toFixed(5), sharpeShapeOnly: s > 0 ? +(m / s).toFixed(3) : 0 };
+}
+
+// ── Regime split — re-run the SAME OOS scoring on a date-restricted slice of the
+// SAME walk-forward series (no refit — the split is on scoring, not training, so
+// it can't leak). Applies CLAUDE.md's "disaggregate before declaring a pooled null"
+// to this test from the start. See MD files/RESIDUAL_REVERSION_FX_TEST.md §2.
+// `ctx` must carry `dates` (js/mve/liveAdapter.js's buildContext exposes this)
+// aligned 1:1 with `ctx.price`/`ctx.factors`.
+function sliceByDate(ctx, { idx, z, zBench }, { from, to }, invert) {
+  const inWindow = d => d >= from && d <= to;
+  const keep = [];
+  for (let k = 0; k < idx.length; k++) {
+    const d = ctx.dates[idx[k]];
+    if (invert ? !inWindow(d) : inWindow(d)) keep.push(k);
+  }
+  return { idx: keep.map(k => idx[k]), z: keep.map(k => z[k]), zBench: keep.map(k => zBench[k]) };
+}
+
+// Full report: the base OOS validation (with bestTrPnls for the cost overlay) plus
+// both regime slices, each scored through the identical scoreMispricing tail.
+export function validateInstrumentWithRegimeSplit(ctx, {
+  regime = { from: '2022-01-01', to: '2024-12-31', label: '2022-24 rate-divergence supercycle' },
+  regimeHorizons = [20, 60],
+  costRtPct = 0.02,
+  window = 150, minTrain = 180, horizons = [1, 5, 10, 20, 60],
+  thresholds = [0.5, 1.0, 1.5, 2.0], actionableZ = 1.0, periodsPerYear = 252,
+} = {}) {
+  const base = validateInstrument(ctx, { window, minTrain, horizons, thresholds, actionableZ, periodsPerYear, includeTrades: true });
+  if (!base.ok) return { ok: false, error: base.error, base };
+  if (!Array.isArray(ctx.dates) || ctx.dates.length !== ctx.price.length) {
+    return { ok: true, base, regime: { ok: false, error: 'ctx.dates missing or misaligned — cannot date-split' }, costOverlay: costOverlay(base.strategy.bestTrPnls, costRtPct) };
+  }
+
+  const price = ctx.price, factors = ctx.factors;
+  const series = oosMispricingSeries(price, factors, { window, minTrain });
+  const inSlice = sliceByDate(ctx, series, regime, false);
+  const outSlice = sliceByDate(ctx, series, regime, true);
+  const scoreSlice = (slice, label) => slice.idx.length < 30
+    ? { ok: false, error: `only ${slice.idx.length} OOS points in ${label}` }
+    : scoreMispricing({ instrument: ctx.instrument, idx: slice.idx, z: slice.z, zBench: slice.zBench, price, horizons: regimeHorizons, includeTrades: true });
+  const inRep = scoreSlice(inSlice, regime.label);
+  const outRep = scoreSlice(outSlice, 'rest of sample');
+
+  let reading = 'the regime split did not change the reading';
+  if (inRep.ok && outRep.ok) {
+    const inSurvives = /^SURVIVES/.test(inRep.verdict), outSurvives = /^SURVIVES/.test(outRep.verdict);
+    if (inSurvives && !outSurvives) reading = `POOLED RESULT WAS HIDING A REGIME-CONCENTRATED EDGE (${regime.label} only, n=1 regime — hypothesis, not proof)`;
+    else if (inSurvives && outSurvives) reading = 'both slices clear SURVIVES independently — broader than a regime artifact';
+  }
+
+  return {
+    ok: true, base,
+    regime: { window: regime, nInWindow: inSlice.idx.length, nOutOfWindow: outSlice.idx.length, inWindow: inRep, outOfWindow: outRep, reading },
+    costOverlay: costOverlay(base.strategy.bestTrPnls, costRtPct),
+  };
+}
+
 // ── Shared scoring tail — the IC/edge/deflated-Sharpe/verdict machinery, generic
 // over WHERE {idx,z,zBench} came from (factor regression here, a Kalman mechanical
 // anchor in validateMechanicalAnchor below). One scorer, parameterised — not a
