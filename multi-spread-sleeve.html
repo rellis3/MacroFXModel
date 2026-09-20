@@ -145,14 +145,23 @@
         <button id="expCash">⬇ Currency P&amp;L</button>
       </div>
       <div class="export-note">Columns: <code>Date,Return %,MAE %,Pair,Book</code> / <code>date,R,MAE (R),Pair,Book</code> / <code>Trade Date,PnL ($),Risk ($),Pair,Book</code>. Exports ALL trades from both books (OOS + IS), flat-sized (size=1); <code>Book</code> distinguishes y2 vs y10 the same way a trailing <code>Pair</code> column does on the multi-instrument vote-atlas pages.</div>
+      <div class="muted" style="margin-top:8px">Exit reasons this sleeve can actually produce: <code>z-revert</code> (the spread dislocation the entry bet on has largely corrected) or <code>max-hold</code> (a 20-day time stop). <b>There is no SL/TP here</b> — this sleeve has no price-level stop or target at all, daily-close-only by design, same as the validated 2Y sleeve it's built on (no intrabar entry/exit assumed). Click a row below to see that trade's real M1 candles.</div>
       <div class="scroll" id="tradeLog" style="max-height:360px; overflow-y:auto; margin-top:10px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Trade detail — real M1 candles</h2>
+      <div class="muted" id="chartMeta" style="margin-bottom:8px">Click a row in the trade log above.</div>
+      <div id="tradeChart" style="height:420px"></div>
     </div>
   </div>
 </div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script type="module">
 import { backtestStats, portfolioStats } from './js/backtestStats.js';
 import { summarizeTrades } from './js/metricsCore.js';
+import { createLevelChart } from './js/levelChart.js';
 
 const $ = id => document.getElementById(id);
 const fmt = (v, d=2) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
@@ -389,15 +398,57 @@ $('expCash')?.addEventListener('click', () => {
   })];
   csvDownload('multi-spread-sleeve-currency-pnl.csv', rows);
 });
+let sortedTrades = [];   // module-level, indexed to match tradeLogTable's rows for click-to-load
 function tradeLogTable() {
-  const trades = allTradesFlat().sort((a, b) => a.date < b.date ? 1 : -1);
-  if (!trades.length) return '<div class="muted">no data</div>';
-  const rows = trades.map(t => `<tr><td>${t.date}</td><td>${t.book}</td><td>${t.pair}</td><td>${t.dir}</td>
+  sortedTrades = allTradesFlat().sort((a, b) => a.date < b.date ? 1 : -1);
+  if (!sortedTrades.length) return '<div class="muted">no data</div>';
+  const rows = sortedTrades.map((t, i) => `<tr data-idx="${i}" style="cursor:pointer" title="Click for M1 candles">
+    <td>${t.date}</td><td>${t.book}</td><td>${t.pair}</td><td>${t.dir}</td>
     <td class="${t.pnlPct >= 0 ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</td>
     <td class="neg">${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}</td>
     <td>${t.holdDays}</td><td>${t.exitReason}</td></tr>`).join('');
   return `<table><thead><tr><th>Date</th><th>Book</th><th>Pair</th><th>Dir</th><th>Return%</th><th>MAE%</th><th>Hold</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
+
+// ── Trade detail — real M1 candles (reuses /api/vol-backtest/candles/:pair, the
+// SAME route+chart pattern asia-fib-atlas-vote-portfolio.html's own trade
+// blotter already uses — no new server route). Entry/exit rendered as price
+// lines; there is no target/stop to draw (this sleeve has neither), so the exit
+// line is colored by outcome (win/loss) and labeled plainly, never called a TP/SL.
+let tradeChartView = null;
+try { tradeChartView = createLevelChart(document.getElementById('tradeChart'), { height: 420 }); }
+catch (e) { document.getElementById('tradeChart').outerHTML = `<div class="muted">Candlestick chart unavailable: ${e.message}</div>`; }
+const isoToEpoch = iso => Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000);
+
+async function loadTradeChart(t) {
+  if (!tradeChartView) return;
+  $('chartMeta').textContent = `Loading ${t.pair} ${t.date} → ${t.exitDate}…`;
+  try {
+    const pad = 3; // calendar days of context either side
+    const from = new Date(Date.parse(t.date + 'T00:00:00Z') - pad * 86400000).toISOString().slice(0, 10);
+    const to = new Date(Date.parse(t.exitDate + 'T00:00:00Z') + pad * 86400000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/vol-backtest/candles/${t.pair.toLowerCase()}?from=${from}&to=${to}`);
+    const j = await r.json();
+    if (!j.ok) { $('chartMeta').textContent = `Candles unavailable: ${j.error}`; return; }
+    const bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    tradeChartView.setCandles(bars);
+    const win = t.pnlPct >= 0;
+    tradeChartView.setLevels([
+      { price: t.entryClose, kind: 'voteEntry', label: `Entry ${t.dir} @ ${t.entryClose}` },
+      { price: t.exitClose, kind: win ? 'voteTarget' : 'voteStop', label: `Exit (${win ? 'WIN' : 'LOSS'}, ${t.exitReason}) @ ${t.exitClose}` },
+    ]);
+    tradeChartView.fit();
+    $('chartMeta').innerHTML = `${t.pair} ${t.book} ${t.dir} — entered ${t.date} @ ${t.entryClose}, exited ${t.exitDate} @ ${t.exitClose}
+      (${t.exitReason}, ${t.holdDays}d hold). <b class="${win ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</b>, MAE ${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}.
+      <span class="muted">No SL/TP drawn — this sleeve has neither; the exit line marks where the z-reversion/time-stop actually closed, not a predetermined level.</span>`;
+  } catch (e) { $('chartMeta').textContent = `Chart load failed: ${e.message}`; }
+}
+$('tradeLog').addEventListener('click', (e) => {
+  const row = e.target.closest('tr[data-idx]');
+  if (!row) return;
+  const t = sortedTrades[+row.dataset.idx];
+  if (t) loadTradeChart(t);
+});
 
 async function run(){
   $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
