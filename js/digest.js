@@ -8,6 +8,7 @@
  */
 const UNIT = { SPX500: [1, 'pts', 0], NQ: [1, 'pts', 0], GOLD: [1, '$', 0], USDJPY: [100, 'pips', 0], EURUSD: [10000, 'pips', 0], GBPUSD: [10000, 'pips', 0], AUDUSD: [10000, 'pips', 0], USDCAD: [10000, 'pips', 0] };
 const disp = n => n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2');
+const amt = (v, unit) => unit === '$' ? `$${v}` : `${v} ${unit}`;
 
 // Today's expected range per instrument: 1.0 ATR (the unconditional median
 // day) plus the effect of every firing TESTED trigger that carries a one-session
@@ -50,9 +51,9 @@ export function formatDigest(d, { html = true } = {}) {
   else L.push(`${b('Today')}: no high-impact print.`);
   // 4. expected range
   const er = Object.values(d.ranges ?? {}); const moved = er.filter(r => r.expectedAtr !== 1);
-  if (er.length) L.push(`${b('Expected range')}: ${moved.length ? moved.map(r => `${disp(r.inst)} ~${r.expected} ${r.unit} (${r.expectedAtr}× a normal day: ${r.drivers.map(x => x.label).join(', ')})`).join(' · ') + (moved.length < er.length ? ` · the rest an ordinary day (${er.filter(r => r.expectedAtr === 1).map(r => `${disp(r.inst)} ~${r.expected}`).join(', ')})` : '') : `an ordinary day everywhere (${er.map(r => `${disp(r.inst)} ~${r.expected} ${r.unit}`).join(', ')})`}. Scored at the close.`);
+  if (er.length) L.push(`${b('Expected range')}: ${moved.length ? moved.map(r => `${disp(r.inst)} ~${amt(r.expected, r.unit)} (${r.expectedAtr}× a normal day: ${r.drivers.map(x => x.label).join(', ')})`).join(' · ') + (moved.length < er.length ? ` · the rest an ordinary day (${er.filter(r => r.expectedAtr === 1).map(r => `${disp(r.inst)} ~${r.expected}`).join(', ')})` : '') : `an ordinary day everywhere (${er.map(r => `${disp(r.inst)} ~${amt(r.expected, r.unit)}`).join(', ')})`}. Scored at the close.`);
   // 5. yesterday scored
   const y = d.yesterday;
-  if (y) L.push(`${b('Yesterday')}: ${[y.leans ? `page leans ${y.leans.hits} of ${y.leans.n} right` : null, y.ranges ? `expected range vs realised: ${y.ranges.map(r => `${disp(r.inst)} ${r.expectedAtr}× → ${r.realisedAtr}×`).join(', ')}` : null, y.calls?.length ? `your calls: ${y.calls.map(c => `${c.event} ${c.result === 'hit' ? '✓' : c.result === 'miss' ? '✗' : '='}`).join(', ')}` : null].filter(Boolean).join(' · ') || 'nothing to score'}.`);
+  if (y) L.push(`${b('Yesterday')}: ${[y.leans ? `page leans ${y.leans.hits} of ${y.leans.n} right` : null, y.ranges?.length ? `expected range vs realised: ${y.ranges.map(r => `${disp(r.inst)} ${r.expectedAtr}× → ${r.realisedAtr}×`).join(', ')}` : null, y.calls?.length ? `your calls: ${y.calls.map(c => `${c.event} ${c.result === 'hit' ? '✓' : c.result === 'miss' ? '✗' : '='}`).join(', ')}` : null].filter(Boolean).join(' · ') || 'nothing to score'}.`);
   return L.join('\n');
 }
