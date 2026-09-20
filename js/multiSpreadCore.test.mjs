@@ -90,6 +90,31 @@ t('tradeOverlap: empty inputs handled without throwing', () => {
 });
 
 // ── combinedPortfolioStats ────────────────────────────────────────────────────────
+// Regression guard for a real bug (found 2026-09-20 on the first live Railway run):
+// js/multiSpreadEngine.js's runMultiSpreadSleeve called this with periodsPerYear:26
+// — the PER-TRADE annualizer borrowed from summarizeYieldSpread's convention (right
+// for a rare, ~15-25-trade/year strategy's per-trade return series) — applied
+// instead to a genuinely DAILY return stream (one value per calendar day), which
+// needs 252, the same convention js/yieldSpreadCore.js's own sharpeFromDaily and
+// runSpreadBook's own portfolioSharpe use. Using 26 understated every Sharpe in
+// that section by ≈√(252/26)≈3.1x. This function's OWN default was always correct
+// (252) — the bug was a caller passing the wrong override, invisible to a pure-math
+// test of this function alone, which is exactly why this test pins the RATIO, not
+// just "252 is the default" (already covered above).
+t('combinedPortfolioStats: periodsPerYear is a DAILY-stream annualizer (252), not a per-trade one (~26) — passing the wrong one changes the answer by √(252/26)', () => {
+  const dates = Array.from({ length: 40 }, (_, i) => `2020-01-${String(i + 1).padStart(2, '0')}`).map((d, i) => i < 31 ? `2020-01-${String(i + 1).padStart(2, '0')}` : `2020-02-${String(i - 30).padStart(2, '0')}`);
+  const dailyReturns = dates.map((_, i) => (i % 3 === 0 ? 0.01 : -0.004));   // some fixed, non-degenerate pattern
+  const streams = { y2: { dates, dailyReturns } };
+  const daily252 = combinedPortfolioStats(streams, { periodsPerYear: 252 }).legSharpe.y2;
+  const wrong26  = combinedPortfolioStats(streams, { periodsPerYear: 26 }).legSharpe.y2;
+  const ratio = daily252 / wrong26;
+  // sharpeFromDaily rounds to 2dp, so the ratio of two rounded numbers only
+  // approximates √(252/26) — loose tolerance for that, tight enough to catch a
+  // caller passing the wrong constant outright (e.g. 26 instead of 252, or vice
+  // versa, which would give a ratio near 1 or wildly different).
+  assert.ok(Math.abs(ratio - Math.sqrt(252 / 26)) < 0.05, `expected ratio ≈√(252/26)=${Math.sqrt(252/26).toFixed(4)}, got ${ratio.toFixed(4)}`);
+});
+
 t('combinedPortfolioStats: equal-weight default sums to a genuine average, not double-counted', () => {
   const dates = ['2020-01-01', '2020-01-02', '2020-01-03'];
   const streams = {
