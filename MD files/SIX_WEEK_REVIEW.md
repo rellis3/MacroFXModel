@@ -38,6 +38,9 @@ and whether the surprise store's non-US fills keep landing (`/api/econ-surprise`
   turns up (RBA/ABS/BoJ/e-Stat); the OECD mirrors stay out.
 - **Breadth** and **cross-currency basis** — no free feed; revisit only if one
   appears.
+- *(Done 2026-09-20, ahead of the review at the owner's request: the non-US
+  yield legs — gilts, Bunds, JGBs on the chain, `MD files/NONUS_YIELDS.md`.
+  Nothing else from this list has been built.)*
 
 ## The paste
 
