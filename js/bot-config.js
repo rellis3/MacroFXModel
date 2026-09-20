@@ -7072,7 +7072,12 @@ async function loadMtLife() {
     ]);
     // Plan (KV)
     const planAge = _mtAgo(plan?.generatedAt);
+    const pol = plan?.policy || null;
+    const polStr = pol
+      ? `${pol.skip_n_touches != null ? `skip ${pol.skip_n_touches}-touch` : 'all touches'} · ${pol.skip_swing_regime ? `skip swing=${pol.skip_swing_regime}` : 'regime not gated'} · per-pair spread budget`
+      : '— (plan predates the policy stamp)';
     const planBox = _mtBox('Plan · motif_bot_plan in KV', _mtDot(planAge, 70 * 60, 180 * 60), [
+      ['<span title="Read-only. Set in pylego/motif_policy.py and applied by the tracker on Railway when it builds the plan; the backtest and the bot read the same module, so there is deliberately no page toggle for it.">strategy policy in force</span>', polStr],
       ['generated', plan ? `${hhmm(plan.generatedAt)} UTC · ${_mtFmtAgo(planAge)}` : 'never'],
       ['tradeable entries', plan ? (plan.entries || []).length : '—'],
       ['rejected by best-config (48h)', plan ? (plan.filtered || []).length : '—'],
