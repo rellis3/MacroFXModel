@@ -143,6 +143,8 @@ import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCale
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
+import { PANEL as _WM_PANEL } from './js/weekMap.js';
+import { buildWeekMap as _buildWeekMap } from './js/weekMapBuild.js';   // every series scored against itself, and the weeks that sat like this
 import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
 import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
@@ -13943,6 +13945,79 @@ app.get('/api/regime', async (_req, res) => {
 });
 svcInterval('regime', () => _refreshRegime().catch(e => console.error('[regime]', e.message)), 24 * 3600_000);
 setTimeout(() => _refreshRegime().catch(e => console.error('[regime] first pass failed:', e.message)), 12 * 60_000);
+
+// ── Rates & policy: the curve, real vs inflation, the term premium ───────────
+// Daily FRED series, no key (fredgraph.csv), cached six hours: 2Y/10Y/30Y, the
+// 10Y TIPS real yield, the 10Y breakeven, the target rate, and the Kim-Wright
+// 10Y term premium (THREEFYTP10 -- what the long end pays over expected policy).
+// rates.html reads it; the sidebar's Rates & Policy row reads the same numbers.
+const _RATES_IDS = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', real: 'DFII10', bei: 'T10YIE', policy: 'DFEDTARU', tp: 'THREEFYTP10', sofr: 'SOFR', effr: 'EFFR', iorb: 'IORB', srf: 'RPONTSYD', dw: 'WLCFLPCL', rrp: 'RRPONTSYD' };
+let _rates = { at: 0, series: null, error: null };
+async function _refreshRates() {
+  try {
+    const out = {}; const since = new Date(Date.now() - 12 * 365.25 * 864e5).toISOString().slice(0, 10);
+    for (const [k, id] of Object.entries(_RATES_IDS)) out[k] = (await _fredCsv(id)).filter(o => o.date >= since);
+    try { out.sofr99 = (await _nyfedSofr99()).filter(o => o.date >= since); } catch (e) { console.warn('[rates] sofr99', e.message); }
+    _rates = { at: Date.now(), series: out, error: null };
+  } catch (e) { _rates.error = e.message; console.warn('[rates]', e.message); }
+  return _rates;
+}
+app.get('/api/rates', async (_req, res) => {
+  try {
+    if (Date.now() - _rates.at > 6 * 3600_000) await _refreshRates();
+    if (!_rates.series) return res.status(503).json({ ok: false, error: _rates.error ?? 'no rates yet' });
+    const S = _rates.series; const last = k => S[k]?.[S[k].length - 1] ?? null;
+    const pct = (k, years) => { const v = last(k)?.value; if (v == null) return null; const from = new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10); const w = S[k].filter(o => o.date >= from).map(o => o.value); return w.length ? Math.round(100 * w.filter(x => x <= v).length / w.length) : null; };
+    const now = Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, last(k)]));
+    const chg = (k, days) => { const a = S[k]; if (!a?.length) return null; const cut = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); const prev = [...a].reverse().find(o => o.date <= cut); return prev ? +((a[a.length - 1].value - prev.value) * 100).toFixed(0) : null; };
+    const trim = k => S[k].filter(o => o.date >= new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 10)).map(o => [o.date, o.value]);
+    const keys = Object.keys(S);
+    const plumbing = (() => { const l = k => S[k]?.[S[k].length - 1]; const iorb = l('iorb')?.value, sofr = l('sofr')?.value, s99 = l('sofr99')?.value, effr = l('effr')?.value; return { sofr: l('sofr'), sofr99: l('sofr99'), effr: l('effr'), iorb: l('iorb'), srf: l('srf'), dw: l('dw'), rrp: l('rrp'), sofrFloorBp: sofr != null && iorb != null ? Math.round((sofr - iorb) * 100) : null, sofr99FloorBp: s99 != null && iorb != null ? Math.round((s99 - iorb) * 100) : null, effrFloorBp: effr != null && iorb != null ? Math.round((effr - iorb) * 100) : null }; })();
+    res.json({ ok: true, now, change20d: Object.fromEntries(keys.map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, plumbing, series: Object.fromEntries(keys.map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
+
+// ── The week map: every series scored against its own history ────────────────
+// Weekly changes of ~25 macro series, each as a z against the series' full
+// history, this week's bar in the histogram, and the ten nearest past weeks in
+// z-space with what followed. Rebuilt once a day from FRED (keyless CSV; the
+// ICE OAS series through the key) and OANDA. The analogue test (W1) lives in
+// analysis/output/weekmap_test.json and is printed on the page.
+// NY Fed SOFR distribution: the 99th percentile of the day's repo trades. The
+// worst trades of the day against the floor is the plumbing read that catches
+// stress before the median moves (Sept 2019).
+async function _nyfedSofr99() {
+  const r = await fetch(`https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2018-04-01&endDate=${new Date().toISOString().slice(0, 10)}`, { signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`NY Fed SOFR HTTP ${r.status}`);
+  return ((await r.json()).refRates ?? []).map(x => ({ date: x.effectiveDate, value: +x.percentPercentile99, median: +x.percentRate })).filter(o => Number.isFinite(o.value)).sort((a, b) => a.date < b.date ? -1 : 1);
+}
+let _weekMap = { at: 0, data: null, error: null };
+async function _refreshWeekMap() {
+  try {
+    const raw = {};
+    for (const p of _WM_PANEL) {
+      try {
+        if (p.fred) raw[p.id] = (p.keyed && process.env.FRED_KEY) ? [...(await fetchFredSeries(p.fred, '1990-01-01', process.env.FRED_KEY)).entries()].map(([date, value]) => ({ date, value })) : await _fredCsv(p.fred);
+        else if (p.oanda) raw[p.id] = (await _btFetchD1(p.oanda, 5000)).map(b => ({ date: b.date, value: b.close }));
+        else if (p.nyfed === 'sofr99') raw[p.id] = await _nyfedSofr99();
+      } catch (e) { console.warn('[weekmap]', p.id, e.message); }
+    }
+    const wm = _buildWeekMap(raw); delete wm._internal;
+    let test = null; try { test = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'weekmap_test.json'), 'utf8')); } catch { /* none yet */ }
+    _weekMap = { at: Date.now(), data: { ...wm, test: test ? { ranAt: test.ranAt, w1: test.w1 } : null }, error: null };
+  } catch (e) { _weekMap.error = e.message; console.warn('[weekmap]', e.message); }
+  return _weekMap;
+}
+app.get('/api/weekmap', async (_req, res) => {
+  try {
+    if (Date.now() - _weekMap.at > 24 * 3600_000) await _refreshWeekMap();
+    if (!_weekMap.data) return res.status(503).json({ ok: false, error: _weekMap.error ?? 'no week map yet' });
+    res.json({ ok: true, ..._weekMap.data, at: new Date(_weekMap.at).toISOString(), spec: 'MD files/WEEK_MAP.md' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('weekMap', () => _refreshWeekMap().catch(e => console.error('[weekmap]', e.message)), 24 * 3600_000);
+setTimeout(() => _refreshWeekMap().catch(e => console.error('[weekmap] first pass failed:', e.message)), 14 * 60_000);
 
 // ── Nowcasts: the third number on a release line ────────────────────────────
 // Consensus is what the street expects; the actual is what printed; the nowcast
@@ -31893,6 +31968,7 @@ const _FREDHISTORY_SERIES = {
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS', vix3m: 'VXVCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
+  iorb: 'IORB', ioer: 'IOER',       // the Fed's floor, for the chain's funding node (SOFR − floor)
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',

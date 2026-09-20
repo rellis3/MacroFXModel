@@ -48,6 +48,7 @@ export const CHAIN_NODES = {
   hy:     { label: 'Credit spreads (HY)',             unit: 'bp',  floor: 15,  dp: 0, what: 'High-yield OAS: the extra yield junk borrowers pay over Treasuries. Widening = lenders want more compensation = stress.' },
   nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
   spx:    { label: 'Broad stocks (S&P 500)',          unit: 'pct', floor: 2,   dp: 1, what: 'SPX500: the broad, blend-not-growth benchmark. Less duration exposure than the Nasdaq, so it answers to the real yield more slowly and less — which is exactly why it can sit quiet (the "milk in the grocery store" read) while the chain upstream of it is genuinely moving. A quiet SPX does not mean a quiet market; check nq, dxy and gold before concluding nothing is happening. Not yet tested for forward predictability here (nq has been; see above) — a natural next pre-registration, not yet run.' },
+  funding: { label: 'Funding (SOFR − floor)',       unit: 'bp',  floor: 5,   dp: 0, what: 'Overnight repo (SOFR) against the rate the Fed pays on reserves — the floor. Cash is plentiful when repo trades a few points under the floor; when it rises through it, someone is paying up for overnight money. The one plumbing number in the chain: funding stress bids the dollar and sells risk, in the textbook. Described, not tested (P1 registered 2026-09-20).' },
   btc:    { label: 'Bitcoin',                         unit: 'pct', floor: 5,   dp: 1, what: 'Trades most days as a high-beta risk asset and, on the days the dollar story is about credibility, as the last stop on the anti-dollar chain. The loosest link here.' },
 };
 
@@ -226,6 +227,28 @@ export const CHAIN_LINKS = [
     broken: {
       up:   'Equity fear rose but credit spreads did not. Credit is calling it noise — usually the more reliable of the two.',
       down: 'Equity fear fell but credit spreads widened. Credit sees something equities are ignoring; this is the divergence that has historically been worth respecting.',
+    },
+  },
+  {
+    id: 'funding-dxy',
+    short: 'funding → $',
+    punch: { holds: 'Dearer funding and a bid dollar — the textbook plumbing move.', up: 'Repo up through the floor, dollar not bid — stress is local to funding, not a dollar shortage.', down: 'Repo easing, dollar still bid — a rates or haven story, not funding.' },
+    textbook: 'Funding stress bids the dollar', from: 'funding', to: 'dxy', sign: +1,
+    holds: 'Overnight money is dearer against the floor and the dollar is being bought — the scarce-dollar mechanism working as written.',
+    broken: {
+      up:   'SOFR rose through the floor but the dollar did not follow. Funding stress that stays in the repo market is a plumbing story — quarter-end, bill supply, dealer balance sheets — not a global dollar shortage.',
+      down: 'Repo eased but the dollar strengthened anyway. The dollar bid is coming from rates or havens, not from a scramble for funding.',
+    },
+  },
+  {
+    id: 'funding-vix',
+    short: 'funding → fear',
+    punch: { holds: 'Funding stress showing up in the fear gauge.', up: 'Repo stress without fear — contained in the plumbing so far.', down: 'Fear rising with repo calm — this is not a funding event.' },
+    textbook: 'Funding stress spills into risk', from: 'funding', to: 'vix', sign: +1,
+    holds: 'Dearer overnight money and rising fear together — the 2019/2020 shape, where the plumbing leads the equity market.',
+    broken: {
+      up:   'Repo tightened but fear did not rise. The stress is technical (quarter-end, settlement) and equities are ignoring it — usually rightly.',
+      down: 'Fear rose but funding is calm. Whatever the fear is about, it is not a shortage of money.',
     },
   },
   {

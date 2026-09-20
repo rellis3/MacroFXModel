@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Week, Scored</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#3d444d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1} .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px 18px}
+  .intro{color:var(--text2);font-size:12.5px;line-height:1.65;margin-bottom:14px;max-width:76ch}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .card h2{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .lead{font-size:14px;font-weight:600;line-height:1.5;margin-bottom:8px;max-width:80ch} .lead b{color:var(--text)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+  .tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer}
+  .tile:hover,.tile.sel{border-color:var(--blue)}
+  .tile .h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+  .tile .k{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .z{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums} .tile .z.up{color:var(--bull)} .tile .z.dn{color:var(--red)} .tile .z.big{text-shadow:0 0 8px currentColor}
+  .tile .d{font-size:10.5px;color:var(--text2);margin-top:1px} .tile .w{font-size:10px;color:var(--text3)}
+  .tile svg{width:100%;height:36px;display:block;margin-top:4px}
+  .hist svg{width:100%;height:auto;display:block} .hist text{font-size:9px;fill:var(--text3)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:760px){.two{grid-template-columns:1fr}}
+  .sub{color:var(--text2);font-size:12.5px;line-height:1.6;margin-top:4px;max-width:80ch} .sub b{color:var(--text)}
+  table{border-collapse:collapse;width:100%;font-size:11.5px} th{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)} td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--text2);font-variant-numeric:tabular-nums}
+  .dots svg{width:100%;height:auto;display:block} .dots text{font-size:9px;fill:var(--text3)}
+  .verdict{margin-top:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card2);font-size:12px;line-height:1.55;color:var(--text2)} .verdict b{color:var(--text)}
+  .verdict.null{border-left:3px solid var(--text3)} .verdict.pass{border-left:3px solid var(--bull)}
+  .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px;max-width:80ch}
+  @media (max-width:560px){.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>🗺 The Week, Scored</h1>
+  <span class="stamp" id="stamp">every series against its own history</span>
+  <span class="spacer"></span>
+  <a class="hbtn" href="today.html">← Today</a>
+  <a class="hbtn" href="regime.html">Regime</a>
+  <a class="hbtn" href="rates.html">Rates &amp; Policy</a>
+</div>
+<div class="wrap">
+  <div class="intro">A two-percent move means nothing on its own. Each tile is one macro series' move this week, scored against every week that series has — so the question stops being <i>how far</i> and becomes <i>how unusual</i>. Click a tile to see this week's bar in that series' whole distribution. Below that, the past weeks whose scores looked most like this one, and what followed them — with the test that says whether those weeks tell you anything a random ten would not.</div>
+
+  <div class="card"><h2>This week</h2><div class="lead" id="lead">Loading…</div><div class="grid" id="grid"></div><div class="sub" style="font-size:11px;color:var(--text3)">z = this week's change against the mean and spread of every weekly change in the series' history. Ordinary under 1, notable 1–2, unusual 2–3, rare above 3. Bars: the last 26 weeks.</div></div>
+  <div class="card"><h2 id="histH">Where this week sits</h2><div class="two"><div class="hist" id="hist"></div><div class="sub" id="histText"></div></div></div>
+  <div class="card"><h2>When did it sit like this before</h2><div class="sub" id="anText"></div><div id="anTable" style="margin-top:8px;overflow-x:auto"></div></div>
+  <div class="card"><h2>What followed those weeks</h2><div class="sub">Ten dots per row are the ten analogue weeks; the line is their median; the grey band is where the middle 80% of <i>all</i> weeks landed, with the unconditional median marked. If the dots and the median sit inside the band around the unconditional mark, the analogues have told you nothing.</div><div id="outcomes" style="margin-top:8px"></div><div id="w1"></div></div>
+  <div class="note" id="note"></div>
+</div>
+<script>
+const esc = s => String(s ?? '').replace(/</g, '&lt;');
+const UNIT = { bp: 'bp', pct: '%', pt: 'pt', bn: '$bn' };
+const fmtCh = (s) => s.latest.change == null ? '?' : `${s.latest.change >= 0 ? '+' : ''}${s.latest.change.toFixed(s.kind === 'pct' ? 2 : 1)} ${UNIT[s.kind]}`;
+const fz = z => z == null ? '?' : `${z >= 0 ? '+' : ''}${z.toFixed(1)}`;
+let DATA = null, sel = null;
+function spark(vals) {
+  const v = vals.filter(x => x != null); if (v.length < 2) return '';
+  const mn = Math.min(...v), mx = Math.max(...v); const W = 160, H = 36;
+  const pts = vals.map((x, i) => x == null ? null : `${(i / (vals.length - 1) * W).toFixed(1)},${(H - 3 - (mx === mn ? H / 2 : (x - mn) / (mx - mn) * (H - 6))).toFixed(1)}`).filter(Boolean);
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="M${pts.join(' L')}" fill="none" stroke="var(--blue)" stroke-width="1.4"/><path d="M${pts[0]} L${pts.join(' L')} L${W},${H} L0,${H} Z" fill="var(--blue)" opacity=".08"/></svg>`;
+}
+function tile(s) {
+  const z = s.latest.z; const cls = z == null ? '' : z > 0 ? 'up' : 'dn'; const big = Math.abs(z ?? 0) >= 2 ? 'big' : '';
+  return `<div class="tile ${sel === s.id ? 'sel' : ''}" onclick="pick('${s.id}')" title="${esc(s.label)}: ${fmtCh(s)} this week, z ${fz(z)} against ${s.years} years of weekly changes"><div class="h"><span class="k">${esc(s.label)}</span><span class="z ${cls} ${big}">${fz(z)}</span></div><div class="d">${fmtCh(s)} <span class="w">· ${s.latest.word}${s.short ? ' · short history' : ''}</span></div>${spark(s.spark)}</div>`;
+}
+function pick(id) { sel = id; render(); document.getElementById('histH').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function histSvg(s) {
+  const h = s.hist; if (!h) return '<div class="sub">not enough history</div>';
+  const W = 480, H = 170, L = 8, B = 16, T = 22; const mx = Math.max(...h.counts); const bw = (W - 2 * L) / h.counts.length;
+  const zNow = s.latest.z; const xz = z => L + ((z + h.span) / (2 * h.span)) * (W - 2 * L);
+  const bars = h.counts.map((c, i) => `<rect x="${(L + i * bw).toFixed(1)}" y="${(T + (1 - c / mx) * (H - T - B)).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${((c / mx) * (H - T - B)).toFixed(1)}" fill="var(--blue)" opacity="${zNow != null && Math.floor((zNow + h.span) / (2 * h.span) * h.counts.length) === i ? '1' : '.35'}"/>`).join('');
+  const ticks = [-3, -2, -1, 0, 1, 2, 3].map(z => `<text x="${xz(z).toFixed(1)}" y="${H - 3}" text-anchor="middle">${z > 0 ? '+' : ''}${z}</text>`).join('');
+  const mark = zNow != null ? `<line x1="${xz(Math.max(-h.span, Math.min(h.span, zNow))).toFixed(1)}" x2="${xz(Math.max(-h.span, Math.min(h.span, zNow))).toFixed(1)}" y1="${T - 4}" y2="${H - B}" stroke="var(--text)" stroke-dasharray="3 3"/><text x="${xz(Math.max(-h.span, Math.min(h.span, zNow))).toFixed(1)}" y="${T - 8}" text-anchor="middle" style="fill:var(--text);font-weight:700">this week ${fmtCh(s)} · z ${fz(zNow)}</text>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}">${bars}${mark}${ticks}</svg>`;
+}
+function dotsSvg(rows, unit) {
+  // rows: [{label, dots:[v], median, uncond:{median,p10,p90}}]
+  const W = 520, rowH = 34, L = 96, R = 10; const H = rows.length * rowH + 18;
+  const allV = rows.flatMap(r => [...r.dots, r.uncond?.p10 ?? 0, r.uncond?.p90 ?? 0]); const mn = Math.min(...allV, 0), mx = Math.max(...allV, 0); const pad = (mx - mn) * 0.08 || 1;
+  const x = v => L + (v - (mn - pad)) / ((mx + pad) - (mn - pad)) * (W - L - R);
+  const g = rows.map((r, i) => { const y = 10 + i * rowH + rowH / 2; return `<text x="${L - 6}" y="${y + 3}" text-anchor="end" style="fill:var(--text2)">${esc(r.label)}</text>` +
+    (r.uncond ? `<rect x="${x(r.uncond.p10).toFixed(1)}" y="${y - 9}" width="${(x(r.uncond.p90) - x(r.uncond.p10)).toFixed(1)}" height="18" fill="var(--text3)" opacity=".18"/><line x1="${x(r.uncond.median).toFixed(1)}" x2="${x(r.uncond.median).toFixed(1)}" y1="${y - 11}" y2="${y + 11}" stroke="var(--text3)" stroke-width="1.5"/>` : '') +
+    r.dots.map(v => `<circle cx="${x(v).toFixed(1)}" cy="${y}" r="3.2" fill="var(--blue)" opacity=".8"/>`).join('') +
+    (r.median != null ? `<line x1="${x(r.median).toFixed(1)}" x2="${x(r.median).toFixed(1)}" y1="${y - 12}" y2="${y + 12}" stroke="var(--text)" stroke-width="2"/><text x="${x(r.median).toFixed(1)}" y="${y - 14}" text-anchor="middle" style="fill:var(--text);font-weight:700">${r.median >= 0 ? '+' : ''}${r.median}${unit}</text>` : ''); }).join('');
+  const zero = `<line x1="${x(0).toFixed(1)}" x2="${x(0).toFixed(1)}" y1="6" y2="${H - 6}" stroke="var(--border2)" stroke-dasharray="2 3"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}">${zero}${g}</svg>`;
+}
+function render() {
+  const d = DATA; const list = Object.values(d.series).filter(s => !s.hidden);
+  document.getElementById('stamp').textContent = `week ending ${d.asOf} · ${d.weeks} weeks of history · rebuilt ${String(d.at).slice(0, 16).replace('T', ' ')} UTC`;
+  const loud = list.filter(s => Math.abs(s.latest.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z));
+  const notable = list.filter(s => Math.abs(s.latest.z ?? 0) >= 1 && Math.abs(s.latest.z) < 2);
+  document.getElementById('lead').innerHTML = loud.length ? `${loud.length === 1 ? 'One thing' : loud.length + ' things'} moved unusually this week: ${loud.map(s => `<b>${esc(s.label)}</b> ${fmtCh(s)} (z ${fz(s.latest.z)}, ${s.latest.word})`).join(', ')}. ${notable.length ? `Notable but not unusual: ${notable.map(s => esc(s.label)).join(', ')}.` : ''} Everything else was an ordinary week for that series.` : notable.length ? `Nothing moved unusually. Notable: ${notable.map(s => `<b>${esc(s.label)}</b> ${fmtCh(s)} (z ${fz(s.latest.z)})`).join(', ')}. The rest was ordinary.` : 'An ordinary week on every series — nothing outside one standard deviation of its own history.';
+  if (!sel) sel = (loud[0] ?? notable[0] ?? list[0])?.id;
+  document.getElementById('grid').innerHTML = list.map(tile).join('');
+  const s = d.series[sel];
+  if (s) {
+    document.getElementById('histH').textContent = `Where this week sits — ${s.label}`;
+    document.getElementById('hist').innerHTML = histSvg(s);
+    const pctile = s.hist ? Math.round(100 * s.hist.counts.slice(0, Math.max(0, Math.floor((Math.max(-s.hist.span, Math.min(s.hist.span, s.latest.z ?? 0)) + s.hist.span) / (2 * s.hist.span) * s.hist.counts.length))).reduce((a, b) => a + b, 0) / s.hist.n) : null;
+    document.getElementById('histText').innerHTML = `<b>${esc(s.label)}</b> moved <b>${fmtCh(s)}</b> this week. Against its ${s.hist?.n ?? '?'} weekly changes since ${s.years} years ago, that is <b>z ${fz(s.latest.z)}</b> — <b>${s.latest.word}</b>${pctile != null ? `, around the ${pctile}th percentile of all weeks` : ''}. A typical week moves this series about ${s.hist ? (s.hist.sd).toFixed(s.kind === 'pct' ? 2 : 1) : '?'} ${UNIT[s.kind]} either way.${Math.abs(s.latest.z ?? 0) >= 2 ? ' Weeks like this are rare enough to be the story of the week — but rare is not the same as predictive: see the test at the bottom.' : ' A move this size is what this series does most weeks; it is not news.'}`;
+  }
+  // analogues
+  const an = d.analogues ?? [];
+  document.getElementById('anText').innerHTML = an.length ? `This week's scores across <b>${d.stateIds.length}</b> series, placed among every past week with a full set. The ten nearest, no two within eight weeks of each other: <b>${an.map(a => a.week).join(', ')}</b>. Distance is in standard deviations across all ${d.stateIds.length} series at once (${an[0].distance} to ${an[an.length - 1].distance}); a distance under ~3 would be a close match, so read these as the least-different weeks, not twins.` : 'Not enough series with a full history this week to place it.';
+  const ids = d.stateIds; document.getElementById('anTable').innerHTML = an.length ? `<table><tr><th>week</th><th>dist.</th>${ids.map(i => `<th>${esc(d.series[i]?.label ?? i)}</th>`).join('')}</tr>${an.map(a => `<tr><td>${a.week}</td><td>${a.distance}</td>${ids.map(i => { const z = a.z[i]; return `<td style="color:${z == null ? 'var(--text3)' : Math.abs(z) >= 2 ? (z > 0 ? 'var(--bull)' : 'var(--red)') : 'var(--text2)'}">${z == null ? '·' : fz(z)}</td>`; }).join('')}</tr>`).join('')}<tr><td><b>this week</b></td><td></td>${ids.map(i => { const z = d.series[i]?.latest.z; return `<td style="font-weight:700;color:${z == null ? 'var(--text3)' : Math.abs(z) >= 2 ? (z > 0 ? 'var(--bull)' : 'var(--red)') : 'var(--text)'}">${fz(z)}</td>`; }).join('')}</tr></table>` : '';
+  // outcomes
+  const NAMES = { spx: 'S&P 500', eurusd: 'EUR/USD', gold: 'Gold', us10y: '10-year yield' };
+  document.getElementById('outcomes').innerHTML = Object.entries(d.outcomes ?? {}).map(([tg, o]) => { const unit = tg === 'us10y' ? 'bp' : '%'; const rows = Object.entries(o).map(([h, r]) => ({ label: `${NAMES[tg]} · ${h}w`, dots: r.analogues.map(x => x.v), median: r.median, uncond: r.unconditional })); return `<div class="dots" style="margin-bottom:6px">${dotsSvg(rows, unit)}</div>`; }).join('');
+  const w1 = d.test?.w1;
+  if (w1) {
+    const rows = Object.entries(w1).map(([t, r]) => `<b>${NAMES[t] ?? t}</b>: the analogues' median called the 13-week sign right ${Math.round(r.hitRate * 100)}% of the time over ${r.n} weeks — the unconditional base rate was ${Math.round(r.unconditional * 100)}%, ten random weeks ${Math.round(r.placebo.p05 * 100)}–${Math.round(r.placebo.p95 * 100)}% — and its size error was ${r.medErrAnalogue > r.medErrUnconditional ? 'larger' : 'smaller'} than simply using the unconditional median (${r.medErrAnalogue} vs ${r.medErrUnconditional}). <b>${r.verdict}</b>.`);
+    const allNull = Object.values(w1).every(r => r.verdict === 'NULL');
+    document.getElementById('w1').innerHTML = `<div class="verdict ${allNull ? 'null' : 'pass'}"><b>The test (W1, pre-registered, run ${String(d.test.ranAt).slice(0, 10)}):</b> walk-forward over 400 weeks, at each week the ten analogues known at the time, their median 13-week outcome against what happened, and the same for ten random past weeks.<br>${rows.join('<br>')}<br>${allNull ? '<b>Reading:</b> the weeks that "sat like this" are history, not a forecast. They tell you what has happened after weeks of this shape — which is the same distribution as after any week. Use the page for the first two things it does (how unusual was this week, and in what) and treat the third as a story, not a lean.' : ''}</div>`;
+  }
+  document.getElementById('note').innerHTML = `Construction (frozen before running, <a href="MD%20files/WEEK_MAP.md">MD files/WEEK_MAP.md</a>): Friday-to-Friday changes; z against the series' full history of weekly changes; state vector = the z of every series with ten years or more of history; nearest by Euclidean distance with an eight-week crowding rule. Sources: FRED (the ICE OAS series carry three years on the keyless feed), OANDA for gold, copper, the S&P and EUR/USD. Built after the Colez Trades "Release Map" teaser, which shows the same three views; the test underneath is this desk's addition.`;
+}
+async function main() { const j = await (await fetch('/api/weekmap')).json(); if (!j.ok) { document.getElementById('lead').textContent = j.error ?? 'unavailable'; return; } DATA = j; render(); }
+main().catch(e => { document.getElementById('lead').textContent = e.message; });
+</script>
+</body>
+</html>

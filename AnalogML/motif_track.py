@@ -130,6 +130,8 @@ from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
 from pylego.motif_policy import passes_best_config, spread_budget_pips, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
+from pylego.motif_policy import _BUDGET_DOC as _BUDGET_DOC_  # noqa: E402
+_BUDGET_GENERATED_AT = _BUDGET_DOC_.get("generated_at")
 from pylego.spread_stats import live_spread_pips  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
@@ -936,6 +938,17 @@ def run(args: argparse.Namespace) -> None:
                 "strategy": "motif-touch",
                 "entries": plan_entries,
                 "filtered": plan_filtered,
+                # The strategy policy this plan was built under -- shown
+                # read-only on the Motif tab so nobody has to read source to
+                # know which rule is in force. It is NOT editable there: the
+                # backtest, this tracker and the bot all read pylego/
+                # motif_policy.py, and a page toggle would break that parity.
+                "policy": {
+                    **BEST_CONFIG,
+                    "spread_rule": "per-pair budget = sl_pips x (gross avgR - 0.05R), capped; see pylego/motif_spread_budget.json",
+                    "budget_generated_at": _BUDGET_GENERATED_AT,
+                    "source": "pylego/motif_policy.py",
+                },
                 # Per-pair spread picture for the dashboard's pairs board: the
                 # static estimate, the live-measured entry-hours average (when
                 # trusted), this pair's own budget, and whether the spread the
