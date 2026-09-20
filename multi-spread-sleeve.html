@@ -34,6 +34,20 @@
   .scroll { overflow-x:auto; }
   .twocol { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
   @media (max-width: 800px) { .twocol { grid-template-columns:1fr; } }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .kpi .l { font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.03em; margin-bottom:3px; }
+  .kpi .v { font-size:17px; font-weight:700; }
+  .kpi .s { font-size:10.5px; color:var(--dim); margin-top:2px; }
+  canvas { max-height:280px; }
+  .export-row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin:12px 0; }
+  .export-row label { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); text-transform:none; }
+  .export-row input { width:80px; display:inline; }
+  .export-row button { margin-top:0; background:#2a3550; }
+  .export-note { color:var(--dim); font-size:11.5px; line-height:1.6; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-top:10px; }
+  .hm-row { display:flex; gap:2px; flex-wrap:wrap; margin-bottom:2px; }
+  .hm-cell { width:34px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#cbd5e1; }
+  .hm-label { width:50px; font-size:11px; color:var(--dim); display:flex; align-items:center; }
 </style>
 </head>
 <body>
@@ -95,9 +109,51 @@
       <div class="scroll" id="diversification"></div>
       <div id="diversificationVerdict"></div>
     </div>
+
+    <div class="panel">
+      <h2>Full tearsheet — y2 / y10 / combined</h2>
+      <div class="muted" style="margin-bottom:8px">All three columns computed OOS-only from the SAME shared metric bricks the rest of this repo uses (<code>js/metricsCore.js</code>, <code>js/backtestStats.js</code>) — not reimplemented here. "Combined" = the equal-risk book from Bar B above (y2 + y10 each at half size), built from the union of their own trades scaled 0.5x, so its per-trade stats are genuine, not a re-derivation.</div>
+      <div class="scroll" id="tearsheetTable"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Equity curve (OOS, additive — the one to trust)</h2>
+      <div class="muted" style="margin-bottom:8px">Daily, non-compounded cumulative sum of each book's flat-sized return — what this engine's own fixed-fractional sizing actually produces. Not the compounded/hypothetical view (CAGR below is compounded; this chart deliberately is not, so no single hot stretch looks artificially dominant).</div>
+      <canvas id="eqChart"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Outcome uncertainty — bootstrap &amp; Monte Carlo</h2>
+      <div class="muted" style="margin-bottom:10px">Bootstrap resamples each book's OOS trades WITH replacement 1,000× — the range of total return / Sharpe consistent with this exact sample, and P(profitable) across those resamples. Monte Carlo instead SHUFFLES the same trades' order 1,000× — the drawdown you could have lived through had the identical trades simply arrived in a different sequence (total return is unchanged by reordering; only the PATH is). <b>Neither is a substitute for real out-of-sample validation</b> (already applied above via the IS/OOS split) — <b>both describe uncertainty WITHIN this one sample, not whether the edge generalizes beyond it.</b></div>
+      <div class="scroll" id="uncertaintyTable"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Monthly P&amp;L — combined book (equal risk)</h2>
+      <div class="muted" style="margin-bottom:8px">A cheap concentration check: if a handful of months carry the whole result, that's worth knowing before trusting the headline Sharpe. Additive daily returns, not compounded.</div>
+      <div id="heatmap"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Trade log &amp; exports</h2>
+      <div class="muted" style="margin-bottom:6px">This sleeve has NO native price-level stop (it exits on z-reversion or a time-stop, daily-close-only by design — see MULTI_SPREAD_SLEEVE.md). R is therefore a STATED fixed-fraction-of-equity assumption below, not measured per-trade — R and a fixed-% return are proportional by construction for this strategy; that is the honest "degenerate case" CLAUDE.md's own CSV convention flags, not a bug. MAE IS real, from the actual M1 intrabar path (js/multiSpreadEngine.js's intrabarExcursion), exported as a negative number (an adverse excursion is a drawdown, same sign convention as a loss).</div>
+      <div class="export-row">
+        <label>Account $ <input type="number" id="acctSize" value="10000" step="1000"></label>
+        <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1"></label>
+        <button id="expReturns">⬇ % Returns</button>
+        <button id="expR">⬇ R-Multiples</button>
+        <button id="expCash">⬇ Currency P&amp;L</button>
+      </div>
+      <div class="export-note">Columns: <code>Date,Return %,MAE %,Pair,Book</code> / <code>date,R,MAE (R),Pair,Book</code> / <code>Trade Date,PnL ($),Risk ($),Pair,Book</code>. Exports ALL trades from both books (OOS + IS), flat-sized (size=1); <code>Book</code> distinguishes y2 vs y10 the same way a trailing <code>Pair</code> column does on the multi-instrument vote-atlas pages.</div>
+      <div class="scroll" id="tradeLog" style="max-height:360px; overflow-y:auto; margin-top:10px"></div>
+    </div>
   </div>
 </div>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module">
+import { backtestStats, portfolioStats } from './js/backtestStats.js';
+import { summarizeTrades } from './js/metricsCore.js';
+
 const $ = id => document.getElementById(id);
 const fmt = (v, d=2) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
 const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
@@ -161,6 +217,188 @@ function diversificationVerdict(portfolio, overlap) {
     ${beats && lowOverlap ? 'Worth combining — Bar B passes.' : 'Not worth combining as-is, whatever y10 showed alone in Bar A.'}</div>`;
 }
 
+// ── Full tearsheet / equity curve / Monte Carlo / heatmap / CSV exports ──────────
+// Everything below reuses js/metricsCore.js + js/backtestStats.js directly (ES
+// module import of the same shared bricks the rest of this repo's tearsheets use)
+// rather than reimplementing Sharpe/Sortino/Calmar/CAGR/bootstrap/Monte Carlo —
+// only the KPI-card rendering and the CAGR-labeling convention are page-local,
+// matching the vote-atlas family's own division of labor.
+let lastResult = null;   // { books, portfolio } from the last successful run — CSV exports read this
+
+function oosTrades(book) {
+  const sd = book?.combined?.splitDate;
+  return (book?.trades || []).filter(t => sd && t.date >= sd);
+}
+// The equal-risk combined book (Bar B): union of y2+y10's OWN trades, each scaled
+// to HALF size — a genuine per-trade series, not a re-derivation of the daily one.
+function combinedTradesOos(books) {
+  const half = (t, book) => ({ ...t, pnlPct: t.pnlPct * 0.5, book });
+  return [...oosTrades(books.y2).map(t => half(t, 'y2')), ...oosTrades(books.y10).map(t => half(t, 'y10'))]
+    .sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function kpiRow(label, y2, y10, combined, fmtFn = (v => fmt(v, 2))) {
+  return `<tr><td>${label}</td><td>${fmtFn(y2)}</td><td>${fmtFn(y10)}</td><td>${fmtFn(combined)}</td></tr>`;
+}
+
+function tearsheetTable(books, portfolio) {
+  if (!books?.y2 || !books?.y10 || !portfolio) return '<div class="muted">no data</div>';
+  const y2Tr = oosTrades(books.y2), y10Tr = oosTrades(books.y10), cmTr = combinedTradesOos(books);
+  const pnls = tr => tr.map(t => t.pnlPct), dates = tr => tr.map(t => t.date);
+
+  const bsY2 = backtestStats(pnls(y2Tr), dates(y2Tr));
+  const bsY10 = backtestStats(pnls(y10Tr), dates(y10Tr));
+  const bsCm = backtestStats(pnls(cmTr), dates(cmTr));
+  const stY2 = summarizeTrades(pnls(y2Tr), dates(y2Tr));
+  const stY10 = summarizeTrades(pnls(y10Tr), dates(y10Tr));
+  const stCm = summarizeTrades(pnls(cmTr), dates(cmTr));
+  const dailyY2 = books.y2.combined.dailyOos?.dailyReturns || [];
+  const dailyY10 = books.y10.combined.dailyOos?.dailyReturns || [];
+  const dailyCm = portfolio.combinedDaily || [];
+  const psY2 = portfolioStats(dailyY2), psY10 = portfolioStats(dailyY10), psCm = portfolioStats(dailyCm);
+
+  const pct = v => fmt(v, 2) + '%';
+  const rows = [
+    kpiRow('Total trades', bsY2.trades, bsY10.trades, bsCm.trades, v => v ?? 0),
+    kpiRow('Win rate', bsY2.winRate * 100, bsY10.winRate * 100, bsCm.winRate * 100, pct),
+    kpiRow('Profit factor', bsY2.profitFactor, bsY10.profitFactor, bsCm.profitFactor),
+    kpiRow('Reward:risk (payoff)', bsY2.payoff, bsY10.payoff, bsCm.payoff),
+    kpiRow('Total P&amp;L % (additive)', bsY2.totalPnl, bsY10.totalPnl, bsCm.totalPnl, pct),
+    kpiRow('CAGR % (compounded — hypothetical)', bsY2.cagr, bsY10.cagr, bsCm.cagr, pct),
+    kpiRow('Sharpe (daily, THE honest one)', psY2.sharpe, psY10.sharpe, psCm.sharpe),
+    kpiRow('Sharpe (per-trade, optimistic)', bsY2.sharpe, bsY10.sharpe, bsCm.sharpe),
+    kpiRow('Sortino (daily)', psY2.sortino, psY10.sortino, psCm.sortino),
+    kpiRow('Calmar (daily-basis)', psY2.calmar, psY10.calmar, psCm.calmar),
+    kpiRow('Max drawdown % (daily, compounded)', psY2.maxDD, psY10.maxDD, psCm.maxDD, pct),
+    kpiRow('Max DD duration (trades)', bsY2.maxDDdur, bsY10.maxDDdur, bsCm.maxDDdur, v => v ?? 0),
+    kpiRow('Expectancy / trade %', bsY2.expectancy, bsY10.expectancy, bsCm.expectancy, v => fmt(v, 4) + '%'),
+    kpiRow('Skew (per-trade)', stY2.skew, stY10.skew, stCm.skew),
+    kpiRow('Excess kurtosis (per-trade)', stY2.excessKurt, stY10.excessKurt, stCm.excessKurt),
+    kpiRow('VaR 95% (per-trade)', stY2.var95, stY10.var95, stCm.var95, v => fmt(v, 3) + '%'),
+    kpiRow('CVaR 95% (per-trade)', stY2.cvar95, stY10.cvar95, stCm.cvar95, v => fmt(v, 3) + '%'),
+    kpiRow('Min track record (yrs, Sharpe&gt;0 @95%)', stY2.minTrackYears, stY10.minTrackYears, stCm.minTrackYears, v => v == null ? '—' : fmt(v, 1)),
+  ].join('');
+  return `<table><thead><tr><th>Metric</th><th>y2</th><th>y10</th><th>Combined (equal risk)</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="muted" style="margin-top:8px">⚠ CAGR assumes compounding this engine does NOT actually run (fixed-fractional sizing on original capital, never reinvested) — a large CAGR here is a property of exponential math over a small trade count, not extra evidence of edge. Trust the additive Total P&amp;L% and the daily Sharpe/Sortino/Calmar instead.</div>`;
+}
+
+function uncertaintyTable(books) {
+  if (!books?.y2 || !books?.y10) return '<div class="muted">no data</div>';
+  const cmTr = combinedTradesOos(books);
+  const bs = (label, tr) => {
+    const b = backtestStats(tr.map(t => t.pnlPct), tr.map(t => t.date));
+    if (!b.trades) return `<tr><td>${label}</td><td colspan="6" class="muted">no OOS trades</td></tr>`;
+    return `<tr><td>${label}</td><td>${fmt(b.bootstrap.pPositive * 100, 0)}%</td>
+      <td>[${fmt(b.bootstrap.total.p5, 1)}%, ${fmt(b.bootstrap.total.p95, 1)}%]</td>
+      <td>[${fmt(b.bootstrap.sharpe.p5, 2)}, ${fmt(b.bootstrap.sharpe.p95, 2)}]</td>
+      <td class="neg">${fmt(b.montecarlo.maxDD.p50, 1)}%</td>
+      <td class="neg">${fmt(b.montecarlo.maxDD.p95, 1)}%</td>
+      <td class="neg">${fmt(b.montecarlo.maxDD.p99, 1)}%</td></tr>`;
+  };
+  const rows = bs('y2', oosTrades(books.y2)) + bs('y10', oosTrades(books.y10)) + bs('Combined (equal risk)', cmTr);
+  return `<table><thead><tr><th>Book</th><th>P(profitable)</th><th>Total ret 90% CI</th><th>Sharpe 90% CI</th><th>MC max DD p50</th><th>MC max DD p95</th><th>MC max DD p99</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderEquityChart(books, portfolio) {
+  if (typeof Chart === 'undefined' || !books?.y2 || !books?.y10) return;
+  const el = document.getElementById('eqChart');
+  if (!el) return;
+  try {
+    if (window._eqChart) window._eqChart.destroy();
+    const cumsum = arr => { let c = 0; return arr.map(v => (c += v)); };
+    const dates = portfolio?.dates || [];
+    const y2Series = books.y2.combined.dailyOos, y10Series = books.y10.combined.dailyOos;
+    const m2 = new Map((y2Series?.dates || []).map((d, i) => [d, y2Series.dailyReturns[i]]));
+    const m10 = new Map((y10Series?.dates || []).map((d, i) => [d, y10Series.dailyReturns[i]]));
+    const cmDaily = portfolio?.combinedDaily || [];
+    window._eqChart = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: dates,
+        datasets: [
+          { label: 'y2', data: cumsum(dates.map(d => m2.get(d) ?? 0)), borderColor: '#5b9dff', pointRadius: 0, borderWidth: 1.5, tension: .1 },
+          { label: 'y10', data: cumsum(dates.map(d => m10.get(d) ?? 0)), borderColor: '#fbbf24', pointRadius: 0, borderWidth: 1.5, tension: .1 },
+          { label: 'Combined (equal risk)', data: cumsum(cmDaily), borderColor: '#34d399', pointRadius: 0, borderWidth: 2, tension: .1 },
+        ],
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: {
+        x: { ticks: { color: '#8b97ad', maxTicksLimit: 10 }, grid: { color: '#1e2436' } },
+        y: { ticks: { color: '#8b97ad', callback: v => v + '%' }, grid: { color: '#1e2436' } } },
+        plugins: { legend: { labels: { color: '#dfe6f2' } } } },
+    });
+  } catch (e) { console.warn('Chart.js unavailable:', e.message); el.outerHTML = `<div class="muted">Chart library failed to load: ${e.message}</div>`; }
+}
+
+function ddColor(val, maxAbs) {
+  if (!maxAbs || !Number.isFinite(val)) return 'background:#1b2230';
+  const frac = Math.min(0.85, Math.max(0.08, Math.abs(val) / maxAbs));
+  const rgb = val >= 0 ? '52,211,153' : '248,113,113';
+  return `background:rgba(${rgb},${frac})`;
+}
+function renderHeatmap(portfolio) {
+  const el = document.getElementById('heatmap');
+  if (!el || !portfolio?.dates?.length) { if (el) el.innerHTML = '<div class="muted">no data</div>'; return; }
+  const byYM = new Map();
+  portfolio.dates.forEach((d, i) => { const ym = d.slice(0, 7); byYM.set(ym, (byYM.get(ym) || 0) + (portfolio.combinedDaily[i] || 0)); });
+  const months = [...byYM.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const maxAbs = Math.max(1e-9, ...months.map(([, v]) => Math.abs(v)));
+  const byYear = new Map();
+  for (const [ym, v] of months) { const y = ym.slice(0, 4); if (!byYear.has(y)) byYear.set(y, []); byYear.get(y).push([ym.slice(5, 7), v]); }
+  let html = '';
+  for (const [year, rows] of byYear) {
+    html += `<div class="hm-row"><div class="hm-label">${year}</div>`;
+    for (const [mm, v] of rows) html += `<div class="hm-cell" style="${ddColor(v, maxAbs)}" title="${year}-${mm}: ${fmt(v, 2)}%">${fmt(v, 1)}</div>`;
+    html += '</div>';
+  }
+  el.innerHTML = html || '<div class="muted">no data</div>';
+}
+
+function csvDownload(filename, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function allTradesFlat() {
+  if (!lastResult) return [];
+  const { books } = lastResult;
+  return [...(books.y2?.trades || []).map(t => ({ ...t, book: 'y2' })), ...(books.y10?.trades || []).map(t => ({ ...t, book: 'y10' }))];
+}
+$('expReturns')?.addEventListener('click', () => {
+  const rows = [['Date', 'Return %', 'MAE %', 'Pair', 'Book'], ...allTradesFlat().map(t =>
+    [t.date, t.pnlPct.toFixed(4), t.maePct != null ? (-Math.abs(t.maePct)).toFixed(4) : '', t.pair, t.book])];
+  csvDownload('multi-spread-sleeve-returns.csv', rows);
+});
+$('expR')?.addEventListener('click', () => {
+  const riskPct = parseFloat($('riskPct').value) || 1;
+  const rows = [['date', 'R', 'MAE (R)', 'Pair', 'Book'], ...allTradesFlat().map(t => {
+    const r = t.pnlPct / riskPct;
+    const maeR = t.maePct != null ? -Math.abs(t.maePct) / riskPct : '';
+    return [t.date, r.toFixed(3), maeR === '' ? '' : maeR.toFixed(3), t.pair, t.book];
+  })];
+  csvDownload('multi-spread-sleeve-r-multiples.csv', rows);
+});
+$('expCash')?.addEventListener('click', () => {
+  const acct = parseFloat($('acctSize').value) || 10000;
+  const riskPct = parseFloat($('riskPct').value) || 1;
+  const riskDollars = acct * riskPct / 100;
+  const rows = [['Trade Date', 'PnL ($)', 'Risk ($)', 'Pair', 'Book'], ...allTradesFlat().map(t => {
+    const r = t.pnlPct / riskPct;
+    return [t.date, (r * riskDollars).toFixed(2), riskDollars.toFixed(2), t.pair, t.book];
+  })];
+  csvDownload('multi-spread-sleeve-currency-pnl.csv', rows);
+});
+function tradeLogTable() {
+  const trades = allTradesFlat().sort((a, b) => a.date < b.date ? 1 : -1);
+  if (!trades.length) return '<div class="muted">no data</div>';
+  const rows = trades.map(t => `<tr><td>${t.date}</td><td>${t.book}</td><td>${t.pair}</td><td>${t.dir}</td>
+    <td class="${t.pnlPct >= 0 ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</td>
+    <td class="neg">${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}</td>
+    <td>${t.holdDays}</td><td>${t.exitReason}</td></tr>`).join('');
+  return `<table><thead><tr><th>Date</th><th>Book</th><th>Pair</th><th>Dir</th><th>Return%</th><th>MAE%</th><th>Hold</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 async function run(){
   $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
   const body={ dateFrom:$('dateFrom').value, dateTo:$('dateTo').value, zWindow:$('zWindow').value,
@@ -185,6 +423,12 @@ async function poll(jobId){
       $('y10Verdict').innerHTML=y10Verdict(books.y10);
       $('diversification').innerHTML=diversificationTable(portfolio, overlapVsBaseline);
       $('diversificationVerdict').innerHTML=diversificationVerdict(portfolio, overlapVsBaseline);
+      lastResult = { books, portfolio };
+      try { $('tearsheetTable').innerHTML=tearsheetTable(books, portfolio); } catch(e) { $('tearsheetTable').innerHTML=`<div class="muted">tearsheet failed: ${e.message}</div>`; console.error(e); }
+      try { $('uncertaintyTable').innerHTML=uncertaintyTable(books); } catch(e) { $('uncertaintyTable').innerHTML=`<div class="muted">uncertainty table failed: ${e.message}</div>`; console.error(e); }
+      try { renderEquityChart(books, portfolio); } catch(e) { console.error(e); }
+      try { renderHeatmap(portfolio); } catch(e) { $('heatmap').innerHTML=`<div class="muted">heatmap failed: ${e.message}</div>`; console.error(e); }
+      try { $('tradeLog').innerHTML=tradeLogTable(); } catch(e) { $('tradeLog').innerHTML=`<div class="muted">trade log failed: ${e.message}</div>`; console.error(e); }
       $('results').style.display='block'; $('runBtn').disabled=false; return;
     }
     $('status').textContent='Error: '+(j.error||'unknown'); $('runBtn').disabled=false;

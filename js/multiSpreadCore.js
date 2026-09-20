@@ -158,5 +158,13 @@ export function combinedPortfolioStats(dailyStreamsByType, { weights, periodsPer
     dates, weights: w, legSharpe,
     combinedSharpe: sharpeFromDaily(combined, periodsPerYear),
     returnCorrelation,
+    // Raw series, not just scalars — a caller building its own equity curve,
+    // Monte Carlo, or heatmap for the COMBINED book needs the actual daily
+    // stream, not only combinedSharpe. byType mirrors legSharpe's keys, date-
+    // aligned to `dates` (zero-filled on days a leg didn't trade), so all of
+    // legSharpe/combinedSharpe/dailyByType/combinedDaily are computed from the
+    // exact same aligned arrays — no separate re-derivation to drift out of sync.
+    dailyByType: byType,
+    combinedDaily: combined,
   };
 }

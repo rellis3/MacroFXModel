@@ -124,10 +124,23 @@ period:         2015-01-01 → present (same window as the validated sleeve)
 - `analysis/multi_spread_sleeve.mjs` — the runner. `node analysis/multi_spread_sleeve.mjs`
   (needs `FRED_KEY` + OANDA/R2 — Railway). Writes
   `analysis/output/multi_spread_sleeve.json`.
+- `multi-spread-sleeve.html` + `POST/GET /api/multi-spread-sleeve/{run,sweep,status}`
+  (added after §5's first run) — the live page, same async-job pattern as
+  `/api/yield-spread/*`. Full tearsheet (2026-09-20): CAGR/Sharpe(daily+per-trade)/
+  Sortino/Calmar/skew/kurt/VaR/CVaR via `js/metricsCore.js`+`js/backtestStats.js`
+  (imported directly in-browser, not reimplemented), an additive OOS equity curve
+  (Chart.js), bootstrap+Monte-Carlo outcome-uncertainty tables with the house
+  caveat, a monthly heatmap, and the 3 CSV exports. Real intrabar MAE/MFE
+  (`js/multiSpreadEngine.js`'s `intrabarExcursion`, from the M1 path each pair's
+  data load already has in memory) — this sleeve has no native price-level stop,
+  so R in the CSVs is a stated fixed-fraction-of-equity assumption, not measured;
+  said plainly on the page rather than faked, per CLAUDE.md's own guidance for
+  exactly this "no native stop" case.
 
-**Isolation, same posture as `js/mve/`:** nothing here is wired into `server.js`, no
-API route, no dashboard link. It stays isolated until Bar A and Bar B both clear on
-real data — going live is a deliberate, separate step, same as the MVE's own §7.
+**Isolation:** the page/routes are real and live (added once §5's numbers existed to
+show), but nothing here feeds a live signal or bot — same posture as `mve.html`'s own
+"isolated means no signal wiring, not no route." A `deskEvidence.js` entry already
+exists (§5); the page is for re-running/re-checking, not a new pending verdict.
 
 ## 5. Results (run 2026-09-20 on Railway; design frozen above before running)
 
