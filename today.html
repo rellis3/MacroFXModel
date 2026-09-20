@@ -3209,7 +3209,7 @@ function chainGraphHtml(links) {
       <b>The textbook:</b> ${esc0(l.textbook)}. They should move ${way}.<br>
       <b>Why:</b> ${esc0(A.what)} <span class="muted">→</span> ${esc0(Bn.what)}<br>
       <div style="margin-top:5px">${status}</div>
-      <div style="margin-top:6px"><span class="chain-more chain-q-link" role="button" tabindex="0" onclick="explainThis('link:${l.id}', event)" title="A plain-words explanation of this link from the model: a paid call, cached for the day, nothing runs until you tap">🎓 teach me this link</span></div>${explainBoxHtml(`link:${l.id}`)}</div>`;
+      <div class="muted" style="font-size:10.5px;margin-top:5px">Everything here is written into the chain, no model call. The paid "explain" sits on the rows below, if you want the longer version.</div></div>`;
   })() : '';
   const sel = _chainNodeSel && B.CHAIN_NODES[_chainNodeSel] ? (() => {
     const n = B.CHAIN_NODES[_chainNodeSel]; const e = ends[_chainNodeSel];
