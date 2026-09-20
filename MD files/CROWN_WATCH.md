@@ -43,6 +43,45 @@ own header and the "How we talk about results" section of `CLAUDE.md`.
 
 ---
 
+## Open candidates — noted, not run (check here first)
+
+Every entry below ends with its own "noted candidate, not run" line, but until
+now that was the only place it lived — easy to lose track of across a growing
+log. This section is the running index; add a line here whenever an entry logs
+one, and strike it when it gets picked up (built, pre-registered, or
+explicitly declined).
+
+- **S17 (real-spx forward test)** — does `real-spx` forward-predict anything,
+  the same test `real-nq` already ran. Cheap follow-on to an existing harness
+  pattern. Source: 2026-09-18 entry, step 5.
+- **"Who's driving" leadership ranking across `CHAIN_NODES`** — rank nodes by
+  how much of the others' concurrent moves they explain, refreshed with the
+  page. Not started. Source: 2026-09-18 entry, step 5 ("not claimed").
+- **A silver node on the chain** — gold + copper already cover the
+  precious/industrial ends of the metals basket; a third node is reasonable
+  but bigger than a one-line edit. Source: 2026-09-18 (3) entry, step 5.
+- **VWAP persistence-confirmation framing** ("three consecutive 5-min closes
+  below VWAP + a holding retest") — never literally replicated; every VWAP
+  test used a single touch/impulse/σ-band trigger, not a multi-bar acceptance
+  count. Low prior (§14's closest analog is null everywhere). Source:
+  2026-09-19 entry, step 5.
+- **VWAP work on NAS100/SPX500** — none of the VWAP-touch/pullback work has
+  been run on the index CFDs closest to Crown's actual equity-flow rationale,
+  only FX majors + gold. Cheap (engines/harness exist), low prior (every prior
+  VWAP construction nulled). Source: 2026-09-19 entry, step 5.
+- **Round-number pinning on NAS100_USD/SPX500_USD** — extends the existing
+  FX+gold round-number-pinning null (nulled on gold + EUR/USD, GBP/USD,
+  USD/JPY) to the two index CFDs it's never been run on. Cheap (harness +
+  OANDA data already exist), low prior (four prior nulls). Source: 2026-09-20
+  (2) entry, step 5.
+
+None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
+pre-registration step (state the pass/null bar first) before it's run, per the
+standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
+be re-discovered by re-reading five entries.
+
+---
+
 ## 2026-09-18 — "The 10-year is driving the bus, and the asphalt is crude oil"
 
 > *"If you are a tick trader right now, you are like an ant riding the back
@@ -448,3 +487,172 @@ back real, the natural next question is exactly this one.
 - **Not claimed:** anything about whether Crown's specific cited numbers
   (the one day, -9%/-10%/-3.9%) are accurate, or whether the dispersion
   pattern is currently live. That needs the same run.
+
+---
+
+## 2026-09-20 (2) — "0DTE options are controlling the entire stock market"
+
+> *"Zero DTE options reached 62.4% of total SPX options volume in 2025...
+> when traders buy same-day calls, a market maker is selling the calls...
+> they hedge the position with SPX futures... that sensitivity is called
+> gamma... zero DTE options do two things really well: pin the market near
+> a level, creating sticky price action on round handles like 7400, and
+> accelerate the market away from a level."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) a market-structure
+fact — 0DTE (same-day expiry) options are now 62.4% of SPX options volume
+(CBOE's own 2025 research), a large enough share to matter; (b) a mechanism
+— dealers who sell 0DTE options delta-hedge with futures, and because 0DTE
+gamma is extreme near expiry, that hedging flow can pin price near round
+strikes (dealers long gamma, buying dips/selling rips) or accelerate it away
+from a level once a "gamma flip" is crossed (dealers short gamma, chasing
+the move) — the standard dealer-gamma/GEX narrative.
+
+**2. What's already on this desk.** Far more than any clip audited here so
+far — a large, mature, interconnected options-gamma-exposure subsystem
+already exists, built well before this log started. Delegated a thorough
+read (file-by-file, not name-guessing) rather than skim it:
+
+- **Instrument coverage.** Not SPX-only, but SPX *is* in scope: `oi_bot.py`
+  states its universe plainly — "gold + indices; FX only when the plan
+  includes it" — and `js/oi.js`'s `OI_CME_PAIRS` list includes `SPX500_USD`,
+  `NAS100_USD`, `DE30_USD`, `US30_USD`, `US2000_USD` alongside gold and a few
+  FX majors (crosses excluded: "no CME chain — OI analysis is meaningless").
+- **The exact mechanism, already named.** `js/gammaFlow.js`'s `gammaFlip`
+  (zero-GEX crossing = regime boundary) and `js/levelExpectation.js`'s
+  five-word taxonomy — **Reject · Break · Magnet · Pin · Edge** — is Crown's
+  pin/accelerate story, already built as a labeled framework, not something
+  missing from this desk.
+- **0DTE handling exists, specifically.** `js/oi.js`'s `pickNearExpiry`
+  splits a "day" expiry (comment: "0-3 DTE typically") from the structural
+  one, and gamma is deliberately "floored at 1 day (avoids the 0-DTE gamma
+  singularity)" — this desk already reasons about near-zero-DTE gamma as a
+  distinct regime.
+- **But the data is a manual daily paste, not live flow.** `js/oi.js`'s OI
+  modal reads pasted CME QuikStrike text into textareas; `oi_max_age_hours:
+  30` implies roughly once-a-day freshness. Crown's claim is about
+  *intraday* same-day hedging flow pushing price *today* — this system
+  reads a static snapshot, at most once a day. Structurally, it cannot
+  follow the live flow Crown is describing, regardless of how good the
+  mechanism model is.
+- **Mostly unvalidated, and this desk's own docs already say so.**
+  `LEGO_MODULES.md` status tags: `levelExpectation.js` "🔬 built ·
+  unvalidated (mechanism only, no outcome scoring yet)"; `levelHeat.js`
+  unvalidated; `oiConfluence.js` "forward-testing / opt-in live" (its own
+  note: "no historical options-OI exists for spot FX" — a true backtest is
+  impossible there by construction); `oiZones.js` (the live "OI bot"
+  planner) "forward-testing / paper (executor built, no proven edge)".
+- **The one real backtest that exists came back null — and on the wrong
+  instrument.** `oi_research_book/RESEARCH_BOOK.md` Part 12 ran the bot's
+  actual, unmodified production code (`buildOIZones`/`buildOIEntry`) on six
+  years of EUR/USD M1: OOS mean −0.031R, "does not show a robust edge." The
+  book itself flags that EUR/USD isn't in the bot's live universe (gold +
+  indices) — so this doesn't speak to whether the SPX/NQ/gold version works;
+  that backtest is a stated, undone roadmap item.
+- **Round-number pinning — a piece of Crown's specific claim — has already
+  been tested, independent of the gamma story, and nulled.** `LEGO_MODULES.md`
+  §1m's S/R falsification and `GOLD_VWAP_FIXED_SIGMA_FINDINGS.md` §8a/§8b
+  found no coherent pinning/reversion effect at round levels — but only on
+  gold + EURUSD/GBPUSD/USDJPY. NAS100/SPX500 specifically were never checked.
+- **The bot is live (paper), not retired.** A commit earlier this session
+  (`32e04da`) deleted 34 lines from `oi_bot.py`, but that was one opt-in
+  gate inside the file, not the file itself — `oi_bot.py` is 1,199 lines and
+  still being edited in later commits. `js/serviceFlags.js`'s `oiBot`
+  service is on; `js/botRegistry.js` carries an `oi_bot_status` ("OI Gamma")
+  card. Whether the Python executor itself runs as a supervised live process
+  is unconfirmed from the code alone (absent from `start.sh`'s list) —
+  flagged, not resolved, here.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding at
+its core (how dealer hedging mechanically transmits from options flow to
+futures price) with a specific, checkable market-structure fact (the 62.4%
+share) attached. Not chain material — `js/macroChain.js` models cross-market
+transmission on daily deltas; intraday options-hedging mechanics are a
+different object this desk already houses elsewhere (the OI/gamma stack).
+
+**4. Is there a display/alert nugget, independent of any entry.** Already
+built and already live — `oi_bot_status`, `js/oiLevelExport.js`'s OI-walls
+export, and `levelExpectation`'s Reject/Break/Magnet/Pin/Edge tags already
+surface this on the desk in paper mode. Nothing new to add here; the honest
+gap is validation, not visibility.
+
+**5. Verdict and action: already covered, not rebuilt.** This desk didn't
+need to discover the gamma-hedging mechanism — it already modeled it, named
+it, and partially wired it live, before this log existed. What it hasn't
+done is validate it (only one real backtest exists, null, on an off-universe
+pair) or check the one piece of Crown's claim that's cheap to check
+independently of any options data at all (round-number pinning on
+NAS100/SPX500 CFDs, reusing the exact harness that already nulled it on four
+other instruments).
+- **Not built, not pre-registered as new work.** The core mechanism claim
+  (0DTE flow → live intraday hedging pressure) isn't testable here in
+  principle with a once-daily manual paste, no matter how much code gets
+  written — that's a data-access gap this desk cannot close, not a build gap.
+- **One genuine, cheap, low-prior candidate, noted but not run:**
+  round-number pinning on NAS100_USD/SPX500_USD specifically, extending the
+  existing FX+gold null. Cheap because the harness pattern and the OANDA
+  data are already there; low-prior because the same test has already come
+  back null four times running. Not pre-registered here without being
+  asked, given how the last four attempts went.
+- **Not claimed:** whether the CBOE's 62.4% figure is accurate (not this
+  desk's data to check), or whether the live `oi_bot`/gamma stack is
+  currently working as intended in production — that's a status question
+  for the owner, not something this log can settle by reading code.
+
+---
+
+## 2026-09-20 (3) — "How to hedge your stock portfolio like the pros" (rolling protective puts)
+
+> *"Buy one SPX/XSP put ~5% below spot, one month out, sized to your
+> portfolio's notional; roll it forward each month before expiry so it
+> doesn't expire worthless. If the market drops, the puts offset the
+> portfolio loss; if it doesn't, you've paid the premium as the cost of
+> insurance. Fun fact: you've just also learned how an annuity contract
+> works."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) a mechanical
+recipe — size and roll monthly ~5%-OTM index puts (SPX above ~$500k notional,
+XSP below) to hedge a diversified equity/index-fund portfolio; (b) an
+equivalence claim — this rolling-put construction is structurally the same
+economics as an annuity's embedded downside protection.
+
+**2. What's already on this desk.** Not much that's on-point, and that's the
+right answer here rather than a gap to close. This desk's options-adjacent
+code (`js/oi.js`, `js/gammaFlow.js`, `js/ivMetrics.js`, `oi_bot.py`) reads
+*dealer positioning* to infer short-term price pressure on instruments this
+desk trades (gold, indices, FX). It has no module for constructing or sizing
+an *investor's own* protective-put overlay on equity holdings, and no reason
+to — that's a different job (portfolio insurance for a long equity book) than
+what any page here does (reading market state for CFD entries). `js/ivMetrics.js`'s
+`riskReversal` is the nearest cousin — it reads put/call skew as a fear
+gauge — but that is a different question (is skew elevated right now) from
+this clip's content (how to build your own hedge), and nothing here computes
+it for SPX/XSP specifically.
+
+**3. Is it a trading claim or a macro-understanding claim — actually, neither.**
+This doesn't fit the usual fork. It isn't "how does one market explain
+another" (chain material), and it isn't a falsifiable market-behavior claim to
+audit or backtest either: "a put gains when the underlying falls and costs
+premium otherwise" isn't an empirical proposition to test, it's the definition
+of a put's payoff. The one genuinely empirical thread buried in it — *how much
+does a systematic 5%-OTM/1-month rolling put program actually cost over time,
+on average, across regimes* (the real "cost of insurance" number, sometimes
+published as protective-put-index drag) — is a real question, but it needs an
+SPX/XSP options history (strikes, IV surface) this desk doesn't have and isn't
+built to fetch; it's also a question about hedging *equity* exposure, not
+about this desk's FX/gold/index-CFD trading.
+
+**4. Is there a display/alert nugget here, independent of #3.** No. There's no
+descriptive market-state fact in this clip to surface — it's a personal
+construction recipe (how big a put, which strike, when to roll), not a
+reading of current conditions. It doesn't extend or sharpen anything already
+on a page.
+
+**5. Verdict and action: not built, not pre-registered, nothing added to the
+candidates list above.** Agreeing with the read that prompted asking — this
+one is a genuinely correct, standard institutional technique (a rolling
+protective put, economically the same insurance mechanic an annuity bundles
+with income features) worth understanding personally, but it isn't a claim
+about how this desk's markets move, so it doesn't produce a testable entry or
+a display/alert nugget the way the other clips have. Nothing built, nothing
+tested, nothing queued.
