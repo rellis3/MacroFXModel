@@ -13901,6 +13901,35 @@ app.get('/api/regime', async (_req, res) => {
 svcInterval('regime', () => _refreshRegime().catch(e => console.error('[regime]', e.message)), 24 * 3600_000);
 setTimeout(() => _refreshRegime().catch(e => console.error('[regime] first pass failed:', e.message)), 12 * 60_000);
 
+// ── Rates & policy: the curve, real vs inflation, the term premium ───────────
+// Daily FRED series, no key (fredgraph.csv), cached six hours: 2Y/10Y/30Y, the
+// 10Y TIPS real yield, the 10Y breakeven, the target rate, and the Kim-Wright
+// 10Y term premium (THREEFYTP10 -- what the long end pays over expected policy).
+// rates.html reads it; the sidebar's Rates & Policy row reads the same numbers.
+const _RATES_IDS = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', real: 'DFII10', bei: 'T10YIE', policy: 'DFEDTARU', tp: 'THREEFYTP10' };
+let _rates = { at: 0, series: null, error: null };
+async function _refreshRates() {
+  try {
+    const out = {}; const since = new Date(Date.now() - 12 * 365.25 * 864e5).toISOString().slice(0, 10);
+    for (const [k, id] of Object.entries(_RATES_IDS)) out[k] = (await _fredCsv(id)).filter(o => o.date >= since);
+    _rates = { at: Date.now(), series: out, error: null };
+  } catch (e) { _rates.error = e.message; console.warn('[rates]', e.message); }
+  return _rates;
+}
+app.get('/api/rates', async (_req, res) => {
+  try {
+    if (Date.now() - _rates.at > 6 * 3600_000) await _refreshRates();
+    if (!_rates.series) return res.status(503).json({ ok: false, error: _rates.error ?? 'no rates yet' });
+    const S = _rates.series; const last = k => S[k]?.[S[k].length - 1] ?? null;
+    const pct = (k, years) => { const v = last(k)?.value; if (v == null) return null; const from = new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10); const w = S[k].filter(o => o.date >= from).map(o => o.value); return w.length ? Math.round(100 * w.filter(x => x <= v).length / w.length) : null; };
+    const now = Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, last(k)]));
+    const chg = (k, days) => { const a = S[k]; if (!a?.length) return null; const cut = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); const prev = [...a].reverse().find(o => o.date <= cut); return prev ? +((a[a.length - 1].value - prev.value) * 100).toFixed(0) : null; };
+    const trim = k => S[k].filter(o => o.date >= new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 10)).map(o => [o.date, o.value]);
+    res.json({ ok: true, now, change20d: Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, series: Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
+
 // ── Nowcasts: the third number on a release line ────────────────────────────
 // Consensus is what the street expects; the actual is what printed; the nowcast
 // is a Fed model's live estimate before the print. Two are free: the Cleveland

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rates &amp; Policy</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#3d444d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;--purple:#a371f7}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1} .hdr .stamp{font-size:10.5px;color:var(--text3)}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+  .wrap{max-width:1040px;margin:0 auto;padding:16px 18px}
+  .intro{color:var(--text2);font-size:12.5px;line-height:1.65;margin-bottom:14px;max-width:74ch}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  .card h2{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .lead{font-size:14px;font-weight:600;line-height:1.5;margin-bottom:6px}
+  .sub{color:var(--text2);font-size:12.5px;line-height:1.6;margin-top:4px;max-width:80ch} .sub b{color:var(--text)}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:8px 0}
+  .tile{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  .tile .k{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .tile .v{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px} .tile .d{font-size:10.5px;color:var(--text3)} .tile .d.up{color:var(--bull)} .tile .d.dn{color:var(--red)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:12px} @media (max-width:760px){.two{grid-template-columns:1fr}}
+  svg.ch{width:100%;height:auto;display:block;margin-top:6px} svg.ch text{font-size:9px;fill:var(--text3)}
+  .lg{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:4px} .lg i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
+  .ev{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.5}
+  .ev:last-child{border-bottom:none} .ev .v{flex-shrink:0;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:2px 6px;border-radius:4px;height:fit-content}
+  .ev .v.validated{background:rgba(16,185,129,.12);color:var(--bull)} .ev .v.null{background:var(--card2);color:var(--text3)} .ev .v.context{background:rgba(210,153,34,.12);color:var(--amber)}
+  .ev b{color:var(--text)}
+  .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px;max-width:80ch}
+  @media (max-width:560px){.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>📉 Rates &amp; Policy</h1>
+  <span class="stamp" id="stamp">the curve, real vs inflation, the term premium</span>
+  <span class="spacer"></span>
+  <a class="hbtn" href="today.html">← Today</a>
+  <a class="hbtn" href="regime.html">Regime</a>
+  <a class="hbtn" href="evidence.html">Evidence Book</a>
+</div>
+<div class="wrap">
+  <div class="intro">The bond market is the first domino. This page is the five-minute fixed-income scan an institutional desk does before anything else, in plain words: what the 10-year is made of (the real cost of money plus expected inflation), what shape the curve is, what the long end is charging over and above the expected path of policy (the term premium), and what the two-year says is priced. Every line carries the desk's own verdict on whether it predicts anything — most of it explains, none of it forecasts a pair's next move.</div>
+
+  <div class="card"><h2>Now, in words</h2><div id="now">Loading…</div></div>
+  <div class="two">
+    <div class="card"><h2>The curve — 2, 10 and 30 years, three years back</h2><div id="chCurve"></div></div>
+    <div class="card"><h2>The slopes — 2s10s and 2s30s</h2><div id="chSlope"></div></div>
+  </div>
+  <div class="two">
+    <div class="card"><h2>The 10-year, split: real yield + expected inflation</h2><div id="chSplit"></div></div>
+    <div class="card"><h2>The term premium — what the long end charges beyond expected policy</h2><div id="chTp"></div></div>
+  </div>
+  <div class="card"><h2>What this desk has tested about rates</h2><div id="ev"></div></div>
+  <div class="note" id="note"></div>
+</div>
+<script type="module">
+import { DESK_EVIDENCE } from './js/deskEvidence.js';
+const esc = s => String(s ?? '').replace(/</g, '&lt;');
+const bp = v => v == null ? '?' : `${v >= 0 ? '+' : ''}${v}bp`;
+function chart(el, lines, { unit = '%', zero = false } = {}) {
+  const W = 480, H = 170, L = 34, R = 8, T = 10, B = 18;
+  const all = lines.flatMap(l => l.pts.map(p => p[1])); let mn = Math.min(...all), mx = Math.max(...all); if (zero) { mn = Math.min(mn, 0); mx = Math.max(mx, 0); } const pad = (mx - mn) * 0.08 || 0.1; mn -= pad; mx += pad;
+  const t0 = Date.parse(lines[0].pts[0][0]), t1 = Date.parse(lines[0].pts[lines[0].pts.length - 1][0]);
+  const x = d => L + (Date.parse(d) - t0) / (t1 - t0) * (W - L - R), y = v => T + (1 - (v - mn) / (mx - mn)) * (H - T - B);
+  const ticks = 4; const yt = Array.from({ length: ticks + 1 }, (_, i) => mn + (mx - mn) * i / ticks);
+  const grid = yt.map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/><text x="${L - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(unit === 'bp' ? 0 : 1)}</text>`).join('');
+  const z = zero && mn < 0 && mx > 0 ? `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--text3)" stroke-dasharray="3 3"/>` : '';
+  const paths = lines.map(l => `<path d="${l.pts.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join(' ')}" fill="none" stroke="${l.color}" stroke-width="1.6"/>`).join('');
+  const xs = [t0, (t0 + t1) / 2, t1].map(t => `<text x="${x(new Date(t).toISOString().slice(0, 10)).toFixed(1)}" y="${H - 4}" text-anchor="middle">${new Date(t).toISOString().slice(0, 7)}</text>`).join('');
+  el.innerHTML = `<svg class="ch" viewBox="0 0 ${W} ${H}">${grid}${z}${paths}${xs}</svg><div class="lg">${lines.map(l => `<span><i style="border-color:${l.color}"></i>${l.name}${l.last != null ? ` <b style="color:var(--text)">${l.last}</b>` : ''}</span>`).join('')}</div>`;
+}
+async function main() {
+  const j = await (await fetch('/api/rates')).json();
+  if (!j.ok) { document.getElementById('now').textContent = j.error ?? 'unavailable'; return; }
+  const { now, change20d: c, pct5y, pct10y, series: S } = j;
+  const v = k => now[k]?.value; const f = (k, dp = 2) => v(k) != null ? v(k).toFixed(dp) : '?';
+  document.getElementById('stamp').textContent = `FRED · yields to ${now.us10y?.date} · term premium to ${now.tp?.date}`;
+  const s10 = v('us10y') != null && v('us2y') != null ? Math.round((v('us10y') - v('us2y')) * 100) : null, s30 = v('us30y') != null && v('us2y') != null ? Math.round((v('us30y') - v('us2y')) * 100) : null;
+  const priced = v('us2y') != null && v('policy') != null ? (v('us2y') - v('policy')) * 100 : null;
+  const slopeWord = s10 == null ? '' : s10 < 0 ? 'inverted — the short end above the long end, the shape that has preceded recessions by a year or two but says nothing at the horizons this desk trades' : s10 < 30 ? 'flat — the market expects policy to stay roughly where it is' : s10 < 100 ? 'normally sloped — you are paid a little to lend longer' : 'steep — either growth and inflation expected, or the long end demanding to be paid';
+  const tpWord = v('tp') == null ? '' : `The <b>term premium</b> — the extra the 10-year pays over the average policy rate the market expects — is <b>${f('tp')}%</b>, P${pct5y.tp} of five years (P${pct10y.tp} of ten)${c.tp != null ? `, ${bp(c.tp)} in a month` : ''}. ${v('tp') > 0.75 ? 'That is the long end charging for risk and supply, not just for the Fed\'s path: a 10-year move on a day like this is a term-premium story (fiscal, issuance, credibility), not an expected-rates story.' : v('tp') < 0.2 ? 'Near zero: the long end is pricing the expected path and little else — a 10-year move today is an expected-rates story.' : 'Moderate: roughly half of a long-end move is the expected path and half is the price of holding duration.'}`;
+  document.getElementById('now').innerHTML = `
+    <div class="lead">The 10-year at <b>${f('us10y')}%</b> is <b>${f('real')}%</b> real plus <b>${f('bei')}%</b> expected inflation${c.us10y != null ? ` — ${bp(c.us10y)} over the month, ${c.real != null && c.bei != null ? (Math.abs(c.real) >= Math.abs(c.bei) ? `most of it the real yield (${bp(c.real)}), which is what gold and long-duration stocks answer to` : `most of it inflation pricing (${bp(c.bei)}), which is what oil and breakevens are about`) : ''}` : ''}.</div>
+    <div class="tiles">
+      <div class="tile"><div class="k">2-year</div><div class="v">${f('us2y')}%</div><div class="d ${c.us2y > 0 ? 'up' : c.us2y < 0 ? 'dn' : ''}">${bp(c.us2y)} / month</div></div>
+      <div class="tile"><div class="k">10-year</div><div class="v">${f('us10y')}%</div><div class="d ${c.us10y > 0 ? 'up' : c.us10y < 0 ? 'dn' : ''}">${bp(c.us10y)} / month · P${pct5y.us10y} of 5y</div></div>
+      <div class="tile"><div class="k">30-year</div><div class="v">${f('us30y')}%</div><div class="d ${c.us30y > 0 ? 'up' : c.us30y < 0 ? 'dn' : ''}">${bp(c.us30y)} / month</div></div>
+      <div class="tile"><div class="k">2s10s</div><div class="v">${s10 != null ? bp(s10) : '?'}</div><div class="d">${s30 != null ? `2s30s ${bp(s30)}` : ''}</div></div>
+      <div class="tile"><div class="k">real 10y (TIPS)</div><div class="v">${f('real')}%</div><div class="d">P${pct5y.real} of 5y · ${bp(c.real)} / month</div></div>
+      <div class="tile"><div class="k">breakeven 10y</div><div class="v">${f('bei')}%</div><div class="d">P${pct5y.bei} of 5y · ${bp(c.bei)} / month</div></div>
+      <div class="tile"><div class="k">term premium 10y</div><div class="v">${f('tp')}%</div><div class="d">P${pct5y.tp} of 5y</div></div>
+      <div class="tile"><div class="k">policy (upper)</div><div class="v">${f('policy')}%</div><div class="d">${priced != null ? `2y ${priced >= 0 ? '+' : ''}${priced.toFixed(0)}bp above it` : ''}</div></div>
+    </div>
+    <div class="sub">The curve is <b>${slopeWord}</b> (2s10s ${s10 != null ? bp(s10) : '?'}${c.us10y != null && c.us2y != null ? `, ${(c.us10y - c.us2y) > 0 ? 'steepening' : 'flattening'} ${bp(c.us10y - c.us2y)} over the month${Math.abs(c.us2y) > Math.abs(c.us10y) ? ', the front end leading — a vote on the central bank' : ', the long end leading — a vote on inflation and supply'}` : ''}).</div>
+    <div class="sub">${tpWord}</div>
+    <div class="sub">${priced != null ? `<b>What is priced</b>, by proxy: the 2-year sits ${priced.toFixed(0)}bp ${priced >= 0 ? 'above' : 'below'} the policy rate — roughly <b>${Math.abs(priced / 25).toFixed(1)} ${priced >= 0 ? 'hikes' : 'cuts'}</b> over two years if it were all expected policy (it is not entirely; a proper implied path needs fed funds futures, which have no free feed this desk trusts). Tested here: whether a print was "priced in" did not change what it did to prices (null, 2026-09-17).` : ''}</div>`;
+  const last = (k, dp = 2) => f(k, dp) + '%';
+  chart(document.getElementById('chCurve'), [{ name: '2y', color: 'var(--amber)', pts: S.us2y, last: last('us2y') }, { name: '10y', color: 'var(--blue)', pts: S.us10y, last: last('us10y') }, { name: '30y', color: 'var(--purple)', pts: S.us30y, last: last('us30y') }]);
+  const by = k => new Map(S[k]); const slope = (a, b) => S[a].filter(([d]) => by(b).has(d)).map(([d, v]) => [d, +((v - by(b).get(d)) * 100).toFixed(0)]);
+  chart(document.getElementById('chSlope'), [{ name: '2s10s', color: 'var(--blue)', pts: slope('us10y', 'us2y'), last: s10 != null ? bp(s10) : null }, { name: '2s30s', color: 'var(--purple)', pts: slope('us30y', 'us2y'), last: s30 != null ? bp(s30) : null }], { unit: 'bp', zero: true });
+  chart(document.getElementById('chSplit'), [{ name: '10y nominal', color: 'var(--blue)', pts: S.us10y, last: last('us10y') }, { name: 'real (TIPS)', color: 'var(--bull)', pts: S.real, last: last('real') }, { name: 'breakeven', color: 'var(--bear)', pts: S.bei, last: last('bei') }]);
+  chart(document.getElementById('chTp'), [{ name: 'term premium 10y', color: 'var(--amber)', pts: S.tp, last: last('tp') }], { zero: true });
+  const ids = ['yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve', 'priced-in-direction', 'fed-two-moves', 'front-end-shock', 'oil-breakevens-lag', 'real-yield-gold', 'crowded-bond-short-fomc', 'post-fomc-usd-drift', 'fomc-leadup-surprise-table'];
+  const rows = DESK_EVIDENCE.filter(e => ids.includes(e.id) || (e.domain === 'macro' && /yield|curve|rate|fed|fomc|breakeven|real/i.test(e.claim)));
+  const seen = new Set(); document.getElementById('ev').innerHTML = rows.filter(e => !seen.has(e.id) && seen.add(e.id)).map(e => `<div class="ev"><span class="v ${e.verdict}">${e.verdict === 'validated' ? 'validated' : e.verdict === 'null' ? 'null' : 'base rate'}</span><span><b>${esc(e.claim)}.</b> ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)} <i style="color:var(--text3)">— ${esc(e.use.length > 160 ? e.use.slice(0, 157) + '…' : e.use)}</i></span></div>`).join('');
+  document.getElementById('note').innerHTML = `Sources: FRED DGS2/DGS10/DGS30 (constant-maturity Treasury yields), DFII10 (10-year TIPS real yield), T10YIE (10-year breakeven), DFEDTARU (target range, upper), THREEFYTP10 (Kim–Wright 10-year term premium, published with about a week's lag). Refreshed every six hours, no key. The "hikes priced" line is a proxy from the 2-year, labelled as one. Nothing on this page is a forecast; the verdicts above are what this desk has found when it tested the textbook.`;
+}
+main().catch(e => { document.getElementById('now').textContent = e.message; });
+</script>
+</body>
+</html>

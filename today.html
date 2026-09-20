@@ -677,6 +677,14 @@
   .sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:14px}
   .side-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
   .side-card h3{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:11px}
+  .bk-list{display:flex;flex-direction:column}
+  .bk{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);color:inherit;text-decoration:none}
+  .bk:last-child{border-bottom:none} .bk:hover .bk-t{color:var(--blue)}
+  .bk-ic{font-size:15px;line-height:1.2;flex-shrink:0;width:20px;text-align:center}
+  .bk-b{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .bk-t{font-size:12px;font-weight:700;color:var(--text)}
+  .bk-l{font-size:11px;color:var(--text2);line-height:1.4} .bk-l b{color:var(--text)}
+  .bk-s{font-size:10px;color:var(--text3);line-height:1.35}
   /* Gauge scales to fill its card (up to 260px) instead of sitting as a
      small fixed 150px graphic in a much wider box — the svg's viewBox
      handles the internal scaling, so only the wrapper width + the
@@ -5604,7 +5612,7 @@ async function loadDeskWatch() {
 // A backdrop, not a forecast: which way the current has been running, how
 // long, what the usual next move is and what its tell is.
 let regime = null;
-async function loadRegime() { try { const j = await jget('/api/regime'); if (j?.ok) { regime = j; renderRegimeLine(); } } catch { /* stays hidden */ } }
+async function loadRegime() { try { const j = await jget('/api/regime'); if (j?.ok) { regime = j; renderRegimeLine(); render(); } } catch { /* stays hidden */ } }
 function renderRegimeLine() {
   const el = $('regimeLine'); if (!el) return; const n = regime?.now; if (!n) { el.style.display = 'none'; return; }
   const W = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
@@ -7723,16 +7731,51 @@ function renderSidebar() {
       <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
     </div>
 
-    <div class="side-card"><h3>Quick Links</h3>
+    ${booksCardHtml()}
+    <div class="side-card"><h3>Tools</h3>
       <div class="qtile-grid">
         <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
-        <a class="qtile" href="cot-extremes.html"><span class="qt-ic">🎯</span><span class="qt-t">COT Extremes</span><span class="qt-s">Crowded positioning</span></a>
-        <a class="qtile" href="credit-leadlag.html"><span class="qt-ic">📈</span><span class="qt-t">Credit Lead-Lag</span><span class="qt-s">Is the gate proven?</span></a>
-        <a class="qtile" href="continuation-fade-ticker.html"><span class="qt-ic">🔁</span><span class="qt-t">Continuation vs Fade</span><span class="qt-s">USD-trend filter</span></a>
         <a class="qtile" href="brief-config.html"><span class="qt-ic">⚙</span><span class="qt-t">Brief Config</span><span class="qt-s">Auto-generation setup</span></a>
         <div class="qtile" onclick="openSiteMap()"><span class="qt-ic">🗺</span><span class="qt-t">Full Site Map</span><span class="qt-s">Every page, explained</span></div>
       </div>
     </div>`;
+}
+// ── The books: the pages that complement this one, with a live line each ────
+// Not a link list -- each row says what the book holds RIGHT NOW (the regime,
+// how many tested relationships are firing, the next print and its measured
+// size, the curve), and the rows that only matter on some days (a central bank
+// this week, a data page for a release due) appear only on those days.
+function booksCardHtml() {
+  const rows = [];
+  const row = (href, ic, title, live, sub) => rows.push(`<a class="bk" href="${href}" target="_blank"><span class="bk-ic">${ic}</span><span class="bk-b"><span class="bk-t">${title}</span>${live ? `<span class="bk-l">${live}</span>` : ''}${sub ? `<span class="bk-s">${sub}</span>` : ''}</span></a>`);
+  // regime
+  const n = regime?.now; const RW = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
+  row('regime.html', '🧭', 'Regime', n ? `<b>${esc0(RW[n.regime] ?? n.regime)}</b>, month ${n.months} — ${esc0(n.what)}` : 'growth × inflation, monthly', 'what each market did in this backdrop, with intervals');
+  // evidence
+  const ev = window.deskEvidenceBrick?.DESK_EVIDENCE ?? []; const firing = (deskWatch?.states ?? []).filter(t => t.firing && t.kind === 'tested');
+  row('evidence.html', '📗', 'Evidence Book', ev.length ? `<b>${ev.length}</b> tested · ${ev.filter(e => e.verdict === 'validated').length} validated · <b>${firing.length}</b> firing now${firing.length ? `: ${esc0(firing.slice(0, 2).map(t => t.label).join(', '))}` : ''}` : 'every relationship this desk has tested', 'claim, verdict, the number, the write-up');
+  // event book: the next high-impact print and its measured size
+  const nowMs = Date.now(); const nxt = (events ?? []).filter(e => e.ms > nowMs && (e.impact ?? '').toLowerCase() === 'high').sort((a, b) => a.ms - b.ms)[0];
+  let evLive = 'what each release does to each pair, measured';
+  if (nxt) { const fam = _tlFam(nxt.event); const imp = fam ? window.eventImpactBrick?.eventImpact(nxt.country, fam) : null; const pairs = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 2).map(([k, v]) => `${dispName(k)} ${v.spike}×`).join(', ') : null; evLive = `next: <b>${esc0(nxt.country)} ${esc0(nxt.event)}</b> ${new Date(nxt.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${pairs ? ` · the book: ${esc0(pairs)} a normal half-hour` : imp ? ` · ${imp.medSpike}× median` : ' · not a mover in the book'}`; }
+  const rc = releaseCalls?.summary; row('event-response.html', '📅', 'Event Book', evLive, rc?.n ? `your calls: ${rc.hits} of ${rc.n} right` : 'call the print ▲▼ in the calendar above; it is scored here');
+  // rates & policy
+  const f = fred ?? {}; const s2 = f.us2y?.value, s10 = f.us10y?.value, s30 = f.us30y?.value, real = f.tips?.value, bei = f.bei?.value;
+  const rl = s2 != null && s10 != null ? `2s10s <b>${Math.round((s10 - s2) * 100)}bp</b>${s30 != null ? `, 2s30s ${Math.round((s30 - s2) * 100)}bp` : ''}${real != null && bei != null ? ` · 10Y = real ${real.toFixed(2)} + inflation ${bei.toFixed(2)}` : ''}` : 'the curve, real vs inflation, the term premium';
+  row('rates.html', '📉', 'Rates &amp; Policy', rl, 'nominal split into real and inflation, the term premium, what is priced — with the verdicts stapled on');
+  // central banks: only when a decision is inside ten days
+  const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'] };
+  const cbEv = (events ?? []).filter(e => e.ms > nowMs - 2 * 864e5 && e.ms < nowMs + 10 * 864e5 && _tlFam(e.event) === 'rate decision' && CB[e.country]).sort((a, b) => a.ms - b.ms)[0];
+  if (cbEv) { const [href, name] = CB[cbEv.country]; row(href, '🏛', `${name} this week`, `decision ${new Date(cbEv.ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${cbEv.estimate != null ? ` · ${esc0(cbEv.estimate)} expected` : ''}`, 'statement wording, hawkish/dovish drift, meeting by meeting'); }
+  else { const fm = _tlFomcAhead().replace(/<[^>]+>/g, ''); if (fm) row('fomc-sentiment.html', '🏛', 'Fed', esc0(fm.replace(/^\s*\d\d-\d\d\s*/, '')), 'the statement, meeting by meeting'); }
+  // data pages for releases due inside 72h
+  const DP = { cpi: ['cpi.html', 'CPI / inflation'], employment: ['labor-market.html', 'Labour market'], gdp: ['gdp.html', 'GDP / growth'], pmi: ['ism.html', 'Business activity'] };
+  const due = new Map(); for (const e of (events ?? []).filter(e => e.ms > nowMs && e.ms < nowMs + 72 * 3600e3 && (e.impact ?? '').toLowerCase() === 'high')) { const fam = _tlFam(e.event); if (DP[fam] && !due.has(fam)) due.set(fam, e); }
+  for (const [fam, e] of due) { const [href, name] = DP[fam]; row(href, '📈', `${name} — due`, `${esc0(e.country)} ${esc0(e.event)} ${new Date(e.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${e.estimate != null ? ` · ${esc0(e.estimate)} expected` : ''}${nowcastFor(e.country, e.event, e.ms) ? ` · model ${esc0(nowcastFor(e.country, e.event, e.ms).value)}` : ''}`, 'the series, the trend, the last prints'); }
+  // positioning and walls
+  row('oi-dashboard.html', '◆', 'Open interest', 'dealer walls, gamma, the hold calendar per instrument', 'where the options market has drawn its lines');
+  row('cot-extremes.html', '🎯', 'COT extremes', 'crowded positioning by currency', 'descriptive — tested here, no directional record');
+  return `<div class="side-card"><h3>The books</h3><div class="bk-list">${rows.join('')}</div></div>`;
 }
 
 function render() {
