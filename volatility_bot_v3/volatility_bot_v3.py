@@ -395,10 +395,18 @@ def _fmt_px(px: float | None) -> str:
     return f"{px:.{dp}f}"
 
 
+# v3 shares v2's real Telegram chat (owner's choice, 2026-09-20 -- "just make
+# sure we differ v2 from v3") since v3 has no alerting of its own configured
+# yet and a bot going a week unmonitored with zero notification path is a
+# real risk. Every alert this bot sends is tagged [v3] so the two bots'
+# messages, sharing one chat, are never ambiguous about which fired.
+BOT_TAG = " [v3]"
+
+
 def _fmt_entry_alert(instr: str, spec: dict, lots: float, mode_tag: str) -> str:
     direction = "LONG" if spec["dir_up"] else "SHORT"
     icon = "🟢" if spec["dir_up"] else "🔴"
-    return (f"{icon} <b>{instr.upper()}</b> {direction} entered{mode_tag}\n"
+    return (f"{icon} <b>{instr.upper()}</b> {direction} entered{BOT_TAG}{mode_tag}\n"
             f"{spec.get('side')}/{spec.get('rung')} · {spec.get('rationale') or ''}\n"
             f"Entry <code>{_fmt_px(spec.get('entry'))}</code>  "
             f"SL <code>{_fmt_px(spec.get('sl'))}</code>  TP <code>{_fmt_px(spec.get('tp'))}</code>\n"
@@ -406,7 +414,7 @@ def _fmt_entry_alert(instr: str, spec: dict, lots: float, mode_tag: str) -> str:
 
 
 def _fmt_skip_alert(instr: str, spec: dict, reason: str, mode_tag: str) -> str:
-    return (f"⏸️ <b>{instr.upper()}</b> {spec.get('side')}/{spec.get('rung')} touch skipped{mode_tag}\n"
+    return (f"⏸️ <b>{instr.upper()}</b> {spec.get('side')}/{spec.get('rung')} touch skipped{BOT_TAG}{mode_tag}\n"
             f"{spec.get('rationale') or ''}\n"
             f"Reason: {reason}")
 
@@ -424,7 +432,7 @@ def _fmt_close_alert(instr: str, row: dict, mode_tag: str) -> str:
         dur = f"{h}h{m:02d}m" if h else f"{m}m"
     line2 = f"{_fmt_px(row.get('open_price'))} → {_fmt_px(row.get('close_price'))}"
     line3 = f"P&L {pnl_txt}" + (f" · open {dur}" if dur else "")
-    return f"{tag} <b>{instr.upper()}</b>{mode_tag}\n{line2}\n{line3}"
+    return f"{tag} <b>{instr.upper()}</b>{BOT_TAG}{mode_tag}\n{line2}\n{line3}"
 
 
 def build_status(cfg, broker, plan, paper, sessions, ccy_gate, throttle=None,
