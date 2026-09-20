@@ -43,6 +43,45 @@ own header and the "How we talk about results" section of `CLAUDE.md`.
 
 ---
 
+## Open candidates — noted, not run (check here first)
+
+Every entry below ends with its own "noted candidate, not run" line, but until
+now that was the only place it lived — easy to lose track of across a growing
+log. This section is the running index; add a line here whenever an entry logs
+one, and strike it when it gets picked up (built, pre-registered, or
+explicitly declined).
+
+- **S17 (real-spx forward test)** — does `real-spx` forward-predict anything,
+  the same test `real-nq` already ran. Cheap follow-on to an existing harness
+  pattern. Source: 2026-09-18 entry, step 5.
+- **"Who's driving" leadership ranking across `CHAIN_NODES`** — rank nodes by
+  how much of the others' concurrent moves they explain, refreshed with the
+  page. Not started. Source: 2026-09-18 entry, step 5 ("not claimed").
+- **A silver node on the chain** — gold + copper already cover the
+  precious/industrial ends of the metals basket; a third node is reasonable
+  but bigger than a one-line edit. Source: 2026-09-18 (3) entry, step 5.
+- **VWAP persistence-confirmation framing** ("three consecutive 5-min closes
+  below VWAP + a holding retest") — never literally replicated; every VWAP
+  test used a single touch/impulse/σ-band trigger, not a multi-bar acceptance
+  count. Low prior (§14's closest analog is null everywhere). Source:
+  2026-09-19 entry, step 5.
+- **VWAP work on NAS100/SPX500** — none of the VWAP-touch/pullback work has
+  been run on the index CFDs closest to Crown's actual equity-flow rationale,
+  only FX majors + gold. Cheap (engines/harness exist), low prior (every prior
+  VWAP construction nulled). Source: 2026-09-19 entry, step 5.
+- **Round-number pinning on NAS100_USD/SPX500_USD** — extends the existing
+  FX+gold round-number-pinning null (nulled on gold + EUR/USD, GBP/USD,
+  USD/JPY) to the two index CFDs it's never been run on. Cheap (harness +
+  OANDA data already exist), low prior (four prior nulls). Source: 2026-09-20
+  (2) entry, step 5.
+
+None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
+pre-registration step (state the pass/null bar first) before it's run, per the
+standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
+be re-discovered by re-reading five entries.
+
+---
+
 ## 2026-09-18 — "The 10-year is driving the bus, and the asphalt is crude oil"
 
 > *"If you are a tick trader right now, you are like an ant riding the back
@@ -559,3 +598,61 @@ other instruments).
   desk's data to check), or whether the live `oi_bot`/gamma stack is
   currently working as intended in production — that's a status question
   for the owner, not something this log can settle by reading code.
+
+---
+
+## 2026-09-20 (3) — "How to hedge your stock portfolio like the pros" (rolling protective puts)
+
+> *"Buy one SPX/XSP put ~5% below spot, one month out, sized to your
+> portfolio's notional; roll it forward each month before expiry so it
+> doesn't expire worthless. If the market drops, the puts offset the
+> portfolio loss; if it doesn't, you've paid the premium as the cost of
+> insurance. Fun fact: you've just also learned how an annuity contract
+> works."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) a mechanical
+recipe — size and roll monthly ~5%-OTM index puts (SPX above ~$500k notional,
+XSP below) to hedge a diversified equity/index-fund portfolio; (b) an
+equivalence claim — this rolling-put construction is structurally the same
+economics as an annuity's embedded downside protection.
+
+**2. What's already on this desk.** Not much that's on-point, and that's the
+right answer here rather than a gap to close. This desk's options-adjacent
+code (`js/oi.js`, `js/gammaFlow.js`, `js/ivMetrics.js`, `oi_bot.py`) reads
+*dealer positioning* to infer short-term price pressure on instruments this
+desk trades (gold, indices, FX). It has no module for constructing or sizing
+an *investor's own* protective-put overlay on equity holdings, and no reason
+to — that's a different job (portfolio insurance for a long equity book) than
+what any page here does (reading market state for CFD entries). `js/ivMetrics.js`'s
+`riskReversal` is the nearest cousin — it reads put/call skew as a fear
+gauge — but that is a different question (is skew elevated right now) from
+this clip's content (how to build your own hedge), and nothing here computes
+it for SPX/XSP specifically.
+
+**3. Is it a trading claim or a macro-understanding claim — actually, neither.**
+This doesn't fit the usual fork. It isn't "how does one market explain
+another" (chain material), and it isn't a falsifiable market-behavior claim to
+audit or backtest either: "a put gains when the underlying falls and costs
+premium otherwise" isn't an empirical proposition to test, it's the definition
+of a put's payoff. The one genuinely empirical thread buried in it — *how much
+does a systematic 5%-OTM/1-month rolling put program actually cost over time,
+on average, across regimes* (the real "cost of insurance" number, sometimes
+published as protective-put-index drag) — is a real question, but it needs an
+SPX/XSP options history (strikes, IV surface) this desk doesn't have and isn't
+built to fetch; it's also a question about hedging *equity* exposure, not
+about this desk's FX/gold/index-CFD trading.
+
+**4. Is there a display/alert nugget here, independent of #3.** No. There's no
+descriptive market-state fact in this clip to surface — it's a personal
+construction recipe (how big a put, which strike, when to roll), not a
+reading of current conditions. It doesn't extend or sharpen anything already
+on a page.
+
+**5. Verdict and action: not built, not pre-registered, nothing added to the
+candidates list above.** Agreeing with the read that prompted asking — this
+one is a genuinely correct, standard institutional technique (a rolling
+protective put, economically the same insurance mechanic an annuity bundles
+with income features) worth understanding personally, but it isn't a claim
+about how this desk's markets move, so it doesn't produce a testable entry or
+a display/alert nugget the way the other clips have. Nothing built, nothing
+tested, nothing queued.
