@@ -142,6 +142,8 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { PANEL as _WM_PANEL } from './js/weekMap.js';
+import { buildWeekMap as _buildWeekMap } from './js/weekMapBuild.js';   // every series scored against itself, and the weeks that sat like this
 import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
 import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
@@ -13929,6 +13931,38 @@ app.get('/api/rates', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
+
+// ── The week map: every series scored against its own history ────────────────
+// Weekly changes of ~25 macro series, each as a z against the series' full
+// history, this week's bar in the histogram, and the ten nearest past weeks in
+// z-space with what followed. Rebuilt once a day from FRED (keyless CSV; the
+// ICE OAS series through the key) and OANDA. The analogue test (W1) lives in
+// analysis/output/weekmap_test.json and is printed on the page.
+let _weekMap = { at: 0, data: null, error: null };
+async function _refreshWeekMap() {
+  try {
+    const raw = {};
+    for (const p of _WM_PANEL) {
+      try {
+        if (p.fred) raw[p.id] = (p.keyed && process.env.FRED_KEY) ? [...(await fetchFredSeries(p.fred, '1990-01-01', process.env.FRED_KEY)).entries()].map(([date, value]) => ({ date, value })) : await _fredCsv(p.fred);
+        else if (p.oanda) raw[p.id] = (await _btFetchD1(p.oanda, 5000)).map(b => ({ date: b.date, value: b.close }));
+      } catch (e) { console.warn('[weekmap]', p.id, e.message); }
+    }
+    const wm = _buildWeekMap(raw); delete wm._internal;
+    let test = null; try { test = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'weekmap_test.json'), 'utf8')); } catch { /* none yet */ }
+    _weekMap = { at: Date.now(), data: { ...wm, test: test ? { ranAt: test.ranAt, w1: test.w1 } : null }, error: null };
+  } catch (e) { _weekMap.error = e.message; console.warn('[weekmap]', e.message); }
+  return _weekMap;
+}
+app.get('/api/weekmap', async (_req, res) => {
+  try {
+    if (Date.now() - _weekMap.at > 24 * 3600_000) await _refreshWeekMap();
+    if (!_weekMap.data) return res.status(503).json({ ok: false, error: _weekMap.error ?? 'no week map yet' });
+    res.json({ ok: true, ..._weekMap.data, at: new Date(_weekMap.at).toISOString(), spec: 'MD files/WEEK_MAP.md' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('weekMap', () => _refreshWeekMap().catch(e => console.error('[weekmap]', e.message)), 24 * 3600_000);
+setTimeout(() => _refreshWeekMap().catch(e => console.error('[weekmap] first pass failed:', e.message)), 14 * 60_000);
 
 // ── Nowcasts: the third number on a release line ────────────────────────────
 // Consensus is what the street expects; the actual is what printed; the nowcast

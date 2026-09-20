@@ -74,3 +74,35 @@ A new screen, `weekmap.html`, linked from The books. Nothing on today.html
 changes except the books row. No lean, no trigger.
 
 ---
+
+## Results (run 2026-09-20; design frozen above before running)
+
+Harness `analysis/weekmap_study.mjs` → `analysis/output/weekmap_test.json`;
+brick `js/weekMap.js` (+ tests), builder `js/weekMapBuild.js`, route
+`/api/weekmap`, screen `weekmap.html`. 1,916 weeks; 21 series qualify for the
+state (HY/IG OAS carry three years on the keyless feed; plumbing five).
+
+**This week:** one thing was unusual — policy +25bp, z +3.1, the 98th
+percentile of its weeks (the hike). Every other series was ordinary: 2s30s
+−10bp z −1.0, EUR/USD −0.97% z −0.8, oil +5.7% z +0.9. A useful first lesson
+from the tool: the week the Fed hiked, the *market* series did nothing unusual.
+
+**W1 — NULL on all three targets.** Walk-forward over 390 scored weeks, ten
+analogues known at the time, median 13-week outcome:
+
+| target | analogues right | unconditional | ten random weeks (p05–p95) | size error, analogue vs unconditional |
+|---|---|---|---|---|
+| S&P 500 | 75.4% | 75.6% | 63–69% | 4.47 vs 4.25 (worse) |
+| EUR/USD | 52.8% | 53.8% | 45–54% | 1.97 vs 1.86 (worse) |
+| Gold | 61.3% | 68.5% | 52–60% | 5.90 vs 5.58 (worse) |
+
+The analogue median beats ten *random* weeks (it is a smoother estimate) and
+never beats the *unconditional* base rate — because what it converges to is the
+unconditional base rate. Gold's analogues were actively worse. The weeks that
+"sat like this" carry no information about the next quarter beyond "markets
+usually go up". The result is printed on the page under the outcome plots.
+
+This is the same finding as the Event Book's pre-event analogues (49.3% vs a
+51.5% placebo, 2026-09-17), at a different horizon with a different state. The
+teaser's framing — "a distribution of outcomes rather than a view" — is right;
+the distribution is just the unconditional one.

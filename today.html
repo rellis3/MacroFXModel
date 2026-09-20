@@ -1935,6 +1935,7 @@ async function loadGate() {
   setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
   setTimeout(() => loadReleaseCalls(), 3500);                      // your calls and the just-printed cards
   setTimeout(() => loadRegime(), 4000);                            // the regime line
+  setTimeout(() => loadWeekMap(), 5000);                           // the week, scored (sidebar row)
   // The sidebar is taller than the window, so a plain sticky top pinned its head
   // and hid its tail until the main column ran out. Pin it by its BOTTOM instead
   // when it is taller than the viewport: it scrolls with the page until its last
@@ -5611,6 +5612,8 @@ async function loadDeskWatch() {
 // Growth x inflation, monthly, from FRED (regime.html has the whole table).
 // A backdrop, not a forecast: which way the current has been running, how
 // long, what the usual next move is and what its tell is.
+let weekMap = null;
+async function loadWeekMap() { try { const j = await jget('/api/weekmap'); if (j?.ok) { weekMap = j; render(); } } catch { /* row stays generic */ } }
 let regime = null;
 async function loadRegime() { try { const j = await jget('/api/regime'); if (j?.ok) { regime = j; renderRegimeLine(); render(); } } catch { /* stays hidden */ } }
 function renderRegimeLine() {
@@ -7751,6 +7754,9 @@ function booksCardHtml() {
   // regime
   const n = regime?.now; const RW = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
   row('regime.html', '🧭', 'Regime', n ? `<b>${esc0(RW[n.regime] ?? n.regime)}</b>, month ${n.months} — ${esc0(n.what)}` : 'growth × inflation, monthly', 'what each market did in this backdrop, with intervals');
+  // the week, scored
+  const wm = weekMap; const loudW = wm ? Object.values(wm.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z)) : [];
+  row('weekmap.html', '🗺', 'The week, scored', wm ? (loudW.length ? `unusual this week: ${esc0(loudW.slice(0, 3).map(x => `${x.label} z ${x.latest.z >= 0 ? '+' : ''}${x.latest.z.toFixed(1)}`).join(', '))}; the rest ordinary` : 'an ordinary week on every series') : 'every macro series scored against its own history', 'this week in each series’ distribution, and the weeks that sat like this');
   // evidence
   const ev = window.deskEvidenceBrick?.DESK_EVIDENCE ?? []; const firing = (deskWatch?.states ?? []).filter(t => t.firing && t.kind === 'tested');
   row('evidence.html', '📗', 'Evidence Book', ev.length ? `<b>${ev.length}</b> tested · ${ev.filter(e => e.verdict === 'validated').length} validated · <b>${firing.length}</b> firing now${firing.length ? `: ${esc0(firing.slice(0, 2).map(t => t.label).join(', '))}` : ''}` : 'every relationship this desk has tested', 'claim, verdict, the number, the write-up');
