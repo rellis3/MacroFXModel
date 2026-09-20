@@ -90,3 +90,37 @@ Goldilocks, month 5 — growth improving, inflation easing. In this backdrop
 since 2007: S&P ↑ (+1.2%/mo, n=56), Nasdaq ↑; the rest no tilt. The usual next
 move is reflation; its tell is wages, commodities, breakevens."* Context; the FX
 cells are no-tilt, which is the desk's standing result restated.
+
+---
+
+## R2 — the regime per currency, and the pair as a regime *differential* (registered 2026-09-20, before running)
+
+The US-only table had no FX tilt, which is what a one-sided label should give:
+EUR/USD is not "US goldilocks", it is "US goldilocks *against* euro-area
+stagflation". This registers the two-sided version.
+
+**Per-currency labels** (same construction as the US one — rate of change,
+z over a trailing ten years, threshold zero, one-month publication lag), on
+series validated this week and nothing older:
+
+| currency | growth legs | inflation legs |
+|---|---|---|
+| USD | as above | as above |
+| GBP | −Δ unemployment (3m vs 12m), monthly GDP 3m annualised (ONS) | CPI y/y, core CPI y/y (ONS), scored as 3-month change |
+| EUR | −Δ unemployment, GDP q/q held monthly (Eurostat) | HICP y/y, core HICP y/y (Eurostat) |
+| CAD | −Δ unemployment, monthly GDP 3m annualised (StatCan) | CPI y/y (from the index), CPI-trim, CPI-median (StatCan) |
+| AUD, JPY, CHF, NZD | **no read** — the only free series are stale OECD mirrors | |
+
+**The differential:** for EUR/USD, GBP/USD, USD/CAD each month, the pair of
+labels (base, quote). Reported two ways: the full 4×4 grid, and the coarse
+split *aligned* (same quadrant) / *diverging* (different quadrant), which is
+the notes' "policy-divergence regime".
+
+**Outcomes:** next-month return and next-month range (high−low ÷ price), by
+cell, with n and a bootstrap interval, 2007 →.
+
+**What counts:** this is a base-rate table like the US one — no pass bar, no
+lean. The one hypothesis worth stating in advance: **diverging months run a
+wider range than aligned months** (the notes' claim, restated as range). If the
+range difference's interval clears zero it goes on the page as a tested
+sentence; direction cells are reported and expected to be no-tilt.
