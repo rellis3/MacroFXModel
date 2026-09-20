@@ -854,6 +854,7 @@
   .chain-g .gl{font-size:10px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
   .chain-g .gl.hold{fill:var(--bull)} .chain-g .gl.broke{fill:var(--amber);font-weight:700}
   .chain-g .ge-g{cursor:pointer} .chain-g .ge-g:hover .glb,.chain-g .ge-g.sel .glb{stroke:var(--blue);stroke-width:1.4}
+  .chain-legend .chain-names{flex-basis:100%;color:var(--text3)}
   .chain-g .glb{fill:var(--card);stroke:var(--border);stroke-width:1;opacity:.96}
   @keyframes chainflow{to{stroke-dashoffset:-24}}
   @keyframes chainpulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -3233,7 +3234,7 @@ function chainGraphHtml(links) {
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span></div>${linkCard}${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor</span></div>${linkCard}${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
