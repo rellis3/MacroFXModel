@@ -615,7 +615,8 @@
      with zero new color definitions. See the design mockup this was built
      from for the full direction. ────────────────────────────────────────── */
   .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
-  @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  .statcard{min-width:0} .statcard .spark{width:100%;max-width:100%}
   .statcard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:13px 15px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
   .statcard .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding-right:74px}
@@ -664,8 +665,18 @@
      requesting desktop mode on a phone actually gets the 2-column layout
      instead of landing right on the old 980px edge and still stacking. ── */
   .dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+  .dashgrid>*{min-width:0}
   @media(max-width:720px){
-    .dashgrid{grid-template-columns:1fr}
+    /* minmax(0,1fr), not 1fr: a bare 1fr has an auto minimum, so any wide
+       child (the chain board's 1020px svg, a table) would stretch the column
+       to its width and leave the sticky header at phone width on top of it.
+       With a zero minimum the column stays at the phone's width and the
+       wide things scroll inside their own overflow-x containers. */
+    .dashgrid{grid-template-columns:minmax(0,1fr)}
+    .dashgrid>*{min-width:0}
+    /* the 10Y/2Y/2s10s pip is wider than half a phone: put it in flow above
+       the label rather than floating over it */
+    .stat-tabs{position:static;flex-wrap:wrap;margin-bottom:2px} .statcard .lbl{padding-right:0}
     .sidebar{position:static !important}
     /* Stacked full-width cards get a bigger gauge and a tighter 4-across
        glance row instead of just inheriting the narrow-column sizing. */
