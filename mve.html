@@ -5,8 +5,14 @@
   runs the FULL pipeline (emitters → ensemble/Kalman → mispricing → OU
   convergence → confidence) and renders the per-trade valuation card.
 
-  This page is NOT linked from index.html or hub.html and adds NO server route —
-  it is served as a static file, so opening it cannot affect the live system.
+  This page is NOT linked from index.html or hub.html. It IS linked from the Site
+  Map modal and the Command Hub top bar, and it DOES call live, read-only server
+  routes for the "Live" data source and the validation buttons (/api/mve/:sym,
+  /api/mve-validate/:sym, /api/mve-validate-full/:sym, /api/mve-validate-all) —
+  those routes surface a valuation/validation report and cannot write to or alter
+  any live signal, bot, or trading decision (see MVE_RUN_GUIDE.md §6/§7 on what
+  "isolated" actually means here: no server.js import feeds a signal, not "no
+  route"). "Synthetic" mode needs no server at all.
   Open it at:  <your server>/mve.html   (or via any static server from repo root).
 -->
 <html lang="en">
@@ -133,15 +139,19 @@ function draw(price, fv) {
 
 async function runValidation() {
   const sym = $('sym').value;
-  $('valout').innerHTML = '<div class="panel">⏳ Running walk-forward OOS validation (this fetches ~6y of history)…</div>';
+  $('valout').innerHTML = '<div class="panel">⏳ Running walk-forward OOS validation (this fetches ~20y of history)…</div>';
   try {
-    const rep = await (await fetch(`/api/mve-validate/${sym}`)).json();
-    if (!rep.ok) { $('valout').innerHTML = `<div class="panel">Validation error: ${rep.error} (deployed server only)</div>`; return; }
+    // /api/mve-validate-full also runs the MD files/RESIDUAL_REVERSION_FX_TEST.md
+    // regime split (2022-24 vs the rest) + cost overlay on top of the same base
+    // report /api/mve-validate/:sym returns — one call, everything current.
+    const full = await (await fetch(`/api/mve-validate-full/${sym}`)).json();
+    if (!full.ok) { $('valout').innerHTML = `<div class="panel">Validation error: ${full.error} (deployed server only)</div>`; return; }
+    const rep = full.base;
     const survives = /^SURVIVES/.test(rep.verdict), nul = /^NULL/.test(rep.verdict);
     const col = survives ? '#22c55e' : nul ? '#ef4444' : '#f59e0b';
     const rows = Object.entries(rep.perHorizon).filter(([,h])=>!h.insufficient).map(([H,h]) =>
       `<tr><td>${H} bars</td><td style="font-family:monospace">${h.icPredictive ?? '—'}</td><td style="font-family:monospace">${h.icBenchmark ?? '—'}</td><td style="font-family:monospace;color:${h.icEdge>0.03?'#22c55e':h.icEdge<-0.03?'#ef4444':'#8891a0'}">${h.icEdge ?? '—'}</td><td style="font-family:monospace">${h.hitRate ?? '—'}</td></tr>`).join('');
-    $('valout').innerHTML = `
+    let html = `
       <div class="panel" style="border-color:${col}55">
         <div style="font-weight:700;color:${col};margin-bottom:8px">Verdict — ${sym}</div>
         <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:12px;line-height:1.5">${rep.verdict}</div>
@@ -152,6 +162,37 @@ async function runValidation() {
         <div style="margin-top:10px;font-size:12px;color:#cdd3dc">z-fade strategy (horizon-matched): deflated Sharpe <b>${rep.strategy.deflatedSharpe ?? '—'}</b>, annualized Sharpe ${rep.strategy.annualizedSharpe}, ${rep.strategy.trades} non-overlapping trades @ <b>${rep.strategy.bestHold}-bar hold</b>, z≥${rep.strategy.bestThreshold} (best of ${rep.strategy.nConfigsTried} configs).</div>
         <div style="margin-top:8px;font-size:10.5px;color:#5b6270;line-height:1.5">${rep.note}</div>
       </div>`;
+
+    if (full.costOverlay) {
+      const co = full.costOverlay;
+      html += `
+      <div class="panel">
+        <div style="font-weight:700;margin-bottom:8px">Cost overlay — an ASSUMPTION, not a measured spread/ATR gate</div>
+        <div style="font-size:12.5px;color:#cdd3dc;line-height:1.5">Best config's ${co.n} trades, haircut by ${co.costRtPct}% round-trip (the validated yield-spread sleeve's own assumption, borrowed here — not measured on ${sym}). Mean per-trade: <b style="color:${co.meanPreCost>0?'#22c55e':'#ef4444'}">${co.meanPreCost}</b> pre-cost → <b style="color:${co.meanPostCost>0?'#22c55e':'#ef4444'}">${co.meanPostCost}</b> post-cost.</div>
+      </div>`;
+    }
+
+    if (full.regime) {
+      const rg = full.regime;
+      if (rg.ok === false) {
+        html += `<div class="panel"><div style="font-size:12.5px;color:#8891a0">Regime split unavailable: ${rg.error}</div></div>`;
+      } else {
+        const fmtSlice = (s, label, n) => s.ok
+          ? `<div style="margin-bottom:6px"><b>${label}</b> (n=${n}): <span style="color:#cdd3dc">${s.verdict}</span></div>`
+          : `<div style="margin-bottom:6px"><b>${label}</b>: <span style="color:#8891a0">${s.error}</span></div>`;
+        html += `
+      <div class="panel">
+        <div style="font-weight:700;margin-bottom:8px">Regime split — ${rg.window.label}</div>
+        <div style="font-size:12px;line-height:1.6">
+          ${fmtSlice(rg.inWindow, rg.window.label, rg.nInWindow)}
+          ${fmtSlice(rg.outOfWindow, 'rest of sample', rg.nOutOfWindow)}
+        </div>
+        <div style="margin-top:8px;font-size:12.5px;color:#f59e0b;font-weight:600">→ ${rg.reading}</div>
+        <div style="margin-top:8px;font-size:10.5px;color:#5b6270;line-height:1.5">Same OOS scoring series as the verdict above, sliced by date only (no refit) — CLAUDE.md's "disaggregate before declaring a pooled null" applied to this report directly. See MD files/RESIDUAL_REVERSION_FX_TEST.md §2.</div>
+      </div>`;
+      }
+    }
+    $('valout').innerHTML = html;
   } catch(e) { $('valout').innerHTML = `<div class="panel">Validation fetch failed: ${e.message}</div>`; }
 }
 

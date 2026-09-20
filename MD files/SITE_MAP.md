@@ -183,13 +183,14 @@ Pages with a later date have genuinely been worked on since.
 | `macro-conditioner.html` | Tests if VIX+HY risk regime moves day character beyond forecast σ | 🔬 Research | ≤2026-08-09 | Pre-registered; HY series short — re-run needed |
 | `motif-combined-backtest.html` | Results card for Python motif adaptive-SL/TP + HTF-sizing combo | 📚 Reference | 2026-08-14 | Reads pre-computed AnalogML export JSON; Python-only signal |
 | `motif-alert-backtest.html` | Backtest of the motif TELEGRAM ALERTS themselves — nearing→confirmed funnel, alert-panel PF calibration, portfolio card | 📚 Reference | 2026-09-15 | Reads pre-computed AnalogML export JSON; replays the live emission gating, not just detection |
-| `mve.html` | Standalone sandbox demo of the Market Valuation Engine pipeline | 📚 Reference | ≤2026-08-09 | Self-contained synthetic sandbox; no server route |
+| `mve.html` | Market Valuation Engine viewer — synthetic demo, live fair-value, and OOS validation (icEdge vs trailing-mean benchmark, deflated Sharpe, 2022-24 regime split, cost overlay) | 📚 Reference | 2026-09-20 | Read-only, feeds no live signal/bot; NQ null, FX branch pub-lag-fixed and run for the first time 2026-09-20 (RESIDUAL_REVERSION_FX_TEST.md) — no verdict yet, needs FRED_KEY |
 | `range-level-edge.html` | Test whether 5m Asia range levels beat a shifted-level placebo | 🔬 Research | ≤2026-08-09 | 🟡 built, not yet run (needs M1 on Railway) |
 | `regime-viewer.html` | Overlay V1 HMM and V2 Baum-Welch regime on price | 🟢 Live | ≤2026-08-09 | Classifier inspection UI |
 | `touches-backtest.html` | Results card for the N-touches structural-motif signal | 📚 Reference | 2026-08-14 | Reads pre-computed JSON; replaced retired k-NN analog signal |
 | `trend-basket.html` | Diversified G10 12-mo trend basket, inverse-vol sized, IS/OOS | 🔬 Research | ≤2026-08-09 | 🧪 pending (Q5) |
 | `trend-v2.html` | A/B: sizing trend positions by forecast σ vs trailing vol | 🔬 Research | ≤2026-08-09 | Pre-registered; no result recorded |
 | `yield-spread.html` | Yield-spread z-score mean-reversion bot test (the validated spread-reversion book) | 🔬 Research | ≤2026-08-09 | Validated OOS: 109 trades, PF 2.19, Sharpe ~1.14, every OOS year 2022-2026 positive (YIELD_SPREAD_STRATEGY.md) |
+| `multi-spread-sleeve.html` | Generalizes the validated 2Y sleeve to a 10Y tenor + diversification diagnostics (z-corr, trade overlap, equal-risk combined Sharpe) | 🔬 Research | 2026-09-20 | Pre-registered, isolated; no verdict yet — needs FRED_KEY on Railway (MULTI_SPREAD_SLEEVE.md) |
 
 ## NASDAQ / Equity
 

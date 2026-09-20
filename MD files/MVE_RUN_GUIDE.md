@@ -176,6 +176,20 @@ anchors) to the `runMVE` ctx later to enrich the consensus.
 > ~monthly. That's fine for a slow macro fair value (the honest horizon anyway) but
 > means the FX daily signal is coarser than gold's (whose drivers are daily). Noted as a
 > future refinement (daily foreign yields / swap curves).
+>
+> **Publication lag — fixed 2026-09-20, before the FX branch's first real run.**
+> §10's "no-lookahead" refers to the walk-forward SPLIT (fair value fit on bars < i
+> only) — a different axis from whether a factor's *own* value was actually known as
+> of its nominal date. Until now it wasn't: `buildContext` forward-filled every FRED
+> series with no lag, so a monthly foreign-rate observation dated the 1st was treated
+> as known that same day — the identical lookahead the validated 2Y yield-spread
+> sleeve had to add a lag for (Sharpe fell 2.16→1.58 once fixed, and still held; see
+> `YIELD_SPREAD_STRATEGY.md` §4). `liveAdapter.js` now shifts every FRED series
+> forward by `PUB_LAG_DAYS` (US daily legs +2d, the monthly OECD foreign family
+> +45d — the same numbers the validated sleeve uses, reused not re-derived) before
+> aligning, default ON (`buildContext(sym, bars, fred, { pubLag: false })` reverts
+> for an explicit A/B). This was never run against real data before the fix landed,
+> so no historical MVE-FX number in this repo predates it.
 
 ## 7. Integrating into the dashboard (deliberate, still off)
 

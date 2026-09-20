@@ -22,6 +22,7 @@
 //             later only if this 3-factor spec earns its keep OOS.
 
 import { runMVE } from './index.js';
+import { _shiftDate } from '../zscoreSpreadEngine.js';
 
 // ── Symbol maps ──────────────────────────────────────────────────────────────
 export const OANDA_SYMBOL = {
@@ -64,6 +65,35 @@ export function normalizeSym(sym) {
   return String(sym || '').toUpperCase().replace(/[^A-Z]/g, '');   // 'EUR/USD' → 'EURUSD'
 }
 
+// Publication lag, in days, per FRED key — a value nominally dated D is not KNOWN
+// until D+lag. Same numbers the validated yield-spread sleeve uses
+// (js/yieldSpreadEngine.js: pubLagUsDays=2, pubLagForeignDays=45), reused rather
+// than re-derived: US daily series (Treasury, DFII10, T10YIE, VIX, HY OAS, DXY) post
+// next business day or so; the foreign OECD long-yield/short-rate family
+// (IRLTLT01*M156N / IRSTCI01*M156N / IR3TIB01*M156N) is monthly and released with a
+// real lag. Before this existed, `buildContext` forward-filled every FRED series
+// onto the OANDA date index with NO lag — a value dated the 1st of the month was
+// treated as known that same day, exactly the lookahead
+// `MVE_RUN_GUIDE.md`'s own "Honest caveat" flagged and the validated sleeve had to
+// fix (Sharpe fell 2.16→1.58 once added, and still held). Fixed here before the FX
+// branch's first real run rather than after — see MD files/RESIDUAL_REVERSION_FX_TEST.md.
+export const PUB_LAG_DAYS = {
+  us2y: 2, us10y: 2, tips: 2, bei: 2, dxy: 2, vix: 2, hy: 2,
+  de10y: 45, de_s: 45, gb10y: 45, gb_s: 45, jp10y: 45, jp_s: 45, au10y: 45, au_s: 45,
+};
+
+// Shift a FRED observation Map/array's dates FORWARD by `days` (identical intent to
+// js/yieldSpreadEngine.js's private shiftObsForward — that one isn't exported, so
+// the date arithmetic itself is reused via `_shiftDate`, not re-derived, and only
+// this thin Map-shifting wrapper is duplicated, which is the trivial part).
+export function shiftObsForward(series, days) {
+  if (!days) return series;
+  const pts = series instanceof Map ? [...series.entries()] : series.map(p => [p.date, p.value]);
+  const out = new Map();
+  for (const [d, v] of pts) out.set(_shiftDate(d, days), v);
+  return out;
+}
+
 // Forward-fill a sorted [{date,value}] (or Map) onto a master date array — carries
 // the last known value over weekends/holidays/reporting gaps.
 export function ffAlign(dateIndex, series) {
@@ -90,10 +120,12 @@ export function buildContext(sym, bars, fred, opts = {}) {
   const dateIndex = bars.map(b => b.date);
   const closes = bars.map(b => b.close);
 
+  const pubLag = opts.pubLag !== false;   // default ON — see PUB_LAG_DAYS above
   const aligned = {};
   for (const fk of spec.fred) {
     if (!fred[fk]) throw new Error(`MVE: missing FRED series ${fk} (${FRED_ID[fk]}) for ${sym}`);
-    aligned[fk] = ffAlign(dateIndex, fred[fk]);
+    const src = pubLag ? shiftObsForward(fred[fk], PUB_LAG_DAYS[fk] ?? 0) : fred[fk];
+    aligned[fk] = ffAlign(dateIndex, src);
   }
   const factors = spec.factors(aligned);
 
@@ -103,6 +135,7 @@ export function buildContext(sym, bars, fred, opts = {}) {
   const finiteAt = i => Number.isFinite(closes[i]) && factors.every(f => Number.isFinite(f.series[i]));
   while (start < closes.length && !finiteAt(start)) start++;
   const price = closes.slice(start);
+  const trimmedDates = dateIndex.slice(start);
   const trimmedFactors = factors.map(f => ({ name: f.name, series: f.series.slice(start) }));
   if (price.length < 60) throw new Error(`MVE: only ${price.length} usable rows for ${sym} after warmup trim`);
 
@@ -110,6 +143,7 @@ export function buildContext(sym, bars, fred, opts = {}) {
   return {
     instrument: sym,
     price,
+    dates: trimmedDates,   // calendar date per price[i]/factor[i] row — needed for any date-based split (e.g. a regime window) on top of this ctx
     factors: trimmedFactors,
     returns,
     marketPrice: price[price.length - 1],
@@ -119,7 +153,7 @@ export function buildContext(sym, bars, fred, opts = {}) {
     crowdPct: opts.crowdPct ?? null,
     useSSM: opts.useSSM ?? false,
     asOf: dateIndex[dateIndex.length - 1],
-    meta: { warmupTrimmed: start, factorNames: trimmedFactors.map(f => f.name), fredKeys: spec.fred },
+    meta: { warmupTrimmed: start, factorNames: trimmedFactors.map(f => f.name), fredKeys: spec.fred, pubLag },
   };
 }
 

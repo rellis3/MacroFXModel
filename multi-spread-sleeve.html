@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Spread Sleeve — does a 10Y tenor diversify the validated 2Y sleeve?</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
+          --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--border); background:var(--panel); }
+  h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--dim); font-size:13px; max-width:940px; }
+  .wrap { padding:22px; max-width:1120px; margin:0 auto; }
+  .banner { background:#3a2a12; border:1px solid #7a5316; color:#f4c77b; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2 { margin:0 0 12px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--blu); color:#fff; border:0; border-radius:7px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:10px; color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--border); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .pos { color:var(--grn); } .neg { color:var(--red); } .muted { color:var(--dim); font-size:12px; }
+  .verdict { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; }
+  .verdict.good { background:#0f2a18; border:1px solid #1f6b3a; color:#8fe6ab; }
+  .verdict.bad  { background:#2a1212; border:1px solid #6b1f1f; color:#e69a9a; }
+  .verdict.warn { background:#2a2312; border:1px solid #6b551f; color:#e6cf9a; }
+  .scroll { overflow-x:auto; }
+  .twocol { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width: 800px) { .twocol { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Multi-Spread Sleeve — does a 10Y tenor diversify the validated 2Y sleeve?</h1>
+  <div class="sub">Runs the SAME validated mechanism (<a href="yield-spread.html" style="color:#8ab4e6">yield-spread.html</a>'s
+  entry/exit/sizing) on a SECOND spread tenor — US-vs-foreign <b>10Y nominal differential</b> — then asks the harder
+  question: does combining it with the validated 2Y sleeve actually diversify the book, or just relabel the same
+  rate-divergence bet a few days later? Full design: <code>MD files/MULTI_SPREAD_SLEEVE.md</code>.</div>
+</header>
+<div class="wrap">
+  <div class="banner">⚠️ <b>Pre-registered, isolated — not wired into any live signal.</b> Needs live <code>FRED_KEY</code>
+  + M1 (Railway). Real-yield and breakeven differentials are deliberately NOT here — FRED has no clean foreign leg
+  for those, so a "differential" with only a US side isn't a spread. Two bars must both clear before this means
+  anything: <b>Bar A</b> (does 10Y clear the 2Y sleeve's own audit, on its own) and <b>Bar B</b> (does combining the
+  two actually diversify, at EQUAL risk — not just look better because it's 2× the notional).</div>
+
+  <div class="panel">
+    <h2>Run parameters</h2>
+    <div class="grid">
+      <div><label>Date from</label><input id="dateFrom" placeholder="2015-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="today"></div>
+      <div><label>z window (days)</label><input id="zWindow" value="252"></div>
+      <div><label>entry |z|</label><input id="entryThreshold" value="2.75"></div>
+      <div><label>z-exit |z|</label><input id="zExit" value="1.5"></div>
+      <div><label>max hold (days)</label><input id="maxHoldDays" value="20"></div>
+      <div><label>cost % round-trip</label><input id="costPct" value="0.02"></div>
+      <div><label>orient sign by USD role</label><select id="autoOrient"><option value="true" selected>on (correct sign)</option><option value="false">off (raw z&gt;0→LONG)</option></select></div>
+      <div><label>trade-overlap window (days)</label><input id="overlapWindowDays" value="2"></div>
+    </div>
+    <button id="runBtn">Run test (y2 + y10 books + diversification)</button>
+    <button id="sweepBtn" style="background:#6b4fd9;margin-left:8px">Run y10 robustness sweep</button>
+    <div class="status" id="status"></div>
+    <div class="muted" style="margin-top:6px">Sweep runs a grid of entry |z| (2.0–2.75) × z-window (90/126/252) for the y10 tenor only — checks whether a good cell is a broad plateau or a lucky spike, the same discipline as the validated sleeve's own sweep. Heavy — takes a couple of minutes.</div>
+  </div>
+
+  <div id="sweepResults" style="display:none">
+    <div class="panel">
+      <h2>y10 robustness sweep — plateau or lucky spike?</h2>
+      <div class="scroll"><div id="sweepGrid"></div></div>
+    </div>
+  </div>
+
+  <div id="results" style="display:none">
+    <div class="twocol">
+      <div class="panel">
+        <h2>y2 book (the validated sleeve, reused byte-identical)</h2>
+        <div class="scroll" id="y2Table"></div>
+      </div>
+      <div class="panel">
+        <h2>y10 book (new — Bar A)</h2>
+        <div class="scroll" id="y10Table"></div>
+        <div id="y10Verdict"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Bar B — diversification, not just a second profitable sleeve</h2>
+      <div class="muted" style="margin-bottom:8px">Trade overlap: does y10 mostly re-fire y2's own signal a few days later? Combined Sharpe: y2 and y10 each at HALF size (so total capital-at-risk matches running y2 alone) — this is the only honest comparison.</div>
+      <div class="scroll" id="diversification"></div>
+      <div id="diversificationVerdict"></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d=2) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
+
+function bookTable(book) {
+  if (!book || !book.combined) return '<div class="muted">no data</div>';
+  const o = book.combined.oos, ps = book.combined.portfolioSharpe?.oos;
+  return `<table><tbody>
+    <tr><td>OOS trades</td><td>${o.n}</td></tr>
+    <tr><td>Win rate</td><td>${fmt(o.winRate,1)}%</td></tr>
+    <tr><td>Profit factor</td><td class="${o.profitFactor>=1?'pos':'neg'}">${fmt(o.profitFactor,2)}</td></tr>
+    <tr><td>Total return (flat)</td><td class="${cls(o.totalRetPct)}">${fmt(o.totalRetPct,2)}%</td></tr>
+    <tr><td><b>Portfolio Sharpe (honest daily MTM)</b></td><td class="${cls(ps)}"><b>${fmt(ps,2)}</b></td></tr>
+  </tbody></table>`;
+}
+
+function y10Verdict(book) {
+  if (!book || !book.combined) return '';
+  const o = book.combined.oos;
+  const years = Object.values(book.combined.perYearOos || {});
+  const yearsPos = years.filter(y => y.totalRetPct > 0).length;
+  const works = o.profitFactor > 1.1 && o.totalRetPct > 0 && o.n >= 30;
+  const cls2 = works ? 'good' : 'bad';
+  return `<div class="verdict ${cls2}">${works ? '✓' : '✗'} y10 ${works ? 'shows' : 'does NOT show'} edge OOS on its own
+    (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades, ${yearsPos}/${years.length} OOS years positive).
+    ${works ? 'Clears Bar A — check Bar B below before combining it with y2.' : 'Does not clear Bar A — Bar B is moot regardless of what it shows.'}</div>`;
+}
+
+function diversificationTable(portfolio, overlap) {
+  if (!portfolio) return '<div class="muted">no data</div>';
+  const ov = overlap?.y10;
+  return `<table><tbody>
+    <tr><td>Trade overlap (y10 vs y2, ±window, same pair/dir)</td><td>${ov ? `${ov.overlapping}/${ov.n} = ${fmt(ov.overlapPct,1)}%` : '–'}</td></tr>
+    <tr><td>Return correlation (y2 daily vs y10 daily)</td><td>${fmt(portfolio.returnCorrelation?.y2_y10, 3)}</td></tr>
+    <tr><td>y2 alone Sharpe</td><td>${fmt(portfolio.legSharpe?.y2)}</td></tr>
+    <tr><td>y10 alone Sharpe</td><td>${fmt(portfolio.legSharpe?.y10)}</td></tr>
+    <tr><td><b>Combined Sharpe (equal risk — each leg at half size)</b></td><td><b>${fmt(portfolio.combinedSharpe)}</b></td></tr>
+  </tbody></table>`;
+}
+
+function diversificationVerdict(portfolio, overlap) {
+  if (!portfolio) return '';
+  const beats = portfolio.combinedSharpe > (portfolio.legSharpe?.y2 ?? Infinity);
+  const ov = overlap?.y10;
+  const lowOverlap = ov ? ov.overlapPct < 50 : null;
+  const cls2 = beats && lowOverlap ? 'good' : 'bad';
+  return `<div class="verdict ${cls2}">${beats ? '✓' : '✗'} combined Sharpe at equal risk ${beats ? 'BEATS' : 'does NOT beat'} y2 alone
+    (${fmt(portfolio.combinedSharpe)} vs ${fmt(portfolio.legSharpe?.y2)}). Trade overlap is ${ov ? fmt(ov.overlapPct,1)+'%' : 'n/a'}
+    ${lowOverlap === true ? '(well under 50% — a genuinely different bet)' : lowOverlap === false ? '(over 50% — largely re-firing y2\'s own signal)' : ''}.
+    ${beats && lowOverlap ? 'Worth combining — Bar B passes.' : 'Not worth combining as-is, whatever y10 showed alone in Bar A.'}</div>`;
+}
+
+async function run(){
+  $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
+  const body={ dateFrom:$('dateFrom').value, dateTo:$('dateTo').value, zWindow:$('zWindow').value,
+    entryThreshold:$('entryThreshold').value, zExit:$('zExit').value, maxHoldDays:$('maxHoldDays').value,
+    costPct:$('costPct').value, autoOrient:$('autoOrient').value, overlapWindowDays:$('overlapWindowDays').value };
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('runBtn').disabled=false; return; }
+    poll(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+async function poll(jobId){
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Running… ${j.elapsed||0}s (fetching FRED + M1 for both tenors, walking both books)`; setTimeout(()=>poll(jobId),2000); return; }
+    if(j.status==='done'){
+      const { books, portfolio, overlapVsBaseline } = j;
+      $('status').textContent=`Done — y2 ${books.y2?.combined?.nTrades ?? 0} trades, y10 ${books.y10?.combined?.nTrades ?? 0} trades`;
+      $('y2Table').innerHTML=bookTable(books.y2);
+      $('y10Table').innerHTML=bookTable(books.y10);
+      $('y10Verdict').innerHTML=y10Verdict(books.y10);
+      $('diversification').innerHTML=diversificationTable(portfolio, overlapVsBaseline);
+      $('diversificationVerdict').innerHTML=diversificationVerdict(portfolio, overlapVsBaseline);
+      $('results').style.display='block'; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+$('runBtn').addEventListener('click', run);
+
+function sweepTable(cells){
+  if(!cells || !cells.length) return '<div class="muted">no data</div>';
+  let rows='';
+  for(const c of cells){
+    if(c.error){ rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td colspan="5" class="neg">${c.error}</td></tr>`; continue; }
+    const broad = c.yearsTotal>0 && c.yearsPositive/c.yearsTotal >= 0.6;
+    rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td>${c.n}</td><td>${fmt(c.winRate,1)}%</td>
+      <td class="${c.profitFactor>=1?'pos':'neg'}">${fmt(c.profitFactor,2)}</td>
+      <td class="${cls(c.totalRetPct)}">${fmt(c.totalRetPct,1)}%</td>
+      <td class="${broad?'pos':''}">${c.yearsPositive}/${c.yearsTotal}</td></tr>`;
+  }
+  return `<table><thead><tr><th>Entry |z|</th><th>z-window</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Years+</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+async function sweep(){
+  $('sweepBtn').disabled=true; $('runBtn').disabled=true; $('status').textContent='Starting y10 sweep…'; $('sweepResults').style.display='none';
+  const body={ dateFrom:$('dateFrom').value, dateTo:$('dateTo').value };
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return; }
+    pollSweep(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('sweepBtn').disabled=false; $('runBtn').disabled=false; }
+}
+async function pollSweep(jobId){
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Sweeping y10… ${j.elapsed||0}s (12 full runs — be patient)`; setTimeout(()=>pollSweep(jobId),3000); return; }
+    if(j.status==='done'){
+      $('status').textContent='Sweep done';
+      $('sweepGrid').innerHTML=sweepTable(j.cells);
+      $('sweepResults').style.display='block'; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('sweepBtn').disabled=false; $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('sweepBtn').disabled=false; $('runBtn').disabled=false; }
+}
+$('sweepBtn').addEventListener('click', sweep);
+</script>
+</body>
+</html>
