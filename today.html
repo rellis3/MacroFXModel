@@ -1598,9 +1598,11 @@ function mveChip(r) {
 // fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
+let intlYields = null;   // /api/intl-yields -- gilt, JGB, bund 10Y daily, for the chain's gap chips
+async function loadIntlYields() { try { const j = await jget('/api/intl-yields'); if (j?.ok) { intlYields = j.series; render(); } } catch { /* chips stay unmeasured */ } }
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
-const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
+const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD', gbpusd: 'GBP_USD', eurusd: 'EUR_USD' };
 async function loadCommodityDrivers() {
   try {
     // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
@@ -1955,6 +1957,7 @@ async function loadGate() {
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
+  loadIntlYields();   // gilt / bund / JGB gap chips on the chain
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
@@ -2986,7 +2989,27 @@ function chainVals() {
       out.funding = spread.length ? B.nodeDelta(spread, B.CHAIN_NODES.funding) : null;
     }
   } catch { out.funding = null; }
+  // the non-US legs: foreign 10Y minus the Treasury 10Y, point by point on common dates
+  try {
+    const ust = fredHist?.us10y; const ustBy = new Map((ust ?? []).map(p => [p.date, p.value]));
+    for (const [node, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) {
+      const f = intlYields?.[key];
+      if (!Array.isArray(f) || !f.length || !ustBy.size) { out[node] = null; continue; }
+      const gap = f.filter(p => ustBy.has(p.date)).map(p => ({ date: p.date, value: p.value - ustBy.get(p.date) }));
+      out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node]) : null;
+    }
+  } catch { /* unmeasured */ }
   return out;
+}
+// The 10Y's 20-day move split by the ACM model into term premium (what holding
+// duration pays: supply, deficits, uncertainty) and the expected Fed path. A
+// reading on the card, not a claim: the split is the model's, by construction.
+function termPremiumSplit() {
+  const B = window.macroChainBrick; const tp = fredHist?.tp10, fy = fredHist?.fy10;
+  if (!B || !Array.isArray(tp) || !tp.length || !Array.isArray(fy) || !fy.length) return null;
+  const stub = { unit: 'bp', floor: 0, dp: 0 };
+  const dTp = B.nodeDelta(tp, stub), dFy = B.nodeDelta(fy, stub); if (!dTp || !dFy) return null;
+  return { tp: dTp.delta, path: dFy.delta - dTp.delta, fitted: dFy.delta, asOf: dTp.asOf, level: tp.at(-1)?.value ?? null };
 }
 function chainLinks() {
   const B = window.macroChainBrick;
@@ -3166,9 +3189,11 @@ const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run betw
   usdcad: [0, 1], us2y: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
   vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
   funding: [3, 1],   // the one plumbing node, in the empty slot under the real yield
+  // the non-US yield legs (MD files/NONUS_YIELDS.md): each gap beside its pair; the JGB gap climbs to USD/JPY between copper and bitcoin
+  giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3],
 };
 // Short edge labels that fit the gap between boxes; the full name is in the hover.
-const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear' };
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen' };
 let _chainNodeSel = null, _chainLinkSel = null;
 function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainLinkSel = null; _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
 function selectChainLink(id, ev) { ev?.stopPropagation?.(); _chainNodeSel = null; _chainLinkSel = _chainLinkSel === id ? null : id; render(); }
@@ -3177,7 +3202,7 @@ function chainGraphHtml(links) {
   // The domino board: chips with an icon ring, curved links that flow in the
   // direction of cause -> effect when the link is holding, pulse amber when it is
   // broken, and sit as a still dotted grey when an end is inside its noise floor.
-  const PX = 232, PY = 98, BW = 156, BH = 46, OX = 14, OY = 12, R = 14; const W = OX * 2 + PX * 5 + BW, H = OY * 2 + PY * 2 + BH;
+  const PX = 232, PY = 98, BW = 156, BH = 46, OX = 14, OY = 12, R = 14; const ROWS = Math.max(...Object.values(CHAIN_POS).map(p => p[1])) + 1; const W = OX * 2 + PX * 5 + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
   const cx = k => OX + CHAIN_POS[k][0] * PX + BW / 2, cy = k => OY + CHAIN_POS[k][1] * PY + BH / 2;
   const ends = {}; for (const l of links) { if (l.a?.key) ends[l.a.key] = l.a; if (l.b?.key) ends[l.b.key] = l.b; }
   const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none' };
@@ -3230,11 +3255,14 @@ function chainGraphHtml(links) {
     const ways = outs.length ? `<div style="margin-top:5px"><b>What it moves, and which way</b> (textbook): when ${esc0(n.label)} rises, ${outs.map(l => `${esc0(B.CHAIN_NODES[l.b.key]?.label ?? l.b.key)} should go <b>${l.sign > 0 ? 'up' : 'down'}</b>`).join('; ')}.</div>` : '';
     const from = ins.length ? `<div style="margin-top:3px"><b>What moves it:</b> ${ins.map(l => `${esc0(B.CHAIN_NODES[l.a.key]?.label ?? l.a.key)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
     const today = [...ins, ...outs].map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span> <span class="chain-q-link" style="cursor:pointer" onclick="selectChainLink('${l.id}', event)">${esc0(l.short)}</span>${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
-    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
+    const tps = (_chainNodeSel === 'us10y' || _chainNodeSel === 'us30y') ? termPremiumSplit() : null;
+    const bp = v => `${v > 0 ? '+' : ''}${Math.round(v)}bp`;
+    const split = tps ? `<div style="margin-top:5px"><b>Why it moved</b> (the ACM model, not a claim): of the 10-year\u2019s ${bp(tps.fitted)} over ${B.CHAIN_WINDOW_DAYS} days, <b>${bp(tps.tp)}</b> is term premium \u2014 what investors demand for holding duration: supply, deficits, uncertainty \u2014 and <b>${bp(tps.path)}</b> is the expected Fed path. ${Math.abs(tps.tp) > Math.abs(tps.path) ? 'A term-premium move is a supply or credibility story, not a growth story.' : 'A path move is the market re-pricing the Fed: growth and inflation, not supply.'}${_chainNodeSel === 'us30y' ? ' The 30-year has no published split; the 10-year\u2019s is the nearest reading.' : ''} <span class="muted">term premium now ${tps.level != null ? tps.level.toFixed(2) + '%' : '\u2014'} \u00b7 <a href="rates.html" target="_blank">rates.html</a></span></div>` : '';
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${split}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor</span></div>${linkCard}${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF</span></div>${linkCard}${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
@@ -3257,6 +3285,11 @@ const CHAIN_ICON = {
   spx: '<path d="M4 21V9l8-6 8 6v12 M9 21v-6h6v6 M8 11h2 M14 11h2 M8 15h2 M14 15h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   btc: '<path d="M9 4v16 M13 4v2 M13 18v2 M8 6h6a3 3 0 0 1 0 6H8 M8 12h7a3 3 0 0 1 0 6H8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   funding: '<path d="M4 6h8a4 4 0 0 1 4 4v2h4v3h-4v2a2 2 0 0 1-2 2h-2v-4H4z M14 19c0 2-1 3-2 3s-2-1-2-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  giltgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">£</text>',
+  bundgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">€</text>',
+  jgbgap:  '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">¥</text>',
+  gbpusd:  '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" font-family="inherit">£/$</text>',
+  eurusd:  '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" font-family="inherit">€/$</text>',
   _: '<circle cx="12" cy="12" r="4" fill="currentColor"/>',
 };
 function chainHtml() {
@@ -10168,7 +10201,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets,sofr,iorb,ioer';
+const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets,sofr,iorb,ioer,tp10,fy10';
 
 async function getFredHist() {
   if (fredHist) return fredHist;

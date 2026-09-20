@@ -137,6 +137,7 @@ import { compareForecastLines as _compareForecastLines } from './js/forecastDrif
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
+import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
@@ -14006,6 +14007,40 @@ app.get('/api/rates', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
+
+// ── The non-US 10-year yields: gilts (BoE), JGBs (MoF), bunds (Bundesbank) ────
+// Daily from the issuers' own offices (FRED only mirrors them monthly). Feeds the
+// chain's three gap chips (foreign minus Treasury 10Y against the pair) — tested
+// in MD files/NONUS_YIELDS.md: same-window textbook links, no range or direction
+// claim. Cached six hours; the JGB full history (~1MB) is fetched once a day and
+// only the current-month file on the other refreshes.
+let _intlYields = { at: 0, series: null, error: null, jgbAllAt: 0 };
+async function _refreshIntlYields() {
+  const out = _intlYields.series ? { ..._intlYields.series } : {};
+  const since = new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 10);
+  const errs = [];
+  for (const [k, spec] of Object.entries(_INTL_YIELDS)) {
+    try {
+      let pts;
+      if (k === 'jp10y' && out.jp10y?.length && Date.now() - _intlYields.jgbAllAt < 24 * 3600_000) {
+        const cur = await spec.fetch({ history: false }); const m = new Map(out.jp10y.map(o => [o.date, o.value])); for (const o of cur) m.set(o.date, o.value);
+        pts = [...m].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, value]) => ({ date, value }));
+      } else { pts = await spec.fetch(); if (k === 'jp10y') _intlYields.jgbAllAt = Date.now(); }
+      if (pts.length) out[k] = pts.filter(o => o.date >= since);
+    } catch (e) { errs.push(`${k}: ${e.message}`); console.warn('[intl-yields]', k, e.message); }
+  }
+  _intlYields = { ..._intlYields, at: Date.now(), series: Object.keys(out).length ? out : null, error: errs.join('; ') || null };
+  return _intlYields;
+}
+app.get('/api/intl-yields', async (_req, res) => {
+  try {
+    if (Date.now() - _intlYields.at > 6 * 3600_000) await _refreshIntlYields();
+    if (!_intlYields.series) return res.status(503).json({ ok: false, error: _intlYields.error ?? 'no series yet' });
+    const meta = Object.fromEntries(Object.entries(_INTL_YIELDS).map(([k, s]) => [k, { label: s.label, source: s.source }]));
+    res.json({ ok: true, series: _intlYields.series, meta, error: _intlYields.error, at: new Date(_intlYields.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('intlYields', () => _refreshIntlYields().catch(e => console.error('[intl-yields]', e.message)), 6 * 3600_000);
 
 // ── The week map: every series scored against its own history ────────────────
 // Weekly changes of ~25 macro series, each as a z against the series' full
@@ -32078,6 +32113,7 @@ const _FREDHISTORY_SERIES = {
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
   iorb: 'IORB', ioer: 'IOER',       // the Fed's floor, for the chain's funding node (SOFR − floor)
+  tp10: 'THREEFYTP10', fy10: 'THREEFY10',   // ACM 10Y term premium + fitted yield: the 10Y card's split into term premium vs expected Fed path
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',

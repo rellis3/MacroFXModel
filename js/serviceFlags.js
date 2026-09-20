@@ -220,6 +220,8 @@ export const SERVICES = [
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'regime.html, the regime line in the brief and the chain' },
   { id: 'rates', where: 'server', label: 'Rates & policy series refresh (FRED, no key)',
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'rates.html and the sidebar Rates & Policy row' },
+  { id: 'intlYields', where: 'server', label: 'Non-US 10-year yields (BoE, MoF Japan, Bundesbank)',
+    cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the chain gap chips (gilt, bund, JGB minus Treasuries) and rates.html' },
   { id: 'weekMap', where: 'server', label: 'Week map rebuild (every series scored against itself)',
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'weekmap.html and the sidebar row' },
   { id: 'digest', where: 'server', label: 'The 07:00 digest (Telegram, weekdays)',

@@ -1361,6 +1361,9 @@ export default {
           dexchus:    'DEXCHUS',        // CNY per USD
           sofr:       'SOFR',           // secured overnight financing rate
           iorb:       'IORB',           // interest on reserve balances
+          ioer:       'IOER',           // the floor before 2021-07-29 (the chain's funding node splices IOER -> IORB)
+          tp10:       'THREEFYTP10',    // ACM 10Y term premium -- the 10Y card's split on the chain
+          fy10:       'THREEFY10',      // ACM fitted 10Y yield (term premium + expected path)
           indpro:     'INDPRO',         // industrial production (growth proxy)
           ism:        'NAPM',           // ISM manufacturing PMI (may be discontinued)
         };

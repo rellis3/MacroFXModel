@@ -284,6 +284,24 @@ export const DESK_EVIDENCE = [
     use: 'State the two economies’ regimes as the backdrop of a pair; never call divergence a setup or a warning.',
   },
   {
+    id: 'nonus-yield-gap-label', domain: 'macro', verdict: 'context', date: '2026-09-20', doc: 'MD files/NONUS_YIELDS.md',
+    claim: 'A foreign-led yield rise (gilts, bunds, JGBs rising faster than Treasuries) marks the currency day: the bad rise (yields up, currency down) for the pound, the carry textbook for the others',
+    result: 'Daily 2010-2026, London-day bars. Gilt-led rise on GBP/USD worst-5% days x1.39 [0.69, 2.20] -- twelve days in sixteen years, mostly 2022 and the mini-budget; the bad-rise label is null. Bund-led fall on EUR/USD worst days x2.37 [1.54, 3.32] and bund-led rise on its best days x1.81 [1.07, 2.77]: the carry textbook holds on the tails, same day. JGB-led rise on USD/JPY worst days x2.02 [0.92, 3.30], not clear; same-day correlation -0.26, the strongest of the three. Over 20-session windows the gap and the pair agree with the textbook 57% [47-67] GBP, 74% [64-83] EUR, 70% [60-79] JPY.',
+    use: 'On the chain the bund and JGB gap links are textbook links that hold seven windows in ten; the gilt link is a coin flip and its card says so. Never write "gilts are selling off, so the pound will fall" -- the famous days are exceptions, not a rule.',
+  },
+  {
+    id: 'nonus-yield-gap-range', domain: 'macro', verdict: 'null', date: '2026-09-20', doc: 'MD files/NONUS_YIELDS.md',
+    claim: 'After a big move in the foreign-minus-Treasury 10-year gap, the next session in the pair runs wider than usual',
+    result: 'Next-session range over the trailing 20-session median, minus the ordinary-day control (post-hoc, the pre-registered bar was cleared by the control itself): gilts +0.12 [-0.001, +0.25], bunds +0.02 [-0.04, +0.08], JGBs +0.03 [-0.04, +0.09]. Against a US-led control (big Treasury day, no divergence) +0.10, -0.01, -0.04, all through zero. One of nine cells (JGB-led fall +0.13 [0.007, 0.28]) clears on its own.',
+    use: 'No range trigger from the foreign leg. A big yield day is followed by a wider session whether or not the foreign market led -- that is vol clustering, already on the book.',
+  },
+  {
+    id: 'nonus-yield-gap-direction', domain: 'macro', verdict: 'null', date: '2026-09-20', doc: 'MD files/NONUS_YIELDS.md',
+    claim: 'After a foreign-led yield rise the pair follows the textbook the next session',
+    result: 'Next-session textbook direction after a foreign-led rise: 50% [43-58] GBP/USD (n=173), 55% [48-62] EUR/USD (n=185), 50% [40-59] USD/JPY (n=109); after a foreign-led fall 45%, 49%, 60% [50-70]. Every interval holds the coin.',
+    use: 'The gap explains the day it moves on; it does not announce the next one. Same result as the DE-US spread at hourly resolution.',
+  },
+  {
     id: 'repo-stress-range', domain: 'macro', verdict: 'context', date: '2026-09-20', doc: 'MD files/PLUMBING.md#P1',
     claim: 'Repo stress (the SOFR 99th percentile 10bp or more above the Fed floor) precedes a wider week',
     result: '26 episodes 2018-2026, first session of each. Next-five-session range vs matched control: SPX500 +0.14 ATR [-0.54, +0.98], EUR/USD +0.13 [-0.37, +0.65], USD/JPY +0.08 [-0.76, +0.93]; the dollar moved LESS than usual (0.45% vs 0.59%). And the setup fires on a quarter of all sessions since 2024 -- it is month-end plumbing, not stress.',
