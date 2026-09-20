@@ -13908,12 +13908,13 @@ setTimeout(() => _refreshRegime().catch(e => console.error('[regime] first pass 
 // 10Y TIPS real yield, the 10Y breakeven, the target rate, and the Kim-Wright
 // 10Y term premium (THREEFYTP10 -- what the long end pays over expected policy).
 // rates.html reads it; the sidebar's Rates & Policy row reads the same numbers.
-const _RATES_IDS = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', real: 'DFII10', bei: 'T10YIE', policy: 'DFEDTARU', tp: 'THREEFYTP10' };
+const _RATES_IDS = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', real: 'DFII10', bei: 'T10YIE', policy: 'DFEDTARU', tp: 'THREEFYTP10', sofr: 'SOFR', effr: 'EFFR', iorb: 'IORB', srf: 'RPONTSYD', dw: 'WLCFLPCL', rrp: 'RRPONTSYD' };
 let _rates = { at: 0, series: null, error: null };
 async function _refreshRates() {
   try {
     const out = {}; const since = new Date(Date.now() - 12 * 365.25 * 864e5).toISOString().slice(0, 10);
     for (const [k, id] of Object.entries(_RATES_IDS)) out[k] = (await _fredCsv(id)).filter(o => o.date >= since);
+    try { out.sofr99 = (await _nyfedSofr99()).filter(o => o.date >= since); } catch (e) { console.warn('[rates] sofr99', e.message); }
     _rates = { at: Date.now(), series: out, error: null };
   } catch (e) { _rates.error = e.message; console.warn('[rates]', e.message); }
   return _rates;
@@ -13927,7 +13928,9 @@ app.get('/api/rates', async (_req, res) => {
     const now = Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, last(k)]));
     const chg = (k, days) => { const a = S[k]; if (!a?.length) return null; const cut = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); const prev = [...a].reverse().find(o => o.date <= cut); return prev ? +((a[a.length - 1].value - prev.value) * 100).toFixed(0) : null; };
     const trim = k => S[k].filter(o => o.date >= new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 10)).map(o => [o.date, o.value]);
-    res.json({ ok: true, now, change20d: Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, series: Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
+    const keys = Object.keys(S);
+    const plumbing = (() => { const l = k => S[k]?.[S[k].length - 1]; const iorb = l('iorb')?.value, sofr = l('sofr')?.value, s99 = l('sofr99')?.value, effr = l('effr')?.value; return { sofr: l('sofr'), sofr99: l('sofr99'), effr: l('effr'), iorb: l('iorb'), srf: l('srf'), dw: l('dw'), rrp: l('rrp'), sofrFloorBp: sofr != null && iorb != null ? Math.round((sofr - iorb) * 100) : null, sofr99FloorBp: s99 != null && iorb != null ? Math.round((s99 - iorb) * 100) : null, effrFloorBp: effr != null && iorb != null ? Math.round((effr - iorb) * 100) : null }; })();
+    res.json({ ok: true, now, change20d: Object.fromEntries(keys.map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, plumbing, series: Object.fromEntries(keys.map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
@@ -13938,6 +13941,14 @@ svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e
 // z-space with what followed. Rebuilt once a day from FRED (keyless CSV; the
 // ICE OAS series through the key) and OANDA. The analogue test (W1) lives in
 // analysis/output/weekmap_test.json and is printed on the page.
+// NY Fed SOFR distribution: the 99th percentile of the day's repo trades. The
+// worst trades of the day against the floor is the plumbing read that catches
+// stress before the median moves (Sept 2019).
+async function _nyfedSofr99() {
+  const r = await fetch(`https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2018-04-01&endDate=${new Date().toISOString().slice(0, 10)}`, { signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`NY Fed SOFR HTTP ${r.status}`);
+  return ((await r.json()).refRates ?? []).map(x => ({ date: x.effectiveDate, value: +x.percentPercentile99, median: +x.percentRate })).filter(o => Number.isFinite(o.value)).sort((a, b) => a.date < b.date ? -1 : 1);
+}
 let _weekMap = { at: 0, data: null, error: null };
 async function _refreshWeekMap() {
   try {
@@ -13946,6 +13957,7 @@ async function _refreshWeekMap() {
       try {
         if (p.fred) raw[p.id] = (p.keyed && process.env.FRED_KEY) ? [...(await fetchFredSeries(p.fred, '1990-01-01', process.env.FRED_KEY)).entries()].map(([date, value]) => ({ date, value })) : await _fredCsv(p.fred);
         else if (p.oanda) raw[p.id] = (await _btFetchD1(p.oanda, 5000)).map(b => ({ date: b.date, value: b.close }));
+        else if (p.nyfed === 'sofr99') raw[p.id] = await _nyfedSofr99();
       } catch (e) { console.warn('[weekmap]', p.id, e.message); }
     }
     const wm = _buildWeekMap(raw); delete wm._internal;
@@ -31913,6 +31925,7 @@ const _FREDHISTORY_SERIES = {
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS', vix3m: 'VXVCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
+  iorb: 'IORB', ioer: 'IOER',       // the Fed's floor, for the chain's funding node (SOFR − floor)
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',

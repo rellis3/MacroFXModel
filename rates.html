@@ -56,6 +56,7 @@
     <div class="card"><h2>The 10-year, split: real yield + expected inflation</h2><div id="chSplit"></div></div>
     <div class="card"><h2>The term premium — what the long end charges beyond expected policy</h2><div id="chTp"></div></div>
   </div>
+  <div class="card"><h2>Plumbing — is overnight money clearing, and is anyone at the backstop?</h2><div id="plumb">Loading…</div><div class="two" style="margin-top:8px"><div id="chPlumb"></div><div id="chBackstop"></div></div></div>
   <div class="card"><h2>What this desk has tested about rates</h2><div id="ev"></div></div>
   <div class="note" id="note"></div>
 </div>
@@ -106,6 +107,27 @@ async function main() {
   chart(document.getElementById('chSlope'), [{ name: '2s10s', color: 'var(--blue)', pts: slope('us10y', 'us2y'), last: s10 != null ? bp(s10) : null }, { name: '2s30s', color: 'var(--purple)', pts: slope('us30y', 'us2y'), last: s30 != null ? bp(s30) : null }], { unit: 'bp', zero: true });
   chart(document.getElementById('chSplit'), [{ name: '10y nominal', color: 'var(--blue)', pts: S.us10y, last: last('us10y') }, { name: 'real (TIPS)', color: 'var(--bull)', pts: S.real, last: last('real') }, { name: 'breakeven', color: 'var(--bear)', pts: S.bei, last: last('bei') }]);
   chart(document.getElementById('chTp'), [{ name: 'term premium 10y', color: 'var(--amber)', pts: S.tp, last: last('tp') }], { zero: true });
+  // plumbing
+  const P = j.plumbing;
+  if (P) {
+    const w = P.sofr99FloorBp;
+    const srfUse = (P.srf?.value ?? 0) >= 5, dwUse = P.dw?.value != null && P.dw.value / 1000 >= 20;
+    const state = srfUse || dwUse ? `<b style="color:var(--red)">at the backstop</b>: ${srfUse ? 'banks are borrowing from the Fed's repo facility' : 'discount-window borrowing is elevated'} — the private market did not clear` : w == null ? '' : w >= 10 ? '<b style="color:var(--amber)">tight at the edges</b>: the day's worst repo trades are 10bp or more above the floor. Tested here: since 2024 this is the routine month-end state with RRP drained, not stress — a quarter of all sessions — and it has not preceded a wider week (P1)' : w > 0 ? '<b style="color:var(--amber)">a little tight</b>: the worst trades sit above the floor while the median stays under it' : '<b style="color:var(--bull)">clearing normally</b>: even the worst repo trades of the day are under the floor — cash is plentiful';
+    const srf = P.srf?.value ?? 0, dw = P.dw?.value != null ? P.dw.value / 1000 : null;
+    document.getElementById('plumb').innerHTML = `<div class="lead">Overnight money is ${state}.</div>
+      <div class="tiles">
+        <div class="tile"><div class="k">SOFR − floor</div><div class="v">${P.sofrFloorBp != null ? bp(P.sofrFloorBp) : '?'}</div><div class="d">repo ${P.sofr?.value ?? '?'}% vs IORB ${P.iorb?.value ?? '?'}%</div></div>
+        <div class="tile"><div class="k">SOFR 99th − floor</div><div class="v">${w != null ? bp(w) : '?'}</div><div class="d">the day's worst trades · ${P.sofr99?.date ?? ''}</div></div>
+        <div class="tile"><div class="k">EFFR − floor</div><div class="v">${P.effrFloorBp != null ? bp(P.effrFloorBp) : '?'}</div><div class="d">unsecured overnight</div></div>
+        <div class="tile"><div class="k">repo backstop (SRF)</div><div class="v">$${srf.toFixed(1)}bn</div><div class="d">${srf >= 5 ? 'in use — the private market did not clear' : 'unused'}</div></div>
+        <div class="tile"><div class="k">discount window</div><div class="v">${dw != null ? '$' + dw.toFixed(1) + 'bn' : '?'}</div><div class="d">${dw != null && dw >= 20 ? 'elevated' : 'quiet'} · weekly</div></div>
+        <div class="tile"><div class="k">reverse repo (RRP)</div><div class="v">$${(P.rrp?.value ?? 0).toFixed(0)}bn</div><div class="d">${(P.rrp?.value ?? 0) < 50 ? 'the buffer is gone' : 'buffer of parked cash'}</div></div>
+      </div>
+      <div class="sub">How to read it: the Fed sets a floor (IORB, ${P.iorb?.value ?? '?'}%). Repo (SOFR) should trade a few points <i>under</i> it when cash is plentiful. When the median rises through the floor, cash is scarce; when only the 99th percentile does, the stress is at the edges — quarter-ends, big Treasury settlements, a dealer whose balance sheet is full. The backstops (SRF, discount window) are the tell that the private market failed to clear: usage, not level, is the signal. With RRP drained, there is no buffer left between Treasury issuance and bank reserves. Tested: P1 (registered 2026-09-20) asks whether a 99th-percentile spike ≥10bp above the floor precedes a wider week; the result is in the Evidence Book.</div>`;
+    const sp = (a, b) => (S[a] ?? []).filter(([d]) => new Map(S[b]).has(d)).map(([d, v]) => [d, +((v - new Map(S[b]).get(d)) * 100).toFixed(0)]);
+    if (S.sofr?.length && S.iorb?.length) chart(document.getElementById('chPlumb'), [{ name: 'SOFR − IORB', color: 'var(--blue)', pts: sp('sofr', 'iorb'), last: P.sofrFloorBp != null ? bp(P.sofrFloorBp) : null }, ...(S.sofr99?.length ? [{ name: 'SOFR 99th − IORB', color: 'var(--amber)', pts: sp('sofr99', 'iorb'), last: w != null ? bp(w) : null }] : [])], { unit: 'bp', zero: true });
+    if (S.srf?.length) chart(document.getElementById('chBackstop'), [{ name: 'repo backstop, $bn', color: 'var(--red)', pts: S.srf, last: `$${srf.toFixed(1)}bn` }, ...(S.rrp?.length ? [{ name: 'RRP, $bn', color: 'var(--text3)', pts: S.rrp, last: `$${(P.rrp?.value ?? 0).toFixed(0)}bn` }] : [])], { unit: 'bp', zero: true });
+  }
   const ids = ['yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve', 'priced-in-direction', 'fed-two-moves', 'front-end-shock', 'oil-breakevens-lag', 'real-yield-gold', 'crowded-bond-short-fomc', 'post-fomc-usd-drift', 'fomc-leadup-surprise-table'];
   const rows = DESK_EVIDENCE.filter(e => ids.includes(e.id) || (e.domain === 'macro' && /yield|curve|rate|fed|fomc|breakeven|real/i.test(e.claim)));
   const seen = new Set(); document.getElementById('ev').innerHTML = rows.filter(e => !seen.has(e.id) && seen.add(e.id)).map(e => `<div class="ev"><span class="v ${e.verdict}">${e.verdict === 'validated' ? 'validated' : e.verdict === 'null' ? 'null' : 'base rate'}</span><span><b>${esc(e.claim)}.</b> ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)} <i style="color:var(--text3)">— ${esc(e.use.length > 160 ? e.use.slice(0, 157) + '…' : e.use)}</i></span></div>`).join('');

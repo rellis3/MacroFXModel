@@ -11,6 +11,10 @@ export function buildWeekMap(raw, { now = Date.now(), sparkWeeks = 26 } = {}) {
   const vals = {};
   for (const p of PANEL) if (raw[p.id]) vals[p.id] = weekly(raw[p.id], fris).map(v => v == null ? null : v * (p.scale ?? 1));
   for (const p of PANEL) {
+    // splice: one series until a date, another after (IOER -> IORB on 2021-07-29)
+    if (p.splice) { const [a, b, at] = p.splice; if (vals[a] || vals[b]) vals[p.id] = fris.map((f, i) => f < at ? (vals[a]?.[i] ?? null) : (vals[b]?.[i] ?? vals[a]?.[i] ?? null)); }
+  }
+  for (const p of PANEL) {
     if (p.derive) { const [a, b] = p.derive; if (vals[a] && vals[b]) vals[p.id] = vals[a].map((x, i) => x != null && vals[b][i] != null ? x - vals[b][i] : null); }
     if (p.derive3) { const [a, b, c] = p.derive3; if (vals[a] && vals[b] && vals[c]) vals[p.id] = vals[a].map((x, i) => x != null && vals[b][i] != null && vals[c][i] != null ? x - vals[b][i] - vals[c][i] : null); }
     if (p.ratio) { const [a, b] = p.ratio; if (vals[a] && vals[b]) vals[p.id] = vals[a].map((x, i) => x != null && vals[b][i] ? x / vals[b][i] : null); }

@@ -2951,6 +2951,15 @@ function chainVals() {
     const pts = commodityDrivers?.series?.[node];
     out[node] = pts ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
   }
+  // funding: SOFR against the Fed's floor (IORB; IOER before 2021-07-29), point by point
+  try {
+    const sofr = fredHist?.sofr, iorb = fredHist?.iorb, ioer = fredHist?.ioer;
+    if (Array.isArray(sofr) && sofr.length && (iorb?.length || ioer?.length)) {
+      const fl = new Map([...(ioer ?? []).map(p => [p.date, p.value]), ...(iorb ?? []).map(p => [p.date, p.value])]);
+      let lastFloor = null; const spread = sofr.map(p => { if (fl.has(p.date)) lastFloor = fl.get(p.date); return lastFloor == null ? null : { date: p.date, value: p.value - lastFloor }; }).filter(Boolean);
+      out.funding = spread.length ? B.nodeDelta(spread, B.CHAIN_NODES.funding) : null;
+    }
+  } catch { out.funding = null; }
   return out;
 }
 function chainLinks() {
@@ -3130,9 +3139,10 @@ const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run betw
   oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
   usdcad: [0, 1], us2y: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
   vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
+  funding: [3, 1],   // the one plumbing node, in the empty slot under the real yield
 };
 // Short edge labels that fit the gap between boxes; the full name is in the hover.
-const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nominal→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'copper→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→credit', 'dxy-btc': '$→BTC' };
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nominal→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'copper→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→credit', 'dxy-btc': '$→BTC', 'funding-dxy': 'funding→$', 'funding-vix': 'funding→fear' };
 let _chainNodeSel = null;
 function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
 function chainGraphHtml(links) {
@@ -3157,7 +3167,7 @@ function chainGraphHtml(links) {
     const x = cx(k) - BW / 2, y = cy(k) - BH / 2;
     const val = e?.delta == null ? 'no data' : `${e.text} ${e.moved ? arrow(e.dir) : ''}${e.moved ? '' : ' · quiet'}`;
     const cls = e?.delta == null || !e.moved ? '' : e.dir === 'up' ? 'up' : 'dn';
-    const short = n.label.replace(/ \(.*\)$/, '').replace('Inflation expectations', 'Infl. pricing').replace('Real yield', 'Real yield').replace('Dollar', 'Dollar').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX');
+    const short = n.label.replace(/ \(.*\)$/, '').replace('Funding', 'Funding (repo)').replace('Inflation expectations', 'Infl. pricing').replace('Real yield', 'Real yield').replace('Dollar', 'Dollar').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX');
     return `<g class="gn${_chainNodeSel === k ? ' sel' : ''}" onclick="selectChainNode('${k}', event)"><title>${esc0(n.what)}</title><rect x="${x}" y="${y}" width="${BW}" height="${BH}"/><text class="nl" x="${x + 10}" y="${y + 18}">${esc0(short)}</text><text class="nv ${cls}" x="${x + 10}" y="${y + 34}">${esc0(val)}</text></g>`;
   }).join('');
   const sel = _chainNodeSel && B.CHAIN_NODES[_chainNodeSel] ? (() => {
@@ -10063,7 +10073,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets,sofr,iorb,ioer';
 
 async function getFredHist() {
   if (fredHist) return fredHist;

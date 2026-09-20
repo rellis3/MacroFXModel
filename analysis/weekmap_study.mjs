@@ -18,6 +18,7 @@ const raw = {};
 for (const p of PANEL) {
   try {
     if (p.fred) raw[p.id] = p.keyed ? await fredApi(p.fred) : await fredCsv(p.fred);
+    else if (p.nyfed === 'sofr99') { const j = await (await fetch(`https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2018-04-01&endDate=${new Date().toISOString().slice(0, 10)}`)).json(); raw[p.id] = (j.refRates ?? []).map(r => ({ date: r.effectiveDate, value: +r.percentPercentile99 })).filter(o => Number.isFinite(o.value)).sort((a, b) => a.date < b.date ? -1 : 1); }
     else if (p.oanda) raw[p.id] = (await fetchD1(p.oanda, 5000)).map(b => ({ date: b.date, value: b.close }));
     if (raw[p.id]) console.log(`  ${p.id.padEnd(9)} ${raw[p.id][0]?.date} → ${raw[p.id].at(-1)?.date} (${raw[p.id].length})`);
   } catch (e) { console.log(`  ${p.id} failed: ${e.message}`); }

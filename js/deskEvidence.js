@@ -278,6 +278,12 @@ export const DESK_EVIDENCE = [
     use: 'The divergence panel may describe the shape; nothing may be claimed about the week after.',
   },
   {
+    id: 'repo-stress-range', domain: 'macro', verdict: 'context', date: '2026-09-20', doc: 'MD files/PLUMBING.md#P1',
+    claim: 'Repo stress (the SOFR 99th percentile 10bp or more above the Fed floor) precedes a wider week',
+    result: '26 episodes 2018-2026, first session of each. Next-five-session range vs matched control: SPX500 +0.14 ATR [-0.54, +0.98], EUR/USD +0.13 [-0.37, +0.65], USD/JPY +0.08 [-0.76, +0.93]; the dollar moved LESS than usual (0.45% vs 0.59%). And the setup fires on a quarter of all sessions since 2024 -- it is month-end plumbing, not stress.',
+    use: 'Read SOFR-99th above the floor as month-end tightness unless the backstops (SRF, discount window) are in use. The chain funding links are described, not tested.',
+  },
+  {
     id: 'analogue-weeks', domain: 'macro', verdict: 'null', date: '2026-09-20', doc: 'MD files/WEEK_MAP.md#W1',
     claim: 'The past weeks whose macro scores most resemble this week tell you what follows (the "when did it sit like this before" analogue)',
     result: 'Walk-forward, 400 weeks, ten nearest weeks in z-space across 21 series with an eight-week crowding rule, median 13-week outcome. S&P: analogues right 75% vs the unconditional 76%; EUR/USD 53% vs 54%; gold 61% vs 69%. Size error larger than the unconditional median on all three. Placebo (ten random weeks) 63-69%, 45-54%, 52-60%.',
