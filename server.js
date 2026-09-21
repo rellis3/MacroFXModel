@@ -4558,8 +4558,15 @@ async function _buildMorningBrief() {
           + (Array.isArray(a.byAsset) && a.byAsset.length ? `\n   By asset: ${a.byAsset.map(x => `${x.asset} ${x.lean}${x.note ? ` — ${_redactFedChairName(String(x.note))}` : ''}`).join(' | ')}` : ''));
       }
       const when = ageH >= 0 ? `${ageH < 1 ? Math.round(ageH * 60) + ' minutes' : ageH.toFixed(1) + ' hours'} ago` : `today, due in ${(-ageH).toFixed(1)} hours`;
+      // Day one and the morning after, the decision IS the story. From the third
+      // day it is the backdrop: a brief that opens "the Fed hiked" five mornings
+      // running is repeating itself, not reading the tape (owner, 2026-09-21).
+      const fresh = ageH < 36;
+      const daysAgo = Math.max(1, Math.round(ageH / 24));
       fomcBlock = parts.length
-        ? `\n=== FOMC: THE DECISION IS IN (meeting ${mDate}, decision ${when}) ===\n${parts.join('\n')}\nThis has ALREADY HAPPENED. Do not frame the day as waiting for the Fed, do not call the decision a binary or a coin-flip, and do not describe the statement as pending. Lead with what was decided and how the tape responded (WHAT MOVED), then what it means from here.\n`
+        ? `\n=== FOMC: THE DECISION IS IN (meeting ${mDate}, decision ${when}) ===\n${parts.join('\n')}\nThis has ALREADY HAPPENED. Do not frame the day as waiting for the Fed, do not call the decision a binary or a coin-flip, and do not describe the statement as pending. ${fresh
+          ? 'Lead with what was decided and how the tape responded (WHAT MOVED), then what it means from here.'
+          : `The decision is ${daysAgo} days old and has been in every brief since: it is the BACKDROP now, not the lead. Do NOT open the headline or the verdict with the Fed decision. Lead with what is moving TODAY (WHAT MOVED, the calendar, the chain); mention the Fed only where it explains a move that is happening now, or where something about the Fed itself changed today (a speaker, the minutes, a repricing of the path).`}\n`
         : (ageH >= 0
           ? `\n=== FOMC: DECISION RELEASED ${when}, CONTENT NOT YET CAPTURED ===\nThe meeting was today and the decision is out, but its text has not reached this snapshot. Say the decision is out and its content is not in your data; do NOT describe it as pending or upcoming.\n`
           : '');
@@ -5087,14 +5094,20 @@ app.post('/api/brief-auto/run-now', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // Hourly-ish poll: fire once/day at the configured London hour when anything is enabled.
-let _autoBriefLastRun = null;
+let _autoBriefLastRun = null, _autoBriefRunning = false;
 svcInterval('morningBrief', async () => {
   try {
     const cfg = await _getAutoBriefCfg();
     if (!cfg.morningBrief && !Object.keys(cfg.pairs || {}).length) return;
     const lonHour = parseInt(new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }));
     const today = new Date().toISOString().slice(0, 10);
-    if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today) { _autoBriefLastRun = today; _runAutoBrief('daily').catch(() => {}); }
+    // Weekdays only: a Saturday brief re-reads Friday's tape for money. A run
+    // that fails is not marked done, so the 20-minute tick retries inside the hour.
+    const dow = new Date().getUTCDay(); if (dow === 0 || dow === 6) return;
+    if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today && !_autoBriefRunning) {
+      _autoBriefRunning = true;
+      _runAutoBrief('daily').then(log => { if (!log.some(l => /✗/.test(l))) _autoBriefLastRun = today; else console.warn('[auto-brief] failed, will retry:', log.join(' · ')); }).catch(e => console.warn('[auto-brief]', e.message)).finally(() => { _autoBriefRunning = false; });
+    }
   } catch {}
 }, 20 * 60_000);
 
