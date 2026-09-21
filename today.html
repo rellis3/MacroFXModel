@@ -3155,7 +3155,11 @@ function chainReadHtml() {
   // read already made in the last 30 minutes is served from the server for free.
   const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(${r ? 'true' : 'false'})" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(${r ? 'true' : 'false'})}" title="${r ? 'Write a new read from the current numbers. This is a model call; nothing is generated automatically.' : 'Write the read from the current numbers. This is a model call; nothing is generated automatically. If one was written in the last 30 minutes you get that instead, free.'}">${st === 'loading' ? '… reading' : r ? '↻ re-read' : '🧠 read the tape'}</span>`;
   const teachBtn = r ? `<span class="chip neu${_explain.key === 'read' ? ' on' : ''}" role="button" tabindex="0" style="cursor:pointer" onclick="explainThis('read', { kind: 'read' }, event)" onkeydown="if(event.key==='Enter'||event.key===' '){explainThis('read', { kind: 'read' }, event)}" title="Every term in this read, in plain words, plus the two or three distinctions you need to hold apart to follow it.">🎓 teach me this read</span>` : '';
-  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span></span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
+  // The read is written only on a click, so an old one stays up; say its age loudly
+  // once it is a day old, the way the morning brief does, so it is not mistaken for today's.
+  const ageMin = _chainRead.data?.ageMin ?? (_chainRead.data?.generatedAt ? Math.round((Date.now() - Date.parse(_chainRead.data.generatedAt)) / 60_000) : null);
+  const oldChip = ageMin != null && ageMin >= 24 * 60 ? `<span class="chip warn" style="font-size:9px" title="Written ${Math.round(ageMin / 60 / 24)} days ago. Nothing re-reads on its own: press re-read for one from today's numbers.">⚠ ${Math.round(ageMin / 60 / 24)}d old · press re-read</span>` : '';
+  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span>${oldChip}</span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
   if (!r) {
     if (st === 'loading') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Reading the tape…</div></div>`;
     if (st === 'error') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Could not build the read (${esc0(_chainRead.err ?? '')}).</div></div>`;
