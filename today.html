@@ -544,6 +544,14 @@
   .dr-sec.dr-collapsed .dr-sec-body{display:none}
 
   /* ── Currency drawer ─────────────────────────────────────── */
+  /* The currency drawer is the pair drawer's width; its sections flow into two
+     columns (the AI read across the top), so the width is used rather than
+     stretched. Below 900px it is the single column it always was. */
+  @media(min-width:900px){
+    #ccyBody{column-count:2;column-gap:22px}
+    #ccyBody>.dr-sec{break-inside:avoid;display:inline-block;width:100%;box-sizing:border-box;vertical-align:top}
+    #ccyBody>.dr-sec:first-child{column-span:all;display:block}
+  }
   .ccy-explain{font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:10px}
   .ccy-legs{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
   .fac-head{display:grid;grid-template-columns:1fr auto 46px;gap:8px;align-items:baseline;font-size:11px;margin:9px 0 3px;letter-spacing:.03em;text-transform:uppercase;color:var(--text3)}
@@ -1384,7 +1392,7 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 
 <!-- Currency detail drawer -->
 <div class="ovl" id="ovlCcy" onclick="closeCcyDrawer()"></div>
-<div class="drawer" id="drawerCcy" style="width:min(620px,95vw)">
+<div class="drawer" id="drawerCcy">
   <div class="dr-top">
     <h2 id="ccyName">—</h2>
     <span class="chip neu" id="ccyBucket"></span>
@@ -5394,7 +5402,7 @@ function openCcyDrawer(ccy) {
     });
     if (comp.score != null && comp.total >= 2) {
       const cls = comp.direction === 'LONG' ? 'bull' : comp.direction === 'SHORT' ? 'bear' : 'neu';
-      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${l.score}</span></div>`).join('');
+      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${Number.isFinite(+l.score) ? (+l.score).toFixed(2) : l.score}</span></div>`).join('');
       compositeHtml = `
     <div class="dr-sec">
       <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Arithmetic agreement across signals this dashboard already builds — not a backtested rule, and not a substitute for reading the sections themselves.">Composite (all of the above, combined)</h3>
