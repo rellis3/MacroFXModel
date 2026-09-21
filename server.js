@@ -3349,6 +3349,41 @@ function _antText(data) {
   for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
   return '';
 }
+// The model is asked for JSON only, and mostly obeys. When it does not -- a
+// raw newline inside a string, a trailing comma, a ```json fence, a sentence
+// before the brace -- the read is still in there. Four re-reads failed in a row
+// on 2026-09-21 with "Expected ',' or ']'" and the page showed nothing usable.
+// Try strict, then the outer object, then a repaired copy; return null only
+// when all three fail, with the reason logged around the failing position.
+function _parseModelJson(txt, label = 'model') {
+  const tries = [];
+  const raw = String(txt ?? '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  tries.push(raw);
+  const m = raw.match(/\{[\s\S]*\}/); if (m) tries.push(m[0]);
+  const repair = str => {
+    let out = '', inStr = false, esc = false;
+    for (const ch of str) {
+      if (inStr) {
+        if (esc) { out += ch; esc = false; continue; }
+        if (ch === '\\') { out += ch; esc = true; continue; }
+        if (ch === '"') { inStr = false; out += ch; continue; }
+        if (ch === '\n') { out += '\\n'; continue; }
+        if (ch === '\r') { continue; }
+        if (ch === '\t') { out += '\\t'; continue; }
+        out += ch; continue;
+      }
+      if (ch === '"') inStr = true;
+      out += ch;
+    }
+    return out.replace(/,\s*([\]}])/g, '$1');   // trailing commas
+  };
+  if (m) tries.push(repair(m[0]));
+  let lastErr = null;
+  for (const t of tries) { try { return JSON.parse(t); } catch (e) { lastErr = e; } }
+  const pos = +((lastErr?.message ?? '').match(/position (\d+)/)?.[1] ?? -1);
+  console.warn(`[${label}] JSON parse failed: ${lastErr?.message}${pos >= 0 ? ` -- near: ${JSON.stringify(raw.slice(Math.max(0, pos - 80), pos + 80))}` : ''}`);
+  return null;
+}
 
 function buildCurrencyPrompt(ccy, s, mode = 'teach') {
   const TEACH = mode !== 'desk';
@@ -3909,9 +3944,7 @@ app.post('/api/explain', async (req, res) => {
     if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
     const j = await antRes.json();
     const txt = _antText(j);
-    let explain;
-    try { explain = JSON.parse(txt); }
-    catch { const m = txt.match(/\{[\s\S]*\}/); explain = m ? JSON.parse(m[0]) : null; }
+    const explain = _parseModelJson(txt, 'explain');
     if (!explain) return res.status(502).json({ error: 'model did not return parseable JSON' });
     if (_explainCache.size > 200) _explainCache.clear();
     _explainCache.set(ck, { at: Date.now(), data: explain });
@@ -3959,10 +3992,8 @@ app.post('/api/chain-read', async (req, res) => {
     if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
     const j = await antRes.json();
     const txt = _antText(j);
-    let read;
-    try { read = JSON.parse(txt); }
-    catch { const m = txt.match(/\{[\s\S]*\}/); read = m ? JSON.parse(m[0]) : null; }
-    if (!read) return res.status(502).json({ error: 'model did not return parseable JSON' });
+    const read = _parseModelJson(txt, 'chain-read');
+    if (!read) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more` });
     const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck };
     _chainReadCache = { at: Date.now(), data, key: ck };
     _persistChainRead(data).catch(e => console.warn('[chain-read] persist failed:', e.message));
@@ -3990,9 +4021,7 @@ app.post('/api/currency-analysis', async (req, res) => {
     if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
     const j = await antRes.json();
     const txt = _antText(j);
-    let analysis;
-    try { analysis = JSON.parse(txt); }
-    catch { const m = txt.match(/\{[\s\S]*\}/); analysis = m ? JSON.parse(m[0]) : null; }
+    const analysis = _parseModelJson(txt, 'currency-analysis');
     if (!analysis) return res.status(502).json({ error: 'model did not return parseable JSON' });
     res.json({ ok: true, ccy, analysis, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
