@@ -63,6 +63,47 @@ confirmed from here.
 
 Harness: `analysis/four_golds_study.mjs`. Output: `analysis/output/four_golds.json`.
 
-## Findings
+## Findings — run 2026-09-21
 
-*(to be filled after the run)*
+Sessions 2010-10 → 2026-09-17 (3,588 with a VIX close; 689 rolling
+60-session windows for G2).
+
+**G1 — fear gold.** *Crown is right, and it is worse than he says.* 58 VIX
+spikes (+5 points in five sessions). Five sessions on, gold +0.42% against
++0.35% in ordinary windows: excess **+0.07% [−0.42, +0.30]** — no fear bid on
+average; gold was higher at +5 in 53% [41–66] of spikes, a coin. Twenty
+sessions on, gold +0.01% against +1.20%: excess **−1.19% [−2.30, −0.48]** —
+a month after a fear spike gold has *lagged* its ordinary drift, the interval
+clear of zero. "Spiked then gave back half by day 20" happened in 24% [15–37]
+of spikes; the other three quarters never spiked. The last five: April 2025
++4.0% at five sessions (held), October 2025 −8.4%, November 2025 +2.4%,
+March 2026 −1.3% then −7.0%, June 2026 +2.7% then −1.7%. Fear gold is a
+story people buy; on this data it is not a trade.
+
+**G2 — how often each gold trades.** Over 16 years: **rates gold 19%** of
+windows, **dollar gold 18%**, **both 16%**, **neither 45%**, the wrong sign
+3%. By year: 2014 rates 42% (Crown called 2014–15 dollar gold; here 2014 was
+rates, 2015 split three ways); 2022 rates 36% + both 16% — the hiking-cycle
+year; **2025 neither 96%** — gold rose with no link to real yields or the
+dollar for almost the whole year, which is exactly the reserve-gold year he
+describes, from the residual alone; 2026 so far dollar 36%, neither 64%. The
+latest window (to 10 Sep) is *neither*: t-stats −1.1 on real yields, −0.3 on
+the dollar. **No single gold is trading right now**, which is what the chain
+says too (both gold links quiet).
+
+**Reserve gold — the feed.** No free machine-readable central-bank purchase
+series: the World Gold Council's monthly statistics sit behind a login, IMF
+IFS returns 403 to a plain request. The label's *reserve gold* is the
+residual (gold up against both textbook drivers) and the card says it
+cannot be confirmed from here.
+
+## What goes on the page
+
+- **Which gold** chip on the gold card and the gold chain card: rates /
+  dollar / reserve (residual, unconfirmed) / no single gold — from the two
+  links' verdicts, with the reason. The fear flag when a VIX spike sits in
+  the last five sessions with gold up, carrying G1's base rate.
+- G2's shares as the denominator line: "rates gold 19% of the time, dollar
+  18%, both 16%, neither 45%".
+- Ledger: G1 as null (no fear bid; a month later gold lags, a base rate);
+  G2 as context.

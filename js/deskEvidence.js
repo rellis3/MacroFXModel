@@ -298,6 +298,18 @@ export const DESK_EVIDENCE = [
     use: 'State the two economies’ regimes as the backdrop of a pair; never call divergence a setup or a warning.',
   },
   {
+    id: 'fear-gold', domain: 'macro', verdict: 'null', date: '2026-09-21', doc: 'MD files/FOUR_GOLDS.md#G1',
+    claim: 'Fear buys gold: a spike in the VIX brings a gold bid that lasts days, not months',
+    result: '58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on +0.42% vs +0.35% ordinary: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on +0.01% vs +1.20%: excess -1.19% [-2.30, -0.48]. Spiked then gave back half by day 20: 24% of spikes; the rest never spiked.',
+    use: 'No fear bid in gold on average, and a month after a fear spike gold has lagged its ordinary drift. Never write "fear is bidding gold"; if gold is up in a fear week, look for the rates or dollar leg instead.',
+  },
+  {
+    id: 'which-gold', domain: 'macro', verdict: 'context', date: '2026-09-21', doc: 'MD files/FOUR_GOLDS.md#G2',
+    claim: 'There are four golds -- rates, dollar, reserve, fear -- and only one drives at a time',
+    result: 'Rolling 60-session regressions of gold on real yields and the broad dollar, 689 windows 2010-2026: rates gold 19% of windows, dollar gold 18%, both 16%, neither 45%, the wrong sign 3%. 2022 rates 36% + both 16%; 2025 neither 96% (the reserve-gold year, from the residual alone); latest window neither.',
+    use: 'Name the gold that is trading from the chain links (real to gold, dollar to gold), and say "no single gold" when both are quiet -- which is nearly half the time. Reserve gold is the residual and cannot be confirmed from a free feed.',
+  },
+  {
     id: 'crack-inflation-channel', domain: 'macro', verdict: 'context', date: '2026-09-21', doc: 'MD files/CRACK_SPREAD.md',
     claim: 'The 3-2-1 crack spread (refining margin: fuel prices minus crude) carries inflation pricing beyond crude itself -- when crude falls but products stay tight, breakevens do not take the relief',
     result: 'All 20-session windows 2003-2026 (n=5,700). Breakevens correlate 0.40 with crude and 0.19 with the crack; the crack after removing crude is 0.185 [0.10, 0.27]. Windows where crude fell 5% or more but the crack rose 5 dollars or more: breakevens -4bp; where both fell: -14bp; difference +15bp [+4, +32].',
