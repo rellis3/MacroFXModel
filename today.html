@@ -217,6 +217,13 @@
   .dr-shelf[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
   .dr-shelf .dr-sec{border-left:2px solid var(--border);padding-left:10px}
   .dr-now{font-size:14px;line-height:1.6;max-width:66ch;margin:4px 0 12px}
+  .byt{margin:0 0 14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--card2)}
+  .byt-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;cursor:help}
+  .byt-row{display:grid;grid-template-columns:18px 76px 1fr auto auto;gap:6px 10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text2)}
+  .byt-n{font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums} .byt-k{font-weight:700;color:var(--text)} .byt-t{min-width:0}
+  .byt-tag{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--bg3);color:var(--text3);white-space:nowrap} .byt-tag.warn{color:var(--amber)}
+  .byt-go{font-size:11px;color:var(--blue);cursor:pointer;white-space:nowrap}
+  @media(max-width:720px){.byt-row{grid-template-columns:18px 1fr;}.byt-t{grid-column:1/3}.byt-tag,.byt-go{grid-column:2}}
   .dr-now b{font-weight:700}
   .dr-tab .q{display:block;font-size:9px;font-weight:500;color:var(--text3);letter-spacing:.02em;line-height:1.2}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
@@ -1101,6 +1108,7 @@
   </div>
   <div class="dr-pane" id="drPane-now" role="tabpanel" aria-labelledby="drTab-now" hidden>
   <div class="dr-now" id="drNow"></div>
+  <div id="drByt"></div>
 <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -1607,6 +1615,8 @@ function mveChip(r) {
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
 let intlYields = null;   // /api/intl-yields -- gilt, JGB, bund 10Y daily, for the chain's gap chips
+let crackData = null;    // /api/crack -- the 3-2-1 refining margin: the Crude & the crack card and the chain's crack node
+async function loadCrack() { try { const j = await jget('/api/crack'); if (j?.ok) { crackData = j; render(); } } catch { /* card stays hidden */ } }
 async function loadIntlYields() { try { const j = await jget('/api/intl-yields'); if (j?.ok) { intlYields = j.series; render(); } } catch { /* chips stay unmeasured */ } }
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
@@ -1966,6 +1976,7 @@ async function loadGate() {
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   loadIntlYields();   // gilt / bund / JGB gap chips on the chain
+  loadCrack();        // crude & the crack card + chain node
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
@@ -3007,6 +3018,7 @@ function chainVals() {
       out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node]) : null;
     }
   } catch { /* unmeasured */ }
+  try { const pts = crackData?.series; out.crack = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES.crack) : null; } catch { out.crack = null; }
   return out;
 }
 // The 10Y's 20-day move split by the ACM model into term premium (what holding
@@ -3201,14 +3213,15 @@ function chainReadHtml() {
 // thing is and how it sits in the chain today (from the brick's own words).
 const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run between boxes, not through them
   oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
-  usdcad: [0, 1], us2y: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
+  usdcad: [0, 1], crack: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
   vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
   funding: [3, 1],   // the one plumbing node, in the empty slot under the real yield
   // the non-US yield legs (MD files/NONUS_YIELDS.md): each gap beside its pair; the JGB gap climbs to USD/JPY between copper and bitcoin
   giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3],
+  us2y: [5, 3],   // the front end: its one link runs up-left to the 30Y between the S&P and Nasdaq chips; the crack took its old slot beside oil
 };
 // Short edge labels that fit the gap between boxes; the full name is in the hover.
-const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen' };
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.' };
 let _chainNodeSel = null, _chainLinkSel = null;
 function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainLinkSel = null; _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
 function selectChainLink(id, ev) { ev?.stopPropagation?.(); _chainNodeSel = null; _chainLinkSel = _chainLinkSel === id ? null : id; render(); }
@@ -3277,7 +3290,7 @@ function chainGraphHtml(links) {
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF</span></div>${linkCard}${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF · Crack spread = the refining margin, fuel minus crude per barrel</span></div>${linkCard}${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
@@ -3300,6 +3313,7 @@ const CHAIN_ICON = {
   spx: '<path d="M4 21V9l8-6 8 6v12 M9 21v-6h6v6 M8 11h2 M14 11h2 M8 15h2 M14 15h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   btc: '<path d="M9 4v16 M13 4v2 M13 18v2 M8 6h6a3 3 0 0 1 0 6H8 M8 12h7a3 3 0 0 1 0 6H8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   funding: '<path d="M4 6h8a4 4 0 0 1 4 4v2h4v3h-4v2a2 2 0 0 1-2 2h-2v-4H4z M14 19c0 2-1 3-2 3s-2-1-2-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  crack: '<path d="M5 20V9l3-5h8l3 5v11z M5 13h14 M10 4v5 M14 4v5 M9 17h2 M13 17h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   giltgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">£</text>',
   bundgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">€</text>',
   jgbgap:  '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">¥</text>',
@@ -3307,6 +3321,40 @@ const CHAIN_ICON = {
   eurusd:  '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" font-family="inherit">€/$</text>',
   _: '<circle cx="12" cy="12" r="4" fill="currentColor"/>',
 };
+// Crude and the crack: crude and fuel are two markets, and the refiner's
+// margin between them is the one that says whether fuel is tight. Description
+// plus the three tested lines (MD files/CRACK_SPREAD.md); no lean.
+function crackHtml() {
+  const d = crackData; if (!d?.last || !d.context) return '';
+  const c = d.context, L = d.last, ch = d.change20 ?? {};
+  const usd = v => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(v >= 100 ? 0 : 1)}`;
+  const pctWord = c.percentile >= 0.95 ? 'the top 5% of its history' : c.percentile >= 0.9 ? 'the top tenth of its history' : c.percentile >= 0.75 ? 'the top quarter' : c.percentile <= 0.1 ? 'the bottom tenth' : 'the ordinary middle';
+  const liveOil = commodityDrivers?.wti?.price; const oilNote = liveOil != null ? ` Crude live ${usd(liveOil)}, so the crack today is about ${usd(((2 * L.gasoline + L.heatingOil) * 42 - 3 * liveOil) / 3)} if fuel has held.` : '';
+  const dis = ch.wtiPct != null && ch.crack != null && ch.wtiPct <= -5 && ch.crack >= 5;
+  const agr = ch.wtiPct != null && ch.crack != null && ch.wtiPct <= -5 && ch.crack <= -5;
+  const st = d.study; const c2 = st?.c2, c3 = st?.c3, c1 = st?.c1;
+  // a year of the crack against its normal band
+  const pts = (d.series ?? []).slice(-250); const spark = (() => { if (pts.length < 20) return ''; const vals = pts.map(p => p.value); const lo = Math.min(...vals, c.p25), hi = Math.max(...vals, c.p90); const W = 300, H = 46; const x = i => (i / (pts.length - 1) * W).toFixed(1), y = v => (H - 4 - (v - lo) / (hi - lo || 1) * (H - 8)).toFixed(1);
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:46px;display:block"><rect x="0" y="${y(c.p75)}" width="${W}" height="${(y(c.p25) - y(c.p75)).toFixed(1)}" fill="var(--text3)" opacity=".16"/><line x1="0" x2="${W}" y1="${y(c.median)}" y2="${y(c.median)}" stroke="var(--text3)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"/><polyline points="${pts.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><div class="muted" style="font-size:10px;margin-top:2px">the crack, one year · grey band = its normal quarter-to-quarter range since 2010 ($${c.p25}–$${c.p75}), dotted = the median $${c.median}</div>`; })();
+  const tip = 'The 3-2-1 crack: three barrels of crude in, two of gasoline and one of diesel out, priced at the NY Harbor spot prices FRED carries from the EIA. ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3 = the refiner\u2019s margin per barrel of crude. Crude and fuel are two markets; the crack is what says whether fuel is tight when crude moves.';
+  return `<div class="chain">
+    <div class="chain-h help" title="${esc0(tip)}">Crude &amp; the crack <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· the refiner\u2019s margin, fuel minus crude</span></div>
+    <div class="chain-sum ${c.percentile >= 0.9 ? 'broke' : 'quiet'}">The 3-2-1 crack is <b>${usd(c.last)} a barrel</b> (FRED to ${c.date}) — ${esc0(c.word)}, in ${pctWord}; normal is $${c.p25}–$${c.p75}.${ch.crack != null ? ` Over 20 sessions the crack is ${ch.crack >= 0 ? 'up' : 'down'} ${usd(Math.abs(ch.crack))} while crude is ${ch.wtiPct >= 0 ? '+' : ''}${ch.wtiPct}%${dis ? ' — <b>crude down, fuel tight</b>: the disagreement that says the sell-off is not the whole story' : agr ? ' — crude and fuel falling together: a genuine easing' : ''}.` : ''}${esc0(oilNote)}</div>
+    <div class="statrow" style="margin-bottom:8px">
+      <div class="statcard"><div class="lbl">WTI crude</div><div class="row1"><span class="big">${usd(L.wti)}</span></div><div class="swk muted">${L.date}${liveOil != null ? ` · live ${usd(liveOil)}` : ''}</div></div>
+      <div class="statcard"><div class="lbl">Gasoline (NY Harbor)</div><div class="row1"><span class="big">$${L.gasoline.toFixed(2)}</span><span class="muted">/gal</span></div><div class="swk muted">×42 = ${usd(L.gasoline * 42)} a barrel</div></div>
+      <div class="statcard"><div class="lbl">Heating oil (diesel)</div><div class="row1"><span class="big">$${L.heatingOil.toFixed(2)}</span><span class="muted">/gal</span></div><div class="swk muted">×42 = ${usd(L.heatingOil * 42)} a barrel</div></div>
+      <div class="statcard"><div class="lbl">3-2-1 crack</div><div class="row1"><span class="big">${usd(c.last)}</span><span class="sdelta ${ch.crack >= 0 ? 'up' : 'dn'}">${ch.crack >= 0 ? '+' : '-'}$${Math.abs(ch.crack ?? 0).toFixed(1)} / 20d</span></div><div class="swk muted">P${Math.round(c.percentile * 100)} since 2010</div></div>
+    </div>
+    ${spark}
+    <div class="ccy-explain" style="margin-top:8px"><b>What it means, tested here</b> (<a href="MD files/CRACK_SPREAD.md" target="_blank">CRACK_SPREAD.md</a>):
+      <div>· <b>Inflation pricing:</b> the crack carries breakevens beyond crude${c2 ? ` — partial correlation ${c2.partial} [${c2.partialLo}, ${c2.partialHi}] after crude; when crude fell 5% but the crack rose $5, breakevens moved ${c2.disagreeBei.median}bp against ${c2.agreeBei.median}bp when both fell (+${Math.round(c2.disagreeVsAgree.diff)}bp [${Math.round(c2.disagreeVsAgree.lo)}, ${Math.round(c2.disagreeVsAgree.hi)}])` : ''}. <b>So when crude sells off, look at the crack before writing that inflation relief is coming.</b> It is on the chain as crack → inflation pricing.</div>
+      <div>· <b>Range:</b> a crack blow-out does not widen the month${c1 ? ` — WTI ${c1.WTI?.diff?.diff >= 0 ? '+' : ''}${c1.WTI?.diff?.diff} ATR [${c1.WTI?.diff?.lo}, ${c1.WTI?.diff?.hi}], USD/CAD ${c1.USDCAD?.diff?.diff}, gold ${c1.XAUUSD?.diff?.diff}` : ''}. No trigger.</div>
+      <div>· <b>Direction, a base rate:</b> after crude fell 5% while the crack rose $5, crude was higher a month later ${c3 ? `${Math.round(c3.afterDisagree.share * 100)}% of the time [${Math.round(c3.afterDisagree.lo * 100)}–${Math.round(c3.afterDisagree.hi * 100)}] on ${c3.afterDisagree.n} cases, against ${Math.round(c3.unconditional.share * 100)}% for any month` : ''}. Leans the way the story says; the interval holds the coin.</div>
+      <div class="muted" style="font-size:10.5px;margin-top:3px">Why it matters beyond oil: the pump price follows the crack, not crude, so a wide crack feeds the next CPI prints; refiners reprice on it; and speculators long fuel and short crude push it wider still. Source: FRED EIA spot prices, about a week behind, like the WTI print.</div>
+    </div>
+  </div>`;
+}
 function chainHtml() {
   const B = window.macroChainBrick;
   const links = chainLinks();
@@ -4429,6 +4477,7 @@ function renderMarketRead() {
     </div>
     ${dataConflictHtml()}
     ${chainHtml()}
+    ${crackHtml()}
     ${divergenceHtml()}
     ${falsifierHtml(rs, risk, csrMR)}
     <div class="mread-watch">
@@ -7441,6 +7490,54 @@ function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (la
 // and what argues with it, then the clock -- so a reader learns the shape and can
 // skim it. Every clause is guarded: a missing input drops its sentence rather than
 // inventing one.
+// Before you trade: the five questions a professional answers before the
+// chart earns a trade (options, crowding, stretch, clock, relative value),
+// each with this page's current answer and its evidence status. Nothing is
+// computed here that the drawer does not already hold; the point is the
+// order and the honesty -- "no free feed" and "tested null" where they belong.
+const _BYT_PEER = { EURUSD: 'GBPUSD', GBPUSD: 'EURUSD', AUDUSD: 'NZDUSD', NZDUSD: 'AUDUSD', USDCAD: 'AUDUSD', USDCHF: 'USDJPY', USDJPY: 'USDCHF', EURGBP: 'EURUSD', EURJPY: 'USDJPY', GBPJPY: 'USDJPY', AUDJPY: 'USDJPY', NQ: 'SPX500', SPX500: 'NQ', DE30: 'UK100', UK100: 'DE30', US30: 'SPX500', US2000: 'SPX500', GOLD: 'USDJPY' };
+const _BYT_CHAIN_NODE = { USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', GBPUSD: 'gbpusd', EURUSD: 'eurusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx' };
+function beforeYouTradeHtml(r) {
+  const d = r.d; const unit = d.ac === 'fx' ? 'p' : 'pt';
+  const line = (n, k, txt, tab, tag) => `<div class="byt-row"><span class="byt-n">${n}</span><span class="byt-k">${k}</span><span class="byt-t">${txt}</span>${tag ? `<span class="byt-tag ${tag.cls}">${esc0(tag.t)}</span>` : ''}<span class="byt-go" role="button" tabindex="0" onclick="setDrTab('${tab}')">→ ${tab === 'lean' ? 'Lean & flow' : tab === 'why' ? 'Why' : tab === 'day' ? 'The day' : 'Levels'}</span></div>`;
+  const rows = [];
+  // 1 options: where they sit (open interest), not what they pay (no free skew)
+  { const o = r.oi; const fx = v => v == null ? '?' : Number(v).toFixed(d.dp ?? 4);
+    let t, tag;
+    if (o && !o.stale) { t = `walls ${o.putWall != null ? `${fx(o.putWall)} (puts)` : ''}${o.putWall != null && o.callWall != null ? ' / ' : ''}${o.callWall != null ? `${fx(o.callWall)} (calls)` : ''}, gamma ${o.regime === 'PIN' ? 'long: pins price, favours fading the edges' : o.regime === 'BREAKOUT' ? 'short: a move can run' : '—'}${o.pcRatio != null ? `, put/call ${Number(o.pcRatio).toFixed(2)}` : ''}. Skew (what buyers are paying for): <b>no free feed</b>.`; tag = { t: 'where, not what they pay', cls: 'neu' }; }
+    else if (o?.stale) { t = `the options book is stale (${Math.round(o.ageH)}h old) — capture it before leaning on a wall. Skew: no free feed.`; tag = { t: 'stale', cls: 'warn' }; }
+    else { t = `no options book for this instrument (CME lists FX majors, gold and the indices). Skew: no free feed.`; tag = { t: 'not covered', cls: 'neu' }; }
+    rows.push(line(1, 'Options', t, 'levels', tag)); }
+  // 2 crowding: specs and retail, and the desk's verdict on squeezes
+  { const ct = r.ct; const bk = _crowd[d.sym]?.book; const parts = [];
+    const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+    if (ct?.pctile != null) parts.push(`large specs net <b>${ct.dir}</b>, ${ord(ct.pctile)} percentile of their history${ct.level ? ` (${ct.level.toLowerCase()})` : ''}`); else if (ct?.dir) parts.push(`large specs ${ct.dir}`);
+    if (bk?.longPct != null) parts.push(`retail ${Math.round(bk.longPct)}% long${bk.pain ? `, ${Math.round(bk.longPct >= 50 ? bk.pain.longsUnderwaterPct ?? 0 : bk.pain.shortsUnderwaterPct ?? 0)}% of the crowd underwater` : ''}`);
+    const t = parts.length ? `${parts.join(' · ')}. Crowding is shown, not traded: squeeze-fuel tested null here (retail is ~60% long every major every day).` : 'positioning not loaded for this instrument.';
+    rows.push(line(2, 'Crowding', t, 'lean', parts.length ? { t: ct?.level === 'EXTREME' ? 'extreme, tested null as a squeeze' : 'descriptive', cls: ct?.level === 'EXTREME' ? 'warn' : 'neu' } : null)); }
+  // 3 stretch: range used, the band, the tape
+  { const t = _tape[d.sym]; const parts = [];
+    if (r.used != null) parts.push(`<b>${Math.round(100 * r.used)}% of the expected day range used</b>${d.levels?.hl_med?.range_pts ? ` (${d.levels.hl_med.range_pts}${unit})` : ''}`);
+    if (t?.ok && !t.stale) parts.push(`band ${t.bandLabel.split(' ')[0]}, tape ${t.label} (${t.pctile} for this hour)`);
+    if (d.vol_pct != null) parts.push(`vol P${Math.round(d.vol_pct)} of a year`);
+    const stretched = r.used != null && r.used >= 0.9;
+    rows.push(line(3, 'Stretch', (parts.length ? parts.join(' · ') : 'no intraday read yet') + `. Overextension fades are real but under cost on this desk; a full range is a reason to expect less, not to fade.`, 'levels', { t: stretched ? 'range used up' : 'room left', cls: stretched ? 'warn' : 'neu' })); }
+  // 4 clock: the next print for this pair and what the book says it does
+  { const e = nextPairEvent(r.name); let t, tag;
+    if (e) { const fam = _tlFam(e.event); const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null; const hrs = (e.ms - Date.now()) / 3600e3;
+      t = `next: <b>${esc0(e.country)} ${esc0(e.event)}</b> ${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` — the book: <b>${bk.spike}×</b> an ordinary half-hour on release, ${bk.next}× the next day` : fam ? ' — not a mover for this pair in the book' : ''}${d.news_flag ? `; ${esc0(d.news_flag)} scales today's range ×${d.news_mult}` : ''}. Sizes are tested range facts; direction after a print is a coin flip here.`;
+      tag = bk && bk.spike >= 2 ? { t: `${bk.spike}× mover`, cls: 'warn' } : { t: 'range, never direction', cls: 'neu' }; }
+    else { t = 'nothing high-impact scheduled for this pair in the calendar window. An empty clock is a reason to expect an ordinary range, not a trend.'; tag = { t: 'clear', cls: 'neu' }; }
+    rows.push(line(4, 'Clock', t, 'day', tag)); }
+  // 5 relative value: the chain links that end on this pair, the peer, and which leg is moving
+  { const parts = []; const node = _BYT_CHAIN_NODE[r.name];
+    if (node) { const ls = chainLinks().filter(l => l.b?.key === node || l.a?.key === node); const judged = ls.filter(l => l.verdict === 'holding' || l.verdict === 'broken'); if (judged.length) parts.push(judged.map(l => `${esc0(l.short)} <b>${l.verdict.toUpperCase()}</b>`).join(', ')); else if (ls.length) parts.push(`${ls.length} chain link${ls.length > 1 ? 's' : ''} on this pair, all quiet this month`); }
+    const dc = moveDecompFor(r.name); if (dc && dc.ret != null) parts.push(`today ${dc.ret >= 0 ? '+' : ''}${dc.ret} day-ranges: ${dc.base.ccy} ${dc.base.share ?? '?'}%, ${dc.quote.ccy} ${dc.quote.share ?? '?'}%, own story ${dc.idio.share ?? '?'}%`);
+    const peer = _BYT_PEER[r.name]; const pr = peer ? allRows().find(x => x.name === peer) : null; const pdc = pr ? moveDecompFor(pr.name) : null;
+    if (pdc && pdc.ret != null) parts.push(`peer ${dispName(peer)} ${pdc.ret >= 0 ? '+' : ''}${pdc.ret}${dc && dc.ret != null && Math.sign(dc.ret) !== Math.sign(pdc.ret) && Math.abs(dc.ret - pdc.ret) >= 0.3 ? ' — <b>the peers disagree</b>: this move is this pair\u2019s own' : ''}`);
+    rows.push(line(5, 'Relative', (parts.length ? parts.join(' · ') : 'no cross-asset read loaded yet') + '. Same-window links, tested: they explain a move, they do not announce the next one.', 'why', { t: 'explains, does not predict', cls: 'neu' })); }
+  return `<div class="byt"><div class="byt-h help" title="The five questions to answer before a chart earns a trade -- options positioning, market positioning, technical stretch, the clock, cross-asset relative value -- each with this page's current answer and its evidence status. No new numbers: the order is the point.">Before you trade <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· five questions, this page\u2019s answers, in order</span></div>${rows.join('')}</div>`;
+}
 function nowParagraph(r) {
   const d = r.d, out = [];
   const t = _tape[d.sym];
@@ -8123,6 +8220,7 @@ async function openDrawer(name) {
   // whether the status line wrapped, so measure it rather than hard-code it.
   requestAnimationFrame(() => { try { $('drawer').querySelector('.dr-tabs').style.top = (Math.max(34, $('drawer').querySelector('.dr-top').offsetHeight) - 16) + 'px'; } catch {} });
   try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
+  try { $('drByt').innerHTML = beforeYouTradeHtml(r); } catch (e) { $('drByt').innerHTML = ''; console.error('[byt]', e); }
   try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
   renderDrawerLedger(r).catch(() => { $('drLedgerSec').style.display = 'none'; });
@@ -8131,7 +8229,7 @@ async function openDrawer(name) {
   loadLedgerRowsFor(r.name).then(() => renderDrawerTimeline(r)).catch(() => {}); try { renderDrawerTimeline(r); } catch (e) { $('drTimelineSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
-  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); } catch {} }).catch(() => {});
+  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states

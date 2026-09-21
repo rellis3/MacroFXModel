@@ -63,6 +63,40 @@ unconditional. Reported whatever it says; a base rate, not a claim.
 
 Harness: `analysis/crack_spread_study.mjs`. Output: `analysis/output/crack_spread.json`.
 
-## Findings
+## Findings — run 2026-09-21
 
-*(to be filled after the run)*
+Crack history 1986-06 → 2026-09-15 (7,760 sessions). The 3-2-1 crack is
+**$64.2/bbl** on the last print, against a median of $19.4 since 2010
+(quartiles $14.9–$25.8, 90th percentile $35.9) — Crown's "$70 against a
+normal $15–25" is right. Four blow-outs this year alone (March, April, June,
+August: +$13 to +$19 in 20 sessions, z 2.2–2.9); 61 episodes since 1996.
+
+**C1 — range.** *Null.* After the first session of a blow-out (n=24–25 usable
+with OANDA history) the next 20 sessions' mean daily range: WTI 1.16 ATR vs
+1.03 control, +0.13 [−0.02, +0.16] — leaning wider but the interval touches
+zero and the episode count is small; USD/CAD −0.03 [−0.06, +0.04]; gold
+−0.06 [−0.09, −0.002], a hair *narrower*. No range trigger.
+
+**C2 — the inflation channel.** *Real.* Over all 20-session windows since
+2003 (n=5,700), Δbreakeven correlates 0.40 with Δcrude and 0.19 with Δcrack;
+the crack's partial correlation after removing crude is **0.185 [0.10, 0.27]**
+— the crack adds to inflation pricing beyond crude. The disagreement cut says
+the same thing in plainer terms: in windows where crude fell ≥5% but the
+crack rose ≥$5, breakevens moved −4bp (median, n=165); where both fell,
+−14bp (n=198); difference **+15bp [+4, +32]**. So when crude sells off but
+products stay tight, the bond market does not take the inflation relief.
+Crown's mechanism holds on this data.
+
+**C3 — "the crack tells the truth".** Crude was higher 20 sessions after a
+disagreement window 62% of the time [48–75] (n=45), after an agreement window
+49% [33–65] (n=33), after any −5% crude window 55% [47–62], unconditional
+52% [47–57]. Leans his way; the interval holds the coin. A base rate.
+
+## What goes on the page
+
+- A **Crude & the crack** card: WTI (live vs FRED), gasoline, heating oil,
+  the 3-2-1 crack with its normal band and percentile word, the 20-day
+  change, and the three verdicts in one line each.
+- A chain node **Crack spread** with the link **crack → inflation pricing**
+  (+1), judged like every other link; the card carries the C2 figure.
+- No range trigger; C3 written as the base rate.

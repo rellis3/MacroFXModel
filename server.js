@@ -138,6 +138,7 @@ import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
+import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
@@ -14084,6 +14085,39 @@ app.get('/api/intl-yields', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('intlYields', () => _refreshIntlYields().catch(e => console.error('[intl-yields]', e.message)), 6 * 3600_000);
+
+// ── Crude and the crack: the refiner's margin as its own market ──────────────
+// FRED's EIA spot prices, no key, a week behind like the WTI print: WTI, NY
+// Harbor gasoline and heating oil -> the 3-2-1 crack in $/bbl, its normal band
+// since 2010, the 20-session change, and the C1-C3 verdicts from the study
+// output. Feeds the Crude & the crack card and the chain's crack node.
+let _crack = { at: 0, data: null, error: null };
+async function _refreshCrack() {
+  try {
+    const [wti, gasoline, heatingOil] = await Promise.all(['DCOILWTICO', 'DGASNYH', 'DHOILNYH'].map(id => _fredCsv(id)));
+    const hist = _crackHistory({ wti, gasoline, heatingOil });
+    if (!hist.length) throw new Error('no common dates');
+    const ctx = _crackContext(hist);
+    const last = hist[hist.length - 1]; const back = hist[Math.max(0, hist.length - 21)];
+    let study = null; try { study = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'crack_spread.json'), 'utf8')); } catch { /* the card still shows the numbers */ }
+    _crack = { at: Date.now(), error: null, data: {
+      last: { date: last.date, wti: last.wti, gasoline: last.gasoline, heatingOil: last.heatingOil, crack: +last.crack.toFixed(2) },
+      change20: { crack: +(last.crack - back.crack).toFixed(2), wtiPct: +((last.wti / back.wti - 1) * 100).toFixed(2), from: back.date },
+      context: ctx ? { ...ctx, last: +ctx.last.toFixed(2), p25: +ctx.p25.toFixed(1), median: +ctx.median.toFixed(1), p75: +ctx.p75.toFixed(1), p90: +ctx.p90.toFixed(1), percentile: +ctx.percentile.toFixed(3) } : null,
+      series: hist.slice(-260).map(r => ({ date: r.date, value: +r.crack.toFixed(2), wti: r.wti })),
+      study: study ? { ranAt: study.ranAt, c1: study.c1, c2: study.c2, c3: study.c3, blowouts: study.blowouts } : null,
+    } };
+  } catch (e) { _crack.error = e.message; console.warn('[crack]', e.message); }
+  return _crack;
+}
+app.get('/api/crack', async (_req, res) => {
+  try {
+    if (Date.now() - _crack.at > 6 * 3600_000) await _refreshCrack();
+    if (!_crack.data) return res.status(503).json({ ok: false, error: _crack.error ?? 'no crack series yet' });
+    res.json({ ok: true, ..._crack.data, at: new Date(_crack.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e.message)), 6 * 3600_000);
 
 // ── The week map: every series scored against its own history ────────────────
 // Weekly changes of ~25 macro series, each as a z against the series' full

@@ -49,6 +49,9 @@ export const CHAIN_NODES = {
   nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
   spx:    { label: 'Broad stocks (S&P 500)',          unit: 'pct', floor: 2,   dp: 1, what: 'SPX500: the broad, blend-not-growth benchmark. Less duration exposure than the Nasdaq, so it answers to the real yield more slowly and less — which is exactly why it can sit quiet (the "milk in the grocery store" read) while the chain upstream of it is genuinely moving. A quiet SPX does not mean a quiet market; check nq, dxy and gold before concluding nothing is happening. Not yet tested for forward predictability here (nq has been; see above) — a natural next pre-registration, not yet run.' },
   funding: { label: 'Funding (SOFR − floor)',       unit: 'bp',  floor: 5,   dp: 0, what: 'Overnight repo (SOFR) against the rate the Fed pays on reserves — the floor. Cash is plentiful when repo trades a few points under the floor; when it rises through it, someone is paying up for overnight money. The one plumbing number in the chain: funding stress bids the dollar and sells risk, in the textbook. Described, not tested (P1 registered 2026-09-20).' },
+  // The refiner's margin: fuel prices minus crude, per barrel. Tested 2026-09-21
+  // (MD files/CRACK_SPREAD.md): adds to inflation pricing beyond crude (C2).
+  crack:  { label: 'Crack spread (3-2-1)',            unit: 'usd', floor: 5,   dp: 0, what: 'What a refiner earns turning three barrels of crude into two of gasoline and one of diesel: ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3, in dollars a barrel. Normal is $15-25; above $35 is the top tenth of its history. Crude and fuel are two markets: when crude falls but the crack widens, products are tight and the pump price does not follow crude down -- and tested here, the bond market’s inflation pricing does not take the relief either (partial correlation 0.19 after crude; disagreement windows +15bp of breakevens vs agreement).' },
   // The non-US yield legs: each gap is the foreign 10-year minus the Treasury
   // 10-year, in bp, so a rising gap means the foreign market is repricing faster.
   // Tested 2026-09-20 (MD files/NONUS_YIELDS.md): same-window textbook links, no
@@ -261,6 +264,17 @@ export const CHAIN_LINKS = [
     },
   },
   {
+    id: 'crack-bei',
+    short: 'crack → inflation pricing',
+    punch: { holds: 'Fuel tighter than crude and inflation pricing following -- the pump-price channel.', up: 'Crack widening but inflation pricing flat -- the bond market calls the fuel squeeze temporary.', down: 'Crack narrowing but inflation pricing up -- inflation is coming from somewhere other than fuel.' },
+    textbook: 'A wider refining margin means dearer fuel at the pump whatever crude does, which lifts inflation expectations', from: 'crack', to: 'bei', sign: +1,
+    holds: 'The crack and inflation pricing moved together. Tested here: the crack carries inflation pricing beyond crude (0.19 after crude, 2003-2026), so this link has its own standing, not just crude’s.',
+    broken: {
+      up:   'The crack widened but inflation expectations did not follow. The bond market is treating the fuel squeeze as temporary -- refinery outages, a seasonal blend switch -- or growth doubt is pulling expectations the other way.',
+      down: 'The crack narrowed but inflation expectations rose. Fuel is not the source: wages, tariffs, fiscal, or doubt about the central bank.',
+    },
+  },
+  {
     id: 'giltgap-gbpusd',
     short: 'gilt gap → pound',
     punch: { holds: 'UK yields repricing faster, pound following -- the textbook, a coin flip here.', up: 'Gilts off faster than Treasuries, pound falling -- the bad rise; rare, the days you remember.', down: 'UK yields falling faster, pound bid -- the dollar or risk is doing the work, not the gap.' },
@@ -310,7 +324,7 @@ const _dir = v => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
 const _fmt = (v, unit, dp) => {
   if (v == null || !Number.isFinite(v)) return '—';
   const s = `${v > 0 ? '+' : ''}${v.toFixed(dp)}`;
-  return unit === 'pct' ? `${s}%` : unit === 'bp' ? `${s}bp` : s;
+  return unit === 'pct' ? `${s}%` : unit === 'bp' ? `${s}bp` : unit === 'usd' ? `${v > 0 ? '+' : v < 0 ? '-' : ''}$${Math.abs(v).toFixed(dp)}` : s;
 };
 
 /**

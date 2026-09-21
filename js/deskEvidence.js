@@ -298,6 +298,24 @@ export const DESK_EVIDENCE = [
     use: 'State the two economies’ regimes as the backdrop of a pair; never call divergence a setup or a warning.',
   },
   {
+    id: 'crack-inflation-channel', domain: 'macro', verdict: 'context', date: '2026-09-21', doc: 'MD files/CRACK_SPREAD.md',
+    claim: 'The 3-2-1 crack spread (refining margin: fuel prices minus crude) carries inflation pricing beyond crude itself -- when crude falls but products stay tight, breakevens do not take the relief',
+    result: 'All 20-session windows 2003-2026 (n=5,700). Breakevens correlate 0.40 with crude and 0.19 with the crack; the crack after removing crude is 0.185 [0.10, 0.27]. Windows where crude fell 5% or more but the crack rose 5 dollars or more: breakevens -4bp; where both fell: -14bp; difference +15bp [+4, +32].',
+    use: 'When crude sells off, look at the crack before writing that inflation pricing should ease: a rising crack with falling crude is the bond market keeping its inflation view. On the chain the crack has its own link to inflation pricing.',
+  },
+  {
+    id: 'crack-blowout-range', domain: 'macro', verdict: 'null', date: '2026-09-21', doc: 'MD files/CRACK_SPREAD.md',
+    claim: 'A crack-spread blow-out (20-session change at or above +2 z) is followed by a wider month in crude, USD/CAD and gold',
+    result: '61 episodes since 1996, 24-25 with OANDA history. Next-20-session mean daily range vs control: WTI +0.13 ATR [-0.02, +0.16], USD/CAD -0.03 [-0.06, +0.04], gold -0.06 [-0.09, -0.002].',
+    use: 'No range trigger. Crude leans wider after a blow-out but the interval touches zero on a small count; the FX and gold legs are flat or a hair narrower.',
+  },
+  {
+    id: 'crack-disagreement-direction', domain: 'macro', verdict: 'null', date: '2026-09-21', doc: 'MD files/CRACK_SPREAD.md',
+    claim: 'When crude sells off while the crack keeps rising, the sell-off is not the end of the story and crude is higher a month later',
+    result: 'Crude higher 20 sessions after a disagreement window (crude -5%, crack +5 dollars) 62% [48-75] (n=45); after an agreement window 49% [33-65]; after any -5% crude window 55% [47-62]; unconditional 52%.',
+    use: 'A base rate that leans the way the story says, with an interval that holds the coin. Say "crude sell-offs with the crack rising have more often reversed than not, 62% on 45 cases" -- never "the crack says crude goes back up".',
+  },
+  {
     id: 'nonus-yield-gap-label', domain: 'macro', verdict: 'context', date: '2026-09-20', doc: 'MD files/NONUS_YIELDS.md',
     claim: 'A foreign-led yield rise (gilts, bunds, JGBs rising faster than Treasuries) marks the currency day: the bad rise (yields up, currency down) for the pound, the carry textbook for the others',
     result: 'Daily 2010-2026, London-day bars. Gilt-led rise on GBP/USD worst-5% days x1.39 [0.69, 2.20] -- twelve days in sixteen years, mostly 2022 and the mini-budget; the bad-rise label is null. Bund-led fall on EUR/USD worst days x2.37 [1.54, 3.32] and bund-led rise on its best days x1.81 [1.07, 2.77]: the carry textbook holds on the tails, same day. JGB-led rise on USD/JPY worst days x2.02 [0.92, 3.30], not clear; same-day correlation -0.26, the strongest of the three. Over 20-session windows the gap and the pair agree with the textbook 57% [47-67] GBP, 74% [64-83] EUR, 70% [60-79] JPY.',
