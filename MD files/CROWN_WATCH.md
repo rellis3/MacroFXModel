@@ -750,3 +750,124 @@ worth knowing before assuming this is unexplored ground.
 - **Not claimed:** whether the 41% zombie-company figure, the 6bp/7% margin
   split, or the $1.35T debt-wall number are accurate — none of this desk's
   data can check them.
+
+---
+
+## 2026-09-21 (2) — "Indicator tier list" (MACD, SMA, Stochastics, Fib, RSI, Bollinger, Donchian, Volume)
+
+> *"MACD, F tier... Simple moving averages, A tier... Stochastics, D tier...
+> Fibonacci retracement, solid B tier... RSI, C tier... Bollinger Bands, B
+> tier... Donchian Channels, certified A tier... Volume, S tier. I use these
+> indicators all the time in the Crown Macro to guide my research."*
+
+**1. The claim, stated plainly.** Eight separate tier ratings, each with its
+own mechanism: MACD (F, lagging-of-lagging, ~11 days late in the 2022 bear
+market), SMA 50/200 (A, works because institutions watch it), Stochastics (D,
+noisy MACD, pins in trends/whipsaws in chop), Fibonacci retracement (B, no
+economic reason, self-fulfilling), RSI (C, momentum only, can stay
+overbought/oversold for weeks — crude cited at 34 sessions in 2022, useful
+mainly for divergence), Bollinger Bands (B, volatility not direction), Donchian
+Channels (A, 20-session high/low, breakout systems), Volume (S, the only
+indicator not derived from price, shows conviction/positioning).
+
+**2. What's already on this desk.** Unusually rich for this log — most of
+these eight aren't hypothetical here, they're already built, and five of the
+eight were already tested together in one systematic run:
+
+- **MACD, SMA 50/200, Stochastics, Bollinger, Donchian/Turtle** all exist as
+  specs in `js/strategyLabEngine.js`'s "12 famous retail strategies" gauntlet
+  (`SIGNALS.macd_cross`, `golden_cross`, `stochastic_trend`,
+  `bollinger_reversion`, `donchian_breakout`), and all five were tested
+  together in one honest run (Railway, 2026-07-18, 10-instrument universe,
+  2bp cost, chronological split): **0/12 survive the gate.** Every spec's IS
+  Sharpe was ≈0.0–0.4 (dead ~15 years), OOS 0.6–1.0 (a post-COVID long-bias
+  artifact from the split window), none beat buy-and-hold OOS. Golden Cross
+  and RSI-2 were the two "most-consistent non-survivors" (DSR 0.85–0.86,
+  still below b&h) — the least-bad of the losers, not winners. Full result:
+  `BACKTEST_INDEX.md`, `BACKTEST_SYSTEMS_REVIEW.md` §3.7. (Found in the
+  course of this audit: `LEGO_MODULES.md`'s row for this engine still said
+  "no honest run recorded yet" — stale, contradicted by the dated result
+  above; corrected in this same change.) None of the five is wired into any
+  live bot — the gauntlet is infrastructure for screening new spec ideas, not
+  a live strategy.
+- **Donchian gets a second, independent null**: `js/maxCopierEngine.js` uses a
+  1H Donchian(20) breakout as its actual entry trigger, in a more elaborate
+  system (impulse + consolidation + hidden-divergence). Banked null
+  (`LEGO_MODULES.md`): negative pooled OOS Sharpe across all three exit modes,
+  2016–2026, 26 instruments — and the autopsy traced the failure to the
+  breakout-predicts-continuation premise itself being "economically empty"
+  (mean forward move ~0.03–0.09 ATR at 4h–24h, ~50% hit rate, far below the
+  ~1-ATR stop + costs needed), not to execution details. So this desk built
+  and killed two separate Donchian-breakout systems, one simple, one
+  elaborate, for the same underlying reason.
+- **Fibonacci** is the most heavily built indicator here by far
+  (`js/fibProjection.js`, `rangeFibEngine.js`, `asiaFibAtlasEngine.js`,
+  `mondayFibAtlasEngine.js`), and every specific result diverges from "B tier,
+  it just works": the range-extension fib ladder is **null**
+  (`RANGE_EXTENSION_FINDINGS.md` — pooled OOS −0.115R/trade, 0/26 pairs
+  positive; a prior "survivor" slice was retracted as look-ahead bias); the
+  base range-fib is **never actually OOS-tested** despite having the UI
+  buttons (`TRADABILITY_REVIEW.md` §3 calls it "plausibly breakeven-to-marginal"
+  at best); and the one version that's actually live — the Fib Atlas
+  vote-portfolio bot — has a stark backtest-vs-live gap
+  (`FIB_ATLAS_BACKTEST_VS_LIVE.md`): backtest claims Sharpe 18.4 / 85.7% win
+  rate (the doc itself flags this as impossible), the real paper bot is
+  **losing money live** (39.6% win rate, −$13,696 over 90 days, 101 trades).
+- **RSI** (`js/indicatorCore.js`'s `rsiWilder`) has one real, documented,
+  *partial* finding, not a clean pass or null: `GOLD_VWAP_FIXED_SIGMA_FINDINGS.md`
+  §19 found an extended RSI at a VWAP-band touch predicts a *worse* fade
+  outcome on 3 of 4 instruments (gold −12.1pp win rate, EUR/USD −7.3, USD/JPY
+  −8.1, not on GBP/USD) — consistent with Crown's "momentum, don't fade it"
+  framing, but graded explicitly weaker than four other context dimensions
+  tested in the same scan, and culling on it does not flip the underlying
+  trade profitable. No dedicated test of RSI-divergence-only or
+  overbought/oversold persistence exists.
+- **Bollinger Bands**: confirmed this desk's actual production volatility
+  bands (`js/cogBands.js`, `computeBands`) are Feller/driftless-Brownian-range
+  derived, an unrelated math family — Bollinger (SMA ± stdev) only exists as
+  one of the 12 nulled gauntlet specs, nothing more.
+- **Volume**: this desk's own code repeatedly and explicitly disclaims OANDA
+  FX "volume" as tick count (price-update frequency), not real traded size —
+  comments to that effect appear in at least seven files
+  (`js/vumanchu.js`, `vwapReversionEngine.js`, `volStateEngine.js`,
+  `touchFeatures.js`, `vumanchuChart.js`, `volBacktestM1Engine.js`,
+  `mtfStack.js`). The one feature built on it (`volClimax`, a tick-volume
+  spike) is graded **"weak"** (`ENTRY_ZONE_CONFIDENCE.md`) and "fragments and
+  dies at 2–3× cost" (`RANGE_EXTENSION_GUIDE.md`). The genuinely
+  non-price-derived data this desk does have — CME options open interest via
+  `js/oi.js` — is a different asset (options positioning), not the
+  spot/futures conviction volume Crown means.
+
+**3. Trading claims, not macro claims — and mostly already answered.** All
+eight are backtestable signal-value claims, not chain material. Five were
+answered together in one run (null), Donchian was answered twice
+independently (null both times), Fibonacci's specific engines diverge by
+construction (null / untested / backtest-vs-live gap), RSI has one real but
+weak partial confirmation, and Volume's only derived feature tested weak.
+Nothing here needs new pre-registration — it needs citing what already ran.
+
+**4. Is there a display/alert nugget here, independent of #3.** One, and it's
+already live, just not framed this way: the RSI-extended-at-touch finding
+(§19) is already wired into `vwapFixedSigmaEngine.js` as a context dimension
+on real touches. Nothing else in this clip suggests a new display item — the
+rest is either already-null infrastructure or (Fibonacci, volume) already
+surfaced through their existing pages.
+
+**5. Verdict and action: already covered, overwhelmingly null, one doc fixed.**
+Zero new code from this entry. Six of eight indicators (MACD, SMA 50/200,
+Stochastics, Bollinger, Donchian ×2, and the base range-fib construction) map
+onto already-run, already-null or already-unvalidated results on this desk.
+RSI has one real, weak, partial confirmation already live. Volume's only
+built feature tested weak. The Fib Atlas live bot is the sharpest finding in
+here, and it already exists and is already losing money in paper mode — a
+live-monitoring fact, not something this entry adds.
+- **Not built, not pre-registered.** Nothing in this clip clears the bar for
+  new work — every piece maps to an existing result.
+- **One doc fixed, not a market finding:** `LEGO_MODULES.md`'s Strategy Lab
+  row said "no honest run recorded yet," contradicted by the dated 2026-07-18
+  result in `BACKTEST_INDEX.md`/`BACKTEST_SYSTEMS_REVIEW.md`. Corrected in
+  this same change — found only because auditing this clip meant actually
+  reading both docs side by side.
+- **Not claimed:** whether Crown's specific numbers (MACD 11 days late in
+  2022, crude overbought 34 sessions) are accurate — this desk tested the
+  indicators' broader signal value, not those exact statistics.
