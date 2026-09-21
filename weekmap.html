@@ -32,6 +32,10 @@
   .sub{color:var(--text2);font-size:12.5px;line-height:1.6;margin-top:4px;max-width:80ch} .sub b{color:var(--text)}
   table{border-collapse:collapse;width:100%;font-size:11.5px} th{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:left;padding:4px 6px;border-bottom:1px solid var(--border)} td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--text2);font-variant-numeric:tabular-nums}
   .dots svg{width:100%;height:auto;display:block} .dots text{font-size:9px;fill:var(--text3)}
+  .ogroup{padding:6px 0 8px;border-bottom:1px solid var(--border)} .ogroup:last-child{border-bottom:none}
+  .orow{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;align-items:center;padding:4px 0}
+  .orow .ol{font-size:12px;color:var(--text)} .orow .os{min-width:0} .orow .ot{grid-column:2;font-size:11.5px;color:var(--text2);line-height:1.45}
+  @media(max-width:640px){.orow{grid-template-columns:1fr}.orow .ot{grid-column:1}}
   .verdict{margin-top:8px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--card2);font-size:12px;line-height:1.55;color:var(--text2)} .verdict b{color:var(--text)}
   .verdict.null{border-left:3px solid var(--text3)} .verdict.pass{border-left:3px solid var(--bull)}
   .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px;max-width:80ch}
@@ -53,7 +57,7 @@
   <div class="card"><h2>This week</h2><div class="lead" id="lead">Loading…</div><div class="grid" id="grid"></div><div class="sub" style="font-size:11px;color:var(--text3)">z = this week's change against the mean and spread of every weekly change in the series' history. Ordinary under 1, notable 1–2, unusual 2–3, rare above 3. Bars: the last 26 weeks.</div></div>
   <div class="card"><h2 id="histH">Where this week sits</h2><div class="two"><div class="hist" id="hist"></div><div class="sub" id="histText"></div></div></div>
   <div class="card"><h2>When did it sit like this before</h2><div class="sub" id="anText"></div><div id="anTable" style="margin-top:8px;overflow-x:auto"></div></div>
-  <div class="card"><h2>What followed those weeks</h2><div class="sub">Ten dots per row are the ten analogue weeks; the line is their median; the grey band is where the middle 80% of <i>all</i> weeks landed, with the unconditional median marked. If the dots and the median sit inside the band around the unconditional mark, the analogues have told you nothing.</div><div id="outcomes" style="margin-top:8px"></div><div id="w1"></div></div>
+  <div class="card"><h2>What followed those weeks</h2><div class="sub">One line per market and horizon: what happened after the ten weeks that sat like this, against what happens after <i>any</i> week. The strip is the usual range (the middle 80% of all weeks); the grey tick is the usual outcome, the blue tick is the analogues' outcome. Two ticks close together = the analogues told you nothing. <label style="cursor:pointer;color:var(--text2)"><input type="checkbox" id="showDots" onchange="render()"> show the ten weeks as dots</label></div><div id="outcomes" style="margin-top:8px"></div><div id="w1"></div></div>
   <div class="note" id="note"></div>
 </div>
 <script>
@@ -81,6 +85,22 @@ function histSvg(s) {
   const ticks = [-3, -2, -1, 0, 1, 2, 3].map(z => `<text x="${xz(z).toFixed(1)}" y="${H - 3}" text-anchor="middle">${z > 0 ? '+' : ''}${z}</text>`).join('');
   const mark = zNow != null ? `<line x1="${xz(Math.max(-h.span, Math.min(h.span, zNow))).toFixed(1)}" x2="${xz(Math.max(-h.span, Math.min(h.span, zNow))).toFixed(1)}" y1="${T - 4}" y2="${H - B}" stroke="var(--text)" stroke-dasharray="3 3"/><text x="${xz(Math.max(-h.span, Math.min(h.span, zNow))).toFixed(1)}" y="${T - 8}" text-anchor="middle" style="fill:var(--text);font-weight:700">this week ${fmtCh(s)} · z ${fz(zNow)}</text>` : '';
   return `<svg viewBox="0 0 ${W} ${H}">${bars}${mark}${ticks}</svg>`;
+}
+// One row: the sentence, then a strip with the usual range and two ticks. The
+// ten analogue outcomes are behind a checkbox -- ten dots on a shared scale
+// read as noise, which is what they are (W1), but the sentence and the two
+// ticks say the same thing without the clutter.
+function outcomeRows(rows, unit, showDots) {
+  const fmt = v => v == null ? '?' : `${v > 0 ? '+' : ''}${unit === 'bp' ? Math.round(v) : v.toFixed(2)}${unit}`;
+  return rows.map(r => {
+    const u = r.uncond; if (!u || r.median == null) return '';
+    const span = Math.max(1e-9, u.p90 - u.p10); const shift = (r.median - u.median) / span;
+    const verdict = Math.abs(shift) < 0.15 ? 'no different from any week' : Math.abs(shift) < 0.35 ? `a small lean ${shift > 0 ? 'up' : 'down'}, inside the usual range` : `a lean ${shift > 0 ? 'up' : 'down'} -- but the test below says it does not predict`;
+    const lo = Math.min(u.p10, r.median, ...(showDots ? r.dots : [])), hi = Math.max(u.p90, r.median, ...(showDots ? r.dots : [])); const pad = (hi - lo) * 0.06 || 1;
+    const x = v => ((v - (lo - pad)) / ((hi + pad) - (lo - pad)) * 100).toFixed(1);
+    const strip = `<svg viewBox="0 0 100 14" preserveAspectRatio="none" style="width:100%;height:14px;display:block"><rect x="${x(u.p10)}" y="3" width="${(x(u.p90) - x(u.p10)).toFixed(1)}" height="8" fill="var(--text3)" opacity=".22"/>${x(0) > 0 && x(0) < 100 ? `<line x1="${x(0)}" x2="${x(0)}" y1="1" y2="13" stroke="var(--border2)" stroke-width="1" vector-effect="non-scaling-stroke"/>` : ''}${showDots ? r.dots.map(v => `<circle cx="${x(v)}" cy="7" r="1.6" fill="var(--blue)" opacity=".55"/>`).join('') : ''}<line x1="${x(u.median)}" x2="${x(u.median)}" y1="0" y2="14" stroke="var(--text3)" stroke-width="2" vector-effect="non-scaling-stroke"/><line x1="${x(r.median)}" x2="${x(r.median)}" y1="0" y2="14" stroke="var(--blue)" stroke-width="3" vector-effect="non-scaling-stroke"/></svg>`;
+    return `<div class="orow"><div class="ol"><b>${esc(r.label)}</b></div><div class="os">${strip}</div><div class="ot">after weeks like this <b style="color:var(--blue)">${fmt(r.median)}</b> · after any week ${fmt(u.median)} (usually ${fmt(u.p10)} to ${fmt(u.p90)}) — <b>${verdict}</b></div></div>`;
+  }).join('');
 }
 function dotsSvg(rows, unit) {
   // rows: [{label, dots:[v], median, uncond:{median,p10,p90}}]
@@ -115,7 +135,8 @@ function render() {
   const ids = d.stateIds; document.getElementById('anTable').innerHTML = an.length ? `<table><tr><th>week</th><th>dist.</th>${ids.map(i => `<th>${esc(d.series[i]?.label ?? i)}</th>`).join('')}</tr>${an.map(a => `<tr><td>${a.week}</td><td>${a.distance}</td>${ids.map(i => { const z = a.z[i]; return `<td style="color:${z == null ? 'var(--text3)' : Math.abs(z) >= 2 ? (z > 0 ? 'var(--bull)' : 'var(--red)') : 'var(--text2)'}">${z == null ? '·' : fz(z)}</td>`; }).join('')}</tr>`).join('')}<tr><td><b>this week</b></td><td></td>${ids.map(i => { const z = d.series[i]?.latest.z; return `<td style="font-weight:700;color:${z == null ? 'var(--text3)' : Math.abs(z) >= 2 ? (z > 0 ? 'var(--bull)' : 'var(--red)') : 'var(--text)'}">${fz(z)}</td>`; }).join('')}</tr></table>` : '';
   // outcomes
   const NAMES = { spx: 'S&P 500', eurusd: 'EUR/USD', gold: 'Gold', us10y: '10-year yield' };
-  document.getElementById('outcomes').innerHTML = Object.entries(d.outcomes ?? {}).map(([tg, o]) => { const unit = tg === 'us10y' ? 'bp' : '%'; const rows = Object.entries(o).map(([h, r]) => ({ label: `${NAMES[tg]} · ${h}w`, dots: r.analogues.map(x => x.v), median: r.median, uncond: r.unconditional })); return `<div class="dots" style="margin-bottom:6px">${dotsSvg(rows, unit)}</div>`; }).join('');
+  const showDots = !!document.getElementById('showDots')?.checked;
+  document.getElementById('outcomes').innerHTML = Object.entries(d.outcomes ?? {}).map(([tg, o]) => { const unit = tg === 'us10y' ? 'bp' : '%'; const rows = Object.entries(o).map(([h, r]) => ({ label: `${NAMES[tg]} · ${h} weeks`, dots: r.analogues.map(x => x.v), median: r.median, uncond: r.unconditional })); return `<div class="ogroup">${outcomeRows(rows, unit, showDots)}</div>`; }).join('');
   const w1 = d.test?.w1;
   if (w1) {
     const rows = Object.entries(w1).map(([t, r]) => `<b>${NAMES[t] ?? t}</b>: the analogues' median called the 13-week sign right ${Math.round(r.hitRate * 100)}% of the time over ${r.n} weeks — the unconditional base rate was ${Math.round(r.unconditional * 100)}%, ten random weeks ${Math.round(r.placebo.p05 * 100)}–${Math.round(r.placebo.p95 * 100)}% — and its size error was ${r.medErrAnalogue > r.medErrUnconditional ? 'larger' : 'smaller'} than simply using the unconditional median (${r.medErrAnalogue} vs ${r.medErrUnconditional}). <b>${r.verdict}</b>.`);
