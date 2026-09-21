@@ -17,7 +17,7 @@ import { ZSCORE_PAIRS, fetchFredObservations, _shiftDate, buildRollingZSeries, b
 import { usdRole } from './macroDirectionCore.js';
 import {
   buildSpreadDefs, directionFromZ, resolveInverted, zTierSize, zTierLabel, shouldExit,
-  summarizeYieldSpread, sharpeFromDaily, perYearBreakdown, splitByDate,
+  summarizeYieldSpread, sharpeFromDaily, perYearBreakdown, splitByDate, tradeReturn,
   tradeOverlap, correlation, combinedPortfolioStats, YIELD_SPREAD_DEFAULTS,
 } from './multiSpreadCore.js';
 
@@ -83,18 +83,50 @@ async function loadSpreadPairData(pairKey, spreadType, opts) {
   ]);
   return {
     pairKey, spreadType, def, dateFrom, dateTo, daily,
+    // Kept (not discarded after dailyClosesFrom) so simulateSpreadPair can read
+    // the real intrabar path for MAE/MFE — CLAUDE.md's CSV-export rule requires
+    // MAE "from the real intra-trade path... never approximated from the close-
+    // to-close return alone", and this sleeve has no other source of it (no
+    // price-level stop, daily-close-only signal). Memory tradeoff: a sweep
+    // already loads+retains all 6 pairs' M1 for its whole 12-cell lifetime (the
+    // existing "load once, reuse across cells" design) — this extends that same
+    // retained object with the M1 array itself, not a new load.
+    packed,
     usObs: shiftObsForward(usRaw, pubLagUsDays),
     forObs: shiftObsForward(forRaw, pubLagForeignDays),
   };
+}
+
+// Real intrabar MAE/MFE (% of entry price, UNSIGNED magnitude — same engine-
+// contract convention as the vote-atlas family: "MAE is an UNSIGNED magnitude on
+// the trade object; only the CSV export flips it negative"). Scans packed's M1
+// lows/highs over [entry day's first bar, exit day's last bar] inclusive, via the
+// SAME buildDayIndex used elsewhere in this file (imported once, not re-derived).
+function intrabarExcursion(packed, dayIndex, entryDate, exitDate, dir, entryClose) {
+  const d0 = dayIndex.get(entryDate), d1 = dayIndex.get(exitDate);
+  if (!d0 || !d1 || !(entryClose > 0)) return { maePct: null, mfePct: null };
+  let worstLow = Infinity, worstHigh = -Infinity;
+  for (let i = d0.start; i < d1.end; i++) {
+    const lo = packed.lows[i], hi = packed.highs[i];
+    if (Number.isFinite(lo) && lo < worstLow) worstLow = lo;
+    if (Number.isFinite(hi) && hi > worstHigh) worstHigh = hi;
+  }
+  if (!Number.isFinite(worstLow) || !Number.isFinite(worstHigh)) return { maePct: null, mfePct: null };
+  const dnPct = (entryClose - worstLow) / entryClose * 100;   // price fell this far below entry
+  const upPct = (worstHigh - entryClose) / entryClose * 100;  // price rose this far above entry
+  return dir === 'LONG'
+    ? { maePct: Math.max(0, dnPct), mfePct: Math.max(0, upPct) }
+    : { maePct: Math.max(0, upPct), mfePct: Math.max(0, dnPct) };
 }
 
 // Simulate one (pair, spreadType) — mechanism identical to js/yieldSpreadEngine.js's
 // simulatePair, generalized to read def.baseSeries/quoteSeries instead of assuming
 // the validated 2Y table.
 function simulateSpreadPair(pd, cf) {
-  const { pairKey, spreadType, def, dateFrom, dateTo, daily, usObs, forObs } = pd;
+  const { pairKey, spreadType, def, dateFrom, dateTo, daily, usObs, forObs, packed } = pd;
   const inverted = resolveInverted(usdRole(pairKey), { autoOrient: cf.autoOrient, manualInvert: !!cf.invert[pairKey] });
   const zByDate = buildRollingZSeries(usObs, forObs, cf.zWindow, dateFrom, dateTo);
+  const dayIndex = buildDayIndex(packed.times);
 
   const trades = [];
   const dailyRet = {};
@@ -120,10 +152,16 @@ function simulateSpreadPair(pd, cf) {
       if (ex.exit) {
         dailyRet[date] = (dailyRet[date] || 0) - costFrac * pos.size;
         flatRet[date]  = (flatRet[date]  || 0) - costFrac;
+        const { maePct, mfePct } = intrabarExcursion(packed, dayIndex, pos.entryDate, date, pos.dir, pos.entryClose);
         trades.push({
           pair: def.label, spreadType, date: pos.entryDate, exitDate: date, dir: pos.dir,
           size: pos.size, tierLabel: pos.tierLabel, entryClose: pos.entryClose, exitClose: close,
           entryZ: +pos.entryZ.toFixed(2), exitZ: +z.toFixed(2), holdDays, exitReason: ex.reason,
+          maePct: maePct != null ? +maePct.toFixed(4) : null, mfePct: mfePct != null ? +mfePct.toFixed(4) : null,
+          // FLAT-sized (size=1), cost-inclusive net return — same math perYearBreakdown
+          // already applies to these same trade objects (tradeReturn(...) - cost), just
+          // stamped once here so a per-trade tearsheet/CSV doesn't re-derive it.
+          pnlPct: +((tradeReturn(pos.dir, pos.entryClose, close) - costFrac) * 100).toFixed(4),
         });
         pos = null;
         continue;
@@ -140,10 +178,13 @@ function simulateSpreadPair(pd, cf) {
     const last = daily[daily.length - 1];
     dailyRet[last.date] = (dailyRet[last.date] || 0) - costFrac * pos.size;
     flatRet[last.date]  = (flatRet[last.date]  || 0) - costFrac;
+    const { maePct, mfePct } = intrabarExcursion(packed, dayIndex, pos.entryDate, last.date, pos.dir, pos.entryClose);
     trades.push({
       pair: def.label, spreadType, date: pos.entryDate, exitDate: last.date, dir: pos.dir,
       size: pos.size, tierLabel: pos.tierLabel, entryClose: pos.entryClose, exitClose: last.close,
       entryZ: +pos.entryZ.toFixed(2), exitZ: null, holdDays: daily.length - 1 - pos.entryIdx, exitReason: 'mark-out',
+      maePct: maePct != null ? +maePct.toFixed(4) : null, mfePct: mfePct != null ? +mfePct.toFixed(4) : null,
+      pnlPct: +((tradeReturn(pos.dir, pos.entryClose, last.close) - costFrac) * 100).toFixed(4),
     });
   }
 
@@ -236,14 +277,28 @@ export async function runSpreadSweep(spreadType, opts = {}, grid = {}) {
     for (const entryThreshold of thresholds) {
       const cf = { ...base, zWindow, entryThreshold };
       const allTrades = [];
-      for (const pd of pairDataList) allTrades.push(...simulateSpreadPair(pd, cf).trades);
-      const { oos } = splitByDate(allTrades, cf.splitFrac);
+      // Honest daily-MTM Sharpe per cell (mirrors js/yieldSpreadEngine.js's
+      // runYieldSpreadSweep's portfolioSharpeOos) — a PF/win-rate/years-only sweep
+      // table can't be checked against MULTI_SPREAD_SLEEVE.md §2's own pass bar
+      // ("OOS Sharpe > 0.5 across it"), which this used to silently skip.
+      const combinedDaily = {};
+      const dateSet = new Set();
+      for (const pd of pairDataList) {
+        const r = simulateSpreadPair(pd, cf);
+        allTrades.push(...r.trades);
+        for (const d of r.dates) dateSet.add(d);
+        for (const dt in r.dailyByDate) combinedDaily[dt] = (combinedDaily[dt] || 0) + r.dailyByDate[dt];
+      }
+      const { splitDate, oos } = splitByDate(allTrades, cf.splitFrac);
+      const sortedDates = [...dateSet].sort();
+      const cRetOos = sortedDates.filter(d => splitDate && d >= splitDate).map(d => combinedDaily[d] || 0);
       const ppy = Math.max(1, allTrades.length / yrs);
       const o = summarizeYieldSpread(oos, { costPct: cf.costPct, periodsPerYear: ppy });
       const years = Object.values(perYearBreakdown(oos, { costPct: cf.costPct }));
       cells.push({
         zWindow, entryThreshold,
         n: o.n, winRate: o.winRate, profitFactor: o.profitFactor, totalRetPct: o.totalRetPct,
+        portfolioSharpeOos: sharpeFromDaily(cRetOos),
         yearsPositive: years.filter(y => y.totalRetPct > 0).length, yearsTotal: years.length,
       });
     }

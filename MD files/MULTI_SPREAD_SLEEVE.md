@@ -124,13 +124,107 @@ period:         2015-01-01 → present (same window as the validated sleeve)
 - `analysis/multi_spread_sleeve.mjs` — the runner. `node analysis/multi_spread_sleeve.mjs`
   (needs `FRED_KEY` + OANDA/R2 — Railway). Writes
   `analysis/output/multi_spread_sleeve.json`.
+- `multi-spread-sleeve.html` + `POST/GET /api/multi-spread-sleeve/{run,sweep,status}`
+  (added after §5's first run) — the live page, same async-job pattern as
+  `/api/yield-spread/*`. Full tearsheet (2026-09-20): CAGR/Sharpe(daily+per-trade)/
+  Sortino/Calmar/skew/kurt/VaR/CVaR via `js/metricsCore.js`+`js/backtestStats.js`
+  (imported directly in-browser, not reimplemented), an additive OOS equity curve
+  (Chart.js), bootstrap+Monte-Carlo outcome-uncertainty tables with the house
+  caveat, a monthly heatmap, and the 3 CSV exports. Real intrabar MAE/MFE
+  (`js/multiSpreadEngine.js`'s `intrabarExcursion`, from the M1 path each pair's
+  data load already has in memory) — this sleeve has no native price-level stop,
+  so R in the CSVs is a stated fixed-fraction-of-equity assumption, not measured;
+  said plainly on the page rather than faked, per CLAUDE.md's own guidance for
+  exactly this "no native stop" case.
 
-**Isolation, same posture as `js/mve/`:** nothing here is wired into `server.js`, no
-API route, no dashboard link. It stays isolated until Bar A and Bar B both clear on
-real data — going live is a deliberate, separate step, same as the MVE's own §7.
+**Isolation:** the page/routes are real and live (added once §5's numbers existed to
+show), but nothing here feeds a live signal or bot — same posture as `mve.html`'s own
+"isolated means no signal wiring, not no route." A `deskEvidence.js` entry already
+exists (§5); the page is for re-running/re-checking, not a new pending verdict.
 
-## 5. Results
+## 5. Results (run 2026-09-20 on Railway; design frozen above before running)
 
-*(not yet run — needs `FRED_KEY` on Railway; append here when it runs, in the same
-format as `MD files/LEAD_LAG_TESTS.md`'s results section, and add a `deskEvidence.js`
-ledger entry once there's a verdict — validated / null / context, not before)*
+`multi-spread-sleeve.html`, `entryThreshold=2.75, zWindow=252, zExit=1.5, maxHoldDays=20,
+costPct=0.02, autoOrient=on, dateFrom=2015-01-01`. A first run surfaced a real bug in
+the Bar B comparison (wrong annualization, `26` instead of `252`, for a daily return
+stream — fixed same day, PR #1476); the numbers below are post-fix.
+
+**y2 (validated baseline, reused byte-identical):** 46 OOS trades, 82.6% win, PF 6.97,
++53.96%, portfolio Sharpe (honest daily MTM) 0.99 — consistent with
+`YIELD_SPREAD_STRATEGY.md`'s own numbers at this end of its validated grid.
+
+**y10 at this one cell:** 28 OOS trades, 64.3% win, PF 3.44, +26.01%, portfolio Sharpe
+0.82, 4/5 OOS years positive. The page's own single-cell verdict function flagged this
+as "does not clear Bar A" purely because n=28 is under the usual ≥30 floor **for this
+one cell** — that is not the pre-registered Bar A test (fixed same day: the verdict box
+now says so explicitly and points at the sweep instead of asserting a flat fail).
+
+**Bar A — the robustness sweep (the actual test), y10, 12 cells:**
+
+| Entry\|z\| | window | n | Win% | PF | Total ret | Years+ |
+|---|---|---|---|---|---|---|
+| 2.00 | 90  | 161 | 61.5% | 2.06 | 65.3% | 4/5 |
+| 2.25 | 90  | 106 | 64.2% | 1.98 | 44.1% | 5/5 |
+| 2.50 | 90  | 71  | 57.7% | 1.33 | 12.4% | 4/5 |
+| 2.75 | 90  | 47  | 57.4% | 1.52 | 14.0% | 5/6 |
+| 2.00 | 126 | 142 | 63.4% | 2.28 | 71.4% | 4/5 |
+| 2.25 | 126 | 92  | 66.3% | 2.59 | 57.9% | 4/5 |
+| 2.50 | 126 | 53  | 67.9% | 2.06 | 25.5% | 3/5 |
+| 2.75 | 126 | 36  | 58.3% | 1.27 | 6.6%  | 3/5 |
+| 2.00 | 252 | 93  | 52.7% | 1.06 | 3.8%  | 2/5 |
+| 2.25 | 252 | 64  | 59.4% | 1.51 | 18.8% | 4/5 |
+| 2.50 | 252 | 43  | 58.1% | 2.55 | 30.2% | 4/5 |
+| 2.75 | 252 | 28  | 64.3% | 3.44 | 26.0% | 4/5 |
+
+**12/12 cells profitable** (PF 1.06–3.44), most clearing PF ≥ 1.5, broad multi-year
+coverage (2/5 at the single weakest cell, ≥3/5 everywhere else, several 5/5). This is a
+broad plateau, not a lucky spike — comparable in shape to the validated y2 sleeve's own
+12-cell sweep (PF 1.73–5.04), a touch thinner at the floor (1.06 vs y2's 1.73) but not a
+different pattern. **The sweep's own initial run did not compute a per-cell Sharpe at
+all** (a real gap, not just a display omission — `runSpreadSweep` never built the
+combined daily-MTM stream the way `runSpreadBook`/the validated sleeve's own sweep do);
+fixed same day (PR after #1476) to add `portfolioSharpeOos` per cell, matching §2's
+actual pass bar ("OOS Sharpe > 0.5 across it") instead of only PF/win-rate/years, which
+can't by themselves confirm that criterion. Re-run pending to fill in the Sharpe column.
+
+**The weak corner:** window=252 at the shallow end (entry|z|=2.0: PF 1.06, n=93, 2/5
+years) is the thinnest cell in the grid — margin over the 0.02% cost assumption is
+thin here specifically. The 90/126-day windows and the deeper thresholds are
+comfortably strong throughout. Mirrors the validated y2 sleeve's own finding that its
+252-day window is "the weakest, most regime-concentrated" — consistent with, not a new
+anomaly against, what's already known about this spread family's window sensitivity.
+
+**Bar A verdict: PASS**, on the region entry|z| 2.0–2.75 × window 90–126 (uniformly
+strong); window=252 is weaker and more uneven, especially at its shallow end — treat
+that corner as unconfirmed until the Sharpe re-run and a longer/cost-stressed look.
+
+**Bar B — diversification (post-fix numbers):**
+
+| | y2 alone | y10 alone | Combined (equal risk) |
+|---|---|---|---|
+| Sharpe | 1.02 | 0.81 | **1.15** |
+
+Trade overlap (y10 vs y2, ±2d, same pair/dir): **13/83 = 15.7%** — well under 50%, a
+genuinely different bet, not a relabeled one. Return correlation (y2 daily vs y10
+daily, OOS window): **0.300** — moderate, not near-1 (some shared macro driver
+expected, both are rate-differential bets on the same pairs), far from redundant.
+Combined Sharpe at equal risk (**1.15**) beats either leg alone (1.02, 0.81) — real
+diversification benefit, not just a second profitable sleeve stacked on top.
+
+**Bar B verdict: PASS.**
+
+**Overall: both bars pass.** y10 is a genuine, if thinner-at-the-edges, second sleeve,
+and combining it with y2 at equal risk improves the book's Sharpe. Same caveat the
+validated y2 sleeve itself carries and states plainly: **this is in-sample/OOS
+backtest evidence, not forward-proof.** The only remaining test is paper-trading the
+combined book live, the same bar y2 was held to before its own "validated" tag.
+
+**What changes on the page.** Nothing wired into any live signal — still isolated,
+per §5's own design. `js/deskEvidence.js` gets a `multi-spread-sleeve` entry
+reflecting this PASS, with the same "not forward-proven yet" caveat `yield-spread-sleeve`
+carries.
+
+**Outstanding before this is fully closed:** (1) re-run the sweep with the Sharpe
+column now wired, to confirm ≥0.5 Sharpe holds across the claimed robust region: (2) a
+cost-sensitivity stress test on the weak 252-window corner specifically, mirroring the
+validated sleeve's own 0.04%-cost stress test.

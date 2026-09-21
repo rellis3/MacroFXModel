@@ -130,9 +130,64 @@ unchanged).
   present in this sandbox, so only the FRED leg is missing here). Writes
   `analysis/output/residual_reversion_fx.json`.
 
-## 7. Results
+## 7. Results (run 2026-09-20 on Railway; design frozen above before running)
 
-*(not yet run — needs `FRED_KEY` on Railway; append here in the same format as
-`MD files/LEAD_LAG_TESTS.md`'s results section. A `deskEvidence.js` ledger entry
-gets added only once there's an actual verdict — `validated` / `null` / `context`,
-never "built but unrun.")*
+`mve.html`'s "🧪 Validate ALL" (`/api/mve-validate-all`), pub-lag honest (default ON,
+§1's fix). Covers all six MVE-supported instruments, not just the four FX pairs this
+doc scoped — EURUSD/GBPUSD/USDJPY/AUDUSD plus XAUUSD and NQ came along for free from
+the pooled endpoint.
+
+| Instrument | Slow icEdge | Horizon | Hit rate | Deflated Sharpe | Verdict |
+|---|---|---|---|---|---|
+| XAUUSD | 0.0034 | 20b | 0.471 | 0.006 | NULL |
+| EURUSD | 0.0475 | 60b | 0.510 | 0.549 | WEAK/INCONCLUSIVE |
+| GBPUSD | 0.0263 | 20b | 0.538 | 0.796 | WEAK/INCONCLUSIVE |
+| USDJPY | 0.0335 | 20b | 0.475 | 0.000 | WEAK/INCONCLUSIVE |
+| AUDUSD | -0.0463 | 60b | 0.514 | 0.062 | NULL |
+| NQ | -0.2459 | 20b | 0.401 | 0.296 | NULL |
+
+**Pooled (§4): NULL/INCONSISTENT.** Only 1/6 (EURUSD) clears both a positive icEdge
+and an above-coin-flip hit rate; 2/6 (EURUSD, USDJPY) are positive on sign alone,
+which `poolConsistency` itself calls a coin-flip outcome at this magnitude (mean
+icEdge −0.030, mean hit rate 0.485). No cross-sectional corroboration.
+
+**Reading, instrument by instrument:**
+- **NQ (−0.246)** replicates July's "null and worse than inert" finding on this exact
+  instrument almost exactly (`MVE_RUN_GUIDE.md`'s prior real-data run) — the naive
+  trailing-mean anchor beats the factor fair value here, not just fails to lose to it.
+  Confirms the earlier result wasn't a fetch/pipeline artifact.
+- **XAUUSD, AUDUSD**: flat to slightly negative, unremarkable nulls.
+- **USDJPY** is the one internally inconsistent case: icEdge positive (0.0335, clears
+  the 0.03 magnitude bar) but hit rate *below* 50% (0.475) — the average correlation
+  is the right sign while the specific actionable bets lose more often than they win.
+  Not corroborating evidence; if anything a caution that the correlation isn't a
+  stable, tradeable relationship for this pair.
+- **EURUSD** is the only pair with both a real (>0.03) icEdge and an above-50% hit
+  rate — but deflated Sharpe (0.549) sits well short of the 0.95 SURVIVES bar, matching
+  its own `WEAK/INCONCLUSIVE` verdict. Being the sole survivor of six is itself close
+  to what `poolConsistency`'s stated chance baseline predicts, not strong corroboration.
+- **GBPUSD**'s deflated Sharpe (0.796) is the closest thing to tradeable in this table,
+  but its slow-horizon icEdge (0.0263) sits under the 0.03 pooling threshold, so it
+  doesn't corroborate cross-sectionally either — a single promising number surrounded
+  by a null pool is exactly the shape `poolConsistency` exists to catch.
+
+**§2's regime split — not yet run.** "Validate ALL" reuses `/api/mve-validate/:sym`'s
+cached reports, not `/api/mve-validate-full/:sym` (the regime-split + cost-overlay
+route this doc's §1/§2 built). A live valuation card was pulled for EURUSD instead of
+the OOS-validate-full report — worth noting as a side finding: the card's own model
+claimed 96% convergence probability in 10 bars while the empirical base rate across 15
+historical events was 0%, with the page's own validation gate flagging the disagreement
+as untrustworthy. That is independently consistent with today's NULL/INCONSISTENT
+pooled verdict (the model's convergence claims don't hold up against this pair's own
+history) but is not a substitute for the actual §2 regime-split reading. **Pending:**
+open `mve.html`, select EURUSD specifically, click **🔬 Run OOS validation** (not
+"Regenerate & value" / Live mode), and append that report's regime-split section here.
+
+**Verdict on what's measured so far: NULL.** Residual mean-reversion does not show
+tradeable, cross-sectionally-corroborated edge on FX, on top of the identical NQ null
+already on record. This does not close the book on EURUSD specifically until the
+regime split runs — a real, still-open possibility per §2's own reasoning (2022–24 is
+the one window where the fundamentals say a rate-differential residual should catch
+FX, and a pooled null does not rule out a regime-concentrated result). Ledger entry
+below reflects the pooled cross-instrument result; the EURUSD regime-split follow-up
+is a separate, still-pending line, not blocked on this entry.
