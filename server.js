@@ -18743,7 +18743,13 @@ async function _refreshOIBasis() {
     return changed;
   } catch (e) { console.warn('[oi-basis] refresh failed:', e.message); return 0; }
 }
-svcInterval('oiBot', _refreshOIBasis, 15 * 60_000);
+// 5 min, not 15: this is the number the OI Analysis page's own operator watches to see
+// what the bot is about to trade (2026-09-21), not just a background compute job — the
+// human staring at the chart is as real a consumer of freshness as the bot's own 10-min
+// plan_secs poll (oi_bot.py). Cost is ~11 pairs x2 quote legs x288 runs/day ~= 3,168
+// Yahoo + 3,168 OANDA calls/day, ~2/min averaged out — nowhere near the bursty-parallel
+// shape that has throttled this project elsewhere (see _recordBookHistory above).
+svcInterval('oiBot', _refreshOIBasis, 5 * 60_000);
 setTimeout(_refreshOIBasis, 90_000);
 
 app.get('/api/oi-bot/zones', async (req, res) => {
