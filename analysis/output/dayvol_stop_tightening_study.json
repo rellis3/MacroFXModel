@@ -1,0 +1,369 @@
+{
+  "generatedAt": "2026-09-21T18:56:45.022Z",
+  "minMargin": 3,
+  "nTrades": 26925,
+  "regimeSplit": {
+    "quiet": 5334,
+    "normal": 19014,
+    "heavy": 2577
+  },
+  "results": [
+    {
+      "grid": "baseline",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.89,
+        "sortino": 5.09,
+        "psr": 1,
+        "skew": 1.51,
+        "excessKurt": 11.97,
+        "acf1": 0.024,
+        "annVol": 39.24,
+        "cagr": 325.07,
+        "maxDD": -18.41,
+        "calmar": 17.66,
+        "profitFactor": 2.08,
+        "winRate": 58.3,
+        "var95": -2.754,
+        "var99": -4.488,
+        "cvar95": -4.024,
+        "volTarget": {
+          "target": 10,
+          "cagr": 46.77,
+          "maxDD": -4.97,
+          "calmar": 9.42
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 3.89,
+        "sortino": 5.09,
+        "psr": 1,
+        "skew": 1.51,
+        "excessKurt": 11.97,
+        "acf1": 0.024,
+        "annVol": 39.24,
+        "cagr": 325.07,
+        "maxDD": -18.41,
+        "calmar": 17.66,
+        "profitFactor": 2.08,
+        "winRate": 58.3,
+        "var95": -2.754,
+        "var99": -4.488,
+        "cvar95": -4.024,
+        "volTarget": {
+          "target": 10,
+          "cagr": 46.77,
+          "maxDD": -4.97,
+          "calmar": 9.42
+        }
+      }
+    },
+    {
+      "grid": "heavy-0.85",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.83,
+        "sortino": 4.9,
+        "psr": 1,
+        "skew": 1.41,
+        "excessKurt": 12.4,
+        "acf1": 0.002,
+        "annVol": 39.05,
+        "cagr": 312.92,
+        "maxDD": -17.9,
+        "calmar": 17.48,
+        "profitFactor": 2.06,
+        "winRate": 58.4,
+        "var95": -2.776,
+        "var99": -4.488,
+        "cvar95": -4.084,
+        "volTarget": {
+          "target": 10,
+          "cagr": 45.93,
+          "maxDD": -4.84,
+          "calmar": 9.49
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 3.85,
+        "sortino": 5,
+        "psr": 1,
+        "skew": 1.47,
+        "excessKurt": 12.03,
+        "acf1": 0.017,
+        "annVol": 38.9,
+        "cagr": 313.36,
+        "maxDD": -18.1,
+        "calmar": 17.32,
+        "profitFactor": 2.06,
+        "winRate": 58.1,
+        "var95": -2.796,
+        "var99": -4.489,
+        "cvar95": -4.042,
+        "volTarget": {
+          "target": 10,
+          "cagr": 46.17,
+          "maxDD": -4.92,
+          "calmar": 9.39
+        }
+      }
+    },
+    {
+      "grid": "heavy-0.70",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.83,
+        "sortino": 4.94,
+        "psr": 1,
+        "skew": 1.58,
+        "excessKurt": 13.74,
+        "acf1": 0.011,
+        "annVol": 38.1,
+        "cagr": 298.97,
+        "maxDD": -18.2,
+        "calmar": 16.43,
+        "profitFactor": 2.05,
+        "winRate": 58.6,
+        "var95": -2.68,
+        "var99": -4.442,
+        "cvar95": -3.967,
+        "volTarget": {
+          "target": 10,
+          "cagr": 45.86,
+          "maxDD": -5.05,
+          "calmar": 9.09
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 3.88,
+        "sortino": 5.06,
+        "psr": 1,
+        "skew": 1.54,
+        "excessKurt": 12.42,
+        "acf1": 0.015,
+        "annVol": 38.61,
+        "cagr": 313.83,
+        "maxDD": -17.83,
+        "calmar": 17.61,
+        "profitFactor": 2.07,
+        "winRate": 58.5,
+        "var95": -2.779,
+        "var99": -4.258,
+        "cvar95": -3.97,
+        "volTarget": {
+          "target": 10,
+          "cagr": 46.58,
+          "maxDD": -4.87,
+          "calmar": 9.56
+        }
+      }
+    },
+    {
+      "grid": "heavy-0.55",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.94,
+        "sortino": 4.94,
+        "psr": 1,
+        "skew": 0.83,
+        "excessKurt": 4.3,
+        "acf1": 0.042,
+        "annVol": 36.14,
+        "cagr": 288,
+        "maxDD": -19.55,
+        "calmar": 14.73,
+        "profitFactor": 2.04,
+        "winRate": 58.7,
+        "var95": -2.662,
+        "var99": -4.442,
+        "cvar95": -3.844,
+        "volTarget": {
+          "target": 10,
+          "cagr": 47.5,
+          "maxDD": -5.74,
+          "calmar": 8.28
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 3.92,
+        "sortino": 5.09,
+        "psr": 1,
+        "skew": 1.2,
+        "excessKurt": 7.67,
+        "acf1": 0.026,
+        "annVol": 37.82,
+        "cagr": 309.66,
+        "maxDD": -18.48,
+        "calmar": 16.76,
+        "profitFactor": 2.07,
+        "winRate": 58.3,
+        "var95": -2.766,
+        "var99": -4.141,
+        "cvar95": -3.922,
+        "volTarget": {
+          "target": 10,
+          "cagr": 47.28,
+          "maxDD": -5.17,
+          "calmar": 9.14
+        }
+      }
+    },
+    {
+      "grid": "normal+heavy-0.85",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.74,
+        "sortino": 4.88,
+        "psr": 1,
+        "skew": 1.55,
+        "excessKurt": 13.73,
+        "acf1": -0.028,
+        "annVol": 37.89,
+        "cagr": 282.75,
+        "maxDD": -25.16,
+        "calmar": 11.24,
+        "profitFactor": 2.03,
+        "winRate": 57.7,
+        "var95": -2.793,
+        "var99": -4.382,
+        "cvar95": -3.879,
+        "volTarget": {
+          "target": 10,
+          "cagr": 44.54,
+          "maxDD": -7.15,
+          "calmar": 6.23
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 3.97,
+        "sortino": 5.23,
+        "psr": 1,
+        "skew": 1.55,
+        "excessKurt": 12.54,
+        "acf1": 0.008,
+        "annVol": 38.23,
+        "cagr": 322.46,
+        "maxDD": -15.37,
+        "calmar": 20.98,
+        "profitFactor": 2.1,
+        "winRate": 58.4,
+        "var95": -2.643,
+        "var99": -4.261,
+        "cvar95": -3.858,
+        "volTarget": {
+          "target": 10,
+          "cagr": 47.9,
+          "maxDD": -4.21,
+          "calmar": 11.38
+        }
+      }
+    },
+    {
+      "grid": "normal+heavy-0.70",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.4,
+        "sortino": 4.44,
+        "psr": 1,
+        "skew": 1.78,
+        "excessKurt": 15.54,
+        "acf1": -0.013,
+        "annVol": 35.17,
+        "cagr": 210.86,
+        "maxDD": -27.48,
+        "calmar": 7.67,
+        "profitFactor": 1.89,
+        "winRate": 57,
+        "var95": -2.48,
+        "var99": -4.284,
+        "cvar95": -3.651,
+        "volTarget": {
+          "target": 10,
+          "cagr": 39.82,
+          "maxDD": -8.51,
+          "calmar": 4.68
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 3.87,
+        "sortino": 5.09,
+        "psr": 1,
+        "skew": 1.66,
+        "excessKurt": 13.45,
+        "acf1": 0.017,
+        "annVol": 37.58,
+        "cagr": 297.57,
+        "maxDD": -16.02,
+        "calmar": 18.57,
+        "profitFactor": 2.06,
+        "winRate": 58.6,
+        "var95": -2.713,
+        "var99": -4.622,
+        "cvar95": -3.797,
+        "volTarget": {
+          "target": 10,
+          "cagr": 46.42,
+          "maxDD": -4.49,
+          "calmar": 10.34
+        }
+      }
+    },
+    {
+      "grid": "all-uniform-0.85",
+      "allDecisions": {
+        "days": 1111,
+        "sharpe": 3.76,
+        "sortino": 4.93,
+        "psr": 1,
+        "skew": 1.55,
+        "excessKurt": 13.91,
+        "acf1": -0.021,
+        "annVol": 37.77,
+        "cagr": 285,
+        "maxDD": -24.6,
+        "calmar": 11.59,
+        "profitFactor": 2.04,
+        "winRate": 57.4,
+        "var95": -2.676,
+        "var99": -4.37,
+        "cvar95": -3.876,
+        "volTarget": {
+          "target": 10,
+          "cagr": 44.92,
+          "maxDD": -7,
+          "calmar": 6.42
+        }
+      },
+      "fadeOnly": {
+        "days": 1111,
+        "sharpe": 4.04,
+        "sortino": 5.35,
+        "psr": 1,
+        "skew": 1.56,
+        "excessKurt": 12.6,
+        "acf1": 0.009,
+        "annVol": 38.17,
+        "cagr": 333.5,
+        "maxDD": -15.32,
+        "calmar": 21.76,
+        "profitFactor": 2.13,
+        "winRate": 58.6,
+        "var95": -2.603,
+        "var99": -4.258,
+        "cvar95": -3.813,
+        "volTarget": {
+          "target": 10,
+          "cagr": 48.99,
+          "maxDD": -4.21,
+          "calmar": 11.65
+        }
+      }
+    }
+  ]
+}

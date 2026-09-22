@@ -217,6 +217,13 @@
   .dr-shelf[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
   .dr-shelf .dr-sec{border-left:2px solid var(--border);padding-left:10px}
   .dr-now{font-size:14px;line-height:1.6;max-width:66ch;margin:4px 0 12px}
+  .byt{margin:0 0 14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--card2)}
+  .byt-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;cursor:help}
+  .byt-row{display:grid;grid-template-columns:18px 76px 1fr auto auto;gap:6px 10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text2)}
+  .byt-n{font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums} .byt-k{font-weight:700;color:var(--text)} .byt-t{min-width:0}
+  .byt-tag{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--bg3);color:var(--text3);white-space:nowrap} .byt-tag.warn{color:var(--amber)}
+  .byt-go{font-size:11px;color:var(--blue);cursor:pointer;white-space:nowrap}
+  @media(max-width:720px){.byt-row{grid-template-columns:18px 1fr;}.byt-t{grid-column:1/3}.byt-tag,.byt-go{grid-column:2}}
   .dr-now b{font-weight:700}
   .dr-tab .q{display:block;font-size:9px;font-weight:500;color:var(--text3);letter-spacing:.02em;line-height:1.2}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
@@ -1101,6 +1108,7 @@
   </div>
   <div class="dr-pane" id="drPane-now" role="tabpanel" aria-labelledby="drTab-now" hidden>
   <div class="dr-now" id="drNow"></div>
+  <div id="drByt"></div>
 <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -1607,6 +1615,8 @@ function mveChip(r) {
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
 let intlYields = null;   // /api/intl-yields -- gilt, JGB, bund 10Y daily, for the chain's gap chips
+let crackData = null;    // /api/crack -- the 3-2-1 refining margin: the Crude & the crack card and the chain's crack node
+async function loadCrack() { try { const j = await jget('/api/crack'); if (j?.ok) { crackData = j; render(); } } catch { /* card stays hidden */ } }
 async function loadIntlYields() { try { const j = await jget('/api/intl-yields'); if (j?.ok) { intlYields = j.series; render(); } } catch { /* chips stay unmeasured */ } }
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
@@ -1651,6 +1661,37 @@ async function loadCommodityDrivers() {
       commodityDrivers = { ...(commodityDrivers ?? {}), series };
     }
   } catch (e) {}
+}
+// Which gold is trading: from the two gold links the chain already judges
+// (real yields -> gold, dollar -> gold) and gold's own 20-day move. A label, not
+// a claim -- MD files/FOUR_GOLDS.md. Reserve gold is the residual (gold rising
+// against both textbook drivers) and cannot be confirmed from a free feed.
+// The fear flag: a VIX spike in the last five sessions with gold up over the
+// same five -- G1 says this is the gold people buy and the one that does not pay.
+const GOLD_SHARES = { rates: 19, dollar: 18, both: 16, neither: 45 };   // G2, 689 windows 2010-2026
+function whichGold() {
+  const links = chainLinks(); if (!links.length) return null;
+  const rl = links.find(l => l.id === 'real-gold'), dl = links.find(l => l.id === 'dxy-gold');
+  const g = rl?.b ?? dl?.b; if (!g || g.delta == null) return null;
+  const H = 'holding', B = 'broken';
+  let kind, why;
+  if (rl?.verdict === H) { kind = 'rates gold'; why = `real yields ${rl.a.text} and gold ${g.text}: the opportunity-cost trade is what is moving it${dl?.verdict === H ? ' (the dollar agrees)' : ''}`; }
+  else if (dl?.verdict === H) { kind = 'dollar gold'; why = `the dollar ${dl.a.text} and gold ${g.text}, mirror images: a currency trade, not a gold trade`; }
+  else if (rl?.verdict === B && dl?.verdict === B && g.dir === 'up') { kind = 'reserve gold'; why = `gold ${g.text} against both textbook drivers (real yields ${rl.a.text}, dollar ${dl.a.text}): the residual Crown calls reserve gold -- deep-pocketed buying that ignores rates and the dollar. No free central-bank feed confirms it from here`; }
+  else if (rl?.verdict === B && dl?.verdict === B) { kind = 'selling against the textbook'; why = `gold ${g.text} while real yields ${rl.a.text} and the dollar ${dl.a.text} both said it should rise -- rare, flagged, not named`; }
+  else if (!g.moved) { kind = 'no single gold'; why = `gold ${g.text} over 20 days, inside its floor: nothing is driving it hard enough to name`; }
+  else { kind = 'no single gold'; why = `gold ${g.text} with real yields ${rl?.a?.text ?? '?'} and the dollar ${dl?.a?.text ?? '?'} inside their floors: neither textbook leg is active, which is the case ${GOLD_SHARES.neither}% of the time`; }
+  // the fear flag
+  let fear = null;
+  try { const v = fredHist?.vix ?? []; const x = commodityDrivers?.series?.gold ?? []; if (v.length >= 6 && x.length >= 6) { const dv = v.at(-1).value - v.at(-6).value; const dg = (x.at(-1).value / x.at(-6).value - 1) * 100; if (dv >= 5) fear = { dv: +dv.toFixed(1), dg: +dg.toFixed(1) }; } } catch { /* no flag */ }
+  return { kind, why, fear, g };
+}
+function goldKindChip(r) {
+  if (r.name !== 'GOLD') return '';
+  const w = whichGold(); if (!w) return '';
+  const cls = w.kind === 'rates gold' || w.kind === 'dollar gold' ? 'neu' : w.kind === 'reserve gold' ? 'warn' : 'dim';
+  const fearTxt = w.fear ? ` FEAR FLAG: VIX +${w.fear.dv} in five sessions with gold ${w.fear.dg >= 0 ? '+' : ''}${w.fear.dg}%. Tested here (58 spikes): no fear bid on average (+0.07% [-0.42, +0.30] at five sessions), and a month later gold has lagged by 1.2% [0.5, 2.3]. The gold people buy, and the one that has not paid.` : '';
+  return `<span class="chip ${cls}" title="${esc0(`Which gold: ${w.why}. Four golds (Crown): rates, dollar, reserve, fear -- only one drives at a time. Over 2010-2026: rates gold ${GOLD_SHARES.rates}% of windows, dollar ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%. A label from the chain's own verdicts, not a lean.${fearTxt}`)}">◈ ${esc0(w.kind)}${w.fear ? ' · fear flag' : ''}</span>`;
 }
 function commodityChip(r) {
   const wti = commodityDrivers?.wti;
@@ -1966,6 +2007,7 @@ async function loadGate() {
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
   loadIntlYields();   // gilt / bund / JGB gap chips on the chain
+  loadCrack();        // crude & the crack card + chain node
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
   setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
@@ -3007,6 +3049,7 @@ function chainVals() {
       out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node]) : null;
     }
   } catch { /* unmeasured */ }
+  try { const pts = crackData?.series; out.crack = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES.crack) : null; } catch { out.crack = null; }
   return out;
 }
 // The 10Y's 20-day move split by the ACM model into term premium (what holding
@@ -3201,14 +3244,15 @@ function chainReadHtml() {
 // thing is and how it sits in the chain today (from the brick's own words).
 const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run between boxes, not through them
   oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
-  usdcad: [0, 1], us2y: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
+  usdcad: [0, 1], crack: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
   vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
   funding: [3, 1],   // the one plumbing node, in the empty slot under the real yield
   // the non-US yield legs (MD files/NONUS_YIELDS.md): each gap beside its pair; the JGB gap climbs to USD/JPY between copper and bitcoin
   giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3],
+  us2y: [5, 3],   // the front end: its one link runs up-left to the 30Y between the S&P and Nasdaq chips; the crack took its old slot beside oil
 };
 // Short edge labels that fit the gap between boxes; the full name is in the hover.
-const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen' };
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.' };
 let _chainNodeSel = null, _chainLinkSel = null;
 function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainLinkSel = null; _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
 function selectChainLink(id, ev) { ev?.stopPropagation?.(); _chainNodeSel = null; _chainLinkSel = _chainLinkSel === id ? null : id; render(); }
@@ -3271,13 +3315,15 @@ function chainGraphHtml(links) {
     const from = ins.length ? `<div style="margin-top:3px"><b>What moves it:</b> ${ins.map(l => `${esc0(B.CHAIN_NODES[l.a.key]?.label ?? l.a.key)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
     const today = [...ins, ...outs].map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span> <span class="chain-q-link" style="cursor:pointer" onclick="selectChainLink('${l.id}', event)">${esc0(l.short)}</span>${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
     const tps = (_chainNodeSel === 'us10y' || _chainNodeSel === 'us30y') ? termPremiumSplit() : null;
+    const wg = _chainNodeSel === 'gold' ? whichGold() : null;
+    const goldSplit = wg ? `<div style="margin-top:5px"><b>Which gold is trading:</b> <b>${esc0(wg.kind)}</b> — ${esc0(wg.why)}. Four golds (rates, dollar, reserve, fear), one at a time; over 2010–2026 rates gold ${GOLD_SHARES.rates}% of windows, dollar ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%.${wg.fear ? ` <b>Fear flag:</b> VIX +${wg.fear.dv} in five sessions with gold ${wg.fear.dg >= 0 ? '+' : ''}${wg.fear.dg}% — tested on 58 spikes: no fear bid on average, and a month later gold lagged by 1.2% [0.5, 2.3]. The gold people buy, and the one that has not paid.` : ' Fear gold, tested: no bid on average after a VIX spike and a lag a month later — the one that does not pay.'} <a href="MD files/FOUR_GOLDS.md" target="_blank">FOUR_GOLDS.md</a></div>` : '';
     const bp = v => `${v > 0 ? '+' : ''}${Math.round(v)}bp`;
     const split = tps ? `<div style="margin-top:5px"><b>Why it moved</b> (the ACM model, not a claim): of the 10-year\u2019s ${bp(tps.fitted)} over ${B.CHAIN_WINDOW_DAYS} days, <b>${bp(tps.tp)}</b> is term premium \u2014 what investors demand for holding duration: supply, deficits, uncertainty \u2014 and <b>${bp(tps.path)}</b> is the expected Fed path. ${Math.abs(tps.tp) > Math.abs(tps.path) ? 'A term-premium move is a supply or credibility story, not a growth story.' : 'A path move is the market re-pricing the Fed: growth and inflation, not supply.'}${_chainNodeSel === 'us30y' ? ' The 30-year has no published split; the 10-year\u2019s is the nearest reading.' : ''} <span class="muted">term premium now ${tps.level != null ? tps.level.toFixed(2) + '%' : '\u2014'} \u00b7 <a href="rates.html" target="_blank">rates.html</a></span></div>` : '';
-    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${split}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${split}${goldSplit}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
   })() : '';
   const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
   return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
-    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF</span></div>${linkCard}${sel}`;
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF · Crack spread = the refining margin, fuel minus crude per barrel</span></div>${linkCard}${sel}`;
 }
 // Pictograms, one weight, 24-unit box — drawn here so they render the same on
 // every phone (emoji do not).
@@ -3300,6 +3346,7 @@ const CHAIN_ICON = {
   spx: '<path d="M4 21V9l8-6 8 6v12 M9 21v-6h6v6 M8 11h2 M14 11h2 M8 15h2 M14 15h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   btc: '<path d="M9 4v16 M13 4v2 M13 18v2 M8 6h6a3 3 0 0 1 0 6H8 M8 12h7a3 3 0 0 1 0 6H8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
   funding: '<path d="M4 6h8a4 4 0 0 1 4 4v2h4v3h-4v2a2 2 0 0 1-2 2h-2v-4H4z M14 19c0 2-1 3-2 3s-2-1-2-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  crack: '<path d="M5 20V9l3-5h8l3 5v11z M5 13h14 M10 4v5 M14 4v5 M9 17h2 M13 17h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
   giltgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">£</text>',
   bundgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">€</text>',
   jgbgap:  '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">¥</text>',
@@ -3307,6 +3354,43 @@ const CHAIN_ICON = {
   eurusd:  '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" font-family="inherit">€/$</text>',
   _: '<circle cx="12" cy="12" r="4" fill="currentColor"/>',
 };
+// Crude and the crack: crude and fuel are two markets, and the refiner's
+// margin between them is the one that says whether fuel is tight. Description
+// plus the three tested lines (MD files/CRACK_SPREAD.md); no lean.
+function crackHtml() {
+  const d = crackData; if (!d?.last || !d.context) return '';
+  const c = d.context, L = d.last, ch = d.change20 ?? {};
+  const usd = v => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(v >= 100 ? 0 : 1)}`;
+  const pctWord = c.percentile >= 0.95 ? 'the top 5% of its history' : c.percentile >= 0.9 ? 'the top tenth of its history' : c.percentile >= 0.75 ? 'the top quarter' : c.percentile <= 0.1 ? 'the bottom tenth' : 'the ordinary middle';
+  const liveOil = commodityDrivers?.wti?.price; const oilNote = liveOil != null ? ` Crude live ${usd(liveOil)}, so the crack today is about ${usd(((2 * L.gasoline + L.heatingOil) * 42 - 3 * liveOil) / 3)} if fuel has held.` : '';
+  const dis = ch.wtiPct != null && ch.crack != null && ch.wtiPct <= -5 && ch.crack >= 5;
+  const agr = ch.wtiPct != null && ch.crack != null && ch.wtiPct <= -5 && ch.crack <= -5;
+  const st = d.study; const c2 = st?.c2, c3 = st?.c3, c1 = st?.c1;
+  // a year of the crack against its normal band
+  const pts = (d.series ?? []).slice(-250); const spark = (() => { if (pts.length < 20) return ''; const vals = pts.map(p => p.value); const lo = Math.min(...vals, c.p25), hi = Math.max(...vals, c.p90); const W = 300, H = 46; const x = i => (i / (pts.length - 1) * W).toFixed(1), y = v => (H - 4 - (v - lo) / (hi - lo || 1) * (H - 8)).toFixed(1);
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:46px;display:block"><rect x="0" y="${y(c.p75)}" width="${W}" height="${(y(c.p25) - y(c.p75)).toFixed(1)}" fill="var(--text3)" opacity=".16"/><line x1="0" x2="${W}" y1="${y(c.median)}" y2="${y(c.median)}" stroke="var(--text3)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"/><polyline points="${pts.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><div class="muted" style="font-size:10px;margin-top:2px">the crack, one year · grey band = its normal quarter-to-quarter range since 2010 ($${c.p25}–$${c.p75}), dotted = the median $${c.median}</div>`; })();
+  const tip = 'The 3-2-1 crack: three barrels of crude in, two of gasoline and one of diesel out, priced at the NY Harbor spot prices FRED carries from the EIA. ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3 = the refiner\u2019s margin per barrel of crude. Crude and fuel are two markets; the crack is what says whether fuel is tight when crude moves.';
+  return `<div class="chain">
+    <div class="chain-h help" title="${esc0(tip)}">Crude &amp; the crack <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· the refiner\u2019s margin, fuel minus crude</span></div>
+    <div class="chain-sum ${c.percentile >= 0.9 ? 'broke' : 'quiet'}">The 3-2-1 crack is <b>${usd(c.last)} a barrel</b> (FRED to ${c.date}) — ${esc0(c.word)}, in ${pctWord}; normal is $${c.p25}–$${c.p75}.${ch.crack != null ? ` Over 20 sessions the crack is ${ch.crack >= 0 ? 'up' : 'down'} ${usd(Math.abs(ch.crack))} while crude is ${ch.wtiPct >= 0 ? '+' : ''}${ch.wtiPct}%${dis ? ' — <b>crude down, fuel tight</b>: the disagreement that says the sell-off is not the whole story' : agr ? ' — crude and fuel falling together: a genuine easing' : ''}.` : ''}${esc0(oilNote)}</div>
+    <div class="ccy-explain" style="margin:2px 0 8px"><b>What 3-2-1 means.</b> A refinery buys crude and sells fuel. Three barrels of crude in, two barrels of gasoline and one of diesel out — the 3-2-1 is that recipe priced: the fuel it makes (gasoline and heating oil are quoted per gallon, so ×42 for a barrel) minus the crude it bought, divided by three, so it reads as <b>dollars of margin per barrel of crude</b>. Crude and fuel are two different markets with two different sets of buyers, and this number is the gap between them.
+      <br><b>Reading a move.</b> <b>Crack rising</b> = fuel is getting dearer faster than crude — refineries offline, exports cut, inventories drawn — so the pump price stays up whatever crude does, and inflation pricing keeps it (that is the tested part). <b>Crack falling</b> = fuel is losing its premium — demand softening or crude too dear to refine profitably — the one true sign the energy squeeze is easing. <b>Crude down, crack up</b> is the disagreement worth noticing: crude has dipped but fuel has not, so the story is not over.
+      <br><b>What it changes here.</b> It changes what you <i>expect</i>, not a lean. A wide crack: do not read a crude dip as inflation relief (breakevens, the 10-year, the real-yield chips) and expect the next CPI prints to carry fuel. It does <i>not</i> change ranges (tested null for crude, USD/CAD, gold) and it is not a direction call on crude (a base rate that leans the story’s way with an interval on the coin). Refining stocks reprice on it; this desk does not trade them.</div>
+    <div class="statrow" style="margin-bottom:8px">
+      <div class="statcard"><div class="lbl">WTI crude</div><div class="row1"><span class="big">${usd(L.wti)}</span></div><div class="swk muted">${L.date}${liveOil != null ? ` · live ${usd(liveOil)}` : ''}</div></div>
+      <div class="statcard"><div class="lbl">Gasoline (NY Harbor)</div><div class="row1"><span class="big">$${L.gasoline.toFixed(2)}</span><span class="muted">/gal</span></div><div class="swk muted">×42 = ${usd(L.gasoline * 42)} a barrel</div></div>
+      <div class="statcard"><div class="lbl">Heating oil (diesel)</div><div class="row1"><span class="big">$${L.heatingOil.toFixed(2)}</span><span class="muted">/gal</span></div><div class="swk muted">×42 = ${usd(L.heatingOil * 42)} a barrel</div></div>
+      <div class="statcard"><div class="lbl">3-2-1 crack</div><div class="row1"><span class="big">${usd(c.last)}</span><span class="sdelta ${ch.crack >= 0 ? 'up' : 'dn'}">${ch.crack >= 0 ? '+' : '-'}$${Math.abs(ch.crack ?? 0).toFixed(1)} / 20d</span></div><div class="swk muted">P${Math.round(c.percentile * 100)} since 2010</div></div>
+    </div>
+    ${spark}
+    <div class="ccy-explain" style="margin-top:8px"><b>What it means, tested here</b> (<a href="MD files/CRACK_SPREAD.md" target="_blank">CRACK_SPREAD.md</a>):
+      <div>· <b>Inflation pricing:</b> the crack carries breakevens beyond crude${c2 ? ` — partial correlation ${c2.partial} [${c2.partialLo}, ${c2.partialHi}] after crude; when crude fell 5% but the crack rose $5, breakevens moved ${c2.disagreeBei.median}bp against ${c2.agreeBei.median}bp when both fell (+${Math.round(c2.disagreeVsAgree.diff)}bp [${Math.round(c2.disagreeVsAgree.lo)}, ${Math.round(c2.disagreeVsAgree.hi)}])` : ''}. <b>So when crude sells off, look at the crack before writing that inflation relief is coming.</b> It is on the chain as crack → inflation pricing.</div>
+      <div>· <b>Range:</b> a crack blow-out does not widen the month${c1 ? ` — WTI ${c1.WTI?.diff?.diff >= 0 ? '+' : ''}${c1.WTI?.diff?.diff} ATR [${c1.WTI?.diff?.lo}, ${c1.WTI?.diff?.hi}], USD/CAD ${c1.USDCAD?.diff?.diff}, gold ${c1.XAUUSD?.diff?.diff}` : ''}. No trigger.</div>
+      <div>· <b>Direction, a base rate:</b> after crude fell 5% while the crack rose $5, crude was higher a month later ${c3 ? `${Math.round(c3.afterDisagree.share * 100)}% of the time [${Math.round(c3.afterDisagree.lo * 100)}–${Math.round(c3.afterDisagree.hi * 100)}] on ${c3.afterDisagree.n} cases, against ${Math.round(c3.unconditional.share * 100)}% for any month` : ''}. Leans the way the story says; the interval holds the coin.</div>
+      <div class="muted" style="font-size:10.5px;margin-top:3px">Why it matters beyond oil: the pump price follows the crack, not crude, so a wide crack feeds the next CPI prints; refiners reprice on it; and speculators long fuel and short crude push it wider still. Source: FRED EIA spot prices, about a week behind, like the WTI print.</div>
+    </div>
+  </div>`;
+}
 function chainHtml() {
   const B = window.macroChainBrick;
   const links = chainLinks();
@@ -4429,6 +4513,7 @@ function renderMarketRead() {
     </div>
     ${dataConflictHtml()}
     ${chainHtml()}
+    ${crackHtml()}
     ${divergenceHtml()}
     ${falsifierHtml(rs, risk, csrMR)}
     <div class="mread-watch">
@@ -4731,6 +4816,8 @@ function leanGroupsText() {
 // month's range or return -- so this is a description of the backdrop.
 function renderDrawerRegimePair(r) {
   const sec = $('drRegimeSec'), box = $('drRegimePair'); if (!sec || !box) return;
+  if (r.name === 'GOLD') { const w = whichGold(); if (!w) { sec.style.display = 'none'; return; } sec.style.display = '';
+    box.innerHTML = `<span class="lbl" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-right:6px">Which gold</span><b>${esc0(w.kind)}</b> — ${esc0(w.why)}. Only one of the four golds drives at a time; over 2010–2026 rates gold ${GOLD_SHARES.rates}% of windows, dollar gold ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%. ${w.fear ? `<b>Fear flag</b>: VIX +${w.fear.dv} in five sessions with gold ${w.fear.dg >= 0 ? '+' : ''}${w.fear.dg}% — ` : 'Fear gold, tested: '}after 58 VIX spikes gold showed no bid on average at five sessions (+0.07% [−0.42, +0.30]) and lagged by 1.2% [0.5, 2.3] a month later — the gold people buy, and the one that has not paid. <a href="MD files/FOUR_GOLDS.md" target="_blank">the test →</a>`; return; }
   const C = regime?.currencies; const cc = PAIR_CCY[r.name]; if (!C || !cc) { sec.style.display = 'none'; return; }
   const [b, q] = [cc[0], cc[1]]; const B = C[b]?.now, Q = C[q]?.now;
   const W = { goldilocks: 'goldilocks', reflation: 'reflation', stagflation: 'stagflation', deflation: 'deflation / risk-off' };
@@ -7284,7 +7371,7 @@ function wrongAtChip(r) {
 }
 function _leanTier(r) {
   const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
-  return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}${goldKindChip(r)}</div>`;
 }
 // The board's leans, grouped into the trades they actually are. Three pound
 // shorts are one pound trade; four long-dollar leans are one dollar trade; every
@@ -7431,7 +7518,7 @@ function drStatusHtml(r) {
 // The old single row -- every chip, unranked -- for the drawer's "All reads".
 function allReadsHtml(r) {
   const d = r.d;
-  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">${row}</div>`;   // turn zones have their own full section under Levels
 }
 function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (ladder → Levels, motif → Research)
@@ -7441,6 +7528,54 @@ function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (la
 // and what argues with it, then the clock -- so a reader learns the shape and can
 // skim it. Every clause is guarded: a missing input drops its sentence rather than
 // inventing one.
+// Before you trade: the five questions a professional answers before the
+// chart earns a trade (options, crowding, stretch, clock, relative value),
+// each with this page's current answer and its evidence status. Nothing is
+// computed here that the drawer does not already hold; the point is the
+// order and the honesty -- "no free feed" and "tested null" where they belong.
+const _BYT_PEER = { EURUSD: 'GBPUSD', GBPUSD: 'EURUSD', AUDUSD: 'NZDUSD', NZDUSD: 'AUDUSD', USDCAD: 'AUDUSD', USDCHF: 'USDJPY', USDJPY: 'USDCHF', EURGBP: 'EURUSD', EURJPY: 'USDJPY', GBPJPY: 'USDJPY', AUDJPY: 'USDJPY', NQ: 'SPX500', SPX500: 'NQ', DE30: 'UK100', UK100: 'DE30', US30: 'SPX500', US2000: 'SPX500', GOLD: 'USDJPY' };
+const _BYT_CHAIN_NODE = { USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', GBPUSD: 'gbpusd', EURUSD: 'eurusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx' };
+function beforeYouTradeHtml(r) {
+  const d = r.d; const unit = d.ac === 'fx' ? 'p' : 'pt';
+  const line = (n, k, txt, tab, tag) => `<div class="byt-row"><span class="byt-n">${n}</span><span class="byt-k">${k}</span><span class="byt-t">${txt}</span>${tag ? `<span class="byt-tag ${tag.cls}">${esc0(tag.t)}</span>` : ''}<span class="byt-go" role="button" tabindex="0" onclick="setDrTab('${tab}')">→ ${tab === 'lean' ? 'Lean & flow' : tab === 'why' ? 'Why' : tab === 'day' ? 'The day' : 'Levels'}</span></div>`;
+  const rows = [];
+  // 1 options: where they sit (open interest), not what they pay (no free skew)
+  { const o = r.oi; const fx = v => v == null ? '?' : Number(v).toFixed(d.dp ?? 4);
+    let t, tag;
+    if (o && !o.stale) { t = `walls ${o.putWall != null ? `${fx(o.putWall)} (puts)` : ''}${o.putWall != null && o.callWall != null ? ' / ' : ''}${o.callWall != null ? `${fx(o.callWall)} (calls)` : ''}, gamma ${o.regime === 'PIN' ? 'long: pins price, favours fading the edges' : o.regime === 'BREAKOUT' ? 'short: a move can run' : '—'}${o.pcRatio != null ? `, put/call ${Number(o.pcRatio).toFixed(2)}` : ''}. Skew (what buyers are paying for): <b>no free feed</b>.`; tag = { t: 'where, not what they pay', cls: 'neu' }; }
+    else if (o?.stale) { t = `the options book is stale (${Math.round(o.ageH)}h old) — capture it before leaning on a wall. Skew: no free feed.`; tag = { t: 'stale', cls: 'warn' }; }
+    else { t = `no options book for this instrument (CME lists FX majors, gold and the indices). Skew: no free feed.`; tag = { t: 'not covered', cls: 'neu' }; }
+    rows.push(line(1, 'Options', t, 'levels', tag)); }
+  // 2 crowding: specs and retail, and the desk's verdict on squeezes
+  { const ct = r.ct; const bk = _crowd[d.sym]?.book; const parts = [];
+    const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+    if (ct?.pctile != null) parts.push(`large specs net <b>${ct.dir}</b>, ${ord(ct.pctile)} percentile of their history${ct.level ? ` (${ct.level.toLowerCase()})` : ''}`); else if (ct?.dir) parts.push(`large specs ${ct.dir}`);
+    if (bk?.longPct != null) parts.push(`retail ${Math.round(bk.longPct)}% long${bk.pain ? `, ${Math.round(bk.longPct >= 50 ? bk.pain.longsUnderwaterPct ?? 0 : bk.pain.shortsUnderwaterPct ?? 0)}% of the crowd underwater` : ''}`);
+    const t = parts.length ? `${parts.join(' · ')}. Crowding is shown, not traded: squeeze-fuel tested null here (retail is ~60% long every major every day).` : 'positioning not loaded for this instrument.';
+    rows.push(line(2, 'Crowding', t, 'lean', parts.length ? { t: ct?.level === 'EXTREME' ? 'extreme, tested null as a squeeze' : 'descriptive', cls: ct?.level === 'EXTREME' ? 'warn' : 'neu' } : null)); }
+  // 3 stretch: range used, the band, the tape
+  { const t = _tape[d.sym]; const parts = [];
+    if (r.used != null) parts.push(`<b>${Math.round(100 * r.used)}% of the expected day range used</b>${d.levels?.hl_med?.range_pts ? ` (${d.levels.hl_med.range_pts}${unit})` : ''}`);
+    if (t?.ok && !t.stale) parts.push(`band ${t.bandLabel.split(' ')[0]}, tape ${t.label} (${t.pctile} for this hour)`);
+    if (d.vol_pct != null) parts.push(`vol P${Math.round(d.vol_pct)} of a year`);
+    const stretched = r.used != null && r.used >= 0.9;
+    rows.push(line(3, 'Stretch', (parts.length ? parts.join(' · ') : 'no intraday read yet') + `. Overextension fades are real but under cost on this desk; a full range is a reason to expect less, not to fade.`, 'levels', { t: stretched ? 'range used up' : 'room left', cls: stretched ? 'warn' : 'neu' })); }
+  // 4 clock: the next print for this pair and what the book says it does
+  { const e = nextPairEvent(r.name); let t, tag;
+    if (e) { const fam = _tlFam(e.event); const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null; const hrs = (e.ms - Date.now()) / 3600e3;
+      t = `next: <b>${esc0(e.country)} ${esc0(e.event)}</b> ${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` — the book: <b>${bk.spike}×</b> an ordinary half-hour on release, ${bk.next}× the next day` : fam ? ' — not a mover for this pair in the book' : ''}${d.news_flag ? `; ${esc0(d.news_flag)} scales today's range ×${d.news_mult}` : ''}. Sizes are tested range facts; direction after a print is a coin flip here.`;
+      tag = bk && bk.spike >= 2 ? { t: `${bk.spike}× mover`, cls: 'warn' } : { t: 'range, never direction', cls: 'neu' }; }
+    else { t = 'nothing high-impact scheduled for this pair in the calendar window. An empty clock is a reason to expect an ordinary range, not a trend.'; tag = { t: 'clear', cls: 'neu' }; }
+    rows.push(line(4, 'Clock', t, 'day', tag)); }
+  // 5 relative value: the chain links that end on this pair, the peer, and which leg is moving
+  { const parts = []; const node = _BYT_CHAIN_NODE[r.name];
+    if (node) { const ls = chainLinks().filter(l => l.b?.key === node || l.a?.key === node); const judged = ls.filter(l => l.verdict === 'holding' || l.verdict === 'broken'); if (judged.length) parts.push(judged.map(l => `${esc0(l.short)} <b>${l.verdict.toUpperCase()}</b>`).join(', ')); else if (ls.length) parts.push(`${ls.length} chain link${ls.length > 1 ? 's' : ''} on this pair, all quiet this month`); }
+    const dc = moveDecompFor(r.name); if (dc && dc.ret != null) parts.push(`today ${dc.ret >= 0 ? '+' : ''}${dc.ret} day-ranges: ${dc.base.ccy} ${dc.base.share ?? '?'}%, ${dc.quote.ccy} ${dc.quote.share ?? '?'}%, own story ${dc.idio.share ?? '?'}%`);
+    const peer = _BYT_PEER[r.name]; const pr = peer ? allRows().find(x => x.name === peer) : null; const pdc = pr ? moveDecompFor(pr.name) : null;
+    if (pdc && pdc.ret != null) parts.push(`peer ${dispName(peer)} ${pdc.ret >= 0 ? '+' : ''}${pdc.ret}${dc && dc.ret != null && Math.sign(dc.ret) !== Math.sign(pdc.ret) && Math.abs(dc.ret - pdc.ret) >= 0.3 ? ' — <b>the peers disagree</b>: this move is this pair\u2019s own' : ''}`);
+    rows.push(line(5, 'Relative', (parts.length ? parts.join(' · ') : 'no cross-asset read loaded yet') + '. Same-window links, tested: they explain a move, they do not announce the next one.', 'why', { t: 'explains, does not predict', cls: 'neu' })); }
+  return `<div class="byt"><div class="byt-h help" title="The five questions to answer before a chart earns a trade -- options positioning, market positioning, technical stretch, the clock, cross-asset relative value -- each with this page's current answer and its evidence status. No new numbers: the order is the point.">Before you trade <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· five questions, this page\u2019s answers, in order</span></div>${rows.join('')}</div>`;
+}
 function nowParagraph(r) {
   const d = r.d, out = [];
   const t = _tape[d.sym];
@@ -8123,6 +8258,7 @@ async function openDrawer(name) {
   // whether the status line wrapped, so measure it rather than hard-code it.
   requestAnimationFrame(() => { try { $('drawer').querySelector('.dr-tabs').style.top = (Math.max(34, $('drawer').querySelector('.dr-top').offsetHeight) - 16) + 'px'; } catch {} });
   try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
+  try { $('drByt').innerHTML = beforeYouTradeHtml(r); } catch (e) { $('drByt').innerHTML = ''; console.error('[byt]', e); }
   try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
   renderDrawerLedger(r).catch(() => { $('drLedgerSec').style.display = 'none'; });
@@ -8131,7 +8267,7 @@ async function openDrawer(name) {
   loadLedgerRowsFor(r.name).then(() => renderDrawerTimeline(r)).catch(() => {}); try { renderDrawerTimeline(r); } catch (e) { $('drTimelineSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
-  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); } catch {} }).catch(() => {});
+  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states

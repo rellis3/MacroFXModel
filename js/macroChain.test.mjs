@@ -22,7 +22,7 @@ console.log('[spec integrity]');
   ok('link ids unique', new Set(CHAIN_LINKS.map(l => l.id)).size === CHAIN_LINKS.length);
   ok('every link has a short name and three punch lines', CHAIN_LINKS.every(l => l.short && l.punch?.holds && l.punch?.up && l.punch?.down));
   ok('punch lines are one line (under 110 chars)', CHAIN_LINKS.every(l => [l.punch.holds, l.punch.up, l.punch.down].every(t => t.length <= 110)));
-  ok('every node has a floor, unit and teaching text', Object.values(CHAIN_NODES).every(n => n.floor > 0 && ['pct', 'bp', 'pt'].includes(n.unit) && n.what));
+  ok('every node has a floor, unit and teaching text', Object.values(CHAIN_NODES).every(n => n.floor > 0 && ['pct', 'bp', 'pt', 'usd'].includes(n.unit) && n.what));
 }
 
 console.log('[nodeDelta — the 20d change in the node\'s own unit]');
