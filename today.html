@@ -8055,6 +8055,13 @@ function booksCardHtml() {
   // regime
   const n = regime?.now; const RW = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
   row('regime.html', '🧭', 'Regime', n ? `<b>${esc0(RW[n.regime] ?? n.regime)}</b>, month ${n.months} — ${esc0(n.what)}` : 'growth × inflation, monthly', 'what each market did in this backdrop, with intervals');
+  // the market view: who is driving, the X-against-Y matrix, what moved
+  (() => { let st = null;
+    try { const M = window.impactMatrixBrick;
+      if (M) { const x = M.buildMatrix(window.deskEvidenceBrick?.DESK_EVIDENCE ?? [], []).stats;
+        st = `<b>${x.validated}</b> tested · <b>${x.nulls}</b> null · ${x.blank} never asked`; }
+    } catch { /* the row still links */ }
+    row('market-view.html', '🌐', 'Market View', st ?? 'what moves what, and what that is worth', 'who the tape is organised around, every X-against-Y this desk has asked, and what actually moved'); })();
   // the week, scored
   const wm = weekMap; const loudW = wm ? Object.values(wm.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z)) : [];
   row('weekmap.html', '🗺', 'The week, scored', wm ? (loudW.length ? `unusual this week: ${esc0(loudW.slice(0, 3).map(x => `${x.label} z ${x.latest.z >= 0 ? '+' : ''}${x.latest.z.toFixed(1)}`).join(', '))}; the rest ordinary` : 'an ordinary week on every series') : 'every macro series scored against its own history', 'this week in each series’ distribution, and the weeks that sat like this');
@@ -11579,6 +11586,14 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as DeskEvidence from './js/deskEvidence.js';
   window.deskEvidenceBrick = DeskEvidence;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The impact matrix (js/impactMatrix.js): the map from a driver/target pair to
+     the evidence that answers it. market-view.html renders the grid; here it only
+     supplies the counts for the Market View row in the books card. -->
+<script type="module">
+  import * as ImpactMatrix from './js/impactMatrix.js';
+  window.impactMatrixBrick = ImpactMatrix;
   try { window.render?.(); } catch (e) {}
 </script>
 <!-- The Event Response Book's impact map (js/eventImpactMap.js, generated): what
