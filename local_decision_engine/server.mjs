@@ -75,7 +75,18 @@ const DEFAULT_OPTS = { earlyExit: false, earlyExitThreshold: 0.4 };
 // SLOW_MS: anything over this gets logged, so an unusually slow pair or a
 // large batch is visible instead of just showing up as a downstream "Read
 // timed out" on the bot with no clue which pair or which phase caused it.
+// This applies to REQUEST latency (/decide, /plan) only, which should stay
+// near-instant off the warm cache -- a genuine warning sign if it isn't.
 const SLOW_MS = 800;
+// computeZonesAsync's own real steady-state cost is a different order of
+// magnitude (measured 2026-09-18: 1.3-2.8s/pair at the 100-day local
+// window) -- reusing SLOW_MS there just relabels expected, routine work as
+// "SLOW" on every single pair, every single refresh cycle, forever, which
+// is a false alarm, not a signal (2026-09-22: it read as a live problem to
+// the user when it wasn't one). This threshold exists to catch an actual
+// anomaly (worker contention, an unusually large batch, a stuck/hung
+// compute) well above that known baseline, not to flag the baseline itself.
+const COMPUTE_SLOW_MS = 4000;
 
 async function refreshOne(pair, opts = DEFAULT_OPTS) {
   const [bAge, mAge] = await Promise.all([bookAge(pair), m1Age(pair)]);
@@ -88,7 +99,7 @@ async function refreshOne(pair, opts = DEFAULT_OPTS) {
   if (hit && hit.lastBarTime === lastBarTime && hit.bookSavedAt === savedAt) return;   // nothing new — leave the cache as-is
 
   const { result, ms } = await computeZonesAsync(pair, { book, packed, earlyExit: opts.earlyExit, earlyExitThreshold: opts.earlyExitThreshold });
-  if (ms > SLOW_MS) console.warn(`[local-decision-engine] SLOW computeZones ${pair}: ${ms}ms (n=${packed.n} bars, off-thread -- did not block requests)`);
+  if (ms > COMPUTE_SLOW_MS) console.warn(`[local-decision-engine] SLOW computeZones ${pair}: ${ms}ms (n=${packed.n} bars, off-thread -- did not block requests)`);
   cache.set(pair, { lastBarTime, bookSavedAt: savedAt, result });
 }
 
