@@ -94,6 +94,7 @@ import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _r
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
+import { runBookFactorAudit as _mveBookAudit, BOOK_SLEEVE_CONFIG as _MVE_BOOK_CFG } from './js/mve/bookFactorEngine.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { validateResidualReversion as _validateResidualReversion } from './js/residualReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
@@ -15650,6 +15651,51 @@ app.get('/api/mve-validate-all', async (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
+});
+
+// ── MVE Phase 7 — book layer (MD files/MVE_BOOK_FACTOR_AUDIT.md) ─────────────
+// Factor audit of the validated spread sleeves in CURRENCY space: how much of the
+// y2 / y10 / combined book is really a bet on the shared currency factors, and does
+// the edge survive the factor-neutral version of the same book (OOS)? Also runs the
+// currency PCA residual loop (education test #1) as an information-only shadow.
+// Async-job pattern (M1 for 7 majors + FRED for 2 tenors takes a few minutes).
+// Read-only research: feeds no live signal, bot or dashboard decision. 6h result cache.
+const _mveBookJobs = new Map();
+let _mveBookCache = null;   // { at, result }
+app.get('/api/mve-book/defaults', (_req, res) => res.json({ ok: true, sleeveConfig: _MVE_BOOK_CFG }));
+app.post('/api/mve-book/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — the book audit needs FRED for the spread sleeves' });
+  const fresh = req.body && (req.body.fresh === true || req.body.fresh === 'true');
+  if (!fresh && _mveBookCache && Date.now() - _mveBookCache.at < 6 * 60 * 60 * 1000) {
+    const jobId = `mvb_cached_${_mveBookCache.at}`;
+    _mveBookJobs.set(jobId, { status: 'done', startedAt: _mveBookCache.at, result: { ...(_mveBookCache.result), cached: true } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  for (const [id, job] of _mveBookJobs) if (Date.now() - job.startedAt > 60 * 60_000) _mveBookJobs.delete(id);
+  const running = [..._mveBookJobs.entries()].find(([, j]) => j.status === 'running');
+  if (running) return res.json({ ok: true, jobId: running[0], alreadyRunning: true });
+  const jobId = `mvb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _mveBookJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = { ok: true, ...(await _mveBookAudit({})) };
+      _mveBookCache = { at: Date.now(), result };
+      _mveBookJobs.set(jobId, { status: 'done', startedAt, result });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[mve-book/run]', msg, e?.stack ?? '');
+      _mveBookJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/mve-book/status/:jobId', (req, res) => {
+  const job = _mveBookJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
 // ── Diversified trend-following backtest ────────────────────────────────────

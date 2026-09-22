@@ -36,7 +36,9 @@ function shiftObsForward(obs, days) {
   return out;
 }
 
-function dailyClosesFrom(packed) {
+// Exported (2026-09-22) so js/mve/bookFactorEngine.js builds its daily closes with
+// the SAME day boundaries the sleeves' trade dates come from — imported, not copied.
+export function dailyClosesFrom(packed) {
   const out = [];
   for (const [date, { end }] of buildDayIndex(packed.times)) {
     const c = packed.closes[end - 1];
