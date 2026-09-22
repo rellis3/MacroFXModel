@@ -227,7 +227,7 @@ your normal review, after the numbers justify it.
 | Dashboard wiring — signal score / scanner / AI (§7) | ⛔ intentionally off |
 | OOS proof on real feeds — regression branch | ✅ run, NQ/XAUUSD/AUDUSD NULL, EURUSD weak-positive (§6) |
 | OOS proof on real feeds — Kalman mechanical branch | ▶ run `/api/mve-validate-mechanical/:sym` on Railway — not yet executed |
-| 7 — book layer: factor audit of the spread sleeves (`MVE_BOOK_FACTOR_AUDIT.md`) | ✅ built + synthetic-tested (29/29); ▶ pre-registered real run on Railway via `mve.html` 📚 panel |
+| 7 — book layer: factor audit of the spread sleeves (`MVE_BOOK_FACTOR_AUDIT.md`) | ✅ run on Railway 2026-09-22: sanity gate passed, **RELATIVE-VALUE** on 2Y / 10Y / combined (neutral OOS Sharpe 1.33 / 1.01 / 1.36 vs raw 1.02 / 0.58 / 0.98). Forward paper tracker built (`MVE_BOOK_FORWARD_TRACKER.md`, daily 07:15 London, 📒 panel), starts with the first Railway tick |
 
 ## 10. Does it actually predict? — the OOS validation (§b)
 

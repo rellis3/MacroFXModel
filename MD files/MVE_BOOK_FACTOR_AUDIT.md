@@ -108,6 +108,71 @@ signal, bot or dashboard decision.
 
 ---
 
-## 8. Results
+## 8. Results (Railway run, 2026-09-22)
 
-*(pending the Railway run)*
+Run from `mve.html` → 📚 Book layer on the deployed server. Data 2016-01-04 → 2026-09-21,
+2,783 weekday closes. **K = 2** (IS windows beating the noise band: 1 comp 226, 2 comps
+972, 3 comps 460, so the median is 2, the same K as the lesson and test #1). OOS from
+**2022-11-15** (the 2Y sleeve's own split). Cost 1 bp one-way on every pair traded, hedge
+legs included.
+
+### Sanity gate (§3): **PASSED**
+
+| Sleeve | Engine's own OOS Sharpe | This book's raw gross OOS | Gap |
+|---|---|---|---|
+| 2Y (290 trades) | 1.13 | 1.06 | −0.07 |
+| 10Y (347 trades) | 0.58 | 0.62 | +0.04 |
+
+Both are well inside ±0.3, so the book reproduces the sleeves and the audit can be read.
+
+### Readings (§2): **RELATIVE-VALUE on all three books**
+
+| Book | Raw IS | Raw OOS | Neutral IS | Neutral OOS | OOS vol raw → neutral | Risk that is factor | Days held | Reading |
+|---|---|---|---|---|---|---|---|---|
+| **2Y sleeve (primary)** | 0.26 | 1.02 | 0.46 | **1.33** | 14.1% → 5.1% | 55% | 1,309 | **RELATIVE-VALUE** |
+| 10Y sleeve | −0.02 | 0.58 | 0.14 | **1.01** | 12.5% → 4.3% | 55% | 1,173 | **RELATIVE-VALUE** |
+| Combined 2Y+10Y (equal risk) | 0.15 | 0.98 | 0.36 | **1.36** | 11.1% → 4.1% | 56% | 1,786 | **RELATIVE-VALUE** |
+| Currency residual (test #1, shadow) | −0.14 | 0.31 | −0.14 | 0.31 | 1.8% → 1.8% | 0% | 2,662 | info only |
+
+(Sharpe is annualised, daily mark-to-market, net of costs.)
+
+**Net return by year, % (raw / neutral):**
+
+| Book | 2016 | 2017 | 2018 | 2019 | 2020 | 2021 | 2022 | 2023 | 2024 | 2025 | 2026 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 2Y | 50.3 / 41.5 | −4.0 / −1.6 | −21.0 / −14.8 | 4.6 / 6.5 | −31.8 / −22.6 | 7.0 / 5.4 | 31.2 / 22.3 | 19.3 / 9.2 | 22.8 / 11.3 | 2.1 / −3.3 | 8.3 / 7.9 |
+| 10Y | 11.4 / 9.1 | −0.1 / 7.8 | −11.8 / −10.6 | 9.7 / 5.2 | −45.6 / −26.5 | 7.1 / 3.8 | 29.4 / 20.9 | 1.5 / 4.0 | 20.7 / 9.0 | 8.3 / 1.9 | −3.6 / 2.2 |
+| Combined | 30.9 / 25.8 | −2.0 / 3.2 | −16.4 / −13.4 | 7.2 / 6.4 | −38.7 / −24.4 | 7.1 / 4.7 | 30.3 / 22.0 | 10.4 / 6.8 | 21.8 / 10.2 | 5.2 / −1.1 | 2.4 / 5.1 |
+| Shadow residual | −1.6 | 1.3 | −2.1 | 1.0 | 0.6 | −1.7 | −1.3 | 2.3 | 1.5 | −0.6 | 0.9 |
+
+(Year returns are summed daily returns at flat size 1 per open trade, so several open
+trades mean more than 1× gross. Compare raw and neutral within a row, not the levels.)
+
+### What it means, read strictly
+
+- **The pre-registered answer: the spread sleeves' edge is not a disguised dollar bet.**
+  Removing the two shared currency factors *raised* OOS Sharpe on every book (2Y 1.02 →
+  1.33, 10Y 0.58 → 1.01, combined 0.98 → 1.36) and raised IS Sharpe too (2Y 0.26 → 0.46).
+  About 55% of the raw book's risk was factor risk. It wasn't paying, so it was noise
+  sitting on top of the spread edge.
+- **Hedging cuts volatility by about 60–65%** (2Y 14.1% → 5.1%) and softens the bad
+  years (2020: 2Y −31.8% → −22.6%; combined −38.7% → −24.4%). It gives up some of the good
+  years (2023–24), because part of those gains came from factor moves.
+- **The in-sample period is weak for every version.** IS Sharpe is 0.26 raw and 0.46
+  neutral for 2Y, and 0.14 neutral for 10Y. 2018 and 2020 are large losses raw *and*
+  neutral. The OOS strength sits in 2022–24, the rate-divergence cycle. The hedge improves
+  the risk profile; it doesn't remove the period concentration already noted in
+  `YIELD_SPREAD_STRATEGY.md` §5.
+- **The OOS window is not fresh data.** The 2.0/126 config came from a grid whose OOS
+  overlaps this one (§6). This audit answers "dollar bet or relative value?" cleanly. It
+  does not re-validate the sleeves.
+- **Shadow residual (test #1):** −0.14 IS / 0.31 OOS on this UTC-close, 1 bp-cost version,
+  the same pattern as the Python run (nothing IS, something weak OOS). It stays
+  information only.
+
+### Consequence (as pre-registered in §2)
+
+**RELATIVE-VALUE → the factor-neutral combined book becomes the candidate system for
+forward paper tracking.** Nothing is wired into live trading by this result. The next step is
+a frozen forward tracker: the same code, the same config, a daily log of neutral-book
+weights, marked-to-market P&L and costs, with the pass bar written down before it starts.
