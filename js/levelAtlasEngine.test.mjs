@@ -529,6 +529,39 @@ t('pending distance fields are internally consistent with level/currentPrice/pip
   }
 });
 
+t('pending innerDistPips/outerDistPips are populated and internally consistent — regression guard for the 2026-09-22 live-vs-backtest fix', () => {
+  // Before the fix, pending records carried NO innerDistPips/outerDistPips at
+  // all, silently forcing every live consumer (server.js's
+  // _volatilityV2PriceZone) into a fallback that reconstructed its own,
+  // separately-computed ladder — a second implementation of the exact same
+  // formula, free to drift from what atlasWalk itself considered correct.
+  // This test exists so that regression is a CI failure, not another
+  // multi-day live P&L investigation.
+  const { pending } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3], pendingRearmFrac: 0.3 });
+  assert.ok(pending.length > 0);
+  const bySideRung = new Map();
+  for (const p of pending) {
+    assert.ok(Number.isFinite(p.innerDistPips), `innerDistPips missing/non-finite on pending ${p.side}/${p.rung}`);
+    assert.ok(p.innerDistPips >= 0, `innerDistPips negative on pending ${p.side}/${p.rung}`);
+    if (p.rung === 'p90') {
+      assert.equal(p.outerDistPips, null, 'p90 has no rung beyond it — outerDistPips must stay null, never a reconstructed guess');
+    } else {
+      assert.ok(Number.isFinite(p.outerDistPips) && p.outerDistPips >= 0, `outerDistPips missing/non-finite/negative on pending ${p.side}/${p.rung}`);
+    }
+    bySideRung.set(`${p.side}|${p.rung}`, p);
+  }
+  // Adjacent rungs on the same side must agree on their SHARED boundary —
+  // p50's outer edge is the exact same price as p75's inner edge, so the
+  // pip distances must match (both derived from the same lvBySide array).
+  // A future drift between the touch-path and pending-path formulas would
+  // break this even if each field looked individually plausible.
+  for (const side of ['up', 'down']) {
+    const p50 = bySideRung.get(`${side}|p50`), p75 = bySideRung.get(`${side}|p75`), p90 = bySideRung.get(`${side}|p90`);
+    if (p50 && p75) assert.ok(Math.abs(p50.outerDistPips - p75.innerDistPips) < 0.15, `${side}: p50.outerDistPips (${p50.outerDistPips}) should equal p75.innerDistPips (${p75.innerDistPips}) — shared rung boundary`);
+    if (p75 && p90) assert.ok(Math.abs(p75.outerDistPips - p90.innerDistPips) < 0.15, `${side}: p75.outerDistPips (${p75.outerDistPips}) should equal p90.innerDistPips (${p90.innerDistPips}) — shared rung boundary`);
+  }
+});
+
 t('pending dayVol is stable under truncation (day-level context is unaffected by how much of today has happened)', () => {
   // Same technique as the atlasLiveToday reuse-consistency test above: a
   // truncated "now" must not change context that's computed from data

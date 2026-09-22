@@ -17478,9 +17478,12 @@ async function _volatilityV2P90StopInfo(pair) {
 // be priced unconditionally: always fade, target = distance back to p75
 // (the "inner" rung), stop = the fixed per-pair value from
 // `_volatilityV2P90StopInfo`. `rec` is a `pending`-shaped live record
-// (side/level/pip/rung only — no innerDistPips, same as `_volatilityV2PriceZone`'s
-// input), `ladderBySide` supplies the same `[open, p50px, p75px, p90px]`
-// array that function uses.
+// (since 2026-09-22, atlasWalk itself populates innerDistPips/outerDistPips
+// on every pending record too — see js/levelAtlasEngine.js — but p90 has no
+// rung beyond it, so this function still derives its own inner distance
+// from `ladderBySide` rather than relying on a field that's always null for
+// p90 anyway). `ladderBySide` supplies the same `[open, p50px, p75px, p90px]`
+// array `_volatilityV2PriceZone` below uses.
 function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
   if (stopPips == null) return null;
   const lv = ladderBySide[rec.side];
@@ -17503,11 +17506,19 @@ function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
 
 // Prices ONE candidate rung (a `pending`-shaped live record, OR a resolved
 // `touches` record — both carry the same context-dimension fields
-// `voteDecision` votes on) into a tradeable zone. `ladderBySide` (from
-// `rungLevelsForLadder`) supplies `innerDistPips`/`outerDistPips` for a
-// PENDING rung, which — unlike a resolved touch — doesn't carry them
-// (see js/levelAtlasEngine.js's `rungLevelsForLadder` doc for why a
-// not-yet-touched rung is just as priceable, given the same ladder).
+// `voteDecision` votes on) into a tradeable zone.
+//
+// 2026-09-22 divergence fix: atlasWalk itself now populates
+// innerDistPips/outerDistPips on every pending record (js/levelAtlasEngine.js),
+// using the SAME `lvBySide` ladder it always used internally — so the
+// `if (rec.innerDistPips == null)` fallback below, which reconstructs its
+// own ladder via `ladderBySide`, should no longer trigger for any record
+// atlasWalk actually produced. It's left in place as a defensive fail-safe
+// (a record missing these fields still gets priced rather than silently
+// dropped), not because pending records are expected to lack them anymore —
+// before this date they ALWAYS lacked them, which was the actual bug: two
+// independent computations of the same formula, free to drift. Do not
+// "fix" this comment back to describing the fallback as the normal path.
 function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold) {
   let withDist = rec;
   if (rec.innerDistPips == null) {
