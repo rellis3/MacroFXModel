@@ -74,6 +74,13 @@ explicitly declined).
   USD/JPY) to the two index CFDs it's never been run on. Cheap (harness +
   OANDA data already exist), low prior (four prior nulls). Source: 2026-09-20
   (2) entry, step 5.
+- **US2000 sensitivity to the existing `vix-hy`/HY-spread credit-stress read**
+  — does US2000 react differently than NAS100/SPX500 around days the existing
+  HY-spread ≥4% trigger fires or the chain's `vix-hy` link breaks, vs. its own
+  unconditional relative-return behaviour (already nulled by S8). Cheap
+  (reuses the existing FRED HY series + US2000 OANDA data), prior unclear —
+  this is a different cut than S8, not a repeat of it. Source: 2026-09-21
+  entry, step 5.
 
 None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
 pre-registration step (state the pass/null bar first) before it's run, per the
@@ -656,3 +663,211 @@ with income features) worth understanding personally, but it isn't a claim
 about how this desk's markets move, so it doesn't produce a testable entry or
 a display/alert nugget the way the other clips have. Nothing built, nothing
 tested, nothing queued.
+
+---
+
+## 2026-09-21 — "Small caps are a bucket of zombie companies" (Russell 2000 credit composition)
+
+> *"Forty-one percent [of the Russell 2000] are zombie companies... six basis
+> points of margin... all of this debt is floating rate... biotech, leveraged
+> consumer names, regional banks, and 2020-2022 leveraged buyouts... a $1.35
+> trillion debt wall coming up."*
+
+**1. The claim, stated plainly.** Five linked pieces: (a) ~41% of Russell 2000
+constituents are "zombie companies" (can't cover interest expense with
+operating profit); (b) the index's aggregate operating margin is ~6bp vs. the
+Russell 1000's ~7%; (c) that debt is mostly floating-rate, so a stalled rate-cut
+path raises small-cap interest expense directly; (d) the risk concentrates in
+biotech, leveraged consumer names, regional banks, and 2020–2022-vintage LBOs
+facing a refinancing cliff; (e) a $1.35T debt wall is coming due. Net: buying
+IWM/Russell 2000 is a bet on this credit-risk mix, not "scrappy growth."
+
+**2. What's already on this desk.** A genuinely mixed picture — some real
+infrastructure, one clean null, and one hard data wall.
+- `US2000_USD` is already a first-class instrument here — it's in
+  `market_sense_studies.mjs`'s `INSTR` list and `macroChain.js`'s index list,
+  not something that needs adding.
+- The one prior test closest to "small caps behave differently" already ran
+  and came back **null**: S8 ("Rotation underneath a quiet index" —
+  `MARKET_SENSE_TESTS.md`) tested 20-day NAS100-vs-US2000 relative-return
+  extremes for persistence/reversion and found nothing. Not the same claim —
+  S8 is about relative price momentum, not credit-driven differential
+  vulnerability — but it's the nearest existing empirical read, and it's a
+  null, not a blank slate.
+- This desk already has a live, market-wide credit-stress read, just not a
+  small-cap-specific one: `js/deskWatch.js`'s `hy-400` trigger (FRED
+  high-yield spread ≥4% = "the page's credit gate treats as stress") and the
+  chain's `vix-hy` node ("fear → credit": VIX vs. HY-spread divergence, with
+  "credit is usually the more reliable of the two" as the stated read when
+  they disagree). A faster HYG/LQD ratio also feeds the COG system's gating
+  (`cogConfig.js`, `cogDirectionGate.js`, `cogLiquidityGate1B.js`,
+  `cogThreshold1Gate.js`, `cogExitEngine.js`) as a "credit risk appetite" input
+  to trade throttling. None of this is Russell-2000-specific or
+  floating-rate-specific — it's aggregate/IG-vs-HY spread, not a zombie-company
+  screen or a refinancing calendar — but it's the closest existing brick.
+- The specific numbers in the claim (41% zombie-company count, 6bp margin,
+  $1.35T debt wall) need cross-sectional equity fundamentals — per-company
+  debt, interest expense, operating income — and this desk has **no fundamentals
+  feed at all**: confirmed by search, nothing here ingests balance-sheet line
+  items (OANDA gives prices, FRED gives macro series, Yahoo/Finnhub give
+  quotes — none carry corporate financials). This is a genuine, structural data
+  wall, not a code gap.
+
+**3. Is it a trading claim or a macro-understanding claim.** Mostly the
+latter, and it doesn't fit either bucket cleanly. The core assertion — what an
+index is actually made of — is "know what you're holding" understanding, not
+a short-horizon entry claim, and it isn't chain material either: the chain
+models transmission between observable market series (yields, spreads, FX),
+not the internal balance-sheet composition of an index's constituents. The one
+piece that reduces to a price-behavior question — does US2000 react
+differently around credit stress than the large-cap indices — is testable with
+what's already here, and it's a different cut than the one S8 already ran and
+nulled (S8 conditioned on US2000's *own* relative-return extremes; the open
+version here conditions on the *existing HY-spread/vix-hy* signal instead).
+
+**4. Is there a display/alert nugget here, independent of #3.** Partially, and
+it's an existing one, not a new one: the `hy-400`/`vix-hy` credit-stress reads
+already do the closest thing to what this clip is gesturing at (credit stress
+as a leading/confirming market read) — they're just framed market-wide, not
+labeled as disproportionately a small-cap risk. Relabeling is a copy change,
+not a new metric, and not done here without being asked. The claim's own
+specific numbers (41% zombie / $1.35T wall) can't be surfaced at all — no feed
+here can verify or refresh them.
+
+**5. Verdict and action: not built, not pre-registered as-is.** The core
+composition claim (zombie-company %, debt wall size) isn't testable here in
+principle — a fundamentals-data wall, the same shape of gap as the 0DTE
+entry's manual-paste limit, not a build gap. One already-run, adjacent result
+worth citing: S8 (NAS100 vs. US2000 relative-return extremes) is null, so "small
+caps behave detectably differently" already has one null against it in the
+narrow sense tested — a different claim than credit-driven vulnerability, but
+worth knowing before assuming this is unexplored ground.
+- **One genuine, cheap candidate, noted but not run:** does US2000 (vs.
+  NAS100/SPX500) move more on days the existing HY-spread/`vix-hy` stress
+  signal fires or diverges, reusing the FRED HY series and US2000's existing
+  OANDA data — a different slice than S8, not a repeat of it. Not
+  pre-registered here without being asked; added to the candidates index above.
+- **Not claimed:** whether the 41% zombie-company figure, the 6bp/7% margin
+  split, or the $1.35T debt-wall number are accurate — none of this desk's
+  data can check them.
+
+---
+
+## 2026-09-21 (2) — "Indicator tier list" (MACD, SMA, Stochastics, Fib, RSI, Bollinger, Donchian, Volume)
+
+> *"MACD, F tier... Simple moving averages, A tier... Stochastics, D tier...
+> Fibonacci retracement, solid B tier... RSI, C tier... Bollinger Bands, B
+> tier... Donchian Channels, certified A tier... Volume, S tier. I use these
+> indicators all the time in the Crown Macro to guide my research."*
+
+**1. The claim, stated plainly.** Eight separate tier ratings, each with its
+own mechanism: MACD (F, lagging-of-lagging, ~11 days late in the 2022 bear
+market), SMA 50/200 (A, works because institutions watch it), Stochastics (D,
+noisy MACD, pins in trends/whipsaws in chop), Fibonacci retracement (B, no
+economic reason, self-fulfilling), RSI (C, momentum only, can stay
+overbought/oversold for weeks — crude cited at 34 sessions in 2022, useful
+mainly for divergence), Bollinger Bands (B, volatility not direction), Donchian
+Channels (A, 20-session high/low, breakout systems), Volume (S, the only
+indicator not derived from price, shows conviction/positioning).
+
+**2. What's already on this desk.** Unusually rich for this log — most of
+these eight aren't hypothetical here, they're already built, and five of the
+eight were already tested together in one systematic run:
+
+- **MACD, SMA 50/200, Stochastics, Bollinger, Donchian/Turtle** all exist as
+  specs in `js/strategyLabEngine.js`'s "12 famous retail strategies" gauntlet
+  (`SIGNALS.macd_cross`, `golden_cross`, `stochastic_trend`,
+  `bollinger_reversion`, `donchian_breakout`), and all five were tested
+  together in one honest run (Railway, 2026-07-18, 10-instrument universe,
+  2bp cost, chronological split): **0/12 survive the gate.** Every spec's IS
+  Sharpe was ≈0.0–0.4 (dead ~15 years), OOS 0.6–1.0 (a post-COVID long-bias
+  artifact from the split window), none beat buy-and-hold OOS. Golden Cross
+  and RSI-2 were the two "most-consistent non-survivors" (DSR 0.85–0.86,
+  still below b&h) — the least-bad of the losers, not winners. Full result:
+  `BACKTEST_INDEX.md`, `BACKTEST_SYSTEMS_REVIEW.md` §3.7. (Found in the
+  course of this audit: `LEGO_MODULES.md`'s row for this engine still said
+  "no honest run recorded yet" — stale, contradicted by the dated result
+  above; corrected in this same change.) None of the five is wired into any
+  live bot — the gauntlet is infrastructure for screening new spec ideas, not
+  a live strategy.
+- **Donchian gets a second, independent null**: `js/maxCopierEngine.js` uses a
+  1H Donchian(20) breakout as its actual entry trigger, in a more elaborate
+  system (impulse + consolidation + hidden-divergence). Banked null
+  (`LEGO_MODULES.md`): negative pooled OOS Sharpe across all three exit modes,
+  2016–2026, 26 instruments — and the autopsy traced the failure to the
+  breakout-predicts-continuation premise itself being "economically empty"
+  (mean forward move ~0.03–0.09 ATR at 4h–24h, ~50% hit rate, far below the
+  ~1-ATR stop + costs needed), not to execution details. So this desk built
+  and killed two separate Donchian-breakout systems, one simple, one
+  elaborate, for the same underlying reason.
+- **Fibonacci** is the most heavily built indicator here by far
+  (`js/fibProjection.js`, `rangeFibEngine.js`, `asiaFibAtlasEngine.js`,
+  `mondayFibAtlasEngine.js`), and every specific result diverges from "B tier,
+  it just works": the range-extension fib ladder is **null**
+  (`RANGE_EXTENSION_FINDINGS.md` — pooled OOS −0.115R/trade, 0/26 pairs
+  positive; a prior "survivor" slice was retracted as look-ahead bias); the
+  base range-fib is **never actually OOS-tested** despite having the UI
+  buttons (`TRADABILITY_REVIEW.md` §3 calls it "plausibly breakeven-to-marginal"
+  at best); and the one version that's actually live — the Fib Atlas
+  vote-portfolio bot — has a stark backtest-vs-live gap
+  (`FIB_ATLAS_BACKTEST_VS_LIVE.md`): backtest claims Sharpe 18.4 / 85.7% win
+  rate (the doc itself flags this as impossible), the real paper bot is
+  **losing money live** (39.6% win rate, −$13,696 over 90 days, 101 trades).
+- **RSI** (`js/indicatorCore.js`'s `rsiWilder`) has one real, documented,
+  *partial* finding, not a clean pass or null: `GOLD_VWAP_FIXED_SIGMA_FINDINGS.md`
+  §19 found an extended RSI at a VWAP-band touch predicts a *worse* fade
+  outcome on 3 of 4 instruments (gold −12.1pp win rate, EUR/USD −7.3, USD/JPY
+  −8.1, not on GBP/USD) — consistent with Crown's "momentum, don't fade it"
+  framing, but graded explicitly weaker than four other context dimensions
+  tested in the same scan, and culling on it does not flip the underlying
+  trade profitable. No dedicated test of RSI-divergence-only or
+  overbought/oversold persistence exists.
+- **Bollinger Bands**: confirmed this desk's actual production volatility
+  bands (`js/cogBands.js`, `computeBands`) are Feller/driftless-Brownian-range
+  derived, an unrelated math family — Bollinger (SMA ± stdev) only exists as
+  one of the 12 nulled gauntlet specs, nothing more.
+- **Volume**: this desk's own code repeatedly and explicitly disclaims OANDA
+  FX "volume" as tick count (price-update frequency), not real traded size —
+  comments to that effect appear in at least seven files
+  (`js/vumanchu.js`, `vwapReversionEngine.js`, `volStateEngine.js`,
+  `touchFeatures.js`, `vumanchuChart.js`, `volBacktestM1Engine.js`,
+  `mtfStack.js`). The one feature built on it (`volClimax`, a tick-volume
+  spike) is graded **"weak"** (`ENTRY_ZONE_CONFIDENCE.md`) and "fragments and
+  dies at 2–3× cost" (`RANGE_EXTENSION_GUIDE.md`). The genuinely
+  non-price-derived data this desk does have — CME options open interest via
+  `js/oi.js` — is a different asset (options positioning), not the
+  spot/futures conviction volume Crown means.
+
+**3. Trading claims, not macro claims — and mostly already answered.** All
+eight are backtestable signal-value claims, not chain material. Five were
+answered together in one run (null), Donchian was answered twice
+independently (null both times), Fibonacci's specific engines diverge by
+construction (null / untested / backtest-vs-live gap), RSI has one real but
+weak partial confirmation, and Volume's only derived feature tested weak.
+Nothing here needs new pre-registration — it needs citing what already ran.
+
+**4. Is there a display/alert nugget here, independent of #3.** One, and it's
+already live, just not framed this way: the RSI-extended-at-touch finding
+(§19) is already wired into `vwapFixedSigmaEngine.js` as a context dimension
+on real touches. Nothing else in this clip suggests a new display item — the
+rest is either already-null infrastructure or (Fibonacci, volume) already
+surfaced through their existing pages.
+
+**5. Verdict and action: already covered, overwhelmingly null, one doc fixed.**
+Zero new code from this entry. Six of eight indicators (MACD, SMA 50/200,
+Stochastics, Bollinger, Donchian ×2, and the base range-fib construction) map
+onto already-run, already-null or already-unvalidated results on this desk.
+RSI has one real, weak, partial confirmation already live. Volume's only
+built feature tested weak. The Fib Atlas live bot is the sharpest finding in
+here, and it already exists and is already losing money in paper mode — a
+live-monitoring fact, not something this entry adds.
+- **Not built, not pre-registered.** Nothing in this clip clears the bar for
+  new work — every piece maps to an existing result.
+- **One doc fixed, not a market finding:** `LEGO_MODULES.md`'s Strategy Lab
+  row said "no honest run recorded yet," contradicted by the dated 2026-07-18
+  result in `BACKTEST_INDEX.md`/`BACKTEST_SYSTEMS_REVIEW.md`. Corrected in
+  this same change — found only because auditing this clip meant actually
+  reading both docs side by side.
+- **Not claimed:** whether Crown's specific numbers (MACD 11 days late in
+  2022, crude overbought 34 sessions) are accurate — this desk tested the
+  indicators' broader signal value, not those exact statistics.
