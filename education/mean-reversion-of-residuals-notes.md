@@ -1313,6 +1313,13 @@ or carry, or something you noticed yourself last week?"
 
 ---
 
+## Test run on our data
+
+**Test #1, currency PCA residual gate (2026-09-22): FAIL on the pre-registered rule.**
+The OOS half (2021–26) passed (IC +0.027, t 2.11, the right bucket staircase, loop net
+Sharpe 0.47), but the IS half (2016–21) showed nothing (IC −0.001). Full sample t = 1.43.
+See `residual_pca_currency_test/RESULTS.md` and `PREREGISTRATION.md`.
+
 ## Research ideas for this repo (running list)
 
 - Apply to the G10 FX universe already in the model: PCA on daily returns of the 26
