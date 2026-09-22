@@ -678,14 +678,18 @@ function computeSessionMetrics(bar, fc, bars = []) {
   const dir = r2(hl > 0 ? Math.abs(oc) / hl * 100 : 0);
 
   // vs forecast medians
-  const hlVsMed = r2(hl - fc.hl_median);
-  const hlVs75  = r2(hl - fc.hl_75);
+  const hlVsMed = r2(hl - (fc.ladder_flat?.hl_p50 ?? fc.hl_median));
+  const hlVs75  = r2(hl - (fc.ladder_flat?.hl_p75 ?? fc.hl_75));
 
-  // Asymmetric v2 targets (drift-adjusted) — fall back to symmetric when absent
-  const ohTargetMed = fc.oh_v2_median ?? fc.oc_median;
-  const ohTarget75  = fc.oh_v2_75    ?? fc.oc_75;
-  const olTargetMed = fc.ol_v2_median ?? fc.oc_median;
-  const olTarget75  = fc.ol_v2_75    ?? fc.oc_75;
+  // ONE definition (T7b, 2026-09-22): the fitted ladder's O-H / O-L -- the lines the
+  // brief prices, the bots trade and the chart draws -- so "median band reached at
+  // 07:00" in the drawer is about the same line the drawer quotes. Falls back to the
+  // drift-adjusted v2 targets, then the symmetric O-C, only when no ladder was built.
+  const lf = fc.ladder_flat;
+  const ohTargetMed = lf?.oh_p50 ?? fc.oh_v2_median ?? fc.oc_median;
+  const ohTarget75  = lf?.oh_p75 ?? fc.oh_v2_75    ?? fc.oc_75;
+  const olTargetMed = lf?.ol_p50 ?? fc.ol_v2_median ?? fc.oc_median;
+  const olTarget75  = lf?.ol_p75 ?? fc.ol_v2_75    ?? fc.oc_75;
 
   // Remaining vs targets (absolute one-sided expected move)
   const ocRem = r2(Math.max(fc.oc_median - Math.abs(oc), 0));

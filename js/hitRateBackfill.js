@@ -223,15 +223,21 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
     if (d1Prior.length < 60) continue;
 
     let fc;
-    try { fc = computeForecast(d1Prior, ac, 1.0); } catch { continue; }
+    try { fc = computeForecast(d1Prior, ac, 1.0, { instrument: name }); } catch { continue; }
 
     const bars = [...dayBars].sort((a, b) => a.time.localeCompare(b.time));
     const open = bars[0].open;
 
-    const oc_med_abs = open * fc.oc_median / 100;
-    const oc_75_abs  = open * fc.oc_75    / 100;
-    const hl_med_abs = open * fc.hl_median / 100;
-    const hl_75_abs  = open * fc.hl_75    / 100;
+    // ONE definition (T7b, 2026-09-22): the fitted ladder's O-H / O-L, the lines the
+    // brief now prices and the bots trade. The incumbent oc_* (O-L assumed = O-C) is
+    // the fallback only when no ladder could be built for the instrument.
+    const lf = fc.ladder_flat;
+    const oh_med_abs = open * (lf?.oh_p50 ?? fc.oc_median) / 100;
+    const oh_75_abs  = open * (lf?.oh_p75 ?? fc.oc_75)    / 100;
+    const ol_med_abs = open * (lf?.ol_p50 ?? fc.oc_median) / 100;
+    const ol_75_abs  = open * (lf?.ol_p75 ?? fc.oc_75)    / 100;
+    const hl_med_abs = open * (lf?.hl_p50 ?? fc.hl_median) / 100;
+    const hl_75_abs  = open * (lf?.hl_p75 ?? fc.hl_75)    / 100;
 
     // ATR30: average true range of last 30 D1 bars as % of open
     const atr30_pct = (() => {
@@ -247,10 +253,10 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
 
     // Price at which each directional level is located
     const hitLevelPrice = {
-      oh_med: open + oc_med_abs,
-      oh_75:  open + oc_75_abs,
-      ol_med: open - oc_med_abs,
-      ol_75:  open - oc_75_abs,
+      oh_med: open + oh_med_abs,
+      oh_75:  open + oh_75_abs,
+      ol_med: open - ol_med_abs,
+      ol_75:  open - ol_75_abs,
     };
     const postHit = {}; // { lvl: { max_cont, max_rev } } — fractions of open
 
@@ -261,10 +267,10 @@ async function _computeInstrument(name, sym, ac, lookbackDays, existingInst = nu
       rHigh = Math.max(rHigh, bH);
       rLow  = Math.min(rLow,  bL);
       const rHL = rHigh - rLow;
-      if (!dayHit.oh_med && bH >= open + oc_med_abs) dayHit.oh_med = bT;
-      if (!dayHit.oh_75  && bH >= open + oc_75_abs)  dayHit.oh_75  = bT;
-      if (!dayHit.ol_med && bL <= open - oc_med_abs) dayHit.ol_med = bT;
-      if (!dayHit.ol_75  && bL <= open - oc_75_abs)  dayHit.ol_75  = bT;
+      if (!dayHit.oh_med && bH >= open + oh_med_abs) dayHit.oh_med = bT;
+      if (!dayHit.oh_75  && bH >= open + oh_75_abs)  dayHit.oh_75  = bT;
+      if (!dayHit.ol_med && bL <= open - ol_med_abs) dayHit.ol_med = bT;
+      if (!dayHit.ol_75  && bL <= open - ol_75_abs)  dayHit.ol_75  = bT;
       if (!dayHit.hl_med && rHL >= hl_med_abs)        dayHit.hl_med = bT;
       if (!dayHit.hl_75  && rHL >= hl_75_abs)         dayHit.hl_75  = bT;
 

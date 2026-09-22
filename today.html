@@ -8727,7 +8727,9 @@ function renderDrawerBand(r) {
   const row = P.byCheckpoint[cp]; if (!row) { box.innerHTML = ''; return; }
   const pct = x => x?.p != null ? `<b>${Math.round(x.p * 100)}%</b> <span class="muted">[${Math.round(x.lo * 100)}–${Math.round(x.hi * 100)}]</span>` : '—';
   const nOf = x => x?.n != null ? ` <span class="dim-age">n=${x.n}</span>` : '';
-  const lv = (k) => d.levels?.[k]?.price != null ? fmtN(d.levels[k].price, d.dp) : null;
+  // The level with its working, so any number quoted here can be checked against the
+  // chart label in one glance: "4298.8 = 4361.19 - 1.43%, fitted ladder yz_10".
+  const lv = (k) => { const L = d.levels?.[k]; if (L?.price == null) return null; const src = L.source === 'fitted-ladder' ? `fitted ladder${L.estimator ? ' ' + L.estimator : ''}${L.event_tag && L.event_tag !== 'none' ? ', ' + L.event_tag + ' day' : ''}` : L.source === 'legacy-incumbent' ? 'legacy bands, no ladder built' : ''; return `${fmtN(L.price, d.dp)}${d.session_open != null && L.pct != null ? ` = ${fmtN(d.session_open, d.dp)} ${k.startsWith('ol') ? '−' : '+'} ${L.pct}%` : ''}${src ? `, ${src}` : ''}`; };
   const side = (nm, medAt, b75At, medKey, b75Key, word, pr) => {
     const medHit = !!medAt, b75Hit = !!b75At;
     const lm = lv(medKey), l75 = lv(b75Key);
@@ -8743,7 +8745,7 @@ function renderDrawerBand(r) {
   const aim = bandAimFor(r);
   const head = aim ? `<div class="chain-hook" style="font-size:13.5px;margin-bottom:6px;padding:8px 10px;border-left:3px solid var(--amber);background:var(--card2);border-radius:0 6px 6px 0">${esc0(aim.text)}<div class="muted" style="font-size:10.5px;font-weight:400;margin-top:3px">A target guide, not an entry · as at ${aim.cp} UK</div></div>` : '';
   box.innerHTML = head + side('up', s.oh_reached_at, s.oh_75_reached_at, 'oh_med', 'oh_75', 'Typical high:', row.up) + side('dn', s.ol_reached_at, s.ol_75_reached_at, 'ol_med', 'ol_75', 'Typical low:', row.dn) + clock + asiaTxt +
-    `<div class="mread-precise" style="margin-top:8px">Base rates from ${P.n.toLocaleString()} London sessions since 2016 (T7). Bands here are the forecaster's O-H / O-L median and 75th; the study's bands are the trailing-250-session open-to-high quantiles those estimate. A target guide, never an entry: the fade at these bands tested null as a trade, and so did the level touch. ${_EV('c', _EV_T.c)}</div>`;
+    `<div class="mread-precise" style="margin-top:8px">Base rates from ${P.n.toLocaleString()} London sessions since 2016 (T7b). Bands here are the fitted ladder's O-H / O-L p50 and p75 — the same lines the bots trade and the chart draws — and the study (T7b) was run on those same lines. A target guide, never an entry: the fade at these bands tested null as a trade, and so did the level touch. ${_EV('c', _EV_T.c)}</div>`;
 }
 async function renderDrawerTape(sym) {
   const sec = $('drTapeSec'), box = $('drTape');

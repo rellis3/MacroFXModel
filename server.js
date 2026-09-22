@@ -21433,30 +21433,41 @@ async function computeDailyBrief() {
       else                                   { sizingMult = 0.75; sizingLabel = 'Moderate'; }
     }
 
-    // Build levels: merge % forecast + absolute price + hit rate data
+    // Build levels: merge % forecast + absolute price + hit rate data.
+    // ONE definition (T7b, 2026-09-22): the FITTED LADDER (`ladder_flat`, buildLadder
+    // on the per-instrument sigma, O-H and O-L fitted separately) -- the same lines
+    // the Vote Atlas / volatility bot plan, the ladder export and the owner's chart
+    // draw. The forecaster's incumbent oh_median/ol_75 (half-normal constant x sigma,
+    // O-L assumed = O-C) are legacy: kept in /api/vol-forecast for the archive, read
+    // by nothing user-facing. Falls back to them only when no ladder was built,
+    // and says so in `source`.
+    const lf = fc.ladder_flat ?? null;
+    const ladderSrc = lf ? { source: 'fitted-ladder', estimator: fc.ladder?.estimator ?? null, event_tag: fc.ladder?.event_tag ?? null } : { source: 'legacy-incumbent', estimator: null, event_tag: null };
     const lvls = {};
-    for (const [key, pctField, dir] of [
-      ['oh_med', 'oh_median', +1],
-      ['oh_75',  'oh_75',     +1],
-      ['ol_med', 'ol_median', -1],
-      ['ol_75',  'ol_75',     -1],
+    for (const [key, ladderField, pctField, dir] of [
+      ['oh_med', 'oh_p50', 'oh_median', +1],
+      ['oh_75',  'oh_p75', 'oh_75',     +1],
+      ['ol_med', 'ol_p50', 'ol_median', -1],
+      ['ol_75',  'ol_p75', 'ol_75',     -1],
     ]) {
-      const pct = fc[pctField] ?? 0;
+      const pct = (lf?.[ladderField] ?? fc[pctField]) ?? 0;
       lvls[key] = {
         pct,
         price:       anchorOpen ? fmt(anchorOpen * (1 + dir * pct / 100)) : null,
+        ...ladderSrc,
         hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
         ...(hr?.levels?.[key] ?? {}),
       };
     }
-    for (const [key, pctField] of [['hl_med', 'hl_median'], ['hl_75', 'hl_75']]) {
-      const pct = fc[pctField] ?? 0;
+    for (const [key, ladderField, pctField] of [['hl_med', 'hl_p50', 'hl_median'], ['hl_75', 'hl_p75', 'hl_75']]) {
+      const pct = (lf?.[ladderField] ?? fc[pctField]) ?? 0;
       const rangePts = anchorOpen
         ? parseFloat((anchorOpen * pct / 100 / pipSz).toFixed(1))
         : null;
       lvls[key] = {
         pct,
         range_pts:   rangePts,
+        ...ladderSrc,
         hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
         ...(hr?.levels?.[key] ?? {}),
       };

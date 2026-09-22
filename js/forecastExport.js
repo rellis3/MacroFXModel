@@ -151,10 +151,11 @@ function buildExportV2Text(data) {
 
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     const d      = f.drift_d ?? 0;
-    const oh_med = f.oh_v2_median ?? f.oc_median;
-    const oh_75  = f.oh_v2_75    ?? f.oc_75;
-    const ol_med = f.ol_v2_median ?? f.oc_median;
-    const ol_75  = f.ol_v2_75    ?? f.oc_75;
+    // ONE definition (T7b): the fitted ladder first, the drift-adjusted v2 only as a fallback.
+    const oh_med = f.ladder_flat?.oh_p50 ?? f.oh_v2_median ?? f.oc_median;
+    const oh_75  = f.ladder_flat?.oh_p75 ?? f.oh_v2_75    ?? f.oc_75;
+    const ol_med = f.ladder_flat?.ol_p50 ?? f.ol_v2_median ?? f.oc_median;
+    const ol_75  = f.ladder_flat?.ol_p75 ?? f.ol_v2_75    ?? f.oc_75;
     const dLabel = Math.abs(d) < 0.05 ? 'Neutral'
                  : d > 0 ? (d > 0.20 ? 'Bullish ↑' : 'Mild bullish lean ↑')
                           : (d < -0.20 ? 'Bearish ↓' : 'Mild bearish lean ↓');
@@ -185,10 +186,14 @@ function buildExtendedText(data) {
   for (const [name, f] of Object.entries(data.instruments ?? {})) {
     lines.push(div(name));
     lines.push(`Vol (ann)       : ${f2(f.vol_annual)}%  [${f.vol_pct ?? '—'}th pct of 252-day history]`);
-    lines.push(`H-L median      : ${f2(f.hl_median)}%  (75th ${f2(f.hl_75)}%)`);
-    lines.push(`O-C median      : ${f2(f.oc_median)}%  (75th ${f2(f.oc_75)}%)`);
-    lines.push(`O-H median      : ${f2(f.oh_median)}%  (75th ${f2(f.oh_75)}%)  [max up leg = same dist as O-C]`);
-    lines.push(`O-L median      : ${f2(f.ol_median)}%  (75th ${f2(f.ol_75)}%)  [max down leg = same dist as O-C]`);
+    // ONE definition (T7b, 2026-09-22): the fitted ladder -- the lines the bots, the
+    // brief and the chart use. The incumbent fields are the fallback only.
+    const lf = f.ladder_flat ?? {};
+    const src = f.ladder_flat ? `fitted ladder${f.ladder?.estimator ? ' ' + f.ladder.estimator : ''}` : 'legacy bands, no ladder built';
+    lines.push(`H-L median      : ${f2(lf.hl_p50 ?? f.hl_median)}%  (75th ${f2(lf.hl_p75 ?? f.hl_75)}%)  [${src}]`);
+    lines.push(`O-C median      : ${f2(lf.oc_p50 ?? f.oc_median)}%  (75th ${f2(lf.oc_p75 ?? f.oc_75)}%)`);
+    lines.push(`O-H median      : ${f2(lf.oh_p50 ?? f.oh_median)}%  (75th ${f2(lf.oh_p75 ?? f.oh_75)}%)  [up leg, fitted separately]`);
+    lines.push(`O-L median      : ${f2(lf.ol_p50 ?? f.ol_median)}%  (75th ${f2(lf.ol_p75 ?? f.ol_75)}%)  [down leg, fitted separately]`);
     lines.push(`5-day H-L       : ${f2(f.hl_5d)}%  (5-session range)`);
     lines.push(`20-day H-L      : ${f2(f.hl_20d)}%  (20-session range)`);
     lines.push(`5-day O-C       : ${f2(f.oc_5d)}%`);

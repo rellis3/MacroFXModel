@@ -332,3 +332,40 @@ ol_75` fields stay in the forecast payload for the archive, marked legacy, and
 nothing user-facing reads them. The level hit-rate store scores the fitted
 lines from the day this ships; earlier rows scored the incumbent lines and are
 labelled as such.
+
+### T7b results (run 2026-09-22; design frozen above before running)
+
+All eight instruments, ~2,500 London sessions each, bands rebuilt per session
+from the fitted ladder. **The shape held**, which was the pre-stated check: the
+odds of reaching the next band still decay through the day (gold 60% at 07:00 →
+17% at 16:30 given the median is in), the stall rate stays flat at 6-11%, and
+the Asia conditioner still fires — on gold harder than before (reach the upper
+median after 07:00 on 51% of narrow-Asia days vs 21% of wide ones, −29pp
+[−34, −25]).
+
+The bands are slightly narrower than the trailing-250 quantiles they replace, so
+every rung is reached a little more often. Unconditional hit rates, old → new:
+
+| | upper median | upper 75th | upper 90th |
+|---|---|---|---|
+| EUR/USD | 48% → 53% | 24% → 27% | 10% → 12% |
+| GBP/USD | 49% → 53% | 25% → 27% | 9% → 12% |
+| USD/JPY | 47% → 52% | 24% → 26% | 9% → 11% |
+| AUD/USD | 48% → 54% | 24% → 29% | 10% → 13% |
+| USD/CAD | 48% → 53% | 24% → 28% | 9% → 11% |
+| Gold | 51% → 54% | 27% → 28% | 11% → 13% |
+| NQ | 50% → 52% | 26% → 27% | 11% → 11% |
+| SPX500 | 50% → 54% | 26% → 28% | 10% → 13% |
+
+A median band reached on 52-54% of days and a 75th on 26-29% is what those names
+are supposed to mean, so the fitted ladder is also the better-calibrated of the
+two — the trailing-quantile bands ran a touch wide. The old numbers are kept in
+`analysis/output/band_reach_study_t7_trailing250.json`.
+
+**Shipped the same day:** the brief's `levels`, the hit-rate backfill, the
+session-status "reached at" times, both plain-text exports and the drawer's band
+read all read `ladder_flat` now, each level tagged with its source and
+estimator; the drawer prints the working (`4298.8 = 4361.19 − 1.43%, fitted
+ladder yz_10`). The incumbent `oh_median`/`ol_75` and the drift-adjusted
+`oh_v2_*` remain in `/api/vol-forecast` for the archive and are read by nothing
+user-facing.
