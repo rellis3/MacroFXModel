@@ -298,3 +298,37 @@ USD/CAD 1.06*, others ordinary.
 - T4 (opening-range break: 85% back inside within the hour), T5 (gap fill by size),
   T6 (calendar profile) added to the book as base rates.
 - Queued: T3 and T4 as live triggers once the watch reads intraday bars.
+
+## T7b — the band read re-run on the fitted ladder (pre-registered 2026-09-22, before running)
+
+**Why.** The desk carried three definitions of "O-L 75th" under one name: the
+forecaster's incumbent bands (`ol_75`, a textbook half-normal constant × σ,
+O-L assumed equal to O-C), the fitted ladder (`ladder_flat.ol_p75`, `buildLadder`:
+Yang-Zhang/EWMA σ per instrument, widths fitted walk-forward, O-H and O-L
+fitted separately), and T7's own trailing-250-session empirical quantiles. The
+bots (Vote Atlas, volatility bot v2), the ladder ⬇ Export and the owner's chart
+use the fitted ladder; the daily brief, the level hit-rates and T7's band read
+used the other two. Gold 2026-09-22: 4284 (incumbent) vs 4298.8 (fitted) for the
+same "O-L 75th". One name, one number: everything moves to the fitted ladder.
+
+**Design, frozen.** `analysis/band_reach_study.mjs` unchanged except the bands:
+for each session, `buildLadder(forecastSigma(prior daily bars, estimator), {
+instrument, assetClass, horizon: 'daily', eventTag: 'none' })` on the session's
+own London-midnight open — the same call the bot plan makes — giving p50/p75/p90
+O-H and O-L. Prior daily bars = the sessions before this one, from the same
+packed M1 (no lookahead: sigma is fit on days strictly before). Estimator per
+instrument from `forecastLadderParams.js`. Checkpoints, the stall rule, the Asia
+conditioner, bootstrap and n floors all as T7. Output overwrites
+`js/bandReachParams.js`; the old file is kept as `analysis/output/band_reach_study_t7_trailing250.json`
+for the record. Expected: reach rates move (the fitted bands are narrower on
+gold, so the 75th is reached more often); the shape of the read (odds rise
+through the day, the Asia conditioner) should not. If the shape changes, say so.
+
+**What changes on the page.** The brief's `levels` are priced from
+`ladder_flat` (p50 → `_med`, p75 → `_75`) with the ladder's estimator and event
+tag carried; the drawer's band read quotes the level with its working
+("4298.8 = 4361.19 − 1.43%, fitted ladder yz_10"); the incumbent `oh_median /
+ol_75` fields stay in the forecast payload for the archive, marked legacy, and
+nothing user-facing reads them. The level hit-rate store scores the fitted
+lines from the day this ships; earlier rows scored the incumbent lines and are
+labelled as such.
