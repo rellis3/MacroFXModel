@@ -77,7 +77,9 @@ export async function prepareBookInputs(opts = {}) {
       return out;
     });
   }
-  return { cfg, log, aligned, cr, pos, splitDate, sleeveSummary };
+  // flat trade list tagged by sleeve, for the sized system backtest (bookSystem.js)
+  const tradeList = Object.entries(trades).flatMap(([sleeve, tr]) => (tr || []).map(t => ({ ...t, sleeve })));
+  return { cfg, log, aligned, cr, pos, splitDate, sleeveSummary, trades: tradeList };
 }
 
 export async function runBookFactorAudit(opts = {}) {

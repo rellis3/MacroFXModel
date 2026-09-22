@@ -1,9 +1,9 @@
 // mve/bookForward.js — the forward paper tracker for the MVE book layer. Pure: no
 // I/O. Pre-registration: MD files/MVE_BOOK_FORWARD_TRACKER.md.
 //
-// What it tracks: the factor-neutral COMBINED spread-sleeve book (2Y + 10Y at ½
-// each), the candidate system from MVE_BOOK_FACTOR_AUDIT.md §8, next to the raw
-// combined book for comparison. Every day it records the book it would hold
+// What it tracks: the SYSTEM from MVE_BOOK_SYSTEM_BACKTEST.md — the 2Y + 10Y spread
+// sleeves (½ each) hedged off K=2 PCs + basket + net USD and sized to a 10% vol
+// target — next to the unhedged sleeves at the same sizing, for comparison. Every day it records the book it would hold
 // after that close and marks the PREVIOUS record's book to this close. Records
 // are append-only and never edited: this is the point-in-time, out-of-sample log
 // the backtest can never be.
@@ -65,7 +65,8 @@ export function forwardStep(log, manifest, snap) {
   const neutral = snap.book.neutral, raw = snap.raw;
   const rec = {
     date: snap.date, closes: snap.closes, raw, neutral, K: manifest.K,
-    exposurePre: snap.book.exposurePre, exposurePost: snap.book.exposurePost, factorVarShare: snap.book.factorVarShare,
+    exposurePre: snap.book.exposurePre, exposurePost: snap.book.exposurePost, factorVarShare: snap.book.factorVarShare ?? null,
+    leverage: snap.book.leverage ?? null, usdShare: snap.book.usdShare ?? null,
     loggedAt: snap.loggedAt || null,
   };
   if (!prev) {

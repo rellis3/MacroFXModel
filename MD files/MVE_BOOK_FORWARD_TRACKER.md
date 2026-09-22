@@ -3,6 +3,16 @@
 *Registered before the first tick. Nothing above §7 changes once the tracker starts;
 findings get appended below the line.*
 
+> **Amended before the first tick (2026-09-22).** The R2 manifest and log were both
+> confirmed empty when this was changed. The tracked book is now **the system from
+> `MVE_BOOK_SYSTEM_BACKTEST.md`**: the same sleeves, hedged off K = 2 PCs + basket + **net
+> USD**, sized to a **10% vol target** (5× gross cap), next to the unhedged sleeves at the
+> same sizing. It was changed because the audit's PC-only hedge can leave a dollar bet in
+> the book (that doc's §0), and a forward test should track the system actually being
+> considered. The tracker calls the same `bookSystem.systemBookAt` as the backtest, and its
+> manifest's reference numbers come from that backtest. The rules in §3 are unchanged. The
+> table in §1 below describes the original design; where it differs, this note wins.
+
 ## 0. What is being tracked, and why
 
 The book-layer audit (`MVE_BOOK_FACTOR_AUDIT.md` §8) read **RELATIVE-VALUE**: the 2Y/10Y
