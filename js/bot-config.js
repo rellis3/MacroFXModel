@@ -7258,15 +7258,27 @@ async function loadMtLiveVsBacktest() {
     if (!d.ok) throw new Error(d.error || 'request failed');
     const trades = d.trades || [];
     const s = d.summary || {};
+    const matchN = s.MATCH || 0;
     const divN = s.DIVERGENCE || 0;
+    const unmatchedN = s.UNMATCHED || 0;
+    // Three real outcomes, not one binary: genuinely verified (MATCH>0, no
+    // divergence), real divergence (fix now), or nothing could be verified
+    // at all (every trade UNMATCHED/UNRESOLVED, MATCH=0) -- that last case
+    // used to fall through to "live matches the backtest", which is the
+    // opposite of true: nothing was actually checked.
+    let tail;
+    if (divN) tail = ' — <b style="color:var(--red)">investigate the divergence row(s) below</b>';
+    else if (matchN) tail = ' — live matches the backtest';
+    else if (unmatchedN) tail = ' — <b style="color:var(--amber,#e0a93b)">nothing could be verified — no decision-log match for these trades</b>';
+    else tail = '';
     if (summaryEl) {
       summaryEl.innerHTML = trades.length
         ? `${trades.length} trade(s) ${d.from}→${d.to} — ` +
-          `<span style="color:var(--green)">${s.MATCH || 0} match</span> · ` +
+          `<span style="color:var(--green)">${matchN} match</span> · ` +
           `<span style="color:${divN ? 'var(--red)' : 'var(--text3)'};font-weight:${divN ? 700 : 400}">${divN} divergence${divN === 1 ? '' : 's'}</span> · ` +
           `<span style="color:var(--amber,#e0a93b)">${s.UNRESOLVED || 0} unresolved</span> · ` +
-          `<span style="color:var(--text3)">${s.UNMATCHED || 0} unmatched</span>` +
-          (divN ? ' — <b style="color:var(--red)">investigate the divergence row(s) below</b>' : ' — live matches the backtest')
+          `<span style="color:var(--text3)">${unmatchedN} unmatched</span>` +
+          tail
         : `No closed/open live trades in the last ${days} day(s) yet`;
     }
     if (!trades.length) {

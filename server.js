@@ -25036,7 +25036,13 @@ app.get('/api/motif-bot/live-vs-backtest', async (req, res) => {
     let enteredEvents = [];
     try {
       const raw = await kv.get('motif_bot_decision_log');
-      const log = raw ? JSON.parse(raw) : {};
+      // motif_bot.py's KvClient writes through /api/kv/set, which the worker
+      // wraps as {data, timestamp} -- unwrap .data the same way every other
+      // decision-log reader does (e.g. /api/fib-atlas-bot/rung-diagnostic),
+      // or every event is silently invisible here (log.events is undefined
+      // on the wrapper itself) -- this was the actual cause of the live
+      // dashboard showing 19/19 trades UNMATCHED: enteredEvents was always [].
+      const log = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
       enteredEvents = (log.events || []).filter(e => e.status === 'entered');
     } catch { /* no decision log yet */ }
 
