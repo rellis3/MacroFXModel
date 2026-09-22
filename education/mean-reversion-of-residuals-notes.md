@@ -9,7 +9,7 @@
 > to show the relationship clearly. Not taken from any market, account or track
 > record."* Numbers quoted below are from that simulated 8-instrument universe.
 
-**Status:** slides 1–33 logged. Remaining slides to follow.
+**Status:** slides 1–33 and 36–48 logged. **Slides 34–35 still to add.**
 
 ---
 
@@ -72,6 +72,57 @@ dead band |z| < 0.2 · cap |z| = 1.5 · re-estimated every day · gross weight 1
 - `R` comes from the same window `V` was fitted on. That's the source of the
   "manufactured reversion" trap (slides 25–26), so validate out of sample.
 
+## The production system around the loop (slide 37)
+
+| # | Stage | What it does |
+|---|---|---|
+| 01 | **Data** | Exchange-reported returns, cleaned, sessions aligned, rolls handled, stored immutably with a hash. The loop reads from here, **never from a live feed directly**. |
+| 02 | **Window** | The trailing 120 days, assembled from the store at each step. Window length is a parameter, fixed in advance and recorded. |
+| 03 | **Estimate** | PCA on the window. Two components kept because two beat the noise band. Loadings re-estimated every step (this keeps the hedge current). |
+| 04 | **Signal** | Residuals, their cumulative paths, each one's standardised displacement. Dead band and cap applied here. |
+| 05 | **Construct** | Inverse-vol sizing → projection that removes factor exposure → normalise to unit gross. Output = a weight vector. |
+| 06 | **Rebalance** | Today's weights minus yesterday's = turnover. What gets executed and what gets charged. |
+| 07 | **Account** | Realised return, cost, net, equity, drawdown, attribution by instrument. Written to a log that is **never edited**. |
+| 08 | **Monitor** | Live vs backtest inside a tolerance band; factor structure vs its history; **retirement conditions declared before the first trade**. |
+
+The loop is stages 3–7. Stages 1–2 are "where most real failures begin"; stage 8 separates a
+system that is running from one that is "merely still switched on". Every stage has an
+input, an output and a parameter, all written down before the first run. That record is
+the **manifest**, which makes a six-month-old result reproducible and a live divergence
+diagnosable. The architecture is reusable: swap the Estimate and Signal stages and the same
+pipeline runs trend, carry or a spread.
+
+## Validation checklist (slides 36–44)
+
+- [ ] **Attribution:** split P&L by instrument and by whether the residual truly reverts.
+      A good total can come from all positions or from two carrying six.
+- [ ] **In sample vs held out vs held out after costs**, reported separately. In the example
+      the Sharpe goes 1.77 → 0.86 → 0.62: "the edge is real, and it is about half what the
+      model claims."
+- [ ] **Many independent runs**, with the distribution shown (12 universes in the example),
+      not one curve.
+- [ ] **Realistic costs on every trade.** Check that edge per unit of turnover > cost per unit
+      of turnover *before* deploying.
+- [ ] **Parameters fixed and written down before the held-out period is opened.** Open it
+      once. Tune only with cross-validation inside the training data.
+- [ ] If you can't resist looking, you needed a **third period** you didn't know about.
+- [ ] Then: paper trade → small-size burn-in (years, not weeks, at this Sharpe) → scale
+      (capacity limits) → monitor factor structure.
+
+| Proves nothing (unfalsifiable) | Can be judged (checkable) |
+|---|---|
+| Parameters chosen after seeing results | Parameters fixed before the test |
+| One period, no data held back | A held-out period, opened once |
+| Positions unhedged, so the market is in the result | Exposure removed, so the bet is the idea |
+| Costs applied optimistically or not at all | Costs charged on every trade at a realistic rate |
+| A single run presented as the outcome | Many independent runs, distribution shown |
+
+## The transferable part: the order
+
+**Universe → measurement → mechanism → rule → held-out test → costs → repetition.**
+"Every one of those steps existed to give the idea a chance to fail cheaply." The same
+order applies to momentum, carry, seasonality, anything.
+
 ## Rules and warnings
 
 - Shared movement is **not** the opportunity; it is what stands between you and it.
@@ -110,6 +161,16 @@ dead band |z| < 0.2 · cap |z| = 1.5 · re-estimated every day · gross weight 1
 - An **unhedged residual trade is a directional bet in a statistical costume**. You'll
   learn nothing from its P&L either way.
 - Construction is not validation. Everything up to slide 31 is construction.
+- **Attribute every good curve.** Positions on non-reverting residuals aren't neutral; they
+  cost turnover.
+- **In sample flatters.** Expect held-out Sharpe to be about half the in-sample figure, and
+  less after costs.
+- **Costs are certain, the edge is not.** Fast reversion means a clean signal *and* high
+  turnover. Compare edge per unit of turnover with cost per unit of turnover.
+- **Searching the held-out period destroys it.** Fix parameters first; tune only with
+  cross-validation inside the training data.
+- A good backtest is **permission to start the expensive part** (paper → burn-in → scale →
+  monitor), not a green light.
 
 ---
 
@@ -967,6 +1028,289 @@ the account." Most people never see the middle of that chain because their tools
 **Implementation note:** log these six stages per day in our backtest (z, target, sized,
 neutralised, final, P&L contribution) so every day can be audited like this.
 
+### Slides 34–35 — *not yet received*
+
+(Slide 36 refers to "the curve on the previous slide", so slide 35 is probably the
+backtest equity curve, at +26.1% cumulative. To be added when the screenshots arrive.)
+
+### Slide 36 — Where the P&L *came from* (interactive)
+
+"The curve, decomposed by instrument and by whether the residual genuinely reverts."
+
+**Image:** "What each instrument contributed". Eight cumulative-return lines across the
+fitting window, break-even at the horizontal line, y-axis −6.6% to +13.4%. The lines start
+tangled at zero and fan out. C (orange) climbs steadily to the top, B (green) is second,
+and E, F and H drift below zero by the end.
+
+| A | B | C | D | E | F | G | H |
+|---|---|---|---|---|---|---|---|
+| +2.1% | +8.0% | **+11.0%** | +4.3% | −0.9% | −0.8% | +4.9% | −2.4% |
+
+Toggle: **By what the residual is** / **By instrument** (shown).
+
+**Readout:** one line per instrument, each showing what it added to the book. **5 made money
+and 3 lost it**, and the eight together sum to **+26.1% cumulative** (the curve on the
+previous slide). "A curve is a sum, and a sum hides its parts." A good total can come from
+every position pulling its weight, or from two carrying six. Those are different systems
+with different futures, and only the split tells you which you have.
+
+**Text:** the book traded all eight with the same rule. **Four were built to revert and four
+were built as random walks, and the model was never told which.** Split by that fact and the
+answer is stark: the genuine reverters carried the result, and the random walks earned
+"what trading noise with a reversion rule always earns, which is nothing minus costs".
+
+**Callout:** "Attribution is the question of where the money came from, and it is the first
+thing to ask of any curve that looks good."
+- Here it's clean because the answer was built in. In a real market nobody hands you the
+  list, which is why slide 26 compared every half life to what noise would produce. That's
+  the closest a practitioner gets to this split.
+- The four random walks **were not neutral. They cost money** through turnover on positions
+  that had no reason to exist. A system that could exclude them would keep all of the
+  reverters' contribution, and the noise band is how it would try.
+
+**Implementation idea:** use the random-walk band from slide 26 (out of sample) as a
+per-instrument filter, i.e. only trade residuals whose half life beats noise.
+
+### Slide 37 — The system, *as it would run*
+
+"The loop is the centre. Production is everything around it." (The eight-stage table is at
+the top of this file.)
+
+**Callout:** "Eight stages, and the loop from four slides ago is stages three to seven." The
+two before it are where most real failures begin; the one after separates a running system
+from one "merely still switched on". Every parameter is written down before the first run
+(the **manifest**). Nothing is specific to residual mean reversion: "The architecture is the
+reusable part; the loop is the part that changes."
+
+### Slide 38 — In plain terms: *Sharpe ratio*, in sample and out of sample
+
+- **Short answer:** Sharpe = return ÷ the bumpiness of that return. High = steady gains; low
+  = the gains were there but the ride was rough, or mostly luck. **In sample** = the data
+  used to build the model. **Out of sample** = data the model never saw.
+- **Everyday picture:** two harbour routes take the same average time. One is smooth, the
+  other lurches between very fast and nearly stopped: same average, very different Sharpe.
+  And a route planned on last week's currents looks excellent on last week's currents; the
+  only test is next week's.
+- **Definitions:**
+  - **Sharpe ratio:** average return ÷ standard deviation of return. **Above 1 is usually
+    considered good after costs; above 2 is rare and deserves suspicion.**
+  - **In sample:** the fitting data. Results are always flattering because the model was
+    chosen to fit them.
+  - **Out of sample:** unseen data. "The only place a result can count as evidence."
+
+### Slide 39 — What the number becomes (interactive)
+
+"Twelve independent universes, each built and tested from scratch. Charge what you like per
+trade."
+
+**Image:** three columns of dots (one dot per universe), y-axis −2.1 to 3.3 Sharpe, with a
+mean line in each:
+
+| Column | Mean Sharpe | Universes positive |
+|---|---|---|
+| **In sample** (green) | **1.77** | 11 of 12 (one dot sits at ~0) |
+| **Held out** (blue) | **0.86** | 10 of 12 (two near −1.5 / −2) |
+| **Held out, after costs** (red, slider at 2 bp) | **0.62** | 8 of 12 |
+
+A slider runs costs from **no costs → 6 basis points**.
+
+**Readout:** each dot is a complete universe built and tested from scratch; nothing was
+selected. "The edge here is real. It is also about **half the size** the in sample number
+suggested, and costs take a further slice of what is left."
+
+**Callout:** "**The edge is real, and it is about half what the model claims.** That is the
+honest summary, and it is a far better outcome than most ideas reach."
+- In sample is positive almost everywhere, which sounds impressive until you remember it was
+  built on that data. The gap to held out isn't bad luck: "It is the portion of the in
+  sample result that was never available to anybody."
+- Push the cost slider: **at a few basis points per trade this model is close to a coin
+  flip**, with turnover it can't avoid, because the holding period is set by the half life
+  rather than chosen.
+
+**Why you were taught it this way:** published results almost never say which of the three
+columns they quote. The first is the largest and cheapest to produce; showing the others
+means giving up data and admitting a smaller number, "so the incentive runs entirely one
+way".
+
+### Slide 40 — In plain terms: what does a trade *cost*; what is a basis point?
+
+- **Short answer:** every trade costs the spread, commission, and the price moving against
+  you as you deal (slippage/impact). A **basis point** = 0.01%. Two bp on £1,000 = 20p.
+- **Everyday picture:** each move between moorings costs a small harbour fee plus a little
+  lost to the current. Trivial per move, but a strategy that moves constantly pays it
+  constantly, and if profit per move is also small, the fee can be most of the profit.
+- **Why it matters:** this model is unusually cost-sensitive. It trades often, profit per
+  trade is small by design, and the hedge basket moves every time the loadings are
+  re-estimated.
+- **Definitions:**
+  - **Basis point:** 0.01%; 100 bp = 1%.
+  - **Spread:** gap between the buy and sell price; you lose it every time you cross.
+  - **Turnover:** how much of the book is traded per period. High turnover = costs paid often.
+
+### Slide 41 — Why costs bite this model in particular
+
+| | |
+|---|---|
+| **The half life sets the turnover** | A residual that decays in 15 days implies a position changed every few days. You didn't choose that; the data did. |
+| **The edge is per unit of risk, not per trade** | Residual moves are small by construction, so cost per trade is large relative to what each trade tries to capture. |
+| **Hedging multiplies the trades** | Every position carries an offsetting leg, so one decision produces turnover on both sides of the book. |
+| **Costs are certain, the edge is not** | Cost is charged on every trade with no variance; the edge arrives only as an average across many trades. |
+
+**Callout:** "**This is where most statistical arbitrage attempts actually die, and it has
+nothing to do with the signal.**" The holding period falls out of the measured half life
+and dictates turnover. A faster-reverting residual gives a cleaner signal *and* a worse cost
+problem at the same time. "So the honest question is never whether the edge exists. It is
+whether **the edge per unit of turnover exceeds the cost per unit of turnover**, and that
+comparison has to be made before anything is deployed rather than discovered afterwards."
+
+**Why you were taught it this way:** costs are invisible in any backtest that doesn't
+deliberately model them. Gross results are easier to produce and are what get published,
+"so an entire layer of the problem simply disappears from view".
+
+**FX relevance:** majors have tight spreads, but a factor-neutral basket trades *every* pair
+in the universe (including wider crosses) every rebalance. Use per-pair realistic costs,
+not one flat number.
+
+### Slide 42 — In plain terms: what is *overfitting*?
+
+- **Short answer:** a model adjusted until it matches the past so closely it has memorised
+  the noise along with the pattern. It looks excellent on the data it was built from and
+  fails on anything new, because noise doesn't repeat.
+- **Everyday picture:** study the harbour for a month and, with a complicated enough rule,
+  you can predict every wave you saw. "Rule seventeen: on the third Tuesday, after a red boat
+  passes, the water rises." Perfect fit, meaningless, wrong next month.
+- **Definitions:**
+  - **Overfitting:** fitting the noise. The more settings you try, the more certain it
+    becomes.
+  - **Parameter:** a setting, e.g. a lookback length or entry threshold.
+  - **Search:** trying many combinations and keeping the best (tuning / optimisation).
+
+### Slide 43 — The tuning trap (interactive)
+
+"Every parameter combination, measured on the held out period."
+
+**Image:** histogram of **held-out Sharpe for all 108 parameter combinations** (different
+choices of components, entry, exit and lookback). The x-axis runs from −0.23 to 3.10, and bar
+height = how many configurations landed in that group. Bars cluster around 0.3–0.6 (tallest,
+~17) and again around 2.0–2.6, with a dashed line at the **average 1.60**. The rightmost bar
+(amber, ~22 configs) is the group containing the **best, 3.10**.
+
+**Readout:** every one of the 108 results was computed on the held-out period. The
+distribution is centred near **1.60**; the best reaches **3.10**. "Report that one and you are
+reporting the right hand edge of a distribution you generated yourself, not a property of the
+model. **The moment you searched this period, it stopped being held out.**" The amber bar isn't
+a discovery; it's the highest bar in a histogram, and the next period will draw a fresh one.
+
+(Note: the average here, 1.60, is on a different universe/period from slide 39's 0.86.)
+
+**Callout:** "This is the same machine as the overfitting lesson, applied to the one thing that
+was supposed to be protected from it."
+- The uncomfortable part: **the search feels like diligence.** You aren't fabricating
+  anything; you test carefully, compare honestly and pick the best, and the result is still a
+  number that won't repeat.
+- **The only defence is procedural, not statistical.** Decide parameters before the held-out
+  period is opened, write them down, and accept whatever comes back. If you can't resist
+  looking, you needed a **third period** you didn't know about.
+
+**Where this needs qualifying:** parameters *can* be chosen on the training data, using
+**cross-validation inside that period**. That's what training data is for. The rule is
+narrower: "The held out period answers one question once. Use it to compare fifty variants
+and you have converted your only honest test into another round of fitting."
+
+### Slide 44 — Two ways to arrive at the same chart
+
+"Both produce an equity curve. Only one of them means anything." (The two-column table,
+**Unfalsifiable vs Checkable**, is in the validation checklist at the top of this file.)
+
+**Callout:** "The right column is harder, slower, and produces smaller numbers. It is also the
+only version that tells you anything about tomorrow." Every item on the left has an innocent
+explanation, which is why this is difficult: "Nobody sets out to produce an unfalsifiable
+result. It happens one reasonable decision at a time."
+
+### Slide 45 — What this example was actually for
+
+**Headline:** "The model is not the point. *The order is the point.*"
+
+- Look back: a sentence became a universe; the universe was measured; the measurement
+  suggested a decomposition; the decomposition produced a residual; the residual was **tested
+  for predictiveness before any rule was written**; the rule was shaped by that test rather
+  than preference.
+- Then: validated on untouched data, charged realistic costs, repeated across many
+  independent universes so the answer was a distribution, not an anecdote.
+- **Quote:** "Every one of those steps existed to give the idea a chance to fail cheaply."
+- That's the craft. The technique is in a hundred papers and a few hundred lines; the
+  discipline is arranging the work so a bad idea reveals itself "early, on paper, rather than
+  late, in an account".
+- **Change the technique and the order stays the same:** universe, measurement, mechanism,
+  rule, held-out test, costs, repetition.
+
+### Slide 46 — What would happen next
+
+"If this model had survived, and it has not yet."
+
+| # | Stage | Confirms |
+|---|---|---|
+| 01 | **Paper trading** | The rule can be executed at all, and the data arrives when you assumed it would. |
+| 02 | **Burn-in, small size** | Live behaviour matches the record. At this Sharpe it needs many months to say anything. |
+| 03 | **Scaled size** | The edge survives the size. Residual trades are **capacity limited** (only so much money fits before your own trading moves the price), so this is where many stop working. |
+| 04 | **Monitoring** | It still works. Factor structure rotates, so the decomposition will change underneath it. |
+
+**Callout:** "The result on the previous slides is not a green light. It is permission to
+start the expensive part."
+- At the Sharpe this model achieves after costs, **distinguishing a real edge from noise
+  takes years rather than weeks**, so the honest answer arrives long after you'd like it.
+- The last stage is the one people skip: a model that isn't watched "will keep trading a
+  decomposition that stopped describing the market some time ago".
+
+**Rule of thumb (not from the slide):** the t-stat of a Sharpe S over T years ≈ S·√T. For
+S = 0.6 to reach t ≈ 2 you need about (2/0.6)² ≈ 11 years. That's why burn-in "takes years".
+
+### Slide 47 — Check yourself (quiz)
+
+**Q1. Why must the position be neutralised against the components?**
+- ✅ **Because otherwise the result measures the idea plus a large accidental bet on the whole
+  universe.**
+- ✗ To reduce the number of trades.
+- ✗ Because brokers require hedged positions.
+
+**Q2. A residual shows a short half life on the window used to estimate the factors. What does
+that prove?**
+- ✗ That the factor model is wrong.
+- ✅ **Very little, because a residual is orthogonal to those factors by construction and will
+  look mean reverting regardless.**
+- ✗ That it reverts and is tradeable.
+
+**Q3. The held-out result disappoints, so you test fifty parameter sets on it and report the
+best. What have you produced?**
+- ✗ A better model.
+- ✗ A valid out-of-sample result, since the data was still unseen at the start.
+- ✅ **The highest bar in a histogram whose centre sits well below it.**
+
+(The ticks are my answers from the lesson content; the quiz screenshot doesn't show the
+marked answers.)
+
+### Slide 48 — What to carry forward
+
+1. Most of what an instrument does is the group moving. The tradeable part is what's left
+   after that is removed.
+2. An exposure vector converts a statistical direction into a position you can actually
+   hedge.
+3. A residual looks mean-reverting by construction, so reversion is only evidence when
+   measured **outside the estimation window**.
+4. Measure whether the signal predicts anything **before** writing the rule, and let the
+   measurement shape the rule.
+5. In sample flatters, costs bite, and the held-out period answers one question once.
+
+**What this now lets you do:**
+- Separate any correlated universe into shared movement and instrument-specific movement.
+- Test whether a proposed signal predicts anything before building a strategy on it.
+- Read any published backtest by asking: **which period, which costs, and how many variants
+  were tried?**
+
+**The transferable part: the order, not the technique.** Nothing depended on this being mean
+reversion or on there being eight instruments. "So what changes when the idea is momentum,
+or carry, or something you noticed yourself last week?"
+
 ---
 
 ## Research ideas for this repo (running list)
@@ -985,5 +1329,13 @@ neutralised, final, P&L contribution) so every day can be audited like this.
   (e.g. currency-strength baskets) to see how much hidden USD / risk-on exposure they carry.
 - Test re-estimation frequency (daily / weekly / monthly) against the sawtooth
   trade-off.
+- Write the manifest (window, K rule, dead band, cap, cost per pair, re-estimation
+  frequency, held-out dates) **before** the first run, and reserve a held-out period plus a
+  third untouched period.
+- Report in-sample / held-out / held-out-after-costs separately, and run across
+  sub-universes (e.g. G10 majors vs crosses, or rolling start dates) to get a distribution.
+- Model costs per pair (majors vs crosses) and compute edge per unit of turnover vs cost per
+  unit of turnover.
+- Add P&L attribution by instrument and a noise-band filter to drop non-reverting residuals.
 
-*(To be extended as further slides arrive.)*
+
