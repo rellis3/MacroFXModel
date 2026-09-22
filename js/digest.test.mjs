@@ -29,16 +29,47 @@ t('the digest reads as five lines', () => {
 });
 console.log(`digest: ${n} groups, all passed`);
 
-t('the board prints the lines either side with their hit rates, and names the source', () => {
-  const d = { dateLabel: 'Tue 22 Sept', states: [], ranges: {},
-    board: [{ inst: 'GOLD', open: 4361.19, dp: 2, dn1: { price: 4327.61, hit: 45 }, dn2: { price: 4298.83, hit: 20 },
-              up1: { price: 4397.39, hit: 42 }, up2: { price: 4425.3, hit: 22 }, source: 'fitted-ladder', estimator: 'yz_10' }] };
-  const t = formatDigest(d, { html: false });
-  assert.match(t, /The board/);
-  assert.match(t, /GOLD\s+open 4361\.19 · below 4327\.61 \(45%\) → 4298\.83 \(20%\) · above 4397\.39 \(42%\) → 4425\.30 \(22%\)/);
-  assert.match(t, /fitted ladder yz_10/);
-  // a board row must be its own line, not folded into the heading
-  assert.ok(t.split('\n').some(l => l.trim().startsWith('GOLD')));
+t('the board: prices, and the Asia-conditioned side with its confidence', () => {
+  const g = { inst: 'GOLD', open: 4361.19, dp: 2, dn1: { price: 4327.61 }, dn2: { price: 4298.83 },
+              up1: { price: 4397.39 }, up2: { price: 4425.3 }, source: 'fitted-ladder', estimator: 'yz_10' };
+  // a wide Asia with a real conditioner -> a side, and high confidence
+  const wide = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    board: [{ ...g, asia: 0.58, read: { band: 'wide', asiaAtr: 0.58, up: 0.21, dn: 0.17, gap: 0.04, side: null, confidence: 'high', finding: true } }] }, { html: false });
+  assert.match(wide, /GOLD\s+4361\.19 · down 4327\.61 → 4298\.83 · up 4397\.39 → 4425\.30/);
+  assert.match(wide, /Asia wide \(0\.58 ATR\)/);
+  assert.match(wide, /neither side favoured, 21% up vs 17% down from here/);
+  // with the other tercile supplied, a quiet-from-here day is named as such
+  const spent = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    board: [{ ...g, asia: 0.58, read: { band: 'wide', asiaAtr: 0.58, up: 0.21, dn: 0.17, side: null, confidence: 'high', finding: true, alt: { up: 0.51, dn: 0.45 } } }] }, { html: false });
+  assert.match(spent, /the day has largely spent itself overnight: both sides unlikely, 21% up vs 17% down from here \(after a narrow Asia they are 51% \/ 45%\)/);
+  // a clear tilt names the side and prints both odds
+  const tilt = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    board: [{ ...g, asia: 0.2, read: { band: 'narrow', asiaAtr: 0.2, up: 0.51, dn: 0.2, gap: 0.31, side: 'up', tilt: 'clear', confidence: 'high', finding: true } }] }, { html: false });
+  // a tilt is reported with its size and marked untested; the confidence on the
+  // line belongs to the wide/narrow difference, which is the part that WAS tested
+  assert.match(tilt, /51% up vs 20% down from here; a tilt ▲ up \(31pp, untested on its own\)/);
+  assert.match(tilt, /\[tested: the wide\/narrow difference is a finding\]/);
+  // an instrument whose conditioner is not a finding says so
+  const weak = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    board: [{ ...g, asia: 0.2, read: { band: 'narrow', asiaAtr: 0.2, up: 0.48, dn: 0.35, gap: 0.13, side: 'up', tilt: 'clear', confidence: 'low', finding: false } }] }, { html: false });
+  assert.match(weak, /\[the wide\/narrow difference is not a finding here\]/);
+  // a 5pp split is called slight, never "bullish"
+  const slight = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    board: [{ ...g, asia: 0.19, read: { band: 'narrow', asiaAtr: 0.19, up: 0.505, dn: 0.451, gap: 0.054, side: 'up', tilt: 'slight', confidence: 'high', finding: true, alt: { up: 0.214, dn: 0.171 } } }] }, { html: false });
+  assert.match(slight, /a slight tilt ▲ up \(5pp, untested on its own\)/);
+  assert.ok(!/bullish|bearish/i.test(slight));
+  // a middle Asia says so rather than inventing a side
+  const mid = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    board: [{ ...g, asia: 0.36, read: { band: 'middle', asiaAtr: 0.36, up: null, dn: null, side: null, confidence: 'none', why: 'an ordinary Asia' } }] }, { html: false });
+  assert.match(mid, /Asia middle \(0\.36 ATR\) — an ordinary Asia/);
+  // the unconditional hit rates are NOT printed -- they barely move day to day
+  assert.ok(!/\(45%\) →/.test(wide));
   // no board, no section
   assert.ok(!formatDigest({ dateLabel: 'x', states: [], ranges: {} }, { html: false }).includes('The board'));
+});
+
+t('a lean is never printed without the record behind it', () => {
+  const t1 = formatDigest({ dateLabel: 'x', states: [], ranges: {},
+    leanRecord: { n: 31, hits: 19, rate: 0.613, lo: 0.441, hi: 0.784, clears: false } }, { html: false });
+  assert.match(t1, /right 19 of 31 at the next close \(61%, interval 44-78%\) — not yet clear of a coin flip/);
 });

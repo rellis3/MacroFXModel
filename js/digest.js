@@ -55,12 +55,46 @@ export function formatDigest(d, { html = true } = {}) {
   // 4b. the board: the lines either side, so the lines do not need the page.
   // Only the fitted ladder's medians and 75ths, with how often each is reached --
   // "reached on 45% of days" is a base rate (T7b), never a suggestion to trade there.
+  // 4b. The board. The prices are the fitted ladder; the READ is the Asia
+  // conditioner (T7b): Asia is finished by 07:00, and a wide or narrow Asia moves
+  // the odds of tagging each side after 07:00 by up to 29pp on gold. That is the
+  // only part of this that varies day to day -- the unconditional hit rates barely
+  // move, which is why they are not printed. "Side" means which line is likelier to
+  // be TAGGED, never which way the day closes: direction after the fact is a coin
+  // flip on everything this desk has scored.
   if (d.board?.length) {
     const fmt = (v, dp) => v == null ? '?' : Number(v).toFixed(dp);
-    const side = (l, dp) => l ? `${fmt(l.price, dp)}${l.hit != null ? ` (${l.hit}%)` : ''}` : '—';
-    const rows = d.board.map(r => `  ${disp(r.inst).padEnd(8)} open ${fmt(r.open, r.dp)} · below ${side(r.dn1, r.dp)} → ${side(r.dn2, r.dp)} · above ${side(r.up1, r.dp)} → ${side(r.up2, r.dp)}`);
+    const pc = v => v == null ? '?' : Math.round(v * 100) + '%';
+    const CW = { high: 'the wide/narrow difference is a finding', low: 'weak', none: '' };
+    const NL = '\n';
+    const rows = d.board.map(r => {
+      const head = `  ${disp(r.inst).padEnd(8)} ${fmt(r.open, r.dp)} · down ${fmt(r.dn1?.price, r.dp)} → ${fmt(r.dn2?.price, r.dp)} · up ${fmt(r.up1?.price, r.dp)} → ${fmt(r.up2?.price, r.dp)}`;
+      const k = r.read; if (!k) return head;
+      const asiaTxt = `Asia ${k.band}${k.asiaAtr != null ? ` (${Number(k.asiaAtr).toFixed(2)} ATR)` : ''}`;
+      if (k.up == null || k.dn == null) return `${head}${NL}           ${asiaTxt} — ${k.why ?? 'no read from here'}`;
+      // both sides against what the OTHER tercile would have given: a wide Asia
+      // saying 21%/17% against 51%/45% is the useful read even with no side favoured
+      const vs = k.alt ? ` (after a ${k.band === 'wide' ? 'narrow' : 'wide'} Asia they are ${pc(k.alt.up)} / ${pc(k.alt.dn)})` : '';
+      const odds = `${pc(k.up)} up vs ${pc(k.dn)} down from here${vs}`;
+      // the confidence line is about how much of the day is left, which is what was
+      // tested; the tilt is reported with its size and no interval, because the
+      // up-vs-down split never had one
+      const note = k.finding ? ` [tested: ${CW[k.confidence] ?? k.confidence}]` : ' [the wide/narrow difference is not a finding here]';
+      if (k.side == null) {
+        const spent = k.alt && (k.up + k.dn) < (k.alt.up + k.alt.dn) - 0.2;
+        return `${head}${NL}           ${asiaTxt} — ${spent ? 'the day has largely spent itself overnight: both sides unlikely' : 'neither side favoured'}, ${odds}${note}`;
+      }
+      const word = k.side === 'up' ? '▲ up' : '▼ down';
+      const size = k.tilt === 'slight' ? 'a slight tilt' : 'a tilt';
+      return `${head}${NL}           ${asiaTxt} — ${odds}; ${size} ${word} (${Math.abs(Math.round(k.gap * 100))}pp, untested on its own)${note}`;
+    });
     const src = d.board[0]?.source === 'fitted-ladder' ? ` (fitted ladder${d.board[0].estimator ? ' ' + d.board[0].estimator : ''}, the lines the bots trade)` : '';
-    L.push(`${b('The board')} — open = London midnight; % = how often that line is reached${src}:` + '\n' + rows.join('\n'));
+    L.push(`${b('The board')} — open, then the lines either side${src}. The read is which side is likelier to be TAGGED after 07:00 given Asia, not which way it closes:` + '\n' + rows.join('\n'));
+  }
+  // 4c. our own lean, never without its record
+  if (d.leanRecord) {
+    const R = d.leanRecord;
+    L.push(`${b('Our record')}: the page's direction tags have been right ${R.hits} of ${R.n} at the next close (${Math.round(R.rate * 100)}%, interval ${Math.round(R.lo * 100)}-${Math.round(R.hi * 100)}%) — ${R.clears ? 'clear of a coin flip' : 'not yet clear of a coin flip'}. Read every lean on the page against that number.`);
   }
   // 5. yesterday scored
   const y = d.yesterday;

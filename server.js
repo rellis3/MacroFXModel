@@ -139,7 +139,8 @@ import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
 import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
 import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
-import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
+import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';
+import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js';   // T7b: the band clock and the Asia conditioner, for the digest's board   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
@@ -14173,6 +14174,58 @@ setTimeout(() => _refreshWeekMap().catch(e => console.error('[weekmap] first pas
 const _DIGEST_INSTR_SYM = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', USDJPY: 'USD_JPY', AUDUSD: 'AUD_USD', USDCAD: 'USD_CAD', GOLD: 'XAU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD' };
 const _DIGEST_UNIT_MULT = { EURUSD: 10000, GBPUSD: 10000, AUDUSD: 10000, USDCAD: 10000, USDJPY: 100, GOLD: 1, NQ: 1, SPX500: 1 };
 let _digestSentDay = null;
+// Asia range (00:00-06:00 London) for today, in ATRs -- the conditioner T7b
+// measured. The study bucketed sessions into terciles of exactly this number, and
+// stores the cut-points, so a live morning can be placed against the same
+// boundaries. Returns { atr, band: 'narrow'|'middle'|'wide' } or null.
+async function _asiaRangeToday(sym, atr) {
+  if (!(atr > 0)) return null;
+  const mid = _btLondonMidnightSec();
+  const end = Math.min(mid + 6 * 3600, Math.floor(Date.now() / 1000));
+  if (end <= mid + 1800) return null;                       // too early to judge
+  const bars = await _btFetchM1Range(sym, mid, end).catch(() => null);
+  if (!bars?.length) return null;
+  let hi = -Infinity, lo = Infinity;
+  for (const b of bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
+  if (!(hi > -Infinity) || !(lo < Infinity)) return null;
+  return { atr: (hi - lo) / atr, high: hi, low: lo };
+}
+// Which side is likelier to be TAGGED from here, given Asia. Never a close-direction
+// call: the measured quantity is "was this line reached after 07:00", and direction
+// after the fact is a coin flip on everything this desk has scored. Confidence is
+// stated as what it is -- confidence that the two sides' tag odds differ, with the
+// study's own interval behind it.
+function _boardSide(inst, asiaAtr) {
+  const P = _BAND_REACH_PARAMS?.[inst]; const A = P?.asia, C = P?.asiaCuts;
+  if (!A || !C || asiaAtr == null) return null;
+  const band = asiaAtr < C.low ? 'narrow' : asiaAtr >= C.high ? 'wide' : 'middle';
+  // bandReachParams.js stores the trimmed shape ({low, high, finding}); the study's
+  // own JSON keeps the full bootstrap objects. Read either, so the digest cannot
+  // silently lose the read when the generated file is refreshed.
+  const prob = (o, which) => { const v = o?.[which]; return typeof v === 'number' ? v : (v?.p ?? null); };
+  const pick = o => band === 'narrow' ? prob(o, 'low') ?? prob(o, 'lowAsia') : band === 'wide' ? prob(o, 'high') ?? prob(o, 'highAsia') : null;
+  const up = pick(A.upMed), dn = pick(A.dnMed);
+  if (up == null || dn == null) return { band, asiaAtr, up: null, dn: null, side: null, confidence: 'none',
+    why: 'an ordinary Asia — the conditioner only separates the wide and narrow thirds, so today it says nothing' };
+  const gap = up - dn;
+  const finding = !!(A.upMed?.finding || A.dnMed?.finding);
+  // CONFIDENCE BELONGS TO THE TESTED QUANTITY, which is how much of the day is
+  // left after a wide or narrow Asia -- that difference was bootstrapped and is a
+  // finding on five of eight instruments. The up-vs-down SPLIT was never tested
+  // separately and is ~5pp wide everywhere, so it is reported as a tilt with its
+  // size and explicitly carries no interval. Borrowing the conditioner's
+  // confidence for a direction would be exactly the fake conviction this desk
+  // refuses to print.
+  const confidence = finding ? 'high' : 'low';
+  const tilt = Math.abs(gap) < 0.05 ? null : Math.abs(gap) < 0.10 ? 'slight' : 'clear';
+  const side = tilt ? (gap > 0 ? 'up' : 'down') : null;
+  // what the OTHER tercile would have said, so a reader can see the size of the
+  // conditioner rather than just today's two numbers
+  const otherWhich = band === 'wide' ? 'low' : 'high';
+  const other = { up: prob(A.upMed, otherWhich) ?? prob(A.upMed, otherWhich + 'Asia'), dn: prob(A.dnMed, otherWhich) ?? prob(A.dnMed, otherWhich + 'Asia') };
+  const alt = (other.up != null && other.dn != null) ? other : null;
+  return { band, asiaAtr: +asiaAtr.toFixed(2), up, dn, gap: +gap.toFixed(3), side, tilt, confidence, finding, alt };
+}
 async function _buildDigest() {
   const now = new Date(); const day = now.toISOString().slice(0, 10);
   const london = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: '2-digit', month: 'short' }).format(now);
@@ -14204,17 +14257,26 @@ async function _buildDigest() {
   try {
     const brief = await computeDailyBrief();
     if (brief?.ok) {
-      board = Object.keys(_DIGEST_INSTR_SYM).map(inst => {
-        const b = brief.instruments?.[inst]; const L = b?.levels; if (!b?.session_open || !L) return null;
+      board = [];
+      for (const inst of Object.keys(_DIGEST_INSTR_SYM)) {
+        const b = brief.instruments?.[inst]; const L = b?.levels; if (!b?.session_open || !L) continue;
         const lv = k => L[k]?.price != null ? { price: L[k].price, hit: L[k].hit_pct ?? null } : null;
-        return { inst, open: b.session_open, dp: b.dp ?? 5,
+        const asia = await _asiaRangeToday(_DIGEST_INSTR_SYM[inst], atrBy[inst]).catch(() => null);
+        board.push({ inst, open: b.session_open, dp: b.dp ?? 5,
                  dn1: lv('ol_med'), dn2: lv('ol_75'), up1: lv('oh_med'), up2: lv('oh_75'),
-                 source: L.ol_med?.source ?? null, estimator: L.ol_med?.estimator ?? null };
-      }).filter(Boolean);
+                 source: L.ol_med?.source ?? null, estimator: L.ol_med?.estimator ?? null,
+                 asia: asia ? +asia.atr.toFixed(2) : null, read: _boardSide(inst, asia?.atr ?? null) });
+      }
     }
   } catch (e) { console.warn('[digest] board unavailable:', e.message); }
-  const text = _formatDigest({ dateLabel: london, regime: _macroRegime.now, weekUnusual, states, prints, ranges, yesterday, board }, { html: true });
-  return { day, text, board, ranges: Object.values(ranges).map(r => ({ inst: r.inst, atr: r.atr, unit: r.unit, expectedAtr: r.expectedAtr, expected: r.expected, drivers: r.drivers.map(d => d.label), realisedAtr: null })) };
+  // The page's own direction tag, and how it has actually scored -- the only
+  // honest confidence number this desk owns. Printed together so a lean is never
+  // read without its record.
+  let leanRecord = null;
+  try { const led = await _readLedger(); const sm = _ledgerSummary(led); const o = sm.overall?.h1;
+    if (o?.n) leanRecord = { n: o.n, hits: o.hits, rate: o.hitRate, lo: o.hitRateLo, hi: o.hitRateHi, clears: o.clearsCoinFlip === 'yes' }; } catch { /* no ledger line */ }
+  const text = _formatDigest({ dateLabel: london, regime: _macroRegime.now, weekUnusual, states, prints, ranges, yesterday, board, leanRecord }, { html: true });
+  return { day, text, board, leanRecord, ranges: Object.values(ranges).map(r => ({ inst: r.inst, atr: r.atr, unit: r.unit, expectedAtr: r.expectedAtr, expected: r.expected, drivers: r.drivers.map(d => d.label), realisedAtr: null })) };
 }
 async function _sendDigest({ dry = false } = {}) {
   const d = await _buildDigest();

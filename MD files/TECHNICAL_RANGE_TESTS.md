@@ -369,3 +369,23 @@ estimator; the drawer prints the working (`4298.8 = 4361.19 − 1.43%, fitted
 ladder yz_10`). The incumbent `oh_median`/`ol_75` and the drift-adjusted
 `oh_v2_*` remain in `/api/vol-forecast` for the archive and are read by nothing
 user-facing.
+
+### T7b addendum (2026-09-22): the Asia conditioner, and what it is NOT
+
+Re-run storing the tercile cut-points so a live 07:00 can be placed against the
+same boundaries the study used (`asiaCuts` per instrument, e.g. gold 0.31 / 0.44
+of ATR). The digest's board uses them.
+
+**What the conditioner says, and it is large.** After a WIDE Asia the odds of
+tagging either band after 07:00 collapse: gold 51%/45% (narrow) → 21%/17%
+(wide); AUD/USD 48%/40% → 14%/13%; USD/JPY 42%/40% → 15%/14%. A finding on
+five of eight instruments. Overnight range tells you **how much of the day is
+left**.
+
+**What it does NOT say.** The up-minus-down gap barely moves in either tercile:
+gold +5pp narrow, +4pp wide; AUD/USD +8pp / +1pp; EUR/USD −5pp / 0pp; USD/CAD
+−2pp / +4pp. Nothing above 9pp anywhere, and the split was never bootstrapped
+separately. So the board reports a tilt with its size and marks it untested,
+and the confidence on the line belongs to the wide/narrow difference — the part
+that was tested. Attaching the conditioner's interval to a direction would be
+borrowed credibility, which is the one thing a bias sheet must not do.

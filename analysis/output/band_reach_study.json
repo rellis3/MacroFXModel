@@ -1,5 +1,5 @@
 {
- "ranAt": "2026-09-22T11:12:17.061Z",
+ "ranAt": "2026-09-22T17:30:44.701Z",
  "checkpoints": [
   "07:00",
   "08:00",
@@ -662,6 +662,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.2547,
+    "high": 0.3498,
+    "n": 2507
    }
   },
   "GBPUSD": {
@@ -1315,6 +1320,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.241,
+    "high": 0.3345,
+    "n": 2507
    }
   },
   "USDJPY": {
@@ -1968,6 +1978,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.36,
+    "high": 0.517,
+    "n": 2507
    }
   },
   "AUDUSD": {
@@ -2621,6 +2636,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.3892,
+    "high": 0.5444,
+    "n": 2507
    }
   },
   "USDCAD": {
@@ -3274,6 +3294,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.2625,
+    "high": 0.3628,
+    "n": 2507
    }
   },
   "GOLD": {
@@ -3927,6 +3952,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.3117,
+    "high": 0.4364,
+    "n": 2494
    }
   },
   "NQ": {
@@ -4580,6 +4610,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.2044,
+    "high": 0.3125,
+    "n": 2496
    }
   },
   "SPX500": {
@@ -5233,6 +5268,11 @@
      },
      "finding": false
     }
+   },
+   "asiaCuts": {
+    "low": 0.2078,
+    "high": 0.3245,
+    "n": 2494
    }
   }
  }
