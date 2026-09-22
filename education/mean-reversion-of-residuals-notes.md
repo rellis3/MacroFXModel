@@ -9,66 +9,107 @@
 > to show the relationship clearly. Not taken from any market, account or track
 > record."* Numbers quoted below are from that simulated 8-instrument universe.
 
-**Status:** slides 1–17 logged. Remaining slides to follow.
+**Status:** slides 1–33 logged. Remaining slides to follow.
 
 ---
 
-## The system in one paragraph (so far)
+## The system in one paragraph
 
-Take a universe of related instruments. Most of their movement is shared (a common
-driver). Use PCA to find the shared drivers, keep only the components that beat a
-pure-noise baseline, describe each instrument by its **exposure vector** (its
-loadings on those components), and strip that shared movement out. What is left —
-the **residual** — is the instrument-specific part. The trade idea is that the
-residual mean-reverts ("instruments that drift away from the group tend to come
-back"), and it can be traded without taking a view on the group.
+Take a universe of related instruments. Most of their movement is shared (common
+drivers). Every day, on a rolling window, use PCA to find the shared drivers and keep
+only the components that beat a pure-noise baseline (K = 2 in the example). Strip that
+shared movement out of each instrument to leave its **residual**, add the residual up
+over time, and measure how far it has strayed as a z-score. Lean against the stretch in
+proportion to it (with a dead band near zero and a cap), size by inverse volatility,
+then **project the whole book's weights so its exposure to every kept component is
+exactly zero**. What is left is a bet on residuals alone: "instruments that drift away
+from the group tend to come back", traded without taking a view on the group.
 
-## Build steps extracted so far
+## The model in full (slide 31)
 
-1. **Define the universe** and measure how independent its members really are
-   (average pairwise correlation). High correlation = mostly one bet.
-2. **Run PCA** on the instruments' returns; get variance explained per component
-   (scree) and the running total.
-3. **Choose K (number of components to remove) against a noise baseline** — decompose
-   many sets of pure-noise series of the same count and length; keep only components
-   whose variance share is above the noise band (5th–95th percentile). Do **not** pick
-   K off an "elbow".
-4. **Build each instrument's exposure vector** — its loadings on the K kept components,
-   in fixed order.
-5. **Compute each instrument's residual:** actual return − Σ(loading × factor return) over the
-   K kept factors. Cumulate it into a residual series.
-6. **Measure reversion per instrument** (half-life of the cumulative residual, ~15 days for
-   instrument A in the example). Drop instruments whose residual doesn't revert.
-7. **Hedge the trade:** go long/short the stretched instrument and at the same time hold a
-   basket of the others, weighted so the book's exposure Σ wᵢβᵢ to every kept factor is
-   ~0. What's left is a position in the residual only (basket construction in later
-   slides).
-8. **Test the hedge using the component's working name:** e.g. a PC1-neutral book should
-   show a market beta near zero against a market proxy.
-9. **Re-estimate on a rolling basis** — components and vectors are estimates from a
-   finite window and they drift/rotate.
+1. **Estimate:** on a rolling window, standardise returns and take the leading
+   components as the common drivers.
+2. **Isolate:** remove each instrument's factor exposure to leave the residual, then
+   measure its displacement from its own average.
+3. **Position:** lean against the displacement in proportion to it, capped for risk
+   (not because the pull fades), sized by inverse volatility.
+4. **Neutralise:** remove the book's remaining exposure to the components so the
+   position is a bet on residuals alone.
 
-## Rules and warnings (so far)
+## The loop, as it runs (slide 32, transcribed exactly)
+
+```
+for each day t, once 120 days of history exist:
+
+window   = returns of all 8 instruments over the last 120 days
+V, R     = decompose(window, K=2)      // components and residuals, estimated fresh
+for each instrument i:
+  c      = cumulative sum of R[i]      // the residual path
+  z[i]   = (last(c) - mean(c)) / sd(c) // how far it has strayed, standardised
+  target = -z[i]                       // lean against the displacement
+  if |z| < 0.2: target = 0             // dead band, no trade near home
+  if |z| > 1.5: target = +/- 1.5       // cap, bought for risk not because the pull fades
+  w[i]   = target / sd(instrument i)   // size by inverse volatility
+for each component k in 1..K:
+  w      = w - V[k] * (V[k] . w)       // project out the factor exposure
+w        = w / sum(|w|)                // gross weight of exactly one
+turnover = sum(|w - w_yesterday|)
+pnl      = (w . returns[t+1]) - turnover * cost   // what happened next, minus what it cost
+equity   = equity * (1 + pnl)
+```
+
+**Parameters in the example:** window 120 days · K = 2 (chosen by the noise band) ·
+dead band |z| < 0.2 · cap |z| = 1.5 · re-estimated every day · gross weight 1 · cost
+2 bp per unit of turnover.
+
+**Implementation notes for our version:**
+- `V[k]` must be **unit-length, mutually orthogonal** component vectors for the projection
+  line to zero the exposure exactly. That is true of PCA eigenvectors. If we ever use
+  hand-picked factors (e.g. USD, risk-on) instead, use the general projection
+  `w − B(BᵀB)⁻¹Bᵀw`.
+- Signal on day t, P&L on `returns[t+1]`. There is no look-ahead as long as the window
+  ends at t.
+- `R` comes from the same window `V` was fitted on. That's the source of the
+  "manufactured reversion" trap (slides 25–26), so validate out of sample.
+
+## Rules and warnings
 
 - Shared movement is **not** the opportunity; it is what stands between you and it.
 - The residual is small, hidden, and "where the entire trade lives".
 - K is the **single most consequential setting**. Too few → real common movement
   leaks into the residual and looks like opportunity. Too many → you remove the thing
-  you wanted to trade.
+  you wanted to trade. Choose it against a noise band, not an elbow.
 - Hedging against noise components removes signal along with it.
 - Components are **directions, not causes**; **estimated, not given**; **rotate over
-  time**; **unnamed**. Never build logic on what you *think* a component represents
-  ("PC1 = the market").
+  time**; **unnamed**. Never build logic on what you *think* a component represents.
+- A name for a component is a **hypothesis kept only so the hedge can be checked**.
+- The **sign of a PC is arbitrary**. Rely on the grouping, never on "PC2 positive = X".
+- A component dominated by a single instrument (like PC3 here) is noise, not structure.
 - Counting positions says nothing about diversification; look at how spread out the
   exposure vectors are. Similar vectors = one position held N times.
-- A component dominated by a single instrument (like PC3 here) is noise, not structure.
-- The **sign of a PC is arbitrary**. Rely on the grouping, never on "PC2 positive = X".
-- A name for a component is a **hypothesis kept only so the hedge can be checked**.
-- A residual that doesn't revert is not a trade, however far it has strayed.
 - **Loading ≠ exposure.** Loading belongs to the instrument; exposure = Σ position ×
   loading belongs to you, and it's the only lever you control.
-- Every position is a bundle of factor exposures you hold whether you chose them or not.
-  Only a deliberately factor-neutral basket isolates the residual.
+- **Dollar neutral ≠ beta neutral ≠ factor neutral.** Only factor neutral leaves a pure
+  residual bet. Beta neutral in a 2-factor world is "a sector bet in a market-neutral
+  costume".
+- **A hedge is a measurement and goes stale.** Nothing alerts you; the book still reports
+  itself as neutral. Re-estimate often enough to track the change, and no more often
+  than that.
+- **Hedge the book, not each position.** Net first, then hedge the remainder. It's cheaper
+  and carries less estimation error. Judge a new position by what it does to the book's
+  net exposure.
+- **A short in-sample half-life is not evidence.** A de-meaned random walk always looks
+  mean-reverting in a finite window, and residuals are forced towards zero by
+  construction. Compare against a random-walk band and test out of sample.
+- Half-life is a rough scale for holding period and cost budget, **not a parameter to
+  optimise**.
+- Prove the displacement predicts the next move (the bucket test, slide 28) before
+  writing any rule.
+- Size in proportion to displacement, not with an on/off threshold. The cap is a
+  deliberate risk choice that gives up some edge.
+- An **unhedged residual trade is a directional bet in a statistical costume**. You'll
+  learn nothing from its P&L either way.
+- Construction is not validation. Everything up to slide 31 is construction.
 
 ---
 
@@ -498,6 +539,434 @@ everything that moves with it."
 - "Nothing in this act is specific to mean reversion. It is how any position in a correlated
   universe is turned into a position in one thing."
 
+### Slide 18 — The factor neutral *position* (interactive)
+
+"One instrument held, the basket that neutralises it, and how many components to remove."
+
+**Image, left: "Exposure to each component"**, PC1–PC4, red bar = before hedging, green =
+after (a flat marker on the line means exactly zero). Before: PC1 ≈ +0.4, PC2 ≈ −0.5,
+PC3 ≈ +0.25, PC4 ≈ +0.33. After neutralising 2: PC1 and PC2 are **0**, PC3 and PC4 are
+unchanged.
+
+**Image, right: "The position after neutralising 2 components":** A is a tall blue bar
+(the unit long, ≈ +1). The hedge basket is spread across the other seven: B ≈ −0.45,
+D ≈ +0.15, E ≈ −0.33, G ≈ −0.28, H ≈ −0.07, with C and F ≈ 0. Buttons pick which
+instrument is held (A–H), and a slider sets how many components are neutralised (at 2).
+
+**Readout:** a unit position in A carries exposure to every component. Removing the first
+2 leaves exposure of **−0.00, 0.00** on them (exactly zero) and the rest untouched. The
+hedge spans the other seven instruments, though **only 5 carry a weight large enough to
+matter**. It is *not* a short of the market. It is a specific basket, computed from the
+loadings, that cancels each factor in turn. **Realised volatility falls from 1.00 to 0.51**
+(standardised), "because most of the volatility was never the residual".
+
+**Callout:** "The hedge is a projection. The position is a vector, each component is a
+direction, and the hedged position is what is left after removing its shadow along each
+unwanted direction." So each instrument's hedge weight is set by how much it loads on the
+components being removed. Heavy market-loaders get shorted heavily; barely-loading ones
+are barely touched.
+
+Moving the slider:
+- **Remove 1:** cancels the market and leaves the sector bet in.
+- **Remove 2:** cancels both.
+- **Remove 3:** starts to eat into the residual itself, because PC3 is mostly noise and
+  neutralising noise means neutralising some of your signal.
+
+The scree plot is the justification for how many.
+
+**Maths:** hedged w = w − Σₖ Vₖ (Vₖ · w). This is line 11 of the loop.
+
+### Slide 19 — In plain terms: what is *beta*; dollar neutral vs beta neutral?
+
+- **Short answer:** beta = how much an instrument moves per unit the market moves (beta
+  1.2 means it moves 20% more than the market). **Dollar neutral** = sold as much money
+  as bought. **Beta neutral** = the betas cancel, so the market itself can't move your
+  position.
+- **Everyday picture:** boat 1 rises 1.2 m per metre of tide, boat 2 rises 0.8 m. Long one
+  and short the other in equal money is dollar neutral, but the tide still moves you
+  (1.2 − 0.8 ≠ 0). To be beta neutral, short **1.5** of boat 2 for every 1 of boat 1
+  (1.5 × 0.8 = 1.2), so the tide effect cancels.
+- **Why it matters:** the next slide hedges the same position three ways. All are
+  "hedged", and they leave very different risks behind.
+- **Definitions:**
+  - **Beta:** sensitivity to the market, or to any single named factor.
+  - **Dollar neutral:** equal money long and short. Says nothing about risk.
+  - **Beta neutral:** market sensitivity cancels. Says nothing about any second factor.
+  - **Factor neutral:** every measured factor cancels. What remains is residual.
+
+### Slide 20 — Three hedges, three *different bets* (interactive)
+
+**Image:** three panels for a long position in **E**. Each has bars for the beta left on
+F1 and F2 (as a share of the unhedged position's own beta) plus a tall column showing
+what share of the position's variance is still explained by factors.
+
+| Hedge | F1 beta left | F2 beta left | Variance still factor |
+|---|---|---|---|
+| **Dollar neutral** (short equal value of the others) | **13%** | **−101%** | **28%** |
+| **Beta neutral** (short the market by the position's beta) | 0% | **−87%** | **23%** |
+| **Factor neutral** (remove each estimated component) | 0% | 0% | **0%**, nothing left |
+
+**Readout:** dollar neutral still leaves 13% of the original market beta, "because equal
+value is not equal exposure". Beta neutral removes the market but leaves the second
+factor at 87% of its size, so 23% of the variance is still factor. Only factor neutral
+leaves 0%. "All three are called hedged. They are three different bets, and only one of
+them is a bet on the residual."
+
+**Callout:**
+- **Equal value is not equal exposure.** A high-beta instrument hedged with equal value of
+  low-beta ones is still long the market. Dollar neutrality is a statement about capital,
+  not risk.
+- **Beta neutrality fixes the first factor and stops.** If PC2 is a sector or a rate, the
+  beta-neutral position is "a sector bet in a market neutral costume".
+- **Factor neutral** is the only one whose remaining variance is residual. It is also the
+  only one whose construction depends on the decomposition being right, which is why the
+  scree and loading slides are not preamble.
+
+**FX relevance:** a "dollar neutral" FX basket (e.g. long AUD, short equal notional of
+other USD pairs) still carries risk-on and commodity factors. The same trap applies.
+
+### Slide 21 — A hedge goes wrong *on its own* (interactive)
+
+"Pick how often it is re-sized, and watch what the book carries in between."
+
+**Image, top strip: "The cause"**, a yellow S-curve of the loading the market actually has
+for this instrument: **0.96 at the start, 1.57 by the end**. Flat, then a smooth rise
+mid-sample, then flat again.
+
+**Image, lower panel: "The consequence"**, the exposure the hedge no longer covers (zero =
+fully hedged) over the same three and a half years. The red line (the chosen policy,
+**Never**) follows the S-curve up to ~0.59 and stays there. Grey lines (the other four
+policies) show a **sawtooth**: exposure builds, re-sizing snaps it back, and it builds
+again, mostly staying under ~0.2.
+
+Buttons: **Never · Yearly · Quarterly · Monthly · Daily.**
+
+**Readout (Never, sized once at the start):** at its worst the book carried **0.59** of
+market exposure it never chose. The single worst day cost **−1.71%** from that alone, and
+it added **7.5% annual volatility** to a book that was supposed to have none. Re-sized
+**daily** it stays near **0.20**. That floor isn't slack in the schedule; it is the error
+in the estimate itself, which no amount of re-estimating removes. **Monthly and daily are
+almost the same.**
+
+**Callout:**
+- "A hedge is not a thing you own. It is a measurement, and measurements go stale."
+  Business mix, index membership, rate regimes change, and quietly it stops being true.
+- **"The danger is that nothing tells you."** The book still reports itself as factor
+  neutral, because the report uses the same stale number. There's no alert, error or bad
+  fill, just a bet growing in the background until the day the market moves a long way.
+- That is the whole argument for **re-estimating on a rolling basis**: "the hedge is only
+  as current as its last measurement".
+- How often is a real decision. Never → yearly helps enormously; yearly → quarterly helps
+  a lot; monthly → daily barely helps, because what's left is measurement error, not
+  staleness. **"Re-estimate often enough to track the change, and no more often than
+  that."**
+- The lesson re-estimates daily because it's cheap on 8 instruments. On a large book it's
+  a genuine trade-off, and the sawtooth is how you'd decide.
+
+### Slide 22 — In plain terms: what is a *book*?
+
+- **Short answer:** all the positions you hold at once, treated as a single thing. Its
+  risk is *not* the sum of each position's risk, because positions can offset each other.
+- **Everyday picture:** long one boat that rises with the tide and short another that also
+  rises with it, and you're already partly hedged without doing anything. Together the
+  tide barely matters; look at either alone and it is your biggest risk.
+- **Definitions:**
+  - **Book:** the whole portfolio, considered together.
+  - **Net exposure:** the book's total sensitivity to a factor after longs and shorts
+    have offset.
+  - **Gross:** the total size of all positions ignoring sign. What you pay costs on.
+
+### Slide 23 — Hedging the book, *not the position* (interactive)
+
+**Image, left: "Legs added up, against the net"**, for PC1 and PC2. Grey = the sum of each
+leg's exposure ignoring sign; red = the book's actual net exposure. PC1: grey ≈ 1.31, red
+≈ 0.71. PC2: grey ≈ 1.7, red ≈ 1.1.
+
+**Image, right: "The one basket that neutralises the book":** green bars per instrument.
+Large negatives on A, B, E and G; a positive on D; small on C, F and H.
+
+Toggle buttons choose positions. Shown selected: **A long, B long, D short, F long**
+(C, E, H long and G short available).
+
+**Readout:** 4 positions held. Added up as if each stood alone they carry **1.31** of
+first-component exposure. Netted, the book carries **0.71**, because longs and shorts
+partly cancel. That's **46% of the exposure hedged for free**, before any basket is
+bought. The basket neutralises what's left, with **gross weight 3.06**. Toggle a position
+out and both sides move: some legs are hedging others, so removing one can *raise* the
+book's exposure.
+
+**Callout:** "The hedge is a property of the book, not of each position in it." Two
+residual bets that load the same way on the market are, together, a market bet; two that
+load opposite ways are a smaller one.
+- A **collection** hedges each trade. A **portfolio** nets first and hedges the remainder,
+  which is cheaper *and* more accurate, "because every unit of hedge is a unit of cost and
+  a unit of estimation error".
+- Before asking whether a candidate residual is attractive, ask what it does to the book's
+  net exposure. A mediocre residual may be worth holding because it hedges the rest for
+  free; an excellent one may not, because it doubles an exposure the book already has.
+
+### Slide 24 — In plain terms: *mean reversion* and *half life*
+
+- **Short answer:** something mean-reverts if, when it strays from its usual level, it
+  tends to come back. **Half life** = how long it takes to come halfway back. Short = snaps
+  back quickly; very long = barely reverts.
+- **Everyday picture:** push a boat from its mooring and let go. The line pulls it back,
+  fast at first then slower. Half the distance in 10 seconds means a half life of 10 s. A
+  boat with no line never comes back: half life is effectively infinite.
+- **Why it matters:** the next slides estimate each residual's half life, but there's a
+  trap, "the most important one in the lesson": **the way residuals are constructed makes
+  them look as if they revert even when they do not.**
+- **Definitions:**
+  - **Mean reversion:** tendency to return toward an average after moving away.
+  - **Half life:** time for a displacement to decay by half. *Estimated from the data, not
+    assumed.*
+  - **Random walk:** no tendency to return anywhere. Each step is as likely up as down,
+    and it has no home.
+
+### Slide 25 — Half life, and the trap underneath it
+
+| | |
+|---|---|
+| **Half life** | How long a displacement takes to decay by half. |
+| **Measured, not assumed** | Estimated from the residual itself, **by regressing each change on the level that preceded it**. |
+| **It sets the holding period** | A half life of 15 days implies a trade measured in weeks, not minutes, and costs follow from that. |
+| **It can be manufactured** | A residual is orthogonal to the factors by construction, which makes it look more mean-reverting than it is. |
+
+**Callout:** "The fourth item is the one that catches people, and **it caught the first
+version of this model**." When you remove factor exposure using components estimated from
+the *same window*, the leftover is forced to be uncorrelated with those factors over that
+window. That constraint alone pushes the residual back toward zero, whether or not
+anything real is happening. **So a short half life is not by itself evidence.** It counts
+only when the residual keeps reverting on data *not used to estimate the factors*, which is
+what the later validation tests.
+
+**Where this needs qualifying:** half life assumes a simple decaying process (AR(1)/OU),
+and real residuals often aren't. Reversion speed changes with volatility and market
+conditions, so a single number is an average across states. It's still useful as an order
+of magnitude for holding period and cost budget. **Treat it as a rough scale, not a
+parameter to optimise.**
+
+### Slide 26 — Reversion that was *manufactured* (interactive)
+
+"Every residual reverts in the window it was fitted on. Only some revert after it."
+
+**Image:** dot chart of the estimated half life of each residual, in sample (the fitting
+window), log scale from 5 to 200+ days. A shaded red band across the top (from roughly 40
+days upward, dashed line near ~80 days) = **what a random walk reports**, the 10th–90th
+percentile on this window length.
+
+| A | B | C | D | E | F | G | H |
+|---|---|---|---|---|---|---|---|
+| 17d | 10d | 21d | 15d | 24d | 26d | 16d | **57d** (grey, inside the band) |
+
+Blue dots = below the band (reverts faster than noise would); grey = inside it (not
+evidence of anything).
+
+Buttons: **In the fitting window** · **Out of sample, loadings fixed** · **Reveal which were
+built to revert**.
+
+**Readout:** in the fitting window *every one* of the eight reports a finite half life,
+most well inside what a random walk would show. This is the manufactured reversion. Hold
+the loadings fixed and step forward (out of sample) and the picture changes. A random walk
+always reports *something*; only residuals that beat the band are evidence.
+
+**Callout:** "**A random walk, de-meaned over a finite window, will always look as if it
+mean reverts. It is the most reliable false positive in the whole discipline.**" So the
+half life alone is never the test. The test is the half life *against what noise reports
+under the identical procedure on the identical window length*. That's the same comparison
+used to choose K: "One principle, applied twice." The reveal button shows which residuals
+were built to revert and which were random walks. The band separates them without being
+told, and it's the only thing on the page that does.
+
+**Implementation note:** simulate many random walks of the same length, run the *exact*
+same pipeline (de-mean, AR(1) regression, half-life), and take the 10th–90th percentile.
+Also run the half-life estimate **out of sample with loadings frozen** from the fitting
+window.
+
+### Slide 27 — In plain terms: *z-score* and why standardise?
+
+- **Short answer:** a z-score is how far something is from its usual level, in units of
+  how much it normally varies. z = 2 is two typical swings above average; −1.5 is one and
+  a half below. It lets you compare things on completely different scales.
+- **Everyday picture:** one boat normally bobs 10 cm, another 1 m. Both are 30 cm above
+  their usual line. For the first that is 3× its normal swing; for the second it's
+  nothing. Standardising asks the same question of both: how unusual is this, *for this
+  boat*?
+- **Definitions:**
+  - **Standardise:** subtract the average and divide by the typical swing, so every
+    series is centred on zero and in the same unit.
+  - **Displacement:** how far from the average, in those units (used interchangeably with
+    z-score in the lesson).
+  - **Threshold:** a z level at which the model acts, e.g. "entry at 1.5" means the trade
+    opens when the residual is 1.5 swings from home. (The final model uses a *proportional*
+    lean with a 0.2 dead band and 1.5 cap instead of an on/off entry; see slide 29.)
+
+### Slide 28 — Does the displacement predict anything (interactive)
+
+"Every instrument, every day, grouped by how far the residual had strayed."
+
+**Image:** bar chart of **what the residual did the next day** (average move, in standard
+deviations of that residual), grouped by the z-score the day before:
+
+| Displacement bucket (z) | Days | Next-day move |
+|---|---|---|
+| below −1.5 | 217 | **+0.08** |
+| −1.5 to −0.5 | 1,314 | **+0.04** |
+| −0.5 to +0.5 | 1,970 | −0.01 |
+| +0.5 to +1.5 | 1,281 | **−0.04** |
+| above +1.5 | 250 | **−0.04** |
+
+Green = moved up the next day; red = moved down.
+
+**Readout:** read left to right. Residuals well **below** average moved **up** next; those
+**above** moved **down**. The middle group did almost nothing. "That is the relationship
+the whole trade rests on, and it is **measured here rather than assumed**." It does not
+fade at the edges: the outermost groups pull hardest. The rule still caps how far it
+leans, "which therefore costs edge and is bought on purpose".
+
+**Text:** "This is the test that decides whether there is a trade here at all, and it is
+the one most people skip."
+
+**Callout:**
+- **Notice the shape rather than the size.** Bars stepping down from left to right is what
+  a real reversion relationship looks like.
+- It doesn't fade at the edges. That's what you'd hope for, and not always what you find.
+  In many signals the relationship weakens or reverses out there, and this measurement
+  shows it *before a single position is taken*.
+- This one measurement decides whether the rule is worth writing, and it prices one of its
+  choices. Since the pull is strongest at the extremes, the cap gives up edge. It's bought
+  on purpose: "a rule without one takes its largest position in the most extreme situation
+  it has ever seen, which is exactly where a model is most likely to be wrong about its own
+  assumptions."
+
+**Implementation note:** this is a simple bucketed conditional-mean test (like a
+decile/quantile analysis). Build it as the first diagnostic for any residual signal
+before a backtest. Remember that it pools all instruments, and a proper version should be
+done out of sample.
+
+### Slide 29 — From a relationship to a position
+
+**Headline:** "A relationship in the data is not a rule. *A rule has to say what you hold,
+and how much.*"
+
+- The measurement gave a shape: the further the residual has strayed, the more it tends
+  to come back, and on this universe the pull is strongest at the extremes.
+- **A threshold rule throws most of that away.** It ignores everything inside the threshold
+  and takes a full position outside it, treating a residual at 1.6 the same as one at 4.0,
+  and 1.4 as nothing at all.
+- **Quote:** "So the position is proportional to the displacement, and capped for risk
+  rather than because the relationship stops."
+- Two more decisions, both following from earlier slides rather than preference:
+  - **Size by inverse volatility**, so a quiet instrument and a violent one contribute
+    comparable risk.
+  - **Neutralise the whole book** against the components, so what remains is a bet on
+    residuals, not the universe.
+- "That last decision is not a refinement. The next slide shows what happens without it."
+
+### Slide 30 — Why the position has to be hedged (interactive)
+
+"The same signal, run twice. One version carries a bet nobody placed."
+
+**Image:** "Exposure to the first component, every day of the fitting window." The green
+line is flat on 0.00 every day (exposure removed). The red line (exposure left in) is noisy
+around zero, mostly within ±0.08, with a spike to ~+0.2 early on and dips to around −0.1.
+
+**Readout:** "The green line is not nearly zero. **It is zero, on every day, by
+construction.**" The projection removes the exposure rather than reducing it, so the first
+component can move as it likes and this book doesn't notice. The red line is the same
+signal with the hedge left off. Its exposure isn't chosen by anyone; it's whatever falls
+out of which residuals happened to be stretched that day. It drifts as far as **0.23** and
+sits beyond **0.11 on one day in twenty**. "That is a directional bet nobody placed and
+nobody sized." It's small most days, which is exactly why it survives unnoticed until the
+factor moves a long way and a "market neutral" book loses money in a straight line.
+
+**Callout:** "**This is the most commonly skipped step in retail attempts at this
+technique, and it is the one that makes the results meaningless.**"
+- An unhedged residual trade is "a directional position wearing a statistical costume".
+  When it works you credit the signal; when it fails you blame bad luck. Both attributions
+  are wrong, and you learn nothing.
+- **Be careful what the figure claims:** it does *not* say the unhedged version performs
+  worse. Across many universes the two often finish in much the same place, because an
+  accidental bet is as likely to help as hurt. It says the unhedged version carries a risk
+  that was never chosen, sized or reported, "and a risk like that is not a problem until
+  the day it is a very large one".
+- "The hedge is what makes the result interpretable. It is the difference between testing
+  your idea and testing the market."
+
+### Slide 31 — The model, stated in full
+
+(The four steps are at the top of this file: **Estimate → Isolate → Position →
+Neutralise**.)
+
+**Callout:** "Four steps, each traceable to a measurement made earlier in this lesson
+rather than to a preference. That traceability is what separates a model from a set of
+settings." It also makes the model criticisable: anyone can ask "why two components and
+not three?" and the honest answer is a chart, not an opinion. "**Everything up to here is
+construction. Nothing so far tells you whether it works, and construction is the part most
+people mistake for the finished job.**"
+
+### Slide 32 — The loop, *as it runs*
+
+"Every line here is executed by this page. This is the model, not a description of it."
+(The code is transcribed at the top of this file.)
+
+**Callout:** "Sixteen lines, and everything the previous thirty slides established is in
+them."
+
+| Concept | Line(s) |
+|---|---|
+| Decomposition | 3 (`V, R = decompose(window, K=2)`) |
+| Residual path | 5 (`c = cumulative sum of R[i]`) |
+| Displacement | 6 (`z[i]`) |
+| Lean, dead band, cap | 7–9 |
+| Sizing | 10 (inverse vol) |
+| Hedge | 11–12 (projection, then gross = 1) |
+| Costs | 15 (`pnl … − turnover * cost`) |
+
+Nothing is hidden or left to a framework. If you disagree with a choice, the line it lives
+on is right there. "This is what an executable system looks like at its smallest: a loop
+with every decision visible." Production adds data plumbing, monitoring and a manifest
+around it (a later slide), "**it does not add a different loop**".
+
+### Slide 33 — One day, *step by step* (interactive)
+
+"Pick any day and watch the loop run on it, one row per line."
+
+**Image:** six rows of bars across A–H, one per stage of the loop, for **day 328**:
+1. **Displacement (z):** B and H are gold (beyond the cap; B positive, H negative). D is
+   positive blue. A and C are slightly negative. E, F and G are grey (inside the dead band).
+2. **Target (lean, dead band, cap):** the opposite sign to the displacement. A long, B short,
+   C small long, D short, H long. E, F and G zero.
+3. **Sized (inverse vol):** similar shape, rescaled per instrument.
+4. **Neutralised (factors removed):** E, F and G now pick up small short weights. They
+   are the hedge, even though they have no signal.
+5. **Final weights (gross of one):** same shape, scaled to gross = 1.
+6. **Next-day P&L (weight × next return):** B and D green (gains), A and H red (losses),
+   small gains elsewhere.
+
+Legend: gold = beyond the entry threshold; grey = inside the dead band, no position;
+blue = long; red = short or a loss. A slider scrubs through the days.
+
+**Readout, day 328:** 2 residuals beyond the threshold, 3 inside the dead band. Before
+neutralising, the book had exposure of **25.3 and 27.6** to the two components; after,
+**0.00 and −0.00**. The eight P&L contributions add to a gross return of **+0.317%**.
+Turnover was **0.18** of the book, costing **0.0035%** at **2 basis points**, so the day
+booked **+0.314%** and equity moved to **1.1678**.
+
+**Callout:** "This is where a rule becomes a position, and a position becomes a number in
+the account." Most people never see the middle of that chain because their tools hide it,
+"and a hidden chain is one you cannot audit".
+- Exposure to the components is large on row 3 and **exactly zero on row 4, every day**.
+  That's the hedge doing its job.
+- The sign of a P&L bar is not the sign of the position. A long earns a loss when the
+  instrument falls; that's where the day's return comes from.
+- Dead band and cap are visible as grey and gold on the top row. Grey residuals are near
+  home and carry no position. Gold ones are beyond the cap, where the lean stops increasing
+  "by choice rather than because the pull has faded".
+
+**Implementation note:** log these six stages per day in our backtest (z, target, sized,
+neutralised, final, P&L contribution) so every day can be audited like this.
+
 ---
 
 ## Research ideas for this repo (running list)
@@ -508,5 +977,13 @@ everything that moves with it."
 - Implement the noise-band test to pick K rather than guessing.
 - Track exposure-vector drift over rolling windows; check book concentration by vector
   similarity rather than position count.
+- Port the 16-line loop directly (window 120, K from the noise band, dead band 0.2, cap
+  1.5, inverse-vol sizing, projection, gross 1, 2 bp cost) onto daily FX returns.
+- Run the slide-28 bucket test on FX residuals first. If the bars don't step down, stop.
+- Half-life vs random-walk band, in sample and out of sample with loadings frozen.
+- Compare dollar-neutral vs factor-neutral versions of existing basket trades in the repo
+  (e.g. currency-strength baskets) to see how much hidden USD / risk-on exposure they carry.
+- Test re-estimation frequency (daily / weekly / monthly) against the sawtooth
+  trade-off.
 
 *(To be extended as further slides arrive.)*
