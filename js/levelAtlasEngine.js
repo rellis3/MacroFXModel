@@ -695,7 +695,8 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
           // both the live dashboard panel AND the live bot's own plan
           // producer of every re-arm past the first touch).
           if (armedNow[side]?.[rung] === false) continue;
-          const here = lv[ri + 1];
+          const here = lv[ri + 1], pendInner = lv[ri], pendOuter = lv[ri + 2] ?? null;
+          const pendRungSpan = Math.abs(here - pendInner);
 
           const totalTravel = d1[i].high - d1[i].low;
           const dirTravel = isUp ? (d1[i].high - open) : (open - d1[i].low);
@@ -742,6 +743,21 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             churn, churnRatio: churnRatio != null ? +churnRatio.toFixed(3) : null,
             otherSideTouchedBefore,
             level: +here.toFixed(6), pip, open,
+            // 2026-09-22: live-vs-backtest divergence audit, round 2 (post
+            // local-decision-engine) -- found volatility_bot_v2's own zone
+            // pricer (server.js's _volatilityV2PriceZone) falls back to
+            // reconstructing its OWN ladder (a second, independent call to
+            // buildLadder/rungLevelsForLadder) whenever a pending record
+            // arrives without these two fields already set -- which was
+            // EVERY pending record, since atlasWalk never populated them.
+            // Same `lvBySide` this file already uses for resolved touches
+            // (see innerDistPips/outerDistPips a few hundred lines up) is
+            // already in scope here; there was never a reason for a second
+            // reconstruction to exist. Populating these closes that fallback
+            // off entirely for pending zones -- one authoritative ladder,
+            // not two that can drift.
+            innerDistPips: +(pendRungSpan / pip).toFixed(1),
+            outerDistPips: pendOuter != null ? +(Math.abs(pendOuter - here) / pip).toFixed(1) : null,
             distance: +dist.toFixed(6), distancePips: +(dist / pip).toFixed(1),
             distancePct: bar.close > 0 ? +(dist / bar.close * 100).toFixed(3) : null,
             currentPrice: +bar.close.toFixed(6),
