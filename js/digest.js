@@ -52,6 +52,16 @@ export function formatDigest(d, { html = true } = {}) {
   // 4. expected range
   const er = Object.values(d.ranges ?? {}); const moved = er.filter(r => r.expectedAtr !== 1);
   if (er.length) L.push(`${b('Expected range')}: ${moved.length ? moved.map(r => `${disp(r.inst)} ~${amt(r.expected, r.unit)} (${r.expectedAtr}× a normal day: ${r.drivers.map(x => x.label).join(', ')})`).join(' · ') + (moved.length < er.length ? ` · the rest an ordinary day (${er.filter(r => r.expectedAtr === 1).map(r => `${disp(r.inst)} ~${r.expected}`).join(', ')})` : '') : `an ordinary day everywhere (${er.map(r => `${disp(r.inst)} ~${amt(r.expected, r.unit)}`).join(', ')})`}. Scored at the close.`);
+  // 4b. the board: the lines either side, so the lines do not need the page.
+  // Only the fitted ladder's medians and 75ths, with how often each is reached --
+  // "reached on 45% of days" is a base rate (T7b), never a suggestion to trade there.
+  if (d.board?.length) {
+    const fmt = (v, dp) => v == null ? '?' : Number(v).toFixed(dp);
+    const side = (l, dp) => l ? `${fmt(l.price, dp)}${l.hit != null ? ` (${l.hit}%)` : ''}` : '—';
+    const rows = d.board.map(r => `  ${disp(r.inst).padEnd(8)} open ${fmt(r.open, r.dp)} · below ${side(r.dn1, r.dp)} → ${side(r.dn2, r.dp)} · above ${side(r.up1, r.dp)} → ${side(r.up2, r.dp)}`);
+    const src = d.board[0]?.source === 'fitted-ladder' ? ` (fitted ladder${d.board[0].estimator ? ' ' + d.board[0].estimator : ''}, the lines the bots trade)` : '';
+    L.push(`${b('The board')} — open = London midnight; % = how often that line is reached${src}:` + '\n' + rows.join('\n'));
+  }
   // 5. yesterday scored
   const y = d.yesterday;
   if (y) L.push(`${b('Yesterday')}: ${[y.leans ? `page leans ${y.leans.hits} of ${y.leans.n} right` : null, y.ranges?.length ? `expected range vs realised: ${y.ranges.map(r => `${disp(r.inst)} ${r.expectedAtr}× → ${r.realisedAtr}×`).join(', ')}` : null, y.calls?.length ? `your calls: ${y.calls.map(c => `${c.event} ${c.result === 'hit' ? '✓' : c.result === 'miss' ? '✗' : '='}`).join(', ')}` : null].filter(Boolean).join(' · ') || 'nothing to score'}.`);

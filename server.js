@@ -14191,8 +14191,27 @@ async function _buildDigest() {
   const yesterday = yRow ? { leans: null, ranges: (yRow.ranges ?? []).filter(r => r.realisedAtr != null).map(r => ({ inst: r.inst, expectedAtr: r.expectedAtr, realisedAtr: r.realisedAtr })), calls: Object.values(yRow.calls ?? {}).filter(c => c.result).map(c => ({ event: c.event, result: c.result })) } : null;
   try { const led = await _readLedger(); const by = _ledgerSummary(led).byDay?.[0]; if (by && yesterday && by.h1?.n) yesterday.leans = { hits: by.h1.hits, n: by.h1.n }; } catch { /* no ledger line */ }
   const weekUnusual = _weekMap.data ? Object.values(_weekMap.data.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).map(x => ({ label: x.label, z: x.latest.z })) : null;
-  const text = _formatDigest({ dateLabel: london, regime: _macroRegime.now, weekUnusual, states, prints, ranges, yesterday }, { html: true });
-  return { day, text, ranges: Object.values(ranges).map(r => ({ inst: r.inst, atr: r.atr, unit: r.unit, expectedAtr: r.expectedAtr, expected: r.expected, drivers: r.drivers.map(d => d.label), realisedAtr: null })) };
+  // The board: each instrument's session open and the fitted-ladder lines either
+  // side with how often each is reached. Straight from computeDailyBrief, so the
+  // digest, the page, the chart and the bots all quote one set of lines. Added
+  // 2026-09-21 in place of a second Telegram product -- the one part of a
+  // "morning blast" this desk can stand behind (the rest was conviction we have
+  // tested and lost, or the Evidence Book read aloud).
+  let board = null;
+  try {
+    const brief = await computeDailyBrief();
+    if (brief?.ok) {
+      board = Object.keys(_DIGEST_INSTR_SYM).map(inst => {
+        const b = brief.instruments?.[inst]; const L = b?.levels; if (!b?.session_open || !L) return null;
+        const lv = k => L[k]?.price != null ? { price: L[k].price, hit: L[k].hit_pct ?? null } : null;
+        return { inst, open: b.session_open, dp: b.dp ?? 5,
+                 dn1: lv('ol_med'), dn2: lv('ol_75'), up1: lv('oh_med'), up2: lv('oh_75'),
+                 source: L.ol_med?.source ?? null, estimator: L.ol_med?.estimator ?? null };
+      }).filter(Boolean);
+    }
+  } catch (e) { console.warn('[digest] board unavailable:', e.message); }
+  const text = _formatDigest({ dateLabel: london, regime: _macroRegime.now, weekUnusual, states, prints, ranges, yesterday, board }, { html: true });
+  return { day, text, board, ranges: Object.values(ranges).map(r => ({ inst: r.inst, atr: r.atr, unit: r.unit, expectedAtr: r.expectedAtr, expected: r.expected, drivers: r.drivers.map(d => d.label), realisedAtr: null })) };
 }
 async function _sendDigest({ dry = false } = {}) {
   const d = await _buildDigest();
@@ -21421,7 +21440,11 @@ async function computeDailyBrief() {
     const hmmKey    = BRIEF_HMM_KEYS[name] ?? null;
     const regRaw    = hmmKey ? (state.hmmRegimes[hmmKey] ?? null) : null;
     const dp        = PRICE_DIGITS[sym] ?? PRICE_DIGITS[sym.replace('_', '/')] ?? 5;
-    const pipSz     = PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+    // PIP_SIZE keys the FX pairs and gold with a slash (EUR/USD, XAU/USD) but the
+    // indices with the raw OANDA symbol (NAS100_USD). Looking up only the slashed
+    // form turned NAS100_USD into "NAS100/USD", missed, and fell back to 0.0001 --
+    // so every index range_pts was 10,000x too large (NQ read 6,542,836 for ~654).
+    const pipSz     = PIP_SIZE[sym] ?? PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
     const fmt       = p => p != null ? parseFloat(p.toFixed(dp)) : null;
 
     // Sizing suggestion from regime confidence

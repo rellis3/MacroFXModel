@@ -28,3 +28,17 @@ t('the digest reads as five lines', () => {
   assert.match(txt, /Yesterday: page leans 3 of 6 right · expected range vs realised: EUR\/USD 1× → 0\.8× · your calls: Retail Sales m\/m ✓/);
 });
 console.log(`digest: ${n} groups, all passed`);
+
+t('the board prints the lines either side with their hit rates, and names the source', () => {
+  const d = { dateLabel: 'Tue 22 Sept', states: [], ranges: {},
+    board: [{ inst: 'GOLD', open: 4361.19, dp: 2, dn1: { price: 4327.61, hit: 45 }, dn2: { price: 4298.83, hit: 20 },
+              up1: { price: 4397.39, hit: 42 }, up2: { price: 4425.3, hit: 22 }, source: 'fitted-ladder', estimator: 'yz_10' }] };
+  const t = formatDigest(d, { html: false });
+  assert.match(t, /The board/);
+  assert.match(t, /GOLD\s+open 4361\.19 · below 4327\.61 \(45%\) → 4298\.83 \(20%\) · above 4397\.39 \(42%\) → 4425\.30 \(22%\)/);
+  assert.match(t, /fitted ladder yz_10/);
+  // a board row must be its own line, not folded into the heading
+  assert.ok(t.split('\n').some(l => l.trim().startsWith('GOLD')));
+  // no board, no section
+  assert.ok(!formatDigest({ dateLabel: 'x', states: [], ranges: {} }, { html: false }).includes('The board'));
+});
