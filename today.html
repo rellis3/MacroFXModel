@@ -216,6 +216,16 @@
   .dr-shelf>summary .n{color:var(--text3);font-weight:500;font-size:11px}
   .dr-shelf[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
   .dr-shelf .dr-sec{border-left:2px solid var(--border);padding-left:10px}
+  .dr-spine{display:grid;grid-template-columns:70px 1fr auto;gap:2px 12px;align-items:baseline;
+            border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;
+            background:var(--card2);padding:9px 13px;margin:2px 0 12px;font-size:12.5px;line-height:1.5}
+  .dr-spine .sk{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .dr-spine .sv{color:var(--text2);min-width:0} .dr-spine .sv b{color:var(--text);font-variant-numeric:tabular-nums}
+  .dr-spine .sr{font-size:11px;color:var(--text3);white-space:nowrap;text-align:right}
+  .dr-spine .big{font-size:19px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+  .dr-spine .up{color:var(--bull)} .dr-spine .dn{color:var(--red)} .dr-spine .amb{color:var(--amber)}
+  .dr-spine .lnk{cursor:pointer;color:var(--blue)}
+  @media(max-width:720px){.dr-spine{grid-template-columns:64px 1fr}.dr-spine .sr{grid-column:2;text-align:left}}
   .dr-now{font-size:14px;line-height:1.6;max-width:66ch;margin:4px 0 12px}
   .byt{margin:0 0 14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--card2)}
   .byt-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;cursor:help}
@@ -1094,11 +1104,14 @@
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
     <div class="dr-status" id="drStatus"></div>
   </div>
+  <!-- The spine: the six things you hold in your head, on every tab, each shown
+       ONCE. Everything below is detail you opt into; no tab repeats these. -->
+  <div class="dr-spine" id="drSpine"></div>
 
   <!-- Headline: the plain-English translation of every signal on this pair —
        the thing worth seeing before anything else. -->
   <div class="dr-tabs" role="tablist" aria-label="Pair detail sections">
-    <button class="dr-tab" role="tab" id="drTab-now" aria-controls="drPane-now" aria-selected="false" onclick="setDrTab('now')">Now<span class="dr-tab-n" id="drTabN-now"></span><span class="q">one breath</span></button>
+    <button class="dr-tab" role="tab" id="drTab-now" aria-controls="drPane-now" aria-selected="false" onclick="setDrTab('now')">Read<span class="dr-tab-n" id="drTabN-now"></span><span class="q">the five questions</span></button>
     <button class="dr-tab" role="tab" id="drTab-day" aria-controls="drPane-day" aria-selected="false" onclick="setDrTab('day')">The day<span class="dr-tab-n" id="drTabN-day"></span><span class="q">what kind of hour?</span></button>
     <button class="dr-tab" role="tab" id="drTab-levels" aria-controls="drPane-levels" aria-selected="false" onclick="setDrTab('levels')">Levels<span class="dr-tab-n" id="drTabN-levels"></span><span class="q">where, and what happens there?</span></button>
     <button class="dr-tab" role="tab" id="drTab-lean" aria-controls="drPane-lean" aria-selected="false" onclick="setDrTab('lean')">Lean & flow<span class="dr-tab-n" id="drTabN-lean"></span><span class="q">which way, who is positioned?</span></button>
@@ -1107,7 +1120,6 @@
     <button class="dr-tab" role="tab" id="drTab-research" aria-controls="drPane-research" aria-selected="false" onclick="setDrTab('research')">Research<span class="dr-tab-n" id="drTabN-research"></span><span class="q">unvalidated & null</span></button>
   </div>
   <div class="dr-pane" id="drPane-now" role="tabpanel" aria-labelledby="drTab-now" hidden>
-  <div class="dr-now" id="drNow"></div>
   <div id="drByt"></div>
 <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
@@ -7496,23 +7508,59 @@ setInterval(() => { if (document.visibilityState === 'visible') postLedgerCalls(
 // Six slots, most conditional, so it usually shows four or five: price and change
 // from the open · the lean with its agreement · range used of expected · the tape
 // (tails only) · the one threat · the clock. Same functions as the card.
+// The spine -- price, thesis, the two nearest lines, cost, the clock -- shown on
+// every tab so nothing below has to repeat them. Every number here already exists
+// somewhere in the drawer; this is the one copy that is always visible, and the
+// tabs are where its detail lives. Levels are the fitted ladder (T7b) with their
+// hit rate and typical first-touch time from the same study.
+function drSpineHtml(r) {
+  const d = r.d; if (!d) return '';
+  const unit = _unit(d); const px = d.current_price, open = d.session_open;
+  const row = (k, v, right = '') => `<span class="sk">${k}</span><span class="sv">${v}</span><span class="sr">${right}</span>`;
+  const out = [];
+  // price vs the anchor
+  const chg = (open > 0 && px != null) ? (px / open - 1) * 100 : null;
+  out.push(row('price', `<span class="big">${px != null ? fmtN(px, d.dp) : '—'}</span>${chg != null ? ` <b class="${chg > 0.02 ? 'up' : chg < -0.02 ? 'dn' : ''}">${chg > 0 ? '+' : ''}${chg.toFixed(2)}%</b>` : ''}`,
+    open != null ? `open ${fmtN(open, d.dp)} · London midnight` : ''));
+  // the idea, and how much of the day is spent
+  const th = (typeof thesisFor === 'function') ? thesisFor(r) : null;
+  const usedPct = r.used != null ? Math.round(100 * r.used) : null;
+  const rangePts = d.levels?.hl_med?.range_pts;
+  const usedTxt = usedPct != null ? `<b class="${usedPct >= 100 ? 'amb' : ''}">${usedPct}% of the expected range used</b>${rangePts ? ` (${rangePts}${unit})` : ''}` : '';
+  out.push(row('idea', `${th && th.dir !== 0 ? `<b class="${th.dir > 0 ? 'up' : 'dn'}">${esc0(th.label)}</b> <span class="muted">from ${esc0(th.src)}</span>` : '<b>no clear bias</b>'}${usedTxt ? ` · ${usedTxt}` : ''}`,
+    d.vol_pct != null ? `vol P${Math.round(d.vol_pct)} of a year` : ''));
+  // the two nearest ladder lines, one each way
+  const rungs = [['oh_75', 'OH 75'], ['oh_med', 'OH med'], ['ol_med', 'OL med'], ['ol_75', 'OL 75']]
+    .map(([k, lbl]) => { const L = d.levels?.[k]; return L?.price == null ? null : { k, lbl, price: L.price, hit: L.hit_pct, when: L.median_utc, pct: L.pct, src: L.source, est: L.estimator }; })
+    .filter(Boolean);
+  const dist = v => px == null ? null : Math.abs(v - px) / _pipSz(d);
+  const line = (L, arrow) => L ? `<b>${esc0(L.lbl)} ${fmtN(L.price, d.dp)}</b> <span class="muted">${arrow} ${Math.round(dist(L.price))}${unit} away${L.hit != null ? ` · reached on ${L.hit}% of days` : ''}${L.when ? `, typically ${L.when}` : ''}</span>` : '<span class="muted">—</span>';
+  const above = rungs.filter(L => px != null && L.price > px).sort((a, b) => a.price - b.price)[0];
+  const below = rungs.filter(L => px != null && L.price < px).sort((a, b) => b.price - a.price)[0];
+  const srcNote = rungs[0]?.src === 'fitted-ladder' ? `fitted ladder${rungs[0].est ? ' ' + rungs[0].est : ''}` : rungs[0]?.src === 'legacy-incumbent' ? 'legacy bands' : '';
+  out.push(row('above', line(above, '↑'), ''));
+  out.push(row('below', line(below, '↓'), srcNote));
+  // is it worth trading, and what is coming
+  const c = r.cost;
+  const costTxt = c ? `<b class="${!c.tradeable || c.gate === 'fail' || c.gate === 'bad' ? 'dn' : c.gate === 'warn' ? 'amb' : ''}">${c.pips}${unit}</b>${c.ofRange != null ? ` = ${(c.ofRange * 100).toFixed(1)}% of today\u2019s range` : ''} <span class="muted">${!c.tradeable || c.gate === 'fail' || c.gate === 'bad' ? '\u2014 cost outruns the edge here' : c.gate === 'warn' ? '\u2014 borderline' : '\u2014 cheap'}</span>` : '<span class="muted">no spread read</span>';
+  const e = (typeof nextPairEvent === 'function') ? nextPairEvent(r.name) : null;
+  let clock = '<span class="muted">nothing scheduled</span>';
+  if (d.news_flag) clock = `<b class="amb">${esc0(d.news_flag)}</b> <span class="muted">today \u00b7 range \u00d7${d.news_mult}</span>`;
+  else if (e) { const hrs = (e.ms - Date.now()) / 3600e3; const fam = (typeof _tlFam === 'function') ? _tlFam(e.event) : null;
+    const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null;
+    clock = `<b>${esc0(e.event)}</b> <span class="muted">${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` \u00b7 ${bk.spike}\u00d7 an ordinary half-hour` : ''}</span>`; }
+  out.push(row('cost', costTxt, ''));
+  out.push(row('next', clock, ''));
+  return out.join('');
+}
 function drStatusHtml(r) {
   const d = r.d, bits = [];
-  if (d.current_price != null) {
-    const chg = (d.session_open > 0) ? (d.current_price / d.session_open - 1) * 100 : null;
-    bits.push(`<span class="px" title="Live price">${fmtN(d.current_price, d.dp)}</span>` +
-      (chg != null ? `<span class="chg ${chg > 0.02 ? 'up' : chg < -0.02 ? 'dn' : ''}" title="Change from today's open (${fmtN(d.session_open, d.dp)})">${chg > 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : ''));
-  }
+  // Price, the idea, range-used, cost and the event clock moved to the spine
+  // (always visible, one copy). What stays here is what the spine does not carry:
+  // the direction tag, the tape’s pace, and the one standing threat chip.
   const dir = _stampChip(directionChip(r), 'c'); if (dir) bits.push(dir);
-  const rangePts = d.levels?.hl_med?.range_pts;
-  if (r.used != null || rangePts != null) {
-    bits.push(`<span title="How much of today's expected range price has already travelled${d.vol_pct != null ? ` · volatility ranks P${d.vol_pct} against the last year` : ''}. Calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '%' : '?'}${rangePts != null ? ` of ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ' used'}${_EV('v', _EV_T.v)}</span>`);
-  }
   const tape = tapeSpeedChip(r); if (tape) bits.push(tape);
   const threat = _threatChip(r); if (threat) bits.push(threat);
-  const e = nextPairEvent(r.name);
-  if (d.news_flag) bits.push(`<span class="chip warn" title="Major scheduled release today; expected range scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>`);
-  else if (e && (e.ms - Date.now()) <= 6 * 3600e3 && (e.impact ?? '').toLowerCase() === 'high') bits.push(`<span class="chip warn" title="${e.event} (${e.country}) at ${evtTime(e)} UK.">⏰ ${(e.event ?? '').length > 18 ? e.event.slice(0, 16) + '…' : e.event} ${evtTime(e)}</span>`);
   return bits.join('<span class="sep">·</span>');
 }
 // The old single row -- every chip, unranked -- for the drawer's "All reads".
@@ -7555,18 +7603,21 @@ function beforeYouTradeHtml(r) {
     rows.push(line(2, 'Crowding', t, 'lean', parts.length ? { t: ct?.level === 'EXTREME' ? 'extreme, tested null as a squeeze' : 'descriptive', cls: ct?.level === 'EXTREME' ? 'warn' : 'neu' } : null)); }
   // 3 stretch: range used, the band, the tape
   { const t = _tape[d.sym]; const parts = [];
-    if (r.used != null) parts.push(`<b>${Math.round(100 * r.used)}% of the expected day range used</b>${d.levels?.hl_med?.range_pts ? ` (${d.levels.hl_med.range_pts}${unit})` : ''}`);
+    // range-used is in the spine; this row adds what the spine cannot hold
     if (t?.ok && !t.stale) parts.push(`band ${t.bandLabel.split(' ')[0]}, tape ${t.label} (${t.pctile} for this hour)`);
+    if (t?.ok && !t.stale && t.nextRangeVsTypical != null) parts.push(`from here the next hour has historically ranged ${t.nextRangeVsTypical}× a typical one`);
     if (d.vol_pct != null) parts.push(`vol P${Math.round(d.vol_pct)} of a year`);
     const stretched = r.used != null && r.used >= 0.9;
     rows.push(line(3, 'Stretch', (parts.length ? parts.join(' · ') : 'no intraday read yet') + `. Overextension fades are real but under cost on this desk; a full range is a reason to expect less, not to fade.`, 'levels', { t: stretched ? 'range used up' : 'room left', cls: stretched ? 'warn' : 'neu' })); }
   // 4 clock: the next print for this pair and what the book says it does
-  { const e = nextPairEvent(r.name); let t, tag;
-    if (e) { const fam = _tlFam(e.event); const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null; const hrs = (e.ms - Date.now()) / 3600e3;
-      t = `next: <b>${esc0(e.country)} ${esc0(e.event)}</b> ${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` — the book: <b>${bk.spike}×</b> an ordinary half-hour on release, ${bk.next}× the next day` : fam ? ' — not a mover for this pair in the book' : ''}${d.news_flag ? `; ${esc0(d.news_flag)} scales today's range ×${d.news_mult}` : ''}. Sizes are tested range facts; direction after a print is a coin flip here.`;
-      tag = bk && bk.spike >= 2 ? { t: `${bk.spike}× mover`, cls: 'warn' } : { t: 'range, never direction', cls: 'neu' }; }
-    else { t = 'nothing high-impact scheduled for this pair in the calendar window. An empty clock is a reason to expect an ordinary range, not a trend.'; tag = { t: 'clear', cls: 'neu' }; }
-    rows.push(line(4, 'Clock', t, 'day', tag)); }
+  { const evs = (typeof pairEvents === 'function' ? pairEvents(r.name) : []).filter(x => x.ms > Date.now() && (x.impact ?? '').toLowerCase() === 'high').slice(0, 4);
+    const e = nextPairEvent(r.name); const fam = e ? _tlFam(e.event) : null;
+    const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null;
+    // the spine names the next print and its size; this row is the rest of the book
+    const later = evs.slice(1).map(x => { const f = _tlFam(x.event); const b = f ? window.eventImpactBrick?.eventImpact(x.country, f)?.instruments?.[r.name] : null; const h = (x.ms - Date.now()) / 3600e3;
+      return `${esc0(x.event)} (${h < 24 ? h.toFixed(0) + 'h' : Math.round(h / 24) + 'd'}${b ? `, ${b.spike}\u00d7` : ''})`; });
+    const t = `${bk ? `The book on the next one: <b>${bk.spike}\u00d7</b> an ordinary half-hour on release, <b>${bk.next}\u00d7</b> the next day.` : e ? 'The next print is not a mover for this pair in the book.' : 'Nothing high-impact scheduled in the calendar window \u2014 a reason to expect an ordinary range, not a trend.'}${later.length ? ` Then: ${later.join(', ')}.` : ''}${d.news_flag ? ` Today\u2019s range is scaled \u00d7${d.news_mult} for ${esc0(d.news_flag)} until it clears.` : ''} Sizes are tested range facts; direction after a print is a coin flip here.`;
+    rows.push(line(4, 'Clock', t, 'day', bk && bk.spike >= 2 ? { t: `${bk.spike}\u00d7 mover`, cls: 'warn' } : { t: 'range, never direction', cls: 'neu' })); }
   // 5 relative value: the chain links that end on this pair, the peer, and which leg is moving
   { const parts = []; const node = _BYT_CHAIN_NODE[r.name];
     if (node) { const ls = chainLinks().filter(l => l.b?.key === node || l.a?.key === node); const judged = ls.filter(l => l.verdict === 'holding' || l.verdict === 'broken'); if (judged.length) parts.push(judged.map(l => `${esc0(l.short)} <b>${l.verdict.toUpperCase()}</b>`).join(', ')); else if (ls.length) parts.push(`${ls.length} chain link${ls.length > 1 ? 's' : ''} on this pair, all quiet this month`); }
@@ -7576,43 +7627,6 @@ function beforeYouTradeHtml(r) {
     rows.push(line(5, 'Relative', (parts.length ? parts.join(' · ') : 'no cross-asset read loaded yet') + '. Same-window links, tested: they explain a move, they do not announce the next one.', 'why', { t: 'explains, does not predict', cls: 'neu' })); }
   return `<div class="byt"><div class="byt-h help" title="The five questions to answer before a chart earns a trade -- options positioning, market positioning, technical stretch, the clock, cross-asset relative value -- each with this page's current answer and its evidence status. No new numbers: the order is the point.">Before you trade <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· five questions, this page\u2019s answers, in order</span></div>${rows.join('')}</div>`;
 }
-function nowParagraph(r) {
-  const d = r.d, out = [];
-  const t = _tape[d.sym];
-  if (t?.ok && !t.stale) {
-    const vs = t.nextRangeVsTypical, vl = t.volRatio;
-    out.push(`<b>${t.bandLabel.split(' ')[0]}${t.bandLabel.includes('overlap') ? ' overlap' : ''}, tape ${t.label}</b> (${t.pctile} for this hour): the next hour has historically stayed put ${Math.round(t.dwell * 100)}% of the time, ranging ${vs == null ? 'about' : vs >= 1.15 ? 'wider than' : vs <= 0.87 ? 'narrower than' : 'about'} a typical hour${vl != null ? (vl <= 0.9 ? ' and calmer than the hour just gone' : vl >= 1.05 ? ' and a little wider than the last' : '') : ''}.`);
-  } else if (t?.stale) {
-    out.push(`<b>Market closed</b> — the tape read is from the last hour that traded.`);
-  }
-  const rangePts = d.levels?.hl_med?.range_pts;
-  if (r.used != null) {
-    const used = Math.round(100 * r.used);
-    const where = (d.current_price != null && d.session_open != null) ? (d.current_price > d.session_open ? 'above' : 'below') : null;
-    out.push(`<b>${used}% of the expected day range used</b>${rangePts ? ` (${rangePts}${d.ac === 'fx' ? 'p' : 'pt'})` : ''}${where ? `, price ${where} the open` : ''}${used >= 80 ? ' — the day has largely happened' : used <= 25 ? ' — the day has barely started' : ''}.`);
-  }
-  const dt = directionFor(r);
-  if (dt && dt.direction !== 'flat') {
-    const word = { up: 'Lean up', down: 'Lean down', mixed: 'Mixed' }[dt.direction];
-    const comp = pairSignalComposite(r);
-    const agr = (comp && comp.total >= 2) ? ` on ${comp.agree} of ${comp.total}` : '';
-    let s = `<b>${word}${agr}</b>`;
-    const args = [];
-    if (r.ct?.level === 'EXTREME') args.push(`large speculators are at an extreme ${r.ct.dir}`);
-    const bk = _crowd[d.sym]?.book;
-    if (bk?.pain) { const side = bk.longPct >= 50 ? 'long' : 'short'; const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct; if (uw != null && uw >= 60 && Math.max(bk.longPct, bk.shortPct ?? 0) >= 60) args.push(`the retail book is ${bk.longPct}% long and <b>${Math.round(uw)}% of ${side}s are underwater</b> — whoever is forced out here is ${side}`); }
-    if (r.oi && !r.oi.stale && r.oi.regime) args.push(`options say <b>${r.oi.regime}</b>`);
-    if (args.length) s += (dt.direction === 'mixed' ? '. ' : ', but ') + args.join('; ');
-    out.push(s + '.');
-  }
-  const c = r.cost;
-  if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) out.push(`And the thing that settles it: <b>spread is ${c.pips}${_unit(d)}${c.ofLevel != null ? `, ${(c.ofLevel * 100).toFixed(0)}% of the move to the nearest level` : ''}</b> — past the point where cost outruns edge. Nothing here is worth paying that to trade.`);
-  const e = nextPairEvent(r.name);
-  if (d.news_flag) out.push(`${d.news_flag} today scales the range ×${d.news_mult} until it clears.`);
-  else if (e && (e.ms - Date.now()) <= 14 * 3600e3) out.push(`${e.event} at ${evtTime(e)} UK.`);
-  return out.join(' ') || '<span class="muted">Not enough loaded yet to compose a read.</span>';
-}
-
 // ── Lean & flow: the page's own record on this pair ──────────────────────────
 async function renderDrawerLedger(r) {
   const sec = $('drLedgerSec'), box = $('drLedger');
@@ -8257,7 +8271,10 @@ async function openDrawer(name) {
   // The tab strip pins directly under the header. The header's height depends on
   // whether the status line wrapped, so measure it rather than hard-code it.
   requestAnimationFrame(() => { try { $('drawer').querySelector('.dr-tabs').style.top = (Math.max(34, $('drawer').querySelector('.dr-top').offsetHeight) - 16) + 'px'; } catch {} });
-  try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
+  // The NOW paragraph was a prose re-reading of the spine and the five questions
+  // below it -- every sentence appeared twice more in the drawer. The spine holds
+  // those numbers now; this pane starts with the five questions.
+  try { $('drSpine').innerHTML = drSpineHtml(r); } catch (e) { $('drSpine').innerHTML = ''; console.error('[spine]', e); }
   try { $('drByt').innerHTML = beforeYouTradeHtml(r); } catch (e) { $('drByt').innerHTML = ''; console.error('[byt]', e); }
   try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
@@ -8267,7 +8284,7 @@ async function openDrawer(name) {
   loadLedgerRowsFor(r.name).then(() => renderDrawerTimeline(r)).catch(() => {}); try { renderDrawerTimeline(r); } catch (e) { $('drTimelineSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
-  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
+  loadCrowdFor(r.d.sym).then(() => { try { $('drSpine').innerHTML = drSpineHtml(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
