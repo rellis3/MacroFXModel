@@ -127,6 +127,13 @@ export const DESK_EVIDENCE = [
     instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF'],
   },
   {
+    id: 'spread-sleeve-factor-audit', domain: 'macro', verdict: 'validated', date: '2026-09-22', doc: 'MD files/MVE_BOOK_FACTOR_AUDIT.md',
+    claim: 'The 2Y/10Y spread sleeves\' edge is genuine rate-spread relative value, not a disguised bet on the shared currency factors (USD / risk) that all six USD pairs share',
+    result: 'Pre-registered MVE Phase 7 book-layer audit (currency-space PCA, K=2 by noise band, factor-neutral book, costs on every leg incl. hedges). Sanity gate passed (raw book reproduces the sleeve engines: y2 1.06 vs 1.13, y10 0.62 vs 0.58). All three books read RELATIVE-VALUE: neutralising RAISED OOS Sharpe -- 2Y 1.02->1.33, 10Y 0.58->1.01, combined 0.98->1.36 -- and IS Sharpe too (2Y 0.26->0.46), while cutting OOS vol ~60-65% (2Y 14.1%->5.1%). ~55% of the raw book\'s risk was factor risk that did not pay. Caveats: IS is weak for every version (2018/2020 losses raw and neutral), the OOS strength sits in the 2022-24 rate-divergence cycle, and the OOS window overlaps the grid the 2.0/126 config came from -- this answers dollar-bet-vs-RV, it does not re-validate the sleeves.',
+    use: 'When the spread sleeves fire, the factor-neutral version of the book (hedged with a PCA-weighted basket of the USD majors) is the better-risk way to hold the same edge, and the candidate for forward paper tracking. Do not read the raw sleeve\'s USD exposure as part of the edge.',
+    instruments: ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'],
+  },
+  {
     id: 'residual-reversion-fx', domain: 'macro', verdict: 'null', date: '2026-09-20', doc: 'MD files/RESIDUAL_REVERSION_FX_TEST.md',
     claim: 'Mean-reversion of the residual (actual price minus an OLS macro fair value) predicts forward FX returns, out-of-sample, net of a naive trailing-mean benchmark',
     result: 'The MVE\'s cross-instrument pool (js/mve/validateInstrument.js, publication-lag-honest -- fixed same day, no prior real-data FX number predates it), 6 instruments: only 1/6 (EURUSD) clears both a real icEdge and an above-coin-flip hit rate, which poolConsistency itself reads as chance-level, not corroboration (mean icEdge -0.030, mean hit rate 0.485). NQ (-0.246) replicates July\'s "null and worse than inert" finding on this exact instrument. USDJPY shows positive icEdge but a below-50% hit rate -- internally inconsistent, not corroborating. GBPUSD\'s deflated Sharpe (0.796) is the closest to tradeable but its icEdge sits under the pooling threshold.',
