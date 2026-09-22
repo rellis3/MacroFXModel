@@ -171,23 +171,55 @@ icEdge −0.030, mean hit rate 0.485). No cross-sectional corroboration.
   doesn't corroborate cross-sectionally either — a single promising number surrounded
   by a null pool is exactly the shape `poolConsistency` exists to catch.
 
-**§2's regime split — not yet run.** "Validate ALL" reuses `/api/mve-validate/:sym`'s
-cached reports, not `/api/mve-validate-full/:sym` (the regime-split + cost-overlay
-route this doc's §1/§2 built). A live valuation card was pulled for EURUSD instead of
-the OOS-validate-full report — worth noting as a side finding: the card's own model
-claimed 96% convergence probability in 10 bars while the empirical base rate across 15
-historical events was 0%, with the page's own validation gate flagging the disagreement
-as untrustworthy. That is independently consistent with today's NULL/INCONSISTENT
-pooled verdict (the model's convergence claims don't hold up against this pair's own
-history) but is not a substitute for the actual §2 regime-split reading. **Pending:**
-open `mve.html`, select EURUSD specifically, click **🔬 Run OOS validation** (not
-"Regenerate & value" / Live mode), and append that report's regime-split section here.
+**§2's regime split — run 2026-09-21 via `/api/mve-validate-full/:sym`
+(`🔬 Run OOS validation`, EURUSD).** Same OOS scoring series as the pooled result
+above, sliced by date only (no refit):
 
-**Verdict on what's measured so far: NULL.** Residual mean-reversion does not show
-tradeable, cross-sectionally-corroborated edge on FX, on top of the identical NQ null
-already on record. This does not close the book on EURUSD specifically until the
-regime split runs — a real, still-open possibility per §2's own reasoning (2022–24 is
-the one window where the fundamentals say a rate-differential residual should catch
-FX, and a pooled null does not rule out a regime-concentrated result). Ledger entry
-below reflects the pooled cross-instrument result; the EURUSD regime-split follow-up
-is a separate, still-pending line, not blocked on this entry.
+| Slice | n | Best icEdge | Horizon | Best z-fade config | Deflated Sharpe | Verdict |
+|---|---|---|---|---|---|---|
+| Pooled (full sample) | — | 0.0475 | 60b | 10-bar hold, z≥1.5, 263 trades | 0.549 | WEAK/INCONCLUSIVE |
+| 2022–24 rate-divergence supercycle | 778 | 0.1236 | 20b | 20-bar hold, z≥2 | 0.366 | WEAK/INCONCLUSIVE |
+| Rest of sample | 4041 | 0.0332 | 20b | 20-bar hold, z≥2 | 0.178 | WEAK/INCONCLUSIVE |
+
+Full IC-by-horizon table for the pooled run, for reference (icEdge = model
+icPredictive − trailing-mean-benchmark icPredictive, the real signal net of the
+spurious reversion any anchor shows):
+
+| Horizon | IC (raw) | IC benchmark | IC edge | Hit rate |
+|---|---|---|---|---|
+| 1 bar | 0.0080 | 0.0005 | 0.0075 | 0.503 |
+| 5 bars | 0.0211 | 0.0202 | 0.0009 | 0.514 |
+| 10 bars | 0.0170 | −0.0111 | 0.0281 | 0.510 |
+| 20 bars | −0.0055 | −0.0396 | 0.0341 | 0.487 |
+| 60 bars | 0.0050 | −0.0425 | 0.0475 | 0.510 |
+
+Cost overlay (assumption, not measured on EURUSD — borrowed from the validated
+yield-spread sleeve's own 0.02% round-trip): the pooled best config's 263 trades,
+mean per-trade 0.00131 pre-cost → 0.00111 post-cost. Doesn't change the verdict either
+way — the gate that's failing is the deflated-Sharpe bar, not costs.
+
+**Reading — the regime split did not change the reading, but it isn't a flat "no
+effect" either; it's two things moving in opposite directions.** §2's fundamental
+hypothesis (2022–24's rate-divergence supercycle is where a rate-differential
+residual should show up, if anywhere) is directionally confirmed on the raw signal:
+icEdge is ~3.7x larger in that window (0.1236 vs 0.0332 rest) — the correlation
+really is stronger there. But the tradeable z-fade's deflated Sharpe goes the other
+way (0.366 in-regime vs 0.178 rest vs 0.549 pooled) — smaller, higher-icEdge samples
+lose more to the deflation penalty (fewer independent trades, n=778 vs the full
+pool) than they gain from the stronger raw correlation. Net effect: every slice —
+pooled, in-regime, and out-of-regime — sits well under the 0.95 SURVIVES bar. The
+regime split doesn't rescue the pooled result; if anything it shows the edge is real
+in direction (consistent with the fundamental story) but too weak and too thin a
+sample, even in its best window, to clear the bar. This is exactly the "disaggregate
+before declaring null" check CLAUDE.md asks for, and it comes back the same
+verdict — not because the check was skipped, but because it was run and the answer
+held.
+
+**Verdict: NULL.** Residual mean-reversion does not show tradeable,
+cross-sectionally-corroborated edge on FX, on top of the identical NQ null already on
+record, and EURUSD specifically — the one pair with a real pooled icEdge — does not
+clear the bar in its own best-case regime window either. Nothing here contradicts the
+economic intuition (rate divergence does correlate with a bigger residual-fair-value
+edge); it just isn't strong or persistent enough, after deflation for the sample size
+and the number of configs tried, to trade. Book closed on this framing pending a
+structurally different signal, not a re-run of this one.
