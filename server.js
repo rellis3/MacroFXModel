@@ -24689,6 +24689,50 @@ app.get('/api/analogml/motif-state', async (_req, res) => {
   return res.json(out);
 });
 
+// ── AnalogML: Telegram alert-funnel backtest (motif-alert-backtest.html) ───
+// motif_alert_backtest.py replays the ALERT path, not the raw signal
+// motif_track.py trades on (see its own docstring) -- a separate, much
+// larger historical study for "how often does the alert arrive and what
+// happens when it does", not the live-vs-backtest ground truth (that's
+// motif_trades.json above). Until 2026-09-22 this was a purely-manual
+// script whose output was ALSO committed to git -- the exact "stale
+// committed snapshot shadows the live copy after every deploy" bug fixed
+// for motif_trades.json/motif_state.json/paper_trades.json/shape_state.json
+// (see .gitignore's note). Fixed the same way here: untracked, R2-mirrored
+// by the script itself, and now kept current by a scheduled daily run
+// instead of relying on someone remembering to re-run it by hand.
+const ANALOGML_MOTIF_ALERT_BACKTEST_PATH = path.join(ANALOGML_DATA_DIR, 'motif_alert_backtest.json');
+
+app.get('/api/analogml/motif-alert-backtest', async (_req, res) => {
+  const out = await _loadAnalogMLJson(ANALOGML_MOTIF_ALERT_BACKTEST_PATH, 'analogml/motif_alert_backtest.json');
+  if (!out) return res.status(404).json({ ok: false, error: 'no motif_alert_backtest.json yet -- run AnalogML/motif_alert_backtest.py --all-pairs' });
+  return res.json(out);
+});
+
+// Heavy: shape-matches + M1-path-races every pair's full history (~26 pairs,
+// years of H1/M1 bars) -- same cost class as sessionResearchFull, so it gets
+// the same treatment: fire once on boot (so a fresh deploy self-heals within
+// minutes instead of waiting up to a day), then daily.
+let _motifAlertBacktestBusy = false;
+async function _motifAlertBacktestTick() {
+  if (_motifAlertBacktestBusy) { console.warn('[motif-alert-backtest] tick still running, skipping this interval'); return; }
+  _motifAlertBacktestBusy = true;
+  const startedAt = Date.now();
+  console.log(`[motif-alert-backtest] regen starting ${new Date().toISOString()}`);
+  try {
+    await _execFileAsync(BT_PYTHON, [path.join(__dirname, 'AnalogML', 'motif_alert_backtest.py'), '--all-pairs'],
+      { cwd: __dirname, timeout: 20 * 60_000, maxBuffer: 16 * 1024 * 1024 });
+    console.log(`[motif-alert-backtest] regen done in ${((Date.now() - startedAt) / 60_000).toFixed(1)}min`);
+  } catch (e) {
+    console.warn(`[motif-alert-backtest] regen failed: ${e.message}`);
+  } finally {
+    _motifAlertBacktestBusy = false;
+  }
+}
+const MOTIF_ALERT_BACKTEST_INTERVAL_MS = (parseInt(process.env.MOTIF_ALERT_BACKTEST_INTERVAL_SECONDS, 10) || 86400) * 1000;
+if (svcEnabled('motifAlertBacktest')) svcRun('motifAlertBacktest', _motifAlertBacktestTick);
+svcInterval('motifAlertBacktest', _motifAlertBacktestTick, MOTIF_ALERT_BACKTEST_INTERVAL_MS);
+
 // ── SessionResearch: per-pair Asia/London/overlap/NY session-handoff,
 // day-flow, walk-forward-model, and impulse-reversal research, distilled to
 // ONE small combined file by SessionResearch/dashboard_export.py (full
