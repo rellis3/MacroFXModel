@@ -246,6 +246,28 @@ function byYear(dates, rets) {
   return out;
 }
 
+// ── one day's hedge (THE single implementation — the backtest walk and the forward
+//    tracker both call this, so they cannot drift apart) ──────────────────────
+// raw: { pairKey: position } decided at a close; fm: windowFactors() of the window
+// ending at that close; K: components to neutralise. Returns the factor-neutral
+// book on the 7 USD majors, rescaled to the raw book's gross, plus diagnostics.
+export function neutralBook(raw, fm, K) {
+  const cols = exposureColumns(fm, K);
+  const ones = new Array(CCYS.length).fill(1);
+  const w = pairToCurrency(raw);
+  const wn = projectOut(w, [...cols, ones]);
+  const residPos = currencyToPair(wn);
+  const gR = grossOf(raw), gN = grossOf(residPos);
+  const neutral = gN > 1e-12 ? Object.fromEntries(Object.entries(residPos).map(([p, v]) => [p, v * gR / gN])) : {};
+  const wNeutral = pairToCurrency(neutral);
+  return {
+    raw, neutral, gross: gR,
+    exposurePre: cols.map(c => c.reduce((a, v, i) => a + v * w[i], 0)),
+    exposurePost: cols.map(c => c.reduce((a, v, i) => a + v * wNeutral[i], 0)),
+    factorVarShare: gR > 1e-12 ? factorVarianceShare(w, fm, K) : null,
+  };
+}
+
 // ── the book walk ───────────────────────────────────────────────────────────
 // Inputs (all pure data):
 //   dates, R, pairRet        from currencyReturns(alignCloses(...))
@@ -321,17 +343,12 @@ export function runBookLayer({
       } else {
         raw = books[nm][closeIdx] || {};
       }
-      const w = pairToCurrency(raw);
-      const wn = projectOut(w, [...cols, ones]);
-      const residPos = currencyToPair(wn);
-      const gR = grossOf(raw), gN = grossOf(residPos);
-      const neutralPos = gN > 1e-12 ? Object.fromEntries(Object.entries(residPos).map(([p, v]) => [p, v * gR / gN])) : {};
-      const e = cols.map(c => c.reduce((a, v, i) => a + v * w[i], 0));
-      if (gR > 1e-12) {
+      const nb = neutralBook(raw, fm, KK);
+      const neutralPos = nb.neutral;
+      if (nb.gross > 1e-12) {
         s.activeDays++;
-        s.exp.push(e);
-        const vs = factorVarianceShare(w, fm, KK);
-        if (vs != null) s.varShare.push(vs);
+        s.exp.push(nb.exposurePre);
+        if (nb.factorVarShare != null) s.varShare.push(nb.factorVarShare);
       }
       push(s.raw, raw, t + 1);
       push(s.neutral, neutralPos, t + 1);

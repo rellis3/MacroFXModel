@@ -95,6 +95,7 @@ import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Rang
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
 import { runBookFactorAudit as _mveBookAudit, BOOK_SLEEVE_CONFIG as _MVE_BOOK_CFG } from './js/mve/bookFactorEngine.js';
+import { runForwardTick as _mveForwardTick, readForward as _mveForwardRead } from './js/mve/bookForwardEngine.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { validateResidualReversion as _validateResidualReversion } from './js/residualReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
@@ -15696,6 +15697,47 @@ app.get('/api/mve-book/status/:jobId', (req, res) => {
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── MVE book layer — forward paper tracker (MD files/MVE_BOOK_FORWARD_TRACKER.md) ─
+// Daily 07:15 London (after the 00:05 M1 tail top-up and the 00:30 rebuild):
+// appends yesterday's close for the factor-neutral combined spread book to an
+// append-only R2 log. Same code path as the audit above. Paper only, no orders.
+// One tick at a time, and never alongside a book-audit job (both load M1 for
+// every major — the concurrent-memory failure mode RAILWAY_SERVICE_FLAGS.md warns about).
+const _mveFwdStore = { getJSON: k => _r2GetJSON(k), putJSON: (k, o) => _r2PutJSON(k, o) };
+let _mveFwdRun = null;   // { startedAt, promise, result?, error? }
+function _mveFwdTick(source) {
+  if (_mveFwdRun && !_mveFwdRun.done) return _mveFwdRun;
+  if ([..._mveBookJobs.values()].some(j => j.status === 'running')) {
+    return { done: true, error: 'a book-audit job is running — try again when it finishes' };
+  }
+  const run = { startedAt: Date.now(), done: false, source };
+  run.promise = _mveForwardTick(_mveFwdStore)
+    .then(r => { run.result = r; console.log(`[mve-book-forward] ${source}: close ${r.date} appended=${r.appended} status=${r.summary.status}`); })
+    .catch(e => { run.error = e?.message || String(e); console.error('[mve-book-forward]', run.error, e?.stack ?? ''); })
+    .finally(() => { run.done = true; });
+  _mveFwdRun = run;
+  return run;
+}
+if (process.env.FRED_KEY && _r2Ok() && svcEnabled('mveBookForward')) {
+  _scheduleDailyLondon(7, 15, () => svcRun('mveBookForward', () => _mveFwdTick('scheduled').promise));
+  console.log('[mve-book-forward] daily tick armed at 07:15 London (SVC_MVE_BOOK_FORWARD=0 to disable)');
+}
+app.get('/api/mve-book/forward', async (_req, res) => {
+  try {
+    const out = await _mveForwardRead(_mveFwdStore);
+    const r = _mveFwdRun;
+    res.json({ ...out, running: !!(r && !r.done), lastRun: r ? { startedAt: r.startedAt, done: r.done, source: r.source, error: r.error || null, appended: r.result?.appended ?? null, reason: r.result?.reason ?? null } : null,
+      scheduled: !!(process.env.FRED_KEY && _r2Ok() && svcEnabled('mveBookForward')) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/mve-book/forward/run', (_req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set' });
+  if (!_r2Ok()) return res.status(500).json({ ok: false, error: 'R2 not configured — the forward log must live in R2' });
+  const r = _mveFwdTick('manual');
+  if (r.error && r.done && !r.startedAt) return res.status(409).json({ ok: false, error: r.error });
+  res.json({ ok: true, running: !r.done, startedAt: r.startedAt });
 });
 
 // ── Diversified trend-following backtest ────────────────────────────────────
