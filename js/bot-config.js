@@ -7289,3 +7289,33 @@ setInterval(() => {
   if (!document.getElementById('tab-motifbot')?.classList.contains('active')) return;
   loadMtLiveStatus();
 }, 60_000);
+
+// Daily levels export (top-bar button) — fetches the SAME server-built text
+// vol-forecast-v3.html's "⬇ Forecast p50/75/90" button uses
+// (/api/vol-forecast/ladder/export), so this page and that one can never
+// quote different numbers for the same paste. Built 2026-09-22 after a
+// live-vs-chart confusion where the owner had to go find this on a
+// different page during a market session.
+async function copyDailyLevels() {
+  const btn = document.getElementById('copyDailyLevelsBtn');
+  if (!btn) return;
+  if (btn.dataset.origHtml == null) btn.dataset.origHtml = btn.innerHTML;
+  const restore = () => setTimeout(() => { btn.innerHTML = btn.dataset.origHtml; btn.disabled = false; }, 2200);
+  btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/vol-forecast/ladder/export?horizon=daily');
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; restore(); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = '✓ Copied!'; restore();
+    } catch {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = `vol-forecast-daily-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click(); URL.revokeObjectURL(url);
+      btn.innerHTML = btn.dataset.origHtml; btn.disabled = false;
+    }
+  } catch (e) { btn.textContent = '✗ failed'; restore(); }
+}
+window.copyDailyLevels = copyDailyLevels;
