@@ -61,6 +61,24 @@
   table.xa tr.grp td{background:var(--card2);color:var(--text3);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:700}
   .up{color:var(--bull)} .dn{color:var(--red)} .flat{color:var(--text3)}
   .z{font-size:10px;color:var(--text3)}
+  /* the lesson */
+  .lesson{border-left:3px solid var(--amber)}
+  .ls-t{font-size:17px;font-weight:700;line-height:1.35;margin-bottom:8px;color:var(--text)}
+  .ls-p{display:grid;grid-template-columns:104px 1fr;gap:4px 14px;font-size:13px;line-height:1.65;margin-bottom:7px;align-items:baseline}
+  .ls-p .k{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:var(--text3);padding-top:3px}
+  .ls-p.seen .k{color:var(--text2)} .ls-p.trap .k{color:var(--red)} .ls-p.say .k{color:var(--amber)}
+  .ls-p .b{color:var(--text2)} .ls-p.seen .b{color:var(--text);font-weight:600}
+  .ls-p.say .b{color:var(--amber);font-style:italic}
+  .ls-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:11px;color:var(--text3)}
+  .ls-btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer}
+  .ls-btn:hover{border-color:var(--border2);color:var(--text)}
+  .ls-ev{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:10.5px;margin-right:4px}
+  .ls-ev.validated{border-left:2px solid var(--bull)} .ls-ev.null{border-left:2px solid var(--red)} .ls-ev.context{border-left:2px solid var(--blue)}
+  .gl{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;margin-top:6px}
+  .gl div{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.5;color:var(--text2)}
+  .gl div b{color:var(--text);font-size:12px} .gl div .sayit{color:var(--text3);font-style:italic}
+  .gl div .lv{float:right;color:var(--blue);font-variant-numeric:tabular-nums}
+  @media (max-width:560px){.ls-p{grid-template-columns:1fr}.ls-p .k{padding-top:6px}}
   .note{color:var(--text3);font-size:11px;line-height:1.6;margin-top:10px;max-width:84ch}
   @media (max-width:560px){.wrap{padding:12px}.drv{grid-template-columns:110px 1fr 54px}}
 </style>
@@ -80,6 +98,11 @@
 <div class="wrap">
   <div class="intro">
     <b>How to read a market, in three questions.</b> First, <b>what is today organised around</b> — on any given day one or two things are moving everything else, and the rest are passengers. Second, <b>what does X do to Y</b> — separately for the same window (which explains) and for tomorrow (which is what you would trade on, and is mostly nothing). Third, <b>what actually moved</b>. This page is those three, in that order. Nothing here is a trade; the whole point is that most cross-asset stories are true as description and worthless as prediction, and the only way to know which is which is to have tested them and kept the answer.
+  </div>
+
+  <div class="card lesson" id="lessonCard">
+    <h2>Today's lesson <span id="lessonWhy" class="muted" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+    <div id="lesson">Loading…</div>
   </div>
 
   <div class="card">
@@ -109,12 +132,18 @@
     <div id="xa">Loading…</div>
     <div class="note">Macro rows come from the same series the chain reads, each against its own cadence (a weekly series cannot have a one-day change). Price rows are OANDA daily closes.</div>
   </div>
+  <div class="card">
+    <h2>4 · The words</h2>
+    <div class="sub">The vocabulary, defined against the live number where there is one. Learning to <b>talk</b> about a market is not decoration — the words are compressed concepts, and you cannot hold an idea you have no name for.</div>
+    <div class="gl" id="gl"></div>
+  </div>
 </div>
 
 <script type="module">
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
 import { DRIVERS, TARGETS, buildMatrix, leadership } from './js/impactMatrix.js';
 import { CHAIN_NODES, CHAIN_WINDOW_DAYS, nodeDelta, evaluateChain } from './js/macroChain.js';
+import { GLOSSARY, pickLesson, lessonsToday } from './js/marketLessons.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const jget = async u => { const r = await fetch(u); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); };
@@ -137,11 +166,13 @@ const LABELS = { us2y: 'US 2Y', us10y: 'US 10Y', us30y: 'US 30Y', tips: 'Real 10
 let SERIES = {}, MATRIX = null, SEL = null;
 
 async function load() {
-  const [fred, crack, intl, mc, ...ohlc] = await Promise.all([
+  const [fred, crack, intl, mc, watch, regime, ...ohlc] = await Promise.all([
     jget(`/api/fredhistory?keys=${FRED_KEYS}`).catch(() => ({})),
     jget('/api/crack').catch(() => null),
     jget('/api/intl-yields').catch(() => null),
     jget('/api/macro-changes').catch(() => ({ rows: [] })),
+    jget('/api/desk-watch').catch(() => null),
+    jget('/api/regime').catch(() => null),
     ...Object.values(OHLC).map(s => jget(`/api/ohlc?symbol=${s}`).catch(() => null)),
   ]);
   for (const k of ['us2y', 'us10y', 'us30y', 'tips', 'bei', 'vix', 'dxy', 'hy']) if (fred?.[k]?.length) SERIES[k] = fred[k];
@@ -157,8 +188,70 @@ async function load() {
     }
   }
   renderDriving();
-  renderMatrix(chainToday());
+  const links = chainToday();
+  renderMatrix(links);
   renderCrossAsset(mc?.rows ?? []);
+  renderLesson(links, { crack, watch, regime });
+  renderGlossary();
+}
+
+/* ── the lesson: today's tape, explained, and it remembers what you have met ──
+   The curriculum is written by the market: a lesson only fires when the tape is
+   actually doing that thing, and the same idea deepens a level each time you
+   meet it rather than repeating. What you have seen lives in this browser only
+   (localStorage) -- nothing about it is sent anywhere. */
+const SEEN_KEY = 'mv_lessons_seen_v1';
+const seenRead = () => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}') ?? {}; } catch { return {}; } };
+const seenWrite = o => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch { /* private window: the lesson still shows, it just will not remember */ } };
+let LCTX = null, LSKIP = [];
+
+function lessonContext(links, extra = {}) {
+  const st = MATRIX?.stats ?? null;
+  const ev = (extra.crack?.context?.percentile != null) ? extra.crack.context : null;
+  const last = k => SERIES[k]?.length ? SERIES[k][SERIES[k].length - 1].value : null;
+  return {
+    links, matrix: st, regime: extra.regime?.now ?? extra.regime ?? null,
+    watch: extra.watch?.states ?? [], events: (extra.events ?? []),
+    vix: last('vix'), vix3m: null, series: { tips: last('tips'), bei: last('bei'), hy: last('hy') },
+    crackLevel: extra.crack?.last?.crack ?? null, crackPercentile: ev?.percentile ?? null,
+  };
+}
+
+function renderLesson(links, extra) {
+  LCTX = lessonContext(links, extra);
+  paintLesson();
+}
+function paintLesson() {
+  const seen = seenRead();
+  const p = pickLesson(LCTX, seen, { exclude: LSKIP });
+  const box = document.getElementById('lesson');
+  if (!p) { box.innerHTML = '<span class="muted">No lesson fits today’s tape.</span>'; return; }
+  const { lesson, body, why } = p;
+  document.getElementById('lessonWhy').textContent = `· ${why}`;
+  const evChips = (body.evidence ?? []).map(id => { const e = DESK_EVIDENCE.find(x => x.id === id); return e ? `<span class="ls-ev ${e.verdict}" title="${esc(e.claim)}">${esc(e.id)} · ${esc(e.verdict)}</span>` : ''; }).join('');
+  box.innerHTML = `
+    <div class="ls-t">${esc(lesson.title)}</div>
+    <div class="ls-p seen"><span class="k">What you see</span><span class="b">${esc(body.seen)}</span></div>
+    <div class="ls-p"><span class="k">What it means</span><span class="b">${esc(body.means)}</span></div>
+    <div class="ls-p trap"><span class="k">What it does NOT mean</span><span class="b">${esc(body.notMeans)}</span></div>
+    <div class="ls-p say"><span class="k">Say it like this</span><span class="b">${esc(body.words)}</span></div>
+    <div class="ls-foot">
+      <button class="ls-btn" onclick="lessonGot()">Got it — next time go deeper</button>
+      <button class="ls-btn" onclick="lessonSkip()">Another one</button>
+      ${evChips ? `<span>backed by: ${evChips}</span>` : '<span class="muted">no forward test — this one is mechanism only</span>'}
+      <span class="muted">topic: ${esc(lesson.topic)} · level ${lesson.level} of 3 · ${lessonsToday(LCTX).length} lessons fit today</span>
+    </div>`;
+  window.__lesson = p;
+}
+window.lessonGot = () => { const p = window.__lesson; if (!p) return; const s = seenRead(); s[p.lesson.id] = Math.max(s[p.lesson.id] ?? 0, p.lesson.level); seenWrite(s); LSKIP = []; paintLesson(); };
+window.lessonSkip = () => { const p = window.__lesson; if (!p) return; LSKIP.push(`${p.lesson.id}:${p.lesson.level}`); paintLesson(); };
+
+function renderGlossary() {
+  const c = LCTX ?? {};
+  document.getElementById('gl').innerHTML = GLOSSARY.map(g => {
+    let live = null; try { live = g.live ? g.live(c) : null; } catch { live = null; }
+    return `<div>${live != null ? `<span class="lv">${esc(typeof live === 'number' ? live.toFixed(2) : live)}</span>` : ''}<b>${esc(g.term)}</b>${g.say ? ` <span class="sayit">“${esc(g.say)}”</span>` : ''}<br>${esc(g.def)}</div>`;
+  }).join('');
 }
 
 /* ── the chain, evaluated here so a matrix cell can show today's verdict ── */
