@@ -106,9 +106,11 @@ from pylego.portfolio_sim import (  # noqa: E402
 )
 from pylego.swing_structure import atr as compute_atr  # noqa: E402
 from pylego.trade_stats import summarize_r  # noqa: E402
+from pylego.r2 import r2_client, R2_BUCKET  # noqa: E402
 
 IS_OOS_CUTOFF = "2023-01-01"
 DATA_DIR = Path(__file__).resolve().parent / "data"
+R2_ALERT_BACKTEST_KEY = "analogml/motif_alert_backtest.json"
 
 # Mirrors motif_track.FROZEN / motif_nearing_watch's --nearing-atr-mult default.
 # Imported as literals rather than from motif_track because importing that
@@ -727,8 +729,24 @@ def main() -> None:
 
     out_path = Path(args.out)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    body = json.dumps(json_safe(out))
     with out_path.open("w") as f:
-        json.dump(json_safe(out), f)
+        f.write(body)
+    # Mirror to R2 (2026-09-22) so this survives a Railway redeploy -- this
+    # file is no longer committed to git (see .gitignore), the same
+    # "bot-produced state must never be committed" fix already applied to
+    # motif_trades.json/motif_state.json/paper_trades.json/shape_state.json.
+    # server.js's /api/analogml/motif-alert-backtest reads local disk first,
+    # falling back to this R2 copy, so a fresh deploy shows the last good
+    # export instead of a 404 until the next scheduled regen finishes.
+    s3 = r2_client()
+    if s3 is not None:
+        try:
+            s3.put_object(Bucket=R2_BUCKET, Key=R2_ALERT_BACKTEST_KEY,
+                          Body=body.encode("utf-8"), ContentType="application/json")
+        except Exception as e:
+            print(f"[warn] R2 mirror failed ({e}) -- local copy at {out_path} is current, "
+                  f"R2 copy may be stale until the next successful run")
     print(f"\n[export] {len(all_alerts)} alerts, {len(all_trades)} trades, "
           f"{len(pairs)} pairs -> {out_path}")
     print(f"[funnel]  👀 {len(near_all)} nearing -> {converted} converted "
