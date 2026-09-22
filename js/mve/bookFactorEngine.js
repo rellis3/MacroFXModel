@@ -38,10 +38,16 @@ export async function loadMajorCloses({ dateFrom = BOOK_SLEEVE_CONFIG.dateFrom, 
   return { closesByPair, log };
 }
 
+// Everything the book walk needs, built once: aligned closes, currency returns,
+// sleeve trades → daily positions (y2, y10, combined at ½ each), the OOS split.
+// Shared by the audit (runBookFactorAudit) and the forward tracker
+// (bookForwardEngine.js) so both see the SAME books from the SAME code.
 // opts.trades = { y2: [...], y10: [...] } bypasses FRED (tests / offline runs).
-export async function runBookFactorAudit(opts = {}) {
+// opts.dropFromDate = 'YYYY-MM-DD' drops that date and later (an incomplete day).
+export async function prepareBookInputs(opts = {}) {
   const cfg = { ...BOOK_SLEEVE_CONFIG, ...(opts.sleeveConfig || {}) };
   const { closesByPair, log } = await loadMajorCloses({ dateFrom: cfg.dateFrom, dateTo: cfg.dateTo });
+  if (opts.dropFromDate) for (const p of Object.keys(closesByPair)) closesByPair[p] = closesByPair[p].filter(d => d.date < opts.dropFromDate);
   const aligned = alignCloses(closesByPair);
   const cr = currencyReturns(aligned);
 
@@ -71,6 +77,11 @@ export async function runBookFactorAudit(opts = {}) {
       return out;
     });
   }
+  return { cfg, log, aligned, cr, pos, splitDate, sleeveSummary };
+}
+
+export async function runBookFactorAudit(opts = {}) {
+  const { cfg, log, aligned, cr, pos, splitDate, sleeveSummary } = await prepareBookInputs(opts);
   const costOneWay = Object.fromEntries(Object.keys(USD_MAJORS).map(p => [p, opts.costOneWay ?? BOOK_COST_ONE_WAY]));
   const res = runBookLayer({
     ...cr, books: pos, splitDate, costOneWay, K: opts.K ?? 'auto', shadowResidual: opts.shadowResidual !== false,

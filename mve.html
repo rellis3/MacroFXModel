@@ -9,7 +9,7 @@
   Map modal and the Command Hub top bar, and it DOES call live, read-only server
   routes for the "Live" data source and the validation buttons (/api/mve/:sym,
   /api/mve-validate/:sym, /api/mve-validate-full/:sym, /api/mve-validate-all, and the Phase 7 book
-  layer /api/mve-book/run + /status) —
+  layer /api/mve-book/run + /status, and its forward tracker /api/mve-book/forward) —
   those routes surface a valuation/validation report and cannot write to or alter
   any live signal, bot, or trading decision (see MVE_RUN_GUIDE.md §6/§7 on what
   "isolated" actually means here: no server.js import feeds a signal, not "no
@@ -98,6 +98,18 @@
     <label style="display:inline-flex;gap:6px;align-items:center;margin-top:10px"><input type="checkbox" id="bookFresh"> ignore the 6h cache</label>
     <div><button id="bookRun">▶ Run book factor audit</button></div>
     <div id="bookout" style="margin-top:12px"></div>
+  </div>
+
+  <div class="panel" id="fwdPanel" style="border-color:#2f5a45">
+    <div style="font-weight:700;margin-bottom:4px">📒 Forward paper tracker: factor-neutral combined spread book</div>
+    <div style="font-size:12px;color:#8891a0;line-height:1.55">
+      The candidate system from the book-layer audit (2Y + 10Y spread sleeves at ½ each, hedged off K = 2 currency factors), tracked <b>forward</b>:
+      once a day (07:15 London) it logs the book it would hold after yesterday's close and marks the previous book to market. The log is append-only
+      in R2 and never edited, so this is the one record the backtest can't be. Paper only, no orders. Kill and review rules are pre-registered in
+      <code>MD files/MVE_BOOK_FORWARD_TRACKER.md</code>.
+    </div>
+    <div><button id="fwdRefresh" class="alt">↻ Refresh</button> <button id="fwdRun">▶ Run today's tick now</button></div>
+    <div id="fwdout" style="margin-top:12px;color:#8891a0">Loading…</div>
   </div>
 
   <div class="flex">
@@ -360,6 +372,52 @@ function drawBookCurve(curve, splitDate) {
   c.fillText(curve[0][0], 8, H - 2); c.fillText(curve[curve.length - 1][0], W - 70, H - 2);
 }
 $('bookRun').onclick = runBook;
+
+// ── Forward paper tracker ───────────────────────────────────────────────────
+const FWD_COL = { 'RUNNING': '#3b82f6', 'REVIEW-DUE': '#eab308', 'PAUSED-PARITY': '#f97316', 'KILL-DRAWDOWN': '#ef4444', 'KILL-INCONSISTENT': '#ef4444' };
+async function loadFwd() {
+  const out = $('fwdout');
+  try {
+    const r = await (await fetch('/api/mve-book/forward')).json();
+    if (!r.ok) { out.innerHTML = `<span style="color:#ef4444">Error: ${r.error}</span>`; return; }
+    const run = r.lastRun ? `Last tick: ${r.lastRun.source} ${new Date(r.lastRun.startedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC — ${r.running ? '⏳ running…' : r.lastRun.error ? `<span style="color:#ef4444">error: ${r.lastRun.error}</span>` : r.lastRun.appended ? 'appended a close' : (r.lastRun.reason || 'nothing new')}` : 'No tick since the server started.';
+    if (!r.started) { out.innerHTML = `<div>Not started yet. The first tick builds the frozen manifest (reference stats from the full backtest, about 2 min) and logs the first close. ${r.scheduled ? 'The daily tick is armed.' : '<span style="color:#eab308">The daily tick is NOT armed (needs FRED_KEY + R2, and SVC_MVE_BOOK_FORWARD not set to 0).</span>'}</div><div style="margin-top:6px">${run}</div>`; if (r.running) setTimeout(loadFwd, 8000); return; }
+    const s = r.summary, m = r.manifest, ref = m.reference.neutralCombined, n = s.neutral, w = s.raw;
+    const tile = (k, v, sub = '') => `<div style="background:#0d1017;border:1px solid #22262f;border-radius:8px;padding:8px 10px;min-width:120px;flex:1"><div style="font-size:10.5px;color:#8891a0">${k}</div><div style="font-family:monospace;font-size:15px;color:#e6e8ec">${v}</div><div style="font-size:10.5px;color:#5b6270">${sub}</div></div>`;
+    const cb = s.currentBook;
+    const pairs = cb ? [...new Set([...Object.keys(cb.neutral || {}), ...Object.keys(cb.raw || {})])].sort() : [];
+    const bookRows = pairs.map(p => `<tr><td>${p.toUpperCase()}</td><td style="font-family:monospace;color:${(cb.neutral[p] || 0) >= 0 ? '#22c55e' : '#ef4444'}">${fmt(cb.neutral[p] || 0, 3)}</td><td style="font-family:monospace;color:#8891a0">${fmt(cb.raw[p] || 0, 2)}</td></tr>`).join('');
+    const recent = (r.recent || []).slice(-12).reverse().map(x => `<tr><td>${x.date}</td><td style="font-family:monospace;color:${x.net >= 0 ? '#22c55e' : '#ef4444'}">${fmt(x.net * 100, 3)}%</td><td style="font-family:monospace">${fmt(x.cost * 1e4, 2)}bp</td><td style="font-family:monospace;color:#8891a0">${fmt(x.rawNet * 100, 3)}%</td><td style="font-family:monospace">${fmt((x.equity - 1) * 100, 2)}%</td><td style="font-size:10.5px;color:${x.parity?.maxAbsDiff > 1e-6 ? '#f97316' : '#5b6270'}">${x.parity ? (x.parity.maxAbsDiff == null ? 'n/a' : x.parity.maxAbsDiff > 1e-6 ? 'Δ ' + x.parity.maxAbsDiff.toExponential(1) : '✓') : 'open'}</td></tr>`).join('');
+    out.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><span style="font-weight:700;color:${FWD_COL[s.status] || '#8891a0'}">${s.status}</span><span style="font-size:12px;color:#cdd3dc">${s.why}</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        ${tile('Logged', `${r.days} closes`, `${s.firstDate} → ${s.lastDate}`)}
+        ${tile('Forward net', `${fmt(n.totalPct, 2)}%`, `raw book ${fmt(w.totalPct, 2)}%`)}
+        ${tile('Forward Sharpe', (n.sharpe == null || n.n < 20) ? `— (${n.n}/20 days)` : `${fmt(n.sharpe)} ± ${fmt(n.se)}`, `backtest OOS ${fmt(ref.oosSharpe)} · kill floor ${s.sharpeFloor ?? '—'} (from day 126)`)}
+        ${tile('Max drawdown', `${fmt(n.maxDdPct, 2)}%`, `kill at ${s.ddLimitPct == null ? '—' : fmt(s.ddLimitPct, 2) + '%'} (1.5× backtest ${fmt(ref.fullMaxDdPct, 2)}%)`)}
+        ${tile('Vol neutral / raw', s.volRatio == null ? '—' : fmt(s.volRatio, 2), `backtest ${fmt(ref.oosAnnVolPct / m.reference.rawCombined.oosAnnVolPct, 2)}`)}
+      </div>
+      <div class="flex">
+        <div><label style="margin-top:0">Book held after ${cb?.date || '—'} (neutral vs raw, notional units)</label>
+          <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#8891a0;text-align:left"><th>Pair</th><th>Neutral</th><th>Raw</th></tr></thead><tbody>${bookRows || '<tr><td colspan="3" style="color:#8891a0">flat: no sleeve trade open</td></tr>'}</tbody></table>
+          <div style="font-size:10.5px;color:#5b6270;margin-top:4px">Factor exposure before → after hedge: ${cb ? cb.exposurePre.map(x => fmt(x, 4)).join(', ') + ' → ' + cb.exposurePost.map(x => fmt(x, 4)).join(', ') : '—'}</div></div>
+        <div><label style="margin-top:0">Latest closes</label>
+          <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#8891a0;text-align:left"><th>Close</th><th>Net</th><th>Cost</th><th>Raw net</th><th>Cum.</th><th>Replay</th></tr></thead><tbody>${recent}</tbody></table></div>
+      </div>
+      <div style="font-size:10.5px;color:#5b6270;margin-top:8px">Frozen config: sleeves ${m.sleeveConfig.entryThreshold} / ${m.sleeveConfig.zWindow}, K = ${m.K}, window ${m.window}, cost ${(Object.values(m.costOneWay)[0] * 1e4).toFixed(1)} bp one-way per leg · started ${m.startDate} · reference backtest to ${m.reference.dataTo} (OOS from ${m.reference.splitDate}). ${run}</div>`;
+    if (r.running) setTimeout(loadFwd, 8000);
+  } catch (e) { out.innerHTML = `<span style="color:#ef4444">Fetch failed: ${e.message} (deployed server only)</span>`; }
+}
+$('fwdRefresh').onclick = loadFwd;
+$('fwdRun').onclick = async () => {
+  $('fwdout').innerHTML = '⏳ Starting tick…';
+  try {
+    const r = await (await fetch('/api/mve-book/forward/run', { method: 'POST' })).json();
+    if (!r.ok) { $('fwdout').innerHTML = `<span style="color:#ef4444">Error: ${r.error}</span>`; return; }
+    setTimeout(loadFwd, 1500);
+  } catch (e) { $('fwdout').innerHTML = `<span style="color:#ef4444">${e.message}</span>`; }
+};
+loadFwd();
 $('validate').onclick = runValidation;
 $('validateAll').onclick = runValidateAll;
 go();
