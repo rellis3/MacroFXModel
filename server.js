@@ -875,13 +875,16 @@ const PIP_SIZE = {
   'NZD/CAD': 0.0001, 'NZD/JPY': 0.01,   'BTC/USD': 1.0,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
   'SPX500_USD': 1.0, 'DE30_USD': 1.0,   'UK100_GBP': 1.0,
+  // OANDA quotes the DAX in euros (DE30_EUR); the DE30_USD key above never matched
+  // a live symbol, so DE30 fell through to 0.0001 and its range_pts read 2,565,560.
+  'DE30_EUR': 1.0,
   'US30_USD': 1.0, 'US2000_USD': 1.0,
 };
 
 const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
   'NZD/JPY': 3, 'BTC/USD': 1,
-  'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'UK100_GBP': 1,
+  'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'DE30_EUR': 1, 'UK100_GBP': 1,
   'US30_USD': 1, 'US2000_USD': 1,
 };
 
