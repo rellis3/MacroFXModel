@@ -7319,3 +7319,33 @@ async function copyDailyLevels() {
   } catch (e) { btn.textContent = '✗ failed'; restore(); }
 }
 window.copyDailyLevels = copyDailyLevels;
+
+// Vote Atlas's OWN ladder export -- deliberately a SEPARATE button/function
+// from copyDailyLevels above. That one is the Volatility Forecast page's
+// number; this one is what atlasWalk itself actually computes and trades
+// off, via a new server route mirroring its exact internal calculation
+// (server.js's /api/level-atlas/vote-ladder/export). Built 2026-09-22 so
+// there's a way to see the real number, not just the forecast page's.
+async function copyVoteAtlasLevels() {
+  const btn = document.getElementById('copyVoteAtlasLevelsBtn');
+  if (!btn) return;
+  if (btn.dataset.origHtml == null) btn.dataset.origHtml = btn.innerHTML;
+  const restore = () => setTimeout(() => { btn.innerHTML = btn.dataset.origHtml; btn.disabled = false; }, 2200);
+  btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/level-atlas/vote-ladder/export');
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; restore(); return; }
+    try {
+      await navigator.clipboard.writeText(text);
+      btn.textContent = '✓ Copied!'; restore();
+    } catch {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = `vote-atlas-ladder-${new Date().toISOString().slice(0, 10)}.txt`;
+      a.click(); URL.revokeObjectURL(url);
+      btn.innerHTML = btn.dataset.origHtml; btn.disabled = false;
+    }
+  } catch (e) { btn.textContent = '✗ failed'; restore(); }
+}
+window.copyVoteAtlasLevels = copyVoteAtlasLevels;

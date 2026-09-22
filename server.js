@@ -19706,6 +19706,63 @@ app.get('/api/vol-forecast/ladder/export', async (req, res) => {
   }
 });
 
+// GET /api/level-atlas/vote-ladder/export
+//
+// A SEPARATE export from /api/vol-forecast/ladder/export above, deliberately
+// not the same route. That one prints volForecastScheduler.js's forecast
+// (ladder_flat) — a genuinely different calculation from what Vote Atlas
+// itself trades. This one prints Vote Atlas's OWN ladder: the exact
+// forecastSigma+buildLadder call _volatilityV2InstrumentPreview makes for
+// live pricing (server.js ~17731-17735), for every REFERENCE_ENGINE_PAIRS
+// instrument, run through the SAME buildLadderExportText formatter so the
+// paste-into-Pine shape is identical either way.
+//
+// Built 2026-09-22 after a live-vs-chart confusion where the two systems'
+// numbers were assumed interchangeable and, for NQ that day, were not
+// (13.99% here vs 24.70% on the other export -- a real, separate gap, not
+// yet root-caused). Do not merge this into the other route: they answer
+// different questions ("what does the forecast page say" vs "what is Vote
+// Atlas actually about to trade") and collapsing them back into one name is
+// exactly the mistake that caused the confusion in the first place.
+app.get('/api/level-atlas/vote-ladder/export', async (req, res) => {
+  try {
+    const instruments = {};
+    for (const pair of REFERENCE_ENGINE_PAIRS) {
+      const lower = pair.toLowerCase();
+      try {
+        const live = await _laGetFastLive(lower);
+        if (live.warming || !live.date) continue;
+        const packed = _laLiveCache.get(lower)?.packed;
+        if (!packed?.n) continue;
+        const assetCls = (() => { try { return _assetClassOf(lower); } catch { return 'fx'; } })();
+        const sessions = _bucketM1IntoSessions(packed, 'Europe/London');
+        const daily = [...sessions.keys()].sort().map(d => {
+          const b = sessions.get(d);
+          let hi = -Infinity, lo = Infinity;
+          for (const x of b) { if (x.high > hi) hi = x.high; if (x.low < lo) lo = x.low; }
+          return { date: d, open: b[0].open, high: hi, low: lo, close: b[b.length - 1].close };
+        });
+        const todayIdx = daily.findIndex(d => d.date === live.date);
+        const priorDaily = todayIdx > 0 ? daily.slice(0, todayIdx) : daily.slice(0, -1);
+        if (!priorDaily.length) continue;
+        const est = _LA_LADDER_PARAMS.pairs?.[pair]?.estimator ?? _LA_LADDER_PARAMS.classDefaults?.[assetCls]?.estimator ?? 'yz_30';
+        const sigma = _laForecastSigma(priorDaily, est);
+        if (!(sigma > 0)) continue;
+        const lad = _laBuildLadder(sigma, { instrument: pair, assetClass: assetCls, horizon: 'daily', eventTag: 'none' });
+        instruments[pair] = { ladder: lad };
+      } catch (e) { console.warn(`[vote-ladder-export] ${pair} failed:`, e.message); }
+    }
+    if (!Object.keys(instruments).length) {
+      return res.status(202).type('text/plain').send('Vote Atlas ladder not ready yet — check back shortly.');
+    }
+    const sessionLabel = new Date().toUTCString().slice(0, 16).toUpperCase();
+    const text = buildLadderExportText({ session_label: sessionLabel, instruments }, 'daily', { includeDrift: false });
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
 // ── Frozen period-start ladder (weekly / monthly chart modes) ────────────────
 // The chart's Weekly and Monthly modes hold the forecast that was in effect when the
 // period OPENED. They read it from the archive — and archived sessions predate the

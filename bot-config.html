@@ -461,7 +461,8 @@ input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cu
     <div class="sub">Two-Bot Control Panel</div>
   </div>
   <a class="back" href="index.html">← Back to Dashboard</a>
-  <button class="dark-btn" id="copyDailyLevelsBtn" onclick="copyDailyLevels()" title="Copies the same server-built text the TradingView Pine indicator parses — fetched fresh, never stale">⬇ Daily Levels (TradingView)</button>
+  <button class="dark-btn" id="copyDailyLevelsBtn" onclick="copyDailyLevels()" title="The Volatility Forecast page's number (ladder_flat) — NOT necessarily what Vote Atlas itself trades">⬇ Daily Levels (TradingView)</button>
+  <button class="dark-btn" id="copyVoteAtlasLevelsBtn" onclick="copyVoteAtlasLevels()" title="Vote Atlas's OWN computed ladder — the exact same calculation the bot uses to price its live trades" style="color:#38bdf8">⬇ Vote Atlas's Real Levels</button>
   <button class="dark-btn" onclick="document.body.classList.toggle('dark')">◑ Dark</button>
 </div>
 
