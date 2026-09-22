@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Drill</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#3d444d;
+    --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
+    --bull:#10b981;--amber:#d29922;--blue:#4f7df0;--red:#f85149}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none}
+  .hbtn:hover{border-color:var(--border2);color:var(--text);text-decoration:none}
+  .wrap{max-width:820px;margin:0 auto;padding:16px 18px}
+  .intro{color:var(--text2);font-size:12.5px;line-height:1.7;margin-bottom:14px} .intro b{color:var(--text)}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+  .muted{color:var(--text3)}
+  .qtop{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:8px}
+  .qtop .date{color:var(--blue)}
+  .stem{font-size:15.5px;line-height:1.6;color:var(--text);font-weight:600;margin-bottom:4px}
+  .ask{font-size:14px;line-height:1.55;color:var(--amber);margin-bottom:12px}
+  .opts{display:flex;flex-direction:column;gap:7px}
+  .opt{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:11px 14px;font:inherit;font-size:13.5px;cursor:pointer;transition:border-color .12s}
+  .opt:hover:not(:disabled){border-color:var(--blue)}
+  .opt:disabled{cursor:default}
+  .opt.right{border-color:var(--bull);background:rgba(16,185,129,.09)}
+  .opt.wrong{border-color:var(--red);background:rgba(248,81,73,.09)}
+  .opt .tick{float:right;font-weight:800}
+  .opt.right .tick{color:var(--bull)} .opt.wrong .tick{color:var(--red)}
+  .rev{margin-top:14px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:11px 14px}
+  .rev .hd{font-size:13px;font-weight:800;margin-bottom:5px}
+  .rev.ok .hd{color:var(--bull)} .rev.no .hd{color:var(--red)}
+  .rev .nums{font-size:13px;color:var(--text);font-weight:600;margin-bottom:6px}
+  .rev .why{font-size:13px;line-height:1.65;color:var(--text2);margin-bottom:7px}
+  .rev .pr{font-size:12.5px;line-height:1.55;color:var(--amber);border-top:1px solid var(--border);padding-top:7px}
+  .rev .pr b{color:var(--amber)}
+  .rev .ev{margin-top:7px;font-size:10.5px;color:var(--text3)}
+  .rev .ev span{display:inline-block;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:1px 7px;margin-right:4px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+  .btn{background:var(--blue);border:1px solid var(--blue);color:#fff;border-radius:8px;padding:9px 18px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .btn.ghost{background:var(--card2);border-color:var(--border);color:var(--text2)}
+  .btn.ghost:hover{color:var(--text);border-color:var(--border2)}
+  .sc{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text2);margin-top:2px}
+  .sc b{color:var(--text);font-size:15px;font-variant-numeric:tabular-nums}
+  .sc .lab{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);display:block;font-weight:700}
+  .topics{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .tg{background:var(--card2);border:1px solid var(--border);color:var(--text3);border-radius:20px;padding:3px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+  .tg.on{border-color:var(--blue);color:var(--text)}
+  .note{color:var(--text3);font-size:11px;line-height:1.6;margin-top:12px}
+  @media (max-width:560px){.wrap{padding:12px}.stem{font-size:14.5px}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <h1>🎯 The Drill</h1>
+  <span class="spacer"></span>
+  <a class="hbtn" href="market-view.html">Market View</a>
+  <a class="hbtn" href="today.html">← Today</a>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    <b>Read a real day, before you see the answer.</b> Every question is a genuine past session rebuilt from the same series the live page uses — so what you learn here transfers exactly. Guessing and being corrected is worth far more than reading the right answer, which is why the reveal waits.
+    <br><b>One rule:</b> nothing here asks which way price went. That is a coin flip on this desk, and drilling a coin flip would teach you to see signal in noise. These ask what the numbers <i>mean</i> — which leg moved, which link broke, which gold was trading, what the bond market concluded.
+  </div>
+
+  <div class="card" id="qcard"><span class="muted">Loading six years of history…</span></div>
+
+  <div class="card">
+    <div class="sc" id="score"></div>
+    <div class="topics" id="topics"></div>
+    <div class="note" id="foot"></div>
+  </div>
+</div>
+
+<script type="module">
+import { buildQuestion, score, GENERATORS } from './js/marketDrill.js';
+import { DESK_EVIDENCE } from './js/deskEvidence.js';
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const HIST_KEY = 'drill_history_v1';
+const histRead = () => { try { return JSON.parse(localStorage.getItem(HIST_KEY) ?? '[]') ?? []; } catch { return []; } };
+const histWrite = h => { try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(-500))); } catch { /* private window: the drill works, it just will not remember */ } };
+
+let BUNDLE = null, Q = null, ANSWERED = false, TOPICS = null;
+const TOPIC_LIST = [...new Set(GENERATORS.map(g => g.topic))];
+
+async function load() {
+  try {
+    const r = await fetch('/api/drill-series'); const j = await r.json();
+    if (!j?.ok) throw new Error(j?.error ?? 'no history');
+    BUNDLE = j;
+    document.getElementById('foot').textContent = `Questions are drawn from ${j.n.toLocaleString()} sessions, ${j.from} to ${j.to}. Your answers stay in this browser.`;
+    next();
+  } catch (e) { document.getElementById('qcard').innerHTML = `<span class="muted">Could not load the history: ${esc(e.message)}</span>`; }
+  paintScore();
+}
+
+function next() {
+  ANSWERED = false;
+  const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
+  Q = buildQuestion(BUNDLE, { seed, topics: TOPICS, exclude: Q ? [Q.gen] : [] });
+  if (!Q) { document.getElementById('qcard').innerHTML = '<span class="muted">No question fits that topic in this history. Try another.</span>'; return; }
+  paintQuestion();
+}
+
+function paintQuestion() {
+  document.getElementById('qcard').innerHTML = `
+    <div class="qtop"><span class="date">${esc(Q.date)}</span><span>topic: ${esc(Q.topic)}</span><span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">a real session, rebuilt</span></div>
+    <div class="stem">${esc(Q.stem)}</div>
+    <div class="ask">${esc(Q.ask)}</div>
+    <div class="opts">${Q.options.map(o => `<button class="opt" data-k="${esc(o.key)}" onclick="answer('${esc(o.key)}')">${esc(o.label)}</button>`).join('')}</div>
+    <div id="rev"></div>`;
+}
+
+window.answer = key => {
+  if (ANSWERED || !Q) return;
+  ANSWERED = true;
+  const right = key === Q.answer;
+  for (const b of document.querySelectorAll('.opt')) {
+    b.disabled = true;
+    const k = b.dataset.k;
+    if (k === Q.answer) b.classList.add('right'), b.innerHTML += '<span class="tick">✓</span>';
+    else if (k === key) b.classList.add('wrong'), b.innerHTML += '<span class="tick">✗</span>';
+  }
+  const ev = (Q.evidence ?? []).map(id => { const e = DESK_EVIDENCE.find(x => x.id === id); return e ? `<span title="${esc(e.claim)}">${esc(e.id)} · ${esc(e.verdict)}</span>` : ''; }).join('');
+  document.getElementById('rev').innerHTML = `
+    <div class="rev ${right ? 'ok' : 'no'}">
+      <div class="hd">${right ? '✓ Right' : '✗ Not this time'}</div>
+      <div class="nums">${esc(Q.reveal)}</div>
+      <div class="why">${esc(Q.why)}</div>
+      <div class="pr"><b>The principle:</b> ${esc(Q.principle)}</div>
+      ${ev ? `<div class="ev">tested here: ${ev}</div>` : ''}
+    </div>
+    <div class="row"><button class="btn" onclick="next()">Next question</button>
+      <button class="btn ghost" onclick="window.open('market-view.html','_blank')">See it on today’s board</button></div>`;
+  const h = histRead(); h.push({ id: Q.id, gen: Q.gen, topic: Q.topic, date: Q.date, chosen: key, answer: Q.answer, at: new Date().toISOString() });
+  histWrite(h); paintScore();
+};
+window.next = next;
+
+function paintScore() {
+  const s = score(histRead());
+  const pc = v => v == null ? '—' : Math.round(v * 100) + '%';
+  document.getElementById('score').innerHTML = `
+    <span><span class="lab">answered</span><b>${s.n}</b></span>
+    <span><span class="lab">right</span><b>${s.right}</b> <span class="muted">${pc(s.pct)}</span></span>
+    <span><span class="lab">streak</span><b>${s.streak}</b></span>
+    ${s.weakest ? `<span><span class="lab">weakest topic</span><b>${esc(s.weakest.topic)}</b> <span class="muted">${s.weakest.right}/${s.weakest.n}</span></span>` : ''}`;
+  document.getElementById('topics').innerHTML =
+    `<button class="tg ${TOPICS === null ? 'on' : ''}" onclick="setTopic(null)">everything</button>` +
+    TOPIC_LIST.map(t => `<button class="tg ${TOPICS?.includes(t) ? 'on' : ''}" onclick="setTopic('${esc(t)}')">${esc(t)}${s.byTopic[t] ? ` <span class="muted">${s.byTopic[t].right}/${s.byTopic[t].n}</span>` : ''}</button>`).join('');
+}
+window.setTopic = t => { TOPICS = t ? [t] : null; Q = null; next(); paintScore(); };
+
+load();
+</script>
+</body>
+</html>

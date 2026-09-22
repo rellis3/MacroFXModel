@@ -14127,6 +14127,48 @@ app.get('/api/crack', async (_req, res) => {
 });
 svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e.message)), 6 * 3600_000);
 
+// ── The drill's history bundle ───────────────────────────────────────────────
+// Six years of daily closes for the nodes the drill asks about, as a shared date
+// index plus one numeric array per series (nulls where a series did not print).
+// That shape matters: the naive {date, value} object form is roughly four times
+// the bytes, and this repo's Railway bill is egress, not compute. Cached a day;
+// the client fetches it once and builds every question locally, so pressing
+// "next" is instant and free.
+let _drillBundle = { at: 0, data: null, error: null };
+const _DRILL_FRED = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', tips: 'DFII10', bei: 'T10YIE', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS' };
+const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
+async function _refreshDrillBundle() {
+  try {
+    const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
+    const raw = {};
+    for (const [k, id] of Object.entries(_DRILL_FRED)) {
+      try { raw[k] = new Map((await _fredCsv(id)).filter(o => o.date >= since).map(o => [o.date, o.value])); }
+      catch (e) { console.warn('[drill]', k, e.message); }
+    }
+    for (const [k, sym] of Object.entries(_DRILL_OANDA)) {
+      try { const bars = await _btFetchD1(sym, 1600); raw[k] = new Map(bars.filter(b => b.date >= since).map(b => [b.date, b.close])); }
+      catch (e) { console.warn('[drill]', k, e.message); }
+    }
+    // the date spine is the union, so a series with a different calendar (FRED
+    // skips US holidays, OANDA does not) lines up instead of silently shifting
+    const dates = [...new Set(Object.values(raw).flatMap(m => [...m.keys()]))].sort();
+    if (dates.length < 300) throw new Error(`only ${dates.length} dates`);
+    const series = {};
+    for (const [k, m] of Object.entries(raw)) series[k] = dates.map(d => { const v = m.get(d); return v == null ? null : +v.toFixed(4); });
+    _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length } };
+  } catch (e) { _drillBundle.error = e.message; console.warn('[drill]', e.message); }
+  return _drillBundle;
+}
+app.get('/api/drill-series', async (_req, res) => {
+  try {
+    if (Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle();
+    if (!_drillBundle.data) return res.status(503).json({ ok: false, error: _drillBundle.error ?? 'no bundle yet' });
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json({ ok: true, ..._drillBundle.data, at: new Date(_drillBundle.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('drill', () => _refreshDrillBundle().catch(e => console.error('[drill]', e.message)), 24 * 3600_000);
+
 // ── The week map: every series scored against its own history ────────────────
 // Weekly changes of ~25 macro series, each as a z against the series' full
 // history, this week's bar in the histogram, and the ten nearest past weeks in

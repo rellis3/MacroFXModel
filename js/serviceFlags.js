@@ -232,6 +232,8 @@ export const SERVICES = [
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the chain gap chips (gilt, bund, JGB minus Treasuries) and rates.html' },
   { id: 'crack', where: 'server', label: 'Crude and the crack spread (FRED EIA spot, no key)',
     cadence: 'every 6 h', cost: 'low', lean: false, on: true, feeds: 'the Crude & the crack card and the chain crack node' },
+  { id: 'drill', where: 'server', label: 'Drill history bundle (six years of daily closes)',
+    cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'drill.html — the learning drill builds every question from it client-side' },
   { id: 'weekMap', where: 'server', label: 'Week map rebuild (every series scored against itself)',
     cadence: 'daily', cost: 'low', lean: false, on: true, feeds: 'weekmap.html and the sidebar row' },
   { id: 'digest', where: 'server', label: 'The 07:00 digest (Telegram, weekdays)',
