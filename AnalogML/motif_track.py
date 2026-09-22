@@ -34,7 +34,7 @@ record); the third is KV, for the live execution bot:
     already-measured aggregate, never a fabricated per-instance probability.
   - KV key `motif_bot_plan` (2026-09-16) -- every currently-`open` trade
     (from motif_trades.json above) that passes `pylego.motif_policy.
-    passes_best_config` (skip swing_regime=with, drop pairs whose realistic
+    passes_best_config` (skip 3-touch motifs, drop pairs whose realistic
     spread exceeds 2.0 pips -- the same validated filter the backtest
     viewer's ⭐ Best Config button applies). This is `motif_bot/motif_bot.py`'s
     ONLY input -- that bot NEVER computes a vote/level/stop/direction from
@@ -129,7 +129,9 @@ from pylego.barrier_race import Entry, race_trades  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
-from pylego.motif_policy import passes_best_config, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
+from pylego.motif_policy import passes_best_config, spread_budget_pips, BEST_CONFIG, RETAIL_SPREAD_PIPS  # noqa: E402
+from pylego.motif_policy import _BUDGET_DOC as _BUDGET_DOC_  # noqa: E402
+_BUDGET_GENERATED_AT = _BUDGET_DOC_.get("generated_at")
 from pylego.spread_stats import live_spread_pips  # noqa: E402
 from pylego.motif_touch import detect_touch_motifs  # noqa: E402
 from pylego.r2 import r2_client as _r2_client, R2_BUCKET  # noqa: E402
@@ -597,7 +599,7 @@ def format_alert(pair: str, t: dict, m, atr_arr, htf_lean: int | None, confidenc
 
     regime_line = ""
     if swing_regime is not None:
-        acted = passes_best_config(pair, swing_regime, spread_pips=live_spread_override)
+        acted = passes_best_config(pair, swing_regime, spread_pips=live_spread_override, n_touches=m.n_touches)
         tag = "✅ bot would act on this" if acted else "⏸️ bot skips (best-config filter)"
         regime_line = f"\U0001f4d0 Swing regime  <b>{swing_regime}</b> · {tag}\n"
 
@@ -874,7 +876,7 @@ def run(args: argparse.Namespace) -> None:
                 direction = 1 if t["direction"] == "BUY" else -1
                 swing_regime = _swing_regime(t["entry_idx"] - 1, direction, t["level"])
                 live_pips = live_spread_pips(live_spreads, pair)
-                if not passes_best_config(pair, swing_regime, live_pips):
+                if not passes_best_config(pair, swing_regime, live_pips, n_touches=t["n_touches"]):
                     if _hours_since(t["entry_date"]) <= FILTERED_WINDOW_HOURS:
                         # Report whichever spread figure the decision above
                         # actually used -- a live-measured average once this
@@ -883,8 +885,13 @@ def run(args: argparse.Namespace) -> None:
                         # this reason text can never disagree with why the
                         # motif was really filtered.
                         spread = live_pips if live_pips is not None else RETAIL_SPREAD_PIPS.get(pair)
-                        why = (f"spread {spread}p > {BEST_CONFIG['max_spread_pips']}p" if spread is not None and spread > BEST_CONFIG["max_spread_pips"]
-                               else f"swing regime = {swing_regime} (with-trend: PF 0.98 in backtest)")
+                        if spread is not None and spread > spread_budget_pips(pair):
+                            why = (f"spread {spread}p > this pair's budget {spread_budget_pips(pair)}p"
+                                   f"{' (live-measured)' if live_pips is not None else ' (table estimate)'}")
+                        elif BEST_CONFIG.get("skip_n_touches") is not None and t["n_touches"] == BEST_CONFIG["skip_n_touches"]:
+                            why = f"{t['n_touches']}-touch motif (best-config trades 2-touch only)"
+                        else:
+                            why = f"swing regime = {swing_regime} (best-config skips)"
                         plan_filtered.append({
                             "motif_key": t["motif_key"], "pair": pair, "direction": t["direction"],
                             "n_touches": t["n_touches"], "is_top": t["is_top"], "level": t["level"],
@@ -931,12 +938,29 @@ def run(args: argparse.Namespace) -> None:
                 "strategy": "motif-touch",
                 "entries": plan_entries,
                 "filtered": plan_filtered,
-                # Per-pair eligibility under the spread half of best-config, so
-                # the dashboard's pairs board can say "excluded: spread 2.4p"
-                # for a pair that will never appear in entries.
-                "universe": [{"pair": p, "spread_pips": RETAIL_SPREAD_PIPS.get(p),
-                              "eligible": (RETAIL_SPREAD_PIPS.get(p) is None
-                                           or RETAIL_SPREAD_PIPS.get(p) <= BEST_CONFIG["max_spread_pips"])}
+                # The strategy policy this plan was built under -- shown
+                # read-only on the Motif tab so nobody has to read source to
+                # know which rule is in force. It is NOT editable there: the
+                # backtest, this tracker and the bot all read pylego/
+                # motif_policy.py, and a page toggle would break that parity.
+                "policy": {
+                    **BEST_CONFIG,
+                    "spread_rule": "per-pair budget = sl_pips x (gross avgR - 0.05R), capped; see pylego/motif_spread_budget.json",
+                    "budget_generated_at": _BUDGET_GENERATED_AT,
+                    "source": "pylego/motif_policy.py",
+                },
+                # Per-pair spread picture for the dashboard's pairs board: the
+                # static estimate, the live-measured entry-hours average (when
+                # trusted), this pair's own budget, and whether the spread the
+                # gate actually uses clears it -- so "excluded" always comes
+                # with the two numbers that decided it.
+                "universe": [{"pair": p,
+                              "spread_pips": RETAIL_SPREAD_PIPS.get(p),
+                              "live_spread_pips": live_spread_pips(live_spreads, p),
+                              "budget_pips": spread_budget_pips(p),
+                              "eligible": (lambda sp: sp is None or sp <= spread_budget_pips(p))(
+                                  live_spread_pips(live_spreads, p) if live_spread_pips(live_spreads, p) is not None
+                                  else RETAIL_SPREAD_PIPS.get(p))}
                              for p in pairs],
                 # Proof-of-life for the dashboard: what this scan actually did.
                 "scan": {

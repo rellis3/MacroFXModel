@@ -400,6 +400,51 @@ def _plan_instruments(plan: dict) -> dict:
     return ((plan or {}).get("instruments")) or {}
 
 
+# Which sizeBreakdown keys are genuine size MULTIPLIERS (audited below) vs bookkeeping
+# fields (base/preCap/capped) that describe the chain rather than being one link in it.
+_BREAKDOWN_MULTIPLIERS = ("vanna", "blocker", "reach", "hold", "conviction", "localRegime")
+
+
+def _size_audit_summary(plan: dict) -> str | None:
+    """One line per plan refresh: across every zone the PRODUCER just shipped (not
+    just the ones that go on to fire — this is about the PLAN, same as the review
+    finding it answers), how often does each sizing multiplier actually move away from
+    1, and how often does the aggregate cap bind. None when the plan carries no
+    sizeBreakdown data at all (an older plan shape, or genuinely zero zones) — silence
+    on "nothing to audit" beats a log line reporting on data that was never there.
+
+    This exists because a review of the planner found up to eleven multipliers
+    compounding into one trade's size with no ongoing way to see which ones actually
+    fire in practice, only a cap (maxSizeFactor) protecting against the worst case —
+    the same shape of blind spot the maxSizeFactor cap itself was built to fix after
+    live evidence (2026-09-13: 24% of fills sat at the max_lot ceiling) surfaced by
+    hand. This is that evidence, produced automatically instead of by an incident.
+
+    Pure — reads only the plan dict handed in, no I/O, no clock. Called once per
+    GENUINELY NEW plan (guarded at the call site on generatedAt, same as the
+    "new OI plan loaded" log it sits beside), not per tick — the underlying zones
+    only change when the plan does, so a per-tick call would just repeat the same
+    numbers 200 times an hour.
+    """
+    rows = [z.get("sizeBreakdown") for slice_ in _plan_instruments(plan).values()
+            for z in (slice_.get("zones") or [])]
+    rows = [r for r in rows if isinstance(r, dict)]
+    if not rows:
+        return None
+    n = len(rows)
+    capped = sum(1 for r in rows if r.get("capped"))
+    parts = [f"{n} zone(s)"]
+    for key in _BREAKDOWN_MULTIPLIERS:
+        vals = [r[key] for r in rows if isinstance(r.get(key), (int, float))]
+        fired = [v for v in vals if abs(v - 1) > 1e-9]
+        if not fired:
+            continue
+        avg = sum(fired) / len(fired)
+        parts.append(f"{key} {len(fired)}/{n} (avg {avg:.2f}x, {min(fired):.2f}-{max(fired):.2f})")
+    parts.append(f"cap hit {capped}/{n} ({capped / n * 100:.0f}%)")
+    return " · ".join(parts)
+
+
 def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
     """Hours since the plan's generatedAt (None when unparseable — treated as
     fresh so a malformed stamp doesn't halt trading; the producer stamps ISO)."""
@@ -678,6 +723,9 @@ def run(base_url: str, force_live: bool) -> None:
                 _sync_sessions(plan)
                 log.info(f"new OI plan loaded · {plan.get('generatedAt')} · "
                          f"{len(_plan_instruments(plan))} instruments")
+                audit = _size_audit_summary(plan)
+                if audit:
+                    log.info(f"SIZE AUDIT [{plan.get('generatedAt')}] {audit}")
             last_plan = nowt
 
         # (b) Config + status — medium.
@@ -1082,6 +1130,10 @@ def run(base_url: str, force_live: bool) -> None:
                             "side": spec["side"], "regime": spec.get("regime"),
                             "hold": spec.get("hold"), "holdParts": spec.get("hold_parts"),
                             "conviction": spec.get("conviction"),
+                            # The full sizing multiplier chain, not just the final size_factor —
+                            # so a real fired trade's "which knobs actually moved this one" is
+                            # answerable later without re-deriving it from the rationale string.
+                            "sizeBreakdown": spec.get("size_breakdown"),
                             "size_factor": spec["size_factor"], "sized_at": size_mult,
                             "approach_fast": bool(fast_approach),
                             "touches": sess.touches.get(zid, 0),

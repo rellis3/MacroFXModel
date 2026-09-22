@@ -93,8 +93,9 @@ import { assetClass as _assetClassOf } from './js/instrumentRegistry.js';
 import { getPerLineBook, runRefresh as _runAnalyserRefresh, runPerLineBook as _runPerLineBook } from './js/forecastAnalyserStore.js';
 import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Range as _btFetchM1Range, fetchSessionOpenLondon as _btFetchSessionOpenLondon, londonMidnightSec as _btLondonMidnightSec, ASSET_PARAMS as _ASSET_PARAMS, BM_P75 as _BM_P75 } from './js/volBacktestEngine.js';
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
-import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical } from './js/mve/validateInstrument.js';
+import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
+import { validateResidualReversion as _validateResidualReversion } from './js/residualReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -136,11 +137,21 @@ import { runCreditLeadLag as _runCreditLeadLag, alignByDate as _alignByDate } fr
 import { compareForecastLines as _compareForecastLines } from './js/forecastDriftCompare.js';
 import { buildEventWindows as _buildEventWindows } from './js/eventGateCore.js';
 import { fetchWeekEvents as _fetchWeekEvents } from './js/econCalendar.js';
-import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';   // real economic-surprise index (actual vs consensus), accumulated week by week
+import { buildSurpriseIndex as _buildSurpriseIndex, mergeReleases as _mergeReleases, seriesHistory as _seriesHistory } from './js/econSurprise.js';
+import { INTL_YIELDS as _INTL_YIELDS } from './js/intlYields.js';   // gilts, JGBs, bunds daily, for the chain's gap chips
+import { crackHistory as _crackHistory, crackContext as _crackContext } from './js/crackSpread.js';   // the 3-2-1 refining margin (MD files/CRACK_SPREAD.md)
+import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
+import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
+import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
+import { eventImpact as _eventImpact } from './js/eventImpactMap.js';   // the book's size per family and pair, for the digest's prints line   // the 07:00 digest and the one forecast the desk makes (range), scored at the close
+import { PANEL as _WM_PANEL } from './js/weekMap.js';
+import { buildWeekMap as _buildWeekMap } from './js/weekMapBuild.js';   // every series scored against itself, and the weeks that sat like this
+import { regimeHistory as _regimeHistory, regimeNow as _regimeNow, spells as _regimeSpells, currencyRegime as _currencyRegime, yoy as _yoy } from './js/regimeCore.js';   // the growth x inflation label, monthly, from FRED
+import { groupReleases as _scGroup, measureReaction as _scMeasure, bookFor as _scBook, oandaSym as _scSym, scoreCall as _scScore, summariseCalls as _scSummarise, formatScorecard as _scFormat, COUNTRY_INSTRUMENTS as _SC_INSTRUMENTS } from './js/releaseScorecard.js';   // thirty minutes after a print: what moved, against the book and your own call
 import { CHAIN_NODES as _CHAIN_NODES, nodeDelta as _chainNodeDelta, evaluateChain as _evaluateChain } from './js/macroChain.js';
 import { allMeetings as _fomcAllMeetings } from './js/fomcHistory.js';
 import { buildMacroChanges as _buildMacroChanges, MACRO_CHANGE_SPEC as _MACRO_CHANGE_SPEC, seriesDeltas as _seriesDeltas } from './js/macroChange.js';
@@ -173,7 +184,7 @@ import { levelExpectation } from './js/levelExpectation.js';   // per-level Reje
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
 import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
-import { buildOIZones, explainNoZones } from './js/oiZones.js';
+import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
 import { learnAndFreeze as learnAndFreezeV2, deriveBands as deriveBandsV2, flattenPolicy as flattenPolicyV2 } from './js/levelsV2Learn.js';
@@ -249,6 +260,7 @@ import { splitTradesByDate as zsSplitTradesByDate } from './js/zscoreConfidenceC
 import { runFullMacroDirection, MACRO_DIR_DEFAULTS } from './js/macroDirectionEngine.js';
 import { runFullRangeLevelEdge, RANGE_LEVEL_DEFAULTS } from './js/rangeLevelEdgeEngine.js';
 import { runFullYieldSpread, runYieldSpreadSweep, computeYieldSpreadSignals, YIELD_SPREAD_DEFAULTS } from './js/yieldSpreadEngine.js';
+import { runMultiSpreadSleeve, runSpreadSweep, SPREAD_TYPES as _SPREAD_TYPES, SPREAD_DEFS as _SPREAD_DEFS } from './js/multiSpreadEngine.js';
 import { refreshYieldSpreadPlan, YIELD_SPREAD_BOT_DEFAULTS } from './js/yieldSpreadProducer.js';
 import { buildConfluenceZoneText } from './js/confluenceZoneExport.js';
 import { runFullBacktest as runNasdaqBacktest, loadDailyDataset as loadNasdaqDataset } from './js/nasdaqBacktest.js';
@@ -265,6 +277,9 @@ import { runV2Backtest } from './js/cogStateEngine.js';
 import { loadHistoricalCogDataset } from './js/cogHistoricalDataLoader.js';
 import { runCogV3 } from './js/cogV3Engine.js';
 import { serviceEnabled, servicesSnapshot, SERVICES } from './js/serviceFlags.js';
+import { dayKey as _svcDayKey, emptyStore as _svcEmptyStore, normalizeStore as _svcNormalizeStore,
+         mergeDeltas as _svcMergeDeltas, rollup as _svcRollup, pendingDeltas as _svcPendingDeltas,
+         DEFAULT_KEEP_DAYS as _SVC_KEEP_DAYS } from './js/serviceStats.js';
 import { runQmrV2 } from './js/qmrV2Engine.js';
 import { checkOISignals } from './cog-replication/engine/oiSignalCheck.js';
 import { computeG1 as computeCogG1, computeG2 as computeCogG2, computeG3 as computeCogG3, combine as combineCogGates } from './cog-replication/engine/cogShadow.js';
@@ -311,14 +326,43 @@ const _svcStats = new Map();   // id → { runs, errors, totalMs, lastMs, lastAt
 
 function _svcStat(id) {
   let s = _svcStats.get(id);
-  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalMs: null, started: false }; _svcStats.set(id, s); }
+  // `intervalsMs` is an ARRAY because several services register more than one
+  // timer under one id (econPollers has 13, oiBot 5, tde 3). The old single
+  // `intervalMs` field reported whichever job happened to register last, which
+  // made `tde` look like a 20-second job when 20s is only its daily-backfill
+  // clock. Report them all, and how many there are.
+  if (!s) { s = { runs: 0, errors: 0, totalMs: 0, lastMs: null, lastAt: null, intervalsMs: [], started: false }; _svcStats.set(id, s); }
   return s;
 }
 
-/** `serviceEnabled` + a record that this process knows about the service. */
+/**
+ * `serviceEnabled` + a record that this process knows about the service.
+ *
+ * FAIL-OPEN on an unregistered id, exactly like start.sh's `svc_on`. The
+ * registry throws on an unknown id on purpose -- a typo must not read as
+ * "off" -- but a throw HERE is a throw at module scope, and on 2026-09-19 that
+ * took the entire site down: `a51bd7e` scheduled `svcInterval('nowcast', ...)`
+ * without adding the row, and server.js died on boot with "unknown service id",
+ * taking every route and every node-scheduled job with it (Railway then
+ * crash-loops). The trade this file wants is the one the bash side already
+ * made: an unregistered job RUNS, ungated and loudly logged, rather than
+ * killing the process. `js/serviceFlags.test.mjs` still fails the commit that
+ * forgets the row, which is where that mistake should surface.
+ */
+const _svcUnknown = new Set();
 function svcEnabled(id) {
   const st = _svcStat(id);
-  const on = serviceEnabled(id);
+  let on;
+  try {
+    on = serviceEnabled(id);
+  } catch (e) {
+    if (!_svcUnknown.has(id)) {
+      _svcUnknown.add(id);
+      console.error(`[services] ${e.message} — running '${id}' UNGATED so the process still boots; it cannot be switched off and /api/services cannot see it.`);
+    }
+    st.unregistered = true;
+    on = true;
+  }
   st.enabled = on;
   return on;
 }
@@ -330,6 +374,7 @@ function svcEnabled(id) {
  */
 function svcRun(id, fn) {
   const st = _svcStat(id);
+  st.started = true;   // a one-shot svcRun (e.g. volForecastScheduler's boot call) counts as started
   const t0 = Date.now();
   const done = () => { st.runs++; st.lastMs = Date.now() - t0; st.totalMs += st.lastMs; st.lastAt = new Date().toISOString(); };
   let out;
@@ -347,7 +392,7 @@ function svcInterval(id, fn, ms) {
   const st = _svcStat(id);
   if (!svcEnabled(id)) return null;
   st.started = true;
-  st.intervalMs = ms;
+  st.intervalsMs.push(ms);
   return setInterval(() => svcRun(id, fn), ms);
 }
 
@@ -356,6 +401,127 @@ function svcTimeout(id, fn, ms) {
   if (!svcEnabled(id)) return null;
   _svcStat(id).started = true;
   return setTimeout(() => svcRun(id, fn), ms);
+}
+
+// ── Making the meter survive a redeploy ──────────────────────────────────────
+// The counters above live in the process, and Railway redeploys on every push
+// to `main`. On a repo with several pushes a day that meant the meter was reset
+// before it ever measured a day — the first real read after shipping it showed
+// `uptimeSec: 17`, every row zero. So the counters are flushed to R2 as UTC day
+// buckets (js/serviceStats.js owns the merge; this owns the I/O) and reloaded
+// on boot. R2 rather than CF KV on purpose: this writes ~96×/day, and the CF KV
+// free-plan write quota is exactly why `CLAUDE.md` says to keep churny keys out
+// of `_CF_EXACT`. R2 has no equivalent per-write concern (same reasoning the
+// Level Atlas snapshots already run on).
+const SVC_STATS_R2_KEY   = process.env.SVC_STATS_R2_KEY || 'ops/service-stats.json';   // overridable so a test run never touches production's history
+const SVC_STATS_FLUSH_MS = parseInt(process.env.SVC_STATS_FLUSH_MS || String(15 * 60_000));
+
+// WRITES ONLY FROM THE REAL SERVICE. R2 credentials are present in dev sandboxes
+// too, so without this a local `node server.js` merges its own boot-run numbers
+// into production's history — which happened once while building this, and is
+// the same class of mistake CLAUDE.md's "never let a sandbox run write back to
+// R2" rule exists for. Railway injects RAILWAY_ENVIRONMENT/SERVICE_ID/PROJECT_ID
+// into every deploy; absent those we read but never write. `SVC_STATS_PERSIST=1`
+// forces writes on anywhere (and `=0` off), and the boot log says which mode is
+// live so a silent no-persist is diagnosable at a glance rather than by
+// wondering why `today` is empty tomorrow.
+const SVC_STATS_PERSIST = (() => {
+  const explicit = (process.env.SVC_STATS_PERSIST ?? '').trim().toLowerCase();
+  if (explicit) return !['0', 'false', 'off', 'no'].includes(explicit);
+  return !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_SERVICE_ID || process.env.RAILWAY_PROJECT_ID);
+})();
+let _svcStore        = _svcEmptyStore();
+let _svcFlushed      = {};        // cumulative counters the last SUCCESSFUL flush persisted
+let _svcStoreLoaded  = null;      // ISO, or null if we never got the store
+let _svcLastFlushAt  = null;
+let _svcFlushing     = false;
+
+async function svcStatsLoad() {
+  if (!_r2Ok()) { console.log('[service-stats] R2 not configured — history will not survive this process'); return; }
+  if (!SVC_STATS_PERSIST) console.log('[service-stats] read-only here (not a Railway deploy) — set SVC_STATS_PERSIST=1 to write');
+  try {
+    _svcStore = _svcNormalizeStore(await _r2GetJSON(SVC_STATS_R2_KEY));
+    _svcStoreLoaded = new Date().toISOString();
+    const days = Object.keys(_svcStore.days).length;
+    console.log(`[service-stats] loaded ${days} day bucket(s) from R2 (last update ${_svcStore.updatedAt ?? 'never'})`);
+  } catch (e) {
+    console.warn(`[service-stats] load failed, starting a fresh store: ${e.message}`);
+    _svcStore = _svcEmptyStore();
+  }
+}
+
+/**
+ * Persist everything accrued since the last successful flush.
+ *
+ * The merge happens on a COPY and the copy is only adopted once the R2 write
+ * lands. A failed write therefore leaves both `_svcStore` and `_svcFlushed`
+ * untouched, so the next flush retries the same deltas whole — without that,
+ * a transient R2 error would merge the deltas locally, fail, and merge them
+ * again next tick, double-counting the very numbers this exists to get right.
+ */
+async function svcStatsFlush(reason = 'interval') {
+  if (_svcFlushing || !_r2Ok() || !SVC_STATS_PERSIST) return false;
+  _svcFlushing = true;
+  try {
+    const [deltas, next] = _svcPendingDeltas(_svcStats, _svcFlushed);
+    if (!Object.keys(deltas).length) return false;
+    const candidate = _svcMergeDeltas(structuredClone(_svcStore), deltas, { keepDays: _SVC_KEEP_DAYS });
+    await _r2PutJSON(SVC_STATS_R2_KEY, candidate);
+    _svcStore      = candidate;
+    _svcFlushed    = next;
+    _svcLastFlushAt = new Date().toISOString();
+    return true;
+  } catch (e) {
+    console.warn(`[service-stats] flush (${reason}) failed, will retry whole next tick: ${e.message}`);
+    return false;
+  } finally {
+    _svcFlushing = false;
+  }
+}
+
+// A redeploy is a SIGTERM, and it is the single most common way this process
+// dies — so flush on the way out rather than losing up to a whole interval of
+// measurements every push. The bail-out timer means a slow/hung R2 write can
+// never hold a deploy open; the exit codes are the ones Node would have used
+// with no handler at all (128+signal), so nothing downstream sees a change.
+let _svcShuttingDown = false;
+for (const [sig, code] of [['SIGTERM', 143], ['SIGINT', 130]]) {
+  process.on(sig, () => {
+    if (_svcShuttingDown) return;
+    _svcShuttingDown = true;
+    console.log(`[service-stats] ${sig} — flushing before exit`);
+    const bail = setTimeout(() => process.exit(code), 4_000);
+    svcStatsFlush(sig).finally(() => { clearTimeout(bail); process.exit(code); });
+  });
+}
+
+/** Today + the trailing window, persisted buckets PLUS whatever has not been flushed yet. */
+function svcStatsView() {
+  const [pending] = _svcPendingDeltas(_svcStats, _svcFlushed);
+  const merge = (base) => {
+    const out = {};
+    for (const [id, v] of Object.entries(base)) out[id] = { ...v };
+    for (const [id, d] of Object.entries(pending)) {
+      const cur = out[id] ?? (out[id] = { runs: 0, errors: 0, totalMs: 0 });
+      cur.runs += d.runs; cur.errors += d.errors; cur.totalMs += d.totalMs;
+    }
+    return out;
+  };
+  const today  = _svcRollup(_svcStore, { days: 1 });
+  const window = _svcRollup(_svcStore, { days: 7 });
+  return {
+    today:  { ...today,  services: merge(today.services) },
+    window: { ...window, services: merge(window.services) },
+    persistence: {
+      backend: _r2Ok() ? 'r2' : 'none',
+      key: SVC_STATS_R2_KEY,
+      loadedAt: _svcStoreLoaded,
+      lastFlushAt: _svcLastFlushAt,
+      flushEveryMs: SVC_STATS_FLUSH_MS,
+      daysStored: Object.keys(_svcStore.days).length,
+      keepDays: _SVC_KEEP_DAYS,
+    },
+  };
 }
 
 // ── Bounded TTL caches ───────────────────────────────────────────────────────
@@ -709,13 +875,16 @@ const PIP_SIZE = {
   'NZD/CAD': 0.0001, 'NZD/JPY': 0.01,   'BTC/USD': 1.0,
   'XAU/USD': 1.0,    'NAS100_USD': 1.0,
   'SPX500_USD': 1.0, 'DE30_USD': 1.0,   'UK100_GBP': 1.0,
+  // OANDA quotes the DAX in euros (DE30_EUR); the DE30_USD key above never matched
+  // a live symbol, so DE30 fell through to 0.0001 and its range_pts read 2,565,560.
+  'DE30_EUR': 1.0,
   'US30_USD': 1.0, 'US2000_USD': 1.0,
 };
 
 const PRICE_DIGITS = {
   'USD/JPY': 3, 'GBP/JPY': 3, 'EUR/JPY': 3, 'AUD/JPY': 3, 'CAD/JPY': 3,
   'NZD/JPY': 3, 'BTC/USD': 1,
-  'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'UK100_GBP': 1,
+  'XAU/USD': 2, 'NAS100_USD': 1, 'SPX500_USD': 1, 'DE30_USD': 1, 'DE30_EUR': 1, 'UK100_GBP': 1,
   'US30_USD': 1, 'US2000_USD': 1,
 };
 
@@ -3185,6 +3354,41 @@ function _antText(data) {
   for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') return b.text;
   return '';
 }
+// The model is asked for JSON only, and mostly obeys. When it does not -- a
+// raw newline inside a string, a trailing comma, a ```json fence, a sentence
+// before the brace -- the read is still in there. Four re-reads failed in a row
+// on 2026-09-21 with "Expected ',' or ']'" and the page showed nothing usable.
+// Try strict, then the outer object, then a repaired copy; return null only
+// when all three fail, with the reason logged around the failing position.
+function _parseModelJson(txt, label = 'model') {
+  const tries = [];
+  const raw = String(txt ?? '').replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '');
+  tries.push(raw);
+  const m = raw.match(/\{[\s\S]*\}/); if (m) tries.push(m[0]);
+  const repair = str => {
+    let out = '', inStr = false, esc = false;
+    for (const ch of str) {
+      if (inStr) {
+        if (esc) { out += ch; esc = false; continue; }
+        if (ch === '\\') { out += ch; esc = true; continue; }
+        if (ch === '"') { inStr = false; out += ch; continue; }
+        if (ch === '\n') { out += '\\n'; continue; }
+        if (ch === '\r') { continue; }
+        if (ch === '\t') { out += '\\t'; continue; }
+        out += ch; continue;
+      }
+      if (ch === '"') inStr = true;
+      out += ch;
+    }
+    return out.replace(/,\s*([\]}])/g, '$1');   // trailing commas
+  };
+  if (m) tries.push(repair(m[0]));
+  let lastErr = null;
+  for (const t of tries) { try { return JSON.parse(t); } catch (e) { lastErr = e; } }
+  const pos = +((lastErr?.message ?? '').match(/position (\d+)/)?.[1] ?? -1);
+  console.warn(`[${label}] JSON parse failed: ${lastErr?.message}${pos >= 0 ? ` -- near: ${JSON.stringify(raw.slice(Math.max(0, pos - 80), pos + 80))}` : ''}`);
+  return null;
+}
 
 function buildCurrencyPrompt(ccy, s, mode = 'teach') {
   const TEACH = mode !== 'desk';
@@ -3275,6 +3479,158 @@ Respond with a single valid JSON object, no markdown, no text outside it:
 {"headline":"one sentence on ${ccy} right now, plain English, no unexplained terms","bias":"STRONG|WEAK|NEUTRAL","conviction":0-10,"convictionWhy":"one clause: what caps or supports the conviction number","whatHappened":"${TEACH ? '1-2' : '1'} sentence(s) on the measured move and what drove it","whatMarketExpects":"${TEACH ? '1-2' : '1'} sentence(s) from the curve, scheduled events and positioning","fundamentals":"${TEACH ? '1-2' : '1'} sentence(s) on the scorecard and surprise data","chain":"${TEACH ? '2-4' : '1-2'} sentences: the measured chain walked forward for ${ccy}, from the first mover to the first link that broke or went quiet; 'not measured' if the snapshot has no chain","cleanestExpression":"which pair and why","risks":"the main thing that would hurt this view","whatWouldChangeIt":"1-2 specific checkable observations","brief":"${TEACH ? 'at most 180 words in 2 short paragraphs: the reasoning that CONNECTS the fields above, teaching the mechanism -- not a restatement of them' : 'at most 80 words, one paragraph, the read in one breath'}"}`;
 }
 
+// ── Daily snapshot: what the page thought, kept ──────────────────────────────
+// The morning brief overwrites itself; the chain, the watch and the deltas are
+// live. So "what did we think five days ago" was reconstructable for numbers
+// and not for reads. This keeps one compact row per UTC day -- the brief's
+// regime / what-changed / watch lines, the macro deltas, the chain verdicts,
+// the watch states, the board trade -- written once the morning brief exists
+// and refreshed through the day (last write wins, same day). The look-back
+// timeline reads it. Read-modify-write: refuse to write over an unparseable
+// store; never overwrite an older day.
+const _SNAP_KV = 'daily_snapshot_v1';
+const _SNAP_KEEP = 120;
+async function _loadSnapStore() {
+  try { const raw = await kv.getStrict(_SNAP_KV); if (!raw) return { days: [] }; const p = JSON.parse(raw); return { days: Array.isArray(p?.days) ? p.days : [] }; }
+  catch (e) { console.warn('[snapshot] store unreadable, not touching it:', e.message); return null; }
+}
+async function _dailySnapshotTick() {
+  const store = await _loadSnapStore(); if (!store) return;
+  const day = new Date().toISOString().slice(0, 10);
+  const row = { day, at: new Date().toISOString() };
+  try { const raw = await kv.get(_MORNING_BRIEF_KV); const b = raw ? JSON.parse(raw) : null; const a = b?.analysis; if (a) row.brief = { generatedAt: b.generatedAt, regime: a.regime ?? null, whatChanged: a.whatChanged ?? null, watch: Array.isArray(a.watch) ? a.watch.slice(0, 3) : a.watch ?? null, headline: a.headline ?? null, theme: typeof a.theme === 'string' ? a.theme.slice(0, 400) : null, boardTrade: a.boardTradeOfDay ? { pair: a.boardTradeOfDay.pair ?? null, direction: a.boardTradeOfDay.direction ?? null } : null }; } catch { /* no brief yet */ }
+  try { const mc = await _loadMacroChanges(); row.moved = (mc?.rows ?? []).map(r => ({ key: r.key, last: r.last, d1: r.deltas?.[1] ?? null, d5: r.deltas?.[5] ?? null, d20: r.deltas?.[20] ?? null })); } catch { /* skipped */ }
+  try { const ws = await _loadWatchStore(); row.watch = (ws?.states ?? []).filter(t => t.firing).map(t => ({ id: t.id, kind: t.kind, since: t.since ?? null })); row.chain = (ws?.states ?? []).filter(t => t.id.startsWith('chain-')).map(t => ({ id: t.id.slice(6), broken: !!t.firing })); } catch { /* skipped */ }
+  try { const cr = await _loadChainReadStore(); if (cr?.latest?.read?.hook) row.chainRead = { at: cr.latest.generatedAt, hook: cr.latest.read.hook, stories: (cr.latest.read.stories ?? []).map(x => ({ name: x.name, status: x.status })) }; } catch { /* skipped */ }
+  // The day's high-impact releases, kept so a look-back beyond the calendar feed's
+  // one-week window still knows what news came (the surprise store only carries
+  // prints with actuals; the live feed rarely supplies them).
+  try { const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const d0 = Date.parse(day + 'T00:00:00Z'); row.released = (r.events ?? []).filter(e => e.ms >= d0 && e.ms < d0 + 864e5 && e.impact === 'high' && e.ms <= Date.now()).slice(0, 12).map(e => ({ country: e.country, event: e.event, ms: e.ms, estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null })); } catch { /* skipped */ }
+  try { const raw = await kv.get(_FRED_DASH_KV); const f = raw ? (JSON.parse(raw)?.d ?? JSON.parse(raw)) : {}; row.levels = Object.fromEntries(['vix', 'vix3m', 'us2y', 'us10y', 'us30y', 'tips', 'bei', 'hy', 'dxy', 'wti'].map(k => [k, f?.[k]?.value ?? null])); } catch { /* skipped */ }
+  const i = store.days.findIndex(d => d.day === day);
+  if (i >= 0) store.days[i] = { ...store.days[i], ...row }; else store.days.push(row);
+  store.days.sort((a, b) => a.day < b.day ? -1 : 1);
+  store.days = store.days.slice(-_SNAP_KEEP);
+  await kv.put(_SNAP_KV, JSON.stringify(store));
+}
+// The page's forward plan for the day -- outlook biases, aims, leans with their
+// falsifiers, expected ranges, grouped trades -- posted by the browser once a day
+// (the outlook engine and the aim lines live client-side). Merged into the day's
+// row under `plan`; first post of the day wins so a later refresh cannot rewrite
+// what was planned in the morning.
+app.post('/api/daily-snapshot/plan', async (req, res) => {
+  try {
+    const plan = req.body?.plan; if (!plan || typeof plan !== 'object') return res.status(400).json({ ok: false, error: 'Missing plan' });
+    const store = await _loadSnapStore(); if (!store) return res.status(503).json({ ok: false, error: 'snapshot store unreadable; refusing to overwrite' });
+    const day = new Date().toISOString().slice(0, 10);
+    let i = store.days.findIndex(d => d.day === day);
+    if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
+    if (store.days[i].plan) return res.json({ ok: true, kept: true, plannedAt: store.days[i].plan.at });
+    const compact = JSON.parse(JSON.stringify(plan)); compact.at = new Date().toISOString();
+    if (JSON.stringify(compact).length > 60_000) return res.status(413).json({ ok: false, error: 'plan too large' });
+    store.days[i].plan = compact;
+    await kv.put(_SNAP_KV, JSON.stringify(store));
+    res.json({ ok: true, kept: false, plannedAt: compact.at });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+// ── Release scorecard: the book closing its own loop, every print ─────────────
+// Thirty minutes after a high-impact release: the actual (filled from FRED / the
+// central-bank feed if it is not on the calendar), each answering pair's 30-minute
+// move against its ordinary half-hour and against the Event Response Book, and the
+// user's call made before the print. Kept on the day's snapshot row
+// (`scorecards`, `calls`), sent to Telegram from here, never from anywhere else.
+const _SC_MAX_INSTRUMENTS = 6;
+const _scM30Cache = new Map();   // name -> { at, bars }
+async function _scCandles(sym, gran, params) {
+  if (!process.env.OANDA_KEY) throw new Error('OANDA_KEY not configured');
+  const base = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+  const r = await fetch(`${base}/v3/instruments/${encodeURIComponent(sym)}/candles?granularity=${gran}&price=M&${params}`, { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`OANDA ${sym} ${gran} HTTP ${r.status}`);
+  return ((await r.json()).candles ?? []).filter(c => c.complete && c.mid).map(c => ({ time: Date.parse(c.time), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+}
+async function _scReaction(name, releaseMs) {
+  const sym = _scSym(name);
+  const from = new Date(releaseMs - 40 * 60_000).toISOString(), to = new Date(releaseMs + 35 * 60_000).toISOString();
+  const m5 = await _scCandles(sym, 'M5', `from=${from}&to=${to}`);
+  let ref = _scM30Cache.get(name);
+  if (!ref || Date.now() - ref.at > 6 * 3600_000) { ref = { at: Date.now(), bars: await _scCandles(sym, 'M30', 'count=1500') }; _scM30Cache.set(name, ref); }
+  return _scMeasure(name, releaseMs, m5, ref.bars);
+}
+async function _snapUpdateDay(day, fn) {
+  const store = await _loadSnapStore(); if (!store) throw new Error('snapshot store unreadable; refusing to overwrite');
+  let i = store.days.findIndex(d => d.day === day);
+  if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
+  const out = await fn(store.days[i]);
+  store.days = store.days.slice(-_SNAP_KEEP);
+  await kv.put(_SNAP_KV, JSON.stringify(store));
+  return out;
+}
+let _scRunning = false;
+async function _releaseScorecardTick() {
+  if (_scRunning) return; _scRunning = true;
+  try {
+    const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+    const groups = _scGroup(feed.events ?? []);
+    if (!groups.length) return;
+    const snap = await _loadSnapStore(); if (!snap) return;
+    const done = new Set((snap.days ?? []).flatMap(d => (d.scorecards ?? []).map(c => c.key)));
+    for (const g of groups.filter(g => !done.has(g.key))) {
+      // the actual, if the calendar does not carry it: same fill as the surprise store
+      const stored = await _readSurpriseStore().catch(() => []);
+      const evs = g.prints.map(p => ({ country: g.country, event: p.event, ms: g.ms, estimate: p.estimate, prev: p.prev, actual: p.actual }));
+      const seen = new Map(stored.filter(x => x.actual != null).map(x => [`${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`, x.actual]));
+      for (const e of evs) if (e.actual == null) e.actual = seen.get(`${g.country}|${String(e.event).trim().toLowerCase()}|${g.ms}`) ?? null;
+      try { await _fillActualsFromFred(evs.filter(e => e.actual == null), stored); } catch { /* the card says "not on the feed yet" */ }
+      g.prints.forEach((p, i) => { p.actual = evs[i].actual ?? null; });
+      // the reactions, book-ranked, capped
+      const names = (_SC_INSTRUMENTS[g.country] ?? []).map(n => ({ n, book: _scBook(g.country, g.prints[0]?.family, n) })).sort((a, b) => (b.book?.spike ?? 0) - (a.book?.spike ?? 0)).slice(0, _SC_MAX_INSTRUMENTS);
+      g.reactions = [];
+      for (const { n, book } of names) { try { const r = await _scReaction(n, g.ms); if (r) g.reactions.push({ ...r, book }); } catch (e) { console.warn('[scorecard]', n, e.message); } }
+      // the user's call, made before the print, scored on the first print with a consensus
+      const day = new Date(g.ms).toISOString().slice(0, 10);
+      const row = (snap.days ?? []).find(d => d.day === day); const call = row?.calls?.[g.key] ?? null;
+      if (call) { const p = g.prints.find(x => x.estimate != null && x.actual != null) ?? g.prints[0]; call.result = _scScore(call.call, p?.actual, p?.estimate); call.modelResult = call.model ? _scScore(call.model, p?.actual, p?.estimate) : null; g.call = call; }
+      g.at = new Date().toISOString();
+      await _snapUpdateDay(day, async r => { r.scorecards = [...(r.scorecards ?? []).filter(c => c.key !== g.key), g].slice(-20); if (call) { r.calls = r.calls ?? {}; r.calls[g.key] = call; } });
+      // one Telegram line per event, from Railway
+      if (state.tg?.token && state.tg?.chatId && svcEnabled('releaseScorecard')) {
+        const txt = `📊 <b>Just printed</b> · ${new Date(g.ms).toISOString().slice(11, 16)} UTC\n` + _scFormat(g, { html: true });
+        await sendTelegram(state.tg.token, state.tg.chatId, txt);
+      }
+      console.log(`[scorecard] ${g.country} ${g.prints.map(p => p.event).join(', ')}: ${g.reactions.map(r => `${r.name} ${r.ratio ?? '?'}x`).join(' ')}`);
+    }
+  } finally { _scRunning = false; }
+}
+svcInterval('releaseScorecard', () => _releaseScorecardTick().catch(e => console.error('[scorecard]', e.message)), 5 * 60_000);
+// The call before the print: "higher" or "lower" than consensus, keyed to the
+// event; changeable until the print, then scored by the tick above.
+app.post('/api/release-call', async (req, res) => {
+  try {
+    const { country, event, ms, call, model } = req.body ?? {};
+    if (!country || !event || !Number.isFinite(+ms) || !['higher', 'lower'].includes(call)) return res.status(400).json({ ok: false, error: 'country, event, ms and call (higher|lower) required' });
+    if (+ms <= Date.now()) return res.status(400).json({ ok: false, error: 'the print is out -- calls close at release time' });
+    const key = `${String(country).toUpperCase()}|${+ms}`; const day = new Date(+ms).toISOString().slice(0, 10);
+    const saved = await _snapUpdateDay(day, async r => { r.calls = r.calls ?? {}; r.calls[key] = { key, event, call, model: ['higher', 'lower'].includes(model) ? model : null, at: new Date().toISOString(), result: null, modelResult: null }; return r.calls[key]; });
+    res.json({ ok: true, call: saved });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.get('/api/release-calls', async (req, res) => {
+  try {
+    const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '60', 10) || 60));
+    const days = (st?.days ?? []).slice(-n);
+    const calls = days.flatMap(d => Object.values(d.calls ?? {}).map(c => ({ ...c, day: d.day })));
+    const scorecards = days.flatMap(d => (d.scorecards ?? []).map(c => ({ ...c, day: d.day })));
+    res.json({ ok: true, calls, summary: _scSummarise(calls), scorecards: scorecards.slice(-30) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/release-scorecard/tick', async (_req, res) => { try { await _releaseScorecardTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/daily-snapshot', async (req, res) => {
+  try { const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '30', 10) || 30)); res.json({ ok: true, days: (st?.days ?? []).slice(-n) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+app.post('/api/daily-snapshot/tick', async (_req, res) => { try { await _dailySnapshotTick(); res.json({ ok: true }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+svcInterval('dailySnapshot', () => _dailySnapshotTick().catch(e => console.error('[snapshot]', e.message)), 60 * 60_000);
+
 // ── Desk watch: the early-warning layer ──────────────────────────────────────
 // Every 15 minutes: read the tape (FRED dash + history, OANDA daily closes, the
 // chain, the stock/bond correlation, the calendar), evaluate every trigger in
@@ -3294,6 +3650,47 @@ async function _loadWatchStore() {
   try { const raw = await kv.getStrict(_WATCH_KV); if (!raw) return { states: [], log: [] }; const p = JSON.parse(raw); return { states: Array.isArray(p?.states) ? p.states : [], log: Array.isArray(p?.log) ? p.log : [] }; }
   catch (e) { console.warn('[desk-watch] store unreadable, not touching it:', e.message); return null; }
 }
+// ── VWAP stretch (js/vwapStretchCore.js) — context for desk watch, not a
+// signal. σ is frozen at session open, so recomputing it every 15-min tick
+// from the full M1 archive would be pure waste (and heavy R2/parquet I/O
+// four pairs deep); cache it per pair per UTC day, in memory only, and only
+// re-fetch the small live M15 window (today's session so far) each tick.
+const VWAP_STRETCH_PAIRS = ['gold', 'eurusd', 'gbpusd', 'usdjpy'];
+const _vwapSigmaCache = new Map();   // `${pairKey}|${utcDate}` -> frozen-sigma result | null
+async function _vwapFrozenSigma(key, nowEpoch) {
+  const utcDate = new Date(nowEpoch * 1000).toISOString().slice(0, 10);
+  const cacheKey = `${key}|${utcDate}`;
+  if (_vwapSigmaCache.has(cacheKey)) return _vwapSigmaCache.get(cacheKey);
+  let result = null;
+  try { result = _vwapFrozenSigmaCore(await loadM1ForPair(key, BT_M1_DIR), { now: nowEpoch }); }
+  catch (e) { console.warn(`[desk-watch] vwap-stretch sigma ${key}: ${e.message}`); }
+  for (const k of _vwapSigmaCache.keys()) if (!k.endsWith(`|${utcDate}`)) _vwapSigmaCache.delete(k);   // keep only today's entries
+  _vwapSigmaCache.set(cacheKey, result);
+  return result;
+}
+async function _fetchVwapStretchInputs(nowMs) {
+  const nowEpoch = Math.floor(nowMs / 1000);
+  const out = {};
+  for (const key of VWAP_STRETCH_PAIRS) {
+    try {
+      const oanda = OANDA_INSTRUMENT_MAP[key]; if (!oanda) continue;
+      const frozen = await _vwapFrozenSigma(key, nowEpoch);
+      if (!frozen) continue;   // insufficient history -> this pair's trigger stays silently disabled
+      // M15, not M1: a live per-tick fetch across 4 instruments every 15
+      // minutes; VWAP is documented in this repo as near timeframe-invariant
+      // (LEGO_MODULES.md's "multi-timeframe VWAP" note: M1- vs M15-computed
+      // VWAP differ by a small amount), so this is a deliberate, justified
+      // approximation, not a shortcut.
+      const todayStart = new Date(nowEpoch * 1000); todayStart.setUTCHours(0, 0, 0, 0);
+      const todayBars = await fetchIntraday(oanda, 'M15', { from: todayStart.toISOString().replace(/\.\d+Z$/, 'Z') });
+      const snap = _vwapStretchSnapshot({ todayBars, sigma: frozen.sigma, now: nowEpoch });
+      if (snap) out[key.toUpperCase()] = snap;
+    } catch (e) { console.warn(`[desk-watch] vwap-stretch ${key}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 120));
+  }
+  return out;
+}
+
 async function _watchInputs() {
   const fredRaw = await kv.get(_FRED_DASH_KV).catch(() => null);
   const fred = fredRaw ? (() => { const p = JSON.parse(fredRaw); return p?.d ?? p; })() : {};
@@ -3314,7 +3711,8 @@ async function _watchInputs() {
   let stockBond = null; try { stockBond = await _stockBondCorr(); } catch { /* optional */ }
   let events = []; try { const res = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }); const now = Date.now(); events = (res.events ?? []).filter(e => e.ms > now - 3 * 3600e3 && e.ms < now + 48 * 3600e3); } catch { /* optional */ }
   const fomcDates = _fomcAllMeetings().map(m => m.date);
-  return { fred, hist, series, chain, stockBond, events, fomcDates, now: Date.now() };
+  let vwapStretch = {}; try { vwapStretch = await _fetchVwapStretchInputs(Date.now()); } catch (e) { console.warn(`[desk-watch] vwap-stretch: ${e.message}`); }
+  return { fred, hist, series, chain, stockBond, events, fomcDates, vwapStretch, now: Date.now() };
 }
 // Score fires that are five sessions old: the realised range over the five
 // sessions after the fire, in ATR14 at the fire, on the trigger's instruments.
@@ -3377,7 +3775,7 @@ app.post('/api/desk-watch/tick', async (req, res) => {
   try { res.json({ ok: true, ...(await _deskWatchTick({ silent: req.query.silent === '1' })) }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
-setInterval(() => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
+svcInterval('deskWatch', () => _deskWatchTick().catch(e => console.error('[desk-watch]', e.message)), _WATCH_EVERY_MS);
 
 // ── The chain, read aloud ────────────────────────────────────────────────────
 // The chain panel judges each textbook link on measured moves. This turns those
@@ -3551,9 +3949,7 @@ app.post('/api/explain', async (req, res) => {
     if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
     const j = await antRes.json();
     const txt = _antText(j);
-    let explain;
-    try { explain = JSON.parse(txt); }
-    catch { const m = txt.match(/\{[\s\S]*\}/); explain = m ? JSON.parse(m[0]) : null; }
+    const explain = _parseModelJson(txt, 'explain');
     if (!explain) return res.status(502).json({ error: 'model did not return parseable JSON' });
     if (_explainCache.size > 200) _explainCache.clear();
     _explainCache.set(ck, { at: Date.now(), data: explain });
@@ -3601,10 +3997,8 @@ app.post('/api/chain-read', async (req, res) => {
     if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
     const j = await antRes.json();
     const txt = _antText(j);
-    let read;
-    try { read = JSON.parse(txt); }
-    catch { const m = txt.match(/\{[\s\S]*\}/); read = m ? JSON.parse(m[0]) : null; }
-    if (!read) return res.status(502).json({ error: 'model did not return parseable JSON' });
+    const read = _parseModelJson(txt, 'chain-read');
+    if (!read) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (response truncated at the token cap)' : ''} -- press re-read once more` });
     const data = { read, generatedAt: new Date().toISOString(), headlineCount: headlines.length, snapshotKey: ck };
     _chainReadCache = { at: Date.now(), data, key: ck };
     _persistChainRead(data).catch(e => console.warn('[chain-read] persist failed:', e.message));
@@ -3632,9 +4026,7 @@ app.post('/api/currency-analysis', async (req, res) => {
     if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
     const j = await antRes.json();
     const txt = _antText(j);
-    let analysis;
-    try { analysis = JSON.parse(txt); }
-    catch { const m = txt.match(/\{[\s\S]*\}/); analysis = m ? JSON.parse(m[0]) : null; }
+    const analysis = _parseModelJson(txt, 'currency-analysis');
     if (!analysis) return res.status(502).json({ error: 'model did not return parseable JSON' });
     res.json({ ok: true, ccy, analysis, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -4200,8 +4592,15 @@ async function _buildMorningBrief() {
           + (Array.isArray(a.byAsset) && a.byAsset.length ? `\n   By asset: ${a.byAsset.map(x => `${x.asset} ${x.lean}${x.note ? ` — ${_redactFedChairName(String(x.note))}` : ''}`).join(' | ')}` : ''));
       }
       const when = ageH >= 0 ? `${ageH < 1 ? Math.round(ageH * 60) + ' minutes' : ageH.toFixed(1) + ' hours'} ago` : `today, due in ${(-ageH).toFixed(1)} hours`;
+      // Day one and the morning after, the decision IS the story. From the third
+      // day it is the backdrop: a brief that opens "the Fed hiked" five mornings
+      // running is repeating itself, not reading the tape (owner, 2026-09-21).
+      const fresh = ageH < 36;
+      const daysAgo = Math.max(1, Math.round(ageH / 24));
       fomcBlock = parts.length
-        ? `\n=== FOMC: THE DECISION IS IN (meeting ${mDate}, decision ${when}) ===\n${parts.join('\n')}\nThis has ALREADY HAPPENED. Do not frame the day as waiting for the Fed, do not call the decision a binary or a coin-flip, and do not describe the statement as pending. Lead with what was decided and how the tape responded (WHAT MOVED), then what it means from here.\n`
+        ? `\n=== FOMC: THE DECISION IS IN (meeting ${mDate}, decision ${when}) ===\n${parts.join('\n')}\nThis has ALREADY HAPPENED. Do not frame the day as waiting for the Fed, do not call the decision a binary or a coin-flip, and do not describe the statement as pending. ${fresh
+          ? 'Lead with what was decided and how the tape responded (WHAT MOVED), then what it means from here.'
+          : `The decision is ${daysAgo} days old and has been in every brief since: it is the BACKDROP now, not the lead. Do NOT open the headline or the verdict with the Fed decision. Lead with what is moving TODAY (WHAT MOVED, the calendar, the chain); mention the Fed only where it explains a move that is happening now, or where something about the Fed itself changed today (a speaker, the minutes, a repricing of the path).`}\n`
         : (ageH >= 0
           ? `\n=== FOMC: DECISION RELEASED ${when}, CONTENT NOT YET CAPTURED ===\nThe meeting was today and the decision is out, but its text has not reached this snapshot. Say the decision is out and its content is not in your data; do NOT describe it as pending or upcoming.\n`
           : '');
@@ -4729,14 +5128,20 @@ app.post('/api/brief-auto/run-now', async (_req, res) => {
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // Hourly-ish poll: fire once/day at the configured London hour when anything is enabled.
-let _autoBriefLastRun = null;
+let _autoBriefLastRun = null, _autoBriefRunning = false;
 svcInterval('morningBrief', async () => {
   try {
     const cfg = await _getAutoBriefCfg();
     if (!cfg.morningBrief && !Object.keys(cfg.pairs || {}).length) return;
     const lonHour = parseInt(new Date().toLocaleString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }));
     const today = new Date().toISOString().slice(0, 10);
-    if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today) { _autoBriefLastRun = today; _runAutoBrief('daily').catch(() => {}); }
+    // Weekdays only: a Saturday brief re-reads Friday's tape for money. A run
+    // that fails is not marked done, so the 20-minute tick retries inside the hour.
+    const dow = new Date().getUTCDay(); if (dow === 0 || dow === 6) return;
+    if (lonHour === cfg.hourLondon && _autoBriefLastRun !== today && !_autoBriefRunning) {
+      _autoBriefRunning = true;
+      _runAutoBrief('daily').then(log => { if (!log.some(l => /✗/.test(l))) _autoBriefLastRun = today; else console.warn('[auto-brief] failed, will retry:', log.join(' · ')); }).catch(e => console.warn('[auto-brief]', e.message)).finally(() => { _autoBriefRunning = false; });
+    }
   } catch {}
 }, 20 * 60_000);
 
@@ -13562,6 +13967,344 @@ svcInterval('regimeStudy', () => { _refreshRegimeStudy().catch(e => console.warn
 // Cold start is honest, not hidden: until a series has enough history to have a
 // dispersion, it is excluded, and until a currency has enough scored releases it
 // reports null with a `pending` count. An empty index says "collecting", never 0.
+// ── Regime: growth x inflation, monthly ─────────────────────────────────────
+// The label is recomputed daily from FRED (no key: fredgraph.csv); the asset
+// table and transitions come from analysis/output/regime.json, which the study
+// writes (MD files/REGIME.md). Served together; the page and the brief read it.
+let _macroRegime = { at: 0, history: null, now: null, error: null };
+async function _fredCsv(id) {
+  const r = await fetch(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${id}`, { signal: AbortSignal.timeout(30_000) }); if (!r.ok) throw new Error(`FRED ${id} HTTP ${r.status}`);
+  return (await r.text()).trim().split('\n').slice(1).map(l => { const [d, v] = l.split(','); return { date: d, value: parseFloat(v) }; }).filter(o => Number.isFinite(o.value));
+}
+// The other currencies' series (validated this week; see REGIME.md R2). A
+// quarterly series is held across its three months so the monthly composite
+// does not go missing two months in three.
+const _CCY_REGIME_SRC = {
+  gb_cpi:   { source: 'ons', id: 'd7g7', path: 'economy/inflationandpriceindices', dataset: 'mm23' },
+  gb_core:  { source: 'ons', id: 'dko8', path: 'economy/inflationandpriceindices', dataset: 'mm23' },
+  gb_unemp: { source: 'ons', id: 'mgsx', path: 'employmentandlabourmarket/peoplenotinwork/unemployment', dataset: 'lms' },
+  gb_gdp:   { source: 'ons', id: 'ecy2', path: 'economy/grossdomesticproductgdp', dataset: 'mgdp' },
+  ea_hicp:  { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=TOTAL', latestN: 260 },
+  ea_core:  { source: 'eurostat', id: 'ei_cphi_m', params: 'geo=EA&unit=RT12&indic=CP-HI00XEF', latestN: 260 },
+  ea_unemp: { source: 'eurostat', id: 'une_rt_m', params: 'geo=EA21&s_adj=SA&age=TOTAL&sex=T&unit=PC_ACT', latestN: 260 },
+  ea_gdp:   { source: 'eurostat', id: 'namq_10_gdp', params: 'geo=EA20&unit=CLV_PCH_PRE&s_adj=SCA&na_item=B1GQ', latestN: 90, quarterly: true },
+  ca_cpi:   { source: 'statcan', id: 41690973, latestN: 320 },
+  ca_trim:  { source: 'statcan', id: 108785715, latestN: 320 },
+  ca_median: { source: 'statcan', id: 108785714, latestN: 320 },
+  ca_unemp: { source: 'statcan', id: 2062815, latestN: 320 },
+  ca_gdp:   { source: 'statcan', id: 65201210, latestN: 320 },
+};
+const _heldMonthly = obs => obs.flatMap(o => { const d = new Date(o.date); return [0, 1, 2].map(k => ({ date: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1)).toISOString().slice(0, 10), value: o.value })); });
+async function _refreshRegime() {
+  try {
+    const [cfnai, claims, indpro, payems, corecpi, corepce, bei5] = await Promise.all(['CFNAI', 'ICSA', 'INDPRO', 'PAYEMS', 'CPILFESL', 'PCEPILFE', 'T5YIE'].map(_fredCsv));
+    const history = _regimeHistory({ cfnai, claims, indpro, payems, corecpi, corepce, bei5 });
+    const raw = {};
+    for (const [k, spec] of Object.entries(_CCY_REGIME_SRC)) { try { const obs = await _fetchIntlSeries(spec); raw[k] = spec.quarterly ? _heldMonthly(obs) : obs.map(o => ({ date: o.date, value: o.value })); } catch (e) { console.warn('[regime]', k, e.message); } }
+    if (raw.ca_cpi) raw.ca_cpi_yoy = _yoy(raw.ca_cpi);
+    const currencies = { USD: history };
+    for (const ccy of ['GBP', 'EUR', 'CAD']) { const h = _currencyRegime(ccy, raw); if (h?.length) currencies[ccy] = h; }
+    _macroRegime = { at: Date.now(), history, now: _regimeNow(history), currencies: Object.fromEntries(Object.entries(currencies).map(([c, h]) => [c, { now: _regimeNow(h), history: h.slice(-60) }])), error: null };
+  } catch (e) { _macroRegime.error = e.message; console.warn('[regime]', e.message); }
+  return _macroRegime;
+}
+function _regimeTable() { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'regime.json'), 'utf8')); } catch { return null; } }
+app.get('/api/regime', async (_req, res) => {
+  try {
+    if (Date.now() - _macroRegime.at > 24 * 3600_000) await _refreshRegime();
+    const t = _regimeTable(); const hist = _macroRegime.history ?? t?.history ?? null;
+    if (!hist) return res.status(503).json({ ok: false, error: _macroRegime.error ?? 'no regime history yet' });
+    const share = {}; for (const r of hist) share[r.regime] = (share[r.regime] ?? 0) + 1;
+    // the pair as a regime differential: aligned (same quadrant) or diverging
+    const C = _macroRegime.currencies ?? null; const PAIRS = { EURUSD: ['EUR', 'USD'], GBPUSD: ['GBP', 'USD'], USDCAD: ['USD', 'CAD'], EURGBP: ['EUR', 'GBP'] };
+    const pairs = C ? Object.fromEntries(Object.entries(PAIRS).filter(([, [a, b]]) => C[a]?.now && C[b]?.now).map(([p, [a, b]]) => [p, { base: a, quote: b, baseRegime: C[a].now.regime, quoteRegime: C[b].now.regime, aligned: C[a].now.regime === C[b].now.regime }])) : null;
+    res.json({ ok: true, now: _macroRegime.now ?? t?.now ?? null, history: hist.slice(-240), share, spells: _regimeSpells(hist).slice(-60), table: t?.table ?? null, transitions: t?.transitions ?? null, currencies: C, pairs, pairTable: t?.pairTable ?? null, ranAt: t?.ranAt ?? null, liveAt: _macroRegime.at ? new Date(_macroRegime.at).toISOString() : null, spec: 'MD files/REGIME.md' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('regime', () => _refreshRegime().catch(e => console.error('[regime]', e.message)), 24 * 3600_000);
+setTimeout(() => _refreshRegime().catch(e => console.error('[regime] first pass failed:', e.message)), 12 * 60_000);
+
+// ── Rates & policy: the curve, real vs inflation, the term premium ───────────
+// Daily FRED series, no key (fredgraph.csv), cached six hours: 2Y/10Y/30Y, the
+// 10Y TIPS real yield, the 10Y breakeven, the target rate, and the Kim-Wright
+// 10Y term premium (THREEFYTP10 -- what the long end pays over expected policy).
+// rates.html reads it; the sidebar's Rates & Policy row reads the same numbers.
+const _RATES_IDS = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', real: 'DFII10', bei: 'T10YIE', policy: 'DFEDTARU', tp: 'THREEFYTP10', sofr: 'SOFR', effr: 'EFFR', iorb: 'IORB', srf: 'RPONTSYD', dw: 'WLCFLPCL', rrp: 'RRPONTSYD' };
+let _rates = { at: 0, series: null, error: null };
+async function _refreshRates() {
+  try {
+    const out = {}; const since = new Date(Date.now() - 12 * 365.25 * 864e5).toISOString().slice(0, 10);
+    for (const [k, id] of Object.entries(_RATES_IDS)) out[k] = (await _fredCsv(id)).filter(o => o.date >= since);
+    try { out.sofr99 = (await _nyfedSofr99()).filter(o => o.date >= since); } catch (e) { console.warn('[rates] sofr99', e.message); }
+    _rates = { at: Date.now(), series: out, error: null };
+  } catch (e) { _rates.error = e.message; console.warn('[rates]', e.message); }
+  return _rates;
+}
+app.get('/api/rates', async (_req, res) => {
+  try {
+    if (Date.now() - _rates.at > 6 * 3600_000) await _refreshRates();
+    if (!_rates.series) return res.status(503).json({ ok: false, error: _rates.error ?? 'no rates yet' });
+    const S = _rates.series; const last = k => S[k]?.[S[k].length - 1] ?? null;
+    const pct = (k, years) => { const v = last(k)?.value; if (v == null) return null; const from = new Date(Date.now() - years * 365.25 * 864e5).toISOString().slice(0, 10); const w = S[k].filter(o => o.date >= from).map(o => o.value); return w.length ? Math.round(100 * w.filter(x => x <= v).length / w.length) : null; };
+    const now = Object.fromEntries(Object.keys(_RATES_IDS).map(k => [k, last(k)]));
+    const chg = (k, days) => { const a = S[k]; if (!a?.length) return null; const cut = new Date(Date.now() - days * 864e5).toISOString().slice(0, 10); const prev = [...a].reverse().find(o => o.date <= cut); return prev ? +((a[a.length - 1].value - prev.value) * 100).toFixed(0) : null; };
+    const trim = k => S[k].filter(o => o.date >= new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 10)).map(o => [o.date, o.value]);
+    const keys = Object.keys(S);
+    const plumbing = (() => { const l = k => S[k]?.[S[k].length - 1]; const iorb = l('iorb')?.value, sofr = l('sofr')?.value, s99 = l('sofr99')?.value, effr = l('effr')?.value; return { sofr: l('sofr'), sofr99: l('sofr99'), effr: l('effr'), iorb: l('iorb'), srf: l('srf'), dw: l('dw'), rrp: l('rrp'), sofrFloorBp: sofr != null && iorb != null ? Math.round((sofr - iorb) * 100) : null, sofr99FloorBp: s99 != null && iorb != null ? Math.round((s99 - iorb) * 100) : null, effrFloorBp: effr != null && iorb != null ? Math.round((effr - iorb) * 100) : null }; })();
+    res.json({ ok: true, now, change20d: Object.fromEntries(keys.map(k => [k, chg(k, 28)])), pct5y: { tp: pct('tp', 5), real: pct('real', 5), bei: pct('bei', 5), us10y: pct('us10y', 5) }, pct10y: { tp: pct('tp', 10) }, plumbing, series: Object.fromEntries(keys.map(k => [k, trim(k)])), at: new Date(_rates.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
+
+// ── The non-US 10-year yields: gilts (BoE), JGBs (MoF), bunds (Bundesbank) ────
+// Daily from the issuers' own offices (FRED only mirrors them monthly). Feeds the
+// chain's three gap chips (foreign minus Treasury 10Y against the pair) — tested
+// in MD files/NONUS_YIELDS.md: same-window textbook links, no range or direction
+// claim. Cached six hours; the JGB full history (~1MB) is fetched once a day and
+// only the current-month file on the other refreshes.
+let _intlYields = { at: 0, series: null, error: null, jgbAllAt: 0 };
+async function _refreshIntlYields() {
+  const out = _intlYields.series ? { ..._intlYields.series } : {};
+  const since = new Date(Date.now() - 3 * 365.25 * 864e5).toISOString().slice(0, 10);
+  const errs = [];
+  for (const [k, spec] of Object.entries(_INTL_YIELDS)) {
+    try {
+      let pts;
+      if (k === 'jp10y' && out.jp10y?.length && Date.now() - _intlYields.jgbAllAt < 24 * 3600_000) {
+        const cur = await spec.fetch({ history: false }); const m = new Map(out.jp10y.map(o => [o.date, o.value])); for (const o of cur) m.set(o.date, o.value);
+        pts = [...m].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([date, value]) => ({ date, value }));
+      } else { pts = await spec.fetch(); if (k === 'jp10y') _intlYields.jgbAllAt = Date.now(); }
+      if (pts.length) out[k] = pts.filter(o => o.date >= since);
+    } catch (e) { errs.push(`${k}: ${e.message}`); console.warn('[intl-yields]', k, e.message); }
+  }
+  _intlYields = { ..._intlYields, at: Date.now(), series: Object.keys(out).length ? out : null, error: errs.join('; ') || null };
+  return _intlYields;
+}
+app.get('/api/intl-yields', async (_req, res) => {
+  try {
+    if (Date.now() - _intlYields.at > 6 * 3600_000) await _refreshIntlYields();
+    if (!_intlYields.series) return res.status(503).json({ ok: false, error: _intlYields.error ?? 'no series yet' });
+    const meta = Object.fromEntries(Object.entries(_INTL_YIELDS).map(([k, s]) => [k, { label: s.label, source: s.source }]));
+    res.json({ ok: true, series: _intlYields.series, meta, error: _intlYields.error, at: new Date(_intlYields.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('intlYields', () => _refreshIntlYields().catch(e => console.error('[intl-yields]', e.message)), 6 * 3600_000);
+
+// ── Crude and the crack: the refiner's margin as its own market ──────────────
+// FRED's EIA spot prices, no key, a week behind like the WTI print: WTI, NY
+// Harbor gasoline and heating oil -> the 3-2-1 crack in $/bbl, its normal band
+// since 2010, the 20-session change, and the C1-C3 verdicts from the study
+// output. Feeds the Crude & the crack card and the chain's crack node.
+let _crack = { at: 0, data: null, error: null };
+async function _refreshCrack() {
+  try {
+    const [wti, gasoline, heatingOil] = await Promise.all(['DCOILWTICO', 'DGASNYH', 'DHOILNYH'].map(id => _fredCsv(id)));
+    const hist = _crackHistory({ wti, gasoline, heatingOil });
+    if (!hist.length) throw new Error('no common dates');
+    const ctx = _crackContext(hist);
+    const last = hist[hist.length - 1]; const back = hist[Math.max(0, hist.length - 21)];
+    let study = null; try { study = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'crack_spread.json'), 'utf8')); } catch { /* the card still shows the numbers */ }
+    _crack = { at: Date.now(), error: null, data: {
+      last: { date: last.date, wti: last.wti, gasoline: last.gasoline, heatingOil: last.heatingOil, crack: +last.crack.toFixed(2) },
+      change20: { crack: +(last.crack - back.crack).toFixed(2), wtiPct: +((last.wti / back.wti - 1) * 100).toFixed(2), from: back.date },
+      context: ctx ? { ...ctx, last: +ctx.last.toFixed(2), p25: +ctx.p25.toFixed(1), median: +ctx.median.toFixed(1), p75: +ctx.p75.toFixed(1), p90: +ctx.p90.toFixed(1), percentile: +ctx.percentile.toFixed(3) } : null,
+      series: hist.slice(-260).map(r => ({ date: r.date, value: +r.crack.toFixed(2), wti: r.wti })),
+      study: study ? { ranAt: study.ranAt, c1: study.c1, c2: study.c2, c3: study.c3, blowouts: study.blowouts } : null,
+    } };
+  } catch (e) { _crack.error = e.message; console.warn('[crack]', e.message); }
+  return _crack;
+}
+app.get('/api/crack', async (_req, res) => {
+  try {
+    if (Date.now() - _crack.at > 6 * 3600_000) await _refreshCrack();
+    if (!_crack.data) return res.status(503).json({ ok: false, error: _crack.error ?? 'no crack series yet' });
+    res.json({ ok: true, ..._crack.data, at: new Date(_crack.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e.message)), 6 * 3600_000);
+
+// ── The week map: every series scored against its own history ────────────────
+// Weekly changes of ~25 macro series, each as a z against the series' full
+// history, this week's bar in the histogram, and the ten nearest past weeks in
+// z-space with what followed. Rebuilt once a day from FRED (keyless CSV; the
+// ICE OAS series through the key) and OANDA. The analogue test (W1) lives in
+// analysis/output/weekmap_test.json and is printed on the page.
+// NY Fed SOFR distribution: the 99th percentile of the day's repo trades. The
+// worst trades of the day against the floor is the plumbing read that catches
+// stress before the median moves (Sept 2019).
+async function _nyfedSofr99() {
+  const r = await fetch(`https://markets.newyorkfed.org/api/rates/secured/sofr/search.json?startDate=2018-04-01&endDate=${new Date().toISOString().slice(0, 10)}`, { signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`NY Fed SOFR HTTP ${r.status}`);
+  return ((await r.json()).refRates ?? []).map(x => ({ date: x.effectiveDate, value: +x.percentPercentile99, median: +x.percentRate })).filter(o => Number.isFinite(o.value)).sort((a, b) => a.date < b.date ? -1 : 1);
+}
+let _weekMap = { at: 0, data: null, error: null };
+async function _refreshWeekMap() {
+  try {
+    const raw = {};
+    for (const p of _WM_PANEL) {
+      try {
+        if (p.fred) raw[p.id] = (p.keyed && process.env.FRED_KEY) ? [...(await fetchFredSeries(p.fred, '1990-01-01', process.env.FRED_KEY)).entries()].map(([date, value]) => ({ date, value })) : await _fredCsv(p.fred);
+        else if (p.oanda) raw[p.id] = (await _btFetchD1(p.oanda, 5000)).map(b => ({ date: b.date, value: b.close }));
+        else if (p.nyfed === 'sofr99') raw[p.id] = await _nyfedSofr99();
+      } catch (e) { console.warn('[weekmap]', p.id, e.message); }
+    }
+    const wm = _buildWeekMap(raw); delete wm._internal;
+    let test = null; try { test = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'weekmap_test.json'), 'utf8')); } catch { /* none yet */ }
+    _weekMap = { at: Date.now(), data: { ...wm, test: test ? { ranAt: test.ranAt, w1: test.w1 } : null }, error: null };
+  } catch (e) { _weekMap.error = e.message; console.warn('[weekmap]', e.message); }
+  return _weekMap;
+}
+app.get('/api/weekmap', async (_req, res) => {
+  try {
+    if (Date.now() - _weekMap.at > 24 * 3600_000) await _refreshWeekMap();
+    if (!_weekMap.data) return res.status(503).json({ ok: false, error: _weekMap.error ?? 'no week map yet' });
+    res.json({ ok: true, ..._weekMap.data, at: new Date(_weekMap.at).toISOString(), spec: 'MD files/WEEK_MAP.md' });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('weekMap', () => _refreshWeekMap().catch(e => console.error('[weekmap]', e.message)), 24 * 3600_000);
+setTimeout(() => _refreshWeekMap().catch(e => console.error('[weekmap] first pass failed:', e.message)), 14 * 60_000);
+
+// ── The 07:00 digest, and the expected-range call scored at the close ────────
+// Five lines from what the desk already knows, sent once a day from Railway at
+// 07:00 London (the hourly check below), stored on the day's snapshot row with
+// the expected-range numbers. The next snapshot tick scores yesterday's ranges
+// against the realised session range so the one forecast the desk makes keeps
+// a record like the leans and the calls do.
+const _DIGEST_INSTR_SYM = { EURUSD: 'EUR_USD', GBPUSD: 'GBP_USD', USDJPY: 'USD_JPY', AUDUSD: 'AUD_USD', USDCAD: 'USD_CAD', GOLD: 'XAU_USD', NQ: 'NAS100_USD', SPX500: 'SPX500_USD' };
+const _DIGEST_UNIT_MULT = { EURUSD: 10000, GBPUSD: 10000, AUDUSD: 10000, USDCAD: 10000, USDJPY: 100, GOLD: 1, NQ: 1, SPX500: 1 };
+let _digestSentDay = null;
+async function _buildDigest() {
+  const now = new Date(); const day = now.toISOString().slice(0, 10);
+  const london = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', weekday: 'short', day: '2-digit', month: 'short' }).format(now);
+  const ws = await _loadWatchStore(); const states = ws?.states ?? [];
+  // ATR per instrument from the watch's own series (same numbers the triggers use)
+  const inputs = await _watchInputs().catch(() => null);
+  const atrBy = {}; if (inputs?.series) { for (const [inst, k] of Object.entries(_WATCH_INSTR_SYM)) { const bars = inputs.series[k]; if (!bars || bars.length < 15) continue; let sum = 0; for (let i = bars.length - 14; i < bars.length; i++) { const b = bars[i], p = bars[i - 1]; sum += Math.max(b.high - b.low, Math.abs(b.high - p.value), Math.abs(b.low - p.value)); } atrBy[inst] = sum / 14; } }
+  const ranges = _expectedRanges(states, atrBy);
+  // today's prints with the book's size and your call
+  const feed = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY }).catch(() => ({ events: [] }));
+  const snap = await _loadSnapStore(); const row = (snap?.days ?? []).find(d => d.day === day); const yRow = (snap?.days ?? []).filter(d => d.day < day).at(-1);
+  const prints = (feed.events ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.time?.startsWith(day)).sort((a, b) => a.ms - b.ms).slice(0, 8).map(e => {
+    const fam = (_scGroup([{ ...e }], { now: e.ms + 40 * 60_000 })[0]?.prints?.[0]?.family) ?? null; const imp = fam ? _eventImpact(e.country, fam) : null;
+    const top = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 2).map(([k, v]) => `${k.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2')} ${v.spike}×`).join(', ') : null;
+    const nc = (() => { const c = _nowcast.cleveland; if (!c || e.country !== 'US') return null; const key = { 'CPI m/m': 'cpi', 'Core CPI m/m': 'core', 'Core PCE Price Index m/m': 'corepce' }[e.event]; return key && c[key] != null ? `${c[key].toFixed(2)}%` : null; })();
+    const call = row?.calls?.[`${String(e.country).toUpperCase()}|${e.ms}`]?.call ?? null;
+    return { time: new Date(e.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }), country: e.country, event: e.event, estimate: e.estimate ?? null, model: nc, size: top ? `${top} a normal half-hour` : null, call };
+  });
+  const yesterday = yRow ? { leans: null, ranges: (yRow.ranges ?? []).filter(r => r.realisedAtr != null).map(r => ({ inst: r.inst, expectedAtr: r.expectedAtr, realisedAtr: r.realisedAtr })), calls: Object.values(yRow.calls ?? {}).filter(c => c.result).map(c => ({ event: c.event, result: c.result })) } : null;
+  try { const led = await _readLedger(); const by = _ledgerSummary(led).byDay?.[0]; if (by && yesterday && by.h1?.n) yesterday.leans = { hits: by.h1.hits, n: by.h1.n }; } catch { /* no ledger line */ }
+  const weekUnusual = _weekMap.data ? Object.values(_weekMap.data.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).map(x => ({ label: x.label, z: x.latest.z })) : null;
+  // The board: each instrument's session open and the fitted-ladder lines either
+  // side with how often each is reached. Straight from computeDailyBrief, so the
+  // digest, the page, the chart and the bots all quote one set of lines. Added
+  // 2026-09-21 in place of a second Telegram product -- the one part of a
+  // "morning blast" this desk can stand behind (the rest was conviction we have
+  // tested and lost, or the Evidence Book read aloud).
+  let board = null;
+  try {
+    const brief = await computeDailyBrief();
+    if (brief?.ok) {
+      board = Object.keys(_DIGEST_INSTR_SYM).map(inst => {
+        const b = brief.instruments?.[inst]; const L = b?.levels; if (!b?.session_open || !L) return null;
+        const lv = k => L[k]?.price != null ? { price: L[k].price, hit: L[k].hit_pct ?? null } : null;
+        return { inst, open: b.session_open, dp: b.dp ?? 5,
+                 dn1: lv('ol_med'), dn2: lv('ol_75'), up1: lv('oh_med'), up2: lv('oh_75'),
+                 source: L.ol_med?.source ?? null, estimator: L.ol_med?.estimator ?? null };
+      }).filter(Boolean);
+    }
+  } catch (e) { console.warn('[digest] board unavailable:', e.message); }
+  const text = _formatDigest({ dateLabel: london, regime: _macroRegime.now, weekUnusual, states, prints, ranges, yesterday, board }, { html: true });
+  return { day, text, board, ranges: Object.values(ranges).map(r => ({ inst: r.inst, atr: r.atr, unit: r.unit, expectedAtr: r.expectedAtr, expected: r.expected, drivers: r.drivers.map(d => d.label), realisedAtr: null })) };
+}
+async function _sendDigest({ dry = false } = {}) {
+  const d = await _buildDigest();
+  if (!dry) {
+    await _snapUpdateDay(d.day, async r => { r.digest = d.text; r.digestAt = new Date().toISOString(); if (!r.ranges?.length) r.ranges = d.ranges; });
+    if (state.tg?.token && state.tg?.chatId && svcEnabled('digest')) await sendTelegram(state.tg.token, state.tg.chatId, d.text);
+    _digestSentDay = d.day;
+  }
+  return d;
+}
+async function _digestTick() {
+  const h = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour: '2-digit', hour12: false }).format(new Date());
+  const day = new Date().toISOString().slice(0, 10); const dow = new Date().getUTCDay();
+  if (h !== 7 || _digestSentDay === day || dow === 0 || dow === 6) return;
+  const snap = await _loadSnapStore(); if ((snap?.days ?? []).find(r => r.day === day)?.digestAt) { _digestSentDay = day; return; }
+  await _sendDigest();
+}
+// score yesterday's expected ranges against the realised session range
+async function _scoreRanges() {
+  const snap = await _loadSnapStore(); if (!snap) return;
+  const today = new Date().toISOString().slice(0, 10);
+  for (const row of (snap.days ?? []).filter(r => r.day < today && (r.ranges ?? []).some(x => x.realisedAtr == null)).slice(-5)) {
+    let changed = false;
+    for (const r of row.ranges) {
+      if (r.realisedAtr != null) continue; const sym = _DIGEST_INSTR_SYM[r.inst]; if (!sym) continue;
+      try { const bars = await _btFetchD1(sym, 8); const b = bars.find(x => x.date === row.day); if (!b || !r.atr) continue; const mult = _DIGEST_UNIT_MULT[r.inst] ?? 1; r.realisedAtr = +(((b.high - b.low) * mult) / r.atr).toFixed(2); r.realised = +((b.high - b.low) * mult).toFixed(r.unit === 'pips' ? 0 : 1); changed = true; } catch { /* next tick */ }
+    }
+    if (changed) await _snapUpdateDay(row.day, async x => { x.ranges = row.ranges; });
+  }
+}
+app.get('/api/digest', async (req, res) => { try { const d = await _sendDigest({ dry: req.query.send !== '1' }); res.json({ ok: true, ...d }); } catch (e) { res.status(500).json({ ok: false, error: e.message }); } });
+app.get('/api/range-calls', async (req, res) => {
+  try {
+    const st = await _loadSnapStore(); const n = Math.min(120, Math.max(1, parseInt(req.query.days ?? '60', 10) || 60));
+    const rows = (st?.days ?? []).slice(-n).flatMap(d => (d.ranges ?? []).map(r => ({ ...r, day: d.day })));
+    const scored = rows.filter(r => r.realisedAtr != null);
+    const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+    const byInst = {}; for (const r of scored) (byInst[r.inst] ??= []).push(r);
+    const summary = { n: scored.length, meanExpected: scored.length ? +mean(scored.map(r => r.expectedAtr)).toFixed(2) : null, meanRealised: scored.length ? +mean(scored.map(r => r.realisedAtr)).toFixed(2) : null,
+      flagged: (() => { const f = scored.filter(r => r.expectedAtr > 1.05), o = scored.filter(r => r.expectedAtr <= 1.05); return { n: f.length, realised: f.length ? +mean(f.map(r => r.realisedAtr)).toFixed(2) : null, ordinaryN: o.length, ordinaryRealised: o.length ? +mean(o.map(r => r.realisedAtr)).toFixed(2) : null }; })(),
+      byInstrument: Object.fromEntries(Object.entries(byInst).map(([k, v]) => [k, { n: v.length, expected: +mean(v.map(r => r.expectedAtr)).toFixed(2), realised: +mean(v.map(r => r.realisedAtr)).toFixed(2) }])) };
+    res.json({ ok: true, rows: rows.slice(-200), summary });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('digest', () => _digestTick().catch(e => console.error('[digest]', e.message)), 20 * 60_000);
+svcInterval('rangeScore', () => _scoreRanges().catch(e => console.error('[range-score]', e.message)), 60 * 60_000);
+
+// ── Nowcasts: the third number on a release line ────────────────────────────
+// Consensus is what the street expects; the actual is what printed; the nowcast
+// is a Fed model's live estimate before the print. Two are free: the Cleveland
+// Fed's daily inflation nowcast (CPI / core CPI / PCE / core PCE, m/m) and the
+// Atlanta Fed's GDPNow. Tested 2026-09-19 (MD files/NOWCAST_TESTS.md): the gap
+// between nowcast and consensus does NOT predict the sign of the CPI surprise
+// (53%, interval through 50%, and the model's error is larger than the
+// consensus's), and GDPNow's 67% on 30 calls is under the sample bar. So this is
+// context -- "the model says 0.43%" -- never a lean. Refreshed once a day; the
+// Cleveland file is ~7 MB, so only the current month's last values are kept.
+let _nowcast = { at: 0, cleveland: null, gdpnow: null, error: null };
+async function _refreshNowcast() {
+  const out = { at: Date.now(), cleveland: null, gdpnow: null, error: null };
+  try {
+    const r = await fetch('https://www.clevelandfed.org/-/media/files/webcharts/inflationnowcasting/nowcast_month.json?sc_lang=en', { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(60_000) });
+    if (!r.ok) throw new Error(`Cleveland HTTP ${r.status}`);
+    const charts = await r.json();
+    const pick = (c) => {
+      const [yy, mm] = String(c.chart.subcaption).split('-').map(Number);
+      const labels = c.categories[0].category.map(x => x.label);
+      const last = {}; let asOf = null;
+      for (const d of c.dataset) {
+        const key = { 'CPI Inflation': 'cpi', 'Core CPI Inflation': 'core', 'PCE Inflation': 'pce', 'Core PCE Inflation': 'corepce' }[d.seriesname]; if (!key) continue;
+        for (let i = d.data.length - 1; i >= 0; i--) { const v = d.data[i]?.value; if (v !== '' && v != null) { last[key] = +(+v).toFixed(3); const m = labels[i]?.match?.(/^(\d{2})\/(\d{2})$/); if (m && !asOf) { let y = yy; const M = +m[1]; if (M < mm - 1) y = yy + 1; if (mm === 12 && M === 1) y = yy + 1; asOf = `${y}-${m[1]}-${m[2]}`; } break; } }
+      }
+      return { month: `${yy}-${String(mm).padStart(2, '0')}`, asOf, ...last };
+    };
+    // the latest month chart, and the one before it in case the latest has no values yet
+    const latest = charts.slice(-2).map(pick).filter(x => x.cpi != null);
+    out.cleveland = latest.length ? latest[latest.length - 1] : null; if (latest.length === 2) out.cleveland.previousMonth = latest[0];
+  } catch (e) { out.error = e.message; }
+  try {
+    const r = await fetch('https://fred.stlouisfed.org/graph/fredgraph.csv?id=GDPNOW', { signal: AbortSignal.timeout(20_000) });
+    if (r.ok) { const lines = (await r.text()).trim().split('\n').slice(1).map(l => l.split(',')).filter(([, v]) => v && v !== '.'); const [date, v] = lines[lines.length - 1] ?? []; if (date) out.gdpnow = { quarter: date, value: +(+v).toFixed(2) }; }
+  } catch (e) { out.error = (out.error ? out.error + '; ' : '') + e.message; }
+  if (out.cleveland || out.gdpnow) _nowcast = out; else if (out.error) console.warn('[nowcast]', out.error);
+  return _nowcast;
+}
+app.get('/api/nowcast', async (_req, res) => {
+  try { if (Date.now() - _nowcast.at > 24 * 3600_000) await _refreshNowcast(); res.json({ ok: true, ..._nowcast, tested: 'NOWCAST_TESTS.md N1 null, N2 insufficient: context, not a lean' }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+svcInterval('nowcast', () => _refreshNowcast().catch(e => console.error('[nowcast]', e.message)), 24 * 3600_000);
 const _SURPRISE_KV = 'econ_surprise_v1';
 const _SURPRISE_REFRESH_MS = 60 * 60_000;   // releases print hourly at most; the feed itself caches
 
@@ -13591,11 +14334,125 @@ async function _readSurpriseStore() {
   return Array.isArray(rows) ? rows : [];
 }
 
+// ForexFactory's free feed has no `actual` field, so from the 2025-04 backfill to
+// 2026-09-19 this store took no live print at all ("nothing new, store untouched",
+// hourly, for seventeen months). The actual for the US releases FRED publishes is
+// rebuilt from FRED *vintages*: the data as known in the three days after the
+// release, whose newest observation -- if it was published inside that window --
+// is the first print. Validated against the ForexFactory archive: 179 of 181
+// first prints exact (js/fredActuals.js). Non-US and proprietary US series
+// (ISM, PMIs, Conference Board) still have no actual; they are simply not scored.
+const _FRED_FILL_MAX = 40;   // lookups per hourly pass; FRED allows 120/min
+// The central banks' own daily policy-rate feeds (BoE IADB, BoC Valet, RBA F1),
+// parsed to [{date, value}]. One fetch per source per pass.
+async function _fetchPolicySeries(source, id, fromIso) {
+  const ua = { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(25_000) };
+  if (source === 'boc') {
+    const r = await fetch(`https://www.bankofcanada.ca/valet/observations/${id}/json?start_date=${fromIso}`, ua); if (!r.ok) throw new Error(`BoC HTTP ${r.status}`);
+    const j = await r.json(); return (j.observations ?? []).map(o => ({ date: o.d, value: parseFloat(o[id]?.v) })).filter(o => Number.isFinite(o.value));
+  }
+  if (source === 'boe') {
+    const d = new Date(fromIso); const from = `${String(d.getUTCDate()).padStart(2, '0')}/${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}/${d.getUTCFullYear()}`;
+    const r = await fetch(`https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp?csv.x=yes&Datefrom=${from}&Dateto=now&SeriesCodes=${id}&CSVF=TN&UsingCodes=Y&VPD=Y&VFD=N`, ua); if (!r.ok) throw new Error(`BoE HTTP ${r.status}`);
+    const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+    return (await r.text()).trim().split('\n').slice(1).map(l => { const [dt, v] = l.split(','); const m = String(dt).trim().match(/^(\d{2}) (\w{3}) (\d{4})$/); return m ? { date: `${m[3]}-${MON[m[2]]}-${m[1]}`, value: parseFloat(v) } : null; }).filter(o => o && Number.isFinite(o.value));
+  }
+  if (source === 'rba') {
+    const r = await fetch('https://www.rba.gov.au/statistics/tables/csv/f1-data.csv', ua); if (!r.ok) throw new Error(`RBA HTTP ${r.status}`);
+    const lines = (await r.text()).split('\n'); const hdr = lines.find(l => l.startsWith('Series ID')); if (!hdr) throw new Error('RBA: no Series ID row');
+    const col = hdr.split(',').indexOf(id); if (col < 0) throw new Error(`RBA: ${id} not in file`);
+    const MON = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+    return lines.map(l => { const c = l.split(','); const m = String(c[0]).match(/^(\d{2})-(\w{3})-(\d{4})$/); if (!m) return null; const date = `${m[3]}-${MON[m[2]]}-${m[1]}`; return date >= fromIso ? { date, value: parseFloat(c[col]) } : null; }).filter(o => o && Number.isFinite(o.value));
+  }
+  throw new Error(`unknown policy source ${source}`);
+}
+// The statistics offices' own endpoints, each to [{date, value, realtime_start}].
+async function _fetchIntlSeries(spec) {
+  const ua = { headers: { 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, signal: AbortSignal.timeout(30_000) };
+  if (spec.source === 'ons') {
+    const r = await fetch(`https://www.ons.gov.uk/${spec.path}/timeseries/${spec.id}/${spec.dataset}/data`, ua); if (!r.ok) throw new Error(`ONS ${spec.id} HTTP ${r.status}`);
+    return _onsSeries(await r.json());
+  }
+  if (spec.source === 'statcan') {
+    const r = await fetch('https://www150.statcan.gc.ca/t1/wds/rest/getDataFromVectorsAndLatestNPeriods', { method: 'POST', headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0 MacroFXDashboard' }, body: JSON.stringify([{ vectorId: spec.id, latestN: spec.latestN ?? 18 }]), signal: AbortSignal.timeout(30_000) });
+    if (!r.ok) throw new Error(`StatCan v${spec.id} HTTP ${r.status}`);
+    return _statcanSeries(await r.json());
+  }
+  if (spec.source === 'eurostat') {
+    const r = await fetch(`https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/${spec.id}?${spec.params}&lastTimePeriod=${spec.latestN ?? 18}`, ua); if (!r.ok) throw new Error(`Eurostat ${spec.id} HTTP ${r.status}`);
+    const j = await r.json(); const rows = _jsonStatSeries(j); const upd = String(j.updated ?? '').slice(0, 10);
+    // only the newest period is known to carry the dataset's update stamp
+    return rows.map((o, i) => ({ ...o, realtime_start: i === rows.length - 1 ? upd : '' }));
+  }
+  throw new Error(`unknown intl source ${spec.source}`);
+}
+let _fredFillWarned = false;
+async function _fillActualsFromFred(events, stored) {
+  const key = process.env.FRED_KEY;
+  if (!key) { if (!_fredFillWarned) { console.warn('[surprise] FRED_KEY not set -- live actuals cannot be filled'); _fredFillWarned = true; } return { filled: 0, tried: 0 }; }
+  const have = new Set((stored ?? []).filter(x => x.actual != null && x.actual !== '').map(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}|${x.ms}`));
+  const pend = _fredPending((events ?? []).filter(e => !have.has(`${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`))).slice(0, _FRED_FILL_MAX);
+  let filled = 0, tried = 0; const notes = [];
+  for (const ev of pend) {
+    const spec = _fredSpecFor(ev.country, ev.event); if (!spec) continue;
+    tried++;
+    try {
+      if (['ons', 'statcan', 'eurostat'].includes(spec.source)) {
+        const obs = await _fetchIntlSeries(spec);
+        const a = _fredActual(spec, ev.ms, obs);   // same vintage rule: newest observation, published on or after the release day
+        if (!a?.actual) continue;
+        ev.actual = a.actual; ev.src = `${spec.source}:${spec.id}`; filled++;
+        notes.push(`${ev.country} ${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; prior ${a.prior ?? '-'} vs FF ${ev.prev ?? '?'})`);
+        await new Promise(r => setTimeout(r, 300)); continue;
+      }
+      if (spec.source && spec.source !== 'fred') {
+        const obs = await _fetchPolicySeries(spec.source, spec.id, new Date(ev.ms - 10 * 864e5).toISOString().slice(0, 10));
+        const a = _policyActual(spec, ev.ms, obs);
+        if (!a?.actual) continue;   // not dated past the decision yet
+        ev.actual = a.actual; ev.src = `${spec.source}:${spec.id}`; filled++;
+        notes.push(`${ev.country} ${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'})`);
+        await new Promise(r => setTimeout(r, 300)); continue;
+      }
+      const w = _fredVintageWindow(ev.ms, Date.now(), spec.lagDays ?? 0);
+      const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${spec.id}&api_key=${key}&file_type=json&observation_start=${_fredFetchStart(spec, ev.ms)}&realtime_start=${w.realtime_start}&realtime_end=${w.realtime_end}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) { notes.push(`${ev.event}: HTTP ${res.status}`); if (res.status === 429) break; continue; }
+      const j = await res.json();
+      const obs = (j.observations ?? []).map(o => ({ date: o.date, value: o.value === '.' ? NaN : parseFloat(o.value), realtime_start: o.realtime_start }));
+      const a = _fredActual(spec, ev.ms, obs);
+      if (!a?.actual) continue;   // not on FRED yet; the next hourly pass asks again
+      ev.actual = a.actual; ev.src = `fred:${spec.id}`; filled++;
+      const agree = a.prior != null && ev.prev != null ? _fredPriorAgrees(ev.prev, a.prior) : null;
+      // The revision: the previous print of this series, as it was first reported,
+      // against the same period as this vintage now carries it. Written on both rows
+      // -- this release "revised the prior", the earlier release "was later revised".
+      if (a.prior != null) {
+        const key = `${String(ev.country).toUpperCase()}|${String(ev.event).trim().toLowerCase()}`;
+        const earlier = (stored ?? []).filter(x => `${String(x.country).toUpperCase()}|${String(x.event).trim().toLowerCase()}` === key && x.ms < ev.ms && x.actual != null && x.actual !== '').sort((p, q) => q.ms - p.ms)[0];
+        const rev = earlier ? _fredRevisionOf(earlier.actual, a.prior) : null;
+        if (rev) { ev.revision = { of: earlier.ms, ...rev }; earlier.revised = a.prior; earlier.revisedAt = ev.ms; earlier.revisedDelta = rev.delta; notes.push(`${ev.event}: prior revised ${rev.was} → ${rev.now} (${rev.delta})`); }
+      }
+      notes.push(`${ev.event} ${new Date(ev.ms).toISOString().slice(0, 10)} = ${a.actual} (cons ${ev.estimate ?? '?'}; prior ${a.prior ?? '-'} vs FF ${ev.prev ?? '?'}${agree === false ? ' MISMATCH' : ''})`);
+    } catch (e) { notes.push(`${ev.event}: ${e.message}`); }
+    await new Promise(r => setTimeout(r, 300));
+  }
+  if (tried) console.log(`[surprise] FRED actuals: ${filled} filled of ${tried} pending${notes.length ? ' -- ' + notes.slice(0, 8).join('; ') : ''}`);
+  return { filled, tried };
+}
 async function _refreshSurpriseStore() {
   const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
   if (!r.ok) throw new Error(`calendar feed unavailable: ${r.error || 'unknown'}`);
   const stored = await _readSurpriseStore();
-  const merged = _mergeReleases(stored, r.events ?? []);
+  const events = (r.events ?? []).map(e => ({ ...e }));   // copy: the feed's cache must not carry our fills
+  // The feed only shows the current week, but some actuals land later than that
+  // (the ECB's rate applies six days after the decision). The daily snapshot keeps
+  // each day's high-impact releases, so recent ones join the candidates.
+  try {
+    const snap = await _loadSnapStore(); const seen = new Set(events.map(e => `${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`));
+    for (const d of (snap?.days ?? []).slice(-21)) for (const e of d.released ?? []) { const k = `${String(e.country).toUpperCase()}|${String(e.event).trim().toLowerCase()}|${e.ms}`; if (!seen.has(k) && _fredSpecFor(e.country, e.event)) { seen.add(k); events.push({ country: e.country, event: e.event, impact: 'high', time: new Date(e.ms).toISOString().slice(0, 19).replace('T', ' '), ms: e.ms, estimate: e.estimate ?? null, prev: e.prev ?? null, actual: e.actual ?? null }); } }
+  } catch { /* the feed alone, then */ }
+  await _fillActualsFromFred(events, stored);
+  const merged = _mergeReleases(stored, events);
   // The store carries ~26k backfilled releases, so it is a multi-megabyte value.
   // Rewriting it hourly when nothing printed is pure churn — most hours the calendar
   // has no new actuals at all.
@@ -13670,8 +14527,17 @@ app.get('/api/econ-surprise', async (req, res) => {
     // release actually did rather than only naming the next one. ?history=1 returns
     // every scored print per series -- the research harness reads the full store
     // through this (analysis/market_sense_studies.mjs S7), nothing else needs it.
-    const series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
-    res.json({ ok: true, storedReleases: rows.length, ...idx, series, generatedAt: new Date().toISOString() });
+    let series = _seriesHistory(rows, { perSeries: req.query.history === '1' ? 100000 : 4 });
+    // ?since=YYYY-MM-DD trims every series to prints on or after that day (the timeline
+    // wants 25 days of releases, not the whole archive).
+    if (req.query.since && /^\d{4}-\d{2}-\d{2}$/.test(req.query.since)) { const ms = Date.parse(req.query.since + 'T00:00:00Z'); series = Object.fromEntries(Object.entries(series).map(([k, v]) => [k, v.filter(x => (x.ms ?? 0) >= ms)]).filter(([, v]) => v.length)); }
+    // Live-feed health, so a store that stops growing is visible on the page and not
+    // only in an hourly log line that reads as healthy.
+    const backfillEnd = Date.parse('2025-04-05T00:00:00Z');
+    const live = rows.filter(x => x.ms > backfillEnd && x.actual != null && x.actual !== '');
+    const latest = live.length ? live.reduce((m, x) => x.ms > m ? x.ms : m, 0) : null;
+    const health = { livePrints: live.length, last30d: live.filter(x => x.ms > Date.now() - 30 * 864e5).length, latestPrintAt: latest ? new Date(latest).toISOString() : null, source: 'ForexFactory consensus + FRED vintage actuals (US only)' };
+    res.json({ ok: true, storedReleases: rows.length, ...idx, series, health, generatedAt: new Date().toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 app.post('/api/econ-surprise/refresh', async (_req, res) => {
@@ -14523,6 +15389,37 @@ app.get('/api/mve-validate/:sym', async (req, res) => {
   }
 });
 
+// MVE full validation — /api/mve-validate/:sym's report PLUS the two pieces added
+// in MD files/RESIDUAL_REVERSION_FX_TEST.md: a 2022-24 rate-divergence-supercycle
+// regime split (CLAUDE.md: "disaggregate before declaring a pooled null") and a
+// cost overlay (the validated yield-spread sleeve's own 0.02% round-trip
+// assumption — an ASSUMPTION here, not a measured spread/ATR gate). Same
+// underlying fetch/fit as /api/mve-validate/:sym (shares its 6h cache key space
+// only in spirit, not literally — this has its own cache so the two endpoints'
+// TTLs don't fight). Reused by analysis/residual_reversion_fx.mjs — one function,
+// not two copies (Lego Principle 1).
+const _mveValFullCache = new Map();
+app.get('/api/mve-validate-full/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _mveValFullCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchContext({
+      sym, deps: { fetchD1: _btFetchD1, fetchFred: fetchFredSeries, fredKey: process.env.FRED_KEY },
+      count: 5000, fromDate: '2004-01-01',
+    });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _mveValidateFull(built.ctx);
+    report.dataSource = built.dataSource;
+    if (report.ok) _mveValFullCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
 // MVE mechanical-anchor validation — the KALMAN branch (Garin's dog/owner "moving
 // fair value"): price's own recent path only, no macro factors, so no FRED_KEY
 // needed at all — OANDA D1 is the only dependency. Same gate discipline as
@@ -14577,6 +15474,78 @@ app.get('/api/vol-reversion/:sym', async (req, res) => {
     res.json(out);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// Minimal-DOF residual mean-reversion (js/residualReversionCore.js) — the PRICE-ONLY
+// AR(1)-residual branch, an independent re-test of the unconditional reversion
+// question (NOT the MVE macro-factor residual, which is a documented FX NULL). The
+// signal is the bare SIGN of the standardized AR(1) residual, benchmarked against a
+// trailing-mean anchor z-score built the SAME way — only the EDGE over that spurious
+// baseline (icEdge) is real signal. OANDA D1 only, no FRED_KEY. Chronological IS/OOS
+// split, costs ON, deflated Sharpe across the hold×threshold sweep. Unit-tested on
+// synthetic data (js/residualReversionCore.test.mjs, 11/11): random walk → NULL,
+// AR(1) → reversion real but no edge over the trailing mean. See
+// MD files/RESIDUAL_REVERSION_MINIMAL_TEST.md.
+const _residRevCache = new Map();
+app.get('/api/residual-reversion/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _residRevCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _validateResidualReversion(built.price, { instrument: sym, costRt: 0.0002 });
+    report.dataSource = built.dataSource;
+    if (report.ok) _residRevCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// Pooled cross-instrument view — a slow reversion edge can't be proven on one
+// instrument, so we look for the SAME positive slow-horizon icEdge WITH an
+// above-coin-flip hit rate across partly-independent instruments (sign-only is a
+// coin flip). Runs each (cached) and summarizes.
+app.get('/api/residual-reversion-all', async (_req, res) => {
+  try {
+    const SYMS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'NQ'];
+    const SLOW = [20, 60];
+    const rows = [];
+    for (const sym of SYMS) {
+      const hit = _residRevCache.get(sym);
+      let report;
+      if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000) report = hit.data;
+      else {
+        const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+        if (!built.ok) { rows.push({ instrument: sym, ok: false, error: built.error }); continue; }
+        report = _validateResidualReversion(built.price, { instrument: sym, costRt: 0.0002 });
+        if (report.ok) _residRevCache.set(sym, { at: Date.now(), data: report });
+      }
+      if (!report?.ok) { rows.push({ instrument: sym, ok: false, error: report?.error || 'unavailable' }); continue; }
+      const slow = SLOW.map(H => report.perHorizon[H]).filter(h => h && h.icEdge != null);
+      const best = slow.sort((a, b) => b.icEdge - a.icEdge)[0] || {};
+      rows.push({ instrument: sym, ok: true, slowIcEdge: best.icEdge ?? null, slowHitRate: best.hitRate ?? null,
+                  slowHorizon: best.n != null ? SLOW.find(H => report.perHorizon[H] === best) : null,
+                  deflatedSharpe: report.strategy.deflatedSharpe, verdict: report.verdict });
+    }
+    const scored = rows.filter(r => r.ok && r.slowIcEdge != null);
+    const n = scored.length;
+    const real = scored.filter(r => r.slowIcEdge > 0.03 && (r.slowHitRate ?? 0) > 0.50);
+    const tradeable = real.filter(r => (r.deflatedSharpe ?? 0) >= 0.60);
+    const signOnly = scored.filter(r => r.slowIcEdge > 0.03).length;
+    const meanEdge = n ? +(scored.reduce((s, r) => s + r.slowIcEdge, 0) / n).toFixed(4) : null;
+    const meanHit = n ? +(scored.reduce((s, r) => s + (r.slowHitRate ?? 0), 0) / n).toFixed(3) : null;
+    const consistent = real.length >= Math.max(3, Math.ceil(n * 0.6)) && tradeable.length >= 2;
+    const read = consistent
+      ? `CONSISTENT: ${real.length}/${n} instruments show a positive slow-horizon icEdge WITH an above-coin-flip hit rate (${tradeable.length} tradeable) — cross-sectional evidence of a real reversion edge.`
+      : `NULL / INCONSISTENT: only ${real.length}/${n} clear both a positive icEdge AND a >50% hit rate (mean hit ${meanHit}). ${signOnly}/${n} positive on sign alone — a coin-flip outcome at this magnitude (mean icEdge ${meanEdge}). No tradeable reversion edge — do NOT wire in.`;
+    res.json({ ok: true, consistency: { instruments: n, realEvidence: real.length, tradeable: tradeable.length, positiveSignOnly: signOnly, meanSlowIcEdge: meanEdge, meanSlowHitRate: meanHit, consistent, read }, instruments: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
@@ -16531,9 +17500,12 @@ async function _volatilityV2P90StopInfo(pair) {
 // be priced unconditionally: always fade, target = distance back to p75
 // (the "inner" rung), stop = the fixed per-pair value from
 // `_volatilityV2P90StopInfo`. `rec` is a `pending`-shaped live record
-// (side/level/pip/rung only — no innerDistPips, same as `_volatilityV2PriceZone`'s
-// input), `ladderBySide` supplies the same `[open, p50px, p75px, p90px]`
-// array that function uses.
+// (since 2026-09-22, atlasWalk itself populates innerDistPips/outerDistPips
+// on every pending record too — see js/levelAtlasEngine.js — but p90 has no
+// rung beyond it, so this function still derives its own inner distance
+// from `ladderBySide` rather than relying on a field that's always null for
+// p90 anyway). `ladderBySide` supplies the same `[open, p50px, p75px, p90px]`
+// array `_volatilityV2PriceZone` below uses.
 function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
   if (stopPips == null) return null;
   const lv = ladderBySide[rec.side];
@@ -16556,11 +17528,19 @@ function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
 
 // Prices ONE candidate rung (a `pending`-shaped live record, OR a resolved
 // `touches` record — both carry the same context-dimension fields
-// `voteDecision` votes on) into a tradeable zone. `ladderBySide` (from
-// `rungLevelsForLadder`) supplies `innerDistPips`/`outerDistPips` for a
-// PENDING rung, which — unlike a resolved touch — doesn't carry them
-// (see js/levelAtlasEngine.js's `rungLevelsForLadder` doc for why a
-// not-yet-touched rung is just as priceable, given the same ladder).
+// `voteDecision` votes on) into a tradeable zone.
+//
+// 2026-09-22 divergence fix: atlasWalk itself now populates
+// innerDistPips/outerDistPips on every pending record (js/levelAtlasEngine.js),
+// using the SAME `lvBySide` ladder it always used internally — so the
+// `if (rec.innerDistPips == null)` fallback below, which reconstructs its
+// own ladder via `ladderBySide`, should no longer trigger for any record
+// atlasWalk actually produced. It's left in place as a defensive fail-safe
+// (a record missing these fields still gets priced rather than silently
+// dropped), not because pending records are expected to lack them anymore —
+// before this date they ALWAYS lacked them, which was the actual bug: two
+// independent computations of the same formula, free to drift. Do not
+// "fix" this comment back to describing the fallback as the normal path.
 function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold) {
   let withDist = rec;
   if (rec.innerDistPips == null) {
@@ -17771,6 +18751,74 @@ async function _refreshOIHoldCalibration() {
 svcInterval('oiBot', _refreshOIHoldCalibration, 6 * 60 * 60_000);   // the log grows a few rows a day — 6h is plenty
 setTimeout(_refreshOIHoldCalibration, 70_000);
 
+// ── OI size-multiplier TRACKING (2026-09-19, review not auto-apply) ──────────
+// The sibling of the hold-score job above, generalised to the REST of sizeBreakdown
+// (js/oiZones.js's add()) -- vanna, blocker, reach, conviction, localRegime, the
+// aggregate cap, and hold's OVERALL multiplier (distinct from oi_hold_calibration,
+// which fits hold's four INPUT components; this asks whether the multiplier hold
+// PRODUCES actually correlates with outcome, a different question). Same join, same
+// method (js/oiZones.js's oiSizeCalibrationStats — kept there, not inline here, so
+// the computation itself is independently unit-tested; this is I/O only), NOT the
+// same behaviour: oi_hold_calibration writes fitted weights the producer auto-
+// applies on its next refresh. This does not — it was asked for explicitly as a
+// one-week READ, reviewed by a person, before anything about the multipliers
+// changes. It never writes back to the planner; it only ever writes a report.
+//
+// TIME-GATED, not (only) count-gated. oi_hold_calibration waits for >=30 resolved
+// wall trades before saying anything, which took long enough that its own key sits
+// at 17 today — fine for a slow-accumulating auto-apply, wrong for "check back in a
+// week": a person asking on day 7 should see what exists on day 7, not a silent
+// "collecting" banner with no date on it. windowStartedAt is stamped ONCE (first run
+// after this shipped) and never moves, so elapsed days is exact even in a slow week.
+const OI_SIZE_AUDIT_MIN_BUCKET = 10;    // per-bucket floor before a split is reported (matches oi_hold_calibration)
+async function _refreshOISizeCalibration() {
+  try {
+    const raw0 = await kv.get('oi_size_calibration').catch(() => null);
+    const prev = raw0 ? (JSON.parse(raw0).data ?? JSON.parse(raw0)) : null;
+    const windowStartedAt = prev?.windowStartedAt || new Date().toISOString();
+
+    const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
+    // Only rows carrying sizeBreakdown — trades opened before this shipped have no
+    // such field at all (undefined), which must never be read as "multiplier = 1,
+    // off"; that would be asserting every pre-fix trade had a neutral breakdown when
+    // it simply predates the field existing. oiSizeCalibrationStats itself is
+    // agnostic to WHERE its rows came from — filtering here keeps that pre-existence
+    // question a server.js/trade-log concern, not something the pure function has
+    // to know about.
+    const rows = log.filter(t => t?.features?.sizeBreakdown && Number.isFinite(t.profit));
+    const n = rows.length;
+    const daysTracked = +((Date.now() - new Date(windowStartedAt).getTime()) / 86400_000).toFixed(1);
+    const components = _oiSizeCalibrationStats(rows, { minBucket: OI_SIZE_AUDIT_MIN_BUCKET });
+
+    const anySeparation = Object.values(components).some(c => Number.isFinite(c.separation));
+    const explain = n === 0
+      ? `${daysTracked}d into tracking, 0 resolved trades carry sizeBreakdown yet — either nothing has closed since `
+        + `this shipped, or the bot has been idle. Nothing to review yet.`
+      : `${daysTracked}d into tracking, ${n} resolved trade(s) carry the full multiplier breakdown. `
+        + (anySeparation
+          ? `At least one component has enough rows on both sides to report a real separation — see componentStats. `
+          : `Still below the ${OI_SIZE_AUDIT_MIN_BUCKET}-per-bucket floor everywhere — every number below is descriptive, not yet a verdict. `)
+        + `This report NEVER auto-applies — read it, decide by hand, then edit js/oiZones.js's defaults if a `
+        + `multiplier looks wrong. (Compare against oi_hold_calibration for hold's own INPUT components, a `
+        + `different question from hold's overall multiplier here.)`;
+
+    const data = { windowStartedAt, daysTracked, n, componentStats: components, explain, updatedAt: new Date().toISOString() };
+    await kv.put('oi_size_calibration', JSON.stringify({ data, timestamp: Date.now() }));
+    return data;
+  } catch (e) { console.error('[oi-size-calib] refresh failed:', e.message); return { error: e.message }; }
+}
+svcInterval('oiBot', _refreshOISizeCalibration, 6 * 60 * 60_000);   // same cadence as oi_hold_calibration -- the log grows a few rows a day
+setTimeout(_refreshOISizeCalibration, 80_000);
+
+app.get('/api/oi-bot/size-calibration', async (req, res) => {
+  try {
+    const raw = await kv.get('oi_size_calibration').catch(() => null);
+    if (!raw) { const r = await _refreshOISizeCalibration(); return res.json({ ok: true, ...(r || {}) }); }
+    res.json({ ok: true, ...(JSON.parse(raw).data ?? JSON.parse(raw)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/oi-bot/hold-calibration', async (req, res) => {
   try {
     const raw = await kv.get('oi_hold_calibration').catch(() => null);
@@ -17835,7 +18883,13 @@ async function _refreshOIBasis() {
     return changed;
   } catch (e) { console.warn('[oi-basis] refresh failed:', e.message); return 0; }
 }
-svcInterval('oiBot', _refreshOIBasis, 15 * 60_000);
+// 5 min, not 15: this is the number the OI Analysis page's own operator watches to see
+// what the bot is about to trade (2026-09-21), not just a background compute job — the
+// human staring at the chart is as real a consumer of freshness as the bot's own 10-min
+// plan_secs poll (oi_bot.py). Cost is ~11 pairs x2 quote legs x288 runs/day ~= 3,168
+// Yahoo + 3,168 OANDA calls/day, ~2/min averaged out — nowhere near the bursty-parallel
+// shape that has throttled this project elsewhere (see _recordBookHistory above).
+svcInterval('oiBot', _refreshOIBasis, 5 * 60_000);
 setTimeout(_refreshOIBasis, 90_000);
 
 app.get('/api/oi-bot/zones', async (req, res) => {
@@ -20389,7 +21443,11 @@ async function computeDailyBrief() {
     const hmmKey    = BRIEF_HMM_KEYS[name] ?? null;
     const regRaw    = hmmKey ? (state.hmmRegimes[hmmKey] ?? null) : null;
     const dp        = PRICE_DIGITS[sym] ?? PRICE_DIGITS[sym.replace('_', '/')] ?? 5;
-    const pipSz     = PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
+    // PIP_SIZE keys the FX pairs and gold with a slash (EUR/USD, XAU/USD) but the
+    // indices with the raw OANDA symbol (NAS100_USD). Looking up only the slashed
+    // form turned NAS100_USD into "NAS100/USD", missed, and fell back to 0.0001 --
+    // so every index range_pts was 10,000x too large (NQ read 6,542,836 for ~654).
+    const pipSz     = PIP_SIZE[sym] ?? PIP_SIZE[sym.replace('_', '/')] ?? 0.0001;
     const fmt       = p => p != null ? parseFloat(p.toFixed(dp)) : null;
 
     // Sizing suggestion from regime confidence
@@ -20401,30 +21459,41 @@ async function computeDailyBrief() {
       else                                   { sizingMult = 0.75; sizingLabel = 'Moderate'; }
     }
 
-    // Build levels: merge % forecast + absolute price + hit rate data
+    // Build levels: merge % forecast + absolute price + hit rate data.
+    // ONE definition (T7b, 2026-09-22): the FITTED LADDER (`ladder_flat`, buildLadder
+    // on the per-instrument sigma, O-H and O-L fitted separately) -- the same lines
+    // the Vote Atlas / volatility bot plan, the ladder export and the owner's chart
+    // draw. The forecaster's incumbent oh_median/ol_75 (half-normal constant x sigma,
+    // O-L assumed = O-C) are legacy: kept in /api/vol-forecast for the archive, read
+    // by nothing user-facing. Falls back to them only when no ladder was built,
+    // and says so in `source`.
+    const lf = fc.ladder_flat ?? null;
+    const ladderSrc = lf ? { source: 'fitted-ladder', estimator: fc.ladder?.estimator ?? null, event_tag: fc.ladder?.event_tag ?? null } : { source: 'legacy-incumbent', estimator: null, event_tag: null };
     const lvls = {};
-    for (const [key, pctField, dir] of [
-      ['oh_med', 'oh_median', +1],
-      ['oh_75',  'oh_75',     +1],
-      ['ol_med', 'ol_median', -1],
-      ['ol_75',  'ol_75',     -1],
+    for (const [key, ladderField, pctField, dir] of [
+      ['oh_med', 'oh_p50', 'oh_median', +1],
+      ['oh_75',  'oh_p75', 'oh_75',     +1],
+      ['ol_med', 'ol_p50', 'ol_median', -1],
+      ['ol_75',  'ol_p75', 'ol_75',     -1],
     ]) {
-      const pct = fc[pctField] ?? 0;
+      const pct = (lf?.[ladderField] ?? fc[pctField]) ?? 0;
       lvls[key] = {
         pct,
         price:       anchorOpen ? fmt(anchorOpen * (1 + dir * pct / 100)) : null,
+        ...ladderSrc,
         hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
         ...(hr?.levels?.[key] ?? {}),
       };
     }
-    for (const [key, pctField] of [['hl_med', 'hl_median'], ['hl_75', 'hl_75']]) {
-      const pct = fc[pctField] ?? 0;
+    for (const [key, ladderField, pctField] of [['hl_med', 'hl_p50', 'hl_median'], ['hl_75', 'hl_p75', 'hl_75']]) {
+      const pct = (lf?.[ladderField] ?? fc[pctField]) ?? 0;
       const rangePts = anchorOpen
         ? parseFloat((anchorOpen * pct / 100 / pipSz).toFixed(1))
         : null;
       lvls[key] = {
         pct,
         range_pts:   rangePts,
+        ...ladderSrc,
         hit_pct:     null, median_utc: null, earliest_utc: null, latest_utc: null,
         ...(hr?.levels?.[key] ?? {}),
       };
@@ -21229,6 +22298,99 @@ app.get('/api/honest-forecast/status/:jobId', (req, res) => {
   }
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error, log: job.log });
+});
+
+// ── Market-Sense Studies (market-sense.html) ─────────────────────────────
+// Runs analysis/market_sense_studies.mjs as a child process — the exact
+// reviewed, pre-registered CLI harness behind MD files/MARKET_SENSE_TESTS.md
+// (Lego Principle 1: import/execute the real thing, never a reimplementation
+// that could drift from it). Needs OANDA_KEY — only reachable on Railway,
+// sandboxed dev sessions 403. Same async-job pattern as /api/honest-forecast/*.
+//
+// S13–S16 are listed but marked `disabled`: their pre-registrations are in
+// the MD file, but their harness code was removed from this script on
+// 2026-09-18 (commit 32e04da, an unrelated "Batch 2" run) and has not been
+// re-added — the catalog says so honestly rather than silently omitting them.
+const MARKET_SENSE_STUDIES = [
+  { id: 'S1',  title: 'VIX term structure inverts → the week gets wide' },
+  { id: 'S2',  title: 'Stocks and bonds falling together (corr(SPX, Δ10Y) < −0.20)' },
+  { id: 'S3',  title: 'Front-end shock (|Δ2Y 5d| top decile) → FX 5-day range' },
+  { id: 'S4',  title: 'Oil 20d move ≥±10% → breakeven change, next 5/10/20 sessions' },
+  { id: 'S5',  title: 'Broken-link resolution over the next 20 sessions (base rates)' },
+  { id: 'S6',  title: '"Priced in": decision-day range vs the prior 2Y repricing' },
+  { id: 'S7',  title: 'Data surprise |z| → release-session range, by family' },
+  { id: 'S8',  title: 'Rotation: |NAS100 − US2000| 20d relative return, top decile' },
+  { id: 'S9',  title: 'Two moves after the Fed: day 0 vs the next 5 / 20 sessions' },
+  { id: 'S10', title: 'Crowded short in long bonds into the Fed' },
+  { id: 'S11', title: 'Price vs 10Y yield spread: divergence vs alignment' },
+  { id: 'S12', title: 'After FOMC: lead-up × surprise → SPX/dollar/gold (base-rate table)' },
+  { id: 'S13', title: 'Does watching more pairs add breadth? (N vs N_eff)', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S14', title: 'Does a multi-year regime break precede anything?', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S15', title: 'The non-reaction: a big surprise, no move', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S16', title: 'Weird × technical, the conjunction', disabled: true, note: 'pre-registered only — harness code not currently in the file' },
+  { id: 'S17', title: 'Gold/oil ratio (ln WTI/gold, 126d z): extreme → which leg gives way?' },
+  { id: 'S18', title: 'AI-capex names vs 30Y yield: is MSFT’s yield-beta measurably smaller?' },
+];
+const MS_RUNNABLE = new Set(MARKET_SENSE_STUDIES.filter(s => !s.disabled).map(s => s.id));
+const MS_SCRIPT = path.join(__dirname, 'analysis', 'market_sense_studies.mjs');
+const MS_OUT = path.join(__dirname, 'analysis', 'output', 'market_sense_studies.json');
+const msJobs = new Map();
+function _purgeStaleMsJobs() {
+  const cutoff = Date.now() - 3 * 60 * 60_000;   // studies fetch CFTC/econ-surprise history too; give runs room
+  for (const [id, job] of msJobs) if (job.startedAt < cutoff) msJobs.delete(id);
+}
+function _readMsOutput() {
+  try { return JSON.parse(fs.readFileSync(MS_OUT, 'utf8')); } catch { return null; }
+}
+
+app.get('/api/market-sense/studies', (req, res) => res.json({ ok: true, studies: MARKET_SENSE_STUDIES }));
+
+app.get('/api/market-sense/last', (req, res) => res.json({ ok: true, result: _readMsOutput() }));
+
+app.post('/api/market-sense/run', express.json({ limit: '64kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) {
+    return res.status(500).json({ ok: false, error: 'OANDA_KEY not set — cannot fetch D1 data (only runs where OANDA is reachable, e.g. Railway production)' });
+  }
+  const requested = Array.isArray(req.body?.studies) ? req.body.studies.filter(id => MS_RUNNABLE.has(id)) : [];
+  const arg = requested.length && requested.length < MS_RUNNABLE.size ? requested.join(',') : '';   // empty -> the script runs everything it has
+
+  const jobId = `ms_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMsJobs();
+  msJobs.set(jobId, { status: 'running', startedAt, log: [] });
+
+  const child = spawn(process.execPath, arg ? [MS_SCRIPT, arg] : [MS_SCRIPT], { cwd: __dirname, env: process.env });
+  let buf = '';
+  const pushLines = chunk => {
+    buf += chunk;
+    const lines = buf.split('\n');
+    buf = lines.pop();
+    if (lines.length) msJobs.get(jobId)?.log.push(...lines);
+  };
+  child.stdout.on('data', d => pushLines(d.toString()));
+  child.stderr.on('data', d => pushLines(d.toString()));
+  child.on('error', e => msJobs.set(jobId, { status: 'error', startedAt, log: msJobs.get(jobId)?.log ?? [], error: e.message }));
+  child.on('close', code => {
+    const job = msJobs.get(jobId);
+    if (!job) return;
+    if (buf) job.log.push(buf);
+    if (code === 0) {
+      msJobs.set(jobId, { status: 'done', startedAt, log: job.log, result: _readMsOutput(), ranStudies: requested.length ? requested : [...MS_RUNNABLE] });
+    } else {
+      msJobs.set(jobId, { status: 'error', startedAt, log: job.log, error: `market_sense_studies.mjs exited with code ${code}` });
+    }
+  });
+
+  res.json({ ok: true, jobId, ranStudies: requested.length ? requested : [...MS_RUNNABLE] });
+});
+
+app.get('/api/market-sense/status/:jobId', (req, res) => {
+  const job = msJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  const elapsed = Math.round((Date.now() - job.startedAt) / 1000);
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed, log: job.log });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', elapsed, log: job.log, result: job.result, ranStudies: job.ranStudies });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error, elapsed, log: job.log });
 });
 
 // ── Live Validation Harness ──────────────────────────────────────────────
@@ -27734,6 +28896,87 @@ app.post('/api/yield-spread/sweep', (req, res) => {
   res.json({ ok: true, jobId });
 });
 
+// ── Multi-spread sleeve (MD files/MULTI_SPREAD_SLEEVE.md) — pre-registered, ISOLATED.
+// Generalizes the validated y2 sleeve above to a y10 tenor + the diversification
+// diagnostics (z-correlation, trade overlap, equal-risk combined Sharpe). Same
+// async-job pattern as /api/yield-spread/* (copied deliberately, not shared —
+// CLAUDE.md's house-conventions note: "copy an existing block"). NOT linked from
+// any dashboard until Bar A/B clear on real data — same posture as js/mve/.
+const multiSpreadJobs = new Map();
+function _purgeStaleMultiSpreadJobs() {
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [id, job] of multiSpreadJobs) if (job.startedAt < cutoff) multiSpreadJobs.delete(id);
+}
+
+app.get('/api/multi-spread-sleeve/defaults', (_req, res) => {
+  res.json({ ok: true, spreadTypes: _SPREAD_TYPES, defs: _SPREAD_DEFS,
+    pairs: Object.fromEntries(Object.entries(ZSCORE_PAIRS).map(([k, v]) => [k, { label: v.label, pairDisplay: v.pairDisplay }])) });
+});
+
+app.post('/api/multi-spread-sleeve/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch multi-spread data' });
+  const b = req.body || {};
+  const num = (v, d) => (v === '' || v == null || isNaN(parseFloat(v))) ? d : parseFloat(v);
+  const opts = {
+    dateFrom: b.dateFrom || undefined, dateTo: b.dateTo || undefined,
+    zWindow: parseInt(b.zWindow) || 252,
+    entryThreshold: num(b.entryThreshold, 2.75),
+    zExit: num(b.zExit, 1.5),
+    maxHoldDays: parseInt(b.maxHoldDays) || 20,
+    costPct: num(b.costPct, 0.02),
+    splitFrac: num(b.splitFrac, 0.6),
+    autoOrient: b.autoOrient == null ? true : (b.autoOrient === true || b.autoOrient === 'true'),
+    overlapWindowDays: parseInt(b.overlapWindowDays) || 2,
+    periodsPerYear: num(b.periodsPerYear, 252),   // daily stream annualization, not a per-trade one — see js/multiSpreadEngine.js's runMultiSpreadSleeve comment
+  };
+  const jobId = `mss_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMultiSpreadJobs();
+  multiSpreadJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = await runMultiSpreadSleeve(opts);
+      multiSpreadJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[multi-spread-sleeve/run]', msg, e?.stack ?? '');
+      multiSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
+app.get('/api/multi-spread-sleeve/status/:jobId', (req, res) => {
+  const job = multiSpreadJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// Robustness sweep for the y10 tenor only (y2's own sweep already lives at
+// /api/yield-spread/sweep) — is a good cell a broad plateau or a lucky spike?
+app.post('/api/multi-spread-sleeve/sweep', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — cannot fetch multi-spread data' });
+  const b = req.body || {};
+  const opts = { dateFrom: b.dateFrom || undefined, dateTo: b.dateTo || undefined };
+  const jobId = `msss_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _purgeStaleMultiSpreadJobs();
+  multiSpreadJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = await runSpreadSweep('y10', opts, {});
+      multiSpreadJobs.set(jobId, { status: 'done', startedAt, result: { ok: true, ...result, opts } });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[multi-spread-sleeve/sweep]', msg, e?.stack ?? '');
+      multiSpreadJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+
 // ── NASDAQ Liquidity Continuation Framework ───────────────────────────────────
 // Four-gate daily backtest (Liquidity → Trend → NY Confirmation → Dynamic
 // Exit) built from scratch in js/nasdaq*.js — see those files' headers for
@@ -30434,35 +31677,57 @@ app.get('/api/trade-decision/log', (req, res) => {
 app.get('/api/services', (req, res) => {
   const bootedAt = _serverBootedAt;
   const upMs = Date.now() - bootedAt;
+  const view = svcStatsView();
+  const zero = { runs: 0, errors: 0, totalMs: 0 };
+  view.persistence.writing = SVC_STATS_PERSIST;
   let rows = servicesSnapshot().map(s => {
     const st = _svcStats.get(s.id) ?? {};
     const totalMs = st.totalMs ?? 0;
+    // A start.sh bot runs in its OWN process — this one cannot observe whether
+    // it is up, so reporting `started: false` (as the first version did) reads
+    // as "not running" when it is fine. Say "not observable" instead.
+    const observable = s.where === 'server';
     return {
       ...s,
-      started: st.started === true,
-      runs: st.runs ?? 0,
-      errors: st.errors ?? 0,
-      totalMs,
-      lastMs: st.lastMs ?? null,
-      lastAt: st.lastAt ?? null,
-      intervalMs: st.intervalMs ?? null,
-      // Share of wall-clock time this process spent inside this job. Single
-      // process, so these are comparable to each other; they are NOT CPU time
-      // (an awaiting job is idle, not burning CPU) and can sum past 100%.
-      busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
+      observable,
+      started: observable ? st.started === true : null,
+      jobs: (st.intervalsMs ?? []).length,
+      intervalsMs: st.intervalsMs ?? [],
+      sinceBoot: {
+        runs: st.runs ?? 0,
+        errors: st.errors ?? 0,
+        totalMs,
+        lastMs: st.lastMs ?? null,
+        lastAt: st.lastAt ?? null,
+        // Share of wall-clock time this process spent inside this job. Single
+        // process, so these are comparable to each other; they are NOT CPU time
+        // (an awaiting job is idle, not burning CPU) and can sum past 100%.
+        busyPct: upMs > 0 ? +(100 * totalMs / upMs).toFixed(2) : null,
+      },
+      today:  view.today.services[s.id]  ?? { ...zero },
+      window: view.window.services[s.id] ?? { ...zero },
     };
   });
   if (String(req.query.on ?? '') === '1') rows = rows.filter(r => r.enabled);
   const order = { high: 0, med: 1, low: 2 };
-  rows.sort((a, b) => (b.totalMs - a.totalMs) || (order[a.cost] - order[b.cost]) || a.id.localeCompare(b.id));
+  // Sort by TODAY's measured time — that survives restarts, so it is the column
+  // to cut from. Since-boot time only breaks ties.
+  rows.sort((a, b) => (b.today.totalMs - a.today.totalMs)
+    || (b.sinceBoot.totalMs - a.sinceBoot.totalMs)
+    || (order[a.cost] - order[b.cost])
+    || a.id.localeCompare(b.id));
   res.json({
     ok: true,
     bootedAt: new Date(bootedAt).toISOString(),
     uptimeSec: Math.round(upMs / 1000),
     profile: process.env.SERVICE_PROFILE || null,
     counts: { total: rows.length, enabled: rows.filter(r => r.enabled).length },
-    note: 'totalMs/busyPct are measured in THIS process since boot; start.sh bots report flag state only. '
-        + 'Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md) and redeploy.',
+    note: '`today` and `window` (7d) are UTC day totals persisted to R2, so they survive a redeploy — cut from those. '
+        + '`sinceBoot` is this process only. start.sh bots report flag state only (observable: false); '
+        + 'their CPU is not measured here. Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md).',
+    today: { date: view.today.to, span: view.today.days },
+    window: { from: view.window.from, to: view.window.to, days: view.window.days },
+    persistence: view.persistence,
     services: rows,
   });
 });
@@ -31163,6 +32428,8 @@ const _FREDHISTORY_SERIES = {
   tips: 'DFII10', tips5: 'DFII5', bei: 'T10YIE', vix: 'VIXCLS', vix3m: 'VXVCLS',
   hy: 'BAMLH0A0HYM2', usd_jpy: 'DEXJPUS',
   sofr: 'SOFR', rrp: 'RRPONTSYD',   // repo rate + reverse-repo facility usage (macro-change strip)
+  iorb: 'IORB', ioer: 'IOER',       // the Fed's floor, for the chain's funding node (SOFR − floor)
+  tp10: 'THREEFYTP10', fy10: 'THREEFY10',   // ACM 10Y term premium + fitted yield: the 10Y card's split into term premium vs expected Fed path
   de10y: 'IRLTLT01DEM156N', gb10y: 'IRLTLT01GBM156N',
   jp10y: 'IRLTLT01JPM156N', au10y: 'IRLTLT01AUM156N',
   ca10y: 'IRLTLT01CAM156N', ch10y: 'IRLTLT01CHM156N',
@@ -31371,6 +32638,8 @@ _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.
 // First desk-watch pass after the FRED history has had a chance to seed (the
 // triggers read it); after kv.load() because the store is read-modify-write.
 setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);
+setTimeout(() => _dailySnapshotTick().catch(e => console.error('[snapshot] first pass failed (store left untouched):', e.message)), 8 * 60_000);
+setTimeout(() => _refreshNowcast().catch(e => console.error('[nowcast] first pass failed:', e.message)), 11 * 60_000);
 await reloadConfig();
 await reloadLevels();
 _restoreVolatilityV2Config().catch(e => console.error('[VOLATILITY-V2] config repair error:', e.message));
@@ -31384,6 +32653,12 @@ try {
 } catch (e) {
   console.error('[HMM5M-V2] Failed to load trained params:', e.message);
 }
+
+// Service-stat persistence: pull the day buckets R2 already holds, then flush
+// every SVC_STATS_FLUSH_MS (and once more on SIGTERM), so a push at 3pm no
+// longer throws away the morning's measurements.
+await svcStatsLoad();
+svcInterval('serviceStats', () => svcStatsFlush('interval'), SVC_STATS_FLUSH_MS);
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);
@@ -31831,6 +33106,10 @@ if (process.env.OANDA_KEY) {
         console.error(`[reference-engine-rebuild] ${label} trigger failed:`, e.message);
       }
     }
+    // Stamped BEFORE anything runs so the follow-on healing pass (after
+    // Session Handoff, below) can tell "never touched tonight" apart from
+    // "touched tonight, just early" — see that pass's own doc.
+    const _rebuildTickStartedAt = Date.now();
     await runSeq('Level Atlas', () => _startLevelAtlasRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     // Fib Atlas (Asia+Monday) moved to run 2nd/3rd, right after Level Atlas —
     // was 4th/5th, after Session Path + Session Handoff (2026-09-18, direct
@@ -31882,9 +33161,65 @@ if (process.env.OANDA_KEY) {
     await runSeq('Monday Fib Atlas', () => _startMondayFibAtlasRunJob({ instruments: fibAtlasPairs }));
     await runSeq('Session Path', () => _startSessionPathRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
     await runSeq('Session Handoff', () => _startSessionHandoffRunJob({ instruments: REFERENCE_ENGINE_PAIRS }));
+
+    // Follow-on healing pass (2026-09-19, direct owner request after tracing
+    // AUDNZD's repeated overnight failure): the batch job above still dies
+    // on SOME pair most nights (never root-caused — needs Railway logs), but
+    // a solo re-run of just that pair, done by hand, completed with zero
+    // errors both times tried (AUDNZD: 34,569 Asia + 22,207 Monday touch-
+    // records, clean). That rules out bad data/a broken symbol — it only
+    // fails competing for memory with the rest of the batch. So: after the
+    // WHOLE main chain has finished (strictly sequential, never overlapping
+    // it — the owner's explicit condition was "as long as it doesn't
+    // corrupt the book builds", and two writers touching the same pair's
+    // book file at once is exactly the kind of thing that could), check
+    // which (pair, ladder) books this run actually touched and solo-retry
+    // only the ones it didn't — same runOne() code path as the batch job
+    // and the manual "Regenerate" button, so there is no second/different
+    // write path that could produce a differently-shaped book.
+    //
+    // Deliberately CAPPED (_FIB_HEAL_MAX) rather than healing everyone
+    // stale: if the batch job dropped more than a handful of pairs, that's
+    // a bigger problem than one unlucky pair and deserves to be VISIBLE
+    // (loud staleness alert, investigate) rather than quietly patched over
+    // one-by-one, which could also just extend how long this tick keeps a
+    // memory-constrained container busy.
+    try {
+      const _FIB_HEAL_MAX = 5;
+      const _fibHealLadders = [
+        { label: 'asia', prefix: 'asia-fib-atlas', starter: _startAsiaFibAtlasRunJob },
+        { label: 'monday', prefix: 'monday-fib-atlas', starter: _startMondayFibAtlasRunJob },
+      ];
+      const missed = [];
+      for (const pairUpper of fibAtlasPairsBase) {
+        const pair = pairUpper.toLowerCase();
+        for (const l of _fibHealLadders) {
+          try {
+            const book = await _r2GetJSON(`${l.prefix}/${pair}-votetrades.json`);
+            const genAt = book?.generatedAt ? Date.parse(book.generatedAt) : 0;
+            if (!genAt || genAt < _rebuildTickStartedAt) missed.push({ pair: pairUpper, ...l });
+          } catch (e) {
+            missed.push({ pair: pairUpper, ...l }); // couldn't even read it -- treat as missed, not silently skip
+          }
+        }
+      }
+      if (!missed.length) {
+        console.log('[reference-engine-rebuild] healing pass: every (pair,ladder) was touched by tonight\'s run — nothing to heal');
+      } else if (missed.length > _FIB_HEAL_MAX) {
+        console.error(`[reference-engine-rebuild] healing pass: ${missed.length} (pair,ladder) constituents missed tonight — over the ${_FIB_HEAL_MAX} cap, NOT auto-healing (this is a bigger failure than one unlucky pair; investigate instead): ${missed.map(m => `${m.pair}|${m.label}`).join(', ')}`);
+      } else {
+        console.log(`[reference-engine-rebuild] healing pass: ${missed.length} (pair,ladder) constituent(s) missed tonight, solo-retrying: ${missed.map(m => `${m.pair}|${m.label}`).join(', ')}`);
+        for (const m of missed) {
+          await runSeq(`heal ${m.pair}|${m.label}`, () => m.starter({ instruments: [m.pair] }));
+        }
+      }
+    } catch (e) {
+      console.error('[reference-engine-rebuild] healing pass failed:', e.message);
+    }
+
     console.log('[reference-engine-rebuild] nightly tick complete');
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Session Path + Session Handoff + Asia/Monday Fib Atlas, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Asia/Monday Fib Atlas + Session Path + Session Handoff, then a follow-on healing pass that solo-retries any Fib Atlas (pair,ladder) the run itself missed, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.

@@ -1,0 +1,173 @@
+{
+ "ranAt": "2026-09-20T08:00:09.463Z",
+ "spec": "MD files/PLUMBING.md#P1",
+ "episodes": [
+  {
+   "date": "2018-04-02",
+   "bp": 50,
+   "medBp": 5
+  },
+  {
+   "date": "2018-05-15",
+   "bp": 13,
+   "medBp": 4
+  },
+  {
+   "date": "2018-05-31",
+   "bp": 30,
+   "medBp": 6
+  },
+  {
+   "date": "2018-08-10",
+   "bp": 10,
+   "medBp": -5
+  },
+  {
+   "date": "2020-01-31",
+   "bp": 12,
+   "medBp": 0
+  },
+  {
+   "date": "2020-04-14",
+   "bp": 11,
+   "medBp": -4
+  },
+  {
+   "date": "2020-06-15",
+   "bp": 10,
+   "medBp": -1
+  },
+  {
+   "date": "2023-03-31",
+   "bp": 10,
+   "medBp": -3
+  },
+  {
+   "date": "2023-11-30",
+   "bp": 11,
+   "medBp": -7
+  },
+  {
+   "date": "2023-12-27",
+   "bp": 15,
+   "medBp": -1
+  },
+  {
+   "date": "2024-04-01",
+   "bp": 11,
+   "medBp": -5
+  },
+  {
+   "date": "2024-04-30",
+   "bp": 10,
+   "medBp": -6
+  },
+  {
+   "date": "2024-06-26",
+   "bp": 10,
+   "medBp": -6
+  },
+  {
+   "date": "2024-07-26",
+   "bp": 10,
+   "medBp": -5
+  },
+  {
+   "date": "2024-08-27",
+   "bp": 10,
+   "medBp": -5
+  },
+  {
+   "date": "2024-09-19",
+   "bp": 44,
+   "medBp": -8
+  },
+  {
+   "date": "2024-10-31",
+   "bp": 13,
+   "medBp": 0
+  },
+  {
+   "date": "2024-12-02",
+   "bp": 10,
+   "medBp": -1
+  },
+  {
+   "date": "2025-03-31",
+   "bp": 17,
+   "medBp": 1
+  },
+  {
+   "date": "2025-04-30",
+   "bp": 12,
+   "medBp": 1
+  },
+  {
+   "date": "2025-06-26",
+   "bp": 12,
+   "medBp": 0
+  },
+  {
+   "date": "2025-09-02",
+   "bp": 10,
+   "medBp": -1
+  },
+  {
+   "date": "2026-01-23",
+   "bp": 10,
+   "medBp": 0
+  },
+  {
+   "date": "2026-06-15",
+   "bp": 13,
+   "medBp": 4
+  },
+  {
+   "date": "2026-07-31",
+   "bp": 10,
+   "medBp": 1
+  },
+  {
+   "date": "2026-08-31",
+   "bp": 12,
+   "medBp": 3
+  }
+ ],
+ "instruments": {
+  "SPX500": {
+   "n": 26,
+   "setupMean": 2.476,
+   "controlMean": 2.341,
+   "diff": 0.135,
+   "lo": -0.539,
+   "hi": 0.978,
+   "pass": false,
+   "verdict": "base rate (n=26 under the bar)"
+  },
+  "EURUSD": {
+   "n": 26,
+   "setupMean": 2.506,
+   "controlMean": 2.378,
+   "diff": 0.128,
+   "lo": -0.365,
+   "hi": 0.651,
+   "pass": false,
+   "verdict": "base rate (n=26 under the bar)"
+  },
+  "USDJPY": {
+   "n": 26,
+   "setupMean": 2.879,
+   "controlMean": 2.799,
+   "diff": 0.081,
+   "lo": -0.758,
+   "hi": 0.931,
+   "pass": false,
+   "verdict": "base rate (n=26 under the bar)"
+  }
+ },
+ "dollar": {
+  "n": 26,
+  "setupMean": 0.453,
+  "unconditionalMean": 0.59
+ }
+}

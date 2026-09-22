@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi-Spread Sleeve — does a 10Y tenor diversify the validated 2Y sleeve?</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#141924; --panel2:#1b2230; --fg:#dfe6f2; --dim:#8b97ad;
+          --grn:#22c55e; --red:#ef4444; --amb:#f59e0b; --blu:#4a90d9; --border:#26314a; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--border); background:var(--panel); }
+  h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--dim); font-size:13px; max-width:940px; }
+  .wrap { padding:22px; max-width:1120px; margin:0 auto; }
+  .banner { background:#3a2a12; border:1px solid #7a5316; color:#f4c77b; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:18px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+  .panel h2 { margin:0 0 12px; font-size:15px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  label { display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+  input, select { width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { background:var(--blu); color:#fff; border:0; border-radius:7px; padding:10px 20px; font-size:14px; font-weight:600; cursor:pointer; margin-top:14px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .status { margin-top:10px; color:var(--dim); font-size:13px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:right; padding:6px 10px; border-bottom:1px solid var(--border); }
+  th:first-child, td:first-child { text-align:left; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
+  .pos { color:var(--grn); } .neg { color:var(--red); } .muted { color:var(--dim); font-size:12px; }
+  .verdict { font-size:13px; padding:10px 14px; border-radius:8px; margin-top:12px; }
+  .verdict.good { background:#0f2a18; border:1px solid #1f6b3a; color:#8fe6ab; }
+  .verdict.bad  { background:#2a1212; border:1px solid #6b1f1f; color:#e69a9a; }
+  .verdict.warn { background:#2a2312; border:1px solid #6b551f; color:#e6cf9a; }
+  .scroll { overflow-x:auto; }
+  .twocol { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width: 800px) { .twocol { grid-template-columns:1fr; } }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .kpi { background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+  .kpi .l { font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:.03em; margin-bottom:3px; }
+  .kpi .v { font-size:17px; font-weight:700; }
+  .kpi .s { font-size:10.5px; color:var(--dim); margin-top:2px; }
+  canvas { max-height:280px; }
+  .export-row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin:12px 0; }
+  .export-row label { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--dim); text-transform:none; }
+  .export-row input { width:80px; display:inline; }
+  .export-row button { margin-top:0; background:#2a3550; }
+  .export-note { color:var(--dim); font-size:11.5px; line-height:1.6; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-top:10px; }
+  .hm-row { display:flex; gap:2px; flex-wrap:wrap; margin-bottom:2px; }
+  .hm-cell { width:34px; height:26px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:9.5px; color:#cbd5e1; }
+  .hm-label { width:50px; font-size:11px; color:var(--dim); display:flex; align-items:center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Multi-Spread Sleeve — does a 10Y tenor diversify the validated 2Y sleeve?</h1>
+  <div class="sub">Runs the SAME validated mechanism (<a href="yield-spread.html" style="color:#8ab4e6">yield-spread.html</a>'s
+  entry/exit/sizing) on a SECOND spread tenor — US-vs-foreign <b>10Y nominal differential</b> — then asks the harder
+  question: does combining it with the validated 2Y sleeve actually diversify the book, or just relabel the same
+  rate-divergence bet a few days later? Full design: <code>MD files/MULTI_SPREAD_SLEEVE.md</code>.</div>
+</header>
+<div class="wrap">
+  <div class="banner">⚠️ <b>Pre-registered, isolated — not wired into any live signal.</b> Needs live <code>FRED_KEY</code>
+  + M1 (Railway). Real-yield and breakeven differentials are deliberately NOT here — FRED has no clean foreign leg
+  for those, so a "differential" with only a US side isn't a spread. Two bars must both clear before this means
+  anything: <b>Bar A</b> (does 10Y clear the 2Y sleeve's own audit, on its own) and <b>Bar B</b> (does combining the
+  two actually diversify, at EQUAL risk — not just look better because it's 2× the notional).</div>
+
+  <div class="panel">
+    <h2>Run parameters</h2>
+    <div class="grid">
+      <div><label>Date from</label><input id="dateFrom" placeholder="2015-01-01"></div>
+      <div><label>Date to</label><input id="dateTo" placeholder="today"></div>
+      <div><label>z window (days)</label><input id="zWindow" value="252"></div>
+      <div><label>entry |z|</label><input id="entryThreshold" value="2.75"></div>
+      <div><label>z-exit |z|</label><input id="zExit" value="1.5"></div>
+      <div><label>max hold (days)</label><input id="maxHoldDays" value="20"></div>
+      <div><label>cost % round-trip</label><input id="costPct" value="0.02"></div>
+      <div><label>orient sign by USD role</label><select id="autoOrient"><option value="true" selected>on (correct sign)</option><option value="false">off (raw z&gt;0→LONG)</option></select></div>
+      <div><label>trade-overlap window (days)</label><input id="overlapWindowDays" value="2"></div>
+    </div>
+    <button id="runBtn">Run test (y2 + y10 books + diversification)</button>
+    <button id="sweepBtn" style="background:#6b4fd9;margin-left:8px">Run y10 robustness sweep</button>
+    <div class="status" id="status"></div>
+    <div class="muted" style="margin-top:6px">Sweep runs a grid of entry |z| (2.0–2.75) × z-window (90/126/252) for the y10 tenor only — checks whether a good cell is a broad plateau or a lucky spike, the same discipline as the validated sleeve's own sweep. Heavy — takes a couple of minutes.</div>
+  </div>
+
+  <div id="sweepResults" style="display:none">
+    <div class="panel">
+      <h2>y10 robustness sweep — plateau or lucky spike?</h2>
+      <div class="scroll"><div id="sweepGrid"></div></div>
+    </div>
+  </div>
+
+  <div id="results" style="display:none">
+    <div class="twocol">
+      <div class="panel">
+        <h2>y2 book (the validated sleeve, reused byte-identical)</h2>
+        <div class="scroll" id="y2Table"></div>
+      </div>
+      <div class="panel">
+        <h2>y10 book (new — Bar A)</h2>
+        <div class="scroll" id="y10Table"></div>
+        <div id="y10Verdict"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Bar B — diversification, not just a second profitable sleeve</h2>
+      <div class="muted" style="margin-bottom:8px">Trade overlap: does y10 mostly re-fire y2's own signal a few days later? Combined Sharpe: y2 and y10 each at HALF size (so total capital-at-risk matches running y2 alone) — this is the only honest comparison.</div>
+      <div class="scroll" id="diversification"></div>
+      <div id="diversificationVerdict"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Full tearsheet — y2 / y10 / combined</h2>
+      <div class="muted" style="margin-bottom:8px">All three columns computed OOS-only from the SAME shared metric bricks the rest of this repo uses (<code>js/metricsCore.js</code>, <code>js/backtestStats.js</code>) — not reimplemented here. "Combined" = the equal-risk book from Bar B above (y2 + y10 each at half size), built from the union of their own trades scaled 0.5x, so its per-trade stats are genuine, not a re-derivation.</div>
+      <div class="scroll" id="tearsheetTable"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Equity curve (OOS, additive — the one to trust)</h2>
+      <div class="muted" style="margin-bottom:8px">Daily, non-compounded cumulative sum of each book's flat-sized return — what this engine's own fixed-fractional sizing actually produces. Not the compounded/hypothetical view (CAGR below is compounded; this chart deliberately is not, so no single hot stretch looks artificially dominant).</div>
+      <canvas id="eqChart"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Outcome uncertainty — bootstrap &amp; Monte Carlo</h2>
+      <div class="muted" style="margin-bottom:10px">Bootstrap resamples each book's OOS trades WITH replacement 1,000× — the range of total return / Sharpe consistent with this exact sample, and P(profitable) across those resamples. Monte Carlo instead SHUFFLES the same trades' order 1,000× — the drawdown you could have lived through had the identical trades simply arrived in a different sequence (total return is unchanged by reordering; only the PATH is). <b>Neither is a substitute for real out-of-sample validation</b> (already applied above via the IS/OOS split) — <b>both describe uncertainty WITHIN this one sample, not whether the edge generalizes beyond it.</b></div>
+      <div class="scroll" id="uncertaintyTable"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Monthly P&amp;L — combined book (equal risk)</h2>
+      <div class="muted" style="margin-bottom:8px">A cheap concentration check: if a handful of months carry the whole result, that's worth knowing before trusting the headline Sharpe. Additive daily returns, not compounded.</div>
+      <div id="heatmap"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Trade log &amp; exports</h2>
+      <div class="muted" style="margin-bottom:6px">This sleeve has NO native price-level stop (it exits on z-reversion or a time-stop, daily-close-only by design — see MULTI_SPREAD_SLEEVE.md). R is therefore a STATED fixed-fraction-of-equity assumption below, not measured per-trade — R and a fixed-% return are proportional by construction for this strategy; that is the honest "degenerate case" CLAUDE.md's own CSV convention flags, not a bug. MAE IS real, from the actual M1 intrabar path (js/multiSpreadEngine.js's intrabarExcursion), exported as a negative number (an adverse excursion is a drawdown, same sign convention as a loss).</div>
+      <div class="export-row">
+        <label>Account $ <input type="number" id="acctSize" value="10000" step="1000"></label>
+        <label>Risk % / trade <input type="number" id="riskPct" value="1" step="0.1"></label>
+        <button id="expReturns">⬇ % Returns</button>
+        <button id="expR">⬇ R-Multiples</button>
+        <button id="expCash">⬇ Currency P&amp;L</button>
+      </div>
+      <div class="export-note">Columns: <code>Date,Return %,MAE %,Pair,Book</code> / <code>date,R,MAE (R),Pair,Book</code> / <code>Trade Date,PnL ($),Risk ($),Pair,Book</code>. Exports ALL trades from both books (OOS + IS), flat-sized (size=1); <code>Book</code> distinguishes y2 vs y10 the same way a trailing <code>Pair</code> column does on the multi-instrument vote-atlas pages.</div>
+      <div class="muted" style="margin-top:8px">Exit reasons this sleeve can actually produce: <code>z-revert</code> (the spread dislocation the entry bet on has largely corrected) or <code>max-hold</code> (a 20-day time stop). <b>There is no SL/TP here</b> — this sleeve has no price-level stop or target at all, daily-close-only by design, same as the validated 2Y sleeve it's built on (no intrabar entry/exit assumed). Click a row below to see that trade's real M1 candles.</div>
+      <div class="scroll" id="tradeLog" style="max-height:360px; overflow-y:auto; margin-top:10px"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Trade detail</h2>
+      <div style="margin-bottom:8px">
+        <label style="display:inline-block; width:auto; margin-right:8px">Resolution
+          <select id="chartResSel" style="width:auto; display:inline-block">
+            <option value="daily" selected>Daily (what this strategy actually trades on)</option>
+            <option value="m1">M1 (intrabar — where MAE/MFE come from, not what the strategy sees)</option>
+          </select>
+        </label>
+      </div>
+      <div class="muted" id="chartMeta" style="margin-bottom:8px">Click a row in the trade log above.</div>
+      <div id="tradeChart" style="height:420px"></div>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script type="module">
+import { backtestStats, portfolioStats } from './js/backtestStats.js';
+import { summarizeTrades } from './js/metricsCore.js';
+import { createLevelChart } from './js/levelChart.js';
+import { resampleTo } from './js/barUtils.js';
+
+const $ = id => document.getElementById(id);
+const fmt = (v, d=2) => (v==null || isNaN(v)) ? '–' : (+v).toFixed(d);
+const cls = v => v>0 ? 'pos' : v<0 ? 'neg' : '';
+
+function bookTable(book) {
+  if (!book || !book.combined) return '<div class="muted">no data</div>';
+  const o = book.combined.oos, ps = book.combined.portfolioSharpe?.oos;
+  return `<table><tbody>
+    <tr><td>OOS trades</td><td>${o.n}</td></tr>
+    <tr><td>Win rate</td><td>${fmt(o.winRate,1)}%</td></tr>
+    <tr><td>Profit factor</td><td class="${o.profitFactor>=1?'pos':'neg'}">${fmt(o.profitFactor,2)}</td></tr>
+    <tr><td>Total return (flat)</td><td class="${cls(o.totalRetPct)}">${fmt(o.totalRetPct,2)}%</td></tr>
+    <tr><td><b>Portfolio Sharpe (honest daily MTM)</b></td><td class="${cls(ps)}"><b>${fmt(ps,2)}</b></td></tr>
+  </tbody></table>`;
+}
+
+function y10Verdict(book) {
+  if (!book || !book.combined) return '';
+  const o = book.combined.oos;
+  const years = Object.values(book.combined.perYearOos || {});
+  const yearsPos = years.filter(y => y.totalRetPct > 0).length;
+  const looksGood = o.profitFactor > 1.1 && o.totalRetPct > 0;
+  const thinSample = o.n < 30;
+  // A single cell's own n<30 is NOT the pre-registered Bar A test — the ROBUSTNESS
+  // SWEEP is (MULTI_SPREAD_SLEEVE.md §2: "checks whether a good cell is a broad
+  // plateau or a lucky spike"). This box used to read "Does not clear Bar A" purely
+  // off n<30 at one arbitrary cell, contradicting a strong sweep sitting right next
+  // to it — don't declare Bar A from this card alone.
+  const cls2 = !looksGood ? 'bad' : thinSample ? 'warn' : 'good';
+  const headline = !looksGood ? '✗ y10 does NOT look profitable at this cell'
+    : thinSample ? '⚠ y10 looks profitable here, but this ONE cell is thin'
+    : '✓ y10 looks profitable at this cell';
+  return `<div class="verdict ${cls2}">${headline}
+    (PF ${fmt(o.profitFactor,2)}, ${fmt(o.totalRetPct,2)}% over ${o.n} trades, ${yearsPos}/${years.length} OOS years positive).
+    ${!looksGood ? 'Run the sweep below before writing y10 off — one cell is not the pre-registered Bar A test.'
+      : thinSample ? `n=${o.n} is under the usual ≥30 bar for THIS cell alone — that is not a Bar A verdict by itself. Run the robustness sweep below: Bar A is a broad plateau across the grid, not one cell's trade count.`
+      : 'Check the sweep below for breadth before calling Bar A passed on this cell alone.'}</div>`;
+}
+
+function diversificationTable(portfolio, overlap) {
+  if (!portfolio) return '<div class="muted">no data</div>';
+  const ov = overlap?.y10;
+  return `<table><tbody>
+    <tr><td>Trade overlap (y10 vs y2, ±window, same pair/dir)</td><td>${ov ? `${ov.overlapping}/${ov.n} = ${fmt(ov.overlapPct,1)}%` : '–'}</td></tr>
+    <tr><td>Return correlation (y2 daily vs y10 daily)</td><td>${fmt(portfolio.returnCorrelation?.y2_y10, 3)}</td></tr>
+    <tr><td>y2 alone Sharpe</td><td>${fmt(portfolio.legSharpe?.y2)}</td></tr>
+    <tr><td>y10 alone Sharpe</td><td>${fmt(portfolio.legSharpe?.y10)}</td></tr>
+    <tr><td><b>Combined Sharpe (equal risk — each leg at half size)</b></td><td><b>${fmt(portfolio.combinedSharpe)}</b></td></tr>
+  </tbody></table>`;
+}
+
+function diversificationVerdict(portfolio, overlap) {
+  if (!portfolio) return '';
+  const beats = portfolio.combinedSharpe > (portfolio.legSharpe?.y2 ?? Infinity);
+  const ov = overlap?.y10;
+  const lowOverlap = ov ? ov.overlapPct < 50 : null;
+  const cls2 = beats && lowOverlap ? 'good' : 'bad';
+  return `<div class="verdict ${cls2}">${beats ? '✓' : '✗'} combined Sharpe at equal risk ${beats ? 'BEATS' : 'does NOT beat'} y2 alone
+    (${fmt(portfolio.combinedSharpe)} vs ${fmt(portfolio.legSharpe?.y2)}). Trade overlap is ${ov ? fmt(ov.overlapPct,1)+'%' : 'n/a'}
+    ${lowOverlap === true ? '(well under 50% — a genuinely different bet)' : lowOverlap === false ? '(over 50% — largely re-firing y2\'s own signal)' : ''}.
+    ${beats && lowOverlap ? 'Worth combining — Bar B passes.' : 'Not worth combining as-is, whatever y10 showed alone in Bar A.'}</div>`;
+}
+
+// ── Full tearsheet / equity curve / Monte Carlo / heatmap / CSV exports ──────────
+// Everything below reuses js/metricsCore.js + js/backtestStats.js directly (ES
+// module import of the same shared bricks the rest of this repo's tearsheets use)
+// rather than reimplementing Sharpe/Sortino/Calmar/CAGR/bootstrap/Monte Carlo —
+// only the KPI-card rendering and the CAGR-labeling convention are page-local,
+// matching the vote-atlas family's own division of labor.
+let lastResult = null;   // { books, portfolio } from the last successful run — CSV exports read this
+
+function oosTrades(book) {
+  const sd = book?.combined?.splitDate;
+  return (book?.trades || []).filter(t => sd && t.date >= sd);
+}
+// The equal-risk combined book (Bar B): union of y2+y10's OWN trades, each scaled
+// to HALF size — a genuine per-trade series, not a re-derivation of the daily one.
+function combinedTradesOos(books) {
+  const half = (t, book) => ({ ...t, pnlPct: t.pnlPct * 0.5, book });
+  return [...oosTrades(books.y2).map(t => half(t, 'y2')), ...oosTrades(books.y10).map(t => half(t, 'y10'))]
+    .sort((a, b) => a.date < b.date ? -1 : 1);
+}
+
+function kpiRow(label, y2, y10, combined, fmtFn = (v => fmt(v, 2))) {
+  return `<tr><td>${label}</td><td>${fmtFn(y2)}</td><td>${fmtFn(y10)}</td><td>${fmtFn(combined)}</td></tr>`;
+}
+
+function tearsheetTable(books, portfolio) {
+  if (!books?.y2 || !books?.y10 || !portfolio) return '<div class="muted">no data</div>';
+  const y2Tr = oosTrades(books.y2), y10Tr = oosTrades(books.y10), cmTr = combinedTradesOos(books);
+  const pnls = tr => tr.map(t => t.pnlPct), dates = tr => tr.map(t => t.date);
+
+  const bsY2 = backtestStats(pnls(y2Tr), dates(y2Tr));
+  const bsY10 = backtestStats(pnls(y10Tr), dates(y10Tr));
+  const bsCm = backtestStats(pnls(cmTr), dates(cmTr));
+  const stY2 = summarizeTrades(pnls(y2Tr), dates(y2Tr));
+  const stY10 = summarizeTrades(pnls(y10Tr), dates(y10Tr));
+  const stCm = summarizeTrades(pnls(cmTr), dates(cmTr));
+  const dailyY2 = books.y2.combined.dailyOos?.dailyReturns || [];
+  const dailyY10 = books.y10.combined.dailyOos?.dailyReturns || [];
+  const dailyCm = portfolio.combinedDaily || [];
+  const psY2 = portfolioStats(dailyY2), psY10 = portfolioStats(dailyY10), psCm = portfolioStats(dailyCm);
+
+  const pct = v => fmt(v, 2) + '%';
+  const rows = [
+    kpiRow('Total trades', bsY2.trades, bsY10.trades, bsCm.trades, v => v ?? 0),
+    kpiRow('Win rate', bsY2.winRate * 100, bsY10.winRate * 100, bsCm.winRate * 100, pct),
+    kpiRow('Profit factor', bsY2.profitFactor, bsY10.profitFactor, bsCm.profitFactor),
+    kpiRow('Reward:risk (payoff)', bsY2.payoff, bsY10.payoff, bsCm.payoff),
+    kpiRow('Total P&amp;L % (additive)', bsY2.totalPnl, bsY10.totalPnl, bsCm.totalPnl, pct),
+    kpiRow('CAGR % (compounded — hypothetical)', bsY2.cagr, bsY10.cagr, bsCm.cagr, pct),
+    kpiRow('Sharpe (daily, THE honest one)', psY2.sharpe, psY10.sharpe, psCm.sharpe),
+    kpiRow('Sharpe (per-trade, optimistic)', bsY2.sharpe, bsY10.sharpe, bsCm.sharpe),
+    kpiRow('Sortino (daily)', psY2.sortino, psY10.sortino, psCm.sortino),
+    kpiRow('Calmar (daily-basis)', psY2.calmar, psY10.calmar, psCm.calmar),
+    kpiRow('Max drawdown % (daily, compounded)', psY2.maxDD, psY10.maxDD, psCm.maxDD, pct),
+    kpiRow('Max DD duration (trades)', bsY2.maxDDdur, bsY10.maxDDdur, bsCm.maxDDdur, v => v ?? 0),
+    kpiRow('Expectancy / trade %', bsY2.expectancy, bsY10.expectancy, bsCm.expectancy, v => fmt(v, 4) + '%'),
+    kpiRow('Skew (per-trade)', stY2.skew, stY10.skew, stCm.skew),
+    kpiRow('Excess kurtosis (per-trade)', stY2.excessKurt, stY10.excessKurt, stCm.excessKurt),
+    kpiRow('VaR 95% (per-trade)', stY2.var95, stY10.var95, stCm.var95, v => fmt(v, 3) + '%'),
+    kpiRow('CVaR 95% (per-trade)', stY2.cvar95, stY10.cvar95, stCm.cvar95, v => fmt(v, 3) + '%'),
+    kpiRow('Min track record (yrs, Sharpe&gt;0 @95%)', stY2.minTrackYears, stY10.minTrackYears, stCm.minTrackYears, v => v == null ? '—' : fmt(v, 1)),
+  ].join('');
+  return `<table><thead><tr><th>Metric</th><th>y2</th><th>y10</th><th>Combined (equal risk)</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="muted" style="margin-top:8px">⚠ CAGR assumes compounding this engine does NOT actually run (fixed-fractional sizing on original capital, never reinvested) — a large CAGR here is a property of exponential math over a small trade count, not extra evidence of edge. Trust the additive Total P&amp;L% and the daily Sharpe/Sortino/Calmar instead.</div>`;
+}
+
+function uncertaintyTable(books) {
+  if (!books?.y2 || !books?.y10) return '<div class="muted">no data</div>';
+  const cmTr = combinedTradesOos(books);
+  const bs = (label, tr) => {
+    const b = backtestStats(tr.map(t => t.pnlPct), tr.map(t => t.date));
+    if (!b.trades) return `<tr><td>${label}</td><td colspan="6" class="muted">no OOS trades</td></tr>`;
+    return `<tr><td>${label}</td><td>${fmt(b.bootstrap.pPositive * 100, 0)}%</td>
+      <td>[${fmt(b.bootstrap.total.p5, 1)}%, ${fmt(b.bootstrap.total.p95, 1)}%]</td>
+      <td>[${fmt(b.bootstrap.sharpe.p5, 2)}, ${fmt(b.bootstrap.sharpe.p95, 2)}]</td>
+      <td class="neg">${fmt(b.montecarlo.maxDD.p50, 1)}%</td>
+      <td class="neg">${fmt(b.montecarlo.maxDD.p95, 1)}%</td>
+      <td class="neg">${fmt(b.montecarlo.maxDD.p99, 1)}%</td></tr>`;
+  };
+  const rows = bs('y2', oosTrades(books.y2)) + bs('y10', oosTrades(books.y10)) + bs('Combined (equal risk)', cmTr);
+  return `<table><thead><tr><th>Book</th><th>P(profitable)</th><th>Total ret 90% CI</th><th>Sharpe 90% CI</th><th>MC max DD p50</th><th>MC max DD p95</th><th>MC max DD p99</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderEquityChart(books, portfolio) {
+  if (typeof Chart === 'undefined' || !books?.y2 || !books?.y10) return;
+  const el = document.getElementById('eqChart');
+  if (!el) return;
+  try {
+    if (window._eqChart) window._eqChart.destroy();
+    const cumsum = arr => { let c = 0; return arr.map(v => (c += v)); };
+    const dates = portfolio?.dates || [];
+    const y2Series = books.y2.combined.dailyOos, y10Series = books.y10.combined.dailyOos;
+    const m2 = new Map((y2Series?.dates || []).map((d, i) => [d, y2Series.dailyReturns[i]]));
+    const m10 = new Map((y10Series?.dates || []).map((d, i) => [d, y10Series.dailyReturns[i]]));
+    const cmDaily = portfolio?.combinedDaily || [];
+    window._eqChart = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: dates,
+        datasets: [
+          { label: 'y2', data: cumsum(dates.map(d => m2.get(d) ?? 0)), borderColor: '#5b9dff', pointRadius: 0, borderWidth: 1.5, tension: .1 },
+          { label: 'y10', data: cumsum(dates.map(d => m10.get(d) ?? 0)), borderColor: '#fbbf24', pointRadius: 0, borderWidth: 1.5, tension: .1 },
+          { label: 'Combined (equal risk)', data: cumsum(cmDaily), borderColor: '#34d399', pointRadius: 0, borderWidth: 2, tension: .1 },
+        ],
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: {
+        x: { ticks: { color: '#8b97ad', maxTicksLimit: 10 }, grid: { color: '#1e2436' } },
+        y: { ticks: { color: '#8b97ad', callback: v => v + '%' }, grid: { color: '#1e2436' } } },
+        plugins: { legend: { labels: { color: '#dfe6f2' } } } },
+    });
+  } catch (e) { console.warn('Chart.js unavailable:', e.message); el.outerHTML = `<div class="muted">Chart library failed to load: ${e.message}</div>`; }
+}
+
+function ddColor(val, maxAbs) {
+  if (!maxAbs || !Number.isFinite(val)) return 'background:#1b2230';
+  const frac = Math.min(0.85, Math.max(0.08, Math.abs(val) / maxAbs));
+  const rgb = val >= 0 ? '52,211,153' : '248,113,113';
+  return `background:rgba(${rgb},${frac})`;
+}
+function renderHeatmap(portfolio) {
+  const el = document.getElementById('heatmap');
+  if (!el || !portfolio?.dates?.length) { if (el) el.innerHTML = '<div class="muted">no data</div>'; return; }
+  const byYM = new Map();
+  portfolio.dates.forEach((d, i) => { const ym = d.slice(0, 7); byYM.set(ym, (byYM.get(ym) || 0) + (portfolio.combinedDaily[i] || 0)); });
+  const months = [...byYM.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  const maxAbs = Math.max(1e-9, ...months.map(([, v]) => Math.abs(v)));
+  const byYear = new Map();
+  for (const [ym, v] of months) { const y = ym.slice(0, 4); if (!byYear.has(y)) byYear.set(y, []); byYear.get(y).push([ym.slice(5, 7), v]); }
+  let html = '';
+  for (const [year, rows] of byYear) {
+    html += `<div class="hm-row"><div class="hm-label">${year}</div>`;
+    for (const [mm, v] of rows) html += `<div class="hm-cell" style="${ddColor(v, maxAbs)}" title="${year}-${mm}: ${fmt(v, 2)}%">${fmt(v, 1)}</div>`;
+    html += '</div>';
+  }
+  el.innerHTML = html || '<div class="muted">no data</div>';
+}
+
+function csvDownload(filename, rows) {
+  const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function allTradesFlat() {
+  if (!lastResult) return [];
+  const { books } = lastResult;
+  return [...(books.y2?.trades || []).map(t => ({ ...t, book: 'y2' })), ...(books.y10?.trades || []).map(t => ({ ...t, book: 'y10' }))];
+}
+$('expReturns')?.addEventListener('click', () => {
+  const rows = [['Date', 'Return %', 'MAE %', 'Pair', 'Book'], ...allTradesFlat().map(t =>
+    [t.date, t.pnlPct.toFixed(4), t.maePct != null ? (-Math.abs(t.maePct)).toFixed(4) : '', t.pair, t.book])];
+  csvDownload('multi-spread-sleeve-returns.csv', rows);
+});
+$('expR')?.addEventListener('click', () => {
+  const riskPct = parseFloat($('riskPct').value) || 1;
+  const rows = [['date', 'R', 'MAE (R)', 'Pair', 'Book'], ...allTradesFlat().map(t => {
+    const r = t.pnlPct / riskPct;
+    const maeR = t.maePct != null ? -Math.abs(t.maePct) / riskPct : '';
+    return [t.date, r.toFixed(3), maeR === '' ? '' : maeR.toFixed(3), t.pair, t.book];
+  })];
+  csvDownload('multi-spread-sleeve-r-multiples.csv', rows);
+});
+$('expCash')?.addEventListener('click', () => {
+  const acct = parseFloat($('acctSize').value) || 10000;
+  const riskPct = parseFloat($('riskPct').value) || 1;
+  const riskDollars = acct * riskPct / 100;
+  const rows = [['Trade Date', 'PnL ($)', 'Risk ($)', 'Pair', 'Book'], ...allTradesFlat().map(t => {
+    const r = t.pnlPct / riskPct;
+    return [t.date, (r * riskDollars).toFixed(2), riskDollars.toFixed(2), t.pair, t.book];
+  })];
+  csvDownload('multi-spread-sleeve-currency-pnl.csv', rows);
+});
+let sortedTrades = [];   // module-level, indexed to match tradeLogTable's rows for click-to-load
+function tradeLogTable() {
+  sortedTrades = allTradesFlat().sort((a, b) => a.date < b.date ? 1 : -1);
+  if (!sortedTrades.length) return '<div class="muted">no data</div>';
+  const rows = sortedTrades.map((t, i) => `<tr data-idx="${i}" style="cursor:pointer" title="Click for M1 candles">
+    <td>${t.date}</td><td>${t.book}</td><td>${t.pair}</td><td>${t.dir}</td>
+    <td class="${t.pnlPct >= 0 ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</td>
+    <td class="neg">${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}</td>
+    <td>${t.holdDays}</td><td>${t.exitReason}</td></tr>`).join('');
+  return `<table><thead><tr><th>Date</th><th>Book</th><th>Pair</th><th>Dir</th><th>Return%</th><th>MAE%</th><th>Hold</th><th>Exit</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── Trade detail — real M1 candles (reuses /api/vol-backtest/candles/:pair, the
+// SAME route+chart pattern asia-fib-atlas-vote-portfolio.html's own trade
+// blotter already uses — no new server route). Entry/exit rendered as price
+// lines; there is no target/stop to draw (this sleeve has neither), so the exit
+// line is colored by outcome (win/loss) and labeled plainly, never called a TP/SL.
+let tradeChartView = null;
+try { tradeChartView = createLevelChart(document.getElementById('tradeChart'), { height: 420 }); }
+catch (e) { document.getElementById('tradeChart').outerHTML = `<div class="muted">Candlestick chart unavailable: ${e.message}</div>`; }
+const isoToEpoch = iso => Math.floor(Date.parse(iso.endsWith('Z') ? iso : iso + 'Z') / 1000);
+
+// This sleeve decides and marks its entry/exit on the DAILY close — it never
+// looks at, or reacts to, anything intrabar. Charting it in M1 would show
+// detail the strategy itself never sees and imply a precision it doesn't have
+// (CLAUDE.md's own anti-pattern list warns against exactly this shape of
+// mismatch for backtest FILLS; the same principle applies to how a trade is
+// DISPLAYED). Daily is therefore the default and honest view — entry/exit
+// land exactly on a real daily candle's close, because that IS what they are.
+// M1 is kept, opt-in only, for one legitimate purpose: showing the intrabar
+// path the MAE/MFE numbers actually came from (js/multiSpreadEngine.js's
+// intrabarExcursion) — never presented as what the strategy traded off.
+//
+// Resampled client-side from the SAME fetched M1 bars via js/barUtils.js's
+// resampleTo(bars, 1440) — its fixed-modulo bucketing lands on UTC midnight,
+// the identical boundary buildDayIndex/dailyClosesFrom already use server-side
+// to build this engine's own `daily` array, so the resampled close values are
+// the real thing, not a re-derived approximation.
+let lastM1Bars = [];   // cached so the Daily/M1 toggle re-renders without refetching
+let chartRes = 'daily';
+
+function renderTradeChart(t) {
+  if (!tradeChartView || !lastM1Bars.length) return;
+  const bars = chartRes === 'daily' ? resampleTo(lastM1Bars, 1440) : lastM1Bars;
+  tradeChartView.setCandles(bars);
+  const win = t.pnlPct >= 0;
+  tradeChartView.setLevels([
+    { price: t.entryClose, kind: 'voteEntry', label: `Entry ${t.dir} @ ${t.entryClose}` },
+    { price: t.exitClose, kind: win ? 'voteTarget' : 'voteStop', label: `Exit (${win ? 'WIN' : 'LOSS'}, ${t.exitReason}) @ ${t.exitClose}` },
+  ]);
+  tradeChartView.fit();
+  $('chartMeta').innerHTML = `${t.pair} ${t.book} ${t.dir} — entered ${t.date} @ ${t.entryClose}, exited ${t.exitDate} @ ${t.exitClose}
+    (${t.exitReason}, ${t.holdDays}d hold). <b class="${win ? 'pos' : 'neg'}">${fmt(t.pnlPct, 3)}%</b>, MAE ${t.maePct != null ? '-' + fmt(t.maePct, 2) + '%' : '—'}.
+    <span class="muted">No SL/TP drawn — this sleeve has neither; the exit line marks where the z-reversion/time-stop actually closed, not a predetermined level.
+    ${chartRes === 'daily' ? 'Daily candles — the resolution this strategy actually trades on.' : 'M1 candles — intrabar detail only, shown to inspect where the MAE/MFE above came from; the strategy never sees or reacts to this.'}</span>`;
+}
+
+async function loadTradeChart(t) {
+  if (!tradeChartView) return;
+  $('chartMeta').textContent = `Loading ${t.pair} ${t.date} → ${t.exitDate}…`;
+  try {
+    const pad = chartRes === 'daily' ? 10 : 2; // calendar days of context either side
+    const from = new Date(Date.parse(t.date + 'T00:00:00Z') - pad * 86400000).toISOString().slice(0, 10);
+    const to = new Date(Date.parse(t.exitDate + 'T00:00:00Z') + pad * 86400000).toISOString().slice(0, 10);
+    const r = await fetch(`/api/vol-backtest/candles/${t.pair.toLowerCase()}?from=${from}&to=${to}`);
+    const j = await r.json();
+    if (!j.ok) { $('chartMeta').textContent = `Candles unavailable: ${j.error}`; return; }
+    lastM1Bars = j.candles.map(c => ({ time: isoToEpoch(c.time), open: c.open, high: c.high, low: c.low, close: c.close }));
+    window._lastTrade = t;
+    renderTradeChart(t);
+  } catch (e) { $('chartMeta').textContent = `Chart load failed: ${e.message}`; }
+}
+$('chartResSel')?.addEventListener('change', (e) => {
+  chartRes = e.target.value;
+  if (window._lastTrade) loadTradeChart(window._lastTrade);   // re-fetch: M1 needs a tighter window than daily's wide context
+});
+$('tradeLog').addEventListener('click', (e) => {
+  const row = e.target.closest('tr[data-idx]');
+  if (!row) return;
+  const t = sortedTrades[+row.dataset.idx];
+  if (t) loadTradeChart(t);
+});
+
+async function run(){
+  $('runBtn').disabled=true; $('status').textContent='Starting…'; $('results').style.display='none';
+  const body={ dateFrom:$('dateFrom').value, dateTo:$('dateTo').value, zWindow:$('zWindow').value,
+    entryThreshold:$('entryThreshold').value, zExit:$('zExit').value, maxHoldDays:$('maxHoldDays').value,
+    costPct:$('costPct').value, autoOrient:$('autoOrient').value, overlapWindowDays:$('overlapWindowDays').value };
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('runBtn').disabled=false; return; }
+    poll(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+async function poll(jobId){
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Running… ${j.elapsed||0}s (fetching FRED + M1 for both tenors, walking both books)`; setTimeout(()=>poll(jobId),2000); return; }
+    if(j.status==='done'){
+      const { books, portfolio, overlapVsBaseline } = j;
+      $('status').textContent=`Done — y2 ${books.y2?.combined?.nTrades ?? 0} trades, y10 ${books.y10?.combined?.nTrades ?? 0} trades`;
+      $('y2Table').innerHTML=bookTable(books.y2);
+      $('y10Table').innerHTML=bookTable(books.y10);
+      $('y10Verdict').innerHTML=y10Verdict(books.y10);
+      $('diversification').innerHTML=diversificationTable(portfolio, overlapVsBaseline);
+      $('diversificationVerdict').innerHTML=diversificationVerdict(portfolio, overlapVsBaseline);
+      lastResult = { books, portfolio };
+      try { $('tearsheetTable').innerHTML=tearsheetTable(books, portfolio); } catch(e) { $('tearsheetTable').innerHTML=`<div class="muted">tearsheet failed: ${e.message}</div>`; console.error(e); }
+      try { $('uncertaintyTable').innerHTML=uncertaintyTable(books); } catch(e) { $('uncertaintyTable').innerHTML=`<div class="muted">uncertainty table failed: ${e.message}</div>`; console.error(e); }
+      try { renderEquityChart(books, portfolio); } catch(e) { console.error(e); }
+      try { renderHeatmap(portfolio); } catch(e) { $('heatmap').innerHTML=`<div class="muted">heatmap failed: ${e.message}</div>`; console.error(e); }
+      try { $('tradeLog').innerHTML=tradeLogTable(); } catch(e) { $('tradeLog').innerHTML=`<div class="muted">trade log failed: ${e.message}</div>`; console.error(e); }
+      $('results').style.display='block'; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('runBtn').disabled=false; }
+}
+$('runBtn').addEventListener('click', run);
+
+function sweepTable(cells){
+  if(!cells || !cells.length) return '<div class="muted">no data</div>';
+  let rows='';
+  let sharpePass = 0, sharpeTotal = 0;
+  for(const c of cells){
+    if(c.error){ rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td colspan="6" class="neg">${c.error}</td></tr>`; continue; }
+    const broad = c.yearsTotal>0 && c.yearsPositive/c.yearsTotal >= 0.6;
+    sharpeTotal++; if (c.portfolioSharpeOos > 0.5) sharpePass++;
+    rows+=`<tr><td>${c.entryThreshold}</td><td>${c.zWindow}</td><td>${c.n}</td><td>${fmt(c.winRate,1)}%</td>
+      <td class="${c.profitFactor>=1?'pos':'neg'}">${fmt(c.profitFactor,2)}</td>
+      <td class="${cls(c.totalRetPct)}">${fmt(c.totalRetPct,1)}%</td>
+      <td class="${c.portfolioSharpeOos>0.5?'pos':(c.portfolioSharpeOos<=0?'neg':'')}">${fmt(c.portfolioSharpeOos,2)}</td>
+      <td class="${broad?'pos':''}">${c.yearsPositive}/${c.yearsTotal}</td></tr>`;
+  }
+  const table = `<table><thead><tr><th>Entry |z|</th><th>z-window</th><th>OOS trades</th><th>Win%</th><th>PF</th><th>Total ret</th><th>Portfolio Sharpe</th><th>Years+</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const readingCls = sharpePass === sharpeTotal ? 'good' : sharpePass >= sharpeTotal * 0.6 ? 'warn' : 'bad';
+  const reading = `<div class="verdict ${readingCls}">MD files/MULTI_SPREAD_SLEEVE.md §2's Bar A pass bar: OOS Sharpe &gt; 0.5 across the grid. ${sharpePass}/${sharpeTotal} cells clear it${sharpePass===sharpeTotal ? ' — a broad plateau, not a lucky spike.' : sharpePass >= sharpeTotal*0.6 ? ' — mostly a plateau, with a weaker corner worth a second look before trusting the whole grid.' : ' — this does not read as a robust region.'}</div>`;
+  return table + reading;
+}
+async function sweep(){
+  $('sweepBtn').disabled=true; $('runBtn').disabled=true; $('status').textContent='Starting y10 sweep…'; $('sweepResults').style.display='none';
+  const body={ dateFrom:$('dateFrom').value, dateTo:$('dateTo').value };
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/sweep',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!j.ok){ $('status').textContent='Error: '+j.error; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return; }
+    pollSweep(j.jobId);
+  }catch(e){ $('status').textContent='Error: '+e.message; $('sweepBtn').disabled=false; $('runBtn').disabled=false; }
+}
+async function pollSweep(jobId){
+  try{
+    const r=await fetch('/api/multi-spread-sleeve/status/'+jobId); const j=await r.json();
+    if(j.status==='running'){ $('status').textContent=`Sweeping y10… ${j.elapsed||0}s (12 full runs — be patient)`; setTimeout(()=>pollSweep(jobId),3000); return; }
+    if(j.status==='done'){
+      $('status').textContent='Sweep done';
+      $('sweepGrid').innerHTML=sweepTable(j.cells);
+      $('sweepResults').style.display='block'; $('sweepBtn').disabled=false; $('runBtn').disabled=false; return;
+    }
+    $('status').textContent='Error: '+(j.error||'unknown'); $('sweepBtn').disabled=false; $('runBtn').disabled=false;
+  }catch(e){ $('status').textContent='Error: '+e.message; $('sweepBtn').disabled=false; $('runBtn').disabled=false; }
+}
+$('sweepBtn').addEventListener('click', sweep);
+</script>
+</body>
+</html>

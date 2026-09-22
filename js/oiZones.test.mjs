@@ -1,6 +1,6 @@
 // Synthetic test for the OI bot strategy (regime-switch planner). No network.
 //   node js/oiZones.test.mjs
-import { buildOIZones, explainNoZones, wallHoldScore } from './oiZones.js';
+import { buildOIZones, explainNoZones, wallHoldScore, gexShareAtStrike, oiSizeCalibrationStats } from './oiZones.js';
 
 let failures = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) failures++; };
@@ -237,6 +237,75 @@ console.log('[Persistence — across-expiry durability boosts rank + size (break
   const z0 = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, persistenceWeight: 0 });
   ok('persistenceWeight 0 → pure-OI ranking (near wall wins)',
     z0.find(x => x.mode === 'break' && x.side === 'buy')?.level === 4250, `${z0.find(x => x.mode === 'break' && x.side === 'buy')?.level}`);
+}
+
+console.log('[gexShareAtStrike — the shared per-strike gamma read]');
+{
+  const gp = [{ strike: 4250, netGex: 3000 }, { strike: 4300, netGex: -3000 }];
+  ok('nearest-strike, strongly positive local netGex -> share = 1 (long gamma, holds)',
+    gexShareAtStrike(4250, gp) === 1, `${gexShareAtStrike(4250, gp)}`);
+  ok('nearest-strike, strongly negative local netGex -> share = 0 (short gamma, breaks run)',
+    gexShareAtStrike(4300, gp) === 0, `${gexShareAtStrike(4300, gp)}`);
+  ok('no gexProfile at all -> null, never a guessed neutral 0.5', gexShareAtStrike(4300, null) === null);
+  ok('empty gexProfile -> null', gexShareAtStrike(4300, []) === null);
+  ok('a strike far outside the profile still resolves to its nearest row',
+    gexShareAtStrike(0, gp) === 1, `${gexShareAtStrike(0, gp)}`);   // 0 is nearer 4250 (dist 4250) than 4300 (dist 4300)
+}
+
+console.log('[Break-mode selection is now gamma-aware, not OI-only — the review finding, fixed]');
+{
+  // Wall A has MORE open interest; wall B has LESS. Pure OI x durability (the
+  // pre-fix ranking) picks A. But A sits in a strongly LONG-gamma pocket (dealers
+  // there hedge counter-cyclically -- a break "may stall", per wallHoldScore's own
+  // rationale for break zones) while B sits in a strongly SHORT-gamma pocket
+  // (dealers hedge pro-cyclically -- a break there runs). A third, farther wall (C)
+  // exists purely so the TP-target lookup has real structure to find.
+  const inst = { ...base, exposures: { gex: -5000 },   // -GEX -> BREAKOUT
+    callWalls: [
+      { strike: 4250, oi: 9000, tier: 'strong', mult: 3.1, persistence: 1 },   // A: more OI, long-gamma pocket
+      { strike: 4300, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 },   // B: less OI, short-gamma pocket
+      { strike: 4400, oi: 7000, tier: 'strong', mult: 2.9, persistence: 1 },   // C: TP-target structure only
+    ],
+    putWalls: [{ strike: 4100, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 }],
+    gexProfile: [{ strike: 4250, netGex: 3000 }, { strike: 4300, netGex: -3000 }, { strike: 4400, netGex: 0 }] };
+
+  const withFix = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1 })
+    .find(x => x.mode === 'break' && x.side === 'buy');
+  ok('the SHORT-gamma wall (less OI) is preferred for the single break-candidate slot',
+    withFix && withFix.level === 4300, `${withFix?.level}`);
+  // TP1-target search deliberately still reads the PLAIN (non-gamma-weighted) `calls`
+  // list, not `breakCalls` — under maxZonesPerSide:1 that plain list is capped down to
+  // just wall A (4250, the OI leader), so B's TP1 correctly finds nothing above it and
+  // is null; that null IS the proof nothing widened Mode B's target search. Re-run
+  // with a cap wide enough for the plain list to include wall C confirms TP1 still
+  // finds real structure (4400) when it is actually there to find.
+  ok('under a tight cap, TP1 correctly finds nothing beyond wall A in the (also-capped) plain list — proves TP1 was not switched to the gamma-reordered list',
+    withFix && withFix.tp1 === null, `${withFix?.tp1}`);
+  const wideCap = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 3 })
+    .find(x => x.mode === 'break' && x.side === 'buy' && x.level === 4300);
+  ok('with room for wall C in the plain list too, B\'s TP1 correctly targets it (4400)',
+    wideCap && wideCap.tp1 === 4400, `${wideCap?.tp1}`);
+  ok('the local-gamma read is disclosed in the rationale', /local gamma short \(favours the break\)/.test(withFix.rationale), withFix.rationale);
+
+  // breakGexFloor:1 turns the weighting off -- pure OI x durability again, matching
+  // the pre-fix behaviour exactly. This is the regression guard: it proves the
+  // change above came from the new weighting, not from something else moving.
+  const withoutFix = buildOIZones(inst, 4200, { ...cfg, maxZonesPerSide: 1, breakGexFloor: 1 })
+    .find(x => x.mode === 'break' && x.side === 'buy');
+  ok('breakGexFloor:1 (off) reverts to the higher-OI wall — the documented pre-fix ranking',
+    withoutFix && withoutFix.level === 4250, `${withoutFix?.level}`);
+
+  // Symmetric check on the put side (wall D fewer OI / short-gamma should still win
+  // over a higher-OI / long-gamma put wall).
+  const instP = { ...base, exposures: { gex: -5000 },
+    callWalls: [{ strike: 4300, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 }],
+    putWalls: [
+      { strike: 4150, oi: 9000, tier: 'strong', mult: 3.1, persistence: 1 },   // more OI, long-gamma pocket
+      { strike: 4100, oi: 8000, tier: 'strong', mult: 3.0, persistence: 1 },   // less OI, short-gamma pocket
+    ],
+    gexProfile: [{ strike: 4150, netGex: 3000 }, { strike: 4100, netGex: -3000 }] };
+  const dn = buildOIZones(instP, 4200, { ...cfg, maxZonesPerSide: 1 }).find(x => x.mode === 'break' && x.side === 'sell');
+  ok('put side: the short-gamma wall wins the slot too', dn && dn.level === 4100, `${dn?.level}`);
 }
 
 console.log('[PIN nearest-primary — the active pin boundary is the NEAREST strong wall]');
@@ -657,6 +726,24 @@ console.log('[Aggregate sizeFactor cap — max_lot must not silently become the 
   ok('default cap (2.0×) clamps the same stacked zone', capped.sizeFactor === 2, `${capped.sizeFactor}`);
   ok('the clamp is disclosed in the rationale, with the pre-cap value',
     capped.rationale.includes(`sizeFactor capped ${uncapped.sizeFactor}× → 2×`), capped.rationale);
+  // sizeBreakdown (2026-09-19) — the structured, queryable form of the same
+  // multiplier chain the rationale string already discloses in prose. Cross-checked
+  // against THIS fixture specifically because its expected numbers are already
+  // pinned by the assertions above, not freshly asserted from scratch.
+  ok('sizeBreakdown is attached to every zone', capped.sizeBreakdown && typeof capped.sizeBreakdown === 'object', JSON.stringify(capped.sizeBreakdown));
+  ok('uncapped.sizeBreakdown.preCap matches the actual uncapped sizeFactor (same number, two representations)',
+    uncapped.sizeBreakdown.preCap === uncapped.sizeFactor, `${uncapped.sizeBreakdown.preCap} === ${uncapped.sizeFactor}`);
+  ok('capped.sizeBreakdown.capped is true; uncapped.sizeBreakdown.capped is false',
+    capped.sizeBreakdown.capped === true && uncapped.sizeBreakdown.capped === false);
+  ok('capped.sizeBreakdown.preCap preserves the PRE-clamp value even though sizeFactor itself was clamped',
+    capped.sizeBreakdown.preCap === uncapped.sizeFactor, `${capped.sizeBreakdown.preCap} === ${uncapped.sizeFactor}`);
+  ok('the individual multipliers replay to the same pre-cap total the rationale already asserts',
+    Math.round(capped.sizeBreakdown.base * capped.sizeBreakdown.vanna * capped.sizeBreakdown.blocker
+      * capped.sizeBreakdown.reach * capped.sizeBreakdown.hold * capped.sizeBreakdown.conviction
+      * capped.sizeBreakdown.localRegime * 100) === Math.round(uncapped.sizeFactor * 100),
+    JSON.stringify(capped.sizeBreakdown));
+  ok('vanna headwind (a boost, on this fade) is captured and > 1', capped.sizeBreakdown.vanna > 1, `${capped.sizeBreakdown.vanna}`);
+  ok('hold multiplier captured and > 1 (positive local GEX -> strong hold)', capped.sizeBreakdown.hold > 1, `${capped.sizeBreakdown.hold}`);
   // An ordinary (moderate tier, dispersed, unremarkable multiple) zone must be
   // completely unaffected — note even `base`'s plain strong+concentrated wall
   // isn't a fair "ordinary" control here: hold-score's mult-only component (no
@@ -668,6 +755,10 @@ console.log('[Aggregate sizeFactor cap — max_lot must not silently become the 
   const plain = buildOIZones(ordinary, 4200, { ...cfg, minTier: 'moderate' }).find(x => x.side === 'sell');
   ok('an ordinary zone under the cap is untouched (no rationale note, no size change)',
     plain.sizeFactor < 2 && !/sizeFactor capped/.test(plain.rationale), `${plain.sizeFactor}`);
+  ok('an ordinary zone with nothing firing carries an all-1 breakdown apart from base',
+    plain.sizeBreakdown.vanna === 1 && plain.sizeBreakdown.blocker === 1 && plain.sizeBreakdown.reach === 1
+      && plain.sizeBreakdown.conviction === 1 && plain.sizeBreakdown.localRegime === 1 && plain.sizeBreakdown.capped === false,
+    JSON.stringify(plain.sizeBreakdown));
   // A custom, tighter cap is honoured too.
   const tight = buildOIZones(stacked, 4200,
     { ...cfg, gexMedianAbs: 4200, vannaState: { state: 'headwind', firing: true }, maxSizeFactor: 1.5 })
@@ -678,6 +769,90 @@ console.log('[Aggregate sizeFactor cap — max_lot must not silently become the 
 console.log('[Guards]');
 ok('no inst / bad price → []', buildOIZones(null, 4200, cfg).length === 0 && buildOIZones(base, 0, cfg).length === 0);
 ok('NEUTRAL gex (flat) → no fade/break zones', buildOIZones({ ...base, exposures: { gex: 0 } }, 4200, cfg).every(z => z.mode === 'maxpain'));
+
+console.log('[oiSizeCalibrationStats — outcome tracking for the review-1 sizeBreakdown fields]');
+{
+  const row = (sb, profit) => ({ profit, features: { sizeBreakdown: sb } });
+  const base1 = { base: 1, vanna: 1, blocker: 1, reach: 1, hold: 1, conviction: 1, localRegime: 1, capped: false };
+
+  ok('empty rows -> every component reported, all "too few rows"',
+    (() => { const c = oiSizeCalibrationStats([]); return c.hold.n === 0 && c.hold.note === 'too few rows yet' && c.vanna.n === 0 && c.capped.n === 0; })());
+
+  // hold: 12 rows at 1.3 (9 wins), 12 at 0.7 (3 wins) -> median 1.3, hi=1.3-group,
+  // lo=0.7-group, winHi 0.75, winLo 0.25, separation +0.50.
+  const holdRows = [
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, hold: 1.3 }, i < 9 ? 1 : -1)),
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, hold: 0.7 }, i < 3 ? 1 : -1)),
+  ];
+  const hc = oiSizeCalibrationStats(holdRows).hold;
+  ok('continuous (median split): median resolves to the high group\'s value', hc.median === 1.3, JSON.stringify(hc));
+  ok('hi/lo bucket sizes correct (12/12)', hc.hi.n === 12 && hc.lo.n === 12, JSON.stringify(hc));
+  ok('win rates correct per bucket (0.75 hi, 0.25 lo)', hc.hi.winRate === 0.75 && hc.lo.winRate === 0.25, JSON.stringify(hc));
+  ok('separation = winHi - winLo = 0.50 (enough rows both sides)', hc.separation === 0.5, JSON.stringify(hc));
+
+  // Same shape but only 5 a side -> below the default minBucket(10)*2 threshold entirely.
+  const thinRows = [row({ ...base1, hold: 1.3 }, 1), row({ ...base1, hold: 1.3 }, 1),
+                    row({ ...base1, hold: 0.7 }, -1), row({ ...base1, hold: 0.7 }, -1), row({ ...base1, hold: 0.7 }, -1)];
+  const thin = oiSizeCalibrationStats(thinRows).hold;
+  ok('below 2×minBucket total -> "too few rows yet", no split attempted at all', thin.note === 'too few rows yet' && thin.separation === undefined, JSON.stringify(thin));
+
+  // vanna (gated): 12 fired (≠1) with 10 wins, 12 not-fired (==1) with 4 wins.
+  const vannaRows = [
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, vanna: 1.15 }, i < 10 ? 1 : -1)),
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, vanna: 1 }, i < 4 ? 1 : -1)),
+  ];
+  const vc = oiSizeCalibrationStats(vannaRows).vanna;
+  ok('gated split: fired vs not-fired bucket sizes (12/12)', vc.fired.n === 12 && vc.notFired.n === 12, JSON.stringify(vc));
+  ok('gated win rates (0.83 fired, 0.33 not)', vc.fired.winRate === 0.83 && vc.notFired.winRate === 0.33, JSON.stringify(vc));
+  ok('gated separation ≈ 0.50', Math.abs(vc.separation - 0.5) < 0.01, JSON.stringify(vc));
+
+  // reach with only 3 fired trades -> named explicitly, separation withheld.
+  const thinFire = [row({ ...base1, reach: 0.7 }, 1), row({ ...base1, reach: 0.7 }, 1), row({ ...base1, reach: 0.7 }, -1),
+                     ...Array.from({ length: 12 }, () => row({ ...base1, reach: 1 }, 1))];
+  const rc = oiSizeCalibrationStats(thinFire).reach;
+  ok('few-fired case names the exact count and withholds separation',
+    rc.note === 'only 3 fired trade(s) so far' && rc.separation === null, JSON.stringify(rc));
+
+  // capped: 12 capped with 3 wins (0.25), 12 uncapped with 9 wins (0.75) -> capping
+  // correlates with WORSE outcomes here, separation negative — direction matters,
+  // not just magnitude, and this proves the sign survives the computation.
+  const cappedRows = [
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, capped: true }, i < 3 ? 1 : -1)),
+    ...Array.from({ length: 12 }, (_, i) => row({ ...base1, capped: false }, i < 9 ? 1 : -1)),
+  ];
+  const cc = oiSizeCalibrationStats(cappedRows).capped;
+  ok('capped bucket win rate lower than uncapped here (0.25 vs 0.75)', cc.capped.winRate === 0.25 && cc.uncapped.winRate === 0.75, JSON.stringify(cc));
+  ok('cap rate reported (12/24 = 0.5)', cc.capRate === 0.5, JSON.stringify(cc));
+  ok('separation carries the correct NEGATIVE sign (capping looked worse, not better)', cc.separation === -0.5, JSON.stringify(cc));
+
+  // minBucket override: a clean, EVEN 2-vs-2 split (avoids the median landing inside
+  // the larger group on an odd/unbalanced count — sorted [0.7,0.7,1.3,1.3], median
+  // is the 1.3 boundary, hi/lo split exactly in half). Below the default floor
+  // (2×10=20 needed, only 4 present) -> "too few rows yet"; with minBucket:2
+  // (2×2=4 needed, exactly met, and each bucket's 2 rows clears the per-bucket
+  // floor too) -> a real split.
+  const evenThin = [row({ ...base1, hold: 1.3 }, 1), row({ ...base1, hold: 1.3 }, 1),
+                     row({ ...base1, hold: 0.7 }, -1), row({ ...base1, hold: 0.7 }, -1)];
+  ok('default floor (needs 20) blocks a 4-row sample entirely',
+    oiSizeCalibrationStats(evenThin).hold.note === 'too few rows yet');
+  const relaxed = oiSizeCalibrationStats(evenThin, { minBucket: 2 }).hold;
+  ok('minBucket is a real parameter, not a hardcoded floor — the same 4 rows split cleanly once lowered',
+    relaxed.hi.n === 2 && relaxed.lo.n === 2 && relaxed.separation === 1, JSON.stringify(relaxed));
+
+  // Malformed / partial rows must never crash the computation — they simply do not
+  // count toward any bucket (undefined sizeBreakdown, no profit, wrong shape, or the
+  // row itself being null/undefined — a real possibility from a sparse trade log).
+  const messy = [
+    { profit: 1 },                                    // no features at all
+    { profit: 1, features: {} },                       // features present, no sizeBreakdown
+    { features: { sizeBreakdown: { ...base1 } } },      // sizeBreakdown present, no profit
+    { profit: 'not-a-number', features: { sizeBreakdown: { ...base1 } } },
+    null, undefined,                                   // the row itself missing — NOT pre-filtered here
+  ];
+  ok('malformed rows (incl. null/undefined array entries) never throw, and contribute to nothing',
+    (() => { try { const c = oiSizeCalibrationStats(messy); return c.hold.n === 0 && c.capped.n === 0; }
+      catch { return false; } })());
+}
 
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);

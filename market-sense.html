@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Market-Sense Studies</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:920px}
+  .sub code{background:var(--panel2);padding:1px 5px;border-radius:4px;color:var(--text2)}
+  main{padding:22px 24px;max-width:1200px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:16px 18px;margin-bottom:18px}
+  .card h2{margin:0 0 12px;font-size:14px;font-weight:600;color:var(--text)}
+  .studyGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:6px 16px}
+  .studyRow{display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:12.5px}
+  .studyRow input{margin-top:3px}
+  .studyRow.disabled{opacity:.45}
+  .studyRow .sid{font-weight:600;color:var(--accent);min-width:30px}
+  .studyRow .note{color:var(--text3);font-size:11px;display:block}
+  .toolbar{display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
+  button{background:var(--accent);color:#fff;border:0;border-radius:7px;
+        padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer}
+  button.secondary{background:var(--panel2);color:var(--text2);border:1px solid var(--line)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  #status{margin:12px 0 0;color:var(--text2);font-size:13px;min-height:18px}
+  #status.err{color:var(--red)}
+  .logbox{background:#0a0c11;border:1px solid var(--line);border-radius:8px;padding:10px 12px;
+        font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+        max-height:340px;overflow-y:auto;white-space:pre-wrap;word-break:break-word}
+  .hl-pass{color:var(--green);font-weight:600}
+  .hl-null{color:var(--text3)}
+  .hl-base{color:var(--amber)}
+  .hl-flag{color:var(--red);font-weight:600}
+  .studyCard{border:1px solid var(--line);border-radius:8px;margin-bottom:10px;background:var(--panel2)}
+  .studyCard summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:600;
+        display:flex;align-items:center;gap:10px;list-style:none}
+  .studyCard summary::-webkit-details-marker{display:none}
+  .studyCard summary .tag{color:var(--text3);font-weight:400;font-size:11px;margin-left:auto}
+  .studyCard .body{padding:2px 14px 14px}
+  .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600}
+  .b-just{background:rgba(91,157,255,.18);color:var(--accent)}
+  .b-cached{background:rgba(111,120,137,.18);color:var(--text3)}
+  table.gen{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 10px}
+  table.gen th,table.gen td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.gen thead th{color:var(--text3);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em}
+  .kv{color:var(--text2);font-size:12px;margin:4px 0 10px}
+  .kv b{color:var(--text)}
+  .pass{color:var(--green);font-weight:600}
+  .notscored{color:var(--text3)}
+  .nullv{color:var(--text3)}
+  details.raw{margin-top:4px}
+  details.raw summary{color:var(--text3);font-size:11px;cursor:pointer}
+  details.raw pre{background:#0a0c11;border:1px solid var(--line);border-radius:6px;
+        padding:8px 10px;font-size:11px;overflow-x:auto;max-height:300px}
+  .empty{color:var(--text3);font-size:12.5px;padding:8px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Market-Sense Studies</h1>
+  <div class="sub">
+    Runs <code>analysis/market_sense_studies.mjs</code> — the pre-registered
+    tests in <code>MD files/MARKET_SENSE_TESTS.md</code> — exactly as
+    committed, via a button instead of the CLI. Needs OANDA (and for a couple
+    of studies, FRED/CFTC/this desk's own API), so it only actually runs
+    where those are reachable — Railway production, not a sandboxed dev
+    session. Results are shown as the script itself narrates them: a pass
+    bar cleared is <span class="hl-pass">PASS</span>, a bootstrap CI that
+    clears 50% without beating the named benchmark is a
+    <span class="hl-base">base rate</span>, not a finding, and everything
+    else is a <span class="hl-null">null</span>. Nothing here is re-labelled
+    or softened beyond what the harness itself computed.
+  </div>
+</header>
+<main>
+  <div class="card">
+    <h2>Studies</h2>
+    <div id="studyGrid" class="studyGrid"><span class="empty">loading…</span></div>
+    <div class="toolbar">
+      <button id="selAll" class="secondary" type="button">Select all runnable</button>
+      <button id="selNone" class="secondary" type="button">Clear</button>
+      <button id="run" type="button">Run selected</button>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card" id="logCard" style="display:none">
+    <h2>Live log</h2>
+    <div id="log" class="logbox"></div>
+  </div>
+
+  <div class="card" id="resultsCard" style="display:none">
+    <h2>Results</h2>
+    <div id="results"></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let STUDIES = [];
+let lastRanIds = new Set();
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function fmtNum(v){
+  if (v == null || typeof v !== 'number' || !isFinite(v)) return v == null ? '—' : String(v);
+  const a = Math.abs(v);
+  return v.toFixed(a >= 100 ? 0 : a >= 1 ? 2 : 4);
+}
+
+// {p|mean|diff, lo, hi[, n]} -> a compact "value [lo, hi]" chip. Returns null if it's not that shape.
+function statShape(v){
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  const val = ['p','mean','diff'].find(k => typeof v[k] === 'number');
+  if (val == null || typeof v.lo !== 'number' || typeof v.hi !== 'number') return null;
+  const pct = val === 'p';
+  const f = x => pct ? (x*100).toFixed(0)+'%' : fmtNum(x);
+  return `${f(v[val])} [${f(v.lo)}, ${f(v.hi)}]${v.n != null ? ` (n=${v.n})` : ''}`;
+}
+
+function verdictBadge(row){
+  if (row.scored === false) return '<span class="notscored">not scored</span>';
+  if (row.pass === true) return '<span class="pass">PASS</span>';
+  if (row.calmer === true) return '<span class="nullv">calmer</span>';
+  if (typeof row.verdict === 'string') return highlightWords(row.verdict);
+  if (typeof row.finding === 'string') return highlightWords(row.finding);
+  if (row.pass === false) return '<span class="nullv">null</span>';
+  return '';
+}
+
+function highlightWords(s){
+  let t = esc(s);
+  t = t.replace(/\bPASS\b[^,)]*/g, m => `<span class="hl-pass">${m}</span>`);
+  t = t.replace(/\b(NULL|null|no difference)\b/g, m => `<span class="hl-null">${m}</span>`);
+  t = t.replace(/base rate[^,).]*/gi, m => `<span class="hl-base">${m}</span>`);
+  t = t.replace(/\b(OPPOSITE|FADES MORE|FLATTENS MORE)\b[^,).]*/g, m => `<span class="hl-flag">${m}</span>`);
+  return t;
+}
+
+// Array of objects -> a table. Picks a label-ish column first, then n/paired,
+// then any stat-shaped or diff/mean columns, then a verdict badge.
+function renderTable(arr){
+  if (!arr.length) return '<div class="empty">no rows</div>';
+  const keys = [...new Set(arr.flatMap(o => Object.keys(o || {})))];
+  const labelKey = ['label','sym','tag','name','horizon'].find(k => keys.includes(k));
+  const skip = new Set([labelKey, 'lo', 'hi', 'pass', 'calmer', 'scored', 'verdict', 'finding', 'ctlMean', 'setupMean']);
+  const numKeys = keys.filter(k => !skip.has(k) && arr.some(o => typeof o?.[k] === 'number'));
+  const statKeys = keys.filter(k => !skip.has(k) && !numKeys.includes(k) && arr.some(o => statShape(o?.[k])));
+  let html = '<table class="gen"><thead><tr>';
+  if (labelKey) html += `<th>${labelKey}</th>`;
+  for (const k of numKeys) html += `<th>${esc(k)}</th>`;
+  for (const k of statKeys) html += `<th>${esc(k)}</th>`;
+  html += '<th>verdict</th></tr></thead><tbody>';
+  for (const row of arr) {
+    html += '<tr>';
+    if (labelKey) html += `<td>${esc(row[labelKey] ?? '')}</td>`;
+    for (const k of numKeys) html += `<td>${fmtNum(row[k])}</td>`;
+    for (const k of statKeys) html += `<td>${statShape(row[k]) ?? '—'}</td>`;
+    html += `<td>${verdictBadge(row)}</td></tr>`;
+  }
+  return html + '</tbody></table>';
+}
+
+// Walks one study's result object: arrays-of-objects become tables, stat
+// shapes become chips, scalars become a key/value strip. Generic on purpose
+// — the 12+ studies here don't share one output shape, and hand-templating
+// each would drift from the harness the moment its output changes.
+function renderStudyBody(out){
+  if (!out || typeof out !== 'object') return '<div class="empty">no output</div>';
+  let scalars = [], blocks = [];
+  for (const [k, v] of Object.entries(out)) {
+    if (Array.isArray(v) && v.length && typeof v[0] === 'object') {
+      blocks.push(`<div class="kv"><b>${esc(k)}</b></div>${renderTable(v)}`);
+    } else if (statShape(v)) {
+      scalars.push(`<b>${esc(k)}</b>: ${statShape(v)}`);
+    } else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      // one level of nested { label: {...} }: a value that's itself stat-shaped
+      // (e.g. benchmark.r5/r20) becomes a chip row; a value that's a mixed
+      // object with a stat shape buried inside it (e.g. S17's leg -> horizon
+      // -> {n, share:{p,lo,hi}, diff, scored, pass}) becomes a table, with the
+      // key ('5d'/'20d') as the row label.
+      const entries = Object.entries(v);
+      const chips = entries.filter(([,x]) => statShape(x) || (x != null && typeof x !== 'object'));
+      const rowish = entries.filter(([,x]) => x && typeof x === 'object' && !Array.isArray(x) && !statShape(x));
+      if (chips.length) {
+        blocks.push(`<div class="kv"><b>${esc(k)}</b></div><table class="gen"><tbody>` +
+          chips.map(([sk, sv]) => `<tr><td>${esc(sk)}</td><td>${statShape(sv) ?? fmtNum(sv)}</td>` +
+            `<td>${sv != null && typeof sv === 'object' && sv.pass != null ? verdictBadge(sv) : ''}</td></tr>`).join('') +
+          '</tbody></table>');
+      }
+      if (rowish.length) {
+        blocks.push(`<div class="kv"><b>${esc(k)}</b></div>` +
+          renderTable(rowish.map(([sk, sv]) => ({ horizon: sk, ...sv }))));
+      }
+    } else if (typeof v === 'string') {
+      scalars.push(`<b>${esc(k)}</b>: ${highlightWords(v)}`);
+    } else if (typeof v === 'number' || typeof v === 'boolean') {
+      scalars.push(`<b>${esc(k)}</b>: ${fmtNum(v)}`);
+    }
+  }
+  return (scalars.length ? `<div class="kv">${scalars.join(' &nbsp;·&nbsp; ')}</div>` : '') + blocks.join('');
+}
+
+function renderResults(result){
+  $('resultsCard').style.display = result?.studies && Object.keys(result.studies).length ? '' : 'none';
+  if (!result?.studies) { $('results').innerHTML = ''; return; }
+  const ids = Object.keys(result.studies).sort((a,b) => (+a.slice(1)) - (+b.slice(1)));
+  $('results').innerHTML = `<div class="kv">Last written: ${esc(result.ranAt || '—')}</div>` +
+    ids.map(id => {
+      const meta = STUDIES.find(s => s.id === id);
+      const justRan = lastRanIds.has(id);
+      return `<details class="studyCard" ${justRan ? 'open' : ''}>
+        <summary>${id} — ${esc(meta?.title || '')}
+          <span class="tag ${justRan ? 'b-just' : 'b-cached'}">${justRan ? 'just ran' : 'cached'}</span>
+        </summary>
+        <div class="body">
+          ${renderStudyBody(result.studies[id])}
+          <details class="raw"><summary>raw JSON</summary><pre>${esc(JSON.stringify(result.studies[id], null, 1))}</pre></details>
+        </div>
+      </details>`;
+    }).join('');
+}
+
+function highlightLogLine(line){
+  let t = esc(line);
+  t = t.replace(/\bPASS\b[^\n]*/g, m => `<span class="hl-pass">${m}</span>`);
+  t = t.replace(/\b(NULL|no difference|not scored|below MIN_N|below 40)\b[^\n,]*/gi, m => `<span class="hl-null">${m}</span>`);
+  t = t.replace(/base rate[^\n,.]*/gi, m => `<span class="hl-base">${m}</span>`);
+  t = t.replace(/\b(OPPOSITE|FADES MORE THAN A NORMAL BIG DAY|FLATTENS MORE|SQUARES UP)\b[^\n]*/g, m => `<span class="hl-flag">${m}</span>`);
+  return t;
+}
+
+function renderLog(lines){
+  const box = $('log');
+  box.innerHTML = lines.map(highlightLogLine).join('\n');
+  box.scrollTop = box.scrollHeight;
+}
+
+async function loadStudies(){
+  const { studies } = await fetch('/api/market-sense/studies').then(r => r.json()).catch(() => ({ studies: [] }));
+  STUDIES = studies || [];
+  $('studyGrid').innerHTML = STUDIES.map(s => `
+    <label class="studyRow ${s.disabled ? 'disabled' : ''}">
+      <input type="checkbox" value="${s.id}" ${s.disabled ? 'disabled' : 'checked'}>
+      <span><span class="sid">${s.id}</span> ${esc(s.title)}
+        ${s.note ? `<span class="note">${esc(s.note)}</span>` : ''}</span>
+    </label>`).join('');
+}
+
+async function loadLast(){
+  const { result } = await fetch('/api/market-sense/last').then(r => r.json()).catch(() => ({ result: null }));
+  if (result) { lastRanIds = new Set(); renderResults(result); }
+}
+
+function checkedIds(){
+  return [...document.querySelectorAll('#studyGrid input:checked')].map(el => el.value);
+}
+
+async function poll(jobId){
+  while (true) {
+    await new Promise(r => setTimeout(r, 2000));
+    const res = await fetch(`/api/market-sense/status/${jobId}`).then(r => r.json()).catch(() => null);
+    if (!res) continue;
+    if (res.log) { $('logCard').style.display = ''; renderLog(res.log); }
+    if (res.status === 'running') { $('status').className = ''; $('status').textContent = `Running… ${res.elapsed || 0}s`; continue; }
+    return res;
+  }
+}
+
+$('selAll').onclick = () => document.querySelectorAll('#studyGrid input:not(:disabled)').forEach(el => el.checked = true);
+$('selNone').onclick = () => document.querySelectorAll('#studyGrid input').forEach(el => el.checked = false);
+
+$('run').onclick = async () => {
+  const ids = checkedIds();
+  if (!ids.length) { $('status').className = 'err'; $('status').textContent = 'Select at least one study.'; return; }
+  $('run').disabled = true;
+  $('status').className = '';
+  $('status').textContent = 'Starting…';
+  $('log').innerHTML = '';
+  try {
+    const start = await fetch('/api/market-sense/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ studies: ids }),
+    }).then(r => r.json());
+    if (!start.ok) throw new Error(start.error || 'failed to start');
+    lastRanIds = new Set(start.ranStudies || ids);
+    const res = await poll(start.jobId);
+    if (res.status === 'done') {
+      $('status').textContent = `Done in ${res.elapsed}s — wrote analysis/output/market_sense_studies.json`;
+      renderResults(res.result);
+    } else {
+      $('status').className = 'err';
+      $('status').textContent = res.error || 'failed';
+    }
+  } catch (e) {
+    $('status').className = 'err';
+    $('status').textContent = e.message || String(e);
+  } finally {
+    $('run').disabled = false;
+  }
+};
+
+loadStudies().then(loadLast);
+</script>
+</body>
+</html>

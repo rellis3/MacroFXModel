@@ -99,12 +99,20 @@ def atr(bars: pd.DataFrame, period: int = 14) -> np.ndarray:
 @dataclass
 class RegimePoint:
     """A change-point in classify_swing_structure's output series. `dir` is
-    +1 (up), -1 (down), or None (range/mixed)."""
+    +1 (up), -1 (down), or None (range/mixed).
+
+    `idx` is the PIVOT bar that produced the change -- where the change
+    happened in hindsight. `known_idx` (= idx + pivot_n) is the first bar
+    whose CLOSE makes that pivot knowable: a pivot needs `pivot_n` bars on
+    each side, so nothing evaluating at bar i's close may use a change-point
+    with known_idx > i. Use `regime_known_at` for any decision a live system
+    has to make; `regime_at` (by `idx`) is the hindsight view."""
     idx: int
     time: object
     regime: str  # 'trend_up' | 'trend_down' | 'range'
     dir: int | None
     label: str
+    known_idx: int = 0
 
 
 def classify_swing_structure(bars: pd.DataFrame, pivot_n: int = 5) -> list[RegimePoint]:
@@ -143,19 +151,51 @@ def classify_swing_structure(bars: pd.DataFrame, pivot_n: int = 5) -> list[Regim
 
         last = series[-1]
         if regime != last.regime or direction != last.dir:
-            series.append(RegimePoint(idx=ev.idx, time=ev.time, regime=regime, dir=direction, label=label))
+            series.append(RegimePoint(idx=ev.idx, time=ev.time, regime=regime, dir=direction, label=label,
+                                      known_idx=ev.idx + pivot_n))
     return series
 
 
 def regime_at(series: list[RegimePoint], idx: int) -> RegimePoint | None:
     """Binary search: the regime in force at bar index `idx` (last
-    change-point <= idx)."""
+    change-point whose PIVOT bar <= idx).
+
+    HINDSIGHT VIEW. A change-point's pivot is not knowable until `pivot_n`
+    bars later, so this hands a caller at bar i regime changes it could not
+    have seen yet -- found 2026-09-19 to relabel 21% of the motif strategy's
+    confirm bars between backtest and live. Any decision a live system must
+    make belongs on `regime_known_at`; keep this only for analysis that
+    explicitly wants where the regime turned in hindsight (forge/events.py
+    applies its own forward shift on top of `idx` and must not be
+    double-shifted -- that is why this function's semantics stay put)."""
     if not series:
         return None
     lo, hi, ans = 0, len(series) - 1, series[0]
     while lo <= hi:
         mid = (lo + hi) // 2
         if series[mid].idx <= idx:
+            ans = series[mid]
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return ans
+
+
+def regime_known_at(series: list[RegimePoint], idx: int) -> RegimePoint | None:
+    """Binary search: the regime KNOWABLE at the close of bar `idx` -- the
+    last change-point whose `known_idx` (pivot bar + pivot_n) <= idx. This
+    is what a system deciding at bar idx's close can legitimately use, and
+    it is identical whether the series was built from data ending at idx or
+    from the full history -- the property that makes a backtest and a live
+    scan agree on the same bar. `series` from classify_swing_structure is
+    non-decreasing in known_idx (pivots are walked chronologically and all
+    share one pivot_n), which the binary search relies on."""
+    if not series:
+        return None
+    lo, hi, ans = 0, len(series) - 1, series[0]
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if series[mid].known_idx <= idx:
             ans = series[mid]
             lo = mid + 1
         else:

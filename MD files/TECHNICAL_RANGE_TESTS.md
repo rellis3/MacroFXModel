@@ -112,6 +112,80 @@ NAS100 vs matched controls; next-5 direction as a base rate.
 Queued, not run (data not held): options walls as range fences (needs the OI
 archive to reach 200+ sessions).
 
+## T7 — The band read: reach-the-next-band odds by hour (pre-registered 2026-09-18, before running)
+
+The owner's ask: on the pair card, at London open and through the day, "I'd expect
+price to reach (or stop at) the median / 75th band, usually at hour x" — updated
+through the day, as the colleague's dashboard does. Four base-rate questions, no
+pass bar, every cell with an interval and n; nothing here is an entry (the fade at
+extension levels is a banked null, RANGE_EXTENSION_FINDINGS.md, and so is the
+level touch).
+
+**Bands.** For each London session: open = first M1 bar; UP-med / UP-75 / UP-90 =
+open × (1 + q) where q is the trailing-250-session empirical p50 / p75 / p90 of
+(high − open) / open; DOWN bands likewise from (open − low) / open. These are the
+quantities the vol forecaster's O-H / O-L bands estimate (its live hit rates run
+~55-62% for the median and ~24% for the 75th, matching the quantile definitions),
+so the results transfer to the page's bands to the extent the forecaster is
+calibrated — stated, not assumed.
+
+**Checkpoints.** 07:00, 08:00, 09:00, 10:30, 12:00, 13:30, 15:00, 16:30 UK. At each
+checkpoint c the state is the furthest UP band reached so far (none / med / 75) and
+the same for DOWN.
+
+1. **From here.** P(UP-75 reached before close | at c, UP-med reached, UP-75 not),
+   and P(UP-med reached before close | at c, UP-med not reached). Same for DOWN.
+   The unconditional P(reach after c | not yet) is the comparison line.
+2. **Stall.** P(session high ends within 20% of the med→75 gap above UP-med |
+   UP-med reached by c) — "the median band was (nearly) the day's high". Same for
+   the 75th and for DOWN.
+3. **Clock.** Median UK time of the first touch of each band, p25/p75.
+4. **Asia.** Asia range (00:00–07:00 UK) / ATR14 in terciles: P(UP-med after 07:00),
+   P(UP-75 after 07:00), by tercile. A difference of ≥ 15pp between top and bottom
+   terciles with intervals clear is a finding; less is "Asia does not change the
+   odds".
+
+Instruments: the eight of T1–T6. Output: a generated parameter table
+(`js/bandReachParams.js`) the drawer reads at the current hour and state, plus the
+usual JSON. What ships: a "Band read · as at HH:MM" block in the drawer's day
+section, wording "reached in n% of days like this", never "fade".
+
+### T7 results (run 2026-09-18; design frozen above before running)
+
+Eight instruments, ~2,500 London sessions each (2017 → 2026-08). Output
+`analysis/output/band_reach_study.json`; parameter table `js/bandReachParams.js`.
+
+**1. From here — the colleague's headline is real, and it is the same shape on
+every instrument.** Reaching the median band early roughly **doubles-to-triples**
+the odds of the 75th before the close. At 10:30 UK, median reached vs the ordinary
+odds for the hour: NAS100 **63% vs 23%** (2.7×), SPX500 59% vs 22% (2.7×), USD/JPY
+44% vs 17% (2.6×), EUR/USD 43% vs 18% (2.3×), gold 50% vs 21% (2.3×); intervals
+±5pp, n=260–450 per cell. The lift is largest at the open (NAS100 at 07:00: 73% vs
+22%) and decays through the day as the odds for everyone fall.
+
+**2. Stall — "expect price to stop at the band" is wrong.** Once the median band
+is reached, it was (nearly) the day's extreme in only **4–10%** of sessions; the
+75th in 5–14%. The bands are waypoints, not walls. (This is the level-touch null
+again, from the other side.)
+
+**3. Clock.** Typical first touch of the median high: EUR/USD ~10:30 UK (p25 07:45,
+p75 13:55), gold ~11:30, NAS100 ~14:30 (US hours), SPX500 similar. The 75th
+~13:45–15:10. Hit rates 48–51% for the median, 24–27% for the 75th, 10–11% for the
+90th — the quantile definitions, as they should be.
+
+**4. Asia — backwards from the intuition.** A *wide* Asia range (top tercile,
+range/ATR) LOWERS the odds of reaching the median band after 07:00: gold 24% vs 46%
+on narrow-Asia days (−22pp, finding), USD/JPY 18% vs 36% (finding), EUR/USD 33% vs
+42% (−10pp, clear but under the bar). A wide Asia has already used the day's range
+— often reaching the band before London opens — so "Asia expanded, expect London
+to extend" is the reverse of what happened.
+
+**What shipped.** The drawer's day section opens with a derived "Aim ↑ for the 75th
+(price), not the median — reached in 63% of days like this vs 23% for the hour" line
+when the lift is ≥ 1.5× and the odds ≥ 35%, "Aim for the median" otherwise, with
+both sides, the stall rate, the clock and the Asia note under it; a chip on the
+card's day tier carries the aim and the lift. A target guide, never an entry.
+
 ## What a pass changes on the page
 
 A validated T1 or T3 range effect earns a ✓ chip on the day tier, worded as range
@@ -224,3 +298,74 @@ USD/CAD 1.06*, others ordinary.
 - T4 (opening-range break: 85% back inside within the hour), T5 (gap fill by size),
   T6 (calendar profile) added to the book as base rates.
 - Queued: T3 and T4 as live triggers once the watch reads intraday bars.
+
+## T7b — the band read re-run on the fitted ladder (pre-registered 2026-09-22, before running)
+
+**Why.** The desk carried three definitions of "O-L 75th" under one name: the
+forecaster's incumbent bands (`ol_75`, a textbook half-normal constant × σ,
+O-L assumed equal to O-C), the fitted ladder (`ladder_flat.ol_p75`, `buildLadder`:
+Yang-Zhang/EWMA σ per instrument, widths fitted walk-forward, O-H and O-L
+fitted separately), and T7's own trailing-250-session empirical quantiles. The
+bots (Vote Atlas, volatility bot v2), the ladder ⬇ Export and the owner's chart
+use the fitted ladder; the daily brief, the level hit-rates and T7's band read
+used the other two. Gold 2026-09-22: 4284 (incumbent) vs 4298.8 (fitted) for the
+same "O-L 75th". One name, one number: everything moves to the fitted ladder.
+
+**Design, frozen.** `analysis/band_reach_study.mjs` unchanged except the bands:
+for each session, `buildLadder(forecastSigma(prior daily bars, estimator), {
+instrument, assetClass, horizon: 'daily', eventTag: 'none' })` on the session's
+own London-midnight open — the same call the bot plan makes — giving p50/p75/p90
+O-H and O-L. Prior daily bars = the sessions before this one, from the same
+packed M1 (no lookahead: sigma is fit on days strictly before). Estimator per
+instrument from `forecastLadderParams.js`. Checkpoints, the stall rule, the Asia
+conditioner, bootstrap and n floors all as T7. Output overwrites
+`js/bandReachParams.js`; the old file is kept as `analysis/output/band_reach_study_t7_trailing250.json`
+for the record. Expected: reach rates move (the fitted bands are narrower on
+gold, so the 75th is reached more often); the shape of the read (odds rise
+through the day, the Asia conditioner) should not. If the shape changes, say so.
+
+**What changes on the page.** The brief's `levels` are priced from
+`ladder_flat` (p50 → `_med`, p75 → `_75`) with the ladder's estimator and event
+tag carried; the drawer's band read quotes the level with its working
+("4298.8 = 4361.19 − 1.43%, fitted ladder yz_10"); the incumbent `oh_median /
+ol_75` fields stay in the forecast payload for the archive, marked legacy, and
+nothing user-facing reads them. The level hit-rate store scores the fitted
+lines from the day this ships; earlier rows scored the incumbent lines and are
+labelled as such.
+
+### T7b results (run 2026-09-22; design frozen above before running)
+
+All eight instruments, ~2,500 London sessions each, bands rebuilt per session
+from the fitted ladder. **The shape held**, which was the pre-stated check: the
+odds of reaching the next band still decay through the day (gold 60% at 07:00 →
+17% at 16:30 given the median is in), the stall rate stays flat at 6-11%, and
+the Asia conditioner still fires — on gold harder than before (reach the upper
+median after 07:00 on 51% of narrow-Asia days vs 21% of wide ones, −29pp
+[−34, −25]).
+
+The bands are slightly narrower than the trailing-250 quantiles they replace, so
+every rung is reached a little more often. Unconditional hit rates, old → new:
+
+| | upper median | upper 75th | upper 90th |
+|---|---|---|---|
+| EUR/USD | 48% → 53% | 24% → 27% | 10% → 12% |
+| GBP/USD | 49% → 53% | 25% → 27% | 9% → 12% |
+| USD/JPY | 47% → 52% | 24% → 26% | 9% → 11% |
+| AUD/USD | 48% → 54% | 24% → 29% | 10% → 13% |
+| USD/CAD | 48% → 53% | 24% → 28% | 9% → 11% |
+| Gold | 51% → 54% | 27% → 28% | 11% → 13% |
+| NQ | 50% → 52% | 26% → 27% | 11% → 11% |
+| SPX500 | 50% → 54% | 26% → 28% | 10% → 13% |
+
+A median band reached on 52-54% of days and a 75th on 26-29% is what those names
+are supposed to mean, so the fitted ladder is also the better-calibrated of the
+two — the trailing-quantile bands ran a touch wide. The old numbers are kept in
+`analysis/output/band_reach_study_t7_trailing250.json`.
+
+**Shipped the same day:** the brief's `levels`, the hit-rate backfill, the
+session-status "reached at" times, both plain-text exports and the drawer's band
+read all read `ladder_flat` now, each level tagged with its source and
+estimator; the drawer prints the working (`4298.8 = 4361.19 − 1.43%, fitted
+ladder yz_10`). The incumbent `oh_median`/`ol_75` and the drift-adjusted
+`oh_v2_*` remain in `/api/vol-forecast` for the archive and are read by nothing
+user-facing.

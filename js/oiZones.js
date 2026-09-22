@@ -124,20 +124,36 @@ export function explainNoZones(inst, price, cfg = {}) {
 // `weights` overrides the priors — the producer injects calibrated weights from
 // the forward-test (oi_hold_calibration) once enough touches have resolved.
 // Returns { score: 0–1, parts: {comp: 0–1} } or null when NO component has data.
+// Per-strike net-GEX SHARE: nearest gexProfile row to `strike`, scaled by the
+// profile's max |netGex|. 0 = the strongest LOCALLY SHORT-gamma pocket in the book
+// (dealers hedge pro-cyclically here — a break through this strike tends to
+// accelerate, a fade tends to blow through); 0.5 = neutral/no local signal; 1 = the
+// strongest LOCALLY LONG-gamma pocket (dealers hedge counter-cyclically — a fade
+// here tends to hold). Shared by wallHoldScore (sizing, below) and buildOIZones'
+// break-mode wall ranking (selection — see breakGexWeight) so there is exactly ONE
+// definition of "how much gamma actually sits at this strike, and which way", not
+// two that can drift apart. Pure; null when there is no gexProfile to read (an
+// instrument the gamma build hasn't run for, or an empty book) — callers must treat
+// null as "no signal", never as 0 or 0.5, so a missing profile degrades to
+// whatever the caller does on no-data rather than asserting a neutral reading.
+export function gexShareAtStrike(strike, gexProfile) {
+  if (!Number.isFinite(strike) || !Array.isArray(gexProfile) || !gexProfile.length) return null;
+  const rows = gexProfile.filter(r => Number.isFinite(r?.strike) && Number.isFinite(r?.netGex));
+  if (!rows.length) return null;
+  const near = rows.reduce((b, r) => Math.abs(r.strike - strike) < Math.abs(b.strike - strike) ? r : b);
+  const maxAbs = rows.reduce((m, r) => Math.max(m, Math.abs(r.netGex)), 0);
+  if (!(maxAbs > 0)) return null;
+  return +(0.5 + 0.5 * Math.max(-1, Math.min(1, near.netGex / maxAbs))).toFixed(3);
+}
+
 export const HOLD_WEIGHT_DEFAULTS = { gex: 0.35, flow: 0.25, persistence: 0.2, mult: 0.2 };
 export function wallHoldScore(w, kind, { gexProfile = null, change = null, tol = 0, weights = null } = {}) {
   if (!w || !Number.isFinite(w.strike)) return null;
   const parts = {};
-  // Per-strike net GEX share: nearest profile row to the strike, scaled by the
-  // profile's max |netGex| → 0.5 = neutral, 1 = strongest positive (absorbing).
-  if (Array.isArray(gexProfile) && gexProfile.length) {
-    const rows = gexProfile.filter(r => Number.isFinite(r?.strike) && Number.isFinite(r?.netGex));
-    if (rows.length) {
-      const near = rows.reduce((b, r) => Math.abs(r.strike - w.strike) < Math.abs(b.strike - w.strike) ? r : b);
-      const maxAbs = rows.reduce((m, r) => Math.max(m, Math.abs(r.netGex)), 0);
-      if (maxAbs > 0) parts.gex = +(0.5 + 0.5 * Math.max(-1, Math.min(1, near.netGex / maxAbs))).toFixed(3);
-    }
-  }
+  // Per-strike net GEX share (see gexShareAtStrike): 0.5 = neutral, 1 = strongest
+  // positive (absorbing — holds).
+  const _gexShare = gexShareAtStrike(w.strike, gexProfile);
+  if (_gexShare != null) parts.gex = _gexShare;
   // OI flow at the strike: building = 1 (fresh defence), unwinding = 0, no signal = 0.5.
   if (change && Array.isArray(change.events)) {
     const ev = change.events.filter(e => e.kind === kind && Math.abs(e.strike - w.strike) <= Math.max(tol, 0));
@@ -311,6 +327,24 @@ export function buildOIZones(inst, price, cfg = {}) {
     // back to being an emergency backstop, not the modal outcome. 0 = uncapped
     // (the old behaviour).
     maxSizeFactor = 2.0,
+    // ── gamma-aware BREAK selection (2026-09-19) ────────────────────────────
+    // WHICH walls become break-follow candidates (Mode B, below) was pure OI count
+    // x durability (strength(), a few lines down) -- the exact "OI-ranked, not
+    // gamma-ranked" gap a review of this file found: wallHoldScore already computes
+    // per-strike net-GEX correctly and even states the right principle in its own
+    // comment ("a wall's holding power is not its OI count"), but nothing used it to
+    // decide WHICH walls were even eligible -- only how big to size the one OI
+    // already picked. A break wants the OPPOSITE of what a fade wants: the wall
+    // being broken should sit in a LOCALLY SHORT-gamma pocket (gexShareAtStrike
+    // near 0), where dealer hedging is pro-cyclical and a break accelerates rather
+    // than stalls -- wallHoldScore's own rationale already flags a break into a
+    // HIGH-hold wall as "may stall"; this is what finally acts on that, at
+    // selection time rather than only after the fact. breakGexFloor is the ranking
+    // weight a strongest-possible LONG-gamma pocket is downweighted to (never to
+    // zero -- missing/weak gamma data must never veto an otherwise-solid OI read,
+    // same "soft-weight, don't hard-exclude" convention every other gate in this
+    // file already follows). 1 = off (pure OI x durability, the pre-fix ranking).
+    breakGexFloor = 0.4,
   } = cfg;
 
   const gex = inst.exposures?.gex ?? inst.gex ?? 0;
@@ -372,6 +406,20 @@ export function buildOIZones(inst, price, cfg = {}) {
   const _cap = a => (maxZonesPerSide > 0 ? a.slice(0, maxZonesPerSide) : a);
   const calls = _cap(_rank2((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK)));
   const puts = _cap(_rank2((Array.isArray(inst.putWalls) ? inst.putWalls : []).filter(tierOK)));
+  // Break-mode ranking: same base strength (OI x durability), but weighted toward
+  // walls in a LOCALLY SHORT-gamma pocket (see breakGexFloor above) — the mirror of
+  // what a fade wants. A SEPARATE ranked list, not a mutation of `calls`/`puts`
+  // above: those are also used by Mode C's guard-wall lookup (a stop-DISTANCE
+  // reference, where "nearest" is the right criterion and a break/fade gamma bias
+  // has no clear justification) — reusing one gamma-biased list for both would move
+  // stops for a reason unrelated to what a stop distance should track.
+  const breakGexWeight = w => {
+    const share = gexShareAtStrike(w?.strike, inst.gexProfile);
+    return share == null ? 1 : 1 - (1 - breakGexFloor) * share;   // share 0 (short-gamma, breaks run) -> 1.0x; share 1 (long-gamma, "may stall") -> breakGexFloor
+  };
+  const breakStrength = w => strength(w) * breakGexWeight(w);
+  const breakCalls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
+  const breakPuts  = _cap((Array.isArray(inst.putWalls)  ? inst.putWalls  : []).filter(tierOK).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
 
   const isLiquidating = (strike, kind) => avoidLiquidating &&
     (change?.events || []).some(e => e.type === 'liquidation' && e.kind === kind && Math.abs(e.strike - strike) <= tol);
@@ -525,16 +573,32 @@ export function buildOIZones(inst, price, cfg = {}) {
       rationale = `${rationale} · ⚠ TP beyond implied move (low-prob by expiry)`;
     // A wall between spot and this entry is the first level price hits — flag it and
     // trim entry size (price may reject/stall there before reaching the traded wall).
+    //
+    // sizeBreakdown (2026-09-19): every multiplier from here to the final cap, named
+    // and captured as it is applied -- the auditable form of a review finding that a
+    // trade's size is the product of up to eleven interacting reads and nobody,
+    // including the rationale string, could previously answer "how much did EACH one
+    // actually move this trade" without re-deriving it from prose. `base` is
+    // z.sizeFactor as it arrived here: tier x concentration x durability x nearFlip x
+    // whatever mode-specific trim (secondaryTrim / subTierSize / breakGexWeight /
+    // breakNote.trim) the caller already folded in -- one bucket, not eleven, because
+    // splitting THAT further means threading breakdown state through every add()
+    // call site rather than the one place all of them converge. Every value here is
+    // the multiplier itself (1 = no effect), not the running total, so "which knobs
+    // actually fired on this trade" is a filter, not arithmetic.
+    const breakdown = { base: z.sizeFactor, vanna: _vannaMult, blocker: 1, reach: 1, hold: 1, conviction: 1, localRegime: 1, capped: false };
     let sizeFactor = +(z.sizeFactor * _vannaMult).toFixed(2);
     if (z.blocker) {
       rationale = `${rationale} · ⚠ ${z.blocker.tier} ${z.blocker.kind} wall ${+z.blocker.strike.toFixed(6)} in the path (price hits it first)`;
       sizeFactor = +(sizeFactor * blockTrim).toFixed(2);
+      breakdown.blocker = blockTrim;
     }
     // Entry beyond the option-implied move → unlikely to fill by expiry: flag + trim.
     const reach = reachFlag(z.entry);
     if (reach) {
       rationale = `${rationale} · ⚠ ${reach} — unlikely to fill by expiry`;
       sizeFactor = +(sizeFactor * reachTrim).toFixed(2);
+      breakdown.reach = reachTrim;
     }
     // Wall hold-score: sizes FADES (reversion leans on the wall holding) and
     // annotates breaks (which keep the OI-flow confirmation as their size input —
@@ -544,6 +608,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       if (z.mode === 'fade') {
         const hm = +(0.7 + 0.6 * hs).toFixed(2);              // 0.7× (weak wall) … 1.3× (strong hold)
         sizeFactor = +(sizeFactor * hm).toFixed(2);
+        breakdown.hold = hm;
         rationale = `${rationale} · hold ${Math.round(hs * 100)}%${hs < 0.4 ? ' ⚠ weak wall (blow-through risk)' : ''}`;
       } else if (z.mode === 'break') {
         rationale = `${rationale} · hold ${Math.round(hs * 100)}%${hs >= 0.7 ? ' ⚠ strong wall (break may stall)' : ''}`;
@@ -554,6 +619,7 @@ export function buildOIZones(inst, price, cfg = {}) {
     // reviewed per conviction bucket later.
     if (conviction != null && z.mode !== 'maxpain') {
       sizeFactor = +(sizeFactor * convMult).toFixed(2);
+      breakdown.conviction = convMult;
       rationale = `${rationale} · GEX ${conviction}× median${convMult !== 1 ? ` → size ${convMult > 1 ? 'up' : 'down'}` : ''}`;
     }
     // Local-regime gate: a FADE wants its wall in a PIN (long-gamma) band; a BREAK wants a
@@ -564,6 +630,7 @@ export function buildOIZones(inst, price, cfg = {}) {
       const wants = z.mode === 'fade' ? 'pin' : 'breakout';
       if (rg && rg !== wants) {
         sizeFactor = +(sizeFactor * localRegimeTrim).toFixed(2);
+        breakdown.localRegime = localRegimeTrim;
         rationale = `${rationale} · ⚠ wall in ${rg === 'breakout' ? 'short-gamma zone (may break, not hold)' : 'long-gamma zone (break may be dampened)'} → size down`;
       } else if (rg) {
         rationale = `${rationale} · local ${rg} confirmed`;
@@ -576,13 +643,16 @@ export function buildOIZones(inst, price, cfg = {}) {
     // what the zone actually ends up at rather than any one component. Without
     // this, max_lot silently became the real sizing model on any zone whose
     // favourable reads compounded past it (see the cfg-param note above).
+    breakdown.preCap = sizeFactor;
     if (maxSizeFactor > 0 && sizeFactor > maxSizeFactor) {
       rationale = `${rationale} · sizeFactor capped ${sizeFactor}× → ${maxSizeFactor}×`;
       sizeFactor = maxSizeFactor;
+      breakdown.capped = true;
     }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null,
-      hold: z.hold?.score ?? null, holdParts: z.hold?.parts ?? null, conviction, rationale, regime });
+      hold: z.hold?.score ?? null, holdParts: z.hold?.parts ?? null, conviction, rationale, regime,
+      sizeBreakdown: breakdown });
   };
 
   // ── Mode A — PIN: fade strong walls toward max pain ─────────────────────────
@@ -681,23 +751,27 @@ export function buildOIZones(inst, price, cfg = {}) {
       const conf = oiPriceConfirmation(wallOIFlow(strike, kind), dir);
       return conf ? { note: ` · ${conf.read} (${conf.trust})`, trim: conf.trust === 'weak' ? 0.85 : 1 } : { note: '', trim: 1 };
     };
-    for (const w of calls) {
+    for (const w of breakCalls) {
       const bn = breakNote(w.strike, 'call', +1);
+      // TP-target search stays on the plain (non-gamma-weighted) `calls` — it is
+      // asking "what structure sits ahead", not "which wall are we breaking".
       let tp1 = calls.filter(c => c.strike > w.strike).sort((a, b) => a.strike - b.strike)[0]?.strike ?? null, tp2 = null, tpNote = '';
       if (levelLadderTP) { const L = ladderTP(w.strike + brk, +1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
+      const gexNote = (() => { const s = gexShareAtStrike(w.strike, inst.gexProfile); return s == null ? '' : ` · local gamma ${s < 0.5 ? 'short (favours the break)' : s > 0.5 ? 'long (works against it)' : 'neutral'}`; })();
       add({ mode: 'break', side: 'buy', level: w.strike, entry: w.strike + brk, sl: w.strike - buf,
         tp1, tp2, sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike + brk, w.strike),
         hold: _hold(w, 'call'),
-        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}` });
+        rationale: `${regime} · call wall ${w.strike} ${w.tier} → follow the break UP (short-gamma squeeze) past ${+(w.strike + brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}${gexNote}` });
     }
-    for (const w of puts) {
+    for (const w of breakPuts) {
       const bn = breakNote(w.strike, 'put', -1);
       let tp1 = puts.filter(p => p.strike < w.strike).sort((a, b) => b.strike - a.strike)[0]?.strike ?? null, tp2 = null, tpNote = '';
       if (levelLadderTP) { const L = ladderTP(w.strike - brk, -1, w.strike); tp1 = L?.tp1 ?? null; tp2 = L?.tp2 ?? null; tpNote = ladderNote(L); }
+      const gexNote = (() => { const s = gexShareAtStrike(w.strike, inst.gexProfile); return s == null ? '' : ` · local gamma ${s < 0.5 ? 'short (favours the break)' : s > 0.5 ? 'long (works against it)' : 'neutral'}`; })();
       add({ mode: 'break', side: 'sell', level: w.strike, entry: w.strike - brk, sl: w.strike + buf,
         tp1, tp2, sizeFactor: +(sizeFactor(w) * bn.trim).toFixed(2), blocker: nearestBlocker(w.strike - brk, w.strike),
         hold: _hold(w, 'put'),
-        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}` });
+        rationale: `${regime} · put wall ${w.strike} ${w.tier} → follow the break DOWN (short-gamma squeeze) past ${+(w.strike - brk).toFixed(6)}${tpNote}${persNote(w)}${bn.note}${gexNote}` });
     }
   }
 
@@ -848,4 +922,74 @@ export function buildOIZones(inst, price, cfg = {}) {
   }
 
   return out.sort((a, b) => Math.abs(a.entry - price) - Math.abs(b.entry - price));
+}
+
+
+// ── sizeBreakdown outcome tracking (2026-09-19) ─────────────────────────────────
+// The generalised sibling of wallHoldScore's own forward-test calibration
+// (oi_hold_calibration, server.js), extended from hold's four INPUT components to
+// the rest of add()'s multiplier chain (js/oiZones.js's sizeBreakdown: vanna,
+// blocker, reach, hold's OVERALL output, conviction, localRegime, the aggregate
+// cap). Pure — server.js does the KV read of oi_bot_trade_log and the write of the
+// report; this just turns already-joined {features:{sizeBreakdown}, profit} rows
+// into bucketed win-rate stats. Kept here, not inline in server.js, for the same
+// reason wallHoldScore is a pure export: a computation this consequential (it is
+// what a person reviewing "are the multipliers right" will actually read) needs to
+// be independently, deterministically testable — see js/oiZones.test.mjs.
+//
+// DIAGNOSTIC ONLY. Unlike oi_hold_calibration, nothing reads this output back into
+// buildOIZones — it was asked for explicitly as a one-week READ a person reviews by
+// hand, not an auto-apply. This function has no opinion on that; it just reports.
+//
+// Two split methods, chosen per component by how that component actually
+// distributes, not one method reused mechanically everywhere:
+//   MEDIAN  (continuous-ish: hold, conviction) — high vs low half, mirroring
+//           oi_hold_calibration's own method exactly.
+//   GATED   (vanna, blocker, reach, localRegime — exactly 1/off on most rows,
+//           moving only when a specific condition fires) — FIRED (!=1) vs
+//           NOT-FIRED (==1). A median split on a field that is 1 on 80%+ of rows
+//           just splits "1 vs 1" and reports nothing.
+//   BOOLEAN (capped) — its own two buckets directly.
+// Every bucket below `minBucket` rows is reported (n, winRate where computable) but
+// its `separation` is null — small-sample noise reported as a real read is worse
+// than an honest "too few rows yet", which is the whole point of a time-gated check.
+export const OI_SIZE_AUDIT_CONTINUOUS = ['hold', 'conviction'];
+export const OI_SIZE_AUDIT_GATED = ['vanna', 'blocker', 'reach', 'localRegime'];
+
+export function oiSizeCalibrationStats(rows, { minBucket = 10 } = {}) {
+  const wr = a => a.length ? +(a.filter(r => r.profit > 0).length / a.length).toFixed(2) : null;
+  const components = {};
+
+  for (const k of OI_SIZE_AUDIT_CONTINUOUS) {
+    const have = rows.filter(r => Number.isFinite(r?.features?.sizeBreakdown?.[k]) && Number.isFinite(r?.profit));
+    if (have.length < minBucket * 2) { components[k] = { split: 'median', n: have.length, note: 'too few rows yet' }; continue; }
+    const vals = have.map(r => r.features.sizeBreakdown[k]).sort((a, b) => a - b);
+    const med = vals[Math.floor(vals.length / 2)];
+    const hi = have.filter(r => r.features.sizeBreakdown[k] >= med), lo = have.filter(r => r.features.sizeBreakdown[k] < med);
+    components[k] = { split: 'median', n: have.length, median: +med.toFixed(2),
+      hi: { n: hi.length, winRate: wr(hi) }, lo: { n: lo.length, winRate: wr(lo) },
+      separation: (hi.length >= minBucket && lo.length >= minBucket) ? +(wr(hi) - wr(lo)).toFixed(2) : null };
+  }
+
+  for (const k of OI_SIZE_AUDIT_GATED) {
+    const have = rows.filter(r => Number.isFinite(r?.features?.sizeBreakdown?.[k]) && Number.isFinite(r?.profit));
+    const fired = have.filter(r => Math.abs(r.features.sizeBreakdown[k] - 1) > 1e-9);
+    const quiet = have.filter(r => Math.abs(r.features.sizeBreakdown[k] - 1) <= 1e-9);
+    components[k] = { split: 'fired-vs-not', n: have.length,
+      fired: { n: fired.length, winRate: wr(fired) }, notFired: { n: quiet.length, winRate: wr(quiet) },
+      separation: (fired.length >= minBucket && quiet.length >= minBucket) ? +(wr(fired) - wr(quiet)).toFixed(2) : null,
+      note: (fired.length < minBucket) ? `only ${fired.length} fired trade(s) so far` : undefined };
+  }
+
+  {
+    const have = rows.filter(r => typeof r?.features?.sizeBreakdown?.capped === 'boolean' && Number.isFinite(r?.profit));
+    const capped = have.filter(r => r.features.sizeBreakdown.capped === true);
+    const uncapped = have.filter(r => r.features.sizeBreakdown.capped === false);
+    components.capped = { split: 'boolean', n: have.length,
+      capped: { n: capped.length, winRate: wr(capped) }, uncapped: { n: uncapped.length, winRate: wr(uncapped) },
+      capRate: have.length ? +(capped.length / have.length).toFixed(2) : null,
+      separation: (capped.length >= minBucket && uncapped.length >= minBucket) ? +(wr(capped) - wr(uncapped)).toFixed(2) : null };
+  }
+
+  return components;
 }

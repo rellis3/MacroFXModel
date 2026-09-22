@@ -48,6 +48,19 @@ export const CHAIN_NODES = {
   hy:     { label: 'Credit spreads (HY)',             unit: 'bp',  floor: 15,  dp: 0, what: 'High-yield OAS: the extra yield junk borrowers pay over Treasuries. Widening = lenders want more compensation = stress.' },
   nq:     { label: 'Growth stocks (Nasdaq)',          unit: 'pct', floor: 2,   dp: 1, what: 'NAS100: the long-duration equity. Its earnings sit far in the future, so a higher real yield discounts them hardest. Tested here 2026-09-17: a Nasdaq DOWN-week widens the next session (~+0.2 ATR); the yield move itself predicts nothing.' },
   spx:    { label: 'Broad stocks (S&P 500)',          unit: 'pct', floor: 2,   dp: 1, what: 'SPX500: the broad, blend-not-growth benchmark. Less duration exposure than the Nasdaq, so it answers to the real yield more slowly and less — which is exactly why it can sit quiet (the "milk in the grocery store" read) while the chain upstream of it is genuinely moving. A quiet SPX does not mean a quiet market; check nq, dxy and gold before concluding nothing is happening. Not yet tested for forward predictability here (nq has been; see above) — a natural next pre-registration, not yet run.' },
+  funding: { label: 'Funding (SOFR − floor)',       unit: 'bp',  floor: 5,   dp: 0, what: 'Overnight repo (SOFR) against the rate the Fed pays on reserves — the floor. Cash is plentiful when repo trades a few points under the floor; when it rises through it, someone is paying up for overnight money. The one plumbing number in the chain: funding stress bids the dollar and sells risk, in the textbook. Described, not tested (P1 registered 2026-09-20).' },
+  // The refiner's margin: fuel prices minus crude, per barrel. Tested 2026-09-21
+  // (MD files/CRACK_SPREAD.md): adds to inflation pricing beyond crude (C2).
+  crack:  { label: 'Crack spread (3-2-1)',            unit: 'usd', floor: 5,   dp: 0, what: 'What a refiner earns turning three barrels of crude into two of gasoline and one of diesel: ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3, in dollars a barrel. Normal is $15-25; above $35 is the top tenth of its history. Crude and fuel are two markets: when crude falls but the crack widens, products are tight and the pump price does not follow crude down -- and tested here, the bond market’s inflation pricing does not take the relief either (partial correlation 0.19 after crude; disagreement windows +15bp of breakevens vs agreement).' },
+  // The non-US yield legs: each gap is the foreign 10-year minus the Treasury
+  // 10-year, in bp, so a rising gap means the foreign market is repricing faster.
+  // Tested 2026-09-20 (MD files/NONUS_YIELDS.md): same-window textbook links, no
+  // range or direction claim. The gilt link is the weakest on the board.
+  giltgap: { label: 'Gilt − UST 10Y gap',           unit: 'bp',  floor: 10,  dp: 0, what: 'The 10-year gilt yield (Bank of England) minus the 10-year Treasury, in bp. Up = UK yields rising faster than US yields. The textbook says that pulls money into sterling; the record here says the pound follows it only 57% of 20-day windows [47-67] -- a coin flip -- and the famous exceptions (the September 2022 mini-budget: gap +45bp in a day, pound -1.3%) are the days the textbook breaks.' },
+  bundgap: { label: 'Bund − UST 10Y gap',           unit: 'bp',  floor: 10,  dp: 0, what: 'The 10-year Bund yield (Bundesbank) minus the 10-year Treasury, in bp. Up = German yields rising faster: the ECB repricing, or a Treasury rally the euro area did not join. Holds with EUR/USD in 74% of 20-day windows [64-83], and on the euro’s best and worst days the Bund leg was the one moving (x1.8 and x2.4 the ordinary rate).' },
+  jgbgap:  { label: 'JGB − UST 10Y gap',            unit: 'bp',  floor: 8,   dp: 0, what: 'The 10-year JGB yield (Japan MoF) minus the 10-year Treasury, in bp. Up = Japanese yields catching up: the BoJ letting go, or a Treasury rally. The yen leg of USD/JPY -- the strongest same-day link of the three (correlation -0.26) and the carry-unwind channel; holds with USD/JPY in 70% of 20-day windows [60-79].' },
+  gbpusd:  { label: 'GBP/USD',                       unit: 'pct', floor: 1,   dp: 1, what: 'The pound. On this board it is the far end of the gilt link only; its dollar leg is the same dollar link every pair carries.' },
+  eurusd:  { label: 'EUR/USD',                       unit: 'pct', floor: 1,   dp: 1, what: 'The euro. Here it is the far end of the Bund link; the broad dollar index is mostly euro already, so its dollar leg is not drawn twice.' },
   btc:    { label: 'Bitcoin',                         unit: 'pct', floor: 5,   dp: 1, what: 'Trades most days as a high-beta risk asset and, on the days the dollar story is about credibility, as the last stop on the anti-dollar chain. The loosest link here.' },
 };
 
@@ -174,6 +187,17 @@ export const CHAIN_LINKS = [
     },
   },
   {
+    id: 'dxy-usdjpy',
+    short: 'dollar → USD/JPY',
+    punch: { holds: 'USD/JPY tracking the broad dollar, no yen story of its own.', up: 'Dollar up broadly, yen too strong to follow → check for BoJ/MOF intervention.', down: 'Dollar down broadly, yen still weak → a BoJ story, not a dollar story.' }, from: 'dxy', to: 'usdjpy', sign: +1,
+    textbook: 'A broadly stronger dollar should show up against the yen too',
+    holds: 'USD/JPY is moving with the broad dollar — no yen-specific story is overriding the dollar move.',
+    broken: {
+      up:   'The broad dollar rose but the yen did not weaken with it — too strong a yen for a dollar story. This is the shape a BoJ/MOF intervention leaves (the yen bought back against a dollar that is otherwise firm), not a fear bid (see fear → yen for that leg) and not the dollar strength reaching the yen the way it is reaching everything else in the chain.',
+      down: 'The broad dollar fell but USD/JPY held up or rose — the yen is weak on its own terms (a BoJ-dovishness or carry-demand story), not following the dollar down. A dollar sell-off elsewhere in the chain (gold up, AUD up) alongside a stuck or rising USD/JPY is exactly the "intervention living alongside the dollar story" shape, not a contradiction of it.',
+    },
+  },
+  {
     id: 'oil-usdcad',
     short: 'oil → CAD',
     punch: { holds: 'CAD trading as an oil currency.', up: 'Oil up, CAD not bid → rates or risk outweighing the oil channel.', down: 'Oil down, CAD holding → a rates or risk story carrying it.' }, from: 'oil', to: 'usdcad', sign: -1,
@@ -218,6 +242,72 @@ export const CHAIN_LINKS = [
     },
   },
   {
+    id: 'funding-dxy',
+    short: 'funding → $',
+    punch: { holds: 'Dearer funding and a bid dollar — the textbook plumbing move.', up: 'Repo up through the floor, dollar not bid — stress is local to funding, not a dollar shortage.', down: 'Repo easing, dollar still bid — a rates or haven story, not funding.' },
+    textbook: 'Funding stress bids the dollar', from: 'funding', to: 'dxy', sign: +1,
+    holds: 'Overnight money is dearer against the floor and the dollar is being bought — the scarce-dollar mechanism working as written.',
+    broken: {
+      up:   'SOFR rose through the floor but the dollar did not follow. Funding stress that stays in the repo market is a plumbing story — quarter-end, bill supply, dealer balance sheets — not a global dollar shortage.',
+      down: 'Repo eased but the dollar strengthened anyway. The dollar bid is coming from rates or havens, not from a scramble for funding.',
+    },
+  },
+  {
+    id: 'funding-vix',
+    short: 'funding → fear',
+    punch: { holds: 'Funding stress showing up in the fear gauge.', up: 'Repo stress without fear — contained in the plumbing so far.', down: 'Fear rising with repo calm — this is not a funding event.' },
+    textbook: 'Funding stress spills into risk', from: 'funding', to: 'vix', sign: +1,
+    holds: 'Dearer overnight money and rising fear together — the 2019/2020 shape, where the plumbing leads the equity market.',
+    broken: {
+      up:   'Repo tightened but fear did not rise. The stress is technical (quarter-end, settlement) and equities are ignoring it — usually rightly.',
+      down: 'Fear rose but funding is calm. Whatever the fear is about, it is not a shortage of money.',
+    },
+  },
+  {
+    id: 'crack-bei',
+    short: 'crack → inflation pricing',
+    punch: { holds: 'Fuel tighter than crude and inflation pricing following -- the pump-price channel.', up: 'Crack widening but inflation pricing flat -- the bond market calls the fuel squeeze temporary.', down: 'Crack narrowing but inflation pricing up -- inflation is coming from somewhere other than fuel.' },
+    textbook: 'A wider refining margin means dearer fuel at the pump whatever crude does, which lifts inflation expectations', from: 'crack', to: 'bei', sign: +1,
+    holds: 'The crack and inflation pricing moved together. Tested here: the crack carries inflation pricing beyond crude (0.19 after crude, 2003-2026), so this link has its own standing, not just crude’s.',
+    broken: {
+      up:   'The crack widened but inflation expectations did not follow. The bond market is treating the fuel squeeze as temporary -- refinery outages, a seasonal blend switch -- or growth doubt is pulling expectations the other way.',
+      down: 'The crack narrowed but inflation expectations rose. Fuel is not the source: wages, tariffs, fiscal, or doubt about the central bank.',
+    },
+  },
+  {
+    id: 'giltgap-gbpusd',
+    short: 'gilt gap → pound',
+    punch: { holds: 'UK yields repricing faster, pound following -- the textbook, a coin flip here.', up: 'Gilts off faster than Treasuries, pound falling -- the bad rise; rare, the days you remember.', down: 'UK yields falling faster, pound bid -- the dollar or risk is doing the work, not the gap.' },
+    textbook: 'UK yields rising faster than US yields pull money into sterling', from: 'giltgap', to: 'gbpusd', sign: +1,
+    holds: 'The gilt-Treasury gap and the pound moved together. Tested here: this happens in 57% of 20-day windows [47-67], so a holding gilt link is the coin landing heads, not a mechanism confirmed.',
+    broken: {
+      up:   'Gilts sold off faster than Treasuries and the pound fell anyway: yields rising for a bad reason -- fiscal doubt, a buyer strike -- rather than growth. Twelve such days in sixteen years, most of them 2022 and the mini-budget; they are exceptions, not a rule, and they do not predict the next day (50% [43-58]).',
+      down: 'UK yields fell faster than US yields but the pound rose. The pound is trading the dollar or risk appetite, not the rate gap -- which is most days.',
+    },
+  },
+  {
+    id: 'bundgap-eurusd',
+    short: 'bund gap → euro',
+    punch: { holds: 'German yields repricing faster, euro following -- the carry textbook, seven windows in ten.', up: 'Bunds off faster, euro falling -- a risk-off or fragmentation day, not a rate story.', down: 'Bund yields falling faster, euro bid -- the dollar leg is doing the work.' },
+    textbook: 'German yields rising faster than US yields lift the euro', from: 'bundgap', to: 'eurusd', sign: +1,
+    holds: 'The Bund-Treasury gap and the euro moved together. Tested here: 74% of 20-day windows [64-83], and on the euro’s best and worst days the Bund leg was the one moving -- the textbook link that holds most often on this board.',
+    broken: {
+      up:   'Bunds sold off faster than Treasuries but the euro fell. Yields rising with the currency falling is the risk-off or periphery-stress shape (spreads widening inside the euro area), not an ECB repricing the market believes in.',
+      down: 'German yields fell faster than US yields but the euro rose. The dollar leg is doing the work -- a broad dollar sale lifts the euro whatever Bunds do.',
+    },
+  },
+  {
+    id: 'jgbgap-usdjpy',
+    short: 'JGB gap → yen',
+    punch: { holds: 'Japanese yields catching up, yen bid -- the carry-unwind channel, seven windows in ten.', up: 'JGB yields rising faster, USD/JPY up -- the dollar or risk outran the BoJ story.', down: 'JGB yields falling faster, yen bid -- a haven bid, not a rate story.' },
+    textbook: 'Japanese yields rising faster than US yields bring money home to the yen', from: 'jgbgap', to: 'usdjpy', sign: -1,
+    holds: 'The JGB-Treasury gap rose and USD/JPY fell (or the reverse): the yen leg working as written. Tested here: 70% of 20-day windows [60-79], the strongest same-day link of the three gaps (correlation -0.26).',
+    broken: {
+      up:   'JGB yields rose faster than Treasuries but USD/JPY rose too. The dollar or risk appetite outran the BoJ story; the carry trade is not being closed.',
+      down: 'JGB yields fell faster than Treasuries but the yen was bought. A haven bid, not a rate story -- fear, not the BoJ, is moving the yen.',
+    },
+  },
+  {
     id: 'dxy-btc',
     short: 'dollar → bitcoin',
     punch: { holds: 'Bitcoin trading as the anti-dollar asset.', up: 'Dollar and bitcoin both up → bitcoin trading as risk, not anti-dollar.', down: 'Dollar down, bitcoin down → not a credibility story; risk is being sold.' }, from: 'dxy', to: 'btc', sign: -1,
@@ -234,7 +324,7 @@ const _dir = v => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
 const _fmt = (v, unit, dp) => {
   if (v == null || !Number.isFinite(v)) return '—';
   const s = `${v > 0 ? '+' : ''}${v.toFixed(dp)}`;
-  return unit === 'pct' ? `${s}%` : unit === 'bp' ? `${s}bp` : s;
+  return unit === 'pct' ? `${s}%` : unit === 'bp' ? `${s}bp` : unit === 'usd' ? `${v > 0 ? '+' : v < 0 ? '-' : ''}$${Math.abs(v).toFixed(dp)}` : s;
 };
 
 /**

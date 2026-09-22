@@ -7072,7 +7072,12 @@ async function loadMtLife() {
     ]);
     // Plan (KV)
     const planAge = _mtAgo(plan?.generatedAt);
+    const pol = plan?.policy || null;
+    const polStr = pol
+      ? `${pol.skip_n_touches != null ? `skip ${pol.skip_n_touches}-touch` : 'all touches'} · ${pol.skip_swing_regime ? `skip swing=${pol.skip_swing_regime}` : 'regime not gated'} · per-pair spread budget`
+      : '— (plan predates the policy stamp)';
     const planBox = _mtBox('Plan · motif_bot_plan in KV', _mtDot(planAge, 70 * 60, 180 * 60), [
+      ['<span title="Read-only. Set in pylego/motif_policy.py and applied by the tracker on Railway when it builds the plan; the backtest and the bot read the same module, so there is deliberately no page toggle for it.">strategy policy in force</span>', polStr],
       ['generated', plan ? `${hhmm(plan.generatedAt)} UTC · ${_mtFmtAgo(planAge)}` : 'never'],
       ['tradeable entries', plan ? (plan.entries || []).length : '—'],
       ['rejected by best-config (48h)', plan ? (plan.filtered || []).length : '—'],
@@ -7129,14 +7134,20 @@ async function loadMtPairs() {
       const st = forming.get(p);
       const px = q ? (q.bid + q.ask) / 2 : st?.current_price ?? null;
       const pxSrc = q ? '' : st ? ' <span style="color:var(--text3)" title="scan price -- OANDA spread feed does not carry this cross">scan</span>' : '';
-      const spreadStr = q ? `${q.spreadPips.toFixed(1)}p` : (u.spread_pips != null ? `~${u.spread_pips}p` : '—');
+      // Spread cell: what the gate USES (live-measured MT5 entry-hours mean
+      // when trusted, else the table estimate) against this pair's own budget.
+      const used = u.live_spread_pips ?? u.spread_pips;
+      const usedTag = u.live_spread_pips != null ? 'live' : (u.spread_pips != null ? 'est' : '');
+      const spreadStr = used != null
+        ? `${used.toFixed(1)}p <span style="color:var(--text3)">${usedTag}</span> / <span title="this pair's spread budget: 20 x (gross avgR - 0.05R), capped 3.0p">${(u.budget_pips ?? 2).toFixed(1)}</span>`
+        : (q ? `${q.spreadPips.toFixed(1)}p now` : '—');
       const r = recent.get(p);
       // distance from LIVE price to the tracked level when both exist
       const dist = (st && px != null) ? Math.abs(px - st.level) / pip : null;
       let verdict, vColor, rank;
       if (r?.verdict === 'tradeable') { verdict = 'TRADEABLE — in plan'; vColor = 'var(--green)'; rank = 0; }
       else if (r?.verdict === 'rejected') { verdict = `REJECTED — ${r.filter_reason || 'best-config'}`; vColor = 'var(--amber,#e0a93b)'; rank = 1; }
-      else if (!u.eligible) { verdict = `EXCLUDED — spread ${u.spread_pips}p > 2.0p (best-config)`; vColor = 'var(--text3)'; rank = 4; }
+      else if (!u.eligible) { verdict = `EXCLUDED — spread ${(u.live_spread_pips ?? u.spread_pips)}p > budget ${(u.budget_pips ?? 2).toFixed(1)}p${u.live_spread_pips != null ? ' (live-measured)' : ' (table estimate)'}`; vColor = 'var(--text3)'; rank = 4; }
       else if (st) { verdict = `WATCHING — ${st.n_touches}-touch ${st.kind}${st.provisional ? ' (provisional)' : ''}, ${dist != null ? dist.toFixed(1) + 'p from level' : ''}; needs a close through it to confirm`; vColor = 'var(--text)'; rank = 2; }
       else { verdict = 'no setup — scanning every hour'; vColor = 'var(--text3)'; rank = 5; }
       const setup = st ? `${st.n_touches}-touch ${st.kind}${st.provisional ? ' ·prov' : ''}` : '—';

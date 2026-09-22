@@ -1,0 +1,221 @@
+{
+ "generated_at": "2026-09-19T16:37:11.086877+00:00",
+ "sl_pips": 20.0,
+ "min_net_r": 0.05,
+ "max_budget_pips": 3.0,
+ "spans": [
+  "2021-09-14..2026-09-18",
+  "2016-01-05..2021-09-21"
+ ],
+ "population": "best-config touch filter (skip_n_touches=3), spread NOT applied",
+ "pairs": {
+  "audcad": {
+   "n": 911,
+   "gross_avg_r": 0.1306,
+   "se_r": 0.0412,
+   "breakeven_pips": 2.61,
+   "budget_pips": 1.61,
+   "table_pips": 1.9
+  },
+  "audchf": {
+   "n": 914,
+   "gross_avg_r": 0.2117,
+   "se_r": 0.0413,
+   "breakeven_pips": 4.23,
+   "budget_pips": 3.0,
+   "table_pips": 1.9
+  },
+  "audjpy": {
+   "n": 895,
+   "gross_avg_r": 0.2486,
+   "se_r": 0.0418,
+   "breakeven_pips": 4.97,
+   "budget_pips": 3.0,
+   "table_pips": 1.5
+  },
+  "audnzd": {
+   "n": 979,
+   "gross_avg_r": 0.1313,
+   "se_r": 0.0398,
+   "breakeven_pips": 2.63,
+   "budget_pips": 1.63,
+   "table_pips": 2.2
+  },
+  "audusd": {
+   "n": 934,
+   "gross_avg_r": 0.2152,
+   "se_r": 0.0409,
+   "breakeven_pips": 4.3,
+   "budget_pips": 3.0,
+   "table_pips": 1.0
+  },
+  "cadjpy": {
+   "n": 840,
+   "gross_avg_r": 0.2827,
+   "se_r": 0.0431,
+   "breakeven_pips": 5.65,
+   "budget_pips": 3.0,
+   "table_pips": 1.7
+  },
+  "chfjpy": {
+   "n": 928,
+   "gross_avg_r": 0.2284,
+   "se_r": 0.041,
+   "breakeven_pips": 4.57,
+   "budget_pips": 3.0,
+   "table_pips": 2.0
+  },
+  "euraud": {
+   "n": 895,
+   "gross_avg_r": 0.148,
+   "se_r": 0.0416,
+   "breakeven_pips": 2.96,
+   "budget_pips": 1.96,
+   "table_pips": 1.7
+  },
+  "eurcad": {
+   "n": 820,
+   "gross_avg_r": 0.0915,
+   "se_r": 0.0433,
+   "breakeven_pips": 1.83,
+   "budget_pips": 0.83,
+   "table_pips": 2.0
+  },
+  "eurchf": {
+   "n": 871,
+   "gross_avg_r": 0.0924,
+   "se_r": 0.042,
+   "breakeven_pips": 1.85,
+   "budget_pips": 0.85,
+   "table_pips": 1.4
+  },
+  "eurgbp": {
+   "n": 822,
+   "gross_avg_r": 0.112,
+   "se_r": 0.0433,
+   "breakeven_pips": 2.24,
+   "budget_pips": 1.24,
+   "table_pips": 1.1
+  },
+  "eurjpy": {
+   "n": 851,
+   "gross_avg_r": 0.2838,
+   "se_r": 0.0428,
+   "breakeven_pips": 5.68,
+   "budget_pips": 3.0,
+   "table_pips": 1.2
+  },
+  "eurnzd": {
+   "n": 936,
+   "gross_avg_r": 0.1485,
+   "se_r": 0.0407,
+   "breakeven_pips": 2.97,
+   "budget_pips": 1.97,
+   "table_pips": 2.9
+  },
+  "eurusd": {
+   "n": 864,
+   "gross_avg_r": 0.1661,
+   "se_r": 0.0424,
+   "breakeven_pips": 3.32,
+   "budget_pips": 2.32,
+   "table_pips": 0.8
+  },
+  "gbpaud": {
+   "n": 931,
+   "gross_avg_r": 0.1386,
+   "se_r": 0.0408,
+   "breakeven_pips": 2.77,
+   "budget_pips": 1.77,
+   "table_pips": 2.5
+  },
+  "gbpcad": {
+   "n": 812,
+   "gross_avg_r": 0.1207,
+   "se_r": 0.0436,
+   "breakeven_pips": 2.41,
+   "budget_pips": 1.41,
+   "table_pips": 2.9
+  },
+  "gbpchf": {
+   "n": 867,
+   "gross_avg_r": 0.1275,
+   "se_r": 0.0422,
+   "breakeven_pips": 2.55,
+   "budget_pips": 1.55,
+   "table_pips": 2.5
+  },
+  "gbpjpy": {
+   "n": 879,
+   "gross_avg_r": 0.1007,
+   "se_r": 0.0419,
+   "breakeven_pips": 2.01,
+   "budget_pips": 1.01,
+   "table_pips": 1.6
+  },
+  "gbpnzd": {
+   "n": 902,
+   "gross_avg_r": 0.0532,
+   "se_r": 0.0411,
+   "breakeven_pips": 1.06,
+   "budget_pips": 0.06,
+   "table_pips": 4.2
+  },
+  "gbpusd": {
+   "n": 885,
+   "gross_avg_r": 0.1215,
+   "se_r": 0.0418,
+   "breakeven_pips": 2.43,
+   "budget_pips": 1.43,
+   "table_pips": 1.0
+  },
+  "gold": {
+   "n": 812,
+   "gross_avg_r": 0.1085,
+   "se_r": 0.0412,
+   "breakeven_pips": 2.17,
+   "budget_pips": 1.17,
+   "table_pips": null
+  },
+  "nzdjpy": {
+   "n": 897,
+   "gross_avg_r": 0.2012,
+   "se_r": 0.0417,
+   "breakeven_pips": 4.02,
+   "budget_pips": 3.0,
+   "table_pips": 1.9
+  },
+  "nzdusd": {
+   "n": 944,
+   "gross_avg_r": 0.197,
+   "se_r": 0.0406,
+   "breakeven_pips": 3.94,
+   "budget_pips": 2.94,
+   "table_pips": 1.3
+  },
+  "usdcad": {
+   "n": 871,
+   "gross_avg_r": 0.1079,
+   "se_r": 0.0421,
+   "breakeven_pips": 2.16,
+   "budget_pips": 1.16,
+   "table_pips": 1.2
+  },
+  "usdchf": {
+   "n": 842,
+   "gross_avg_r": 0.2114,
+   "se_r": 0.0431,
+   "breakeven_pips": 4.23,
+   "budget_pips": 3.0,
+   "table_pips": 1.2
+  },
+  "usdjpy": {
+   "n": 905,
+   "gross_avg_r": 0.1934,
+   "se_r": 0.0415,
+   "breakeven_pips": 3.87,
+   "budget_pips": 2.87,
+   "table_pips": 0.9
+  }
+ }
+}

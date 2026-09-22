@@ -108,6 +108,22 @@
 
   <div class="kpis" id="kpis"></div>
 
+  <div class="card" id="weekCard">
+    <h2>This week's prints — what the book says before each one</h2>
+    <p class="note">Every high-impact release on the calendar for the week, with the size that release has produced on
+      each pair that answers to it (a multiple of an ordinary half-hour at the same clock). Call it ▲ higher or ▼ lower than
+      consensus on <a href="today.html">Today</a> before it lands; thirty minutes after, the card below says what happened.</p>
+    <div id="week">Loading the calendar…</div>
+  </div>
+
+  <div class="card" id="liveCard">
+    <h2>The live record — the book closing its own loop</h2>
+    <p class="note">Each high-impact print, thirty minutes after: the actual against consensus, what each pair did against
+      its ordinary half-hour and against the book's figure, and your call if you made one. This is the only part of the
+      book that grows by itself.</p>
+    <div id="live">Loading…</div>
+  </div>
+
   <div class="card">
     <h2>Which releases the market actually reacts to</h2>
     <p class="note">The 30-minute window around the release, divided by the same clock on ordinary days —
@@ -148,6 +164,39 @@
 </div>
 <div class="tip" id="tip"></div>
 
+<script type="module">
+  // The week ahead and the live record, from the same bricks the desk uses.
+  import { eventImpact } from './js/eventImpactMap.js';
+  import { EVENT_FAMILY_RE } from './js/deskWatch.js';
+  import { formatScorecard, summariseCalls, COUNTRY_INSTRUMENTS } from './js/releaseScorecard.js';
+  const esc = s => String(s ?? '').replace(/</g, '&lt;');
+  const fam = ev => EVENT_FAMILY_RE.find(([, re]) => re.test(ev ?? ''))?.[0] ?? null;
+  const disp = n => n.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2');
+  const when = ms => new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  async function week() {
+    const el = document.getElementById('week');
+    try {
+      const evs = await (await fetch('/api/events')).json(); const now = Date.now();
+      const rows = (evs ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.ms > now - 864e5).sort((a, b) => a.ms - b.ms);
+      if (!rows.length) { el.innerHTML = '<p class="note">Nothing high-impact left on the feed this week. The calendar for the coming week publishes on Sunday.</p>'; return; }
+      el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">when (UK)</th><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">release</th><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">expected</th><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">what the book says it does</th></tr>` +
+        rows.map(e => { const f = fam(e.event); const imp = f ? eventImpact(e.country, f) : null; const inst = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 4).map(([k, v]) => `<b>${disp(k)}</b> ${v.spike}× <span style="color:var(--text3)">(n=${v.n})</span>`).join(' · ') : null;
+          return `<tr style="border-top:1px solid var(--border)"><td style="padding:6px;white-space:nowrap;color:var(--text2)">${when(e.ms)}${e.ms < now ? ' <span style="color:var(--text3)">(out)</span>' : ''}</td><td style="padding:6px"><b>${esc(e.country)}</b> ${esc(e.event)}</td><td style="padding:6px;color:var(--text2)">${esc(e.estimate ?? '—')}${e.prev != null ? ` <span style="color:var(--text3)">was ${esc(e.prev)}</span>` : ''}</td><td style="padding:6px;color:var(--text2)">${inst ? `${inst} a normal half-hour` : imp ? `${imp.medSpike}× the median across instruments` : f ? 'in the book, but no pair clears 1.5× on it' : '<span style="color:var(--text3)">not a family the book measures</span>'}</td></tr>`; }).join('') + '</table>';
+    } catch (e) { el.textContent = `calendar unavailable: ${e.message}`; }
+  }
+  async function live() {
+    const el = document.getElementById('live');
+    try {
+      const j = await (await fetch('/api/release-calls?days=60')).json();
+      const cards = (j.scorecards ?? []).slice().reverse();
+      const s = j.summary;
+      const tally = s?.n ? `<p class="note">Your calls, 60 days: <b>${s.hits} of ${s.n}</b> right (${Math.round(s.hitRate * 100)}%, ${Math.round(s.lo * 100)}–${Math.round(s.hi * 100)}%)${s.pushes ? `, ${s.pushes} in line` : ''}${s.model?.n ? ` · the Fed models: <b>${s.model.hits} of ${s.model.n}</b> on the same prints` : ''}. Consensus is the bar — 50% is guessing.</p>` : '<p class="note">No calls yet. The buttons are on Today\'s calendar rows.</p>';
+      el.innerHTML = tally + (cards.length ? cards.map(c => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:12.5px;line-height:1.55;color:var(--text2)"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-weight:700">${when(c.ms)}</div>${formatScorecard(c, { html: true }).split('\n').map(l => `<div>${l}</div>`).join('')}</div>`).join('') : '<p class="note">The first card lands thirty minutes after the next high-impact print.</p>');
+    } catch (e) { el.textContent = `record unavailable: ${e.message}`; }
+  }
+  week(); live();
+</script>
 <script>
 const $ = id => document.getElementById(id);
 const tip = $('tip');

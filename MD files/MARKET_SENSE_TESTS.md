@@ -290,6 +290,47 @@ oil file, confirmed by directory listing, and no oil price series exists
 anywhere else in this repo, confirmed by search). The harness is written in
 `analysis/market_sense_studies.mjs` (S17), committed and reviewed, unexecuted.
 
+**S18 — AI-capex names vs the 30Y: is MSFT's yield-beta measurably smaller?
+(pre-registered 2026-09-20, before running).** Claim (Crown, 2026-09-20): a
+~25bp rise in the 30-year hit AMD (-9%), Marvell (-10%) and Nvidia (-3.9%) on
+the day he cites, while Microsoft stayed insulated — credited to Azure
+(~$100bn/yr) plus its AI business (~$37bn/yr) self-funding the AI capex build
+rather than needing debt. Two parts: (a) a rationale (self-funded capex ⇒
+lower rate sensitivity), not directly testable from price alone; (b) a
+testable descriptive claim — does MSFT's realized daily sensitivity to 30Y
+yield changes sit measurably closer to zero than AMD/MRVL/NVDA's, across many
+days, not just the one day cited.
+
+**Definition, fixed now.** Daily log return (from Yahoo Finance `adjclose` —
+mandatory, not raw `close`, since NVDA split 10:1 in 2024) regressed on the
+same-day change in `DGS30` (FRED, this file's own keyless `fred()`, already
+used by S9/S10). Window: 2023-01-01 → present, the AI-capex-cycle period the
+clip is describing, stated as a judgment call — not the full multi-year
+history, which would dilute a recent-regime claim with years the mechanism
+did not apply to. Universe: AMD, MRVL, NVDA, MSFT — exactly the four names
+Crown named, no others added. ISO-week block bootstrap CI on the OLS slope
+("yield beta"), reported per +10bp move in the 30Y to match Crown's own 25bp
+framing.
+
+**Pass bar, fixed in advance.** MSFT's beta magnitude smaller than ALL THREE
+of AMD/MRVL/NVDA's, AND MSFT's CI includes zero, AND at least two of the
+other three have a CI that excludes zero (a real negative beta, not noise).
+Anything less is null — indistinguishable from "all four AI names answer to
+real yields together," which `real-nq` already covers at the index level.
+Not claimed: the CAUSAL mechanism (self-funded vs. debt-financed capex) is
+not testable from a return regression; only the descriptive dispersion is,
+and that is all this tests.
+
+**Status: NOT YET RUN.** Needs Yahoo Finance (`fetchYahooDaily`,
+`js/nasdaqDataSources.js` — already used elsewhere in this repo for NQ/gold
+futures, ticker-agnostic, no new plumbing needed) plus FRED `DGS30`. Both are
+typically network-blocked in this sandbox (`js/tradeLabDataSource.js`'s own
+header documents this). The harness also inherits `market_sense_studies.mjs`'s
+own unconditional top-level OANDA fetch (every study in this file needs
+`OANDA_KEY` just to start the script, S18 included, even though S18's own
+data comes from Yahoo/FRED) — so it is blocked twice over in this sandbox,
+not once. The harness is written (S18), committed and reviewed, unexecuted.
+
 ## What a pass changes on the page
 
 A validated range effect earns a ✓ chip on the instrument it was measured on,
@@ -372,6 +413,24 @@ range vs matched non-release control:
 | GDP | EUR/USD top-\|z\| **+0.22** [+0.06, +0.37]; USD/CAD all **+0.16** | |
 | PMI | USD/JPY **+0.22** [+0.10, +0.36] top-\|z\|; others null | |
 | retail sales | nothing clears +0.10 with a clean CI | null |
+
+**S7 re-run 2026-09-19, after the surprise sigma moved from a standard
+deviation to a median absolute deviation** (the sd over eleven years let 2020
+own the scale: an 11K claims miss read +0.1σ — see SURPRISE_ACTUALS.md). Same
+design, 7,938 pair-releases; the tercile membership shifted, so the cells did.
+Verdict unchanged — **surprise size widens the release session, by family, range
+only** — with these cells now the ones that clear +0.10 with a clean interval:
+
+| family | cells (diff in ATR, 95% CI) | change vs the first run |
+|---|---|---|
+| rate decision | EUR/USD **+0.38** all [+0.24, +0.54], **+0.51** top-\|z\| [+0.29, +0.77]; USD/JPY +0.24 all; GBP/USD next session **+0.38**; AUD/USD all +0.13 | same story, AUD/USD joins |
+| employment | EUR/USD top-\|z\| **+0.17** [+0.07, +0.27], next session +0.11; USD/JPY next session **+0.16**; AUD/USD all +0.12, next session top +0.14; USD/CAD all +0.12 | AUD/USD's day-0 "big surprise" cell (+0.19) no longer clears (+0.11, CI through zero); "top tercile ≈ 2× all" holds on EUR/USD (+0.17 vs +0.07), not on AUD/USD |
+| CPI | EUR/USD next session **+0.16** [+0.07, +0.25]; GBP/USD all +0.17; AUD/USD top +0.14 and next +0.15; USD/CAD next +0.14 | EUR/USD next-session effect smaller (+0.27 → +0.16); USD/JPY next session drops out (+0.14, CI through zero) |
+| GDP | USD/CAD top-\|z\| **+0.26** [+0.10, +0.40]; EUR/USD all +0.14 | EUR/USD "big surprise" cell (+0.22) becomes +0.11 null; USD/CAD's strengthens |
+| PMI | USD/JPY top **+0.21**, all +0.15 | same |
+| retail sales | GBP/USD all +0.11, AUD/USD all +0.12 — both at the bar's edge | was null; treat as marginal |
+
+The desk-watch and card effect tables were updated to these numbers.
 
 ### S8 — Rotation underneath a quiet index. **NULL.**
 140 top-decile extremes of the 20-day NAS100 − US2000 relative return (≥ 6.1pp).

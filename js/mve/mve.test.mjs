@@ -19,8 +19,8 @@ import { fitLoadings, factorImpliedReturn, coherenceCheck } from './factorModel.
 import { confidenceEngine, agreementScore, scaleAgreementByIndependence, baseRateReality } from './confidence.js';
 import { runMVE, valuationText } from './index.js';
 import { augmentSignalScore, mveFactorScore } from './signalAdapter.js';
-import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL, fetchPriceOnly } from './liveAdapter.js';
-import { validateInstrument, oosMispricingSeries, poolConsistency, validateMechanicalAnchor, oosMispricingSeriesKalman } from './validateInstrument.js';
+import { buildContext, ffAlign, runLiveMVE, normalizeSym, FACTOR_SPEC, OANDA_SYMBOL, fetchPriceOnly, PUB_LAG_DAYS, shiftObsForward } from './liveAdapter.js';
+import { validateInstrument, oosMispricingSeries, poolConsistency, validateMechanicalAnchor, oosMispricingSeriesKalman, validateInstrumentWithRegimeSplit, costOverlay } from './validateInstrument.js';
 
 let failures = 0, tests = 0;
 const ok = (name, cond, extra = '') => { tests++; console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -269,6 +269,9 @@ console.log('\n── live adapter (pure builder, no network) ──');
   const ctx = buildContext('EUR/USD', bars, fred);
   ok('buildContext produces price + 3 factors', ctx.price.length > 200 && ctx.factors.length === 3, `rows=${ctx.price.length}`);
   ok('factor names as specified', ctx.factors.map(f => f.name).join(',') === 'rate_diff_10y,rate_diff_2y,breakeven');
+  ok('buildContext exposes dates aligned 1:1 with price/factors (needed for any date-based split)',
+    Array.isArray(ctx.dates) && ctx.dates.length === ctx.price.length && ctx.dates[ctx.dates.length - 1] === ctx.asOf,
+    `dates=${ctx.dates?.length} price=${ctx.price.length}`);
   ok('marketPrice = last close', near(ctx.marketPrice, bars[bars.length - 1].close, 1e-9));
   const v = runMVE(ctx);
   ok('end-to-end live-shaped ctx values ok', v.ok === true && Number.isFinite(v.fairValue) && v.sigma > 0);
@@ -280,6 +283,44 @@ console.log('\n── live adapter (pure builder, no network) ──');
   const filled = ffAlign(idx, sparse);
   ok('ffAlign: NaN before first obs', Number.isNaN(filled[0]));
   ok('ffAlign: carries value forward', filled[2] === 2.0 && filled[4] === 3.0, `=${filled.join(',')}`);
+
+  // ── publication lag — the fix for the lookahead MVE_RUN_GUIDE.md's own "Honest
+  // caveat" flagged and RESIDUAL_REVERSION_FX_TEST.md registers as fixed before the
+  // FX branch's first real run ──
+  {
+    const shifted = shiftObsForward(sparse, 45);
+    ok('shiftObsForward moves every date forward by N days', [...shifted.keys()].join(',') === '2023-02-19,2023-03-22', `=${[...shifted.keys()].join(',')}`);
+    ok('shiftObsForward values unchanged, just re-dated', shifted.get('2023-02-19') === 2.0 && shifted.get('2023-03-22') === 3.0);
+    ok('shiftObsForward(obs, 0) is a no-op (returns the same reference)', shiftObsForward(sparse, 0) === sparse);
+
+    // A value nominally dated 2023-01-05 should NOT be visible on 2023-01-05 itself
+    // once lagged 45d — that's the exact lookahead this fixes. Before the fix,
+    // ffAlign(idx, sparse) directly would show 2.0 as of 2023-01-05 (filled[1]).
+    const laggedIdx = ffAlign(idx, shiftObsForward(sparse, 45));
+    ok('with a 45d lag, the Jan-5 value is NOT yet known on Jan-5 (still NaN)', Number.isNaN(laggedIdx[1]), `=${laggedIdx.join(',')}`);
+    ok('…nor by Jan-20 (45d has not elapsed)', Number.isNaN(laggedIdx[2]), `=${laggedIdx.join(',')}`);
+
+    // buildContext: pubLag defaults ON and actually changes the aligned factor vs
+    // pubLag:false — proves the option is really wired through, not just accepted.
+    const us = new Map(), de = new Map();
+    let d2 = new Date(Date.UTC(2023, 0, 2)), uv = 3.8, dv = 2.4;
+    const bars2 = [];
+    for (let i = 0; i < 250; i++) {
+      do { d2 = new Date(d2.getTime() + 86400000); } while (d2.getUTCDay() === 0 || d2.getUTCDay() === 6);
+      const iso = d2.toISOString().slice(0, 10);
+      uv += 0.01; dv -= 0.01;   // steadily diverging, so a date shift is numerically visible
+      us.set(iso, uv); de.set(iso, dv);
+      bars2.push({ date: iso, close: 1.1 - 0.05 * (uv - dv) });
+    }
+    const fred2 = { us10y: us, de10y: de, us2y: us, de_s: de, bei: us };
+    const withLag = buildContext('EUR/USD', bars2, fred2);
+    const noLag = buildContext('EUR/USD', bars2, fred2, { pubLag: false });
+    ok('buildContext records pubLag:true in meta by default', withLag.meta.pubLag === true);
+    ok('buildContext records pubLag:false when disabled', noLag.meta.pubLag === false);
+    ok('pubLag on vs off produce DIFFERENT factor series on a trending input (lag is really applied, not a no-op)',
+      withLag.factors[0].series[100] !== noLag.factors[0].series[100 + (withLag.meta.warmupTrimmed - noLag.meta.warmupTrimmed)],
+      `withLag[100]=${withLag.factors[0].series[100]} noLag[100]=${noLag.factors[0].series[100]}`);
+  }
 
   ok('normalizeSym strips punctuation', normalizeSym('EUR/USD') === 'EURUSD' && normalizeSym('xau usd') === 'XAUUSD');
   ok('gold spec uses real_yield + dxy', FACTOR_SPEC.XAUUSD.fred.join(',') === 'tips,dxy');
@@ -365,6 +406,51 @@ console.log('\n── OOS validation (does mispricing predict returns?) ──')
   ok('verdict is a string with a call', typeof rep.verdict === 'string' && /SURVIVES|WEAK|NULL/.test(rep.verdict));
   ok('deflated Sharpe present', rep.strategy.deflatedSharpe != null);
   ok('report exposes benchmark IC per horizon', Object.values(rep.perHorizon).every(h => h.insufficient || h.icBenchmark != null));
+  ok('bestTrPnls absent by default (no payload bloat)', rep.strategy.bestTrPnls === undefined);
+  const repTrades = validateInstrument({ instrument: 'TEST', price, factors: [{ name: 'f1', series: f1 }, { name: 'f2', series: f2 }] }, { horizons: [1, 5, 10, 20], includeTrades: true });
+  ok('includeTrades:true exposes the best config\'s per-trade pnls, pre-cost',
+    Array.isArray(repTrades.strategy.bestTrPnls) && repTrades.strategy.bestTrPnls.length === repTrades.strategy.trades,
+    `n=${repTrades.strategy.bestTrPnls?.length} trades=${repTrades.strategy.trades}`);
+  ok('includeTrades:true does not change the scored numbers themselves', repTrades.strategy.annualizedSharpe === rep.strategy.annualizedSharpe && repTrades.verdict === rep.verdict);
+
+  // ── costOverlay — pure math, no network ──
+  ok('costOverlay: null on empty/missing trades', costOverlay(null, 0.02) === null && costOverlay([], 0.02) === null);
+  {
+    const co = costOverlay([0.01, 0.02, -0.005, 0.015], 0.02);
+    ok('costOverlay: haircuts every trade by costRtPct/100', co.meanPreCost === +((0.01 + 0.02 - 0.005 + 0.015) / 4).toFixed(5) && co.meanPostCost < co.meanPreCost, JSON.stringify(co));
+    ok('costOverlay: n matches input length, costRtPct echoed', co.n === 4 && co.costRtPct === 0.02);
+  }
+
+  // ── validateInstrumentWithRegimeSplit — a fixture where the reverting behaviour is
+  // CONCENTRATED in one date window and ABSENT outside it, so the split should read
+  // "regime-concentrated" — the exact pooled-null-hides-a-subset-edge case this
+  // function exists to catch (MD files/RESIDUAL_REVERSION_FX_TEST.md §2). ──
+  {
+    const r2 = rng(97);
+    const N2 = 900, g1 = [], g2 = [], price2 = [], dates2 = [];
+    let dev2 = 0, d = new Date(Date.UTC(2020, 0, 2));
+    const REGIME_FROM = '2022-01-01', REGIME_TO = '2022-12-31';
+    for (let i = 0; i < N2; i++) {
+      do { d = new Date(d.getTime() + 86400000); } while (d.getUTCDay() === 0 || d.getUTCDay() === 6);
+      const iso = d.toISOString().slice(0, 10);
+      dates2.push(iso);
+      const a = Math.sin(i / 30), b = Math.cos(i / 22);
+      g1.push(a); g2.push(b);
+      const inRegime = iso >= REGIME_FROM && iso <= REGIME_TO;
+      dev2 = inRegime ? dev2 * 0.85 + 0.6 * gauss(r2) : dev2 + 0.15 * gauss(r2);   // reverts ONLY inside the window; drifts (no reversion) outside
+      price2.push(100 + 5 * a + 3 * b + dev2);
+    }
+    const ctx2 = { instrument: 'REGIME_TEST', price: price2, dates: dates2, factors: [{ name: 'g1', series: g1 }, { name: 'g2', series: g2 }] };
+    const full = validateInstrumentWithRegimeSplit(ctx2, { regime: { from: REGIME_FROM, to: REGIME_TO, label: 'test window' }, regimeHorizons: [20, 60], costRtPct: 0.02 });
+    ok('validateInstrumentWithRegimeSplit runs and returns a base report', full.ok === true && full.base?.ok === true, full.error || '');
+    ok('regime split reports n in both slices', full.regime.nInWindow > 20 && full.regime.nOutOfWindow > 20, `in=${full.regime.nInWindow} out=${full.regime.nOutOfWindow}`);
+    ok('costOverlay attached from the base report\'s bestTrPnls', full.costOverlay == null || full.costOverlay.n === full.base.strategy.trades);
+    ok('reading is a non-empty string naming the comparison', typeof full.regime.reading === 'string' && full.regime.reading.length > 10);
+
+    // Missing/misaligned ctx.dates must degrade gracefully, not throw.
+    const noDates = validateInstrumentWithRegimeSplit({ ...ctx2, dates: undefined });
+    ok('missing ctx.dates degrades gracefully (base still scored, regime reports the gap)', noDates.ok === true && noDates.regime.ok === false && /dates/.test(noDates.regime.error));
+  }
 
   // CASE 2: a random walk with NO relationship to the factors. The factor fair value
   // must NOT beat the trailing-mean benchmark — icEDGE ≈ 0 — even though the RAW

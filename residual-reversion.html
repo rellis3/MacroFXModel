@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<!--
+  residual-reversion.html — Minimal-DOF residual mean-reversion backtest page.
+  Tests the PRICE-ONLY AR(1) residual (price − its own AR(1) one-step forecast),
+  faded at the bare sign, benchmarked against a trailing-mean anchor z-score.
+  This is an INDEPENDENT re-test of the unconditional reversion question — NOT the
+  MVE macro-factor residual (a documented FX NULL, see MD files/RESIDUAL_REVERSION_FX_TEST.md).
+
+  Calls read-only routes on the deployed server (OANDA_KEY lives there):
+    GET /api/residual-reversion/:sym   — one instrument's walk-forward OOS report
+    GET /api/residual-reversion-all    — pooled cross-instrument consistency
+  Design + pre-registered outcomes: MD files/RESIDUAL_REVERSION_MINIMAL_TEST.md.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Residual Mean-Reversion — Minimal-DOF Backtest</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0b0d12; color:#e6e8ec; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:980px; margin:0 auto; padding:24px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .sub { color:#8891a0; font-size:12px; margin-bottom:20px; line-height:1.5; }
+  .panel { background:#12151c; border:1px solid #2a2f3a; border-radius:10px; padding:16px; margin-bottom:16px; }
+  button { background:#1f6feb; color:#fff; border:0; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; margin:4px 6px 0 0; }
+  button.alt { background:#2a2f3a; }
+  select { background:#1a1e26; color:#e6e8ec; border:1px solid #2a2f3a; border-radius:6px; padding:6px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid #1d222c; }
+  th { color:#8891a0; font-weight:600; }
+  .mono { font-family:monospace; }
+  .pos { color:#22c55e; } .neg { color:#ef4444; } .mut { color:#8891a0; } .warn { color:#f59e0b; }
+  .badge { font-size:11px; padding:3px 10px; border-radius:9px; font-weight:700; display:inline-block; }
+  pre { background:#0d1017; border:1px solid #22262f; border-radius:8px; padding:12px; overflow:auto; font-size:11px; color:#a8b0bd; max-height:300px; }
+  .note { font-size:10.5px; color:#5b6270; line-height:1.5; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📉 Residual Mean-Reversion — Minimal-DOF Backtest</h1>
+  <div class="sub">
+    Price-only <b>AR(1) residual</b> (price − its own AR(1) one-step forecast), faded at the bare sign,
+    benchmarked against a <b>trailing-mean anchor</b> built the same way. Only the <b>edge over</b> that
+    spurious baseline (<code>icEdge</code>) is real signal — a trailing anchor "reverts" on a random walk too.
+    Chronological IS/OOS split, costs ON (0.02% RT, assumed), deflated Sharpe across the hold×threshold sweep.
+    <b>Not</b> the MVE macro-factor residual (a documented FX NULL). Read-only; feeds no live signal.
+    See <code>MD files/RESIDUAL_REVERSION_MINIMAL_TEST.md</code>.
+  </div>
+
+  <div class="panel">
+    <label style="font-size:12px;color:#9aa">Instrument</label>
+    <select id="sym">
+      <option>EURUSD</option><option>GBPUSD</option><option>USDJPY</option>
+      <option>AUDUSD</option><option>XAUUSD</option><option>NQ</option>
+    </select>
+    <button id="run">🔬 Run OOS validation</button>
+    <button id="runAll" class="alt">🧪 Validate ALL (cross-instrument)</button>
+  </div>
+
+  <div id="out"></div>
+  <div id="csv"></div>
+  <pre id="json" style="display:none"></pre>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+const fmt = (x, dp=3) => x==null || !Number.isFinite(x) ? '—' : `${x>=0?'+':''}${x.toFixed(dp)}`;
+const col = v => v==null ? 'mut' : (v>0.03?'pos':(v<-0.03?'neg':'mut'));
+const badgeFor = verdict => {
+  const s = /^SURVIVES/.test(verdict), nul = /^NULL/.test(verdict);
+  const c = s ? '#22c55e' : nul ? '#ef4444' : '#f59e0b';
+  const t = s ? 'SURVIVES' : nul ? 'NULL' : 'WEAK';
+  return `<span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${t}</span>`;
+};
+
+function renderReport(rep) {
+  if (!rep.ok) return `<div class="panel">Error: ${rep.error}</div>`;
+  const rows = Object.entries(rep.perHorizon).filter(([,h])=>!h.insufficient).map(([H,h]) =>
+    `<tr><td>${H}b</td><td class="mono">${fmt(h.icPredictive)}</td><td class="mono">${fmt(h.icBenchmark)}</td>
+     <td class="mono ${col(h.icEdge)}">${fmt(h.icEdge)}</td><td class="mono">${fmt(h.hitRate)}</td><td class="mono mut">${h.nActionable??'—'}</td></tr>`).join('');
+  const s = rep.strategy, ou = rep.ou||{}, sb = rep.snapbackBaseRate||{};
+  return `
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong>${rep.instrument} — walk-forward OOS</strong>${badgeFor(rep.verdict)}
+    </div>
+    <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:10px;line-height:1.5">${rep.verdict}</div>
+    <div style="font-size:12px;color:#9aa;margin-bottom:10px">
+      meanPhi <span class="mono">${fmt(rep.meanPhi,4)}</span> · OU half-life <span class="mono">${ou.halfLife??'—'}b</span>
+      · snap-back base rate <span class="mono">${sb.baseRate!=null?(sb.baseRate*100).toFixed(0)+'%':'—'}</span> (${sb.events??0} events)
+      · ${rep.oosPoints} OOS pts · ${rep.dataSource?.usableRows??''} bars
+    </div>
+    <table>
+      <thead><tr><th>Horizon</th><th>IC (raw)</th><th>IC benchmark</th><th>IC edge</th><th>Hit rate</th><th>n actionable</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="margin-top:10px;font-size:12px;color:#cdd3dc">
+      Best fade: <b>${s.bestHold}-bar hold @ z≥${s.bestThreshold}</b> · ${s.trades} OOS trades ·
+      annSharpe ${s.annualizedSharpe} · deflated Sharpe <b class="${s.deflatedSharpe>=0.95?'pos':(s.deflatedSharpe>=0.6?'warn':'neg')}">${fmt(s.deflatedSharpe)}</b>
+      (${s.nConfigsTried} configs tried, costs on)
+    </div>
+    <div class="note">${rep.note}</div>
+  </div>`;
+}
+
+function renderAll(rep) {
+  if (!rep.ok) return `<div class="panel">Error: ${rep.error}</div>`;
+  const c = rep.consistency, cc = c.consistent ? '#22c55e' : '#ef4444';
+  const rows = rep.instruments.map(o => o.ok
+    ? `<tr><td>${o.instrument}</td><td class="mono ${col(o.slowIcEdge)}">${fmt(o.slowIcEdge)}</td>
+       <td class="mono">${o.slowHorizon??'—'}b</td><td class="mono">${fmt(o.slowHitRate)}</td>
+       <td class="mono">${fmt(o.deflatedSharpe)}</td><td style="font-size:10.5px" class="mut">${(o.verdict||'').split(':')[0]}</td></tr>`
+    : `<tr><td>${o.instrument}</td><td colspan="5" class="mut">${o.error}</td></tr>`).join('');
+  return `
+  <div class="panel" style="border-color:${cc}55">
+    <div style="font-weight:700;color:${cc};margin-bottom:8px">Cross-instrument consistency</div>
+    <div style="font-size:12.5px;color:#cdd3dc;margin-bottom:12px;line-height:1.5">${c.read}<br>
+      <span class="mut">mean slow-horizon icEdge ${c.meanSlowIcEdge} · mean hit ${c.meanSlowHitRate} · real-evidence ${c.realEvidence}/${c.instruments} (sign-only ${c.positiveSignOnly})</span></div>
+    <table>
+      <thead><tr><th>Instrument</th><th>Slow icEdge</th><th>Horizon</th><th>Hit</th><th>Defl.Sharpe</th><th>Verdict</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="note">A slow reversion edge can't be proven on one instrument's Sharpe (too few independent 20–60-bar windows).
+    Consistent positive icEdge WITH an above-coin-flip hit rate across partly-independent instruments is the real evidence; sign-only is a coin flip.</div>
+  </div>`;
+}
+
+async function run() {
+  const sym = $('sym').value;
+  $('out').innerHTML = '<div class="panel">⏳ Running walk-forward OOS validation (fetches ~20y D1)…</div>';
+  $('json').style.display = 'none';
+  try {
+    const rep = await (await fetch(`/api/residual-reversion/${sym}`)).json();
+    $('out').innerHTML = renderReport(rep);
+    $('json').style.display = 'block';
+    $('json').textContent = JSON.stringify(rep, (k,v)=>k==='configs'?undefined:v, 2);
+  } catch(e) { $('out').innerHTML = `<div class="panel">Fetch failed: ${e.message}. (Deployed server with OANDA_KEY only.)</div>`; }
+}
+
+async function runAll() {
+  $('out').innerHTML = '<div class="panel">⏳ Validating all instruments (first run fetches ~20y each)…</div>';
+  $('json').style.display = 'none';
+  try {
+    const rep = await (await fetch('/api/residual-reversion-all')).json();
+    $('out').innerHTML = renderAll(rep);
+    $('json').style.display = 'block';
+    $('json').textContent = JSON.stringify(rep, null, 2);
+  } catch(e) { $('out').innerHTML = `<div class="panel">Fetch failed: ${e.message}. (Deployed server only.)</div>`; }
+}
+
+$('run').onclick = run;
+$('runAll').onclick = runAll;
+</script>
+</body>
+</html>

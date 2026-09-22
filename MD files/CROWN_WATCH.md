@@ -1,8 +1,13 @@
 # Crown watch — a running log
 
 Nicholas Crown clips get dropped into this thread as they come, before the
-owner reads or hears the same idea somewhere else. Each one gets the same
-four-question pass, in order, every time:
+owner reads or hears the same idea somewhere else. **The point of this log is
+not to turn every clip into a trading system** (owner, 2026-09-19) — it's to
+mine the clips for durable market-mechanics understanding: how one thing
+moves, how X relates to Y, what's worth showing on the page or triggering an
+alert on. A clip that yields no tradeable entry can still yield a real,
+displayable nugget; those are different questions and both get asked. Each
+clip gets the same pass, in order, every time:
 
 1. **What's the actual claim** — stated as something that could be true or
    false, not as a vibe.
@@ -11,18 +16,69 @@ four-question pass, in order, every time:
    an existing result (S10 already nulled a Crown crowding claim outright).
 3. **Is it a trading claim or a macro-understanding claim.** Trading claims
    go through the pre-registration discipline in `MARKET_SENSE_TESTS.md`
-   (state the reading rule before running). Macro-understanding claims — "how
-   does one market explain another" — are what `js/macroChain.js` (the
-   chain on `today.html`) exists for, and mostly don't need a statistical
-   test to act on, just an honest audit of whether the chain already covers
-   the mechanism described.
-4. **Verdict and action** — built now (cheap, unambiguous), pre-registered
-   for later (needs a real test), or noted as already covered / already
-   nulled, with a pointer to where.
+   (state the reading rule before running) *if and only if* someone wants the
+   entry itself tested. Macro-understanding claims — "how does one market
+   explain another" — are what `js/macroChain.js` (the chain on `today.html`)
+   exists for, and mostly don't need a statistical test to act on, just an
+   honest audit of whether the chain already covers the mechanism described.
+4. **Is there a display/alert nugget, independent of #3's verdict.** Ask this
+   on every clip, even a pure trading claim whose entry tests null: is there a
+   real, already-established-or-establishable *descriptive* fact here — a
+   base rate, a "this reads as X" context line — worth putting on a page or
+   wiring into desk watch as a trigger? Same standard the chain already uses:
+   `~ context`, explains rather than predicts, never dressed up as a signal.
+   A null entry doesn't kill this — e.g. the VWAP entry work (2026-09-19
+   entry) found no tradeable touch/pullback edge anywhere, but its own §7
+   "return to VWAP" book is a real, cross-instrument-replicated base rate
+   that was never asked whether it belonged on a page.
+5. **Verdict and action** — built now (cheap, unambiguous), pre-registered
+   for later (needs a real test), noted as already covered / already nulled
+   with a pointer to where, and/or proposed as a display or desk-watch item
+   per #4 (state it, don't build a new live feature unasked — confirm scope
+   first if it's a real addition, not a one-line chain edit).
 
 Nothing here is a trading signal. The chain is stamped `~ context` on the
 page for a reason: it explains, it does not predict — see `macroChain.js`'s
 own header and the "How we talk about results" section of `CLAUDE.md`.
+
+---
+
+## Open candidates — noted, not run (check here first)
+
+Every entry below ends with its own "noted candidate, not run" line, but until
+now that was the only place it lived — easy to lose track of across a growing
+log. This section is the running index; add a line here whenever an entry logs
+one, and strike it when it gets picked up (built, pre-registered, or
+explicitly declined).
+
+- **S17 (real-spx forward test)** — does `real-spx` forward-predict anything,
+  the same test `real-nq` already ran. Cheap follow-on to an existing harness
+  pattern. Source: 2026-09-18 entry, step 5.
+- **"Who's driving" leadership ranking across `CHAIN_NODES`** — rank nodes by
+  how much of the others' concurrent moves they explain, refreshed with the
+  page. Not started. Source: 2026-09-18 entry, step 5 ("not claimed").
+- **A silver node on the chain** — gold + copper already cover the
+  precious/industrial ends of the metals basket; a third node is reasonable
+  but bigger than a one-line edit. Source: 2026-09-18 (3) entry, step 5.
+- **VWAP persistence-confirmation framing** ("three consecutive 5-min closes
+  below VWAP + a holding retest") — never literally replicated; every VWAP
+  test used a single touch/impulse/σ-band trigger, not a multi-bar acceptance
+  count. Low prior (§14's closest analog is null everywhere). Source:
+  2026-09-19 entry, step 5.
+- **VWAP work on NAS100/SPX500** — none of the VWAP-touch/pullback work has
+  been run on the index CFDs closest to Crown's actual equity-flow rationale,
+  only FX majors + gold. Cheap (engines/harness exist), low prior (every prior
+  VWAP construction nulled). Source: 2026-09-19 entry, step 5.
+- **Round-number pinning on NAS100_USD/SPX500_USD** — extends the existing
+  FX+gold round-number-pinning null (nulled on gold + EUR/USD, GBP/USD,
+  USD/JPY) to the two index CFDs it's never been run on. Cheap (harness +
+  OANDA data already exist), low prior (four prior nulls). Source: 2026-09-20
+  (2) entry, step 5.
+
+None of these are pre-registered — each still needs the `MARKET_SENSE_TESTS.md`
+pre-registration step (state the pass/null bar first) before it's run, per the
+standing discipline. Listed here so "cheap, low-prior, not run" doesn't have to
+be re-discovered by re-reading five entries.
 
 ---
 
@@ -149,3 +205,454 @@ the real-yield chain, and that's a mechanism note, not a ratio-trading claim).
 - **Not claimed:** anything about whether the ratio is *actually* stretched
   right now, or what "catching up" looks like in this specific episode. That
   needs the same run.
+
+---
+
+## 2026-09-18 (3) — "Dollar/yen and the intervention around it is the only chart you need"
+
+> *"The only chart you need on your screens right now... dollar yen and the
+> intervention that's around dollar yen from the U.S. and Japan is driving
+> the entire market... the war trade is energy up, dollar up, and this is
+> pushing back on the dollar up part, so we can have high energy, we could
+> have a lower dollar that is forcibly lower not from interest rates, from
+> intervention, and we can have high gold, high silver, strong industrial
+> metals, and all of this should not be happening at the same time... you
+> don't need to look at AI anymore... you just need to understand dollar
+> manipulation."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) USD/JPY, and
+specifically US/Japan FX intervention around it, is the single dominant
+driver right now — everything else (sector rotation, AI, Nvidia) is noise by
+comparison; (b) intervention can force the dollar down (against the yen
+specifically) *without* that being a rates/real-yield story, so it can
+coexist with — not contradict — a "war trade" that's simultaneously pushing
+energy and the dollar up elsewhere. The tell is an unusual co-movement: high
+energy, a forced-lower dollar, and gold/silver/industrial metals all bid at
+once.
+
+**2. What's already on this desk.** Checked `js/macroChain.js`'s
+`CHAIN_NODES`/`CHAIN_LINKS` before writing anything, same as the last two
+entries:
+
+- `usdjpy` was already a node, and already had exactly one link —
+  `vix-usdjpy` (fear → yen), whose own BROKEN-down sentence already names
+  "a BoJ story or intervention" as the alternative when the yen strengthens
+  without fear rising. So the desk already had language for yen moves that
+  don't fit the fear story.
+- **The real gap:** `usdjpy` had no link to `dxy` (the broad dollar) at all —
+  unlike AUD/USD, USD/CAD and bitcoin, which all sit downstream of `dxy` in
+  the chain. So Crown's specific claim (the yen decoupling from an otherwise-
+  firm broad dollar) had no mechanism to test against; it was structurally
+  invisible, not just unmeasured.
+- No silver node, no intervention detector, and no direct oil/gold/dollar
+  three-way link — checked and confirmed absent, same audit-before-building
+  discipline as the last two entries.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding, and
+a live regime read on top of it. "USD/JPY is the one chart right now" is not
+a backtestable historical claim as stated — it's a today-specific call. The
+*mechanism* underneath it (does the yen track the broad dollar, and what does
+it mean when it doesn't) is exactly what a chain link can show, the same way
+`real-spx` operationalized the first clip's "SPX is quiet" observation without
+testing whether SPX is quiet *right now*.
+
+**4. Verdict and action.**
+- **Built now:** added a `dxy-usdjpy` link (sign +1) to `js/macroChain.js`,
+  parallel to the existing `dxy-audusd`/`dxy-btc` links. Its broken-up
+  sentence names the intervention shape directly (broad dollar firm, yen not
+  following); its broken-down sentence names the BoJ-dovishness alternative
+  and explicitly says a dollar sell-off elsewhere in the chain (gold up, AUD
+  up) alongside a stuck-or-rising USD/JPY is the "intervention alongside the
+  dollar story" shape Crown described, not a contradiction of it — so the
+  page can now show that specific co-movement pattern instead of it being
+  invisible. Test coverage added to `js/macroChain.test.mjs` (holding case +
+  both broken directions), all green. Additive only, nothing else touched.
+  Registered in `LEGO_MODULES.md`.
+- **Not built:** a silver node. Gold and copper already cover the
+  precious/industrial ends of Crown's "gold, silver, industrial metals"
+  basket with real-yield-driven mechanism links; a third metals node is a
+  reasonable next addition but a bigger one than today's — noted as a
+  candidate, not built.
+- **Not claimed:** whether USD/JPY genuinely is the dominant driver right
+  now, whether intervention is actually happening, or whether the
+  gold+silver+metals co-move is currently live. Those are today's-tape
+  questions the chain has to actually run to answer, same limit noted on the
+  first entry's "is the 10Y dominating today" question — not something this
+  log can settle by reading code.
+
+---
+
+## 2026-09-19 — "Institutional traders get paid to beat this line" (VWAP)
+
+> *"All institutional traders get paid to do one thing: beat this line...
+> the single most common benchmark the algorithms target is the VWAP...
+> above it, buyers are in control, below it, sellers are in control...
+> enter your long on the first pullback after a qualified break — the algos
+> that missed this next leg up are waiting, hungry to get the fill...
+> acceptance below the VWAP means the regime has changed: three consecutive
+> closes below VWAP and a retest of the line that holds, control has
+> shifted from buyers to sellers."*
+
+**1. The claim, stated plainly.** Three linked pieces: (a) rationale —
+agency execution desks are compensated for beating VWAP, so a large,
+systematic share of institutional flow works to trade at/near it, making it
+a real benchmark, not folklore; (b) descriptive regime read — price above
+VWAP means buyers control the session, below means sellers do; (c) two
+trading rules — enter long on the first pullback/retest of VWAP after a
+"qualified break" (unspecified three-part checklist, not available to us);
+and a regime-flip confirmation — three consecutive 5-minute closes below
+VWAP plus a retest that holds means control has shifted, adjust the
+position.
+
+**2. What's already on this desk.** More than any Crown clip audited here
+so far — this desk has tested VWAP as a trading signal **six separate
+times, in six mechanically distinct constructions, on up to four
+instruments each, all null**, before today:
+
+- `MD files/VWAP_REVERSION_FINDINGS.md` — the session VWAP ±2σ band,
+  fade/bounce/follow, real OANDA M1, 26 pairs, 2016–2026, costed IS/OOS:
+  **0/26 pairs OOS-positive on every mode**, gross return ≈ zero (not "a
+  real edge killed by costs" — no edge existed before costs either).
+- `education/jordan_vwap_session_reversion_backtest/RESULTS.md` — a
+  mechanically different VWAP-reversion pattern (fade the London session's
+  move back toward VWAP at the NY handoff), same 26 pairs: **1/26
+  OOS-positive** (noise), pooled gross ≈ zero.
+- `MD files/GOLD_VWAP_FIXED_SIGMA_FINDINGS.md` §6, `js/vwapImpulseEntryV1Engine.js`
+  — **this is Crown's rule (c) almost exactly**: a closed HTF impulse bar
+  (30m/1h/4h — the "qualified break") unlocks a with-impulse entry at the
+  session VWAP as price pulls back to it (`pullback_continuation` mode).
+  Pre-registered, run on gold M1 2016–2026: **null at every trigger
+  timeframe** (best OOS t +0.37, statistically indistinguishable from
+  zero); an exit-geometry pivot (§7d, time-stop instead of the impulse
+  extreme as target) was tried specifically because the entry looked like
+  it might just have the wrong exit — **also null** (OOS t −1.3 to −3.7).
+- The same doc's §14 — the closest match to rule (c)'s companion idea
+  (trade *with* a move away from VWAP once the regime has shifted, not
+  fade it back): a with-trend "follow" entry, gated on `bandSlope=
+  expanding` — the single best cross-instrument-replicated descriptive
+  finding in the entire 1,900-line study (real on gold, EURUSD, GBPUSD,
+  USDJPY). Even with the best available context filter switched on: **null
+  on every instrument** (OOS t −0.40 to −3.75).
+- §8b (`js/rangeFibVwapEntryV1Engine.js`) and §9/§9a
+  (`js/stackedFadeV1Engine.js`) — two more VWAP-anchored entry families
+  (range-fib levels near VWAP; a stacked-gate fade using the study's own
+  mined "best" conditions), gold + up to three FX majors: **null in every
+  variant**, including the fully-gated version that used the books' own
+  favourite conditions (worst cell of the batch — what over-selection on
+  mined data looks like).
+- Rule (b)'s descriptive framing (which side of VWAP is "in control") is
+  the closest thing to a live finding: §7 of the same doc found price
+  *does* return to VWAP from deep bands meaningfully more than a random
+  walk, especially outside the NY session — a real, cross-instrument
+  effect. But every attempt to convert that description into an after-cost
+  entry (five separate trade tests: §6, §8b, §9, §9a, §14) failed. This
+  desk's own standing conclusion, verbatim: "the descriptive structure in
+  these books, real as it is, does not convert into an after-cost entry by
+  gating touches."
+- One structural caveat that matters for rule (a)'s rationale specifically:
+  `VWAP_REVERSION_FINDINGS.md` already notes **FX "volume" on this desk is
+  tick count, not traded volume** — the real institutional participation
+  that gives an *equity* VWAP its meaning is absent from an FX VWAP. Crown
+  is talking about equity agency execution (pension funds, bank desks);
+  this desk's own tradable universe is mostly FX + gold, where that
+  rationale doesn't transfer as cleanly even before any backtest runs.
+
+**3. Trading claim or macro-understanding claim.** Trading claim — a
+specific, single-instrument intraday entry/exit rule, not a cross-market
+mechanism. Not chain material (`js/macroChain.js` models transmission
+between markets, not intraday execution mechanics within one).
+
+**4. Verdict and action: already covered, already nulled — not rebuilt.**
+Given six independent, honest, costed, OOS-split tests of VWAP-anchored
+entries already sitting in this repo, and the one closest to Crown's exact
+rule (impulse-qualified break → pullback-to-VWAP entry) already null
+including an exit-geometry pivot built specifically to rule out "the entry
+idea is right, the exit is wrong" — building a seventh near-identical
+VWAP-touch backtest is not the honest next move here. Per this repo's own
+"prefer validating what exists over adding surface" rule, this is reported
+as covered, not re-run.
+- **Not built, not pre-registered as new work.**
+- **Genuine, narrow gaps, noted as low-prior candidates, not run:** (i) the
+  exact "three consecutive 5-minute closes below VWAP + a retest that
+  holds" persistence-confirmation framing was never literally replicated —
+  every test used a single touch, a single impulse close, or a σ-band
+  event as the trigger, not a multi-bar acceptance count. §14's
+  `bandSlope=expanding`-gated follow entry is the closest existing analog
+  (trade with a VWAP-side regime shift) and it is null on every
+  instrument, so the prior for this variant is low, not zero. (ii) None of
+  this VWAP work has been run on NAS100/SPX500 — the index CFDs closest to
+  Crown's actual equity-flow rationale — only FX majors and gold. Both are
+  cheap to test if ever picked up (the engines and harness already exist);
+  neither is pre-registered here without being asked, given how uniformly
+  every prior VWAP construction has come back null.
+- **Not claimed:** that VWAP is "useless" in every conceivable form — only
+  that the specific fade/bounce/pullback/follow mechanisms actually
+  described (by Crown and by the "Jordan" transcripts this desk already
+  worked through) have been tested as standalone triggers and found
+  nothing. VWAP as a *conditioning filter* on an edge that already exists
+  remains the one open, untested form — and it needs a validated primary
+  edge to condition, which this repo does not yet have validated intraday
+  (same open item `VWAP_REVERSION_FINDINGS.md` already flagged).
+
+**Follow-up, same day — built as an alert, not an entry.** Owner: not
+worried about building systems out of every clip, worried about whether a
+clip's a nugget worth showing/alerting on. Applying that lens back onto
+this entry's own §7 finding (real, cross-instrument, never asked whether it
+belonged on a page): built `js/vwapStretchCore.js` + a live `vwapStretch`
+input wired into `js/deskWatch.js`'s `evaluateTriggers` (one `~ context`
+trigger per instrument — gold, EURUSD, GBPUSD, USDJPY — firing at a 2σ+
+session-VWAP stretch, citing the tested return-to-VWAP base rate and the
+NY-vs-Asia/London session caveat, and explicitly disclaiming that no
+VWAP-anchored entry built on this desk has ever passed after costs). Full
+account, including the two deliberate efficiency choices (σ cached once
+per pair per UTC day; the live reading uses M15 not M1, reusing this desk's
+own "VWAP is near timeframe-invariant" finding) in `LEGO_MODULES.md`'s
+2026-09-19 entry. Not verifiable from this sandbox — same OANDA-egress
+limit as everything else live here — validated via `node --check` and full
+synthetic test suites instead.
+
+---
+
+## 2026-09-20 — "Who gets hit when the 30-year moves, and who stays insulated"
+
+> *"I ran the correlation between a basket of AI names and the 30-year
+> Treasury. The 30-year moves 25 bips north. Who gets hit? AMD moves 9%
+> south. Marvell moves 10% south. Nvidia moves about 3.9%. Who stays
+> insulated? The only company here is Microsoft... they do it because they
+> are printing money with Azure. Azure throws off 100 billion a year. Their
+> AI business throws off another 37. So their AI investment is being
+> self-funded. They don't need to go out and take on more and more
+> expensive debt."*
+
+**1. The claim, stated plainly.** Two parts: (a) a rationale — Microsoft's
+AI capex is self-funded from Azure + AI cash flow rather than debt, so it
+should carry less discount-rate sensitivity than debt-dependent AI names;
+(b) a descriptive claim built on that rationale — when the 30-year yield
+rises, AMD/Marvell/Nvidia sell off hard while Microsoft stays insulated, a
+real dispersion, not "growth stocks fall together."
+
+**2. What's already on this desk.** The chain (`js/macroChain.js`) already
+has `real-nq` (real yields → the Nasdaq) and `real-spx`, both mechanism
+links with a tested forward-predictiveness note — but both are INDEX-level.
+This clip's insight is a dispersion claim WITHIN that index: the same
+"real-nq"/"real-spx" quiet-index sentence from the first entry in this
+log ("a quiet SPX doesn't mean a quiet market — check the growth cohort")
+one layer deeper — even the growth cohort itself isn't uniform. Checked
+before assuming a gap: no single-stock (AMD/MRVL/NVDA/MSFT) data or
+analysis exists anywhere in this repo currently — this platform's own
+tracked universe is FX/gold/indices via OANDA, not individual equities.
+
+**The gap that mattered: is this even testable here, or blocked on missing
+data plumbing entirely (a bigger, structural gap, unlike S17's or the VWAP
+alert's OANDA/Railway-only limits)?** Checked `js/tradeLabDataSource.js`,
+`js/nasdaqDataSources.js`: this desk already has a ticker-agnostic Yahoo
+Finance fetcher (`fetchYahooDaily`, already used live for NQ/gold futures)
+and FRED's `DGS30` is already fetched elsewhere in this repo (S9/S10). No
+new data plumbing needed — AMD/MRVL/NVDA/MSFT are just tickers to the same
+existing fetcher.
+
+**3. Trading claim or macro-understanding claim.** A hybrid, closer to
+macro-understanding: Crown states it as an observation about WHY certain
+names answer differently to rates (a mechanism), then uses it to justify a
+book position — the mechanism claim is what's testable and interesting;
+his specific one-day numbers are an anecdote this log does not attempt to
+verify.
+
+**4. Is there a display/alert nugget, independent of any entry.** Not yet
+answerable — the descriptive dispersion claim itself hasn't been tested,
+so there's nothing validated to display or alert on. If S18 below comes
+back real, the natural next question is exactly this one.
+
+**5. Verdict and action.**
+- **Pre-registered as S18** in `MARKET_SENSE_TESTS.md`, before running:
+  OLS beta of each stock's daily log return (Yahoo `adjclose` — mandatory,
+  not `close`, since NVDA split 10:1 in 2024) on the same-day `DGS30`
+  change, 2023-01-01 → present (the AI-capex-cycle window, a stated
+  judgment call), ISO-week block bootstrap CI, reported per +10bp of 30Y
+  move. Pass bar: MSFT's beta smaller in magnitude than all three of
+  AMD/MRVL/NVDA's, MSFT's CI includes zero, and at least two of the other
+  three exclude zero — a real dispersion, not noise. Explicitly not
+  claimed: the CAUSAL story (self-funded vs. debt-financed capex) isn't
+  testable from a return regression, only the descriptive pattern is.
+- **Harness written, not run.** `analysis/market_sense_studies.mjs`'s S18
+  block (`bootSlope`/`olsSlope` added as new shared primitives, same file,
+  same discipline as every other study here) is committed and reviewed.
+  Registered in `market-sense.html`'s study catalog too, so a click can run
+  it once deployed. **Blocked twice over in this sandbox**: Yahoo Finance
+  is typically network-blocked here (`js/tradeLabDataSource.js`'s own
+  documented limitation), and separately, `market_sense_studies.mjs`
+  fetches OANDA bars unconditionally at the top of the file before any
+  study-specific gating — so even a Yahoo/FRED-only study needs `OANDA_KEY`
+  just to start the script. Needs Railway.
+- **Not claimed:** anything about whether Crown's specific cited numbers
+  (the one day, -9%/-10%/-3.9%) are accurate, or whether the dispersion
+  pattern is currently live. That needs the same run.
+
+---
+
+## 2026-09-20 (2) — "0DTE options are controlling the entire stock market"
+
+> *"Zero DTE options reached 62.4% of total SPX options volume in 2025...
+> when traders buy same-day calls, a market maker is selling the calls...
+> they hedge the position with SPX futures... that sensitivity is called
+> gamma... zero DTE options do two things really well: pin the market near
+> a level, creating sticky price action on round handles like 7400, and
+> accelerate the market away from a level."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) a market-structure
+fact — 0DTE (same-day expiry) options are now 62.4% of SPX options volume
+(CBOE's own 2025 research), a large enough share to matter; (b) a mechanism
+— dealers who sell 0DTE options delta-hedge with futures, and because 0DTE
+gamma is extreme near expiry, that hedging flow can pin price near round
+strikes (dealers long gamma, buying dips/selling rips) or accelerate it away
+from a level once a "gamma flip" is crossed (dealers short gamma, chasing
+the move) — the standard dealer-gamma/GEX narrative.
+
+**2. What's already on this desk.** Far more than any clip audited here so
+far — a large, mature, interconnected options-gamma-exposure subsystem
+already exists, built well before this log started. Delegated a thorough
+read (file-by-file, not name-guessing) rather than skim it:
+
+- **Instrument coverage.** Not SPX-only, but SPX *is* in scope: `oi_bot.py`
+  states its universe plainly — "gold + indices; FX only when the plan
+  includes it" — and `js/oi.js`'s `OI_CME_PAIRS` list includes `SPX500_USD`,
+  `NAS100_USD`, `DE30_USD`, `US30_USD`, `US2000_USD` alongside gold and a few
+  FX majors (crosses excluded: "no CME chain — OI analysis is meaningless").
+- **The exact mechanism, already named.** `js/gammaFlow.js`'s `gammaFlip`
+  (zero-GEX crossing = regime boundary) and `js/levelExpectation.js`'s
+  five-word taxonomy — **Reject · Break · Magnet · Pin · Edge** — is Crown's
+  pin/accelerate story, already built as a labeled framework, not something
+  missing from this desk.
+- **0DTE handling exists, specifically.** `js/oi.js`'s `pickNearExpiry`
+  splits a "day" expiry (comment: "0-3 DTE typically") from the structural
+  one, and gamma is deliberately "floored at 1 day (avoids the 0-DTE gamma
+  singularity)" — this desk already reasons about near-zero-DTE gamma as a
+  distinct regime.
+- **But the data is a manual daily paste, not live flow.** `js/oi.js`'s OI
+  modal reads pasted CME QuikStrike text into textareas; `oi_max_age_hours:
+  30` implies roughly once-a-day freshness. Crown's claim is about
+  *intraday* same-day hedging flow pushing price *today* — this system
+  reads a static snapshot, at most once a day. Structurally, it cannot
+  follow the live flow Crown is describing, regardless of how good the
+  mechanism model is.
+- **Mostly unvalidated, and this desk's own docs already say so.**
+  `LEGO_MODULES.md` status tags: `levelExpectation.js` "🔬 built ·
+  unvalidated (mechanism only, no outcome scoring yet)"; `levelHeat.js`
+  unvalidated; `oiConfluence.js` "forward-testing / opt-in live" (its own
+  note: "no historical options-OI exists for spot FX" — a true backtest is
+  impossible there by construction); `oiZones.js` (the live "OI bot"
+  planner) "forward-testing / paper (executor built, no proven edge)".
+- **The one real backtest that exists came back null — and on the wrong
+  instrument.** `oi_research_book/RESEARCH_BOOK.md` Part 12 ran the bot's
+  actual, unmodified production code (`buildOIZones`/`buildOIEntry`) on six
+  years of EUR/USD M1: OOS mean −0.031R, "does not show a robust edge." The
+  book itself flags that EUR/USD isn't in the bot's live universe (gold +
+  indices) — so this doesn't speak to whether the SPX/NQ/gold version works;
+  that backtest is a stated, undone roadmap item.
+- **Round-number pinning — a piece of Crown's specific claim — has already
+  been tested, independent of the gamma story, and nulled.** `LEGO_MODULES.md`
+  §1m's S/R falsification and `GOLD_VWAP_FIXED_SIGMA_FINDINGS.md` §8a/§8b
+  found no coherent pinning/reversion effect at round levels — but only on
+  gold + EURUSD/GBPUSD/USDJPY. NAS100/SPX500 specifically were never checked.
+- **The bot is live (paper), not retired.** A commit earlier this session
+  (`32e04da`) deleted 34 lines from `oi_bot.py`, but that was one opt-in
+  gate inside the file, not the file itself — `oi_bot.py` is 1,199 lines and
+  still being edited in later commits. `js/serviceFlags.js`'s `oiBot`
+  service is on; `js/botRegistry.js` carries an `oi_bot_status` ("OI Gamma")
+  card. Whether the Python executor itself runs as a supervised live process
+  is unconfirmed from the code alone (absent from `start.sh`'s list) —
+  flagged, not resolved, here.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding at
+its core (how dealer hedging mechanically transmits from options flow to
+futures price) with a specific, checkable market-structure fact (the 62.4%
+share) attached. Not chain material — `js/macroChain.js` models cross-market
+transmission on daily deltas; intraday options-hedging mechanics are a
+different object this desk already houses elsewhere (the OI/gamma stack).
+
+**4. Is there a display/alert nugget, independent of any entry.** Already
+built and already live — `oi_bot_status`, `js/oiLevelExport.js`'s OI-walls
+export, and `levelExpectation`'s Reject/Break/Magnet/Pin/Edge tags already
+surface this on the desk in paper mode. Nothing new to add here; the honest
+gap is validation, not visibility.
+
+**5. Verdict and action: already covered, not rebuilt.** This desk didn't
+need to discover the gamma-hedging mechanism — it already modeled it, named
+it, and partially wired it live, before this log existed. What it hasn't
+done is validate it (only one real backtest exists, null, on an off-universe
+pair) or check the one piece of Crown's claim that's cheap to check
+independently of any options data at all (round-number pinning on
+NAS100/SPX500 CFDs, reusing the exact harness that already nulled it on four
+other instruments).
+- **Not built, not pre-registered as new work.** The core mechanism claim
+  (0DTE flow → live intraday hedging pressure) isn't testable here in
+  principle with a once-daily manual paste, no matter how much code gets
+  written — that's a data-access gap this desk cannot close, not a build gap.
+- **One genuine, cheap, low-prior candidate, noted but not run:**
+  round-number pinning on NAS100_USD/SPX500_USD specifically, extending the
+  existing FX+gold null. Cheap because the harness pattern and the OANDA
+  data are already there; low-prior because the same test has already come
+  back null four times running. Not pre-registered here without being
+  asked, given how the last four attempts went.
+- **Not claimed:** whether the CBOE's 62.4% figure is accurate (not this
+  desk's data to check), or whether the live `oi_bot`/gamma stack is
+  currently working as intended in production — that's a status question
+  for the owner, not something this log can settle by reading code.
+
+---
+
+## 2026-09-20 (3) — "How to hedge your stock portfolio like the pros" (rolling protective puts)
+
+> *"Buy one SPX/XSP put ~5% below spot, one month out, sized to your
+> portfolio's notional; roll it forward each month before expiry so it
+> doesn't expire worthless. If the market drops, the puts offset the
+> portfolio loss; if it doesn't, you've paid the premium as the cost of
+> insurance. Fun fact: you've just also learned how an annuity contract
+> works."*
+
+**1. The claim, stated plainly.** Two linked pieces: (a) a mechanical
+recipe — size and roll monthly ~5%-OTM index puts (SPX above ~$500k notional,
+XSP below) to hedge a diversified equity/index-fund portfolio; (b) an
+equivalence claim — this rolling-put construction is structurally the same
+economics as an annuity's embedded downside protection.
+
+**2. What's already on this desk.** Not much that's on-point, and that's the
+right answer here rather than a gap to close. This desk's options-adjacent
+code (`js/oi.js`, `js/gammaFlow.js`, `js/ivMetrics.js`, `oi_bot.py`) reads
+*dealer positioning* to infer short-term price pressure on instruments this
+desk trades (gold, indices, FX). It has no module for constructing or sizing
+an *investor's own* protective-put overlay on equity holdings, and no reason
+to — that's a different job (portfolio insurance for a long equity book) than
+what any page here does (reading market state for CFD entries). `js/ivMetrics.js`'s
+`riskReversal` is the nearest cousin — it reads put/call skew as a fear
+gauge — but that is a different question (is skew elevated right now) from
+this clip's content (how to build your own hedge), and nothing here computes
+it for SPX/XSP specifically.
+
+**3. Is it a trading claim or a macro-understanding claim — actually, neither.**
+This doesn't fit the usual fork. It isn't "how does one market explain
+another" (chain material), and it isn't a falsifiable market-behavior claim to
+audit or backtest either: "a put gains when the underlying falls and costs
+premium otherwise" isn't an empirical proposition to test, it's the definition
+of a put's payoff. The one genuinely empirical thread buried in it — *how much
+does a systematic 5%-OTM/1-month rolling put program actually cost over time,
+on average, across regimes* (the real "cost of insurance" number, sometimes
+published as protective-put-index drag) — is a real question, but it needs an
+SPX/XSP options history (strikes, IV surface) this desk doesn't have and isn't
+built to fetch; it's also a question about hedging *equity* exposure, not
+about this desk's FX/gold/index-CFD trading.
+
+**4. Is there a display/alert nugget here, independent of #3.** No. There's no
+descriptive market-state fact in this clip to surface — it's a personal
+construction recipe (how big a put, which strike, when to roll), not a
+reading of current conditions. It doesn't extend or sharpen anything already
+on a page.
+
+**5. Verdict and action: not built, not pre-registered, nothing added to the
+candidates list above.** Agreeing with the read that prompted asking — this
+one is a genuinely correct, standard institutional technique (a rolling
+protective put, economically the same insurance mechanic an annuity bundles
+with income features) worth understanding personally, but it isn't a claim
+about how this desk's markets move, so it doesn't produce a testable entry or
+a display/alert nugget the way the other clips have. Nothing built, nothing
+tested, nothing queued.

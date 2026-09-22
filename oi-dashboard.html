@@ -1482,7 +1482,7 @@ function render(){
   if(!e){ document.getElementById('main').innerHTML='<div class="empty">No OI stored for this instrument.</div>'; return; }
   document.getElementById('sub').textContent =
     nm(SYM)+' · '+(e.primaryExpiry?.code||'no expiry code')+' · '+(e.numRows||0)+' strikes · saved '+ageOf(e).txt+' ago';
-  document.getElementById('main').innerHTML = priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e)+'<div class="grid">'
+  document.getElementById('main').innerHTML = '<div id="statHead">'+priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e)+'</div><div class="grid">'
     + panel('c7','oi','Open interest by strike','oichart',chartOI)
     + panel('c5','flow','Positioning and flow','flow',flowPanel,true)
     + panel('c7','gex','Net GEX by strike','gexchart',chartGEX)
@@ -1575,6 +1575,36 @@ async function boot(){
   }catch(err){ document.getElementById('sub').textContent='load failed: '+err.message; }
 }
 boot();
+
+// ── OI-store live refresh (2026-09-21) ────────────────────────────────────────
+// The candles already poll (_TF_POLL above); the OI LEVELS drawn over them — walls, max
+// pain, gamma/GEX flip, basis, the CFD spot/CME futures numbers — did not, so this page
+// could sit showing whatever was here at last Reload while the live basis moved on
+// underneath it (server.js's _refreshOIBasis recomputes that every 5 min now). Someone
+// watching this chart to see what the bot is about to trade is as real a consumer of
+// that freshness as the bot itself.
+//
+// Deliberately NOT a call to render(): render() tears down and rebuilds the whole
+// 12-panel grid and re-fits the chart's zoom every time, which would yank the view out
+// from under anyone actually looking at it. Only the stat header (#statHead) and the
+// chart's own price-line/band overlays are refreshed — same scope tradeoff the chart's
+// own candle poll already makes (mountChart('poll') skips fitContent for the same
+// reason). The OI-by-strike/GEX/wall-table panels stay as of the last manual Reload.
+let _storePollTimer=null;
+async function pollOIStore(){
+  clearTimeout(_storePollTimer);
+  if(!document.hidden){
+    try{
+      await load();
+      const e=STORE[SYM], head=document.getElementById('statHead');
+      if(head && e) head.innerHTML = priceBar(e)+diagBar(e)+levelStrip(e)+todaysRead(e);
+      drawLines(); drawCone(); drawBands();
+    }catch(_){ /* leave the last good read on screen */ }
+  }
+  _storePollTimer=setTimeout(pollOIStore, 75_000);
+}
+_storePollTimer=setTimeout(pollOIStore, 75_000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pollOIStore(); });
 
 // ── OI-bot hold-score calibration banner ─────────────────────────────────────
 // The hold-score's component weights (per-strike GEX · OI flow · persistence ·

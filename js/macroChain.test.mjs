@@ -22,7 +22,7 @@ console.log('[spec integrity]');
   ok('link ids unique', new Set(CHAIN_LINKS.map(l => l.id)).size === CHAIN_LINKS.length);
   ok('every link has a short name and three punch lines', CHAIN_LINKS.every(l => l.short && l.punch?.holds && l.punch?.up && l.punch?.down));
   ok('punch lines are one line (under 110 chars)', CHAIN_LINKS.every(l => [l.punch.holds, l.punch.up, l.punch.down].every(t => t.length <= 110)));
-  ok('every node has a floor, unit and teaching text', Object.values(CHAIN_NODES).every(n => n.floor > 0 && ['pct', 'bp', 'pt'].includes(n.unit) && n.what));
+  ok('every node has a floor, unit and teaching text', Object.values(CHAIN_NODES).every(n => n.floor > 0 && ['pct', 'bp', 'pt', 'usd'].includes(n.unit) && n.what));
 }
 
 console.log('[nodeDelta — the 20d change in the node\'s own unit]');
@@ -83,6 +83,11 @@ console.log('[evaluateChain — verdicts]');
   ok('real up, SPX up -> broken, the growth-cohort sentence', spxUp.find(l => l.id === 'real-spx').verdict === 'broken' && /growth cohort/.test(spxUp.find(l => l.id === 'real-spx').read));
   ok('real up, SPX down -> holding', evaluateChain({ ...vals, spx: v(-3) }).find(l => l.id === 'real-spx').verdict === 'holding');
   ok('SPX inside its floor -> quiet', evaluateChain({ ...vals, spx: v(1) }).find(l => l.id === 'real-spx').verdict === 'quiet');
+  ok('dollar down, yen down (both negative) -> holding', by['dxy-usdjpy'].verdict === 'holding');
+  const dxyUpYenStuck = evaluateChain({ ...vals, dxy: v(2) });
+  ok('dollar up, yen not following -> broken, the intervention sentence', dxyUpYenStuck.find(l => l.id === 'dxy-usdjpy').verdict === 'broken' && /intervention/.test(dxyUpYenStuck.find(l => l.id === 'dxy-usdjpy').read));
+  const dxyDownYenWeak = evaluateChain({ ...vals, usdjpy: v(3) });
+  ok('dollar down, yen weak anyway -> broken, the BoJ-story sentence', dxyDownYenWeak.find(l => l.id === 'dxy-usdjpy').verdict === 'broken' && /BoJ-dovishness/.test(dxyDownYenWeak.find(l => l.id === 'dxy-usdjpy').read));
   const curve = evaluateChain({ ...vals, us2y: v(32), us30y: v(10) });
   ok('front end and long end both up -> holding', curve.find(l => l.id === 'us2y-us30y').verdict === 'holding');
   const flat = evaluateChain({ ...vals, us2y: v(32), us30y: v(-12) });

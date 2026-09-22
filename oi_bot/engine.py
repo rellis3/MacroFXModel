@@ -176,6 +176,14 @@ def make_spec(instrument: str, z: dict, px: float | None = None) -> dict:
         "hold": z.get("hold"),
         "hold_parts": z.get("holdParts"),
         "conviction": z.get("conviction"),
+        # The full multiplier chain (vanna/blocker/reach/hold/conviction/localRegime/
+        # capped/base/preCap) the planner used to reach size_factor — see
+        # js/oiZones.js's sizeBreakdown. Carried through unmodified so the executor can
+        # log WHICH multipliers actually fired on a REAL trade, not just an OI plan
+        # nobody fired on — the thing a per-trade rationale string can't be aggregated
+        # from. None on an older plan shape (no KeyError; a stale plan must not crash
+        # the executor over a field it didn't ship).
+        "size_breakdown": z.get("sizeBreakdown"),
     }
 
 

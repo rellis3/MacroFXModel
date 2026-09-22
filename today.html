@@ -216,7 +216,24 @@
   .dr-shelf>summary .n{color:var(--text3);font-weight:500;font-size:11px}
   .dr-shelf[open]>summary{border-bottom:1px solid var(--border);margin-bottom:8px}
   .dr-shelf .dr-sec{border-left:2px solid var(--border);padding-left:10px}
+  .dr-spine{display:grid;grid-template-columns:70px 1fr auto;gap:2px 12px;align-items:baseline;
+            border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:0 10px 10px 0;
+            background:var(--card2);padding:9px 13px;margin:2px 0 12px;font-size:12.5px;line-height:1.5}
+  .dr-spine .sk{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .dr-spine .sv{color:var(--text2);min-width:0} .dr-spine .sv b{color:var(--text);font-variant-numeric:tabular-nums}
+  .dr-spine .sr{font-size:11px;color:var(--text3);white-space:nowrap;text-align:right}
+  .dr-spine .big{font-size:19px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums}
+  .dr-spine .up{color:var(--bull)} .dr-spine .dn{color:var(--red)} .dr-spine .amb{color:var(--amber)}
+  .dr-spine .lnk{cursor:pointer;color:var(--blue)}
+  @media(max-width:720px){.dr-spine{grid-template-columns:64px 1fr}.dr-spine .sr{grid-column:2;text-align:left}}
   .dr-now{font-size:14px;line-height:1.6;max-width:66ch;margin:4px 0 12px}
+  .byt{margin:0 0 14px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--card2)}
+  .byt-h{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;cursor:help}
+  .byt-row{display:grid;grid-template-columns:18px 76px 1fr auto auto;gap:6px 10px;align-items:baseline;padding:5px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text2)}
+  .byt-n{font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums} .byt-k{font-weight:700;color:var(--text)} .byt-t{min-width:0}
+  .byt-tag{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--bg3);color:var(--text3);white-space:nowrap} .byt-tag.warn{color:var(--amber)}
+  .byt-go{font-size:11px;color:var(--blue);cursor:pointer;white-space:nowrap}
+  @media(max-width:720px){.byt-row{grid-template-columns:18px 1fr;}.byt-t{grid-column:1/3}.byt-tag,.byt-go{grid-column:2}}
   .dr-now b{font-weight:700}
   .dr-tab .q{display:block;font-size:9px;font-weight:500;color:var(--text3);letter-spacing:.02em;line-height:1.2}
   .chip{display:inline-flex;align-items:center;gap:4px;border-radius:5px;padding:1.5px 7px;
@@ -544,6 +561,14 @@
   .dr-sec.dr-collapsed .dr-sec-body{display:none}
 
   /* ── Currency drawer ─────────────────────────────────────── */
+  /* The currency drawer is the pair drawer's width; its sections flow into two
+     columns (the AI read across the top), so the width is used rather than
+     stretched. Below 900px it is the single column it always was. */
+  @media(min-width:900px){
+    #ccyBody{column-count:2;column-gap:22px}
+    #ccyBody>.dr-sec{break-inside:avoid;display:inline-block;width:100%;box-sizing:border-box;vertical-align:top}
+    #ccyBody>.dr-sec:first-child{column-span:all;display:block}
+  }
   .ccy-explain{font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:10px}
   .ccy-legs{margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
   .fac-head{display:grid;grid-template-columns:1fr auto 46px;gap:8px;align-items:baseline;font-size:11px;margin:9px 0 3px;letter-spacing:.03em;text-transform:uppercase;color:var(--text3)}
@@ -615,7 +640,8 @@
      with zero new color definitions. See the design mockup this was built
      from for the full direction. ────────────────────────────────────────── */
   .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
-  @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:900px){ .statrow{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  .statcard{min-width:0} .statcard .spark{width:100%;max-width:100%}
   .statcard{position:relative;background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:13px 15px;display:flex;flex-direction:column;gap:5px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
   .statcard .lbl{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding-right:74px}
@@ -664,8 +690,18 @@
      requesting desktop mode on a phone actually gets the 2-column layout
      instead of landing right on the old 980px edge and still stacking. ── */
   .dashgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+  .dashgrid>*{min-width:0}
   @media(max-width:720px){
-    .dashgrid{grid-template-columns:1fr}
+    /* minmax(0,1fr), not 1fr: a bare 1fr has an auto minimum, so any wide
+       child (the chain board's 1020px svg, a table) would stretch the column
+       to its width and leave the sticky header at phone width on top of it.
+       With a zero minimum the column stays at the phone's width and the
+       wide things scroll inside their own overflow-x containers. */
+    .dashgrid{grid-template-columns:minmax(0,1fr)}
+    .dashgrid>*{min-width:0}
+    /* the 10Y/2Y/2s10s pip is wider than half a phone: put it in flow above
+       the label rather than floating over it */
+    .stat-tabs{position:static;flex-wrap:wrap;margin-bottom:2px} .statcard .lbl{padding-right:0}
     .sidebar{position:static !important}
     /* Stacked full-width cards get a bigger gauge and a tighter 4-across
        glance row instead of just inheriting the narrow-column sizing. */
@@ -677,6 +713,14 @@
   .sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:14px}
   .side-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
   .side-card h3{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:11px}
+  .bk-list{display:flex;flex-direction:column}
+  .bk{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);color:inherit;text-decoration:none}
+  .bk:last-child{border-bottom:none} .bk:hover .bk-t{color:var(--blue)}
+  .bk-ic{font-size:15px;line-height:1.2;flex-shrink:0;width:20px;text-align:center}
+  .bk-b{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .bk-t{font-size:12px;font-weight:700;color:var(--text)}
+  .bk-l{font-size:11px;color:var(--text2);line-height:1.4} .bk-l b{color:var(--text)}
+  .bk-s{font-size:10px;color:var(--text3);line-height:1.35}
   /* Gauge scales to fill its card (up to 260px) instead of sitting as a
      small fixed 150px graphic in a much wider box — the svg's viewBox
      handles the internal scaling, so only the wrapper width + the
@@ -713,6 +757,16 @@
   .cal-row .cal-ev{color:var(--text2);flex:1;line-height:1.35}
   .cal-row .cal-ev b{color:var(--text)}
   .cal-row .cal-cd{font-size:10px;font-weight:700;color:var(--amber);flex-shrink:0}
+  .cal-call{display:inline-flex;gap:2px;margin-left:4px;vertical-align:middle}
+  .cal-call button{font:inherit;font-size:9.5px;font-weight:700;line-height:1;padding:2px 5px;border:1px solid var(--border2);background:var(--card2);color:var(--text3);border-radius:4px;cursor:pointer}
+  .cal-call button:hover{color:var(--text);border-color:var(--blue)}
+  .cal-call button.on{color:var(--text);background:color-mix(in srgb,var(--blue) 18%,var(--card2));border-color:var(--blue)}
+  .cal-res{font-size:10px;font-weight:700;margin-left:4px} .cal-res.hit{color:var(--bull)} .cal-res.miss{color:var(--red)} .cal-res.push{color:var(--text3)}
+  .sc-card{margin-top:8px;padding:7px 9px;border-left:2px solid var(--blue);background:var(--card2);border-radius:0 6px 6px 0;font-size:11px;line-height:1.5;color:var(--text2)}
+  .sc-card .sc-h{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:2px}
+  .sc-card b{color:var(--text)}
+  .sc-you{font-size:10.5px;color:var(--text3);margin-top:6px;line-height:1.5}
+  .sc-you b{color:var(--text)}
   .cal-watch{font-size:10.5px;color:var(--text3);line-height:1.5}
   .cal-watch b{color:var(--text2)}
   .sess-timeline{display:flex;gap:4px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
@@ -803,6 +857,39 @@
   .chain-ends{font-size:12px;color:var(--text2);display:inline-flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline}
   .chain-n b{font-size:12.5px;font-weight:800} .chain-n b.up{color:var(--bull)} .chain-n b.dn{color:var(--red)} .chain-n b.muted{color:var(--text3);font-weight:600}
   .chain-exp{font-size:10px;color:var(--amber);font-weight:700;letter-spacing:.02em}
+  .chain-g{overflow-x:auto;margin:8px 0 10px;padding-bottom:2px}
+  .chain-g svg{display:block;min-width:1020px;width:100%;height:auto}
+  .chain-g .gn{cursor:pointer}
+  .chain-g .gn .chip{fill:var(--card2);stroke:var(--border2);stroke-width:1.2}
+  .chain-g .gn:hover .chip,.chain-g .gn.sel .chip{stroke:var(--blue);stroke-width:1.6}
+  .chain-g .gn .ring{fill:var(--card);stroke:var(--border2);stroke-width:2}
+  .chain-g .gn.up .ring{stroke:var(--bull)} .chain-g .gn.dn .ring{stroke:var(--red)} .chain-g .gn.wrong .ring{stroke:var(--amber);stroke-width:2.6}
+  .chain-g .gn.none .ring{stroke-dasharray:2 3}
+  .chain-g .gn g{color:var(--text2)} .chain-g .gn.up g{color:var(--bull)} .chain-g .gn.dn g{color:var(--red)} .chain-g .gn.wrong g{color:var(--amber)}
+  .chain-g .gn text{font-family:inherit;pointer-events:none}
+  .chain-g .gn .nl{font-size:11.5px;font-weight:700;fill:var(--text)}
+  .chain-g .gn .nv{font-size:10.5px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
+  .chain-g .gn .nv.up{fill:var(--bull)} .chain-g .gn .nv.dn{fill:var(--red)}
+  .chain-g .ge-halo{fill:none;stroke:var(--card);stroke-width:6;opacity:.9}
+  .chain-g .ge{fill:none;stroke-width:2;stroke:var(--border2)}
+  .chain-g .ge.hold{stroke:var(--bull);stroke-width:2.4;stroke-dasharray:7 5;animation:chainflow 1.6s linear infinite}
+  .chain-g .ge.broke{stroke:var(--amber);stroke-width:2.6;animation:chainpulse 1.2s ease-in-out 2}
+  .chain-g .ge.quiet{stroke:var(--text3);stroke-dasharray:2 4;opacity:.7} .chain-g .ge.none{stroke-dasharray:1 5;opacity:.5}
+  .chain-g .gah{fill:var(--border2)} .chain-g .gah.hold{fill:var(--bull)} .chain-g .gah.broke{fill:var(--amber)} .chain-g .gah.quiet{fill:var(--text3)} .chain-g .gah.none{fill:var(--text3);opacity:.5}
+  .chain-g .gl{font-size:10px;font-family:ui-monospace,Menlo,Consolas,monospace;fill:var(--text3)}
+  .chain-g .gl.hold{fill:var(--bull)} .chain-g .gl.broke{fill:var(--amber);font-weight:700}
+  .chain-g .ge-g{cursor:pointer} .chain-g .ge-g:hover .glb,.chain-g .ge-g.sel .glb{stroke:var(--blue);stroke-width:1.4}
+  .chain-legend .chain-names{flex-basis:100%;color:var(--text3)}
+  .chain-g .glb{fill:var(--card);stroke:var(--border);stroke-width:1;opacity:.96}
+  @keyframes chainflow{to{stroke-dashoffset:-24}}
+  @keyframes chainpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){.chain-g .ge.hold,.chain-g .ge.broke{animation:none}}
+  .chain-legend{font-size:10.5px;color:var(--text3);display:flex;gap:14px;flex-wrap:wrap;margin:-4px 0 8px}
+  .chain-legend i{display:inline-block;width:18px;height:0;border-top:2px solid var(--border2);vertical-align:middle;margin-right:5px}
+  .chain-legend i.hold{border-color:var(--bull)} .chain-legend i.broke{border-color:var(--amber)} .chain-legend i.quiet{border-top-style:dashed}
+  .chain-node-card{border-left:2px solid var(--blue);padding:6px 10px;margin:0 0 10px;font-size:12px;line-height:1.55;color:var(--text2);background:var(--card2);border-radius:0 6px 6px 0}
+  .chain-node-card b{color:var(--text)}
+  .chain-node-card .x{float:right;cursor:pointer;color:var(--text3);font-size:11px}
   .chain-arrow{font-size:12px;color:var(--text3)}
   .chain-p{font-size:12px;line-height:1.5;margin:2px 0 0 72px;color:var(--text2)}
   .chain-p.broke{color:var(--text);font-weight:600}
@@ -813,6 +900,26 @@
   .chain-r.open .chain-w{display:block}
   .chain-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:4px}
   @media (max-width:560px){.chain-p,.chain-w{margin-left:0}}
+  .tl{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:6px}
+  .tl-col{border:1px solid var(--border);border-radius:8px;padding:8px 9px;background:var(--card2);min-width:0}
+  .tl-col.now{border-color:var(--blue);background:color-mix(in srgb,var(--blue) 7%,var(--card2))}
+  .tl-col.ahead{border-style:dashed}
+  .tl-h{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;display:flex;justify-content:space-between;gap:6px}
+  .tl-h b{color:var(--text)}
+  .tl-rev{color:var(--amber);font-weight:600}
+  .tl-lead{font-size:12px;font-weight:600;line-height:1.45;margin:3px 0 5px;color:var(--text)}
+  .tl-lead .up{color:var(--bull)} .tl-lead .dn{color:var(--red)}
+  .tl-big{font-size:13px;font-weight:800;margin:3px 0 4px;font-variant-numeric:tabular-nums}
+  .tl-big.up,.tl-big .up{color:var(--bull)} .tl-big.dn,.tl-big .dn{color:var(--red)}
+  .tl-l{font-size:11px;line-height:1.5;color:var(--text2);padding:2px 0;border-top:1px dashed var(--border)}
+  .tl-l:first-of-type{border-top:0}
+  .tl-l .k{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:4px}
+  .tl-l b{color:var(--text);font-weight:600}
+  .tl-l.hit b.r{color:var(--bull)} .tl-l.miss b.r{color:var(--red)}
+  .tl-chart{width:100%;height:auto;display:block;margin:4px 0 6px}
+  .tl-chart text{font-size:9px;fill:var(--text3);font-family:inherit}
+  .tl-foot{font-size:10.5px;color:var(--text3);line-height:1.5;margin-top:6px}
+  @media (max-width:760px){.tl{grid-template-columns:1fr 1fr}.tl-col.now{grid-column:1/3}}
   .dw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;margin-bottom:8px}
   .dw-r{border:1px solid var(--border);border-left:3px solid var(--border);border-radius:8px;padding:7px 10px;background:var(--card2);display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:baseline;cursor:help}
   .dw-r.tested{border-left-color:var(--bull)} .dw-r.described{border-left-color:var(--amber)}
@@ -934,6 +1041,7 @@
     <div class="main-col">
       <div class="mbrief" id="mbrief" style="display:none"></div>
 
+      <div class="mread" id="regimeLine" style="display:none"></div>
       <div class="mread" id="deskWatch" style="display:none"></div>
 
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
@@ -941,6 +1049,7 @@
       <div class="mread" id="mread" style="display:none"></div>
 
       <div class="mread" id="outlookPanel" style="display:none"></div>
+      <div class="mread" id="timelinePanel" style="display:none"></div>
 
       <div class="qstrip" id="weekCtx" style="display:none"></div>
       <div class="qstrip" id="concentration" style="display:none"></div>
@@ -995,11 +1104,14 @@
     <button class="dr-close" onclick="closeDrawer()">✕ Close</button>
     <div class="dr-status" id="drStatus"></div>
   </div>
+  <!-- The spine: the six things you hold in your head, on every tab, each shown
+       ONCE. Everything below is detail you opt into; no tab repeats these. -->
+  <div class="dr-spine" id="drSpine"></div>
 
   <!-- Headline: the plain-English translation of every signal on this pair —
        the thing worth seeing before anything else. -->
   <div class="dr-tabs" role="tablist" aria-label="Pair detail sections">
-    <button class="dr-tab" role="tab" id="drTab-now" aria-controls="drPane-now" aria-selected="false" onclick="setDrTab('now')">Now<span class="dr-tab-n" id="drTabN-now"></span><span class="q">one breath</span></button>
+    <button class="dr-tab" role="tab" id="drTab-now" aria-controls="drPane-now" aria-selected="false" onclick="setDrTab('now')">Read<span class="dr-tab-n" id="drTabN-now"></span><span class="q">the five questions</span></button>
     <button class="dr-tab" role="tab" id="drTab-day" aria-controls="drPane-day" aria-selected="false" onclick="setDrTab('day')">The day<span class="dr-tab-n" id="drTabN-day"></span><span class="q">what kind of hour?</span></button>
     <button class="dr-tab" role="tab" id="drTab-levels" aria-controls="drPane-levels" aria-selected="false" onclick="setDrTab('levels')">Levels<span class="dr-tab-n" id="drTabN-levels"></span><span class="q">where, and what happens there?</span></button>
     <button class="dr-tab" role="tab" id="drTab-lean" aria-controls="drPane-lean" aria-selected="false" onclick="setDrTab('lean')">Lean & flow<span class="dr-tab-n" id="drTabN-lean"></span><span class="q">which way, who is positioned?</span></button>
@@ -1008,7 +1120,7 @@
     <button class="dr-tab" role="tab" id="drTab-research" aria-controls="drPane-research" aria-selected="false" onclick="setDrTab('research')">Research<span class="dr-tab-n" id="drTabN-research"></span><span class="q">unvalidated & null</span></button>
   </div>
   <div class="dr-pane" id="drPane-now" role="tabpanel" aria-labelledby="drTab-now" hidden>
-  <div class="dr-now" id="drNow"></div>
+  <div id="drByt"></div>
 <div class="dr-sec" id="drChartSec" data-seckey="chart">
     <h3><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev v" title="validated — an out-of-sample result stands behind it">✓</i>Today vs forecast — M5</span> <span class="muted" id="drChartNote"></span><button class="chart-resize" id="drChartResetBtn" onclick="resetDrawerChartZoom()" title="Reset zoom/pan back to auto-fit">⟲</button><button class="chart-resize" id="drChartBtn" onclick="resizeDrawerChart()" title="Taller / shorter chart">⤢</button></h3>
     <div class="dr-sec-body">
@@ -1023,6 +1135,14 @@
   </div>
   </div>
   <div class="dr-pane" id="drPane-day" role="tabpanel" aria-labelledby="drTab-day" hidden>
+<div class="dr-sec" id="drBandSec" data-seckey="band" style="display:none">
+      <h3 class="help" title="WHAT IT MEASURES. Where today's price sits against the day's bands (the typical and the bigger daily high and low, from the open), and what days that looked like this at this hour went on to do: the share that reached the next band before the close, and the share where the band turned out to be the day's extreme. Measured on ~2,500 London sessions per instrument since 2016 (T7, TECHNICAL_RANGE_TESTS.md), at eight checkpoints through the day, with intervals and n.
+
+HOW TO READ IT. A target guide, not an entry. 'Reached in 41% of days like this' says how often price got there; it says nothing about turning there -- fading these bands was tested as a trade and is a banked null, and so is the level touch. The clock line is the typical time of the first touch.
+
+WHAT IT IS NOT. Not a direction. Not a signal. The odds move through the day as checkpoints pass; the line re-reads itself at each one.">Band read <span class="n" id="drBandAt"></span></h3>
+      <div class="dr-sec-body"><div id="drBand"></div></div>
+</div>
 <div class="dr-sec" id="drTapeSec" data-seckey="tape" style="display:none">
       <h3 class="help" title="WHAT IT MEASURES. How fast price moved over the last 15 minutes, in ATR per minute, ranked against five years of this market at this same time of day and cut into fifths: DRIFT · slow · mid · quick · FAST. Compared within the session because fast in the NY overlap is roughly double fast in Asia.
 
@@ -1172,6 +1292,13 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 <div class="dr-pending" id="drFlowPending" style="display:none"><b>No flow data for this instrument</b><p>Neither an options board nor a CFTC contract is wired for it.</p><p class="dr-pending-links"><a href="oi-dashboard.html" target="_blank">OI dashboard &rarr;</a> &middot; <a href="cot-extremes.html" target="_blank">COT extremes &rarr;</a></p></div>
   </div>
   <div class="dr-pane" id="drPane-why" role="tabpanel" aria-labelledby="drTab-why" hidden>
+  <div class="dr-sec" id="drRegimeSec" data-seckey="regimepair" style="display:none">
+    <div class="dr-sec-body" style="padding-top:0"><div id="drRegimePair" class="ccy-explain"></div></div>
+  </div>
+  <div class="dr-sec" id="drTimelineSec" data-seckey="timeline" style="display:none">
+    <h3 class="help" title="Twenty sessions back to twenty ahead, for this pair. Look-back: the path, each release with its surprise and the size it produced, chain links that broke, watch fires and their after-scores, and the leans this page published and how they scored. Look-forward: the calendar with the size each release has produced here, the 5- and 20-day expected bands, the outlook and the aim. Measured where marked; the plan is what the page thinks today, kept so it can be checked later."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Timeline — 20 back, 20 ahead</span><i class="ev c" title="context — measured, not predictive">~</i></h3>
+    <div class="dr-sec-body"><div id="drTimeline"></div></div>
+  </div>
   <div class="dr-sec" id="drFactorSec" data-seckey="factor" style="display:none">
     <h3 class="help" title="The base currency's factor scores minus the quote's, factor by factor, then averaged equally. Says which factor carries the fundamental case and whether the others agree. Explanation, never prediction — macro as a signal is a banked null here.">
       <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span>Fundamental gap — the factor read</span><i class="ev c" title="context — explanation, not prediction">~</i>
@@ -1285,7 +1412,7 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
 
 <!-- Currency detail drawer -->
 <div class="ovl" id="ovlCcy" onclick="closeCcyDrawer()"></div>
-<div class="drawer" id="drawerCcy" style="width:min(620px,95vw)">
+<div class="drawer" id="drawerCcy">
   <div class="dr-top">
     <h2 id="ccyName">—</h2>
     <span class="chip neu" id="ccyBucket"></span>
@@ -1499,9 +1626,13 @@ function mveChip(r) {
 // fetch pair (today's live-ish quote + yesterday's completed OHLC close) —
 // oil is context here, not a tradeable card, so it doesn't need to tick live.
 let commodityDrivers = null;
+let intlYields = null;   // /api/intl-yields -- gilt, JGB, bund 10Y daily, for the chain's gap chips
+let crackData = null;    // /api/crack -- the 3-2-1 refining margin: the Crude & the crack card and the chain's crack node
+async function loadCrack() { try { const j = await jget('/api/crack'); if (j?.ok) { crackData = j; render(); } } catch { /* card stays hidden */ } }
+async function loadIntlYields() { try { const j = await jget('/api/intl-yields'); if (j?.ok) { intlYields = j.series; render(); } } catch { /* chips stay unmeasured */ } }
 // The daily series behind "The chain, today" — every non-FRED node, as ascending
 // [{date, value}] closes, the shape the macro-change brick already understands.
-const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
+const CHAIN_OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdcad: 'USD_CAD', usdjpy: 'USD_JPY', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD', gbpusd: 'GBP_USD', eurusd: 'EUR_USD' };
 async function loadCommodityDrivers() {
   try {
     // /api/ohlc returns OHLC as STRINGS ("84.849"); /api/quote returns a number.
@@ -1542,6 +1673,37 @@ async function loadCommodityDrivers() {
       commodityDrivers = { ...(commodityDrivers ?? {}), series };
     }
   } catch (e) {}
+}
+// Which gold is trading: from the two gold links the chain already judges
+// (real yields -> gold, dollar -> gold) and gold's own 20-day move. A label, not
+// a claim -- MD files/FOUR_GOLDS.md. Reserve gold is the residual (gold rising
+// against both textbook drivers) and cannot be confirmed from a free feed.
+// The fear flag: a VIX spike in the last five sessions with gold up over the
+// same five -- G1 says this is the gold people buy and the one that does not pay.
+const GOLD_SHARES = { rates: 19, dollar: 18, both: 16, neither: 45 };   // G2, 689 windows 2010-2026
+function whichGold() {
+  const links = chainLinks(); if (!links.length) return null;
+  const rl = links.find(l => l.id === 'real-gold'), dl = links.find(l => l.id === 'dxy-gold');
+  const g = rl?.b ?? dl?.b; if (!g || g.delta == null) return null;
+  const H = 'holding', B = 'broken';
+  let kind, why;
+  if (rl?.verdict === H) { kind = 'rates gold'; why = `real yields ${rl.a.text} and gold ${g.text}: the opportunity-cost trade is what is moving it${dl?.verdict === H ? ' (the dollar agrees)' : ''}`; }
+  else if (dl?.verdict === H) { kind = 'dollar gold'; why = `the dollar ${dl.a.text} and gold ${g.text}, mirror images: a currency trade, not a gold trade`; }
+  else if (rl?.verdict === B && dl?.verdict === B && g.dir === 'up') { kind = 'reserve gold'; why = `gold ${g.text} against both textbook drivers (real yields ${rl.a.text}, dollar ${dl.a.text}): the residual Crown calls reserve gold -- deep-pocketed buying that ignores rates and the dollar. No free central-bank feed confirms it from here`; }
+  else if (rl?.verdict === B && dl?.verdict === B) { kind = 'selling against the textbook'; why = `gold ${g.text} while real yields ${rl.a.text} and the dollar ${dl.a.text} both said it should rise -- rare, flagged, not named`; }
+  else if (!g.moved) { kind = 'no single gold'; why = `gold ${g.text} over 20 days, inside its floor: nothing is driving it hard enough to name`; }
+  else { kind = 'no single gold'; why = `gold ${g.text} with real yields ${rl?.a?.text ?? '?'} and the dollar ${dl?.a?.text ?? '?'} inside their floors: neither textbook leg is active, which is the case ${GOLD_SHARES.neither}% of the time`; }
+  // the fear flag
+  let fear = null;
+  try { const v = fredHist?.vix ?? []; const x = commodityDrivers?.series?.gold ?? []; if (v.length >= 6 && x.length >= 6) { const dv = v.at(-1).value - v.at(-6).value; const dg = (x.at(-1).value / x.at(-6).value - 1) * 100; if (dv >= 5) fear = { dv: +dv.toFixed(1), dg: +dg.toFixed(1) }; } } catch { /* no flag */ }
+  return { kind, why, fear, g };
+}
+function goldKindChip(r) {
+  if (r.name !== 'GOLD') return '';
+  const w = whichGold(); if (!w) return '';
+  const cls = w.kind === 'rates gold' || w.kind === 'dollar gold' ? 'neu' : w.kind === 'reserve gold' ? 'warn' : 'dim';
+  const fearTxt = w.fear ? ` FEAR FLAG: VIX +${w.fear.dv} in five sessions with gold ${w.fear.dg >= 0 ? '+' : ''}${w.fear.dg}%. Tested here (58 spikes): no fear bid on average (+0.07% [-0.42, +0.30] at five sessions), and a month later gold has lagged by 1.2% [0.5, 2.3]. The gold people buy, and the one that has not paid.` : '';
+  return `<span class="chip ${cls}" title="${esc0(`Which gold: ${w.why}. Four golds (Crown): rates, dollar, reserve, fear -- only one drives at a time. Over 2010-2026: rates gold ${GOLD_SHARES.rates}% of windows, dollar ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%. A label from the chain's own verdicts, not a lean.${fearTxt}`)}">◈ ${esc0(w.kind)}${w.fear ? ' · fear flag' : ''}</span>`;
 }
 function commodityChip(r) {
   const wti = commodityDrivers?.wti;
@@ -1856,8 +2018,24 @@ async function loadGate() {
   loadMve().then(() => render()).catch(() => {});       // populate the 6 MVE-supported instruments' fair-value read
   jget('/api/ism').then(r => { if (r?.ok) { ism = r; render(); } }).catch(() => {});   // growth-surprise bars
   loadCommodityDrivers().then(() => render()).catch(() => {});   // WTI → CAD driver chip
+  loadIntlYields();   // gilt / bund / JGB gap chips on the chain
+  loadCrack();        // crude & the crack card + chain node
   loadDeskWatch();                                                 // early-warning strip (server-side engine)
   loadLedgerSummary();                                             // yesterday, scored
+  setTimeout(() => loadTimelineData().catch(() => {}), 2500);      // the look-back / look-forward strip
+  setTimeout(() => loadNowcast(), 3000);                           // the third number on a release line
+  setTimeout(() => loadReleaseCalls(), 3500);                      // your calls and the just-printed cards
+  setTimeout(() => loadRegime(), 4000);                            // the regime line
+  setTimeout(() => loadWeekMap(), 5000);                           // the week, scored (sidebar row)
+  // The sidebar is taller than the window, so a plain sticky top pinned its head
+  // and hid its tail until the main column ran out. Pin it by its BOTTOM instead
+  // when it is taller than the viewport: it scrolls with the page until its last
+  // card is in view, then holds while the main column carries on.
+  const _stickSidebar = () => { const sb = $('sidebarCol'); if (!sb) return; const h = sb.offsetHeight, vh = window.innerHeight; sb.style.top = h + 28 > vh ? `${Math.round(vh - h - 14)}px` : '14px'; };
+  _stickSidebar(); window.addEventListener('resize', _stickSidebar); try { new ResizeObserver(_stickSidebar).observe($('sidebarCol')); } catch { /* old browser: top stays 14px */ }
+  setInterval(() => loadReleaseCalls(), 5 * 60_000);
+  setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
+  setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
@@ -2206,6 +2384,40 @@ function riskLight() {
 // Lives in the sidebar's "Today's Calendar" card (#calList) — moved off the
 // main column's #gate chip strip into a compact row list with a flag icon
 // per event and a live countdown badge on the next release.
+// ── Your call before the print, and the card after it ───────────────────────
+// Every high-impact release with a consensus takes a two-button call -- higher
+// or lower than the number expected -- until the print. Thirty minutes after,
+// the server's scorecard measures what each pair did against the Event Response
+// Book and scores the call. The page shows the card and a running tally: you,
+// against the Fed models where they exist, with consensus as the bar.
+let releaseCalls = null;   // /api/release-calls: { calls, summary, scorecards }
+async function loadReleaseCalls() { try { const j = await jget('/api/release-calls?days=60'); if (j?.ok) { releaseCalls = j; renderGate(); } } catch { /* stays absent */ } }
+async function makeReleaseCall(country, event, ms, call, ev) {
+  ev?.stopPropagation?.();
+  const n = nowcastFor(country, event, ms); let model = null;
+  if (n) { const B = window.releaseScorecardBrick; const e = (events ?? []).find(x => x.country === country && x.event === event && x.ms === ms); const side = B?.sideOf(n.value, e?.estimate); model = side === 'higher' || side === 'lower' ? side : null; }
+  try {
+    const j = await fetch('/api/release-call', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ country, event, ms, call, model }) }).then(r => r.json());
+    if (j?.ok) { releaseCalls = releaseCalls ?? { calls: [], summary: null, scorecards: [] }; releaseCalls.calls = [...releaseCalls.calls.filter(c => c.key !== j.call.key), j.call]; renderGate(); }
+  } catch { /* the buttons stay as they were */ }
+}
+function _callFor(country, ms) { const key = `${String(country).toUpperCase()}|${ms}`; return (releaseCalls?.calls ?? []).find(c => c.key === key) ?? null; }
+function _scorecardFor(country, ms) { const key = `${String(country).toUpperCase()}|${ms}`; return (releaseCalls?.scorecards ?? []).find(c => c.key === key) ?? null; }
+function callButtonsHtml(e) {
+  if (e.estimate == null) return '';
+  const c = _callFor(e.country, e.ts ?? e.ms); const ms = e.ts ?? e.ms;
+  if (ms <= Date.now()) { return c?.result ? `<span class="cal-res ${c.result}" title="Your call: ${esc0(c.call)} than ${esc0(e.estimate)}">${c.result === 'hit' ? '✓ ' + c.call : c.result === 'miss' ? '✗ ' + c.call : '= push'}</span>` : c ? `<span class="cal-res push" title="Your call, waiting for the print to be scored">${esc0(c.call)}</span>` : ''; }
+  const b = (side, lbl) => `<button class="${c?.call === side ? 'on' : ''}" title="Your call: the print comes in ${side} than the ${esc0(e.estimate)} expected. Scored thirty minutes after the release." onclick="makeReleaseCall('${esc0(e.country)}', '${esc0(e.event).replace(/'/g, '&#39;')}', ${ms}, '${side}', event)">${lbl}</button>`;
+  return `<span class="cal-call" title="Call it before the print: higher or lower than ${esc0(e.estimate)}">${b('higher', '▲')}${b('lower', '▼')}</span>`;
+}
+function scorecardsHtml() {
+  const B = window.releaseScorecardBrick; const today = new Date().toISOString().slice(0, 10);
+  const cards = (releaseCalls?.scorecards ?? []).filter(c => c.day === today || Date.now() - c.ms < 18 * 3600e3).slice(-3).reverse();
+  const you = releaseCalls?.summary;
+  const tally = you && you.n ? `<div class="sc-you">Your calls, 60 days: <b>${you.hits} of ${you.n}</b> right (${Math.round(you.hitRate * 100)}%, ${Math.round(you.lo * 100)}–${Math.round(you.hi * 100)}%)${you.pushes ? `, ${you.pushes} in line` : ''}${you.model?.n ? ` · the Fed models: <b>${you.model.hits} of ${you.model.n}</b> on the same prints` : ''} · consensus is the bar: 50% is guessing.</div>` : `<div class="sc-you">Call the next print ▲ higher or ▼ lower than consensus; it is scored thirty minutes after the release. The Fed models are scored beside you where they exist.</div>`;
+  if (!cards.length) return tally;
+  return cards.map(c => `<div class="sc-card"><div class="sc-h">Just printed · ${new Date(c.ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} UK</div>${(B ? B.formatScorecard(c, { html: true }) : esc0(JSON.stringify(c))).split('\n').map(l => `<div>${l}</div>`).join('')}</div>`).join('') + tally;
+}
 function renderGate() {
   const el = $('calList');
   if (!el) return;
@@ -2216,7 +2428,7 @@ function renderGate() {
     .sort((a, b) => a.ts - b.ts);
   const his = evs.filter(e => (e.impact ?? '').toLowerCase() === 'high');
   const medCount = evs.filter(e => (e.impact ?? '').toLowerCase() === 'medium').length;
-  if (!his.length && !medCount) { el.innerHTML = '<div class="muted">No high/medium-impact releases today.</div>'; return; }
+  if (!his.length && !medCount) { el.innerHTML = '<div class="muted">No high/medium-impact releases today.</div>' + scorecardsHtml(); return; }
   const now = Date.now();
   const nextIdx = his.findIndex(e => e.ts > now);
   const hh = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2224,12 +2436,12 @@ function renderGate() {
     const mins = Math.round((e.ts - now) / 60000);
     const cls = e.ts < now ? 'cal-row past' : '';
     const cd = i === nextIdx && mins < 600 ? `<span class="cal-cd">in ${mins >= 60 ? Math.floor(mins / 60) + 'h' + (mins % 60 ? (mins % 60) + 'm' : '') : mins + 'm'}</span>` : '';
-    return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · est ${esc0(e.estimate)}` : ''}${e.prev != null ? ` · prev ${esc0(e.prev)}` : ''}">
+    return `<div class="${cls || 'cal-row'}" title="${esc0(e.event)}${e.estimate != null ? ` · ${esc0(e.estimate)} expected` : ''}${e.prev != null ? ` · was ${esc0(e.prev)}` : ''}">
       <span class="cal-t">${hh(e.ts)}</span>
-      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}</span>
-      ${cd}
+      <span class="cal-ev">${NEWS_FLAG[e.country] ?? ''} <b>${esc0(e.country)}</b> · ${esc0(e.event.length > 34 ? e.event.slice(0, 33) + '…' : e.event)}${(() => { const n = nowcastFor(e.country, e.event, e.ts); return n ? ` <span class="muted help" style="font-size:10px" title="${esc0(`${n.who}: ${n.value} for ${n.month}${n.asOf ? `, as of ${n.asOf}` : ''}${e.estimate != null ? ` · consensus ${e.estimate}` : ''}. ${n.note}. Context, not a lean.`)}">model ${esc0(n.value)}</span>` : ''; })()}</span>
+      ${callButtonsHtml(e)}${cd}
     </div>`;
-  }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '');
+  }).join('') + (medCount ? `<div class="muted" style="padding-top:4px">+${medCount} medium-impact</div>` : '') + scorecardsHtml();
 }
 
 // ══ Daily-check zoom levels ══════════════════════════════════════════════════
@@ -2830,7 +3042,37 @@ function chainVals() {
     const pts = commodityDrivers?.series?.[node];
     out[node] = pts ? B.nodeDelta(pts, B.CHAIN_NODES[node]) : null;
   }
+  // funding: SOFR against the Fed's floor (IORB; IOER before 2021-07-29), point by point
+  try {
+    const sofr = fredHist?.sofr, iorb = fredHist?.iorb, ioer = fredHist?.ioer;
+    if (Array.isArray(sofr) && sofr.length && (iorb?.length || ioer?.length)) {
+      const fl = new Map([...(ioer ?? []).map(p => [p.date, p.value]), ...(iorb ?? []).map(p => [p.date, p.value])]);
+      let lastFloor = null; const spread = sofr.map(p => { if (fl.has(p.date)) lastFloor = fl.get(p.date); return lastFloor == null ? null : { date: p.date, value: p.value - lastFloor }; }).filter(Boolean);
+      out.funding = spread.length ? B.nodeDelta(spread, B.CHAIN_NODES.funding) : null;
+    }
+  } catch { out.funding = null; }
+  // the non-US legs: foreign 10Y minus the Treasury 10Y, point by point on common dates
+  try {
+    const ust = fredHist?.us10y; const ustBy = new Map((ust ?? []).map(p => [p.date, p.value]));
+    for (const [node, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) {
+      const f = intlYields?.[key];
+      if (!Array.isArray(f) || !f.length || !ustBy.size) { out[node] = null; continue; }
+      const gap = f.filter(p => ustBy.has(p.date)).map(p => ({ date: p.date, value: p.value - ustBy.get(p.date) }));
+      out[node] = gap.length ? B.nodeDelta(gap, B.CHAIN_NODES[node]) : null;
+    }
+  } catch { /* unmeasured */ }
+  try { const pts = crackData?.series; out.crack = Array.isArray(pts) && pts.length ? B.nodeDelta(pts, B.CHAIN_NODES.crack) : null; } catch { out.crack = null; }
   return out;
+}
+// The 10Y's 20-day move split by the ACM model into term premium (what holding
+// duration pays: supply, deficits, uncertainty) and the expected Fed path. A
+// reading on the card, not a claim: the split is the model's, by construction.
+function termPremiumSplit() {
+  const B = window.macroChainBrick; const tp = fredHist?.tp10, fy = fredHist?.fy10;
+  if (!B || !Array.isArray(tp) || !tp.length || !Array.isArray(fy) || !fy.length) return null;
+  const stub = { unit: 'bp', floor: 0, dp: 0 };
+  const dTp = B.nodeDelta(tp, stub), dFy = B.nodeDelta(fy, stub); if (!dTp || !dFy) return null;
+  return { tp: dTp.delta, path: dFy.delta - dTp.delta, fitted: dFy.delta, asOf: dTp.asOf, level: tp.at(-1)?.value ?? null };
 }
 function chainLinks() {
   const B = window.macroChainBrick;
@@ -2905,10 +3147,13 @@ async function peekChainRead() {
   } catch { _chainRead = { state: 'none', data: null, err: null, at: 0 }; }
   render();
 }
+let _chainReadTimer = null;
 async function loadChainRead(force = false) {
   if (_chainRead.state === 'loading') return;
-  _chainRead = { ..._chainRead, state: 'loading', err: null };
+  // A read takes 40-60 seconds; the button counts so a wait is not mistaken for nothing happening.
+  _chainRead = { ..._chainRead, state: 'loading', err: null, startedAt: Date.now() };
   render();
+  clearInterval(_chainReadTimer); _chainReadTimer = setInterval(() => { if (_chainRead.state !== 'loading') { clearInterval(_chainReadTimer); return; } render(); }, 5000);
   try {
     const resp = await fetch(`/api/chain-read${force ? '?force=1' : ''}`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
@@ -2974,9 +3219,13 @@ function chainReadHtml() {
   const r = _chainRead.data?.read;
   // Generating is a paid model call, so it only ever happens on this click. A
   // read already made in the last 30 minutes is served from the server for free.
-  const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(${r ? 'true' : 'false'})" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(${r ? 'true' : 'false'})}" title="${r ? 'Write a new read from the current numbers. This is a model call; nothing is generated automatically.' : 'Write the read from the current numbers. This is a model call; nothing is generated automatically. If one was written in the last 30 minutes you get that instead, free.'}">${st === 'loading' ? '… reading' : r ? '↻ re-read' : '🧠 read the tape'}</span>`;
+  const btn = `<span class="chip neu" role="button" tabindex="0" style="cursor:pointer" onclick="loadChainRead(${r ? 'true' : 'false'})" onkeydown="if(event.key==='Enter'||event.key===' '){loadChainRead(${r ? 'true' : 'false'})}" title="${r ? 'Write a new read from the current numbers. This is a model call; nothing is generated automatically.' : 'Write the read from the current numbers. This is a model call; nothing is generated automatically. If one was written in the last 30 minutes you get that instead, free.'}">${st === 'loading' ? `… reading ${Math.round((Date.now() - (_chainRead.startedAt ?? Date.now())) / 1000)}s (usually under a minute; keep the tab open)` : r ? '↻ re-read' : '🧠 read the tape'}</span>`;
   const teachBtn = r ? `<span class="chip neu${_explain.key === 'read' ? ' on' : ''}" role="button" tabindex="0" style="cursor:pointer" onclick="explainThis('read', { kind: 'read' }, event)" onkeydown="if(event.key==='Enter'||event.key===' '){explainThis('read', { kind: 'read' }, event)}" title="Every term in this read, in plain words, plus the two or three distinctions you need to hold apart to follow it.">🎓 teach me this read</span>` : '';
-  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span></span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
+  // The read is written only on a click, so an old one stays up; say its age loudly
+  // once it is a day old, the way the morning brief does, so it is not mistaken for today's.
+  const ageMin = _chainRead.data?.ageMin ?? (_chainRead.data?.generatedAt ? Math.round((Date.now() - Date.parse(_chainRead.data.generatedAt)) / 60_000) : null);
+  const oldChip = ageMin != null && ageMin >= 24 * 60 ? `<span class="chip warn" style="font-size:9px" title="Written ${Math.round(ageMin / 60 / 24)} days ago. Nothing re-reads on its own: press re-read for one from today's numbers.">⚠ ${Math.round(ageMin / 60 / 24)}d old · press re-read</span>` : '';
+  const head = `<div class="chain-read-h"><span>The read <span class="chip warn" style="font-size:9px">AI · not backtested</span>${oldChip}</span><span style="display:inline-flex;gap:5px">${teachBtn}${btn}</span></div>`;
   if (!r) {
     if (st === 'loading') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Reading the tape…</div></div>`;
     if (st === 'error') return `<div class="chain-read">${head}<div class="muted" style="font-size:11.5px">Could not build the read (${esc0(_chainRead.err ?? '')}).</div></div>`;
@@ -2997,6 +3246,161 @@ function chainReadHtml() {
     ${r.next ? `<div class="chain-read-row"><b>Next:</b> ${esc0(r.next)}</div>` : ''}
     ${r.forFx ? `<div class="chain-read-row"><b>For FX:</b> ${esc0(r.forFx)}</div>` : ''}
     <div class="chain-foot">${(() => { const d = _chainRead.data; const age = d?.ageMin; const stale = age != null && age >= 30; return `Written from the numbers on the page${d?.headlineCount ? ` and ${d.headlineCount} headlines` : ''}${when ? ` at <b>${when}</b>` : ''}${age != null && age >= 2 ? ` — <b>${age >= 120 ? `${Math.round(age / 60)}h` : `${age} min`} ago</b>${stale ? '; the numbers in it are from then, the rows below are current' : ''}` : ''}. Last read kept until you write a new one. An opinion in a trader's voice, not a forecast.`; })()}</div>
+  </div>`;
+}
+// ── The chain as a picture ──────────────────────────────────────────────────
+// Same links, same verdicts as the rows below, drawn as boxes and lines so the
+// order of causation reads at a glance: green = holding, amber = broken, dashed
+// = quiet (an end inside its noise floor), dotted = no data. Rebuilt from the
+// live 20-day moves on every render; no model call. Click a box for what that
+// thing is and how it sits in the chain today (from the brick's own words).
+const CHAIN_POS = {   // [column, row] on a 6 x 3 grid, chosen so lines run between boxes, not through them
+  oil: [0, 0], bei: [1, 0], us10y: [2, 0], real: [3, 0], dxy: [4, 0], audusd: [5, 0],
+  usdcad: [0, 1], crack: [1, 1], us30y: [2, 1], gold: [4, 1], usdjpy: [5, 1],
+  vix: [0, 2], hy: [1, 2], spx: [2, 2], nq: [3, 2], copper: [4, 2], btc: [5, 2],
+  funding: [3, 1],   // the one plumbing node, in the empty slot under the real yield
+  // the non-US yield legs (MD files/NONUS_YIELDS.md): each gap beside its pair; the JGB gap climbs to USD/JPY between copper and bitcoin
+  giltgap: [0, 3], gbpusd: [1, 3], bundgap: [2, 3], eurusd: [3, 3], jgbgap: [4, 3],
+  us2y: [5, 3],   // the front end: its one link runs up-left to the 30Y between the S&P and Nasdaq chips; the crack took its old slot beside oil
+};
+// Short edge labels that fit the gap between boxes; the full name is in the hover.
+const CHAIN_EDGE_LABEL = { 'oil-bei': 'oil→infl.', 'bei-us10y': 'infl.→10Y', 'us10y-real': 'nom→real', 'us2y-us30y': 'front→long', 'real-dxy': 'real→$', 'dxy-audusd': '$→AUD', 'real-gold': 'real→gold', 'dxy-gold': '$→gold', 'dxy-usdjpy': '$→yen', 'real-nq': 'real→growth', 'real-spx': 'real→broad', 'oil-usdcad': 'oil→CAD', 'copper-audusd': 'Cu→AUD', 'vix-usdjpy': 'fear→yen', 'vix-hy': 'fear→HY', 'dxy-btc': '$→BTC', 'funding-dxy': 'fund→$', 'funding-vix': 'fund→fear', 'giltgap-gbpusd': 'gilts→£', 'bundgap-eurusd': 'bunds→€', 'jgbgap-usdjpy': 'JGBs→yen', 'crack-bei': 'crack→infl.' };
+let _chainNodeSel = null, _chainLinkSel = null;
+function selectChainNode(key, ev) { ev?.stopPropagation?.(); _chainLinkSel = null; _chainNodeSel = _chainNodeSel === key ? null : key; render(); }
+function selectChainLink(id, ev) { ev?.stopPropagation?.(); _chainNodeSel = null; _chainLinkSel = _chainLinkSel === id ? null : id; render(); }
+function chainGraphHtml(links) {
+  const B = window.macroChainBrick; if (!B || !links.length) return '';
+  // The domino board: chips with an icon ring, curved links that flow in the
+  // direction of cause -> effect when the link is holding, pulse amber when it is
+  // broken, and sit as a still dotted grey when an end is inside its noise floor.
+  const PX = 232, PY = 98, BW = 156, BH = 46, OX = 14, OY = 12, R = 14; const ROWS = Math.max(...Object.values(CHAIN_POS).map(p => p[1])) + 1; const W = OX * 2 + PX * 5 + BW, H = OY * 2 + PY * (ROWS - 1) + BH;
+  const cx = k => OX + CHAIN_POS[k][0] * PX + BW / 2, cy = k => OY + CHAIN_POS[k][1] * PY + BH / 2;
+  const ends = {}; for (const l of links) { if (l.a?.key) ends[l.a.key] = l.a; if (l.b?.key) ends[l.b.key] = l.b; }
+  const vcls = { holding: 'hold', broken: 'broke', quiet: 'quiet', unmeasured: 'none' };
+  const wrongEnd = new Set(links.filter(l => l.verdict === 'broken').map(l => l.b?.key));
+  // anchor on the chip border along the centre line, then a cubic curve with horizontal handles
+  const clip = (x0, y0, x1, y1) => { const dx = x1 - x0, dy = y1 - y0; const tx = dx ? (BW / 2) / Math.abs(dx) : Infinity, ty = dy ? (BH / 2) / Math.abs(dy) : Infinity; const t = Math.min(tx, ty); return [x0 + dx * t, y0 + dy * t]; };
+  const edges = links.filter(l => CHAIN_POS[l.a?.key] && CHAIN_POS[l.b?.key]).map(l => {
+    const x0 = cx(l.a.key), y0 = cy(l.a.key), x1 = cx(l.b.key), y1 = cy(l.b.key);
+    const [sx, sy] = clip(x0, y0, x1, y1), [ex, ey] = clip(x1, y1, x0, y0);
+    // straight-on links get a gentle curve; diagonals stay straight so a link can
+    // never bulge into a chip it does not touch and read as passing through it
+    const straightOn = Math.abs(ex - sx) < 2 || Math.abs(ey - sy) < 2; const horiz = Math.abs(ex - sx) >= Math.abs(ey - sy); const h = horiz ? Math.max(30, Math.abs(ex - sx) * 0.4) : 0, v = horiz ? 0 : Math.max(24, Math.abs(ey - sy) * 0.4);
+    const d = straightOn ? `M${sx.toFixed(1)},${sy.toFixed(1)} C${(sx + (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(sy + (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${(ex - (horiz ? h * Math.sign(ex - sx) : 0)).toFixed(1)},${(ey - (horiz ? 0 : v * Math.sign(ey - sy))).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}` : `M${sx.toFixed(1)},${sy.toFixed(1)} L${ex.toFixed(1)},${ey.toFixed(1)}`;
+    const mx = (sx + ex) / 2, my = (sy + ey) / 2; const lbl = CHAIN_EDGE_LABEL[l.id] ?? l.short.replace(/\s*→\s*/g, '→'); const lw = lbl.length * 6.3 + 12;
+    const title = `${l.textbook}. Today: ${l.verdict}${l.punch ? ' — ' + l.punch : ''}`;
+    return `<g class="ge-g ${vcls[l.verdict]}${_chainLinkSel === l.id ? ' sel' : ''}" onclick="selectChainLink('${l.id}', event)"><title>${esc0(title)} — tap for why</title><path class="ge-halo" d="${d}"/><path class="ge ${vcls[l.verdict]}" d="${d}" marker-end="url(#chain-arrow-${vcls[l.verdict]})"/><rect class="glb" x="${(mx - lw / 2).toFixed(1)}" y="${(my - 8).toFixed(1)}" width="${lw.toFixed(1)}" height="16" rx="8"/><text class="gl ${vcls[l.verdict]}" x="${mx.toFixed(1)}" y="${(my + 3.5).toFixed(1)}" text-anchor="middle">${esc0(lbl)}</text></g>`;
+  }).join('');
+  const arrow = d => d === 'up' ? '↑' : d === 'down' ? '↓' : '';
+  const nodes = Object.keys(CHAIN_POS).map(k => {
+    const n = B.CHAIN_NODES[k]; if (!n) return ''; const e = ends[k];
+    const x = cx(k) - BW / 2, y = cy(k) - BH / 2;
+    const moved = e?.delta != null && e.moved; const ring = wrongEnd.has(k) ? 'wrong' : moved ? (e.dir === 'up' ? 'up' : 'dn') : e?.delta == null ? 'none' : 'quiet';
+    const val = e?.delta == null ? 'no data' : `${e.text} ${moved ? arrow(e.dir) : ''}${moved ? '' : ' · quiet'}`;
+    const short = n.label.replace(/ \(.*\)$/, '').replace('Inflation expectations', 'Infl. pricing').replace('Credit spreads', 'Credit (HY)').replace('Growth stocks', 'Nasdaq').replace('Broad stocks', 'S&P 500').replace('Fear gauge', 'VIX').replace('Funding', 'Funding (repo)');
+    return `<g class="gn ${ring}${_chainNodeSel === k ? ' sel' : ''}" onclick="selectChainNode('${k}', event)"><title>${esc0(n.what)}</title><rect class="chip" x="${x}" y="${y}" width="${BW}" height="${BH}" rx="23"/><circle class="ring" cx="${x + 23}" cy="${y + BH / 2}" r="${R}"/><g transform="translate(${x + 23 - 8},${y + BH / 2 - 8}) scale(0.667)">${CHAIN_ICON[k] ?? CHAIN_ICON._}</g><text class="nl" x="${x + 44}" y="${y + 19}">${esc0(short)}</text><text class="nv ${ring === 'up' ? 'up' : ring === 'dn' ? 'dn' : ''}" x="${x + 44}" y="${y + 35}">${esc0(val)}</text></g>`;
+  }).join('');
+  const sum = B.summariseChain(links);
+  const vword = { holding: 'holding', broken: 'broken', quiet: 'quiet', unmeasured: 'no data' };
+  // the link card: the textbook, which way, why in the desk's words, today's verdict, and teach-me
+  const selLink = _chainLinkSel ? links.find(l => l.id === _chainLinkSel) : null;
+  const linkCard = selLink ? (() => {
+    const l = selLink; const A = B.CHAIN_NODES[l.a.key], Bn = B.CHAIN_NODES[l.b.key];
+    const way = l.sign > 0 ? `<b>the same way</b>: when ${esc0(A.label)} rises, ${esc0(Bn.label)} should rise; when it falls, so should ${esc0(Bn.label)}` : `<b>the opposite way</b>: when ${esc0(A.label)} rises, ${esc0(Bn.label)} should fall, and the reverse`;
+    const arr = d => d === 'up' ? '↑' : '↓';
+    const status = l.verdict === 'holding' ? `<b style="color:var(--bull)">Holding today.</b> ${esc0(l.a.label)} ${esc0(l.a.text)} ${arr(l.a.dir)} and ${esc0(l.b.label)} ${esc0(l.b.text)} ${arr(l.b.dir)} — ${esc0(l.read ?? '')}`
+      : l.verdict === 'broken' ? `<b style="color:var(--amber)">Broken today.</b> ${esc0(l.a.label)} ${esc0(l.a.text)} ${arr(l.a.dir)} but ${esc0(l.b.label)} ${esc0(l.b.text)} ${arr(l.b.dir)}, the wrong way round. ${esc0(l.read ?? '')}`
+      : l.verdict === 'quiet' ? `<b>Quiet today — not judged.</b> ${esc0((l.punch ?? l.read ?? '').replace(/\.?$/, '.'))} A link is only judged when both ends have moved past their noise floors (${esc0(l.a.floorText ?? '')} for ${esc0(A.label)}, ${esc0(l.b.floorText ?? '')} for ${esc0(Bn.label)}); below that a move is noise and the textbook has nothing to answer for.`
+      : `<b>No data</b> on one end today.`;
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainLink(null, event)">close ✕</span>
+      <b>${esc0(A.label)} → ${esc0(Bn.label)}</b> · <span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span><br>
+      <b>The textbook:</b> ${esc0(l.textbook)}. They should move ${way}.<br>
+      <b>Why:</b> ${esc0(A.what)} <span class="muted">→</span> ${esc0(Bn.what)}<br>
+      <div style="margin-top:5px">${status}</div>
+      <div class="muted" style="font-size:10.5px;margin-top:5px">Everything here is written into the chain, no model call. The paid "explain" sits on the rows below, if you want the longer version.</div></div>`;
+  })() : '';
+  const sel = _chainNodeSel && B.CHAIN_NODES[_chainNodeSel] ? (() => {
+    const n = B.CHAIN_NODES[_chainNodeSel]; const e = ends[_chainNodeSel];
+    const outs = links.filter(l => l.a?.key === _chainNodeSel), ins = links.filter(l => l.b?.key === _chainNodeSel);
+    // which way, for what: the textbook direction of every link leaving this node
+    const ways = outs.length ? `<div style="margin-top:5px"><b>What it moves, and which way</b> (textbook): when ${esc0(n.label)} rises, ${outs.map(l => `${esc0(B.CHAIN_NODES[l.b.key]?.label ?? l.b.key)} should go <b>${l.sign > 0 ? 'up' : 'down'}</b>`).join('; ')}.</div>` : '';
+    const from = ins.length ? `<div style="margin-top:3px"><b>What moves it:</b> ${ins.map(l => `${esc0(B.CHAIN_NODES[l.a.key]?.label ?? l.a.key)} (${l.sign > 0 ? 'same way' : 'opposite'})`).join(', ')}.</div>` : '';
+    const today = [...ins, ...outs].map(l => `<div><span class="chain-v ${vcls[l.verdict] === 'none' ? 'quiet' : vcls[l.verdict]}">${vword[l.verdict]}</span> <span class="chain-q-link" style="cursor:pointer" onclick="selectChainLink('${l.id}', event)">${esc0(l.short)}</span>${l.punch ? ` — ${esc0(l.punch)}` : ''}</div>`).join('');
+    const tps = (_chainNodeSel === 'us10y' || _chainNodeSel === 'us30y') ? termPremiumSplit() : null;
+    const wg = _chainNodeSel === 'gold' ? whichGold() : null;
+    const goldSplit = wg ? `<div style="margin-top:5px"><b>Which gold is trading:</b> <b>${esc0(wg.kind)}</b> — ${esc0(wg.why)}. Four golds (rates, dollar, reserve, fear), one at a time; over 2010–2026 rates gold ${GOLD_SHARES.rates}% of windows, dollar ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%.${wg.fear ? ` <b>Fear flag:</b> VIX +${wg.fear.dv} in five sessions with gold ${wg.fear.dg >= 0 ? '+' : ''}${wg.fear.dg}% — tested on 58 spikes: no fear bid on average, and a month later gold lagged by 1.2% [0.5, 2.3]. The gold people buy, and the one that has not paid.` : ' Fear gold, tested: no bid on average after a VIX spike and a lag a month later — the one that does not pay.'} <a href="MD files/FOUR_GOLDS.md" target="_blank">FOUR_GOLDS.md</a></div>` : '';
+    const bp = v => `${v > 0 ? '+' : ''}${Math.round(v)}bp`;
+    const split = tps ? `<div style="margin-top:5px"><b>Why it moved</b> (the ACM model, not a claim): of the 10-year\u2019s ${bp(tps.fitted)} over ${B.CHAIN_WINDOW_DAYS} days, <b>${bp(tps.tp)}</b> is term premium \u2014 what investors demand for holding duration: supply, deficits, uncertainty \u2014 and <b>${bp(tps.path)}</b> is the expected Fed path. ${Math.abs(tps.tp) > Math.abs(tps.path) ? 'A term-premium move is a supply or credibility story, not a growth story.' : 'A path move is the market re-pricing the Fed: growth and inflation, not supply.'}${_chainNodeSel === 'us30y' ? ' The 30-year has no published split; the 10-year\u2019s is the nearest reading.' : ''} <span class="muted">term premium now ${tps.level != null ? tps.level.toFixed(2) + '%' : '\u2014'} \u00b7 <a href="rates.html" target="_blank">rates.html</a></span></div>` : '';
+    return `<div class="chain-node-card"><span class="x" onclick="selectChainNode(null, event)">close ✕</span><b>${esc0(n.label)}</b>${e?.delta != null ? ` · ${esc0(e.text)} over ${B.CHAIN_WINDOW_DAYS} days${e.moved ? '' : ' (inside its noise floor, so quiet)'}` : ''}<br>${esc0(n.what)}${split}${goldSplit}${ways}${from}<div style="margin-top:5px">${today || 'No link on the board touches this today.'}</div><div class="muted" style="font-size:10.5px;margin-top:4px">Tap a link name for the textbook, the why and today\u2019s verdict.</div></div>`;
+  })() : '';
+  const defs = `<defs>${['hold', 'broke', 'quiet', 'none'].map(c => `<marker id="chain-arrow-${c}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="gah ${c}"/></marker>`).join('')}</defs>`;
+  return `<div class="chain-g"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="The macro chain today: each chip is a thing that moves, each curve a textbook link, flowing where the link is holding, amber where it broke">${defs}${edges}${nodes}</svg></div>
+    <div class="chain-legend"><span><i class="hold"></i>${sum.holding} holding · flowing the textbook way</span><span><i class="broke"></i>${sum.broken} broken · both moved, the wrong way round</span><span><i class="quiet"></i>${sum.quiet + sum.unmeasured} quiet · an end inside its noise floor, not judged</span><span>each arrow is one link on its own; a line passing under a chip does not touch it · tap a chip for what it is, a pill for why the link exists</span><span class="chain-names">in market words: US 2Y / 10Y / 30Y yield = Treasury bonds (the 2Y is the Fed path, the 30Y the inflation and deficit vote) · Real yield = 10-year TIPS · Infl. pricing = breakevens, nominal minus TIPS · Credit (HY) = junk-bond spreads · Funding = overnight repo against the Fed floor · £ € ¥ = the gilt, Bund and JGB 10-year minus the Treasury 10-year (who is repricing faster), from the BoE, Bundesbank and Japan MoF · Crack spread = the refining margin, fuel minus crude per barrel</span></div>${linkCard}${sel}`;
+}
+// Pictograms, one weight, 24-unit box — drawn here so they render the same on
+// every phone (emoji do not).
+const CHAIN_ICON = {
+  oil: '<path d="M7 3h10v3l2 2v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8l2-2z M5 12h14 M5 16h14" fill="none" stroke="currentColor" stroke-width="1.8"/>',
+  bei: '<path d="M12 3a2 2 0 0 0-2 2v9.5a4 4 0 1 0 4 0V5a2 2 0 0 0-2-2z M12 8v8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="17" r="1.6" fill="currentColor"/>',
+  us2y: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  us10y: '<path d="M3 18 9 11l4 3 8-9 M15 5h6v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  us30y: '<path d="M4 20h16 M5 9h14 M12 3 4 8h16z M7 9v11 M12 9v11 M17 9v11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+  real: '<path d="M12 3v18 M5 8h14 M5 8l-3 6a3 3 0 0 0 6 0z M19 8l-3 6a3 3 0 0 0 6 0z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+  dxy: '<path d="M12 3v18 M16 7.5a4 4 0 0 0-4-2.5H11a3 3 0 0 0 0 6h2a3 3 0 0 1 0 6h-1.5a4 4 0 0 1-3.5-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  gold: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.4"/>',
+  copper: '<path d="M13 2 5 13h6l-1 9 8-12h-6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  audusd: '<path d="M4 15c2-6 6-8 9-8 3 0 5 2 5 4l3 1-3 2c0 3-3 5-6 5H9l-2 3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  usdcad: '<path d="M12 3l2 4 3-1-1 4 4 2-4 2 1 4-3-1-2 4-2-4-3 1 1-4-4-2 4-2-1-4 3 1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  usdjpy: '<path d="M3 6h18 M5 6c0 1 0 2-1 3 M19 6c0 1 0 2 1 3 M6 9h12 M8 9v11 M16 9v11 M6 14h12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+  vix: '<path d="M7 16a4 4 0 0 1 0-8 5.5 5.5 0 0 1 10.5 1A3.5 3.5 0 0 1 17 16H7z M13 16l-2 4h4l-2 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  hy: '<path d="M3 21h18 M5 10h14 M12 3 3 9h18z M7 10v8 M12 10v8 M17 10v8 M5 18h14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  nq: '<path d="M12 3c3 3 4 7 4 11l3 3v3l-4-2-1 3h-4l-1-3-4 2v-3l3-3c0-4 1-8 4-11z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="11" r="1.5" fill="currentColor"/>',
+  spx: '<path d="M4 21V9l8-6 8 6v12 M9 21v-6h6v6 M8 11h2 M14 11h2 M8 15h2 M14 15h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+  btc: '<path d="M9 4v16 M13 4v2 M13 18v2 M8 6h6a3 3 0 0 1 0 6H8 M8 12h7a3 3 0 0 1 0 6H8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  funding: '<path d="M4 6h8a4 4 0 0 1 4 4v2h4v3h-4v2a2 2 0 0 1-2 2h-2v-4H4z M14 19c0 2-1 3-2 3s-2-1-2-3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+  crack: '<path d="M5 20V9l3-5h8l3 5v11z M5 13h14 M10 4v5 M14 4v5 M9 17h2 M13 17h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+  giltgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">£</text>',
+  bundgap: '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">€</text>',
+  jgbgap:  '<text x="12" y="17.5" text-anchor="middle" font-size="16" font-weight="800" fill="currentColor" font-family="inherit">¥</text>',
+  gbpusd:  '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" font-family="inherit">£/$</text>',
+  eurusd:  '<text x="12" y="16.5" text-anchor="middle" font-size="11" font-weight="800" fill="currentColor" font-family="inherit">€/$</text>',
+  _: '<circle cx="12" cy="12" r="4" fill="currentColor"/>',
+};
+// Crude and the crack: crude and fuel are two markets, and the refiner's
+// margin between them is the one that says whether fuel is tight. Description
+// plus the three tested lines (MD files/CRACK_SPREAD.md); no lean.
+function crackHtml() {
+  const d = crackData; if (!d?.last || !d.context) return '';
+  const c = d.context, L = d.last, ch = d.change20 ?? {};
+  const usd = v => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(v >= 100 ? 0 : 1)}`;
+  const pctWord = c.percentile >= 0.95 ? 'the top 5% of its history' : c.percentile >= 0.9 ? 'the top tenth of its history' : c.percentile >= 0.75 ? 'the top quarter' : c.percentile <= 0.1 ? 'the bottom tenth' : 'the ordinary middle';
+  const liveOil = commodityDrivers?.wti?.price; const oilNote = liveOil != null ? ` Crude live ${usd(liveOil)}, so the crack today is about ${usd(((2 * L.gasoline + L.heatingOil) * 42 - 3 * liveOil) / 3)} if fuel has held.` : '';
+  const dis = ch.wtiPct != null && ch.crack != null && ch.wtiPct <= -5 && ch.crack >= 5;
+  const agr = ch.wtiPct != null && ch.crack != null && ch.wtiPct <= -5 && ch.crack <= -5;
+  const st = d.study; const c2 = st?.c2, c3 = st?.c3, c1 = st?.c1;
+  // a year of the crack against its normal band
+  const pts = (d.series ?? []).slice(-250); const spark = (() => { if (pts.length < 20) return ''; const vals = pts.map(p => p.value); const lo = Math.min(...vals, c.p25), hi = Math.max(...vals, c.p90); const W = 300, H = 46; const x = i => (i / (pts.length - 1) * W).toFixed(1), y = v => (H - 4 - (v - lo) / (hi - lo || 1) * (H - 8)).toFixed(1);
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:46px;display:block"><rect x="0" y="${y(c.p75)}" width="${W}" height="${(y(c.p25) - y(c.p75)).toFixed(1)}" fill="var(--text3)" opacity=".16"/><line x1="0" x2="${W}" y1="${y(c.median)}" y2="${y(c.median)}" stroke="var(--text3)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"/><polyline points="${pts.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><div class="muted" style="font-size:10px;margin-top:2px">the crack, one year · grey band = its normal quarter-to-quarter range since 2010 ($${c.p25}–$${c.p75}), dotted = the median $${c.median}</div>`; })();
+  const tip = 'The 3-2-1 crack: three barrels of crude in, two of gasoline and one of diesel out, priced at the NY Harbor spot prices FRED carries from the EIA. ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3 = the refiner\u2019s margin per barrel of crude. Crude and fuel are two markets; the crack is what says whether fuel is tight when crude moves.';
+  return `<div class="chain">
+    <div class="chain-h help" title="${esc0(tip)}">Crude &amp; the crack <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· the refiner\u2019s margin, fuel minus crude</span></div>
+    <div class="chain-sum ${c.percentile >= 0.9 ? 'broke' : 'quiet'}">The 3-2-1 crack is <b>${usd(c.last)} a barrel</b> (FRED to ${c.date}) — ${esc0(c.word)}, in ${pctWord}; normal is $${c.p25}–$${c.p75}.${ch.crack != null ? ` Over 20 sessions the crack is ${ch.crack >= 0 ? 'up' : 'down'} ${usd(Math.abs(ch.crack))} while crude is ${ch.wtiPct >= 0 ? '+' : ''}${ch.wtiPct}%${dis ? ' — <b>crude down, fuel tight</b>: the disagreement that says the sell-off is not the whole story' : agr ? ' — crude and fuel falling together: a genuine easing' : ''}.` : ''}${esc0(oilNote)}</div>
+    <div class="ccy-explain" style="margin:2px 0 8px"><b>What 3-2-1 means.</b> A refinery buys crude and sells fuel. Three barrels of crude in, two barrels of gasoline and one of diesel out — the 3-2-1 is that recipe priced: the fuel it makes (gasoline and heating oil are quoted per gallon, so ×42 for a barrel) minus the crude it bought, divided by three, so it reads as <b>dollars of margin per barrel of crude</b>. Crude and fuel are two different markets with two different sets of buyers, and this number is the gap between them.
+      <br><b>Reading a move.</b> <b>Crack rising</b> = fuel is getting dearer faster than crude — refineries offline, exports cut, inventories drawn — so the pump price stays up whatever crude does, and inflation pricing keeps it (that is the tested part). <b>Crack falling</b> = fuel is losing its premium — demand softening or crude too dear to refine profitably — the one true sign the energy squeeze is easing. <b>Crude down, crack up</b> is the disagreement worth noticing: crude has dipped but fuel has not, so the story is not over.
+      <br><b>What it changes here.</b> It changes what you <i>expect</i>, not a lean. A wide crack: do not read a crude dip as inflation relief (breakevens, the 10-year, the real-yield chips) and expect the next CPI prints to carry fuel. It does <i>not</i> change ranges (tested null for crude, USD/CAD, gold) and it is not a direction call on crude (a base rate that leans the story’s way with an interval on the coin). Refining stocks reprice on it; this desk does not trade them.</div>
+    <div class="statrow" style="margin-bottom:8px">
+      <div class="statcard"><div class="lbl">WTI crude</div><div class="row1"><span class="big">${usd(L.wti)}</span></div><div class="swk muted">${L.date}${liveOil != null ? ` · live ${usd(liveOil)}` : ''}</div></div>
+      <div class="statcard"><div class="lbl">Gasoline (NY Harbor)</div><div class="row1"><span class="big">$${L.gasoline.toFixed(2)}</span><span class="muted">/gal</span></div><div class="swk muted">×42 = ${usd(L.gasoline * 42)} a barrel</div></div>
+      <div class="statcard"><div class="lbl">Heating oil (diesel)</div><div class="row1"><span class="big">$${L.heatingOil.toFixed(2)}</span><span class="muted">/gal</span></div><div class="swk muted">×42 = ${usd(L.heatingOil * 42)} a barrel</div></div>
+      <div class="statcard"><div class="lbl">3-2-1 crack</div><div class="row1"><span class="big">${usd(c.last)}</span><span class="sdelta ${ch.crack >= 0 ? 'up' : 'dn'}">${ch.crack >= 0 ? '+' : '-'}$${Math.abs(ch.crack ?? 0).toFixed(1)} / 20d</span></div><div class="swk muted">P${Math.round(c.percentile * 100)} since 2010</div></div>
+    </div>
+    ${spark}
+    <div class="ccy-explain" style="margin-top:8px"><b>What it means, tested here</b> (<a href="MD files/CRACK_SPREAD.md" target="_blank">CRACK_SPREAD.md</a>):
+      <div>· <b>Inflation pricing:</b> the crack carries breakevens beyond crude${c2 ? ` — partial correlation ${c2.partial} [${c2.partialLo}, ${c2.partialHi}] after crude; when crude fell 5% but the crack rose $5, breakevens moved ${c2.disagreeBei.median}bp against ${c2.agreeBei.median}bp when both fell (+${Math.round(c2.disagreeVsAgree.diff)}bp [${Math.round(c2.disagreeVsAgree.lo)}, ${Math.round(c2.disagreeVsAgree.hi)}])` : ''}. <b>So when crude sells off, look at the crack before writing that inflation relief is coming.</b> It is on the chain as crack → inflation pricing.</div>
+      <div>· <b>Range:</b> a crack blow-out does not widen the month${c1 ? ` — WTI ${c1.WTI?.diff?.diff >= 0 ? '+' : ''}${c1.WTI?.diff?.diff} ATR [${c1.WTI?.diff?.lo}, ${c1.WTI?.diff?.hi}], USD/CAD ${c1.USDCAD?.diff?.diff}, gold ${c1.XAUUSD?.diff?.diff}` : ''}. No trigger.</div>
+      <div>· <b>Direction, a base rate:</b> after crude fell 5% while the crack rose $5, crude was higher a month later ${c3 ? `${Math.round(c3.afterDisagree.share * 100)}% of the time [${Math.round(c3.afterDisagree.lo * 100)}–${Math.round(c3.afterDisagree.hi * 100)}] on ${c3.afterDisagree.n} cases, against ${Math.round(c3.unconditional.share * 100)}% for any month` : ''}. Leans the way the story says; the interval holds the coin.</div>
+      <div class="muted" style="font-size:10.5px;margin-top:3px">Why it matters beyond oil: the pump price follows the crack, not crude, so a wide crack feeds the next CPI prints; refiners reprice on it; and speculators long fuel and short crude push it wider still. Source: FRED EIA spot prices, about a week behind, like the WTI print.</div>
+    </div>
   </div>`;
 }
 function chainHtml() {
@@ -3032,6 +3436,7 @@ function chainHtml() {
   return `<div class="chain">
     <div class="chain-h help" title="${esc0(tip)}">The chain, today <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· textbook links vs ${W}-day moves ${_EV('c', _EV_T.c)}</span></div>
     <div class="chain-sum ${sum.broken ? 'broke' : sum.judged ? 'hold' : 'quiet'}">${esc0(sum.headline)}</div>
+    ${chainGraphHtml(links)}
     ${chainReadHtml()}
     ${links.map(l => {
       const judged = l.verdict === 'holding' || l.verdict === 'broken';
@@ -4048,8 +4453,16 @@ function renderMarketRead() {
     if (collecting.length) {
       srNote = `<div class="muted" style="font-size:10.5px;margin-top:4px">Still collecting: ${collecting.map(c => `${c.ccy} (${c.n}/${c.n + c.pending})`).join(', ')} — a surprise index needs release history, and the calendar feed only exposes one week at a time.</div>`;
     }
-  } else if (econSurprise) {
-    srNote = `<div class="muted" style="font-size:10.5px">Surprise index is still collecting release history (${econSurprise.storedReleases ?? 0} stored). It is built one week at a time because the calendar feed only ever exposes the current week — nothing is shown until a series has enough history to standardise against.</div>`;
+  }
+  // Feed health, in words: which prints are live and when the last one landed. A
+  // store that stops growing must be visible here, not only in a log line.
+  if (econSurprise?.health) {
+    const h = econSurprise.health; const ageD = h.latestPrintAt ? (Date.now() - Date.parse(h.latestPrintAt)) / 864e5 : null;
+    const stale = ageD == null || ageD > 9;
+    srNote += `<div class="muted" style="font-size:10.5px;margin-top:4px${stale ? ';color:var(--amber)' : ''}">${stale ? '⚠ ' : ''}Live prints: US releases; UK CPI, core CPI and unemployment (ONS); Canadian CPI, the three core measures, jobs and GDP (StatCan); euro-area HICP, core, GDP and unemployment (Eurostat); and the ECB, BoE, BoC and RBA rate decisions. Consensus from the calendar, the actual from the source on release day. Australian and Japanese data, UK retail/GDP and the ISM/PMI family have no validated source yet, so they do not score. ${h.latestPrintAt ? `Last live print ${new Date(h.latestPrintAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, ${h.last30d} in 30 days.` : 'No live print yet since the 2025 backfill.'}${stale ? ' Older than nine days on a working calendar means the fill has stopped.' : ''}</div>`;
+  }
+  if (!srScored.length && econSurprise) {
+    srNote += `<div class="muted" style="font-size:10.5px">Surprise index is still collecting release history (${econSurprise.storedReleases ?? 0} stored). It is built one week at a time because the calendar feed only ever exposes the current week — nothing is shown until a series has enough history to standardise against.</div>`;
   }
 
   // ── Business-activity bars (a LEVEL — kept, under its own honest name) ──
@@ -4112,6 +4525,7 @@ function renderMarketRead() {
     </div>
     ${dataConflictHtml()}
     ${chainHtml()}
+    ${crackHtml()}
     ${divergenceHtml()}
     ${falsifierHtml(rs, risk, csrMR)}
     <div class="mread-watch">
@@ -4230,6 +4644,245 @@ function outlookBiasListHtml(rs, key) {
     ? `<div style="margin:0 0 6px"><b style="color:var(${colorVar})">${label} (${arr.length}):</b> <span style="font-size:12px">${arr.map(pill).join(', ')}</span></div>`
     : '';
   return `<div style="font-size:12.5px;line-height:1.6;margin-bottom:8px">${row('Bullish', '--bull', bull)}${row('Bearish', '--bear', bear)}</div>`;
+}
+// ── Timeline: twenty sessions back, twenty ahead ─────────────────────────────
+// Five columns -- -20d · -5d · today · +5d · +20d -- built from what the page
+// already measures: releases with their surprise and the size they produced
+// (surprise store + Event Response Book), chain links that broke (watch log),
+// watch fires and their after-scores, the leans published and how they scored
+// (ledger), what the page thought on those days (daily snapshot), and ahead:
+// the calendar with expected sizes, the 5/20-day bands from the forecaster,
+// the outlook, the aim. Global at the top of the read; per pair in the drawer.
+const _tl = { surprises: null, snapshots: null, fomc: null, loadedAt: 0, closes: {} };
+async function loadTimelineData() {
+  if (Date.now() - _tl.loadedAt < 30 * 60_000) return;
+  _tl.loadedAt = Date.now();
+  const since = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10);
+  const [sp, sn, fc] = await Promise.all([
+    jget(`/api/econ-surprise?history=1&since=${since}`).catch(() => null),
+    jget('/api/daily-snapshot?days=45').catch(() => null),
+    jget('/api/fomc/calendar').catch(() => null),
+  ]);
+  _tl.surprises = sp?.series ?? null; _tl.snapshots = sn?.days ?? null; _tl.fomc = fc?.meetings ?? fc?.calendar ?? fc ?? null;
+  renderTimelinePanel(); if (drName) { try { renderDrawerTimeline(allRows().find(x => x.name === drName)); } catch {} }
+}
+const _tlFam = ev => (window.deskWatchBrick?.EVENT_FAMILY_RE ?? EVENT_FAMILY_RE).find(([, re]) => re.test(ev ?? ''))?.[0] ?? null;
+const _tlDay = ms => new Date(ms).toISOString().slice(0, 10);
+const _tlAgo = d => Math.round((Date.now() - Date.parse(d + 'T12:00:00Z')) / 864e5);
+// Releases in a window of days-ago [from, to), for a set of currencies (null = all), biggest surprises first.
+// Three sources, merged by country|event|day: the week's calendar (this week's
+// high-impact rows, already past), the daily snapshot's `released` rows (older
+// days), and the surprise store (adds the z-score and the actual where a print
+// with an actual was stored). Ranked by the measured size of the family on this
+// pair (Event Response Book), then by surprise.
+function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
+  const by = new Map(); const now = Date.now();
+  const put = (cc, name, ms, f) => { const day = _tlDay(ms); const ago = _tlAgo(day); if (ago < fromAgo || ago >= toAgo || ms > now) return; if (ccys && !ccys.includes(cc)) return; const k = `${cc}|${String(name).toLowerCase()}|${day}`; by.set(k, { ...(by.get(k) ?? { cc, name, day, ms }), ...f }); };
+  for (const e of events ?? []) if ((e.impact ?? '').toLowerCase() === 'high') put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
+  for (const d of _tl.snapshots ?? []) for (const e of d.released ?? []) put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
+  for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z) || x.actual != null) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name, revised: x.revised, revisedDelta: x.revisedDelta, revision: x.revision }); }
+  const out = [...by.values()].map(x => { const fam = _tlFam(x.name); const imp = fam ? window.eventImpactBrick?.eventImpact(x.cc, fam) : null; return { ...x, fam, imp, size: pairName ? imp?.instruments?.[pairName] : null }; })
+    .filter(x => x.actual != null || x.estimate != null || x.imp);
+  return out.sort((a, b) => ((b.size?.spike ?? b.imp?.medSpike ?? 0) - (a.size?.spike ?? a.imp?.medSpike ?? 0)) || (Math.abs(b.z ?? 0) - Math.abs(a.z ?? 0)) || (a.day < b.day ? 1 : -1)).slice(0, limit);
+}
+// Surprise and impact in words. The numbers stay in the hover.
+const _tlSurpriseWord = z => !Number.isFinite(z) ? '' : Math.abs(z) < 0.25 ? 'as expected' : Math.abs(z) < 0.75 ? `a touch ${z > 0 ? 'above' : 'below'}` : Math.abs(z) < 1.5 ? `clearly ${z > 0 ? 'above' : 'below'}` : `a big ${z > 0 ? 'beat' : 'miss'}`;
+const _tlImpactWord = m => m == null ? '' : m >= 4 ? 'a big market mover' : m >= 2 ? 'moves markets' : m >= 1.3 ? 'a modest mover' : 'rarely moves much';
+function _tlRelLine(x) {
+  const tip = [x.estimate != null ? `consensus ${x.estimate}` : '', x.prev != null ? `prior ${x.prev}` : '', Number.isFinite(x.z) ? `surprise ${x.z >= 0 ? '+' : ''}${x.z.toFixed(1)}σ against this series' own history` : '', x.size ? `has moved this pair ${x.size.spike}× an ordinary half-hour (n=${x.size.n})` : x.imp ? `${x.imp.medSpike}× the median 30-minute move across instruments` : ''].filter(Boolean).join(' · ');
+  const sz = x.size ? ` — ${_tlImpactWord(x.size.spike)} for this pair` : x.imp ? ` — ${_tlImpactWord(x.imp.medSpike)}` : '';
+  const same = String(x.actual ?? '').trim() === String(x.estimate ?? '').trim();
+  const sw = Number.isFinite(x.z) ? (Math.abs(x.z) < 0.25 && !same && x.estimate != null ? `close to the ${esc0(x.estimate)} expected` : _tlSurpriseWord(x.z) + (Math.abs(x.z) >= 0.25 && x.estimate != null ? ` the ${esc0(x.estimate)} expected` : '')) : x.estimate != null ? `vs ${esc0(x.estimate)} expected` : '';
+  const nums = x.actual != null ? `<b>${esc0(x.actual)}</b>${sw ? `, ${sw}` : ''}` : `${esc0(x.estimate ?? '?')} expected${x.prev != null ? `, was ${esc0(x.prev)}` : ''}`;
+  const sc = _scorecardFor(x.cc, x.ms); const top = sc?.reactions?.length ? [...sc.reactions].sort((a, b) => (b.ratio ?? 0) - (a.ratio ?? 0))[0] : null;
+  const react = top ? ` · ${esc0(top.name.replace(/^([A-Z]{3})([A-Z]{3})$/, '$1/$2'))} moved <b>${top.ratio}×</b> a normal half-hour${top.book ? ` (book ${top.book.spike}×)` : ''}` : '';
+  const rev = x.revised != null ? ` · <span class="tl-rev">later revised to ${esc0(x.revised)}${x.revisedDelta ? ` (${esc0(x.revisedDelta)})` : ''}</span>` : x.revision ? ` · <span class="tl-rev">the prior was revised ${esc0(x.revision.was)} → ${esc0(x.revision.now)}</span>` : '';
+  return `<div class="tl-l help" title="${esc0(tip)}"><span class="k">${esc0(x.day.slice(5))}</span>${esc0(x.cc)} ${esc0(x.name)}: ${nums}${sz}${react}${rev}</div>`;
+}
+function _tlWatchLines(fromAgo, toAgo, insts = null) {
+  return (deskWatch?.log ?? []).filter(f => { const ago = _tlAgo(f.at.slice(0, 10)); return f.event === 'started' && ago >= fromAgo && ago < toAgo && (!insts || !f.instruments?.length || f.instruments.some(i => insts.includes(i))); }).slice(0, 4)
+    .map(f => `<div class="tl-l"><span class="k">${esc0(f.at.slice(5, 10))}</span>${f.kind === 'tested' ? '✓' : '~'} ${esc0(f.label)}${f.after5 ? ` → the five days after ran ${f.after5.map(a => `${dispName(a.inst)} ${a.range5 >= 5.5 ? 'wide' : a.range5 <= 3.5 ? 'quiet' : 'normal'} (${a.range5} ATR)`).join(', ')}` : ''}</div>`).join('');
+}
+function _tlSnapLines(fromAgo, toAgo) {
+  return (_tl.snapshots ?? []).filter(d => { const ago = _tlAgo(d.day); return ago >= fromAgo && ago < toAgo && d.brief?.regime; }).slice(-2)
+    .map(d => `<div class="tl-l"><span class="k">${esc0(d.day.slice(5))} we said</span>${esc0(String(d.brief.regime).slice(0, 140))}${d.chainRead?.hook ? ` · <i>${esc0(String(d.chainRead.hook).slice(0, 110))}</i>` : ''}</div>`).join('');
+}
+function _tlLedgerLine(fromAgo, toAgo, pair = null) {
+  const days = (_ledgerSummary?.byDay ?? []).filter(d => { const ago = _tlAgo(d.day); return ago >= fromAgo && ago < toAgo; });
+  if (!days.length) return '';
+  const n = days.reduce((s, d) => s + (d.h1?.n ?? 0), 0), hits = days.reduce((s, d) => s + (d.h1?.hits ?? 0), 0);
+  return n ? `<div class="tl-l ${hits / n >= 0.55 ? 'hit' : hits / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span>we were right <b class="r">${hits} times in ${n}</b> at the next close${hits / n >= 0.55 ? ' — a good stretch' : hits / n <= 0.45 ? ' — a poor stretch' : ' — a coin flip'}</div>` : '';
+}
+function _tlAheadEvents(fromDays, toDays, ccys = null, pairName = null) {
+  const now = Date.now();
+  return (events ?? []).filter(e => { const dd = (e.ms - now) / 864e5; return (e.impact ?? '').toLowerCase() === 'high' && dd >= fromDays && dd < toDays && (!ccys || ccys.includes(e.country)); }).slice(0, 5)
+    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? `: ${esc0(e.estimate)} expected` : ''}${nowcastText(e.country, e.event, e.ms)}${size ? ` — ${_tlImpactWord(size.spike)} for this pair` : imp ? ` — ${_tlImpactWord(imp.medSpike)}` : ''}</div>`; }).join('');
+}
+// The calendar feed covers the current week only; on a weekend the week ahead is not published yet.
+function _tlNoCal(fromDays, toDays) {
+  const wk = [...(events ?? [])].sort((a, b) => b.ms - a.ms)[0]; const end = wk ? new Date(wk.ms) : null;
+  const covered = end && (end.getTime() - Date.now()) / 864e5 >= toDays;
+  return covered ? `<div class="tl-l"><span class="k">calendar</span>nothing big scheduled</div>` : `<div class="tl-l"><span class="k">calendar</span>${fromDays ? 'too far out for the calendar feed' : 'next week\u2019s calendar is published on Sunday'}${end ? ` (feed runs to ${end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })})` : ''}</div>`;
+}
+// The outlook engine's clearest reads, each way, so the plan column names pairs, not just a count.
+function _tlTopBias(rs, hz) {
+  const list = rs.map(r => ({ r, o: pairOutlook(r, hz) })).filter(x => x.o?.bias && x.o.bias !== 'NEUTRAL' && !x.o.noRead && Number.isFinite(x.o.confidence));
+  const top = dir => list.filter(x => x.o.bias === dir).sort((a, b) => b.o.confidence - a.o.confidence).slice(0, 3).map(x => `${dispName(x.r.name)}${x.o.confidence >= 70 ? ' (' + x.o.confidence + '%)' : ''}`).join(', ');
+  const up = top('BULLISH'), dn = top('BEARISH'); if (!up && !dn) return '';
+  return `<div class="tl-l help" title="The outlook engine's composite, by confidence. Context, not a validated signal."><span class="k">strongest reads</span>${up ? `up on ${esc0(up)}` : ''}${up && dn ? '; ' : ''}${dn ? `down on ${esc0(dn)}` : ''}</div>`;
+}
+// The third number. Consensus is the street; the nowcast is a Fed model's live
+// estimate. Tested here (N1/N2): the gap does not carry the surprise sign, so
+// this is stated as context and never as a direction.
+let nowcast = null;
+async function loadNowcast() { try { const j = await jget('/api/nowcast'); if (j?.ok) { nowcast = j; render(); } } catch { /* stays absent */ } }
+function nowcastFor(country, event, ms) {
+  if (!nowcast || String(country).toUpperCase() !== 'US') return null;
+  const t = String(event ?? '').trim(); const c = nowcast.cleveland;
+  // a print on the 12th reports the month before, so match the chart to the
+  // release's reference month, not simply the latest chart
+  const ref = ms ? (() => { const d = new Date(ms); const m = d.getUTCMonth(); return `${d.getUTCFullYear() + (m === 0 ? -1 : 0)}-${String(((m + 11) % 12) + 1).padStart(2, '0')}`; })() : null;
+  const pickMonth = () => !ref ? c : c?.month === ref ? c : c?.previousMonth?.month === ref ? c.previousMonth : null;
+  if (c) {
+    const key = t === 'CPI m/m' ? 'cpi' : t === 'Core CPI m/m' ? 'core' : t === 'Core PCE Price Index m/m' ? 'corepce' : t === 'PCE Price Index m/m' ? 'pce' : null;
+    if (key && pickMonth()?.[key] != null) return { who: 'Cleveland Fed model', value: `${pickMonth()[key].toFixed(2)}%`, asOf: pickMonth().asOf, month: pickMonth().month, note: 'tested: the gap to consensus does not predict the beat (N1, null)' };
+  }
+  if (nowcast.gdpnow && /^(Advance|Prelim|Final) GDP q\/q$/.test(t)) return { who: 'Atlanta Fed GDPNow', value: `${nowcast.gdpnow.value.toFixed(1)}%`, asOf: null, month: nowcast.gdpnow.quarter, note: 'tested on 53 releases: the side the model sits on matched the print two times in three (66%, interval 52-80%), but the model forecasts the level worse than consensus -- a base rate, not a lean (N2)' };
+  return null;
+}
+function nowcastText(country, event, ms) { const n = nowcastFor(country, event, ms); return n ? ` · ${n.who} says <b>${esc0(n.value)}</b>` : ''; }
+function _tlFomcAhead() {
+  const list = Array.isArray(_tl.fomc) ? _tl.fomc : (_tl.fomc?.meetings ?? []);
+  const nx = list.map(m => m.date ?? m).filter(d => typeof d === 'string' && Date.parse(d) > Date.now()).sort()[0];
+  return nx ? `<div class="tl-l help" title="Tested on this desk: FOMC decision days run about 1.3x a normal day's range whether or not the move was priced"><span class="k">${nx.slice(5)}</span>Fed decision — expect a bigger-than-normal day, priced or not</div>` : '';
+}
+// Path + cone: the last 20 closes and the forecaster's 5- and 20-day bands ahead.
+function _tlChart(closes, fc, dp) {
+  if (!closes?.length || closes.length < 10) return '';
+  const last = closes[closes.length - 1].value;
+  const lw = fc?.ladder_weekly, lm = fc?.ladder_monthly;
+  const band = (l) => l?.oh?.p50 != null && l?.ol?.p50 != null ? { hi50: last * (1 + l.oh.p50 / 100), lo50: last * (1 - l.ol.p50 / 100), hi75: last * (1 + (l.oh.p75 ?? l.oh.p50) / 100), lo75: last * (1 - (l.ol.p75 ?? l.ol.p50) / 100) } : null;
+  const b5 = band(lw), b20 = band(lm);
+  const vals = closes.map(c => c.value).concat(b20 ? [b20.hi75, b20.lo75] : b5 ? [b5.hi75, b5.lo75] : []);
+  const mn = Math.min(...vals), mx = Math.max(...vals), pad = (mx - mn) * 0.08 || 1;
+  const W = 600, H = 120, L = 10, R = 10, T = 12, B = 14; const n = closes.length;
+  const xPast = i => L + (i / (n - 1)) * (W * 0.55 - L), xNow = W * 0.55, x5 = W * 0.55 + (W * 0.45 - R) * 0.25, x20 = W - R;
+  const y = v => T + (1 - (v - mn + pad) / (mx - mn + 2 * pad)) * (H - T - B);
+  const path = closes.map((c, i) => `${i ? 'L' : 'M'}${xPast(i).toFixed(1)},${y(c.value).toFixed(1)}`).join(' ');
+  const cone = b20 && b5 ? `<path d="M${xNow},${y(last)} L${x5},${y(b5.hi75)} L${x20},${y(b20.hi75)} L${x20},${y(b20.lo75)} L${x5},${y(b5.lo75)} Z" fill="var(--blue)" opacity=".10"/><path d="M${xNow},${y(last)} L${x5},${y(b5.hi50)} L${x20},${y(b20.hi50)} L${x20},${y(b20.lo50)} L${x5},${y(b5.lo50)} Z" fill="var(--blue)" opacity=".16"/>` : '';
+  const f = v => fmtN(v, dp);
+  return `<svg class="tl-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Last twenty closes and the expected 5- and 20-day bands">
+    ${cone}
+    <path d="${path}" fill="none" stroke="var(--text)" stroke-width="1.6"/>
+    <line x1="${xNow}" y1="${T}" x2="${xNow}" y2="${H - B}" stroke="var(--blue)" stroke-dasharray="3 3"/>
+    <circle cx="${xNow}" cy="${y(last)}" r="3" fill="var(--blue)"/>
+    <text x="${L}" y="${H - 2}">${closes[0].date.slice(5)}</text><text x="${xNow}" y="${T - 3}" text-anchor="middle">today ${f(last)}</text>
+    ${b5 ? `<text x="${x5}" y="${H - 2}" text-anchor="middle">+5d ${f(b5.lo50)}–${f(b5.hi50)}</text>` : ''}${b20 ? `<text x="${x20}" y="${H - 2}" text-anchor="end">+20d ${f(b20.lo50)}–${f(b20.hi50)}</text>` : ''}
+    ${b20 ? `<text x="${x20}" y="${T - 2}" text-anchor="end">band = median, shaded to the 75th</text>` : ''}
+  </svg>`;
+}
+function _tlDelta(closes, k, dp) {
+  if (!closes || closes.length <= k) return null;
+  const a = closes[closes.length - 1 - k].value, b = closes[closes.length - 1].value;
+  return { pct: (b / a - 1) * 100, from: a, to: b };
+}
+// ── the global strip ──
+function renderTimelinePanel() {
+  const el = $('timelinePanel'); if (!el) return;
+  if (!events && !deskWatch && !_ledgerSummary) { el.style.display = 'none'; return; }
+  const mm = _macroMovedByKey();
+  const mv = (k, w) => mm[k]?.deltas?.[w]; const bp = v => v == null ? '?' : `${v >= 0 ? '+' : ''}${Math.round(v)}bp`; const pt = v => v == null ? '?' : `${v >= 0 ? '+' : ''}${v.toFixed(2)}`;
+  const chainNow = (deskWatch?.states ?? []).filter(t => t.id.startsWith('chain-') && t.firing).map(t => t.label.replace('Chain link broken: ', ''));
+  const firing = (deskWatch?.states ?? []).filter(t => t.firing && !t.id.startsWith('chain-'));
+  const rs = allRows(); let bull5 = 0, bear5 = 0, bull20 = 0, bear20 = 0;
+  for (const r of rs) { const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); if (w?.bias === 'BULLISH') bull5++; if (w?.bias === 'BEARISH') bear5++; if (m?.bias === 'BULLISH') bull20++; if (m?.bias === 'BEARISH') bear20++; }
+  const col = (cls, head, lead, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${lead ? `<div class="tl-lead">${lead}</div>` : ''}${body}</div>`;
+  // The lead sentences: what the numbers say, in one line each. Rates first because
+  // they moved most; the dollar only when it did something.
+  const ratesWord = (w) => { const y2 = mv('us2y', w), y10 = mv('us10y', w); if (y2 == null && y10 == null) return 'No rates data.'; const big = Math.max(Math.abs(y2 ?? 0), Math.abs(y10 ?? 0)); const dir = (y2 ?? y10) > 0 ? 'rose' : 'fell'; const lead = Math.abs(y2 ?? 0) > Math.abs(y10 ?? 0) ? 'the front end leading' : 'the long end leading'; return big < 8 ? `Rates went nowhere (2Y ${bp(y2)}, 10Y ${bp(y10)})` : `Rates ${big >= 25 ? dir + ' hard' : dir} (2Y ${bp(y2)}, 10Y ${bp(y10)}), ${lead}`; };
+  const dollarWord = (w) => { const v = mv('dxy', w); return v == null ? '' : Math.abs(v) < 0.5 ? '; the dollar barely moved' : `; the dollar ${v > 0 ? 'strengthened' : 'weakened'} ${Math.abs(v).toFixed(1)}%`; };
+  const fearWord = (w) => { const v = mv('vix', w); return v == null ? '' : Math.abs(v) < 1.5 ? '' : `; fear ${v > 0 ? 'rose' : 'eased'} (VIX ${pt(v)})`; };
+  const lead20 = `${ratesWord(20)}${dollarWord(20)}.`;
+  const lead5 = `${ratesWord(5)}${dollarWord(5)}${fearWord(5)}.`;
+  const leadNow = `${chainNow.length ? `${chainNow.length} chain link${chainNow.length === 1 ? '' : 's'} broken` : 'Nothing broken in the chain'}; ${firing.length ? `${firing.length} watch condition${firing.length === 1 ? '' : 's'} on` : 'no watch condition on'}.`;
+  const outlookWord = (b, d) => b + d === 0 ? 'The outlook engine has no lean either way' : `The outlook engine leans ${d > b ? 'down' : 'up'} on ${Math.max(b, d)} of ${rs.length} pairs, ${d > b ? 'up' : 'down'} on ${Math.min(b, d)}`;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="sec-hd-row"><span class="sec-title">🕰 Timeline — 20 sessions back, 20 ahead</span>${secChev('timelinePanel')}</div>
+    ${secBody('timelinePanel', `
+    <div class="tl">
+      ${col('', 'three weeks ago → last week', lead20, _tlReleases(5, 21, null, 4).map(_tlRelLine).join('') + _tlWatchLines(5, 21) + _tlSnapLines(5, 21) + _tlLedgerLine(5, 21))}
+      ${col('', 'this week', lead5, _tlReleases(0, 5, null, 4).map(_tlRelLine).join('') + _tlWatchLines(0, 5) + _tlSnapLines(1, 5) + _tlLedgerLine(1, 5))}
+      ${col('now', 'today', leadNow, (chainNow.length ? `<div class="tl-l"><span class="k">broken</span>${chainNow.map(esc0).join(' · ')}</div>` : '') + firing.slice(0, 4).map(t => `<div class="tl-l">${t.kind === 'tested' ? '✓' : '~'} ${esc0(t.label)}${t.expect?.length ? ` → expect ${t.expect.slice(0, 2).map(e => `${dispName(e.inst)} ~${e.after}${e.unit}`).join(', ')}` : ''}</div>`).join('') + (_ledgerSummary?.byDay?.[0] ? _tlLedgerLine(0, 2) : ''))}
+      ${col('ahead', 'next week', `${outlookWord(bull5, bear5)}.`, (_tlAheadEvents(0, 5) || _tlNoCal(0, 5)) + _tlTopBias(rs, 'weekly') + `<div class="tl-l"><span class="k">leans</span>${esc0(leanGroupsText())}</div>`)}
+      ${col('ahead', 'the month after', `${outlookWord(bull20, bear20)}.`, (_tlAheadEvents(5, 20) || _tlNoCal(5, 20)) + _tlTopBias(rs, 'monthly') + _tlFomcAhead() + `<div class="tl-l help" title="Tested on this desk: day-range quantiles cluster; the current regime is the best predictor of the next"><span class="k">rule</span>quiet stretches stay quiet and wild ones stay wild, more often than not</div>`)}
+    </div>
+    <div class="tl-foot">The left is measured (releases, watch fires, our own calls scored); the right is the plan (calendar, outlook engine, forecaster bands). Hover any line for the numbers. Nothing here predicts direction.</div>`)}`;
+}
+function leanGroupsText() {
+  const html = leanGroupsHtml(); if (!html) return 'no grouped leans';
+  return html.replace(/<[^>]+>/g, '').replace(/^Leans grouped as trades: /, '').replace(/\s+/g, ' ').trim();
+}
+// The pair as a regime differential: two economies, two labels, aligned or
+// diverging. Tested (R2): the differential made no difference to the next
+// month's range or return -- so this is a description of the backdrop.
+function renderDrawerRegimePair(r) {
+  const sec = $('drRegimeSec'), box = $('drRegimePair'); if (!sec || !box) return;
+  if (r.name === 'GOLD') { const w = whichGold(); if (!w) { sec.style.display = 'none'; return; } sec.style.display = '';
+    box.innerHTML = `<span class="lbl" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-right:6px">Which gold</span><b>${esc0(w.kind)}</b> — ${esc0(w.why)}. Only one of the four golds drives at a time; over 2010–2026 rates gold ${GOLD_SHARES.rates}% of windows, dollar gold ${GOLD_SHARES.dollar}%, both ${GOLD_SHARES.both}%, neither ${GOLD_SHARES.neither}%. ${w.fear ? `<b>Fear flag</b>: VIX +${w.fear.dv} in five sessions with gold ${w.fear.dg >= 0 ? '+' : ''}${w.fear.dg}% — ` : 'Fear gold, tested: '}after 58 VIX spikes gold showed no bid on average at five sessions (+0.07% [−0.42, +0.30]) and lagged by 1.2% [0.5, 2.3] a month later — the gold people buy, and the one that has not paid. <a href="MD files/FOUR_GOLDS.md" target="_blank">the test →</a>`; return; }
+  const C = regime?.currencies; const cc = PAIR_CCY[r.name]; if (!C || !cc) { sec.style.display = 'none'; return; }
+  const [b, q] = [cc[0], cc[1]]; const B = C[b]?.now, Q = C[q]?.now;
+  const W = { goldilocks: 'goldilocks', reflation: 'reflation', stagflation: 'stagflation', deflation: 'deflation / risk-off' };
+  if (!B && !Q) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  const side = (c, n) => n ? `<b>${c}</b> is in <b>${W[n.regime]}</b> (${esc0(n.what)}, month ${n.months})` : `<b>${c}</b> has no regime read (its free data is a stale mirror)`;
+  const pt = regime?.pairTable?.[r.name];
+  box.innerHTML = `<span class="lbl" style="font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-right:6px">Backdrop</span>${side(b, B)}; ${side(q, Q)}${B && Q ? ` — the two economies are <b>${B.regime === Q.regime ? 'aligned' : 'diverging'}</b>.` : '.'}${pt ? ` Tested here since ${pt.from}: ${pt.diverging.n} diverging months ran a ${pt.diverging.range}% range against ${pt.aligned.range}% aligned (difference ${pt.rangeDiff.diff >= 0 ? '+' : ''}${pt.rangeDiff.diff}pp, interval ${pt.rangeDiff.lo} to ${pt.rangeDiff.hi}) — <b>no difference</b>, so this is a description, not a setup.` : ''} <a href="regime.html" target="_blank" style="font-size:11px">the table →</a>`;
+}
+// ── the per-pair strip in the drawer ──
+async function renderDrawerTimeline(r) {
+  const sec = $('drTimelineSec'), box = $('drTimeline'); if (!sec || !box || !r) return;
+  sec.style.display = '';
+  const d = r.d, ccys = PAIR_NEWS_CC[r.name] ?? null;
+  let closes = _tl.closes[d.sym];
+  if (!closes) { try { const oh = await jget(`/api/ohlc?symbol=${encodeURIComponent(d.sym.replace('_', '/'))}`); closes = (oh?.values ?? []).map(v => ({ date: String(v.datetime ?? '').slice(0, 10), value: Number(v.close) })).filter(v => v.date && Number.isFinite(v.value)).sort((a, b) => a.date < b.date ? -1 : 1).slice(-21); _tl.closes[d.sym] = closes; } catch { closes = null; } }
+  if (drName !== r.name) return;
+  const d20 = _tlDelta(closes, 20, d.dp), d5 = _tlDelta(closes, 5, d.dp);
+  const atr = r.d.levels?.hl_med?.range_pts ?? null;
+  const dl = x => x ? `<span class="${x.pct >= 0 ? 'up' : 'dn'}">${x.pct >= 0 ? '+' : ''}${x.pct.toFixed(2)}%</span> <span class="muted" style="font-size:10px">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>` : '—';
+  const rowsL = (_ledgerRows[r.name] ?? []);
+  const led = (fromAgo, toAgo) => { const rs = rowsL.filter(x => { const ago = _tlAgo(x.d); return ago >= fromAgo && ago < toAgo && x.out && (x.dir === 'up' || x.dir === 'down'); }); if (!rs.length) return ''; const h = rs.filter(x => x.out?.h1?.hit).length, n = rs.filter(x => x.out?.h1?.hit != null).length; return n ? `<div class="tl-l ${h / n >= 0.55 ? 'hit' : h / n <= 0.45 ? 'miss' : ''}"><span class="k">our calls</span><b class="r">${h} of ${n}</b> right at the next close (${rs.map(x => x.dir === 'up' ? '↑' : '↓').join('')})</div>` : ''; };
+  const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const aim = bandAimFor(r); const wrong = wrongAtFor(r); const dir = directionFor(r);
+  const col = (cls, head, big, body) => `<div class="tl-col ${cls}"><div class="tl-h"><span>${head}</span></div>${big ? `<div class="tl-lead">${big}</div>` : ''}${body}</div>`;
+  // how big a move was, against this pair's own 20-day band
+  const band20 = r.fc?.ladder_monthly?.oh?.p50 != null ? (r.fc.ladder_monthly.oh.p50 + r.fc.ladder_monthly.ol.p50) / 2 : null;
+  const moveWord = (x, days) => { if (!x) return ''; const a = Math.abs(x.pct); const rel = band20 ? a / (band20 * (days === 5 ? 0.5 : 1)) : null; const size = rel == null ? '' : rel >= 1.3 ? 'a big move for it' : rel >= 0.6 ? 'an ordinary move' : 'a small move'; return `${dispName(r.name)} ${x.pct >= 0 ? 'rose' : 'fell'} <span class="${x.pct >= 0 ? 'up' : 'dn'}">${a.toFixed(2)}%</span>${size ? `, ${size}` : ''} <span class="muted" style="font-size:10px;font-weight:400">${fmtN(x.from, d.dp)} → ${fmtN(x.to, d.dp)}</span>`; };
+  const leanWord = dir?.direction === 'up' || dir?.direction === 'down' ? `Leaning ${dir.direction}, ${dir.agree} of ${dir.total} reads agree` : 'No lean today';
+  const biasWord = o => !o?.bias || o.noRead ? 'No read' : o.bias === 'NEUTRAL' ? 'No lean either way' : `${o.bias === 'BULLISH' ? 'Leans up' : 'Leans down'}${o.confidence != null ? `, ${o.confidence}% confidence` : ''}`;
+  const chainMine = (deskWatch?.log ?? []).filter(f => f.id.startsWith('chain-') && f.event === 'started').slice(0, 3).map(f => `<div class="tl-l"><span class="k">${f.at.slice(5, 10)}</span>${esc0(f.label)}</div>`).join('');
+  box.innerHTML = _tlChart(closes, r.fc, d.dp) + `<div class="tl">
+    ${col('', 'three weeks ago → last week', d20 ? moveWord(d20, 20) : '', _tlReleases(5, 21, ccys, 3, r.name).map(_tlRelLine).join('') + chainMine + led(5, 21))}
+    ${col('', 'this week', d5 ? moveWord(d5, 5) : '', _tlReleases(0, 5, ccys, 3, r.name).map(_tlRelLine).join('') + _tlWatchLines(0, 5, [r.name]) + led(1, 5))}
+    ${col('now', 'today', leanWord, (wrong ? `<div class="tl-l"><span class="k">wrong if</span>price goes ${wrong.side} <b>${fmtN(wrong.price, d.dp)}</b> — the ${wrong.tag}</div>` : '') + (aim ? `<div class="tl-l"><span class="k">aim</span>${esc0(aim.text)}</div>` : '') + `<div class="tl-l"><span class="k">normal day</span>${atr != null ? `about <b>${atr}</b> ${d.ac === 'fx' ? 'pips' : 'points'} high to low` : '—'}</div>`)}
+    ${col('ahead', 'next week', biasWord(w), _tlAheadEvents(0, 5, ccys, r.name) + (r.fc?.ladder_weekly?.hl?.p50 != null ? `<div class="tl-l help" title="From the forecaster: the median week reaches +${r.fc.ladder_weekly.oh.p50}% above and −${r.fc.ladder_weekly.ol.p50}% below here; one week in four reaches ${r.fc.ladder_weekly.oh.p75}%"><span class="k">room</span>a normal week travels about ${Math.max(r.fc.ladder_weekly.oh.p50, r.fc.ladder_weekly.ol.p50).toFixed(1)}% either way from here</div>` : '') + (w?.drivers?.length ? `<div class="tl-l"><span class="k">because</span>${esc0(w.drivers.filter(x => Number.isFinite(x.score) && x.score !== 0).slice(0, 3).map(x => `${x.label} ${x.score > 0 ? 'up' : 'down'}`).join(', '))}</div>` : ''))}
+    ${col('ahead', 'the month after', biasWord(m), _tlAheadEvents(5, 20, ccys, r.name) + _tlFomcAhead() + (r.fc?.ladder_monthly?.oh?.p50 != null ? `<div class="tl-l help" title="From the forecaster: the median month reaches +${r.fc.ladder_monthly.oh.p50}% above and −${r.fc.ladder_monthly.ol.p50}% below here; one month in four reaches ${r.fc.ladder_monthly.oh.p75}%"><span class="k">room</span>a normal month travels about ${Math.max(r.fc.ladder_monthly.oh.p50, r.fc.ladder_monthly.ol.p50).toFixed(1)}% either way</div>` : ''))}
+  </div>
+  <div class="tl-foot">Path: the last twenty closes; shaded: the forecaster's expected bands at 5 and 20 sessions (median, lighter to the 75th). Releases show actual vs consensus, the surprise in sigma, and the size that release has produced on this pair. "Our calls" are this page's direction tags, scored at the next close. The plan columns are what the page thinks today; the daily snapshot keeps them so next month's look-back can grade them.</div>`;
+}
+let _ledgerRows = {};
+async function loadLedgerRowsFor(pair) { if (_ledgerRows[pair]) return; try { const j = await jget(`/api/ledger?pair=${encodeURIComponent(pair)}`); if (j?.ok) _ledgerRows[pair] = j.rows ?? []; } catch { /* stays empty */ } }
+// ── the plan, captured once a day ──
+let _planPosted = null;
+async function postDailyPlan() {
+  const day = new Date().toISOString().slice(0, 10); if (_planPosted === day) return;
+  const rs = allRows(); if (!rs.length || !window.outlookBrick) return;
+  const pairs = {};
+  for (const r of rs) {
+    const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const dir = directionFor(r); const wrong = wrongAtFor(r); const aim = bandAimFor(r);
+    pairs[r.name] = { price: r.d.current_price ?? null, lean: dir?.direction ?? null, agree: dir ? `${dir.agree}/${dir.total}` : null, wrongAt: wrong?.price ?? null, aim: aim ? { target: aim.target, side: aim.side, lift: aim.lift != null ? +aim.lift.toFixed(2) : null } : null, o5: w?.bias ?? null, o5c: w?.confidence ?? null, o20: m?.bias ?? null, o20c: m?.confidence ?? null, expRange: r.d.levels?.hl_med?.range_pts ?? null, band5: r.fc?.ladder_weekly?.oh?.p50 != null ? [r.fc.ladder_weekly.ol.p50, r.fc.ladder_weekly.oh.p50] : null, band20: r.fc?.ladder_monthly?.oh?.p50 != null ? [r.fc.ladder_monthly.ol.p50, r.fc.ladder_monthly.oh.p50] : null };
+  }
+  const plan = { pairs, groups: leanGroupsText(), firing: (deskWatch?.states ?? []).filter(t => t.firing).map(t => t.id), aheadHigh: (events ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.ms > Date.now() && e.ms < Date.now() + 5 * 864e5).slice(0, 12).map(e => `${e.country} ${e.event}`) };
+  try { const j = await fetch('/api/daily-snapshot/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan }) }).then(x => x.json()); if (j?.ok) _planPosted = day; } catch { /* retried next cycle */ }
 }
 function renderOutlookPanel() {
   const el = $('outlookPanel');
@@ -4848,7 +5501,7 @@ function openCcyDrawer(ccy) {
     });
     if (comp.score != null && comp.total >= 2) {
       const cls = comp.direction === 'LONG' ? 'bull' : comp.direction === 'SHORT' ? 'bear' : 'neu';
-      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${l.score}</span></div>`).join('');
+      const legRows = comp.legs.map(l => `<div class="ccy-legrow"><span class="lp">${l.label}</span><span class="lv ${l.score > 0 ? 'bull' : l.score < 0 ? 'bear' : 'neu'}">${l.score > 0 ? '+' : ''}${Number.isFinite(+l.score) ? (+l.score).toFixed(2) : l.score}</span></div>`).join('');
       compositeHtml = `
     <div class="dr-sec">
       <h3 class="help" title="Averages whatever's covered of the four sections below into one read. Arithmetic agreement across signals this dashboard already builds — not a backtested rule, and not a substitute for reading the sections themselves.">Composite (all of the above, combined)</h3>
@@ -5205,6 +5858,29 @@ function buildMacro() {
 let deskWatch = null;
 async function loadDeskWatch() {
   try { const r = await jget('/api/desk-watch'); if (r?.ok) { deskWatch = r; renderDeskWatch(); } } catch { /* strip stays hidden */ }
+}
+// ── The regime, one line ────────────────────────────────────────────────────
+// Growth x inflation, monthly, from FRED (regime.html has the whole table).
+// A backdrop, not a forecast: which way the current has been running, how
+// long, what the usual next move is and what its tell is.
+let weekMap = null;
+async function loadWeekMap() { try { const j = await jget('/api/weekmap'); if (j?.ok) { weekMap = j; render(); } } catch { /* row stays generic */ } }
+let regime = null;
+async function loadRegime() { try { const j = await jget('/api/regime'); if (j?.ok) { regime = j; renderRegimeLine(); render(); } } catch { /* stays hidden */ } }
+function renderRegimeLine() {
+  const el = $('regimeLine'); if (!el) return; const n = regime?.now; if (!n) { el.style.display = 'none'; return; }
+  const W = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
+  const col = { goldilocks: 'var(--amber)', reflation: 'var(--bear)', stagflation: 'var(--red)', deflation: 'var(--blue)' }[n.regime] ?? 'var(--text)';
+  const t = regime.table; const tilt = t ? Object.entries(t).filter(([, row]) => row[n.regime]?.tilt && row[n.regime].tilt !== 'none').map(([k, row]) => `${({ SPX500: 'S&P', NQ: 'Nasdaq', GOLD: 'gold', WTI: 'oil', COPPER: 'copper', DXY: 'the dollar', US10Y: '10-year', EURUSD: 'EUR/USD', USDJPY: 'USD/JPY', AUDUSD: 'AUD/USD' })[k] ?? k} ${row[n.regime].tilt === 'up' ? '↑' : '↓'} (${row[n.regime].mean >= 0 ? '+' : ''}${row[n.regime].mean}%/mo, n=${row[n.regime].n})`) : [];
+  const widest = t ? Object.entries(t).filter(([, row]) => row[n.regime]?.range != null && row.all?.range).map(([k, row]) => ({ k, r: row[n.regime].range / row.all.range })).sort((a, b) => b.r - a.r)[0] : null;
+  el.style.display = 'block';
+  el.innerHTML = `<div class="riskverdict" style="margin:0" title="Growth x inflation, both as rate of change, from free public series (Chicago Fed activity index, claims, industrial production, payrolls; core CPI, core PCE, breakevens). Labels use only numbers that had printed. Spells here run a median of three months, so read the direction of travel across several months. Full table on regime.html.">
+    <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-right:8px">Regime</span>
+    <b style="color:${col}">${esc0(W[n.regime] ?? n.regime)}</b>, month ${n.months} — ${esc0(n.what)}.
+    ${tilt.length ? ` In this backdrop since 2007: ${esc0(tilt.join(', '))}; the rest no tilt.` : ' No market carries a tilt in this backdrop on our data.'}
+    ${widest ? ` Ranges run ${widest.r >= 1.1 ? 'wider' : widest.r <= 0.9 ? 'narrower' : 'about normal'} here.` : ''}
+    ${n.watchFor ? ` The usual next move is <b>${esc0(W[n.watchFor.to].toLowerCase())}</b>; its tell is ${esc0(n.watchFor.tells)}.` : ''}
+    <a href="regime.html" target="_blank" style="margin-left:6px;font-size:11px">the table →</a></div>`;
 }
 function renderDeskWatch() {
   const el = $('deskWatch'); if (!el) return;
@@ -6650,7 +7326,7 @@ function _dayTier(r) {
   const cone = coneGap == null ? '' : coneGap >= 15 ? `<span class="chip warn" title="Volatility is BUILDING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year. Moves may get bigger from here.">σ↑${_EV('c', _EV_T.c)}</span>`
     : coneGap <= -15 ? `<span class="chip dim" title="Volatility is COOLING — the last week's σ ranks ${d.cone_5d}th vs ${volPct}th over the last year.">σ↓${_EV('c', _EV_T.c)}</span>` : '';
   const txt = `<span class="daytxt" title="Range used: how much of today's expected range price has already travelled. Expected range and vol percentile from the calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '% used' : ''}${rangePts != null ? ` · exp ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ''}${volPct != null ? ` · σ P${volPct}` : ''}${_EV('v', _EV_T.v)}</span>`;
-  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}${nqDownWeekChip(r)}${vixInversionChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">day</span><span class="rmw">${rangeMapHtml(r, { bare: true })}</span>${txt}${cone}${tapeSpeedChip(r)}${bandAimChip(r)}${nqDownWeekChip(r)}${vixInversionChip(r)}</div>`;
 }
 // VIX above VIX3M -> the week has run wider. Tested 2026-09-17, pre-registered
 // (MD files/MARKET_SENSE_TESTS.md S1): first day of an inversion -> next-5-session
@@ -6707,7 +7383,7 @@ function wrongAtChip(r) {
 }
 function _leanTier(r) {
   const dir = _stampChip(directionChip(r), 'c') || `<span class="chip neu">— no lean</span>`;
-  return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}</div>`;
+  return `<div class="tier"><span class="lbl">lean</span>${dir}${wrongAtChip(r)}${_supportChip(r)}${_threatChip(r)}${goldKindChip(r)}</div>`;
 }
 // The board's leans, grouped into the trades they actually are. Three pound
 // shorts are one pound trade; four long-dollar leans are one dollar trade; every
@@ -6757,11 +7433,12 @@ function _clockTier(r) {
 // carries the width (the print lands late in the OANDA session). Range, never
 // direction -- the size of the surprise is not known until the print.
 const EVENT_RANGE_EFFECT = {
-  'rate decision': { EURUSD: '+0.42 on the day', USDJPY: '+0.27 on the day', GBPUSD: '+0.37 the session AFTER' },
-  employment:      { AUDUSD: '+0.19 on the day (big surprises)', EURUSD: '+0.16 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', USDCAD: '+0.11 on the day' },
-  cpi:             { EURUSD: '+0.27 the session AFTER', USDJPY: '+0.25 the session AFTER', GBPUSD: '+0.19 on the day' },
-  gdp:             { EURUSD: '+0.22 on the day (big surprises)', USDCAD: '+0.16 on the day' },
-  pmi:             { USDJPY: '+0.22 on the day' },
+  'rate decision': { EURUSD: '+0.38 on the day (+0.51 on big surprises)', USDJPY: '+0.24 on the day', GBPUSD: '+0.38 the session AFTER', AUDUSD: '+0.13 on the day' },
+  employment:      { EURUSD: '+0.17 on the day (big surprises)', USDJPY: '+0.16 the session AFTER', AUDUSD: '+0.12 on the day', USDCAD: '+0.12 on the day' },
+  cpi:             { EURUSD: '+0.16 the session AFTER', GBPUSD: '+0.17 on the day', AUDUSD: '+0.14 on the day (big surprises)', USDCAD: '+0.14 the session AFTER' },
+  gdp:             { EURUSD: '+0.14 on the day', USDCAD: '+0.26 on the day (big surprises)' },
+  pmi:             { USDJPY: '+0.21 on the day (big surprises)' },
+  'retail sales':  { GBPUSD: '+0.11 on the day', AUDUSD: '+0.12 on the day' },
 };
 const EVENT_FAMILY_RE = [['cpi', /\bcpi\b|consumer price|inflation rate/i], ['employment', /non-farm|nonfarm|payroll|unemployment|jobless|claims|employment change/i], ['gdp', /\bgdp\b/i], ['rate decision', /rate decision|cash rate|official bank rate|federal funds|interest rate|policy rate|refinancing/i], ['pmi', /\bpmi\b|ism /i]];
 function eventRangeChip(r) {
@@ -6831,29 +7508,65 @@ setInterval(() => { if (document.visibilityState === 'visible') postLedgerCalls(
 // Six slots, most conditional, so it usually shows four or five: price and change
 // from the open · the lean with its agreement · range used of expected · the tape
 // (tails only) · the one threat · the clock. Same functions as the card.
+// The spine -- price, thesis, the two nearest lines, cost, the clock -- shown on
+// every tab so nothing below has to repeat them. Every number here already exists
+// somewhere in the drawer; this is the one copy that is always visible, and the
+// tabs are where its detail lives. Levels are the fitted ladder (T7b) with their
+// hit rate and typical first-touch time from the same study.
+function drSpineHtml(r) {
+  const d = r.d; if (!d) return '';
+  const unit = _unit(d); const px = d.current_price, open = d.session_open;
+  const row = (k, v, right = '') => `<span class="sk">${k}</span><span class="sv">${v}</span><span class="sr">${right}</span>`;
+  const out = [];
+  // price vs the anchor
+  const chg = (open > 0 && px != null) ? (px / open - 1) * 100 : null;
+  out.push(row('price', `<span class="big">${px != null ? fmtN(px, d.dp) : '—'}</span>${chg != null ? ` <b class="${chg > 0.02 ? 'up' : chg < -0.02 ? 'dn' : ''}">${chg > 0 ? '+' : ''}${chg.toFixed(2)}%</b>` : ''}`,
+    open != null ? `open ${fmtN(open, d.dp)} · London midnight` : ''));
+  // the idea, and how much of the day is spent
+  const th = (typeof thesisFor === 'function') ? thesisFor(r) : null;
+  const usedPct = r.used != null ? Math.round(100 * r.used) : null;
+  const rangePts = d.levels?.hl_med?.range_pts;
+  const usedTxt = usedPct != null ? `<b class="${usedPct >= 100 ? 'amb' : ''}">${usedPct}% of the expected range used</b>${rangePts ? ` (${rangePts}${unit})` : ''}` : '';
+  out.push(row('idea', `${th && th.dir !== 0 ? `<b class="${th.dir > 0 ? 'up' : 'dn'}">${esc0(th.label)}</b> <span class="muted">from ${esc0(th.src)}</span>` : '<b>no clear bias</b>'}${usedTxt ? ` · ${usedTxt}` : ''}`,
+    d.vol_pct != null ? `vol P${Math.round(d.vol_pct)} of a year` : ''));
+  // the two nearest ladder lines, one each way
+  const rungs = [['oh_75', 'OH 75'], ['oh_med', 'OH med'], ['ol_med', 'OL med'], ['ol_75', 'OL 75']]
+    .map(([k, lbl]) => { const L = d.levels?.[k]; return L?.price == null ? null : { k, lbl, price: L.price, hit: L.hit_pct, when: L.median_utc, pct: L.pct, src: L.source, est: L.estimator }; })
+    .filter(Boolean);
+  const dist = v => px == null ? null : Math.abs(v - px) / _pipSz(d);
+  const line = (L, arrow) => L ? `<b>${esc0(L.lbl)} ${fmtN(L.price, d.dp)}</b> <span class="muted">${arrow} ${Math.round(dist(L.price))}${unit} away${L.hit != null ? ` · reached on ${L.hit}% of days` : ''}${L.when ? `, typically ${L.when}` : ''}</span>` : '<span class="muted">—</span>';
+  const above = rungs.filter(L => px != null && L.price > px).sort((a, b) => a.price - b.price)[0];
+  const below = rungs.filter(L => px != null && L.price < px).sort((a, b) => b.price - a.price)[0];
+  const srcNote = rungs[0]?.src === 'fitted-ladder' ? `fitted ladder${rungs[0].est ? ' ' + rungs[0].est : ''}` : rungs[0]?.src === 'legacy-incumbent' ? 'legacy bands' : '';
+  out.push(row('above', line(above, '↑'), ''));
+  out.push(row('below', line(below, '↓'), srcNote));
+  // is it worth trading, and what is coming
+  const c = r.cost;
+  const costTxt = c ? `<b class="${!c.tradeable || c.gate === 'fail' || c.gate === 'bad' ? 'dn' : c.gate === 'warn' ? 'amb' : ''}">${c.pips}${unit}</b>${c.ofRange != null ? ` = ${(c.ofRange * 100).toFixed(1)}% of today\u2019s range` : ''} <span class="muted">${!c.tradeable || c.gate === 'fail' || c.gate === 'bad' ? '\u2014 cost outruns the edge here' : c.gate === 'warn' ? '\u2014 borderline' : '\u2014 cheap'}</span>` : '<span class="muted">no spread read</span>';
+  const e = (typeof nextPairEvent === 'function') ? nextPairEvent(r.name) : null;
+  let clock = '<span class="muted">nothing scheduled</span>';
+  if (d.news_flag) clock = `<b class="amb">${esc0(d.news_flag)}</b> <span class="muted">today \u00b7 range \u00d7${d.news_mult}</span>`;
+  else if (e) { const hrs = (e.ms - Date.now()) / 3600e3; const fam = (typeof _tlFam === 'function') ? _tlFam(e.event) : null;
+    const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null;
+    clock = `<b>${esc0(e.event)}</b> <span class="muted">${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` \u00b7 ${bk.spike}\u00d7 an ordinary half-hour` : ''}</span>`; }
+  out.push(row('cost', costTxt, ''));
+  out.push(row('next', clock, ''));
+  return out.join('');
+}
 function drStatusHtml(r) {
   const d = r.d, bits = [];
-  if (d.current_price != null) {
-    const chg = (d.session_open > 0) ? (d.current_price / d.session_open - 1) * 100 : null;
-    bits.push(`<span class="px" title="Live price">${fmtN(d.current_price, d.dp)}</span>` +
-      (chg != null ? `<span class="chg ${chg > 0.02 ? 'up' : chg < -0.02 ? 'dn' : ''}" title="Change from today's open (${fmtN(d.session_open, d.dp)})">${chg > 0 ? '+' : ''}${chg.toFixed(2)}%</span>` : ''));
-  }
+  // Price, the idea, range-used, cost and the event clock moved to the spine
+  // (always visible, one copy). What stays here is what the spine does not carry:
+  // the direction tag, the tape’s pace, and the one standing threat chip.
   const dir = _stampChip(directionChip(r), 'c'); if (dir) bits.push(dir);
-  const rangePts = d.levels?.hl_med?.range_pts;
-  if (r.used != null || rangePts != null) {
-    bits.push(`<span title="How much of today's expected range price has already travelled${d.vol_pct != null ? ` · volatility ranks P${d.vol_pct} against the last year` : ''}. Calibrated forecast.">${r.used != null ? Math.round(100 * r.used) + '%' : '?'}${rangePts != null ? ` of ${rangePts}${d.ac === 'fx' ? 'p' : 'pt'}` : ' used'}${_EV('v', _EV_T.v)}</span>`);
-  }
   const tape = tapeSpeedChip(r); if (tape) bits.push(tape);
   const threat = _threatChip(r); if (threat) bits.push(threat);
-  const e = nextPairEvent(r.name);
-  if (d.news_flag) bits.push(`<span class="chip warn" title="Major scheduled release today; expected range scaled ×${d.news_mult}.">⚠ ${d.news_flag} ×${d.news_mult}</span>`);
-  else if (e && (e.ms - Date.now()) <= 6 * 3600e3 && (e.impact ?? '').toLowerCase() === 'high') bits.push(`<span class="chip warn" title="${e.event} (${e.country}) at ${evtTime(e)} UK.">⏰ ${(e.event ?? '').length > 18 ? e.event.slice(0, 16) + '…' : e.event} ${evtTime(e)}</span>`);
   return bits.join('<span class="sep">·</span>');
 }
 // The old single row -- every chip, unranked -- for the drawer's "All reads".
 function allReadsHtml(r) {
   const d = r.d;
-  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${sessionResearchChip(r)}`;
+  const row = `${directionChip(r)} ${biasLine(r)} ${r.agr?.chip ?? ''}${costChip(r)}${r.isProx ? `<span class="chip warn">⚑ ${r.near.tag} ${r.near.pips.toFixed(0)}${d.ac === 'fx' ? 'p' : 'pt'} away</span>` : ''}${r.ct?.level === 'EXTREME' ? `<span class="chip warn">⚠ COT ${r.ct.dir} extreme${r.ct.derived ? ' (derived)' : ''}</span>` : ''}${r.oi && !r.oi.stale && r.oi.regime ? `<span class="chip ${r.oi.regime === 'PIN' ? 'range' : 'bear'}">◎ ${r.oi.regime}</span>` : ''}${moveDecompChip(r)}${divergenceChip(r)}${ivRvChip(r)}${tapeSpeedChip(r)}${outlookChip(r)}${mveChip(r)}${commodityChip(r)}${goldKindChip(r)}${sessionResearchChip(r)}`;
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">${row}</div>`;   // turn zones have their own full section under Levels
 }
 function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (ladder → Levels, motif → Research)
@@ -6863,43 +7576,57 @@ function pairStripsHtml(r) { return ''; }   // strips now live in the drawer (la
 // and what argues with it, then the clock -- so a reader learns the shape and can
 // skim it. Every clause is guarded: a missing input drops its sentence rather than
 // inventing one.
-function nowParagraph(r) {
-  const d = r.d, out = [];
-  const t = _tape[d.sym];
-  if (t?.ok && !t.stale) {
-    const vs = t.nextRangeVsTypical, vl = t.volRatio;
-    out.push(`<b>${t.bandLabel.split(' ')[0]}${t.bandLabel.includes('overlap') ? ' overlap' : ''}, tape ${t.label}</b> (${t.pctile} for this hour): the next hour has historically stayed put ${Math.round(t.dwell * 100)}% of the time, ranging ${vs == null ? 'about' : vs >= 1.15 ? 'wider than' : vs <= 0.87 ? 'narrower than' : 'about'} a typical hour${vl != null ? (vl <= 0.9 ? ' and calmer than the hour just gone' : vl >= 1.05 ? ' and a little wider than the last' : '') : ''}.`);
-  } else if (t?.stale) {
-    out.push(`<b>Market closed</b> — the tape read is from the last hour that traded.`);
-  }
-  const rangePts = d.levels?.hl_med?.range_pts;
-  if (r.used != null) {
-    const used = Math.round(100 * r.used);
-    const where = (d.current_price != null && d.session_open != null) ? (d.current_price > d.session_open ? 'above' : 'below') : null;
-    out.push(`<b>${used}% of the expected day range used</b>${rangePts ? ` (${rangePts}${d.ac === 'fx' ? 'p' : 'pt'})` : ''}${where ? `, price ${where} the open` : ''}${used >= 80 ? ' — the day has largely happened' : used <= 25 ? ' — the day has barely started' : ''}.`);
-  }
-  const dt = directionFor(r);
-  if (dt && dt.direction !== 'flat') {
-    const word = { up: 'Lean up', down: 'Lean down', mixed: 'Mixed' }[dt.direction];
-    const comp = pairSignalComposite(r);
-    const agr = (comp && comp.total >= 2) ? ` on ${comp.agree} of ${comp.total}` : '';
-    let s = `<b>${word}${agr}</b>`;
-    const args = [];
-    if (r.ct?.level === 'EXTREME') args.push(`large speculators are at an extreme ${r.ct.dir}`);
-    const bk = _crowd[d.sym]?.book;
-    if (bk?.pain) { const side = bk.longPct >= 50 ? 'long' : 'short'; const uw = side === 'long' ? bk.pain.longsUnderwaterPct : bk.pain.shortsUnderwaterPct; if (uw != null && uw >= 60 && Math.max(bk.longPct, bk.shortPct ?? 0) >= 60) args.push(`the retail book is ${bk.longPct}% long and <b>${Math.round(uw)}% of ${side}s are underwater</b> — whoever is forced out here is ${side}`); }
-    if (r.oi && !r.oi.stale && r.oi.regime) args.push(`options say <b>${r.oi.regime}</b>`);
-    if (args.length) s += (dt.direction === 'mixed' ? '. ' : ', but ') + args.join('; ');
-    out.push(s + '.');
-  }
-  const c = r.cost;
-  if (c && (!c.tradeable || c.gate === 'fail' || c.gate === 'bad')) out.push(`And the thing that settles it: <b>spread is ${c.pips}${_unit(d)}${c.ofLevel != null ? `, ${(c.ofLevel * 100).toFixed(0)}% of the move to the nearest level` : ''}</b> — past the point where cost outruns edge. Nothing here is worth paying that to trade.`);
-  const e = nextPairEvent(r.name);
-  if (d.news_flag) out.push(`${d.news_flag} today scales the range ×${d.news_mult} until it clears.`);
-  else if (e && (e.ms - Date.now()) <= 14 * 3600e3) out.push(`${e.event} at ${evtTime(e)} UK.`);
-  return out.join(' ') || '<span class="muted">Not enough loaded yet to compose a read.</span>';
+// Before you trade: the five questions a professional answers before the
+// chart earns a trade (options, crowding, stretch, clock, relative value),
+// each with this page's current answer and its evidence status. Nothing is
+// computed here that the drawer does not already hold; the point is the
+// order and the honesty -- "no free feed" and "tested null" where they belong.
+const _BYT_PEER = { EURUSD: 'GBPUSD', GBPUSD: 'EURUSD', AUDUSD: 'NZDUSD', NZDUSD: 'AUDUSD', USDCAD: 'AUDUSD', USDCHF: 'USDJPY', USDJPY: 'USDCHF', EURGBP: 'EURUSD', EURJPY: 'USDJPY', GBPJPY: 'USDJPY', AUDJPY: 'USDJPY', NQ: 'SPX500', SPX500: 'NQ', DE30: 'UK100', UK100: 'DE30', US30: 'SPX500', US2000: 'SPX500', GOLD: 'USDJPY' };
+const _BYT_CHAIN_NODE = { USDJPY: 'usdjpy', AUDUSD: 'audusd', USDCAD: 'usdcad', GBPUSD: 'gbpusd', EURUSD: 'eurusd', GOLD: 'gold', NQ: 'nq', SPX500: 'spx' };
+function beforeYouTradeHtml(r) {
+  const d = r.d; const unit = d.ac === 'fx' ? 'p' : 'pt';
+  const line = (n, k, txt, tab, tag) => `<div class="byt-row"><span class="byt-n">${n}</span><span class="byt-k">${k}</span><span class="byt-t">${txt}</span>${tag ? `<span class="byt-tag ${tag.cls}">${esc0(tag.t)}</span>` : ''}<span class="byt-go" role="button" tabindex="0" onclick="setDrTab('${tab}')">→ ${tab === 'lean' ? 'Lean & flow' : tab === 'why' ? 'Why' : tab === 'day' ? 'The day' : 'Levels'}</span></div>`;
+  const rows = [];
+  // 1 options: where they sit (open interest), not what they pay (no free skew)
+  { const o = r.oi; const fx = v => v == null ? '?' : Number(v).toFixed(d.dp ?? 4);
+    let t, tag;
+    if (o && !o.stale) { t = `walls ${o.putWall != null ? `${fx(o.putWall)} (puts)` : ''}${o.putWall != null && o.callWall != null ? ' / ' : ''}${o.callWall != null ? `${fx(o.callWall)} (calls)` : ''}, gamma ${o.regime === 'PIN' ? 'long: pins price, favours fading the edges' : o.regime === 'BREAKOUT' ? 'short: a move can run' : '—'}${o.pcRatio != null ? `, put/call ${Number(o.pcRatio).toFixed(2)}` : ''}. Skew (what buyers are paying for): <b>no free feed</b>.`; tag = { t: 'where, not what they pay', cls: 'neu' }; }
+    else if (o?.stale) { t = `the options book is stale (${Math.round(o.ageH)}h old) — capture it before leaning on a wall. Skew: no free feed.`; tag = { t: 'stale', cls: 'warn' }; }
+    else { t = `no options book for this instrument (CME lists FX majors, gold and the indices). Skew: no free feed.`; tag = { t: 'not covered', cls: 'neu' }; }
+    rows.push(line(1, 'Options', t, 'levels', tag)); }
+  // 2 crowding: specs and retail, and the desk's verdict on squeezes
+  { const ct = r.ct; const bk = _crowd[d.sym]?.book; const parts = [];
+    const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+    if (ct?.pctile != null) parts.push(`large specs net <b>${ct.dir}</b>, ${ord(ct.pctile)} percentile of their history${ct.level ? ` (${ct.level.toLowerCase()})` : ''}`); else if (ct?.dir) parts.push(`large specs ${ct.dir}`);
+    if (bk?.longPct != null) parts.push(`retail ${Math.round(bk.longPct)}% long${bk.pain ? `, ${Math.round(bk.longPct >= 50 ? bk.pain.longsUnderwaterPct ?? 0 : bk.pain.shortsUnderwaterPct ?? 0)}% of the crowd underwater` : ''}`);
+    const t = parts.length ? `${parts.join(' · ')}. Crowding is shown, not traded: squeeze-fuel tested null here (retail is ~60% long every major every day).` : 'positioning not loaded for this instrument.';
+    rows.push(line(2, 'Crowding', t, 'lean', parts.length ? { t: ct?.level === 'EXTREME' ? 'extreme, tested null as a squeeze' : 'descriptive', cls: ct?.level === 'EXTREME' ? 'warn' : 'neu' } : null)); }
+  // 3 stretch: range used, the band, the tape
+  { const t = _tape[d.sym]; const parts = [];
+    // range-used is in the spine; this row adds what the spine cannot hold
+    if (t?.ok && !t.stale) parts.push(`band ${t.bandLabel.split(' ')[0]}, tape ${t.label} (${t.pctile} for this hour)`);
+    if (t?.ok && !t.stale && t.nextRangeVsTypical != null) parts.push(`from here the next hour has historically ranged ${t.nextRangeVsTypical}× a typical one`);
+    if (d.vol_pct != null) parts.push(`vol P${Math.round(d.vol_pct)} of a year`);
+    const stretched = r.used != null && r.used >= 0.9;
+    rows.push(line(3, 'Stretch', (parts.length ? parts.join(' · ') : 'no intraday read yet') + `. Overextension fades are real but under cost on this desk; a full range is a reason to expect less, not to fade.`, 'levels', { t: stretched ? 'range used up' : 'room left', cls: stretched ? 'warn' : 'neu' })); }
+  // 4 clock: the next print for this pair and what the book says it does
+  { const evs = (typeof pairEvents === 'function' ? pairEvents(r.name) : []).filter(x => x.ms > Date.now() && (x.impact ?? '').toLowerCase() === 'high').slice(0, 4);
+    const e = nextPairEvent(r.name); const fam = e ? _tlFam(e.event) : null;
+    const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null;
+    // the spine names the next print and its size; this row is the rest of the book
+    const later = evs.slice(1).map(x => { const f = _tlFam(x.event); const b = f ? window.eventImpactBrick?.eventImpact(x.country, f)?.instruments?.[r.name] : null; const h = (x.ms - Date.now()) / 3600e3;
+      return `${esc0(x.event)} (${h < 24 ? h.toFixed(0) + 'h' : Math.round(h / 24) + 'd'}${b ? `, ${b.spike}\u00d7` : ''})`; });
+    const t = `${bk ? `The book on the next one: <b>${bk.spike}\u00d7</b> an ordinary half-hour on release, <b>${bk.next}\u00d7</b> the next day.` : e ? 'The next print is not a mover for this pair in the book.' : 'Nothing high-impact scheduled in the calendar window \u2014 a reason to expect an ordinary range, not a trend.'}${later.length ? ` Then: ${later.join(', ')}.` : ''}${d.news_flag ? ` Today\u2019s range is scaled \u00d7${d.news_mult} for ${esc0(d.news_flag)} until it clears.` : ''} Sizes are tested range facts; direction after a print is a coin flip here.`;
+    rows.push(line(4, 'Clock', t, 'day', bk && bk.spike >= 2 ? { t: `${bk.spike}\u00d7 mover`, cls: 'warn' } : { t: 'range, never direction', cls: 'neu' })); }
+  // 5 relative value: the chain links that end on this pair, the peer, and which leg is moving
+  { const parts = []; const node = _BYT_CHAIN_NODE[r.name];
+    if (node) { const ls = chainLinks().filter(l => l.b?.key === node || l.a?.key === node); const judged = ls.filter(l => l.verdict === 'holding' || l.verdict === 'broken'); if (judged.length) parts.push(judged.map(l => `${esc0(l.short)} <b>${l.verdict.toUpperCase()}</b>`).join(', ')); else if (ls.length) parts.push(`${ls.length} chain link${ls.length > 1 ? 's' : ''} on this pair, all quiet this month`); }
+    const dc = moveDecompFor(r.name); if (dc && dc.ret != null) parts.push(`today ${dc.ret >= 0 ? '+' : ''}${dc.ret} day-ranges: ${dc.base.ccy} ${dc.base.share ?? '?'}%, ${dc.quote.ccy} ${dc.quote.share ?? '?'}%, own story ${dc.idio.share ?? '?'}%`);
+    const peer = _BYT_PEER[r.name]; const pr = peer ? allRows().find(x => x.name === peer) : null; const pdc = pr ? moveDecompFor(pr.name) : null;
+    if (pdc && pdc.ret != null) parts.push(`peer ${dispName(peer)} ${pdc.ret >= 0 ? '+' : ''}${pdc.ret}${dc && dc.ret != null && Math.sign(dc.ret) !== Math.sign(pdc.ret) && Math.abs(dc.ret - pdc.ret) >= 0.3 ? ' — <b>the peers disagree</b>: this move is this pair\u2019s own' : ''}`);
+    rows.push(line(5, 'Relative', (parts.length ? parts.join(' · ') : 'no cross-asset read loaded yet') + '. Same-window links, tested: they explain a move, they do not announce the next one.', 'why', { t: 'explains, does not predict', cls: 'neu' })); }
+  return `<div class="byt"><div class="byt-h help" title="The five questions to answer before a chart earns a trade -- options positioning, market positioning, technical stretch, the clock, cross-asset relative value -- each with this page's current answer and its evidence status. No new numbers: the order is the point.">Before you trade <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· five questions, this page\u2019s answers, in order</span></div>${rows.join('')}</div>`;
 }
-
 // ── Lean & flow: the page's own record on this pair ──────────────────────────
 async function renderDrawerLedger(r) {
   const sec = $('drLedgerSec'), box = $('drLedger');
@@ -7308,16 +8035,54 @@ function renderSidebar() {
       <div class="volout-row"><span>σ cooling</span><b>${rs.filter(r => r.d.cone_5d != null && r.d.vol_pct != null && (r.d.cone_5d - r.d.vol_pct) <= -15).length} pairs</b></div>
     </div>
 
-    <div class="side-card"><h3>Quick Links</h3>
+    ${booksCardHtml()}
+    <div class="side-card"><h3>Tools</h3>
       <div class="qtile-grid">
         <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
-        <a class="qtile" href="cot-extremes.html"><span class="qt-ic">🎯</span><span class="qt-t">COT Extremes</span><span class="qt-s">Crowded positioning</span></a>
-        <a class="qtile" href="credit-leadlag.html"><span class="qt-ic">📈</span><span class="qt-t">Credit Lead-Lag</span><span class="qt-s">Is the gate proven?</span></a>
-        <a class="qtile" href="continuation-fade-ticker.html"><span class="qt-ic">🔁</span><span class="qt-t">Continuation vs Fade</span><span class="qt-s">USD-trend filter</span></a>
         <a class="qtile" href="brief-config.html"><span class="qt-ic">⚙</span><span class="qt-t">Brief Config</span><span class="qt-s">Auto-generation setup</span></a>
         <div class="qtile" onclick="openSiteMap()"><span class="qt-ic">🗺</span><span class="qt-t">Full Site Map</span><span class="qt-s">Every page, explained</span></div>
       </div>
     </div>`;
+}
+// ── The books: the pages that complement this one, with a live line each ────
+// Not a link list -- each row says what the book holds RIGHT NOW (the regime,
+// how many tested relationships are firing, the next print and its measured
+// size, the curve), and the rows that only matter on some days (a central bank
+// this week, a data page for a release due) appear only on those days.
+function booksCardHtml() {
+  const rows = [];
+  const row = (href, ic, title, live, sub) => rows.push(`<a class="bk" href="${href}" target="_blank"><span class="bk-ic">${ic}</span><span class="bk-b"><span class="bk-t">${title}</span>${live ? `<span class="bk-l">${live}</span>` : ''}${sub ? `<span class="bk-s">${sub}</span>` : ''}</span></a>`);
+  // regime
+  const n = regime?.now; const RW = { goldilocks: 'Goldilocks', reflation: 'Reflation', stagflation: 'Stagflation', deflation: 'Deflation / risk-off' };
+  row('regime.html', '🧭', 'Regime', n ? `<b>${esc0(RW[n.regime] ?? n.regime)}</b>, month ${n.months} — ${esc0(n.what)}` : 'growth × inflation, monthly', 'what each market did in this backdrop, with intervals');
+  // the week, scored
+  const wm = weekMap; const loudW = wm ? Object.values(wm.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z)) : [];
+  row('weekmap.html', '🗺', 'The week, scored', wm ? (loudW.length ? `unusual this week: ${esc0(loudW.slice(0, 3).map(x => `${x.label} z ${x.latest.z >= 0 ? '+' : ''}${x.latest.z.toFixed(1)}`).join(', '))}; the rest ordinary` : 'an ordinary week on every series') : 'every macro series scored against its own history', 'this week in each series’ distribution, and the weeks that sat like this');
+  // evidence
+  const ev = window.deskEvidenceBrick?.DESK_EVIDENCE ?? []; const firing = (deskWatch?.states ?? []).filter(t => t.firing && t.kind === 'tested');
+  row('evidence.html', '📗', 'Evidence Book', ev.length ? `<b>${ev.length}</b> tested · ${ev.filter(e => e.verdict === 'validated').length} validated · <b>${firing.length}</b> firing now${firing.length ? `: ${esc0(firing.slice(0, 2).map(t => t.label).join(', '))}` : ''}` : 'every relationship this desk has tested', 'claim, verdict, the number, the write-up');
+  // event book: the next high-impact print and its measured size
+  const nowMs = Date.now(); const nxt = (events ?? []).filter(e => e.ms > nowMs && (e.impact ?? '').toLowerCase() === 'high').sort((a, b) => a.ms - b.ms)[0];
+  let evLive = 'what each release does to each pair, measured';
+  if (nxt) { const fam = _tlFam(nxt.event); const imp = fam ? window.eventImpactBrick?.eventImpact(nxt.country, fam) : null; const pairs = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 2).map(([k, v]) => `${dispName(k)} ${v.spike}×`).join(', ') : null; evLive = `next: <b>${esc0(nxt.country)} ${esc0(nxt.event)}</b> ${new Date(nxt.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${pairs ? ` · the book: ${esc0(pairs)} a normal half-hour` : imp ? ` · ${imp.medSpike}× median` : ' · not a mover in the book'}`; }
+  const rc = releaseCalls?.summary; row('event-response.html', '📅', 'Event Book', evLive, rc?.n ? `your calls: ${rc.hits} of ${rc.n} right` : 'call the print ▲▼ in the calendar above; it is scored here');
+  // rates & policy
+  const f = fred ?? {}; const s2 = f.us2y?.value, s10 = f.us10y?.value, s30 = f.us30y?.value, real = f.tips?.value, bei = f.bei?.value;
+  const rl = s2 != null && s10 != null ? `2s10s <b>${Math.round((s10 - s2) * 100)}bp</b>${s30 != null ? `, 2s30s ${Math.round((s30 - s2) * 100)}bp` : ''}${real != null && bei != null ? ` · 10Y = real ${real.toFixed(2)} + inflation ${bei.toFixed(2)}` : ''}` : 'the curve, real vs inflation, the term premium';
+  row('rates.html', '📉', 'Rates &amp; Policy', rl, 'nominal split into real and inflation, the term premium, what is priced — with the verdicts stapled on');
+  // central banks: only when a decision is inside ten days
+  const CB = { US: ['fomc-sentiment.html', 'Fed'], EU: ['ecb-sentiment.html', 'ECB'], GB: ['boe-sentiment.html', 'Bank of England'], JP: ['boj-sentiment.html', 'Bank of Japan'] };
+  const cbEv = (events ?? []).filter(e => e.ms > nowMs - 2 * 864e5 && e.ms < nowMs + 10 * 864e5 && _tlFam(e.event) === 'rate decision' && CB[e.country]).sort((a, b) => a.ms - b.ms)[0];
+  if (cbEv) { const [href, name] = CB[cbEv.country]; row(href, '🏛', `${name} this week`, `decision ${new Date(cbEv.ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${cbEv.estimate != null ? ` · ${esc0(cbEv.estimate)} expected` : ''}`, 'statement wording, hawkish/dovish drift, meeting by meeting'); }
+  else { const fm = _tlFomcAhead().replace(/<[^>]+>/g, ''); if (fm) row('fomc-sentiment.html', '🏛', 'Fed', esc0(fm.replace(/^\s*\d\d-\d\d\s*/, '')), 'the statement, meeting by meeting'); }
+  // data pages for releases due inside 72h
+  const DP = { cpi: ['cpi.html', 'CPI / inflation'], employment: ['labor-market.html', 'Labour market'], gdp: ['gdp.html', 'GDP / growth'], pmi: ['ism.html', 'Business activity'] };
+  const due = new Map(); for (const e of (events ?? []).filter(e => e.ms > nowMs && e.ms < nowMs + 72 * 3600e3 && (e.impact ?? '').toLowerCase() === 'high')) { const fam = _tlFam(e.event); if (DP[fam] && !due.has(fam)) due.set(fam, e); }
+  for (const [fam, e] of due) { const [href, name] = DP[fam]; row(href, '📈', `${name} — due`, `${esc0(e.country)} ${esc0(e.event)} ${new Date(e.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${e.estimate != null ? ` · ${esc0(e.estimate)} expected` : ''}${nowcastFor(e.country, e.event, e.ms) ? ` · model ${esc0(nowcastFor(e.country, e.event, e.ms).value)}` : ''}`, 'the series, the trend, the last prints'); }
+  // positioning and walls
+  row('oi-dashboard.html', '◆', 'Open interest', 'dealer walls, gamma, the hold calendar per instrument', 'where the options market has drawn its lines');
+  row('cot-extremes.html', '🎯', 'COT extremes', 'crowded positioning by currency', 'descriptive — tested here, no directional record');
+  return `<div class="side-card"><h3>The books</h3><div class="bk-list">${rows.join('')}</div></div>`;
 }
 
 function render() {
@@ -7336,6 +8101,7 @@ function render() {
   renderConcentration();
   renderWhenToWatch();
   renderMacro();
+  try { renderTimelinePanel(); } catch (e) { const t = $('timelinePanel'); if (t) t.style.display = 'none'; }
   renderWeekAhead();
   renderRegimePanel();
   renderConcept();
@@ -7505,14 +8271,20 @@ async function openDrawer(name) {
   // The tab strip pins directly under the header. The header's height depends on
   // whether the status line wrapped, so measure it rather than hard-code it.
   requestAnimationFrame(() => { try { $('drawer').querySelector('.dr-tabs').style.top = (Math.max(34, $('drawer').querySelector('.dr-top').offsetHeight) - 16) + 'px'; } catch {} });
-  try { $('drNow').innerHTML = nowParagraph(r); } catch (e) { $('drNow').innerHTML = ''; console.error('[now]', e); }
+  // The NOW paragraph was a prose re-reading of the spine and the five questions
+  // below it -- every sentence appeared twice more in the drawer. The spine holds
+  // those numbers now; this pane starts with the five questions.
+  try { $('drSpine').innerHTML = drSpineHtml(r); } catch (e) { $('drSpine').innerHTML = ''; console.error('[spine]', e); }
+  try { $('drByt').innerHTML = beforeYouTradeHtml(r); } catch (e) { $('drByt').innerHTML = ''; console.error('[byt]', e); }
   try { $('drLadder').innerHTML = ladderHtml(r) || '<span class="muted">No ladder for this instrument yet.</span>'; } catch (e) { $('drLadderSec').style.display = 'none'; }
   try { $('drAllReads').innerHTML = allReadsHtml(r); } catch (e) { $('drAllReadsSec').style.display = 'none'; }
   renderDrawerLedger(r).catch(() => { $('drLedgerSec').style.display = 'none'; });
   try { renderDrawerFactor(r); } catch (e) { $('drFactorSec').style.display = 'none'; }
+  try { renderDrawerRegimePair(r); } catch (e) { $('drRegimeSec').style.display = 'none'; }
+  loadLedgerRowsFor(r.name).then(() => renderDrawerTimeline(r)).catch(() => {}); try { renderDrawerTimeline(r); } catch (e) { $('drTimelineSec').style.display = 'none'; }
   try { const a = analogShapeHtml(r.name); if (a) { $('drAnalog').innerHTML = a; $('drAnalogSec').style.display = ''; } } catch (e) {}
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
-  loadCrowdFor(r.d.sym).then(() => { try { $('drNow').innerHTML = nowParagraph(r); $('drStatus').innerHTML = drStatusHtml(r); } catch {} }).catch(() => {});
+  loadCrowdFor(r.d.sym).then(() => { try { $('drSpine').innerHTML = drSpineHtml(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
@@ -7544,6 +8316,7 @@ async function openDrawer(name) {
   loadDrawerPath(name).catch(() => { $('drPathSec').style.display = 'none'; });
   loadDrawerIvRv(name, d.sym).catch(() => { $('drIvRvSec').style.display = 'none'; });
   renderDrawerTape(d.sym).catch(() => { $('drTapeSec').style.display = 'none'; });
+  try { renderDrawerBand(r); } catch (e) { $('drBandSec').style.display = 'none'; }
   loadDrawerTde(name).catch(e => { $('drTdeErr').textContent = e.message; });
   loadDrawerLevels(name, d.sym).catch(() => {});
   loadDrawerRates(d.sym).catch(() => { $('drRatesSec').style.display = 'none'; });
@@ -7910,6 +8683,87 @@ async function overlayDrawerCone(name) {
 // The tape section. One live read plus the full quintile table for this band, so
 // the reader can see WHERE today's pace sits and what each pace has meant -- the
 // "show your working" that makes the one-line read believable.
+// ── Band read: reach-the-next-band odds at this hour (T7) ────────────────────
+// The session payload already carries where today's price sits against the
+// forecaster's bands (oh_reached_at, oh_75_reached_at, ...). The parameter table
+// (js/bandReachParams.js, generated by analysis/band_reach_study.mjs) carries what
+// days in that state at this checkpoint went on to do. This joins the two.
+function _ukHM() { const s = new Date().toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit', hour12: false }); const [h, m] = s.split(':').map(Number); return h * 60 + m; }
+// The headline: which band to aim for from HERE, and why -- the colleague's
+// "Aim for the 75th (29,680), not the median" line, derived from the T7 table.
+// Odds for days in today's state at this checkpoint are compared with the odds
+// for an ordinary day at this hour (the state-weighted mix of the same cells, so
+// no baseline is hand-set). The next band is worth aiming for when today's state
+// lifts its odds by half or more; otherwise the line says the median, and says
+// why. A target guide, never an entry.
+function bandAimFor(r) {
+  const B = window.bandReachBrick; const P = B?.BAND_REACH_PARAMS?.[r.name]; const s = session?.instruments?.[r.name]; const d = r.d;
+  if (!P || !s || !B?.BAND_REACH_CHECKPOINTS) return null;
+  const now = _ukHM(); let cp = null; for (const [lbl, mins] of B.BAND_REACH_CHECKPOINTS) if (now >= mins) cp = lbl;
+  if (!cp) return null;
+  const row = P.byCheckpoint[cp]; if (!row) return null;
+  const lv = k => d.levels?.[k]?.price ?? null;
+  const mix = (a, b) => (a?.n && b?.n) ? (a.p * a.n + b.p * b.n) / (a.n + b.n) : (a?.p ?? b?.p ?? null);
+  const sides = [
+    { nm: 'up', medAt: s.oh_reached_at, b75At: s.oh_75_reached_at, med: lv('oh_med'), b75: lv('oh_75'), pr: row.up, word: 'high', ratio: s.oh_ratio },
+    { nm: 'dn', medAt: s.ol_reached_at, b75At: s.ol_75_reached_at, med: lv('ol_med'), b75: lv('ol_75'), pr: row.dn, word: 'low', ratio: s.ol_ratio },
+  ];
+  // the side price has extended toward: 75 reached > med reached > the larger share of the median band travelled
+  sides.sort((a, b) => (b.b75At ? 3 : b.medAt ? 2 : 0) - (a.b75At ? 3 : a.medAt ? 2 : 0) || (b.ratio ?? 0) - (a.ratio ?? 0));
+  const S = sides[0]; const pr = S.pr; const arrow = S.nm === 'up' ? '↑' : '↓';
+  const f = x => x == null ? '?' : `${Math.round(x * 100)}%`;
+  const px = v => v != null ? fmtN(v, d.dp) : '?';
+  if (S.b75At) {
+    const stall = pr.stall75?.p;
+    return { cp, side: S.nm, target: '90th', text: `The ${arrow} 75th (${px(S.b75)}) is already in. Days here by ${cp}: it was (nearly) the ${S.word} of the day in ${f(stall)}; the rest went on. Beyond it is stretch territory.`, lift: null, evidence: 'c' };
+  }
+  if (S.medAt) {
+    const p = pr.p75givenMed?.p, base = mix(pr.p75givenMed, pr.p75givenNot);
+    const lift = (p != null && base) ? p / base : null;
+    const aim75 = lift != null && lift >= 1.5 && p >= 0.35;
+    return { cp, side: S.nm, target: aim75 ? '75th' : 'median', lift,
+      text: aim75
+        ? `Aim ${arrow} for the 75th (${px(S.b75)}), not the median — price extended to the median by ${cp}, and days like this reached the 75th before the close in ${f(p)} vs ${f(base)} for the hour.`
+        : `Aim ${arrow} for the median (${px(S.med)}), already reached. The 75th (${px(S.b75)}) followed in ${f(p)} of days like this, against ${f(base)} for the hour — no better than an ordinary day.`, evidence: 'c' };
+  }
+  const p = pr.pMedGivenNot?.p;
+  return { cp, side: S.nm, target: 'median', lift: null, text: `Aim ${arrow} for the median (${px(S.med)}) — not reached yet; from ${cp} it was reached before the close in ${f(p)} of days like this, the 75th (${px(S.b75)}) in ${f(pr.p75givenNot?.p)}.`, evidence: 'c' };
+}
+function bandAimChip(r) {
+  const a = bandAimFor(r); if (!a) return '';
+  return `<span class="chip ${a.target === '75th' ? 'warn' : 'dim'}" title="${esc0(a.text)} Base rates from the T7 study (~2,500 sessions per instrument). A target guide, never an entry.">aim ${a.side === 'up' ? '↑' : '↓'} ${a.target}${a.lift ? ` · ${a.lift.toFixed(1)}× the hour` : ''}${_EV('c', _EV_T.c)}</span>`;
+}
+function renderDrawerBand(r) {
+  const sec = $('drBandSec'), box = $('drBand'); if (!sec || !box) return;
+  const B = window.bandReachBrick; const P = B?.BAND_REACH_PARAMS?.[r.name]; const s = session?.instruments?.[r.name]; const d = r.d;
+  if (!P || !s || !B?.BAND_REACH_CHECKPOINTS) { sec.style.display = 'none'; return; }
+  const now = _ukHM();
+  const cps = B.BAND_REACH_CHECKPOINTS; let cp = null; for (const [lbl, mins] of cps) if (now >= mins) cp = lbl;
+  if (!cp) { sec.style.display = ''; $('drBandAt').textContent = '· before the London open'; box.innerHTML = `<div class="ccy-explain">The band read starts at 07:00 UK. Clock for this instrument: the typical daily high is first reached around <b>${P.clock.upMed.med}</b> (p25 ${P.clock.upMed.p25}, p75 ${P.clock.upMed.p75}) on ${Math.round(P.clock.upMed.hit * 100)}% of days; the typical low around <b>${P.clock.dnMed.med}</b> on ${Math.round(P.clock.dnMed.hit * 100)}%.</div>`; return; }
+  sec.style.display = ''; $('drBandAt').textContent = `· as at ${cp} UK · re-reads at each checkpoint`;
+  const row = P.byCheckpoint[cp]; if (!row) { box.innerHTML = ''; return; }
+  const pct = x => x?.p != null ? `<b>${Math.round(x.p * 100)}%</b> <span class="muted">[${Math.round(x.lo * 100)}–${Math.round(x.hi * 100)}]</span>` : '—';
+  const nOf = x => x?.n != null ? ` <span class="dim-age">n=${x.n}</span>` : '';
+  // The level with its working, so any number quoted here can be checked against the
+  // chart label in one glance: "4298.8 = 4361.19 - 1.43%, fitted ladder yz_10".
+  const lv = (k) => { const L = d.levels?.[k]; if (L?.price == null) return null; const src = L.source === 'fitted-ladder' ? `fitted ladder${L.estimator ? ' ' + L.estimator : ''}${L.event_tag && L.event_tag !== 'none' ? ', ' + L.event_tag + ' day' : ''}` : L.source === 'legacy-incumbent' ? 'legacy bands, no ladder built' : ''; return `${fmtN(L.price, d.dp)}${d.session_open != null && L.pct != null ? ` = ${fmtN(d.session_open, d.dp)} ${k.startsWith('ol') ? '−' : '+'} ${L.pct}%` : ''}${src ? `, ${src}` : ''}`; };
+  const side = (nm, medAt, b75At, medKey, b75Key, word, pr) => {
+    const medHit = !!medAt, b75Hit = !!b75At;
+    const lm = lv(medKey), l75 = lv(b75Key);
+    let txt;
+    if (b75Hit) txt = `${word} 75th band${l75 ? ` (${l75})` : ''} reached at ${String(b75At).slice(11, 16)} UTC. Days that got here by ${cp}: the 75th was (nearly) the day's ${nm === 'up' ? 'high' : 'low'} in ${pct(pr.stall75)}${nOf(pr.stall75)} — the rest kept going.`;
+    else if (medHit) txt = `${word} median band${lm ? ` (${lm})` : ''} reached at ${String(medAt).slice(11, 16)} UTC, the 75th${l75 ? ` (${l75})` : ''} not yet. From here the 75th was reached before the close in ${pct(pr.p75givenMed)}${nOf(pr.p75givenMed)} of days like this; the median was (nearly) the day's ${nm === 'up' ? 'high' : 'low'} in ${pct(pr.stallMed)}${nOf(pr.stallMed)}.`;
+    else txt = `${word} median band${lm ? ` (${lm})` : ''} not reached yet. From here it was reached before the close in ${pct(pr.pMedGivenNot)}${nOf(pr.pMedGivenNot)} of days like this, the 75th${l75 ? ` (${l75})` : ''} in ${pct(pr.p75givenNot)}.`;
+    return `<div class="ccy-explain" style="margin-top:6px"><b>${nm === 'up' ? '↑ Up side' : '↓ Down side'}</b> · ${txt}</div>`;
+  };
+  const clock = `<div class="ccy-explain" style="margin-top:6px"><b>Clock</b> · the typical high is first reached around <b>${P.clock.upMed.med}</b> (p25 ${P.clock.upMed.p25}, p75 ${P.clock.upMed.p75}) on ${Math.round(P.clock.upMed.hit * 100)}% of days, the bigger high around ${P.clock.up75.med} on ${Math.round(P.clock.up75.hit * 100)}%; the typical low around <b>${P.clock.dnMed.med}</b> on ${Math.round(P.clock.dnMed.hit * 100)}%.</div>`;
+  const asia = Object.entries(P.asia ?? {}).filter(([, v]) => v.finding);
+  const asiaTxt = asia.length ? `<div class="ccy-explain" style="margin-top:6px"><b>Asia</b> · a wide Asia range changes the odds here: ${asia.map(([k, v]) => `${k} reached after 07:00 in ${Math.round(v.high * 100)}% of wide-Asia days vs ${Math.round(v.low * 100)}% of narrow ones`).join('; ')}.</div>` : `<div class="ccy-explain muted" style="margin-top:6px;font-size:11px">Asia's range does not change these odds on this instrument (tested; no tercile difference clears 15pp).</div>`;
+  const aim = bandAimFor(r);
+  const head = aim ? `<div class="chain-hook" style="font-size:13.5px;margin-bottom:6px;padding:8px 10px;border-left:3px solid var(--amber);background:var(--card2);border-radius:0 6px 6px 0">${esc0(aim.text)}<div class="muted" style="font-size:10.5px;font-weight:400;margin-top:3px">A target guide, not an entry · as at ${aim.cp} UK</div></div>` : '';
+  box.innerHTML = head + side('up', s.oh_reached_at, s.oh_75_reached_at, 'oh_med', 'oh_75', 'Typical high:', row.up) + side('dn', s.ol_reached_at, s.ol_75_reached_at, 'ol_med', 'ol_75', 'Typical low:', row.dn) + clock + asiaTxt +
+    `<div class="mread-precise" style="margin-top:8px">Base rates from ${P.n.toLocaleString()} London sessions since 2016 (T7b). Bands here are the fitted ladder's O-H / O-L p50 and p75 — the same lines the bots trade and the chart draws — and the study (T7b) was run on those same lines. A target guide, never an entry: the fade at these bands tested null as a trade, and so did the level touch. ${_EV('c', _EV_T.c)}</div>`;
+}
 async function renderDrawerTape(sym) {
   const sec = $('drTapeSec'), box = $('drTape');
   if (!sec) return;
@@ -8083,7 +8937,15 @@ async function loadDrawerPath(name) {
     ['shaky at', hrs(s.shakyHours)],
     ['release windows ahead', s.upcomingEvents?.length ? s.upcomingEvents.join(' · ') + (s.eventSteps ? ' (σ widened now)' : '') : 'none in next 12h'],
   ];
-  el.innerHTML = rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">${k}</span><b>${v}</b></div>`).join('')
+  // In words first; the key/value rows underneath are the evidence.
+  const dbOk = db && db.reliable !== false && db.rangeSoFarPct != null;
+  const budgetW = dbOk ? `Today has used <b>${db.rangeSoFarPct}%</b> of a typical full day's range (${db.typicalFullPct}%), which is ${db.consumedPercentile != null ? (db.consumedPercentile >= 75 ? 'a lot for this hour -- three days in four had used less' : db.consumedPercentile <= 25 ? 'little for this hour -- three days in four had used more' : 'ordinary for this hour') : 'so far'}; a typical day still has about <b>${db.remainingTypicalPct}%</b> to come. ` : '';
+  const spW = s.surprise ? `Against the day-open cone, price sits at the ${s.surprise.pct}th percentile${Math.abs(s.surprise.z) > 1.15 ? ' -- an unusual place to be, the cone is being stretched' : Math.abs(s.surprise.z) > 0.67 ? ' -- on the edge of ordinary' : ' -- well inside ordinary'}. ` : '';
+  const envW = s.p75HalfPct != null ? `Over the next four hours the calibrated envelope is <b>±${s.p75HalfPct}%</b> (${s.p75Lo?.toFixed?.(5) ?? '?'} to ${s.p75Hi?.toFixed?.(5) ?? '?'}); on this pair's own history that band has contained price ${s.calib?.c75Final != null ? Math.round(s.calib.c75Final * 100) + '% of the time against a 75% claim' : 'at its claimed rate'}${s.calib?.n ? ` (n=${s.calib.n})` : ''}. ` : '';
+  const evW = s.upcomingEvents?.length ? `Release windows ahead: ${s.upcomingEvents.join(', ')}${s.eventSteps ? ' -- the envelope is already widened for them' : ''}. ` : 'No release window in the next 12 hours. ';
+  const trustW = s.shakyHours?.length ? `The cone is least trustworthy around ${hrs(s.shakyHours)}. ` : '';
+  el.innerHTML = `<div class="ccy-explain" style="margin-bottom:8px">${budgetW}${spW}${envW}${evW}${trustW}Range and timing only -- this engine's own calibration shows its direction call is a coin flip.</div>`
+    + rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">${k}</span><b>${v}</b></div>`).join('')
     + `<div id="drTrendBias" style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:2px 0"><span class="muted">trend bias (daily)</span><b class="muted">…</b></div>`
     + `<div class="muted" style="font-size:10px;margin-top:4px">P75 containment on this pair's history: ${s.calib?.c75Final != null ? Math.round(s.calib.c75Final * 100) + '% (claim 75%, n=' + s.calib.n + ')' : '—'} · <a href="forecast-path.html?pair=${encodeURIComponent(name)}&gran=M15" target="_blank" style="color:var(--accent, #5b9dff)">open in Forecast Path →</a></div>`;
   loadDrawerTrendBias(name);
@@ -8443,7 +9305,14 @@ function renderDrawerCone(r) {
   const sk = fc.realised_skew;
   const skChip = (!sk || sk.label === 'insufficient_data') ? '' : `<span class="chip ${sk.label === 'downside-heavy' ? 'warn' : sk.label === 'upside-heavy' ? 'neu' : 'dim'}" title="Downside vs upside move magnitude, ratio ${sk.ratio}. This pair's down days tend to run ${sk.label === 'downside-heavy' ? 'BIGGER than its up days' : sk.label === 'upside-heavy' ? 'SMALLER than its up days' : 'about the same size as its up days'} — a symmetric cone can be the wrong shape for a skewed pair.">${sk.label === 'downside-heavy' ? '▼ FALLS FASTER' : sk.label === 'upside-heavy' ? '▲ RISES FASTER' : 'SYMMETRIC'}</span>`;
 
+  // In words first. The dots are the evidence; the sentence is what they say.
+  const P = v => v == null ? null : Math.round(v);
+  const rank = v => v == null ? '' : v >= 80 ? 'among the wildest' : v >= 60 ? 'on the wild side of' : v <= 20 ? 'among the quietest' : v <= 40 ? 'on the quiet side of' : 'about the middle of';
+  const words = gap == null
+    ? `Not enough short-window history to say whether volatility is building or cooling.`
+    : `Volatility is <b>${gap >= 15 ? 'building' : gap <= -15 ? 'cooling' : 'steady'}</b>: the last week's swings rank ${rank(fc.cone_5d)} this market's year (P${P(fc.cone_5d)}), the last month P${P(fc.cone_21d)}, the year itself P${P(fc.vol_pct)}${fc.vol_annual != null ? ` — about ${fc.vol_annual.toFixed(0)}% annualised` : ''}. ${gap >= 15 ? 'Expect ranges bigger than the yearly number suggests; widen stops, reduce size.' : gap <= -15 ? 'Expect ranges smaller than the yearly number suggests — a compression stretch, and quiet days cluster (tested).' : 'The forecast\'s range assumption is not being contradicted by the recent tape.'}${ivPct != null ? ` Options are pricing 1-month protection at P${P(ivPct)} of its five years${ivPct > (fc.vol_pct ?? 0) + 15 ? ' — dearer than the realised rows, i.e. the market expects more than it is getting' : ivPct < (fc.vol_pct ?? 100) - 15 ? ' — cheaper than the realised rows' : ', in line with realised'}.` : ''} A sizing fact, not a direction.`;
   el.innerHTML =
+    `<div class="ccy-explain" style="margin-bottom:8px">${words}</div>` +
     `<div class="cone-verdict">
        <span class="chip ${verdict[1]}" title="${verdict[2]}">${verdict[0]}</span>${reChip}${skChip}
        <span class="muted">σ ${fc.vol_annual != null ? fc.vol_annual.toFixed(1) + '% annualised' : ''}${fc.vol_vov_label ? ` · swings themselves: ${fc.vol_vov_label.toLowerCase()}` : ''}</span>
@@ -8469,6 +9338,13 @@ function renderDrawerCostCarry(r) {
   if (!vi || (vi.cost_ratio == null && vi.carry_to_vol == null)) { sec.style.display = 'none'; return; }
 
   let html = '';
+  {
+    const pct = vi.cost_ratio != null ? vi.cost_ratio * 100 : null;
+    const cv = vi.carry_to_vol;
+    const costW = pct == null ? '' : `The spread is <b>${vi.spread_pips ?? '?'} pips — ${pct.toFixed(1)}% of today's expected range</b>, which is ${pct < 3 ? 'cheap: cost is not the constraint today' : pct < 8 ? 'ordinary: cost is a tax, not a wall' : 'expensive: the spread eats a meaningful slice of any intraday idea'} (tested here: above 15% of ATR nothing short-horizon survives). `;
+    const carryW = cv == null ? '' : `Carry: the rate gap pays <b>${vi.carry_pct != null ? (vi.carry_pct >= 0 ? '+' : '') + vi.carry_pct + ' points a year' : '?'}</b> to hold the ${cv >= 0 ? 'long' : 'short'} side, ${Math.abs(cv) >= 0.5 ? 'a real income against this pair\'s swings' : Math.abs(cv) >= 0.2 ? 'modest against this pair\'s swings' : 'a rounding error against this pair\'s swings'} (${cv.toFixed(2)} of annualised vol). Carry is the one macro read that weakly led price here; still not a signal.`;
+    if (costW || carryW) html += `<div class="ccy-explain" style="margin-bottom:8px">${costW}${carryW}</div>`;
+  }
   if (vi.cost_ratio != null) {
     const pct = vi.cost_ratio * 100;
     const verdict = pct < 3 ? ['CHEAP', 'bull'] : pct < 8 ? ['NORMAL', 'neu'] : ['EXPENSIVE', 'bear'];
@@ -8513,6 +9389,7 @@ function renderDrawerTimeBudget(r) {
   const verdict  = stale ? ['RUNNING LONG', 'warn'] : ['ON SCHEDULE', 'bull'];
 
   el.innerHTML = `
+    <div class="ccy-explain" style="margin-bottom:8px">${stale ? `Price is <b>running long</b>: ${elapsedH.toFixed(1)} hours into the session and the median target is still not reached, against the ~${medianH.toFixed(1)} hours a driftless path would typically need${p75H != null ? ` (three days in four get there inside ~${p75H.toFixed(1)}h)` : ''}. The longer a target waits, the less a "it just needs time" story explains it. Timing context, not backtested.` : `<b>On schedule</b>: ${elapsedH.toFixed(1)} hours into the session, still inside the ~${medianH.toFixed(1)} hours a driftless path typically needs to reach the median target${p75H != null ? ` (three in four inside ~${p75H.toFixed(1)}h)` : ''}. Nothing to read into the clock yet. Timing context, not backtested.`}</div>
     <div class="cone-verdict">
       <span class="chip ${verdict[1]}" title="Elapsed time (${elapsedH.toFixed(1)}h) vs the median first-passage time (${medianH.toFixed(1)}h) a driftless model expects for reaching the O-C median target, given today's remaining distance and σ. This is a reference line, not a backtested claim.">${verdict[0]}</span>
       <span class="muted">${elapsedH.toFixed(1)}h elapsed · median ~${medianH.toFixed(1)}h · P75 ~${p75H != null ? p75H.toFixed(1) : '?'}h</span>
@@ -9332,7 +10209,12 @@ function loadDrawerCorr(name) {
   const cotAgainst = cotPartners.filter(p => p.v <= -0.3).slice(-3).reverse();
   const cotChip = (p, cls) => `<span class="corrchip ${cls}" title="${ccyFull(p.leg)} and ${ccyFull(p.other)} speculative positioning, week-over-week change in OI-normalised spec share, correlation ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)} — funds have been ${p.v >= 0 ? 'building/reducing these two together' : 'moving these two in opposite directions'}.${whyText(explainRelationship(p.leg, p.other))}">${ccyFull(p.leg)}↔${ccyFull(p.other)} ${p.v >= 0 ? '+' : ''}${p.v.toFixed(2)}</span>`;
 
+  const nm = o => (typeof corrDisp === 'function' ? corrDisp(o) : String(o).replace('_', '/'));
+  const corrWords = (withIt.length || against.length)
+    ? `Over the last ten days this market has moved <b>with</b> ${withIt.length ? withIt.map(p => `${nm(p.other)} (${p.v.toFixed(2)})`).join(', ') : 'nothing in particular'} -- holding those together is one bet, not diversification -- and <b>against</b> ${against.length ? against.map(p => `${nm(p.other)} (${p.v.toFixed(2)})`).join(', ') : 'nothing strongly'}${against.length ? ', a cushion that tends to vanish in a real risk-off' : ''}. A sizing fact.`
+    : 'No strong ten-day co-movement with anything tracked here -- this market has been trading its own story.';
   box.innerHTML =
+    `<div class="ccy-explain" style="margin-bottom:8px">${corrWords}</div>` +
     (withIt.length ? `<div class="corrline"><span class="clbl help" title="These move WITH this market over the last ~10 days — trading several together is really one bet, not diversification. Don't double up.">Moves with</span> ${withIt.map(p => chip(p, 'pos', p.other)).join(' ')}</div>` : '') +
     (against.length ? `<div class="corrline"><span class="clbl help" title="These move OPPOSITE — a natural hedge. But correlations snap toward 1 in a real risk-off, so treat as a cushion, not a guarantee.">Natural hedge</span> ${against.map(p => chip(p, 'neg', p.other)).join(' ')}</div>` : '') +
     (bLine ? `<div class="corrline"><span class="clbl help" title="Sensitivity (regression beta) of this market to each driver over the window. |β|>1 means it amplifies that driver; sign shows direction. What actually pushes this pair around.">Driven by</span> <span class="muted">${bLine}</span></div>` : '') +
@@ -9489,7 +10371,7 @@ const DRIVERS = {
   AUDJPY: { a: 'au10y', b: 'jp10y', label: 'AU–JP 10y', sign: +1 },
   CADJPY: { a: 'ca10y', b: 'jp10y', label: 'CA–JP 10y', sign: +1 },
 };
-const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets';
+const FREDHIST_KEYS = 'us10y,us2y,us30y,de10y,gb10y,jp10y,au10y,ca10y,ch10y,tips,bei,vix,vix3m,dxy,hy,walcl,tga,rrp,ecb_assets,boj_assets,sofr,iorb,ioer,tp10,fy10';
 
 async function getFredHist() {
   if (fredHist) return fredHist;
@@ -10645,6 +11527,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   window.econSurpriseBrick = EconSurprise;
   try { window.render?.(); } catch (e) {}
 </script>
+<!-- Release scorecard (js/releaseScorecard.js): the card's words are the brick's, so
+     the page and the Telegram line cannot disagree. -->
+<script type="module">
+  import * as ReleaseScorecard from './js/releaseScorecard.js';
+  window.releaseScorecardBrick = ReleaseScorecard;
+  try { window.renderGate?.(); } catch (e) {}
+</script>
 <!-- Same pattern for the pair-composite brick (js/pairCompositeEngine.js) —
      combines technical/COT/macro/carry legs this page already computes into
      one per-pair read, shared with indexv2.html's drill view. -->
@@ -10698,6 +11587,12 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as EventImpact from './js/eventImpactMap.js';
   window.eventImpactBrick = EventImpact;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- Band read parameters (js/bandReachParams.js, generated by T7): reach-the-next-band
+     odds by checkpoint, the band clock, the stall rate. -->
+<script type="module">
+  import * as BandReach from './js/bandReachParams.js';
+  window.bandReachBrick = BandReach;
 </script>
 <script type="module">
   import * as CrossAsset from './js/crossAssetCore.js';

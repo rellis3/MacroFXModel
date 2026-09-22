@@ -46,7 +46,7 @@ export async function fetchIntradayOnce(oanda, gran, { from, to, count } = {}) {
   const data = await r.json();
   return (data.candles ?? [])
     .filter(c => c.complete !== false && c.mid)
-    .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c }));
+    .map(c => ({ time: Math.floor(new Date(c.time).getTime() / 1000), open: +c.mid.o, high: +c.mid.h, low: +c.mid.l, close: +c.mid.c, volume: +(c.volume ?? 0) || 0 }));
 }
 
 // Fetch intraday candles (epoch-second times), PAGINATED past OANDA's 5000-
