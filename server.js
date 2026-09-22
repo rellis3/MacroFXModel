@@ -33281,6 +33281,15 @@ const REFERENCE_ENGINE_PAIRS = [
   'GBPJPY', 'EURGBP', 'EURJPY', 'EURCHF', 'GBPCHF', 'AUDJPY', 'CADJPY',
   'EURAUD', 'EURCAD', 'EURNZD', 'GBPAUD', 'GBPCAD', 'AUDCAD', 'NZDCAD', 'NZDJPY',
   'CHFJPY', 'BTCUSD',
+  // AnalogML's 3 pairs this job otherwise never covers (2026-09-22) --
+  // motif_alert_backtest.py needs all 26 of AnalogML's ALL_PAIRS
+  // (AnalogML/refresh_m1.py), and every other one already rides this same
+  // nightly M1 top-up via m1-tail/{pair}.json; these three had no tail file
+  // at all, so m1/loadM1ForPair for them was stuck on whatever the base
+  // parquet's own last manual backfill happened to be (found 2026-09-22
+  // stale since 2026-09-08 while chasing why the alert-funnel export
+  // wasn't reaching "through today").
+  'AUDCHF', 'AUDNZD', 'GBPNZD',
 ];
 // Standalone nightly M1 tail-append job (2026-09-12 -> REMOVED 2026-09-15
 // -> REINSTATED as a shared PRE-FETCH phase, 2026-09-16): first version
