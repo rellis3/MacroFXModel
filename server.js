@@ -178,6 +178,7 @@ import { bucketM1IntoSessions as _bucketM1IntoSessions } from './js/forecastAnal
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
 import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngine.js';
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
+import { buildLiveVsBacktestReport } from './js/motifLiveVsBacktest.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
@@ -24992,6 +24993,66 @@ app.get('/api/analogml/motif-trades', async (_req, res) => {
   const out = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
   if (!out) return res.status(404).json({ ok: false, error: 'no motif_trades.json yet -- run AnalogML/motif_track.py' });
   return res.json(out);
+});
+
+// ── Motif Bot: live-vs-backtest reconciliation ──────────────────────────────
+// Answers "did the live bot take the same trades, with the same win/loss,
+// the backtest says it should have" -- automatically, from data that is
+// ALREADY accumulating with zero extra wiring, not a script someone has to
+// remember to run: `trade_hist_motif_bot_status_<date>` (every status push
+// carrying today_closed_trades already merges in here -- motif_bot_status is
+// in STATUS_KEYS, see /api/kv/set above), `motif_bot_decision_log` (the
+// bot's own "entered" events, which carry the motif_key a raw MT5 fill can't
+// -- the order comment is a short hash since the comment-length fix, not the
+// motif_key), and motif_trades.json (motif_track.py's own forward-tracked
+// signal record, raced by the SAME pylego.barrier_race code the backtest
+// uses -- this IS the backtest, kept current, no separate run needed).
+//
+// Match/compare logic lives in js/motifLiveVsBacktest.js (unit tested,
+// js/motifLiveVsBacktest.test.mjs) -- a JS port of scripts/verify_motif_
+// live_vs_backtest.py's pure functions (that script exists separately for a
+// deeper, MT5-deal-history-level audit on the machine that runs the bot;
+// this route answers the same question from what the dashboard already
+// has, for anyone, anytime, no MT5 terminal required). Keep the two in step
+// if the verdict rules ever change.
+
+// GET ?days=N (default 14, max 90) -- how far back to pull trade_hist_ buckets.
+app.get('/api/motif-bot/live-vs-backtest', async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 90);
+    const dates = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(); d.setUTCDate(d.getUTCDate() - i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+    const perDate = await Promise.all(dates.map(async dt => {
+      try {
+        const raw = await kv.get(`trade_hist_motif_bot_status_${dt}`);
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
+    }));
+    const rawLiveTrades = perDate.flat();
+
+    let enteredEvents = [];
+    try {
+      const raw = await kv.get('motif_bot_decision_log');
+      const log = raw ? JSON.parse(raw) : {};
+      enteredEvents = (log.events || []).filter(e => e.status === 'entered');
+    } catch { /* no decision log yet */ }
+
+    const backtest = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
+    const report = buildLiveVsBacktestReport(rawLiveTrades, enteredEvents, backtest?.trades || []);
+
+    res.json({
+      ok: true, from: dates[dates.length - 1], to: dates[0],
+      trades: report.trades, summary: report.summary,
+      backtest_src: backtest?.src || null,
+      backtest_motifs: report.backtest_motifs,
+      decision_log_entered: enteredEvents.length,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.post('/api/vol-forecast-research/run', express.json({ limit: '64kb' }), (req, res) => {

@@ -7021,6 +7021,7 @@ async function loadMtLiveStatus() {
   } catch (e) { if (ageEl) { ageEl.textContent = e.message; } }
   loadMtPlan();
   loadMtSpreadStats();
+  loadMtLiveVsBacktest();
   loadMtDecisionLog();
   loadMtLife();
   loadMtPairs();
@@ -7244,6 +7245,54 @@ async function loadMtSpreadStats() {
   } catch (e) { body.innerHTML = `<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`; }
 }
 
+const MT_LVB_VERDICT_COLOR = { MATCH: 'var(--green)', DIVERGENCE: 'var(--red)', UNRESOLVED: 'var(--amber,#e0a93b)', UNMATCHED: 'var(--text3)' };
+
+async function loadMtLiveVsBacktest() {
+  const body = document.getElementById('mtLvbBody');
+  const summaryEl = document.getElementById('mtLvbSummary');
+  if (!body) return;
+  const days = document.getElementById('mtLvbDays')?.value || 14;
+  try {
+    const r = await fetch(`/api/motif-bot/live-vs-backtest?days=${encodeURIComponent(days)}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'request failed');
+    const trades = d.trades || [];
+    const s = d.summary || {};
+    const divN = s.DIVERGENCE || 0;
+    if (summaryEl) {
+      summaryEl.innerHTML = trades.length
+        ? `${trades.length} trade(s) ${d.from}→${d.to} — ` +
+          `<span style="color:var(--green)">${s.MATCH || 0} match</span> · ` +
+          `<span style="color:${divN ? 'var(--red)' : 'var(--text3)'};font-weight:${divN ? 700 : 400}">${divN} divergence${divN === 1 ? '' : 's'}</span> · ` +
+          `<span style="color:var(--amber,#e0a93b)">${s.UNRESOLVED || 0} unresolved</span> · ` +
+          `<span style="color:var(--text3)">${s.UNMATCHED || 0} unmatched</span>` +
+          (divN ? ' — <b style="color:var(--red)">investigate the divergence row(s) below</b>' : ' — live matches the backtest')
+        : `No closed/open live trades in the last ${days} day(s) yet`;
+    }
+    if (!trades.length) {
+      body.innerHTML = '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">No live trades yet</td></tr>';
+      return;
+    }
+    body.innerHTML = trades.slice().reverse().map(t => {
+      const opened = t.time_open ? new Date(t.time_open * 1000).toISOString().slice(0, 16).replace('T', ' ') : '—';
+      const buy = t.direction === 'BUY';
+      const outcome = t.reason || 'open';
+      const rowBg = t.verdict === 'DIVERGENCE' ? 'background:rgba(239,68,68,.08)' : '';
+      return `<tr style="${rowBg}">
+        <td style="padding:5px 10px;font-weight:600;text-align:left">${(t.symbol || '?').toUpperCase()}</td>
+        <td style="padding:5px 10px;text-align:left;color:${buy ? 'var(--green)' : 'var(--red)'}">${buy ? 'BUY' : 'SELL'}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${opened}</td>
+        <td style="padding:5px 10px;text-align:left">${outcome}</td>
+        <td style="padding:5px 10px;text-align:center;font-weight:700;color:${MT_LVB_VERDICT_COLOR[t.verdict] || 'var(--text3)'}">${t.verdict}</td>
+        <td style="padding:5px 10px;text-align:left;color:var(--text3)">${t.detail || ''}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    if (summaryEl) summaryEl.textContent = '';
+    body.innerHTML = `<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">${e.message}</td></tr>`;
+  }
+}
+
 const MT_DEC_STATUS_COLOR = { entered: 'var(--green)', rejected: 'var(--red)', skipped: 'var(--amber,#e0a93b)', filtered: 'var(--text3)', pair_blocked: 'var(--amber,#e0a93b)', would_block: 'var(--text3)' };
 async function loadMtDecisionLog() {
   const body = document.getElementById('mtDecisionBody');
@@ -7277,6 +7326,7 @@ window.saveMtConfig = saveMtConfig; window.saveMtCreds = saveMtCreds;
 window.resetMtDefaults = resetMtDefaults; window.testMtTelegram = testMtTelegram;
 window.loadMtLiveStatus = loadMtLiveStatus; window.loadMtPlan = loadMtPlan; window.loadMtDecisionLog = loadMtDecisionLog;
 window.loadMtSpreadStats = loadMtSpreadStats;
+window.loadMtLiveVsBacktest = loadMtLiveVsBacktest;
 document.querySelector('.tab-btn[data-tab="motifbot"]')?.addEventListener('click', loadMtLiveStatus);
 loadMtConfig();
 loadMtCreds();
