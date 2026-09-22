@@ -9,7 +9,7 @@
 > to show the relationship clearly. Not taken from any market, account or track
 > record."* Numbers quoted below are from that simulated 8-instrument universe.
 
-**Status:** slides 1–10 logged. Remaining slides to follow.
+**Status:** slides 1–17 logged. Remaining slides to follow.
 
 ---
 
@@ -35,9 +35,17 @@ back"), and it can be traded without taking a view on the group.
    K off an "elbow".
 4. **Build each instrument's exposure vector** — its loadings on the K kept components,
    in fixed order.
-5. **Use the vectors to hedge / project out** the factor exposure (arithmetic on the
-   vectors — covered in later slides).
-6. **Re-estimate on a rolling basis** — components and vectors are estimates from a
+5. **Compute each instrument's residual:** actual return − Σ(loading × factor return) over the
+   K kept factors. Cumulate it into a residual series.
+6. **Measure reversion per instrument** (half-life of the cumulative residual, ~15 days for
+   instrument A in the example). Drop instruments whose residual doesn't revert.
+7. **Hedge the trade:** go long/short the stretched instrument and at the same time hold a
+   basket of the others, weighted so the book's exposure Σ wᵢβᵢ to every kept factor is
+   ~0. What's left is a position in the residual only (basket construction in later
+   slides).
+8. **Test the hedge using the component's working name:** e.g. a PC1-neutral book should
+   show a market beta near zero against a market proxy.
+9. **Re-estimate on a rolling basis** — components and vectors are estimates from a
    finite window and they drift/rotate.
 
 ## Rules and warnings (so far)
@@ -53,6 +61,14 @@ back"), and it can be traded without taking a view on the group.
   ("PC1 = the market").
 - Counting positions says nothing about diversification; look at how spread out the
   exposure vectors are. Similar vectors = one position held N times.
+- A component dominated by a single instrument (like PC3 here) is noise, not structure.
+- The **sign of a PC is arbitrary**. Rely on the grouping, never on "PC2 positive = X".
+- A name for a component is a **hypothesis kept only so the hedge can be checked**.
+- A residual that doesn't revert is not a trade, however far it has strayed.
+- **Loading ≠ exposure.** Loading belongs to the instrument; exposure = Σ position ×
+  loading belongs to you, and it's the only lever you control.
+- Every position is a bundle of factor exposures you hold whether you chose them or not.
+  Only a deliberately factor-neutral basket isolates the residual.
 
 ---
 
@@ -266,6 +282,221 @@ numbers, not to the price."
 **Caution:** the vector is estimated from a finite window, carries error and drifts as the
 market changes — which is why the model **re-estimates rather than fitting once**. "A
 vector is the best current description of an instrument, not a fact about it."
+
+### Slide 11 — The exposure vector (interactive, three views)
+
+A bar chart of each instrument's loading on one component at a time, with buttons for
+Component 1 / 2 / 3. Green bars = positive loading, red = negative. (Values below are
+read off the bars, so they're approximate.)
+
+| Instrument | PC1 | PC2 | PC3 |
+|---|---|---|---|
+| A | ~0.33 | ~−0.33 | ~−0.13 |
+| B | ~0.31 | ~−0.39 | ~−0.20 |
+| C | ~0.34 | ~+0.26 | ~0.02 |
+| D | ~0.29 | ~+0.41 | ~−0.16 |
+| E | ~0.41 | ~−0.20 | ~−0.01 |
+| F | ~0.38 | ~+0.26 | ~0.02 |
+| G | ~0.35 | ~−0.17 | **~+0.83** |
+| H | ~0.41 | ~+0.15 | ~0.01 |
+
+- **Component 1 view** (axis ±0.51): all eight bars positive and similar in size. "That is
+  what a broad common driver looks like: when it moves, all eight move together, and no
+  amount of holding several of them protects you from it."
+- **Component 2 view** (axis ±0.64): the signs split. A, B, E and G load negative; C, D, F
+  and H load positive. The component separates the universe into **two groups that move
+  against each other. That is a spread, and it is tradeable in a way the first component
+  is not.**
+- **Component 3 view** (axis ±1.02): one big bar (G ≈ +0.83), the rest small or near zero,
+  no clear pattern. "By the third component the exposures are small and unstable. This is
+  where structure ends and estimation noise begins, which is why keeping too many
+  components does more harm than good." A component that is mostly one instrument is
+  really that instrument's own noise being mistaken for a shared driver.
+
+**Callout:** "An exposure vector is the bridge between a statistical direction and a
+position you can actually hold." It tells you, for each instrument, how much common
+movement to expect and so how much to remove. It is what makes hedging possible: if an
+instrument's loading on a driver is 0.35, you know how much of a position in that driver
+to hold against it to be left with only the part you care about. By the third component
+the pattern is hard to read. That is the boundary between structure and noise, and it's
+why choosing K is not cosmetic.
+
+### Slide 12 — What the components *actually* are (interactive)
+
+**Image:** three stacked rows of bars, one per component, across instruments A–H:
+- **PC1 59% — "The market", all eight, one way:** eight tall blue bars, all the same sign.
+- **PC2 16% — "A split", two camps:** A, B, E and G are blue (positive); C, D, F and H are
+  red (negative).
+- **PC3 6% — "Noise", no shape:** short grey bars, drawn small on purpose because its share
+  is small. Largest bar is G.
+
+A toggle switches between **Estimated** and **Overlay the true loadings**. With the overlay
+on, a yellow tick marks the loading the simulated universe was *built with*. The estimated
+bars land close to the ticks for PC1 and PC2, off by a small amount on each instrument
+(e.g. F and H come out slightly higher than their true PC1 loading). That gap is the
+estimation error from slide 8, made visible.
+
+**Note:** the PC2 signs here are the reverse of slide 11 (there A, B, E, G were negative).
+It is the same split. **The sign of a principal component is arbitrary**, so any code must
+not rely on PC2 being "positive = group X". Only the grouping and the relative signs matter.
+
+**Readout:** "Read the shape of each row before any number." The first row points one way
+across all eight and accounts for **59%**. The second splits the eight into two camps. The
+third has no shape. Those shapes let you say what a component is, **provisionally**.
+
+**Text:** the warning against naming still stands. What the loadings give you is a
+*shape*. A shape is not a name, but it is enough to form a hypothesis, and there's a
+practical reason to form one: **"a hedge against something you cannot describe is a hedge
+you cannot check."**
+
+**Callout:** "The name is a hypothesis, not a finding, and it is held for one reason: so
+that the hedge built against it can be tested."
+- If PC1 behaves as the market, a position neutral to it should show a **market beta near
+  zero** against a market proxy.
+- If PC2 behaves as a sector, the hedge against it should look like a **sector spread**.
+- Those are checks. A component with no working name can't be checked, only trusted.
+- When a check fails, the name was wrong, and the decomposition is telling you something
+  about the data rather than the model. This is how slide 8's discipline is practised
+  rather than abandoned.
+
+### Slide 13 — In plain terms: what is a *residual*?
+
+- **Short answer:** what is left of an instrument's movement after the shared factors have
+  been taken out. The part that belongs to that instrument alone.
+- **Everyday picture:** subtract the tide from a boat's recorded height, then subtract the
+  ferry wake. What remains is the boat's own bobbing: someone stepping aboard, a gust on the
+  hull, a line going taut. Smaller than the tide, and the only part of the record that is
+  specifically about that boat.
+- **Why it matters:** the entire trade in this lesson is a bet on the residual, and it
+  can't be seen until the factors are removed.
+- **Definitions:**
+  - **Fitted part:** the portion of movement the factors account for (the *systematic* part).
+  - **Residual:** the remainder (the *idiosyncratic* part, meaning specific to this one
+    instrument).
+  - **Cumulative residual:** the residuals added up over time, so you can see whether they
+    drift away from zero and come back. **This cumulative series is what gets traded.**
+
+### Slide 14 — Splitting one instrument in two (interactive)
+
+**Image:** "Instrument A, split into its two parts". Three stacked line charts over the
+same period:
+1. **Grey, "What it actually did" (the whole movement):** a noisy line that drifts down
+   in the middle and recovers.
+2. **Blue, "The shared part" (what the factors explain):** almost the same shape as the grey
+   line. Most of A's movement is the common drivers.
+3. **Amber, "The residual" (what is left, and all this model trades):** a flatter, choppier
+   line that oscillates around a dashed zero line. It swings away and comes back, with
+   larger swings near the end.
+
+Buttons A–H select other instruments.
+
+**Readout:** the blue line is the part that is just the common drivers moving,
+**reconstructed from its exposure vector** (loadings × factor returns, using the 2 common
+drivers). Grey minus blue = amber. The amber line is the only part about *this instrument*.
+**It wanders away from zero and comes back, with a half-life of about 15 days.**
+
+**Callout:** "This is the moment the idea becomes measurable." Before this slide the
+tradeable part was a hypothesis; now it is a series you can look at, count and test. Every
+instrument produces a residual line like this, and they don't all behave the same way:
+some return to zero quickly, some slowly, and some wander off with little tendency to come
+back. **That variation is the first thing worth measuring, because a residual that does not
+revert is not a trade regardless of how far it has strayed.**
+
+**Implementation note:** half-life is usually estimated by fitting an AR(1) /
+Ornstein–Uhlenbeck model to the cumulative residual. Regress Δx on x₋₁ to get slope b, then
+half-life = −ln(2) / ln(1 + b). Filter out instruments whose half-life is too long (or whose
+b isn't significantly negative) before trading them.
+
+### Slide 15 — In plain terms: what does it mean to *hedge*?
+
+- **Short answer:** hold a second position whose purpose is to cancel a risk in the first.
+  Keep the part of the first position you want, and use the second to remove the part you
+  don't.
+- **Everyday picture:** you bet one boat is sitting unusually low and will float back up.
+  If the tide goes out while you wait, every boat drops, yours included, and you lose for a
+  reason unrelated to your idea. So you make a second bet that pays off if the tide falls.
+  The tide cancels out, and what remains is purely whether your boat rises *relative to the
+  others*.
+- **Why it matters:** the next slides build that second position precisely from the
+  loadings. It is not a simple bet against the tide. **It is a specific basket of the other
+  instruments, weighted so that every factor cancels.**
+- **Definitions:**
+  - **Hedge:** the offsetting position.
+  - **Neutral:** no net exposure to something. Market neutral = the market can rise or fall
+    and your position is unaffected by that alone.
+  - **Basket:** a set of positions in several instruments held together as one unit.
+
+### Slide 16 — What an exposure *actually* is (interactive)
+
+"Three separate things that get called the same word, and the one that costs you money."
+
+**Image:** four rows of bars across A–H, with the "Equal weight long" preset and the factor
+moved +1.00 sd:
+
+| Row | A | B | C | D | E | F | G | H |
+|---|---|---|---|---|---|---|---|---|
+| **Loading** (the instrument moves this) | 1.31 | 1.08 | 1.26 | 1.09 | 1.29 | 0.94 | 1.19 | 1.01 |
+| **Position** (you choose this) | 0.13 | 0.13 | 0.13 | 0.13 | 0.13 | 0.13 | 0.13 | 0.13 |
+| **Exposure** (position × loading) | 0.16 | 0.13 | 0.16 | 0.14 | 0.16 | 0.12 | 0.15 | 0.13 |
+| **Money today** (exposure × the move) | 0.16 | 0.13 | 0.16 | 0.14 | 0.16 | 0.12 | 0.15 | 0.13 |
+
+(Positions are 1/8 = 0.125 each, shown rounded. These loadings are on a different scale
+from slide 11. Here they're "% move per 1 sd of the factor", not the unit-length PCA
+vector.)
+
+Legend: blue = loading and position, yellow = exposure, green = money made, red = money
+lost. A slider moves the factor. Preset buttons: **Equal weight long**, **All in one**,
+**Long high, short low**, **Factor neutral**.
+
+**Readout:** the factor moved 1.00 of a typical day. Row one never changes, because a
+loading is a property of the instrument. Row two is the only row you choose. **Total
+exposure to this factor = 1.145% per 1 sd.** That single number is your whole relationship
+with the factor: whatever it does, you get 1.145% of it. Today that came to +1.145%. Moving
+the factor only changes the last row, because the first three were fixed before the day
+began.
+
+**Callout:** "A loading is not an exposure, and the difference is the whole of risk
+management." A loading says how far an instrument moves when a factor moves. An exposure
+says how much money *you* make when it does. The loading belongs to the market; the
+exposure belongs to you.
+
+The arithmetic, in three lines:
+1. The factor moves by some amount *f*.
+2. Each instrument moves by its loading × *f*.
+3. You earn Σ (position × loading) × *f*. The sum Σ wᵢβᵢ is **your exposure**, expressed as
+   money per unit of factor.
+
+Two things follow:
+- **Exposure adds up.** A book of eight positions has *one* exposure number per factor, not
+  eight, and positions can cancel each other before you hedge anything.
+- **Exposure is the only part of the chain you control.** You can't change an instrument's
+  loading, only how much of it you hold.
+
+Presets:
+- **Equal weight long:** carries the full factor.
+- **All in one:** slightly more or less, depending on that instrument's loading.
+- **Long high, short low** (long the high loadings, short the low ones): carries very little.
+  This is beta neutrality arrived at by hand.
+- **Factor neutral:** carries essentially zero, and it is the only one that gets there
+  *deliberately rather than by luck*.
+
+### Slide 17 — Factors are exposures you hold *whether or not you chose them*
+
+**Headline:** "Every position is a bundle. The part you meant to buy is inside it, and so is
+everything that moves with it."
+
+- Buy one instrument because its residual is stretched, and you have *also* bought its
+  loading on the market, on the sector, and on whatever the third component turns out to
+  be. None of those were the idea, but they'll decide the result on most days, because
+  shared movement is larger than specific movement (the scree plot already showed this).
+- **Retail version:** buy the stretched instrument and wait.
+- **Professional version:** buy the stretched instrument *and at the same time sell a basket
+  that cancels each unwanted loading*, so what remains is a position in the residual and
+  nothing else.
+- The next four slides build that basket, show what it is not, watch it drift, and then
+  apply it to a whole book rather than one position.
+- "Nothing in this act is specific to mean reversion. It is how any position in a correlated
+  universe is turned into a position in one thing."
 
 ---
 
