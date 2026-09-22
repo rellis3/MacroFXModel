@@ -22,6 +22,25 @@ AnalogML/data/m1/
 # existing M1 cache elsewhere in the repo) -- the trailing-slash rule above
 # only matches a real directory, so a symlink here shows up as untracked.
 AnalogML/data/m1
+# Live, continuously-rewritten bot state/logs (R2-backed source of truth --
+# motif_track.py/paper_track.py's own load_log()/load_state() always prefer
+# R2 over local disk on read). These must NEVER be committed: a fresh Railway
+# deploy checks out whatever was last committed here onto local disk BEFORE
+# the bot's own loop gets a chance to overwrite it with R2's current copy,
+# and server.js's _loadAnalogMLJson (the API routes these feed) reads local
+# disk FIRST, falling back to R2 only when no local file exists -- so a
+# committed snapshot permanently shadows R2 until the bot's next scan
+# happens to run (up to ~1h for motif_track.py's H1-aligned loop). Caught
+# 2026-09-22: the committed motif_trades.json was an 1,042-trade snapshot
+# frozen months earlier (through 2026-06-04) while R2's real archive already
+# held 4,826+ trades through the present day -- every live-vs-backtest
+# lookup against a post-June motif_key came back "not found" for up to an
+# hour after every single deploy, not because of a real live-vs-backtest
+# divergence.
+AnalogML/data/motif_trades.json
+AnalogML/data/motif_state.json
+AnalogML/data/paper_trades.json
+AnalogML/data/shape_state.json
 SessionResearch/out/*/session_table.json
 SessionResearch/out/*/day_checkpoints.json
 SessionResearch/out/*/impulse_events.json
