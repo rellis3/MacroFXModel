@@ -64,20 +64,26 @@ export function correlationMatrix(cols) {
   return C;
 }
 
-// ── Eigenvalues of a symmetric matrix (cyclic Jacobi rotation) ───────────────
-// Robust for the small matrices we use (a handful of strategies). Returns
-// eigenvalues in descending order. Eigenvalues are rotation-invariant, so the
-// exact rotation sign convention doesn't affect the result.
-export function symmetricEigenvalues(mat, { maxSweeps = 100, tol = 1e-14 } = {}) {
+// ── Eigen-decomposition of a symmetric matrix (cyclic Jacobi rotation) ──────
+// Robust for the small matrices we use (a handful of strategies / currencies).
+// `symmetricEigen` returns { values, vectors } sorted by DESCENDING eigenvalue;
+// `vectors[k]` is the unit-length eigenvector for `values[k]` (sign is arbitrary,
+// as for any eigenvector). The rotations are accumulated into V so the vectors
+// come for free; `symmetricEigenvalues` is the values-only view of the SAME
+// computation (one implementation, not two).
+export function symmetricEigen(mat, { maxSweeps = 100, tol = 1e-14 } = {}) {
   const n = mat.length;
-  if (n === 0) return [];
+  if (n === 0) return { values: [], vectors: [] };
   // Work on a copy; bail out to NaN if any entry is non-finite.
   const A = mat.map(row => row.slice());
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (!Number.isFinite(A[i][j])) return new Array(n).fill(NaN);
+      if (!Number.isFinite(A[i][j])) {
+        return { values: new Array(n).fill(NaN), vectors: Array.from({ length: n }, () => new Array(n).fill(NaN)) };
+      }
     }
   }
+  const V = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)));
   const offSq = () => {
     let s = 0;
     for (let p = 0; p < n; p++) for (let q = p + 1; q < n; q++) s += A[p][q] * A[p][q];
@@ -105,13 +111,25 @@ export function symmetricEigenvalues(mat, { maxSweeps = 100, tol = 1e-14 } = {})
           A[p][k] = c * apk - s * aqk;
           A[q][k] = s * apk + c * aqk;
         }
+        // Accumulate the same column rotation into V (A_final = Vᵀ A V).
+        for (let k = 0; k < n; k++) {
+          const vkp = V[k][p], vkq = V[k][q];
+          V[k][p] = c * vkp - s * vkq;
+          V[k][q] = s * vkp + c * vkq;
+        }
       }
     }
   }
-  const ev = [];
-  for (let i = 0; i < n; i++) ev.push(A[i][i]);
-  ev.sort((x, y) => y - x);
-  return ev;
+  const order = Array.from({ length: n }, (_, i) => i).sort((x, y) => A[y][y] - A[x][x]);
+  return {
+    values: order.map(i => A[i][i]),
+    vectors: order.map(i => V.map(row => row[i])),
+  };
+}
+
+// Eigenvalues only, descending — the values view of symmetricEigen.
+export function symmetricEigenvalues(mat, opts = {}) {
+  return symmetricEigen(mat, opts).values;
 }
 
 // ── Effective number of bets — PCA / inverse participation ratio ─────────────

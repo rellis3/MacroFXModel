@@ -61,6 +61,7 @@ consensus method (ensemble vs Kalman). No network, no server route.
 | `ensemble.js` | 3 | precision-weighted / min-variance **consensus** + dispersion + effN |
 | `ssm.js` | 5 | **Kalman** state-space fusion (hidden fair value, emitters = observations) |
 | `factorModel.js` | 6 | shared-factor cross-asset loadings + **coherence check** (safe Relationship Engine) |
+| `bookFactor.js` + `bookFactorEngine.js` | 7 | **book layer**: sleeve positions → currency space, rolling currency PCA (K by noise band), factor-neutral book, raw vs neutral IS/OOS (`MVE_BOOK_FACTOR_AUDIT.md`) |
 | `confidence.js` | 4 | logistic **confidence engine** over agreement/fit/calibration/regime/reversion |
 | `index.js` | 4 | **`runMVE()`** orchestrator + `valuationCard()` / `valuationText()` |
 | `signalAdapter.js` | 4 | OPT-IN blend of MVE into an existing 0–100 signal score (not wired) |
@@ -225,6 +226,7 @@ your normal review, after the numbers justify it.
 | Dashboard wiring — signal score / scanner / AI (§7) | ⛔ intentionally off |
 | OOS proof on real feeds — regression branch | ✅ run, NQ/XAUUSD/AUDUSD NULL, EURUSD weak-positive (§6) |
 | OOS proof on real feeds — Kalman mechanical branch | ▶ run `/api/mve-validate-mechanical/:sym` on Railway — not yet executed |
+| 7 — book layer: factor audit of the spread sleeves (`MVE_BOOK_FACTOR_AUDIT.md`) | ✅ built + synthetic-tested (29/29); ▶ pre-registered real run on Railway via `mve.html` 📚 panel |
 
 ## 10. Does it actually predict? — the OOS validation (§b)
 

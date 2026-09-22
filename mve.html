@@ -8,7 +8,8 @@
   This page is NOT linked from index.html or hub.html. It IS linked from the Site
   Map modal and the Command Hub top bar, and it DOES call live, read-only server
   routes for the "Live" data source and the validation buttons (/api/mve/:sym,
-  /api/mve-validate/:sym, /api/mve-validate-full/:sym, /api/mve-validate-all) —
+  /api/mve-validate/:sym, /api/mve-validate-full/:sym, /api/mve-validate-all, and the Phase 7 book
+  layer /api/mve-book/run + /status) —
   those routes surface a valuation/validation report and cannot write to or alter
   any live signal, bot, or trading decision (see MVE_RUN_GUIDE.md §6/§7 on what
   "isolated" actually means here: no server.js import feeds a signal, not "no
@@ -84,6 +85,20 @@
   </div>
 
   <div id="valout"></div>
+
+  <div class="panel" id="bookPanel" style="border-color:#3b4a6b">
+    <div style="font-weight:700;margin-bottom:4px">📚 Book layer (Phase 7): are the spread sleeves really a dollar bet?</div>
+    <div style="font-size:12px;color:#8891a0;line-height:1.55">
+      Takes the validated <b>2Y yield-spread sleeve</b> and the <b>10Y multi-spread sleeve</b> (config 2.0 / 126, frozen), maps their daily positions into
+      <b>currency space</b> (8 currencies from the 7 USD majors), finds the shared currency factors (rolling 120-day PCA, K by a noise band), and runs the
+      <b>factor-neutral version of the same book</b>. If the OOS edge survives neutralising, it's a genuine rate-spread relative-value edge. If it collapses,
+      the sleeves were mostly a dollar bet. Also shows the currency PCA residual loop (education test #1) as an information-only shadow.
+      Pre-registered in <code>MD files/MVE_BOOK_FACTOR_AUDIT.md</code>. Deployed server only (FRED + M1). The first run takes a few minutes; the result is cached for 6h.
+    </div>
+    <label style="display:inline-flex;gap:6px;align-items:center;margin-top:10px"><input type="checkbox" id="bookFresh"> ignore the 6h cache</label>
+    <div><button id="bookRun">▶ Run book factor audit</button></div>
+    <div id="bookout" style="margin-top:12px"></div>
+  </div>
 
   <div class="flex">
     <div id="card"></div>
@@ -259,6 +274,92 @@ $('run').onclick   = go;
 $('seed').onclick  = () => { seed = Math.floor(Date.now() % 100000); go(); };
 $('regime').onchange = go; $('method').onchange = go; $('misp').onchange = go;
 $('src').onchange = go; $('sym').onchange = go;
+
+// ── Phase 7 book layer ───────────────────────────────────────────────────────
+const fmt = (v, d = 2) => (v == null || !Number.isFinite(+v)) ? '—' : (+v).toFixed(d);
+const shCol = v => v == null ? '#8891a0' : v >= 0.5 ? '#22c55e' : v > 0 ? '#cdd3dc' : '#ef4444';
+const VCOL = { 'RELATIVE-VALUE': '#22c55e', 'FACTOR-DRIVEN': '#ef4444', 'MIXED': '#eab308' };
+const BOOK_LABEL = { y2: '2Y sleeve (validated)', y10: '10Y sleeve', combined: 'Combined 2Y+10Y (equal risk)', pcaResidual: 'Currency residual (test #1, shadow)' };
+
+async function runBook() {
+  const out = $('bookout');
+  out.innerHTML = '<div style="color:#8891a0">⏳ Starting…</div>';
+  try {
+    const start = await (await fetch('/api/mve-book/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fresh: $('bookFresh').checked }) })).json();
+    if (!start.ok) { out.innerHTML = `<div style="color:#ef4444">Error: ${start.error}</div>`; return; }
+    for (;;) {
+      const st = await (await fetch(`/api/mve-book/status/${start.jobId}`)).json();
+      if (st.status === 'running') { out.innerHTML = `<div style="color:#8891a0">⏳ Running: loading M1 for 7 majors, FRED for 2 tenors, then the daily walk… ${st.elapsed}s</div>`; await new Promise(r => setTimeout(r, 4000)); continue; }
+      if (!st.ok) { out.innerHTML = `<div style="color:#ef4444">Error: ${st.error}</div>`; return; }
+      renderBook(st); return;
+    }
+  } catch (e) { out.innerHTML = `<div style="color:#ef4444">Fetch failed: ${e.message} (deployed server only)</div>`; }
+}
+
+function renderBook(r) {
+  const names = Object.keys(r.books);
+  const rows = names.map(nm => {
+    const b = r.books[nm], rd = b.reading;
+    const rv = b.raw.net, nv = b.neutral.net;
+    return `<tr>
+      <td>${BOOK_LABEL[nm] || nm}</td>
+      <td style="color:${rd ? VCOL[rd.verdict] : '#8891a0'};font-weight:600">${rd ? rd.verdict : 'info only'}</td>
+      <td style="font-family:monospace;color:${shCol(rv.IS.sharpe)}">${fmt(rv.IS.sharpe)}</td>
+      <td style="font-family:monospace;color:${shCol(rv.OOS.sharpe)}">${fmt(rv.OOS.sharpe)}</td>
+      <td style="font-family:monospace;color:${shCol(nv.IS.sharpe)}">${fmt(nv.IS.sharpe)}</td>
+      <td style="font-family:monospace;color:${shCol(nv.OOS.sharpe)}">${fmt(nv.OOS.sharpe)}</td>
+      <td style="font-family:monospace">${fmt(b.raw.gross.OOS.annVolPct, 1)}% → ${fmt(b.neutral.gross.OOS.annVolPct, 1)}%</td>
+      <td style="font-family:monospace">${b.meanFactorVarShare == null ? '—' : Math.round(b.meanFactorVarShare * 100) + '%'}</td>
+      <td style="font-family:monospace">${b.activeDays}</td></tr>`;
+  }).join('');
+  const readings = names.filter(nm => r.books[nm].reading).map(nm => `<li><b>${BOOK_LABEL[nm]}</b>: ${r.books[nm].reading.read}</li>`).join('');
+  const sl = r.sleeves || {};
+  const repro = ['y2', 'y10'].filter(t => sl[t]).map(t => `${t}: engine OOS Sharpe ${fmt(sl[t].engineOosSharpe)} vs this book's raw gross OOS ${fmt(r.books[t]?.raw.gross.OOS.sharpe)} (${sl[t].nTrades} trades)`).join(' · ');
+  const years = [...new Set(names.flatMap(nm => Object.keys(r.books[nm].rawNetByYear)))].sort();
+  const yRows = names.map(nm => `<tr><td>${BOOK_LABEL[nm] || nm}</td>${years.map(y => {
+    const a = r.books[nm].rawNetByYear[y], b = r.books[nm].neutralNetByYear[y];
+    return `<td style="font-family:monospace;font-size:10.5px;padding:2px 8px"><span style="color:${a >= 0 ? '#22c55e' : '#ef4444'}">${fmt(a, 1)}</span> / <span style="color:${b >= 0 ? '#22c55e' : '#ef4444'}">${fmt(b, 1)}</span></td>`;
+  }).join('')}</tr>`).join('');
+  $('bookout').innerHTML = `
+    <div style="font-size:11.5px;color:#8891a0;line-height:1.6;margin-bottom:8px">
+      Data ${r.data.from} → ${r.data.to} (${r.data.alignedDays} weekday closes) · K = <b style="color:#e6e8ec">${r.K}</b> components (IS windows beating the noise band: ${JSON.stringify(r.kHistIS)}) ·
+      OOS from <b style="color:#e6e8ec">${r.splitDate}</b> (the 2Y sleeve's own split) · cost ${(r.costOneWay * 1e4).toFixed(1)} bp one-way on every pair traded, hedge legs included${r.cached ? ' · <i>cached</i>' : ''}
+      ${repro ? `<br>Reproduction check: ${repro}` : ''}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="color:#8891a0;text-align:left"><th>Book</th><th>Reading</th><th>Raw IS</th><th>Raw OOS</th><th>Neutral IS</th><th>Neutral OOS</th><th>OOS vol raw → neutral</th><th>Risk that is factor</th><th>Days held</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:10.5px;color:#5b6270;margin-top:4px">Sharpe = annualised, daily mark-to-market, net of costs. "Neutral" = the same book projected off the K currency factors and the basket, rescaled to the raw book's gross. "Risk that is factor" = average ex-ante share of the raw book's variance explained by the K factors.</div>
+    <ul style="font-size:12px;color:#cdd3dc;line-height:1.6;padding-left:18px">${readings}</ul>
+    <label>Equity (net): <select id="bookCurveSel">${names.map(nm => `<option value="${nm}">${BOOK_LABEL[nm] || nm}</option>`).join('')}</select> <span style="color:#8891a0">— grey raw, blue neutral, dashed line = OOS start</span></label>
+    <canvas id="bookCurve" width="900" height="200" style="height:200px"></canvas>
+    <label>Net return by year, % (raw / neutral)</label>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;white-space:nowrap"><thead><tr style="color:#8891a0;text-align:left"><th>Book</th>${years.map(y => `<th style="padding:0 6px">${y}</th>`).join('')}</tr></thead><tbody>${yRows}</tbody></table></div>`;
+  const draw = () => drawBookCurve(r.books[$('bookCurveSel').value].curve, r.splitDate);
+  $('bookCurveSel').onchange = draw; draw();
+}
+
+function drawBookCurve(curve, splitDate) {
+  const cv = $('bookCurve'), c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  c.clearRect(0, 0, W, H);
+  if (!curve || curve.length < 2) return;
+  const all = curve.flatMap(p => [p[1], p[2]]);
+  const lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.08 || 0.01;
+  const y = v => H - 16 - (v - lo + pad) / (hi - lo + 2 * pad) * (H - 28);
+  const x = i => 8 + i / (curve.length - 1) * (W - 16);
+  const iS = curve.findIndex(p => p[0] >= splitDate);
+  if (iS > 0) { c.strokeStyle = '#5b6270'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(x(iS), 4); c.lineTo(x(iS), H - 14); c.stroke(); c.setLineDash([]); }
+  c.strokeStyle = '#2a2f3a'; c.beginPath(); c.moveTo(0, y(1)); c.lineTo(W, y(1)); c.stroke();
+  for (const [k, col] of [[1, '#8891a0'], [2, '#3b82f6']]) {
+    c.strokeStyle = col; c.lineWidth = 1.6; c.beginPath();
+    curve.forEach((p, i) => (i ? c.lineTo(x(i), y(p[k])) : c.moveTo(x(i), y(p[k]))));
+    c.stroke();
+  }
+  c.fillStyle = '#8891a0'; c.font = '11px system-ui';
+  c.fillText(curve[0][0], 8, H - 2); c.fillText(curve[curve.length - 1][0], W - 70, H - 2);
+}
+$('bookRun').onclick = runBook;
 $('validate').onclick = runValidation;
 $('validateAll').onclick = runValidateAll;
 go();
