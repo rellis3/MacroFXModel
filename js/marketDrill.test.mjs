@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { GENERATORS, buildQuestion, score, rng } from './marketDrill.js';
+import { GENERATORS, buildQuestion, score, rng, assertDerivable } from './marketDrill.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -122,6 +122,31 @@ t('scoring tracks the streak and finds the weakest topic', () => {
   assert.equal(s.streak, 4);   // three golds and the rates one before them; the miss breaks it
   assert.equal(s.weakest.topic, 'rates');
   assert.equal(score([]).pct, null);
+});
+
+t('EVERY question is derivable from its own stem — no guessing games', () => {
+  const b = bundle(); const bad = [];
+  for (let seed = 1; seed < 200; seed++) {
+    const q = buildQuestion(b, { seed });
+    if (!q) continue;
+    const miss = assertDerivable(q);
+    if (miss.length) bad.push(`${q.gen}: ${miss[0]}`);
+  }
+  assert.deepEqual([...new Set(bad)], [], 'a question whose answer is not on the card is a coin flip');
+});
+
+t('the reworded questions put both legs on the card', () => {
+  const b = bundle();
+  const ys = GENERATORS.find(g => g.id === 'yield-split');
+  for (let i = 40; i < 380; i++) { const q = ys.make(b, i, rng(i)); if (!q) continue;
+    assert.match(q.stem, /real yield/, 'the real leg must be shown, not hidden in the reveal');
+    assert.match(q.stem, /inflation pricing/); break; }
+  const ob = GENERATORS.find(g => g.id === 'oil-breakevens');
+  for (let i = 40; i < 380; i++) { const q = ob.make(b, i, rng(i)); if (!q) continue;
+    assert.match(q.stem, /breakeven/, 'the breakeven move must be shown'); break; }
+  const cc = GENERATORS.find(g => g.id === 'credit-confirms');
+  for (let i = 40; i < 380; i++) { const q = cc.make(b, i, rng(i)); if (!q) continue;
+    assert.match(q.stem, /credit spreads/, 'the credit move must be shown'); break; }
 });
 
 console.log(`marketDrill: ${n} groups, all passed`);

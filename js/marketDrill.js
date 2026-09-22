@@ -59,14 +59,14 @@ export const GENERATORS = [
       if (realShare > 0.4 && realShare < 0.6) return null;                  // genuinely split: no clean answer
       const answer = realShare >= 0.6 ? 'real' : 'inflation';
       return {
-        stem: `The US 10-year moved ${fmt(d10, 'bp')} over twenty sessions.`,
-        ask: 'Was that mostly the REAL yield, or mostly INFLATION pricing?',
+        stem: `Over twenty sessions the US 10-year moved ${fmt(d10, 'bp')} — of which the real yield ${fmt(dR, 'bp')} and inflation pricing ${fmt(dB, 'bp')}.`,
+        ask: 'So what actually happened to the cost of money, and what does that mean for gold?',
         options: [
-          { key: 'real', label: 'Mostly the real yield — money genuinely getting dearer' },
-          { key: 'inflation', label: 'Mostly inflation pricing — breakevens moving' },
+          { key: 'real', label: `Money genuinely got ${d10 > 0 ? 'dearer' : 'cheaper'} — a real-yield move, and gold’s ${d10 > 0 ? 'headwind' : 'tailwind'}` },
+          { key: 'inflation', label: `The cost of money barely changed — an inflation-pricing move, which is gold’s ${d10 > 0 ? 'friend' : 'enemy'}` },
         ],
         answer,
-        reveal: `Real yield ${fmt(dR, 'bp')}, breakevens ${fmt(dB, 'bp')}.`,
+        reveal: `The real leg was ${Math.round(realShare * 100)}% of the move.`,
         why: answer === 'real'
           ? 'The move was the real yield, so this is a genuine tightening of financial conditions: it discounts future earnings harder, raises the bar for holding an asset that pays nothing, and usually supports the currency. Gold’s headwind.'
           : 'The move was inflation pricing, not the real yield. Money did not get more expensive — the bond market simply expects it to be worth less. That is gold’s FRIEND, and it is why "yields up, gold down" is wrong about half the time.',
@@ -108,14 +108,14 @@ export const GENERATORS = [
       if (Math.abs(dOil) < 8) return null;
       const followed = Math.sign(dOil) === Math.sign(dB) && Math.abs(dB) >= 5;
       return {
-        stem: `Crude moved ${fmt(dOil, 'pct')} over twenty sessions.`,
-        ask: 'What did the bond market’s inflation pricing do about it?',
+        stem: `Over twenty sessions crude ${dOil > 0 ? 'rose' : 'fell'} ${Math.abs(dOil).toFixed(1)}% and the 10-year breakeven moved ${fmt(dB, 'bp')}.`,
+        ask: 'What is the bond market telling you here?',
         options: [
-          { key: 'followed', label: 'Followed it — breakevens moved the same way' },
-          { key: 'ignored', label: 'Ignored it — breakevens barely moved' },
+          { key: 'followed', label: 'It took the oil move as a real change in the inflation outlook' },
+          { key: 'ignored', label: 'It declined to — so this is a supply or one-off story, not an inflation one' },
         ],
         answer: followed ? 'followed' : 'ignored',
-        reveal: `Breakevens ${fmt(dB, 'bp')}.`,
+        reveal: followed ? `Breakevens moved the same way and past the 5bp floor.` : `Breakevens stayed inside the noise, or moved the other way.`,
         why: followed
           ? 'Energy fed through: the bond market took this oil move as a real change in the inflation outlook, and the first domino in the chain did its job.'
           : 'The bond market declined to take it. That is a verdict, not a delay — this desk tested it directly: only 43% of ±10% oil moves get 5bp of breakeven within twenty sessions, and the cross-correlation is highest at lag ZERO. If breakevens did not move with oil, do not write "not yet".',
@@ -161,14 +161,14 @@ export const GENERATORS = [
       if (dV < 15) return null;                                             // only ask when fear actually rose
       const confirmed = dH >= 15;
       return {
-        stem: `Equity fear rose hard over twenty sessions: the VIX ${fmt(dV, 'pct')}.`,
-        ask: 'Did the credit market agree?',
+        stem: `Over twenty sessions the VIX ${fmt(dV, 'pct')} while high-yield credit spreads moved ${fmt(dH, 'bp')}.`,
+        ask: 'What kind of scare is that?',
         options: [
-          { key: 'yes', label: 'Yes — high-yield spreads widened with it' },
-          { key: 'no', label: 'No — credit barely moved' },
+          { key: 'yes', label: 'An economic one — lenders repriced risk alongside equity holders' },
+          { key: 'no', label: 'An equity one — positioning, hedging or an expiry, with lenders unmoved' },
         ],
         answer: confirmed ? 'yes' : 'no',
-        reveal: `High-yield spreads ${fmt(dH, 'bp')}.`,
+        reveal: confirmed ? 'Credit widened past the floor that counts as a move — it agreed.' : 'Credit stayed inside its noise — it did not.',
         why: confirmed
           ? 'Both markets repriced risk together. Credit is where lenders vote, and lenders moving with equity holders is what a genuine risk-off looks like — it is much harder to dismiss as positioning or an options event.'
           : 'Equity fear rose and lenders did not blink. That pattern usually means the equity move is about equity — positioning, an options expiry, a crowded trade unwinding — rather than about the economy. Credit is the slower, meaner judge.',
@@ -230,6 +230,46 @@ export const GENERATORS = [
     },
   },
 ];
+
+/**
+ * THE DERIVABILITY GUARD. A question whose answer is not reachable from the
+ * numbers on its own card is a guess, and a guess teaches nothing — it is a coin
+ * flip wearing a question's clothes. The first version of this file got that
+ * wrong three times ("crude fell 10.9%, what did breakevens do?" hid the very
+ * number the answer turned on), which the owner spotted on the second question
+ * he was asked. This is enforced over every generator, on hundreds of days, by
+ * the tests: ask what the numbers MEAN, never what a hidden number was.
+ *
+ * Returns the reasons a question fails; empty means it can actually be reasoned out.
+ */
+export function assertDerivable(q) {
+  if (!q) return ['no question'];
+  const stem = String(q.stem ?? '');
+  const nums = stem.match(/[-+]?\d+(?:\.\d+)?/g) ?? [];
+  const bad = [];
+  if (nums.length < 2) bad.push('the stem carries fewer than two numbers, so there is nothing to reason from');
+  // The reveal may restate a stem number, or state one DERIVED from stem numbers
+  // (a difference, a share) -- that is arithmetic the reader could have done. It
+  // may not introduce a fresh measurement, which is the thing that makes a
+  // question a guess.
+  const vals = nums.map(Number);
+  const derivable = new Set();
+  for (const a of vals) {
+    derivable.add(Math.abs(a));
+    for (const b of vals) {
+      derivable.add(Math.abs(a - b)); derivable.add(Math.abs(a + b));
+      const tot = Math.abs(a) + Math.abs(b);
+      if (tot > 0) { derivable.add(Math.round(100 * Math.abs(a) / tot)); derivable.add(Math.round(100 * Math.abs(b) / tot)); }
+    }
+  }
+  const near = n => [...derivable].some(d => Math.abs(d - n) <= Math.max(1, Math.abs(n) * 0.02));
+  for (const raw of String(q.reveal ?? '').match(/[-+]?\d+(?:\.\d+)?/g) ?? []) {
+    const n = Math.abs(Number(raw));
+    if (stem.includes(raw) || near(n)) continue;
+    bad.push(`the reveal introduces ${raw}, which is neither in the stem nor derivable from it`);
+  }
+  return bad;
+}
 
 /**
  * Build one question from the bundle. `seed` makes it reproducible; `topics`
