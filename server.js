@@ -95,6 +95,7 @@ import { fetchD1 as _btFetchD1, fetchD1Aligned as _btFetchD1Aligned, fetchM1Rang
 import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED as _MVE_SUPPORTED, fetchPriceOnly as _mveFetchPriceOnly } from './js/mve/liveAdapter.js';
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
+import { validateResidualReversion as _validateResidualReversion } from './js/residualReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
 import { blendStreams as _blendStreams } from './js/streamBlend.js';
 import { runGauntlet as _runStrategyGauntlet, GAUNTLET_SPECS as _GAUNTLET_SPECS, SIGNALS as _LAB_SIGNALS } from './js/strategyLabEngine.js';
@@ -15451,6 +15452,78 @@ app.get('/api/vol-reversion/:sym', async (req, res) => {
     res.json(out);
   } catch (e) {
     res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// Minimal-DOF residual mean-reversion (js/residualReversionCore.js) — the PRICE-ONLY
+// AR(1)-residual branch, an independent re-test of the unconditional reversion
+// question (NOT the MVE macro-factor residual, which is a documented FX NULL). The
+// signal is the bare SIGN of the standardized AR(1) residual, benchmarked against a
+// trailing-mean anchor z-score built the SAME way — only the EDGE over that spurious
+// baseline (icEdge) is real signal. OANDA D1 only, no FRED_KEY. Chronological IS/OOS
+// split, costs ON, deflated Sharpe across the hold×threshold sweep. Unit-tested on
+// synthetic data (js/residualReversionCore.test.mjs, 11/11): random walk → NULL,
+// AR(1) → reversion real but no edge over the trailing mean. See
+// MD files/RESIDUAL_REVERSION_MINIMAL_TEST.md.
+const _residRevCache = new Map();
+app.get('/api/residual-reversion/:sym', async (req, res) => {
+  const sym = req.params.sym;
+  try {
+    const hit = _residRevCache.get(sym);
+    if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000 && req.query.fresh !== '1') {
+      return res.json({ ...hit.data, cached: true });
+    }
+    const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+    if (!built.ok) return res.status(502).json(built);
+    const report = _validateResidualReversion(built.price, { instrument: sym, costRt: 0.0002 });
+    report.dataSource = built.dataSource;
+    if (report.ok) _residRevCache.set(sym, { at: Date.now(), data: report });
+    res.status(report.ok ? 200 : 502).json(report);
+  } catch (e) {
+    res.status(500).json({ ok: false, instrument: sym, error: e.message });
+  }
+});
+
+// Pooled cross-instrument view — a slow reversion edge can't be proven on one
+// instrument, so we look for the SAME positive slow-horizon icEdge WITH an
+// above-coin-flip hit rate across partly-independent instruments (sign-only is a
+// coin flip). Runs each (cached) and summarizes.
+app.get('/api/residual-reversion-all', async (_req, res) => {
+  try {
+    const SYMS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'XAUUSD', 'NQ'];
+    const SLOW = [20, 60];
+    const rows = [];
+    for (const sym of SYMS) {
+      const hit = _residRevCache.get(sym);
+      let report;
+      if (hit && Date.now() - hit.at < 6 * 60 * 60 * 1000) report = hit.data;
+      else {
+        const built = await _mveFetchPriceOnly({ sym, deps: { fetchD1: _btFetchD1 }, count: 5000 });
+        if (!built.ok) { rows.push({ instrument: sym, ok: false, error: built.error }); continue; }
+        report = _validateResidualReversion(built.price, { instrument: sym, costRt: 0.0002 });
+        if (report.ok) _residRevCache.set(sym, { at: Date.now(), data: report });
+      }
+      if (!report?.ok) { rows.push({ instrument: sym, ok: false, error: report?.error || 'unavailable' }); continue; }
+      const slow = SLOW.map(H => report.perHorizon[H]).filter(h => h && h.icEdge != null);
+      const best = slow.sort((a, b) => b.icEdge - a.icEdge)[0] || {};
+      rows.push({ instrument: sym, ok: true, slowIcEdge: best.icEdge ?? null, slowHitRate: best.hitRate ?? null,
+                  slowHorizon: best.n != null ? SLOW.find(H => report.perHorizon[H] === best) : null,
+                  deflatedSharpe: report.strategy.deflatedSharpe, verdict: report.verdict });
+    }
+    const scored = rows.filter(r => r.ok && r.slowIcEdge != null);
+    const n = scored.length;
+    const real = scored.filter(r => r.slowIcEdge > 0.03 && (r.slowHitRate ?? 0) > 0.50);
+    const tradeable = real.filter(r => (r.deflatedSharpe ?? 0) >= 0.60);
+    const signOnly = scored.filter(r => r.slowIcEdge > 0.03).length;
+    const meanEdge = n ? +(scored.reduce((s, r) => s + r.slowIcEdge, 0) / n).toFixed(4) : null;
+    const meanHit = n ? +(scored.reduce((s, r) => s + (r.slowHitRate ?? 0), 0) / n).toFixed(3) : null;
+    const consistent = real.length >= Math.max(3, Math.ceil(n * 0.6)) && tradeable.length >= 2;
+    const read = consistent
+      ? `CONSISTENT: ${real.length}/${n} instruments show a positive slow-horizon icEdge WITH an above-coin-flip hit rate (${tradeable.length} tradeable) — cross-sectional evidence of a real reversion edge.`
+      : `NULL / INCONSISTENT: only ${real.length}/${n} clear both a positive icEdge AND a >50% hit rate (mean hit ${meanHit}). ${signOnly}/${n} positive on sign alone — a coin-flip outcome at this magnitude (mean icEdge ${meanEdge}). No tradeable reversion edge — do NOT wire in.`;
+    res.json({ ok: true, consistency: { instruments: n, realEvidence: real.length, tradeable: tradeable.length, positiveSignOnly: signOnly, meanSlowIcEdge: meanEdge, meanSlowHitRate: meanHit, consistent, read }, instruments: rows });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
