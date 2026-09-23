@@ -242,6 +242,66 @@
   .an .sum b{color:var(--text)}
   .an .warn{font-size:11px;color:var(--text3);line-height:1.55;margin-top:7px;
             border-left:2px solid var(--border);padding-left:9px}
+  /* ── the grid: panels side by side instead of one long scroll ────────────── */
+  /*
+     Twelve columns, every card sized to its own content (align-items:start), so a
+     short panel never inherits the height of a tall neighbour. The page was a single
+     column roughly 6,000px tall; the same content in two columns with the detail
+     moved into modals is about a screen and a half.
+  */
+  .grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;align-items:start}
+  .s12{grid-column:span 12} .s7{grid-column:span 7} .s5{grid-column:span 5}
+  .s6{grid-column:span 6} .s4{grid-column:span 4} .s8{grid-column:span 8}
+  @media(max-width:1000px){ .s7,.s5,.s6,.s4,.s8{grid-column:span 12} }
+  .card{margin-bottom:0}
+  /* a panel that would otherwise run for pages scrolls inside itself instead */
+  .cap-h{max-height:322px;overflow-y:auto;overscroll-behavior:contain}
+  .cap-h::-webkit-scrollbar{width:7px} .cap-h::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+  /* ── compact finding rows; the depth lives in the modal ──────────────────── */
+  .fr{display:grid;grid-template-columns:20px minmax(0,1fr) 14px;gap:9px;align-items:start;width:100%;
+      background:transparent;border:0;border-bottom:1px solid var(--border2);color:var(--text);
+      font:inherit;text-align:left;padding:9px 2px;cursor:pointer}
+  .fr:last-child{border-bottom:0}
+  .fr:hover{background:var(--card2)}
+  .fr .i2{font-size:10px;font-weight:800;color:var(--text3);background:var(--card2);border-radius:5px;
+          width:20px;height:20px;display:grid;place-items:center;margin-top:1px}
+  .fr .t2{font-size:14px;font-weight:700;line-height:1.35;text-wrap:balance}
+  .fr .d2{font-size:11.5px;color:var(--text3);line-height:1.5;margin-top:2px;
+          display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .fr .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+  .fr .tg{font-size:9.5px;font-weight:700;letter-spacing:.03em;border:1px solid var(--border);
+          border-radius:4px;padding:1px 6px;color:var(--text3)}
+  .fr .tg.ok{color:var(--bull);border-color:var(--bull)}
+  .fr .tg.no{color:var(--amber);border-color:var(--amber)}
+  .fr .tg.hist{color:var(--blue);border-color:var(--blue)}
+  .fr .ch{color:var(--text3);font-size:15px;line-height:1;margin-top:3px}
+
+  /* ── modal: the detail pops out rather than living on the page ───────────── */
+  .mdl{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:18px}
+  .mdl.on{display:flex}
+  .mdl-bd{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(3px)}
+  .mdl-p{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;
+         width:100%;max-width:790px;max-height:88vh;display:flex;flex-direction:column;
+         box-shadow:0 22px 60px rgba(0,0,0,.45)}
+  .mdl-h{display:flex;align-items:flex-start;gap:12px;padding:15px 18px 11px;border-bottom:1px solid var(--border)}
+  .mdl-h h3{font-size:18px;font-weight:800;line-height:1.25;flex:1;letter-spacing:-.01em;text-wrap:balance}
+  .mdl-h .kicker{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
+                 font-weight:700;display:block;margin-bottom:3px}
+  .mdl-x{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:7px;
+         width:28px;height:28px;font-size:14px;cursor:pointer;flex:none;line-height:1}
+  .mdl-x:hover{color:var(--text)}
+  .mdl-b{padding:14px 18px 18px;overflow-y:auto;font-size:13px;line-height:1.65;color:var(--text2)}
+  .mdl-b b{color:var(--text)}
+  .mdl-b .lead{font-size:13.5px;color:var(--text);line-height:1.6}
+  .mdl-sec{margin-top:13px}
+  .mdl-sec>h4{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);
+              font-weight:700;margin-bottom:5px}
+  @media(max-width:620px){
+    .mdl{padding:0;align-items:flex-end}
+    .mdl-p{max-width:none;max-height:94vh;border-radius:14px 14px 0 0}
+    .mdl-h h3{font-size:16px}
+  }
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -268,50 +328,63 @@
 <div class="wrap">
   <div class="gl" id="glance"></div>
 
-  <div class="state" id="state">Reading the market…</div>
+  <div class="grid">
+    <div class="state s7" id="state">Reading the market…</div>
 
-  <div class="card">
-    <h2>Where it landed — the eleven sectors</h2>
-    <div class="sub">A macro move is abstract until you see which business it hit. Twenty-session moves, ranked. <b>Financials answer the yield curve, Utilities and Real estate answer the level of rates, Technology answers the real yield.</b> Tap for what each one is.</div>
-    <div id="sectors">Loading sectors…</div>
-    <div class="srcbox" data-p="sectors"></div>
+    <div class="card s5">
+      <h2>What is unusual right now</h2>
+      <div class="sub">Ranked, with how many of each one’s implied consequences actually landed. <b>Tap any row</b> for the chart, the mechanism and the history.</div>
+      <div id="scan">Reading the board…</div>
+      <div class="srcbox" data-p="scan"></div>
+    </div>
+
+    <div class="card s5">
+      <h2>Where it landed — the eleven sectors</h2>
+      <div class="sub">A macro move is abstract until you see which business it hit. <b>Financials answer the curve, Utilities and Real estate the level of rates, Technology the real yield.</b></div>
+      <div id="sectors">Loading sectors…</div>
+      <div class="srcbox" data-p="sectors"></div>
+    </div>
+
+    <div class="card s7">
+      <div class="hrow"><h2 style="margin:0">The whole board</h2><span class="tf" id="tf"></span></div>
+      <div class="sub">Every market this desk carries, scored against <b>its own</b> history — so a 40bp move in the 2-year and a 6% move in gold are comparable. <b>Amber = rare.</b></div>
+      <div id="board"></div>
+      <div id="tileExp"></div>
+      <div class="srcbox" data-p="board"></div>
+    </div>
+
+    <div class="card s7">
+      <h2>How this market is wired today</h2>
+      <div class="sub">Every relationship, ranked by how far apart the two markets are <b>today</b> against three years of how they actually moved. The bar is the real strength of the link — a loose one has nothing to break.</div>
+      <div id="wire" class="cap-h">Scoring the relationships…</div>
+      <div class="srcbox" data-p="wire"></div>
+    </div>
+
+    <div class="card s5">
+      <h2>The options book</h2>
+      <div class="sub">Where price sits against the strikes carrying the open interest — the only panel here built from <b>positioning</b> rather than price. The bar runs put wall to call wall; <b>amber means price has left the band</b>.</div>
+      <div id="book" class="cap-h">Reading the book…</div>
+      <div class="srcbox" data-p="book"></div>
+    </div>
+
+    <div class="card s12">
+      <h2>So what do I do with that?</h2>
+      <div class="sub">Every finding above turned into the next thing to go and look at. This column is the habit worth building — a market you can explain but never check is one you are still only reading about.</div>
+      <div id="impact"></div>
+      <div class="srcbox" data-p="impact"></div>
+      <div class="note" id="foot"></div>
+    </div>
   </div>
+</div>
 
-  <div class="card scan">
-    <h2>What is unusual right now</h2>
-    <div class="sub">Every market below scored against <b>its own</b> three-year history, so a 40bp move in the 2-year and a 6% move in gold are comparable. The page reads the board and says where to look first. <b>Rare is a measurement, not a forecast.</b></div>
-    <div id="scan">Reading the board…</div>
-    <div class="srcbox" data-p="scan"></div>
-  </div>
-
-  <div class="card">
-    <h2>So what do I do with that?</h2>
-    <div class="sub">Every finding above, turned into the next thing to go and look at. This column is the habit worth building — a market you can explain but never check is a market you are still only reading about.</div>
-    <div id="impact"></div>
-    <div class="srcbox" data-p="impact"></div>
-  </div>
-
-  <div class="card">
-    <h2>How this market is wired today</h2>
-    <div class="sub">Every relationship this desk understands, ranked by how far apart the two markets are <b>today</b> against how they have actually moved together over three years. The bar is the real strength of the link — a loose one has nothing to break. <b>Tap a row</b> for the mechanism and what to go and look at.</div>
-    <div id="wire">Scoring the relationships…</div>
-    <div class="srcbox" data-p="wire"></div>
-  </div>
-
-  <div class="card">
-    <h2>The options book</h2>
-    <div class="sub">Where price is sitting against the strikes that carry the open interest — the one part of this page built from <b>positioning</b> rather than from price. Captured once a day from CME. The bar runs put wall to call wall, with a marker for spot; <b>amber means price has left the band</b>. <b>Tap a row</b> for what the numbers are and what they are not.</div>
-    <div id="book">Reading the book…</div>
-    <div class="srcbox" data-p="book"></div>
-  </div>
-
-  <div class="card">
-    <div class="hrow"><h2 style="margin:0">The whole board</h2><span class="tf" id="tf"></span></div>
-    <div class="sub">Everything this desk carries, with its twenty-session move and how unusual that move is. <b>Amber = rare.</b> Tap a tile for what it is, where the move sits in its own history, and which textbook links touch it today.</div>
-    <div id="board"></div>
-    <div id="tileExp"></div>
-    <div class="srcbox" data-p="board"></div>
-    <div class="note" id="foot"></div>
+<div class="mdl" id="mdl" role="dialog" aria-modal="true" aria-labelledby="mdlT">
+  <div class="mdl-bd" onclick="closeModal()"></div>
+  <div class="mdl-p">
+    <div class="mdl-h">
+      <div style="flex:1;min-width:0"><span class="kicker" id="mdlK"></span><h3 id="mdlT"></h3></div>
+      <button class="mdl-x" id="mdlX" onclick="closeModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="mdl-b" id="mdlB"></div>
   </div>
 </div>
 
@@ -400,30 +473,6 @@ function chainToday() {
   try { return evaluateChain(vals); } catch { return []; }
 }
 
-function renderScan() {
-  // The book's findings are merged in rather than computed inside marketScan: that
-  // module is pure price, and positioning is a different source with a different
-  // evidence status (untested), so it stays a separate input.
-  FINDS = [...bookFindings(BOOK, { limit: 1 }), ...findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 })].slice(0, 4);
-  const checks = Object.fromEntries(impactRows(FINDS).map(r => [r.event, r.check]));
-  // The caveat used to be the loudest thing on every finding -- bold, red-bordered,
-  // and often longer than the finding itself. Four of those stacked up read as a page
-  // that does not believe its own output. It is still on every finding, still in full,
-  // but it is one tap away instead of shouting over the thing it qualifies.
-  $('scan').innerHTML = FINDS.map((x, i) => `
-    <div class="fnd">
-      <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
-      <div class="s">${esc(x.seen)}</div>
-      ${chartFor(x)}
-      <div class="m">${esc(x.means)}</div>
-      ${confHtml(x)}
-      ${analogueHtml(x)}
-      ${checks[x.title] ? `<div class="chk"><b>Check next</b>${esc(checks[x.title])}</div>` : ''}
-      <div class="nmT" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">▸ what this does <i>not</i> mean</div>
-      <div class="nmB" style="display:none">${esc(x.notMeans)}</div>
-      ${x.key && x.key !== 'chain' ? `<div class="go"><a href="#" onclick="selTile('${esc(x.key)}');return false">see it on the board ↓</a></div>` : ''}
-    </div>`).join('');
-}
 
 /**
  * The wiring card. Every relationship this desk understands, ranked by how far apart
@@ -590,7 +639,8 @@ function renderState() {
       <div class="for"><h4>What supports this (${conf})</h4>${li(s.evidence ?? [], 'for')}</div>
       <div class="ag"><h4>What argues against it</h4>${li(s.against ?? [], 'ag')}</div>
     </div>
-    ${bl ? `<div class="bline">${bl}</div>` : ''}`;
+    ${bl ? `<div class="bline">${bl}</div>` : ''}
+    ${srcLine('state')}`;
 }
 
 /**
@@ -784,6 +834,83 @@ function analogueHtml(f) {
       ? `The spread is what matters rather than the median — ${o.n} episodes ranging ${o.lo}% to ${o.hi}% do not describe a tendency, they describe a market that could do either.`
       : `Every episode went the same way, which on a sample of ${o.n} is as likely to be an accident of a small count as a pattern.`}
       None of this has been through this desk's pre-registration, the sample is small by construction, and episodes are only similar on ${r.keys.length} dimensions. It is history arranged so the claim can be checked — not a forecast, and not a tested edge.</div></div>`;
+}
+
+/**
+ * The modal.
+ *
+ * The page carried every chart, every confirmation checklist and every analogue panel
+ * inline, which made it about six thousand pixels tall and exhausting before it was
+ * informative. The summary belongs on the page; the depth belongs one tap away.
+ *
+ * Closes on the backdrop, the button, and Escape — all three, because a modal you
+ * cannot dismiss by reflex is worse than no modal.
+ */
+function openModal(kicker, title, body) {
+  $('mdlK').textContent = kicker;
+  $('mdlT').textContent = title;
+  $('mdlB').innerHTML = body;
+  $('mdl').classList.add('on');
+  document.body.style.overflow = 'hidden';
+  $('mdlX').focus();
+}
+window.closeModal = () => {
+  $('mdl').classList.remove('on');
+  document.body.style.overflow = '';
+};
+document.addEventListener('keydown', e => { if (e.key === 'Escape') window.closeModal(); });
+
+/** The full reading for one finding: the chart, the mechanism, the checks, the history. */
+window.openFinding = i => {
+  const x = FINDS[i]; if (!x) return;
+  const checks = Object.fromEntries(impactRows(FINDS).map(r => [r.event, r.check]));
+  openModal(KICKER[x.kind] ?? 'Finding', x.title, `
+    <div class="lead">${esc(x.seen)}</div>
+    ${chartFor(x)}
+    <div class="mdl-sec"><h4>What it means</h4>${esc(x.means)}</div>
+    ${confHtml(x)}
+    ${analogueHtml(x)}
+    ${checks[x.title] ? `<div class="mdl-sec"><h4>What to check next</h4>${esc(checks[x.title])}</div>` : ''}
+    <div class="mdl-sec"><h4>What this does not mean</h4><span style="color:var(--text3)">${esc(x.notMeans)}</span></div>
+    ${x.key && x.key !== 'chain' ? `<div class="lnk" style="margin-top:12px"><a href="#" onclick="closeModal();selTile('${esc(x.key)}');return false">see it on the board ↓</a></div>` : ''}`);
+};
+
+const KICKER = {
+  dislocation: 'Two markets have come apart', inverted: 'A relationship is backwards',
+  ratekind: 'What kind of rate move this is', extreme: 'An unusual move',
+  vixterm: 'The volatility curve', creditstack: 'Where the credit stress sits',
+  broken: 'A textbook link failed', dispersion: 'Market structure', crack: 'The commodity complex',
+  'book-outside': 'The options book', 'book-flow': 'The options book', 'book-stale': 'Data age',
+  quiet: 'The base case',
+};
+
+/**
+ * Compact finding rows.
+ *
+ * Each carries the badges that say whether it is worth opening: how many of its
+ * implied consequences actually landed, and whether there is comparable history.
+ * That way the summary is a genuine filter rather than a truncated headline.
+ */
+function renderScan() {
+  FINDS = [...bookFindings(BOOK, { limit: 1 }), ...findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 })].slice(0, 4);
+  $('scan').innerHTML = FINDS.map((x, i) => {
+    const c = confirmations(x, SCORED, SECS, STATE?.breadth);
+    let hist = null;
+    try { const k = keysFor(x); hist = k ? analogues(BUNDLE, k, { outcomes: ['spx'] }) : null; } catch (e) {}
+    return `<button class="fr" onclick="openFinding(${i})">
+      <span class="i2">${i + 1}</span>
+      <span>
+        <span class="t2">${esc(x.title)}</span>
+        <span class="d2">${esc(x.seen)}</span>
+        <span class="tags">
+          ${c ? `<span class="tg ${c.met === c.total ? 'ok' : c.met === 0 ? 'no' : ''}">${c.met}/${c.total} confirmed</span>` : ''}
+          ${hist?.outcomes?.spx ? `<span class="tg hist">${hist.outcomes.spx.n} past episodes</span>` : ''}
+          <span class="tg">open →</span>
+        </span>
+      </span>
+      <span class="ch">›</span>
+    </button>`;
+  }).join('');
 }
 
 function renderBoard() {
