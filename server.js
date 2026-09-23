@@ -96,6 +96,7 @@ import { runLiveMVE as _runLiveMVE, fetchContext as _mveFetchContext, SUPPORTED 
 import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsistency, validateMechanicalAnchor as _mveValidateMechanical, validateInstrumentWithRegimeSplit as _mveValidateFull } from './js/mve/validateInstrument.js';
 import { runBookFactorAudit as _mveBookAudit, BOOK_SLEEVE_CONFIG as _MVE_BOOK_CFG } from './js/mve/bookFactorEngine.js';
 import { runForwardTick as _mveForwardTick, readForward as _mveForwardRead } from './js/mve/bookForwardEngine.js';
+import { runSystemBacktest as _mveSystemBacktest } from './js/mve/bookSystemEngine.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { validateResidualReversion as _validateResidualReversion } from './js/residualReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
@@ -15729,6 +15730,7 @@ app.post('/api/mve-book/run', (req, res) => {
   for (const [id, job] of _mveBookJobs) if (Date.now() - job.startedAt > 60 * 60_000) _mveBookJobs.delete(id);
   const running = [..._mveBookJobs.entries()].find(([, j]) => j.status === 'running');
   if (running) return res.json({ ok: true, jobId: running[0], alreadyRunning: true });
+  if ([..._mveSysJobs.values()].some(j => j.status === 'running')) return res.status(409).json({ ok: false, error: 'a system-backtest job is running — try again when it finishes' });
   const jobId = `mvb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const startedAt = Date.now();
   _mveBookJobs.set(jobId, { status: 'running', startedAt });
@@ -15753,6 +15755,48 @@ app.get('/api/mve-book/status/:jobId', (req, res) => {
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });
 
+// ── MVE book layer — sized system backtest (MD files/MVE_BOOK_SYSTEM_BACKTEST.md) ──
+// The factor-neutral spread book as a system: 10% vol target, 5× gross cap, CAGR /
+// Sharpe / drawdown / trade list, four variants on the same trades. Async job, 6h
+// cache, never alongside another book job (each loads M1 for every major).
+const _mveSysJobs = new Map();
+let _mveSysCache = null;
+app.post('/api/mve-book/system/run', (req, res) => {
+  if (!process.env.FRED_KEY) return res.status(500).json({ ok: false, error: 'FRED_KEY not set — the system backtest needs FRED for the spread sleeves' });
+  const fresh = req.body && (req.body.fresh === true || req.body.fresh === 'true');
+  if (!fresh && _mveSysCache && Date.now() - _mveSysCache.at < 6 * 60 * 60 * 1000) {
+    const jobId = `mvs_cached_${_mveSysCache.at}`;
+    _mveSysJobs.set(jobId, { status: 'done', startedAt: _mveSysCache.at, result: { ..._mveSysCache.result, cached: true } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  for (const [id, job] of _mveSysJobs) if (Date.now() - job.startedAt > 60 * 60_000) _mveSysJobs.delete(id);
+  const running = [..._mveSysJobs.entries()].find(([, j]) => j.status === 'running');
+  if (running) return res.json({ ok: true, jobId: running[0], alreadyRunning: true });
+  if ([..._mveBookJobs.values()].some(j => j.status === 'running')) return res.status(409).json({ ok: false, error: 'a book-audit job is running — try again when it finishes' });
+  const jobId = `mvs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _mveSysJobs.set(jobId, { status: 'running', startedAt });
+  (async () => {
+    try {
+      const result = await _mveSystemBacktest({});
+      _mveSysCache = { at: Date.now(), result };
+      _mveSysJobs.set(jobId, { status: 'done', startedAt, result });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[mve-book/system]', msg, e?.stack ?? '');
+      _mveSysJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/mve-book/system/status/:jobId', (req, res) => {
+  const job = _mveSysJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
 // ── MVE book layer — forward paper tracker (MD files/MVE_BOOK_FORWARD_TRACKER.md) ─
 // Daily 07:15 London (after the 00:05 M1 tail top-up and the 00:30 rebuild):
 // appends yesterday's close for the factor-neutral combined spread book to an
@@ -15763,8 +15807,8 @@ const _mveFwdStore = { getJSON: k => _r2GetJSON(k), putJSON: (k, o) => _r2PutJSO
 let _mveFwdRun = null;   // { startedAt, promise, result?, error? }
 function _mveFwdTick(source) {
   if (_mveFwdRun && !_mveFwdRun.done) return _mveFwdRun;
-  if ([..._mveBookJobs.values()].some(j => j.status === 'running')) {
-    return { done: true, error: 'a book-audit job is running — try again when it finishes' };
+  if ([..._mveBookJobs.values(), ..._mveSysJobs.values()].some(j => j.status === 'running')) {
+    return { done: true, error: 'a book-audit or system-backtest job is running — try again when it finishes' };
   }
   const run = { startedAt: Date.now(), done: false, source };
   run.promise = _mveForwardTick(_mveFwdStore)

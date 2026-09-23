@@ -9,7 +9,8 @@
   Map modal and the Command Hub top bar, and it DOES call live, read-only server
   routes for the "Live" data source and the validation buttons (/api/mve/:sym,
   /api/mve-validate/:sym, /api/mve-validate-full/:sym, /api/mve-validate-all, and the Phase 7 book
-  layer /api/mve-book/run + /status, and its forward tracker /api/mve-book/forward) —
+  layer /api/mve-book/run + /status, its forward tracker /api/mve-book/forward, and the sized system backtest
+  /api/mve-book/system/run + /status) —
   those routes surface a valuation/validation report and cannot write to or alter
   any live signal, bot, or trading decision (see MVE_RUN_GUIDE.md §6/§7 on what
   "isolated" actually means here: no server.js import feeds a signal, not "no
@@ -100,10 +101,23 @@
     <div id="bookout" style="margin-top:12px"></div>
   </div>
 
-  <div class="panel" id="fwdPanel" style="border-color:#2f5a45">
-    <div style="font-weight:700;margin-bottom:4px">📒 Forward paper tracker: factor-neutral combined spread book</div>
+  <div class="panel" id="sysPanel" style="border-color:#5b4a8a">
+    <div style="font-weight:700;margin-bottom:4px">🧪 System backtest: the hedged spread book as a sized system</div>
     <div style="font-size:12px;color:#8891a0;line-height:1.55">
-      The candidate system from the book-layer audit (2Y + 10Y spread sleeves at ½ each, hedged off K = 2 currency factors), tracked <b>forward</b>:
+      The 2Y + 10Y spread sleeves (frozen 2.0 / 126, ½ each) run as a <b>system</b>. Every trade is hedged off K = 2 currency factors, the basket, <b>and its net USD</b>,
+      and the book is sized to a <b>10% annual volatility target</b> (capped at 5× gross), with 1 bp one-way on every leg. The same sizing runs on the audit's
+      PC-only hedge and on the unhedged sleeves, so the comparison is like-for-like. You get CAGR, Sharpe ± SE, drawdowns, a monthly heatmap and the trade
+      list with CSVs. Pre-registered in <code>MD files/MVE_BOOK_SYSTEM_BACKTEST.md</code>. Deployed server only; takes about 3 minutes; cached for 6h.
+    </div>
+    <label style="display:inline-flex;gap:6px;align-items:center;margin-top:10px"><input type="checkbox" id="sysFresh"> ignore the 6h cache</label>
+    <div><button id="sysRun">▶ Run system backtest</button></div>
+    <div id="sysout" style="margin-top:12px"></div>
+  </div>
+
+  <div class="panel" id="fwdPanel" style="border-color:#2f5a45">
+    <div style="font-weight:700;margin-bottom:4px">📒 Forward paper tracker: the hedged spread-book system</div>
+    <div style="font-size:12px;color:#8891a0;line-height:1.55">
+      The system from the 🧪 backtest above (2Y + 10Y spread sleeves at ½ each, hedged off K = 2 currency factors, the basket and net USD, sized to a 10% vol target), tracked <b>forward</b> next to the unhedged sleeves at the same sizing:
       once a day (07:15 London) it logs the book it would hold after yesterday's close and marks the previous book to market. The log is append-only
       in R2 and never edited, so this is the one record the backtest can't be. Paper only, no orders. Kill and review rules are pre-registered in
       <code>MD files/MVE_BOOK_FORWARD_TRACKER.md</code>.
@@ -373,6 +387,106 @@ function drawBookCurve(curve, splitDate) {
 }
 $('bookRun').onclick = runBook;
 
+// ── System backtest ─────────────────────────────────────────────────────────
+const SYS_LABEL = { primary: 'Hedged: PCs + USD (primary)', auditHedge: 'Hedged: PCs only (audit hedge)', raw: 'Unhedged sleeves', primary2xCost: 'Primary at 2× cost' };
+const SYS_COL = { primary: '#3b82f6', auditHedge: '#eab308', raw: '#8891a0' };
+const SYS_ACCOUNT = 100000;
+let _sysLast = null;
+async function runSys() {
+  const out = $('sysout');
+  out.innerHTML = '<div style="color:#8891a0">⏳ Starting…</div>';
+  try {
+    const start = await (await fetch('/api/mve-book/system/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fresh: $('sysFresh').checked }) })).json();
+    if (!start.ok) { out.innerHTML = `<div style="color:#ef4444">Error: ${start.error}</div>`; return; }
+    for (;;) {
+      const st = await (await fetch(`/api/mve-book/system/status/${start.jobId}`)).json();
+      if (st.status === 'running') { out.innerHTML = `<div style="color:#8891a0">⏳ Running: M1 for 7 majors, FRED for 2 tenors, then 4 sized walks… ${st.elapsed}s</div>`; await new Promise(r => setTimeout(r, 4000)); continue; }
+      if (!st.ok) { out.innerHTML = `<div style="color:#ef4444">Error: ${st.error}</div>`; return; }
+      _sysLast = st; renderSys(st); return;
+    }
+  } catch (e) { out.innerHTML = `<div style="color:#ef4444">Fetch failed: ${e.message} (deployed server only)</div>`; }
+}
+
+function renderSys(r) {
+  const P = r.metrics.primary, f = P.full;
+  const tile = (k, v, sub = '') => `<div style="background:#0d1017;border:1px solid #22262f;border-radius:8px;padding:8px 10px;min-width:118px;flex:1"><div style="font-size:10.5px;color:#8891a0">${k}</div><div style="font-family:monospace;font-size:15px;color:#e6e8ec">${v}</div><div style="font-size:10.5px;color:#5b6270">${sub}</div></div>`;
+  const CHECK_TXT = { fullSharpeGe05: 'full-sample Sharpe ≥ 0.5', isSharpePositive: 'in-sample Sharpe > 0', oosSharpeGe05: 'out-of-sample Sharpe ≥ 0.5', maxDdWithin25: 'max drawdown ≤ 25%', cost2xFullSharpeGe03: 'Sharpe at 2× cost ≥ 0.3' };
+  const checks = Object.entries(r.reading.checks).map(([k, v]) => `<span style="margin-right:12px;color:${v ? '#22c55e' : '#ef4444'}">${v ? '✓' : '✗'} ${CHECK_TXT[k] || k}</span>`).join('');
+  const vRows = Object.entries(r.metrics).map(([k, m]) => `<tr>
+      <td style="color:${SYS_COL[k] || '#cdd3dc'}">${SYS_LABEL[k] || k}</td>
+      <td style="font-family:monospace">${fmt(m.full.cagrPct, 2)}%</td>
+      <td style="font-family:monospace;color:${shCol(m.full.sharpe)}">${fmt(m.full.sharpe)} ± ${fmt(m.full.sharpeSE)}</td>
+      <td style="font-family:monospace;color:${shCol(m.IS.sharpe)}">${fmt(m.IS.sharpe)}</td>
+      <td style="font-family:monospace;color:${shCol(m.OOS.sharpe)}">${fmt(m.OOS.sharpe)}</td>
+      <td style="font-family:monospace">${fmt(m.full.maxDdPct, 1)}%</td>
+      <td style="font-family:monospace">${fmt(m.full.annVolPct, 1)}%</td>
+      <td style="font-family:monospace">${m.full.meanUsdSharePct == null ? '—' : fmt(m.full.meanUsdSharePct, 0) + '%'}</td>
+      <td style="font-family:monospace">${fmt(m.full.avgGrossWhenActive, 2)}× · ${fmt(m.full.pctActiveDaysAtGrossCap, 0)}%</td></tr>`).join('');
+  const years = Object.keys(r.yearly.primary).sort();
+  const yRows = ['primary', 'auditHedge', 'raw'].map(k => `<tr><td style="color:${SYS_COL[k]}">${SYS_LABEL[k]}</td>${years.map(y => { const v = r.yearly[k][y]; return `<td style="font-family:monospace;padding:2px 6px;color:${v >= 0 ? '#22c55e' : '#ef4444'}">${fmt(v, 1)}</td>`; }).join('')}</tr>`).join('');
+  const mYears = [...new Set(Object.keys(r.monthly).map(k => k.slice(0, 4)))].sort();
+  const heat = v => v == null ? '#12151c' : v >= 0 ? `rgba(34,197,94,${Math.min(0.85, 0.12 + Math.abs(v) / 6)})` : `rgba(239,68,68,${Math.min(0.85, 0.12 + Math.abs(v) / 6)})`;
+  const mRows = mYears.map(y => `<tr><td style="color:#8891a0;padding-right:6px">${y}</td>${Array.from({ length: 12 }, (_, i) => { const k = `${y}-${String(i + 1).padStart(2, '0')}`; const v = r.monthly[k]; return `<td style="background:${heat(v)};font-family:monospace;font-size:10px;text-align:right;padding:2px 4px;min-width:34px">${v == null ? '' : fmt(v, 1)}</td>`; }).join('')}</tr>`).join('');
+  const tr = r.trades.slice().sort((a, b) => (a.entry < b.entry ? 1 : -1));
+  const tRows = tr.slice(0, 40).map(t => `<tr><td>${t.entry}</td><td>${t.exit}</td><td>${t.sleeve}</td><td>${t.pair}</td><td>${t.dir}</td><td style="font-family:monospace">${t.days}</td><td style="font-family:monospace;color:${t.retPct >= 0 ? '#22c55e' : '#ef4444'}">${fmt(t.retPct, 3)}%</td><td style="font-family:monospace">${fmt(t.R, 2)}</td><td style="font-family:monospace;color:#ef4444">${fmt(t.maePct, 3)}%</td></tr>`).join('');
+  $('sysout').innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px"><span style="font-weight:700;color:${r.reading.verdict === 'SYSTEM-WORTHY' ? '#22c55e' : '#eab308'}">${r.reading.verdict}</span><span style="font-size:11.5px">${checks}</span></div>
+    <div style="font-size:11px;color:#8891a0;margin-bottom:8px">Data ${r.data.from} → ${r.data.to} · OOS from ${r.splitDate} (the 2Y sleeve's own split) · 10% vol target, 5× gross cap, ${(r.config.costOneWay * 1e4).toFixed(1)} bp one-way per leg${r.cached ? ' · <i>cached</i>' : ''}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      ${tile('CAGR', `${fmt(f.cagrPct, 2)}%`, `total ${fmt(f.totalPct, 1)}% over ${f.years}y`)}
+      ${tile('Sharpe', `${fmt(f.sharpe)} ± ${fmt(f.sharpeSE)}`, `IS ${fmt(P.IS.sharpe)} · OOS ${fmt(P.OOS.sharpe)}`)}
+      ${tile('Max drawdown', `${fmt(f.maxDdPct, 1)}%`, `longest underwater ${f.longestUnderwaterDays}d · Calmar ${fmt(f.calmar)}`)}
+      ${tile('Realised vol', `${fmt(f.annVolPct, 1)}%`, `in market ${fmt(f.pctDaysInMarket, 0)}% of days`)}
+      ${tile('Trades', `${f.trades}`, `win ${fmt(f.winRatePct, 0)}% · PF ${fmt(f.profitFactor)} · hold ${fmt(f.avgHoldDays, 1)}d`)}
+      ${tile('Leverage', `${fmt(f.avgGrossWhenActive, 2)}×`, `at the 5× cap ${fmt(f.pctActiveDaysAtGrossCap, 0)}% of active days`)}
+      ${tile('Cost drag', `${fmt(f.costDragPctPerYr, 2)}%/yr`, `2× cost Sharpe ${fmt(r.metrics.primary2xCost.full.sharpe)}`)}
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="color:#8891a0;text-align:left"><th>Version (same trades, same sizing)</th><th>CAGR</th><th>Sharpe ± SE</th><th>IS</th><th>OOS</th><th>Max DD</th><th>Vol</th><th>Leftover USD</th><th>Gross · at cap</th></tr></thead>
+      <tbody>${vRows}</tbody></table>
+    <div style="font-size:10.5px;color:#5b6270;margin-top:4px">"Leftover USD" = the book's net USD position as a share of its one-sided currency gross. The audit's PC-only hedge doesn't remove it (see the pre-registration §0). Sharpe is annualised, daily mark-to-market, net of costs, flat days included; SE is Lo (2002).</div>
+    <label>Equity (log scale): <span style="color:#3b82f6">primary</span> · <span style="color:#eab308">audit hedge</span> · <span style="color:#8891a0">unhedged</span> — dashed line = OOS start; red area = primary drawdown</label>
+    <canvas id="sysCurve" width="900" height="240" style="height:240px"></canvas>
+    <label>Net return by year, %</label>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:11px;white-space:nowrap"><thead><tr style="color:#8891a0;text-align:left"><th>Version</th>${years.map(y => `<th style="padding:0 6px">${y}</th>`).join('')}</tr></thead><tbody>${yRows}</tbody></table></div>
+    <label>Primary: monthly net return, % (concentration check)</label>
+    <div style="overflow-x:auto"><table style="border-collapse:collapse"><thead><tr style="color:#8891a0;font-size:10px"><th></th>${['J','F','M','A','M','J','J','A','S','O','N','D'].map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${mRows}</tbody></table></div>
+    <label>Trades (primary, newest first, 40 of ${tr.length})</label>
+    <div style="font-size:10.5px;color:#8891a0;margin-bottom:6px">CSV: account <b>$${SYS_ACCOUNT.toLocaleString()}</b> start, compounding. <b>R</b> = the trade's own ex-ante 1σ risk over 20 trading days (the sleeves' max hold) at entry, so it varies per trade and is not the % return relabelled. MAE comes from the <b>daily-close</b> path of the trade's hedged 7-leg package; there's no intraday path for the package, and that's stated here rather than hidden. Date = exit close.
+      <br><button class="alt" id="csvPct">⬇ % Returns</button> <button class="alt" id="csvR">⬇ R-Multiples</button> <button class="alt" id="csvUsd">⬇ Currency P&L</button></div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr style="color:#8891a0;text-align:left"><th>Entry</th><th>Exit</th><th>Sleeve</th><th>Pair</th><th>Dir</th><th>Days</th><th>Net %</th><th>R</th><th>MAE %</th></tr></thead><tbody>${tRows}</tbody></table></div>`;
+  drawSysCurve(r);
+  const dl = (name, rows) => { const b = new Blob([rows.join('\n')], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click(); };
+  const byExit = r.trades.slice().sort((a, b) => (a.exit < b.exit ? -1 : 1));
+  $('csvPct').onclick = () => dl('mve_book_system_pct.csv', ['Date,Return %,MAE %', ...byExit.map(t => `${t.exit},${t.retPct},${t.maePct}`)]);
+  $('csvR').onclick = () => dl('mve_book_system_R.csv', ['date,R,MAE (R)', ...byExit.map(t => `${t.exit},${t.R},${t.maeR}`)]);
+  $('csvUsd').onclick = () => dl('mve_book_system_usd.csv', ['Trade Date,PnL ($),Risk ($)', ...byExit.map(t => `${t.exit},${(t.retPct / 100 * SYS_ACCOUNT * (t.entryEquity || 1)).toFixed(2)},${(t.riskPct / 100 * SYS_ACCOUNT * (t.entryEquity || 1)).toFixed(2)}`)]);
+}
+
+function drawSysCurve(r) {
+  const cv = $('sysCurve'), c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  c.clearRect(0, 0, W, H);
+  const P = r.curves.primary;
+  const all = ['primary', 'auditHedge', 'raw'].flatMap(k => r.curves[k].map(p => Math.log(p[1])));
+  const lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.08 || 0.01;
+  const top = 6, eqH = H * 0.72, x = i => 8 + i / (P.length - 1) * (W - 16);
+  const y = v => top + eqH - (Math.log(v) - lo + pad) / (hi - lo + 2 * pad) * eqH;
+  const iS = P.findIndex(p => p[0] >= r.splitDate);
+  if (iS > 0) { c.strokeStyle = '#5b6270'; c.setLineDash([4, 4]); c.beginPath(); c.moveTo(x(iS), 2); c.lineTo(x(iS), H - 14); c.stroke(); c.setLineDash([]); }
+  c.strokeStyle = '#2a2f3a'; c.beginPath(); c.moveTo(0, y(1)); c.lineTo(W, y(1)); c.stroke();
+  for (const k of ['raw', 'auditHedge', 'primary']) {
+    const cvv = r.curves[k]; c.strokeStyle = SYS_COL[k]; c.lineWidth = k === 'primary' ? 1.8 : 1.2; c.beginPath();
+    cvv.forEach((p, i) => { const xx = 8 + i / (cvv.length - 1) * (W - 16); i ? c.lineTo(xx, y(p[1])) : c.moveTo(xx, y(p[1])); });
+    c.stroke();
+  }
+  const ddTop = top + eqH + 8, ddH = H - ddTop - 16, minDd = Math.min(-1, ...P.map(p => p[2]));
+  c.fillStyle = 'rgba(239,68,68,0.45)'; c.beginPath(); c.moveTo(x(0), ddTop);
+  P.forEach((p, i) => c.lineTo(x(i), ddTop + (p[2] / minDd) * ddH)); c.lineTo(x(P.length - 1), ddTop); c.closePath(); c.fill();
+  c.fillStyle = '#8891a0'; c.font = '11px system-ui';
+  c.fillText(P[0][0], 8, H - 2); c.fillText(P[P.length - 1][0], W - 70, H - 2); c.fillText(`max DD ${fmt(minDd, 1)}%`, 10, ddTop + 10);
+}
+$('sysRun').onclick = runSys;
+
 // ── Forward paper tracker ───────────────────────────────────────────────────
 const FWD_COL = { 'RUNNING': '#3b82f6', 'REVIEW-DUE': '#eab308', 'PAUSED-PARITY': '#f97316', 'KILL-DRAWDOWN': '#ef4444', 'KILL-INCONSISTENT': '#ef4444' };
 async function loadFwd() {
@@ -395,16 +509,16 @@ async function loadFwd() {
         ${tile('Forward net', `${fmt(n.totalPct, 2)}%`, `raw book ${fmt(w.totalPct, 2)}%`)}
         ${tile('Forward Sharpe', (n.sharpe == null || n.n < 20) ? `— (${n.n}/20 days)` : `${fmt(n.sharpe)} ± ${fmt(n.se)}`, `backtest OOS ${fmt(ref.oosSharpe)} · kill floor ${s.sharpeFloor ?? '—'} (from day 126)`)}
         ${tile('Max drawdown', `${fmt(n.maxDdPct, 2)}%`, `kill at ${s.ddLimitPct == null ? '—' : fmt(s.ddLimitPct, 2) + '%'} (1.5× backtest ${fmt(ref.fullMaxDdPct, 2)}%)`)}
-        ${tile('Vol neutral / raw', s.volRatio == null ? '—' : fmt(s.volRatio, 2), `backtest ${fmt(ref.oosAnnVolPct / m.reference.rawCombined.oosAnnVolPct, 2)}`)}
+        ${tile('Today', cb ? `${fmt((r.recent[r.recent.length - 1] || {}).leverage, 2)}× gross` : '—', `leftover USD ${((r.recent[r.recent.length - 1] || {}).usdShare == null) ? '—' : fmt(r.recent[r.recent.length - 1].usdShare * 100, 0) + '%'} · vol hedged/raw ${s.volRatio == null ? '—' : fmt(s.volRatio, 2)}`)}
       </div>
       <div class="flex">
-        <div><label style="margin-top:0">Book held after ${cb?.date || '—'} (neutral vs raw, notional units)</label>
-          <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#8891a0;text-align:left"><th>Pair</th><th>Neutral</th><th>Raw</th></tr></thead><tbody>${bookRows || '<tr><td colspan="3" style="color:#8891a0">flat: no sleeve trade open</td></tr>'}</tbody></table>
+        <div><label style="margin-top:0">Book held after ${cb?.date || '—'} (hedged vs unhedged, × equity)</label>
+          <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#8891a0;text-align:left"><th>Pair</th><th>Hedged</th><th>Unhedged</th></tr></thead><tbody>${bookRows || '<tr><td colspan="3" style="color:#8891a0">flat: no sleeve trade open</td></tr>'}</tbody></table>
           <div style="font-size:10.5px;color:#5b6270;margin-top:4px">Factor exposure before → after hedge: ${cb ? cb.exposurePre.map(x => fmt(x, 4)).join(', ') + ' → ' + cb.exposurePost.map(x => fmt(x, 4)).join(', ') : '—'}</div></div>
         <div><label style="margin-top:0">Latest closes</label>
           <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#8891a0;text-align:left"><th>Close</th><th>Net</th><th>Cost</th><th>Raw net</th><th>Cum.</th><th>Replay</th></tr></thead><tbody>${recent}</tbody></table></div>
       </div>
-      <div style="font-size:10.5px;color:#5b6270;margin-top:8px">Frozen config: sleeves ${m.sleeveConfig.entryThreshold} / ${m.sleeveConfig.zWindow}, K = ${m.K}, window ${m.window}, cost ${(Object.values(m.costOneWay)[0] * 1e4).toFixed(1)} bp one-way per leg · started ${m.startDate} · reference backtest to ${m.reference.dataTo} (OOS from ${m.reference.splitDate}). ${run}</div>`;
+      <div style="font-size:10.5px;color:#5b6270;margin-top:8px">Frozen config: sleeves ${m.sleeveConfig.entryThreshold} / ${m.sleeveConfig.zWindow}, K = ${m.K}, window ${m.window}${m.system ? `, hedge ${m.system.hedgeMode}, ${m.system.targetVol * 100}% vol target, ${m.system.maxGross}× cap` : ''}, cost ${(Object.values(m.costOneWay)[0] * 1e4).toFixed(1)} bp one-way per leg · started ${m.startDate} · reference backtest to ${m.reference.dataTo} (OOS from ${m.reference.splitDate}). ${run}</div>`;
     if (r.running) setTimeout(loadFwd, 8000);
   } catch (e) { out.innerHTML = `<span style="color:#ef4444">Fetch failed: ${e.message} (deployed server only)</span>`; }
 }

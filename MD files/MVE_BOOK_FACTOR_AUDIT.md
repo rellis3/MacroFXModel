@@ -176,3 +176,17 @@ trades mean more than 1× gross. Compare raw and neutral within a row, not the l
 forward paper tracking.** Nothing is wired into live trading by this result. The next step is
 a frozen forward tracker: the same code, the same config, a daily log of neutral-book
 weights, marked-to-market P&L and costs, with the pass bar written down before it starts.
+
+## 9. Correction found after the run (2026-09-22): the hedge may leave a dollar bet in
+
+While building the sized system backtest, a synthetic test showed that this audit's hedge,
+the top-K PCs of basket-demeaned, **standardised** currency returns, need not remove the
+dollar. After the transform, a broad dollar move sits almost entirely on the USD column (a
+one-column component), so it isn't reliably in the top 2. On a planted dollar edge, the
+"neutral" book stayed about ⅓ short USD and kept the edge.
+
+**What that means for §8:** the RELATIVE-VALUE reading stands as a pre-registered result of
+*this* hedge, but it may be partly a dollar bet. It is **not** overturned here. The test that
+settles it is `MVE_BOOK_SYSTEM_BACKTEST.md`, which runs this hedge ("audit hedge") next to one
+that also zeroes net USD ("primary"), at the same sizing, and reports each book's leftover
+USD. Read §8 together with that result.

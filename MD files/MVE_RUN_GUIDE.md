@@ -63,6 +63,7 @@ consensus method (ensemble vs Kalman). No network, no server route.
 | `factorModel.js` | 6 | shared-factor cross-asset loadings + **coherence check** (safe Relationship Engine) |
 | `bookFactor.js` + `bookFactorEngine.js` | 7 | **book layer**: sleeve positions → currency space, rolling currency PCA (K by noise band), factor-neutral book, raw vs neutral IS/OOS (`MVE_BOOK_FACTOR_AUDIT.md`) |
 | `bookForward.js` + `bookForwardEngine.js` | 7 | **forward paper tracker** of the factor-neutral combined spread book: append-only R2 log, daily replay/parity check, pre-registered kill/review rules (`MVE_BOOK_FORWARD_TRACKER.md`) |
+| `bookSystem.js` + `bookSystemEngine.js` | 7 | **sized system backtest**: hedged book (PCs + basket + net USD) at a 10% vol target, 5× cap; CAGR/Sharpe/DD/trade list vs the audit hedge and the raw sleeves (`MVE_BOOK_SYSTEM_BACKTEST.md`) |
 | `confidence.js` | 4 | logistic **confidence engine** over agreement/fit/calibration/regime/reversion |
 | `index.js` | 4 | **`runMVE()`** orchestrator + `valuationCard()` / `valuationText()` |
 | `signalAdapter.js` | 4 | OPT-IN blend of MVE into an existing 0–100 signal score (not wired) |
