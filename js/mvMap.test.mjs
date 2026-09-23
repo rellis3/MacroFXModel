@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildMap, LAYOUT, STAGES, MAP_W, MAP_H } from './mvMap.js';
+import { buildMap, LAYOUT, STAGES, EDGE_LABEL, MAP_W, MAP_H } from './mvMap.js';
 import { LINKS, BOARD } from './marketScan.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -88,6 +88,23 @@ t('no colour is hard-coded, so the map works in both themes', () => {
 t('an empty board draws nothing rather than throwing', () => {
   assert.doesNotThrow(() => buildMap([], []));
   assert.deepEqual(buildMap([], []).counts, { apart: 0, hold: 0, loose: 0 });
+});
+
+t('the mechanism is written ON the line, which is what makes it teach', () => {
+  const m = buildMap([link('tips-gold', 'tips', 'gold', -0.6, 0)], []);
+  assert.match(m.svg, /class="mmL hold"[^>]*>cost of carry</, 'the label must be drawn, not only in a tooltip');
+  assert.match(m.svg, /marker-end="url\(#mmArrow-hold\)"/, 'and the line must point somewhere');
+  // a link too loose to mean anything gets no label -- naming a mechanism that is
+  // not operating is the one thing worse than naming none
+  const loose = buildMap([link('dxy-btc', 'dxy', 'btc', -0.05, 0, true)], []);
+  assert.doesNotMatch(loose.svg, /class="mmL/);
+});
+
+t('every link on the board has a mechanism label', () => {
+  const missing = LINKS.filter(l => !EDGE_LABEL[l.id]).map(l => l.id);
+  assert.deepEqual(missing, [], 'these links would draw a bare line');
+  for (const [id, lab] of Object.entries(EDGE_LABEL))
+    assert.ok(lab.length <= 22, `"${lab}" (${id}) is too long to sit on a line`);
 });
 
 console.log(`mvMap: ${n} groups, all passed`);

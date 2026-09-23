@@ -354,10 +354,21 @@
   .mmap{display:block;width:100%;min-width:900px;height:auto}
   .mmH{fill:var(--text3);font-size:9px;font-weight:800;letter-spacing:.07em;text-transform:uppercase}
   .mmE{fill:none;stroke-linecap:round;cursor:pointer;transition:stroke-width .12s}
-  .mmE.hold{stroke:var(--bull);opacity:.42}
+  .mmE.hold{stroke:var(--bull);opacity:.62}
   .mmE.apart{stroke:var(--amber);opacity:.95}
   .mmE.loose{stroke:var(--text3);opacity:.3;stroke-dasharray:3 5}
-  .mmE:hover{opacity:1;stroke-width:6}
+  .mmEg{cursor:pointer}
+  .mmEg:hover .mmE{opacity:1;stroke-width:6}
+  .mmEg:hover .mmL{fill:var(--text)}
+  /* the mechanism, written on the line -- with a plate behind it so it survives a crossing */
+  .mmL{font-size:9px;font-weight:700;letter-spacing:.01em;fill:var(--text3);
+       stroke:var(--card2);stroke-linejoin:round;pointer-events:none}
+  .mmL.apart{fill:var(--amber)}
+  .mmA.hold{fill:var(--bull)} .mmA.apart{fill:var(--amber)} .mmA.loose{fill:var(--text3)}
+  /* stage colour: the columns read as groups without needing a second legend */
+  .mmStage.s0{fill:#7c8cff} .mmStage.s1{fill:#e0794a} .mmStage.s2{fill:#39b3a6}
+  .mmStage.s3{fill:#6aa9e0} .mmStage.s4{fill:#c98ad6}
+  .mmH{fill:var(--text2)}
   .mmN{cursor:pointer}
   .mmBox{fill:var(--card);stroke:var(--border)}
   .mmN:hover .mmBox{stroke:var(--blue)}
@@ -387,6 +398,19 @@
   .grp{font-size:9.5px;letter-spacing:.11em;font-weight:800;margin-top:12px}
   /* wider screens get more tiles per row rather than more empty space */
   @media(min-width:1500px){ .tiles{grid-template-columns:repeat(auto-fill,minmax(184px,1fr))} }
+  /* ── the key strip: orientation before anything else ─────────────────────── */
+  .ks{display:grid;grid-template-columns:repeat(auto-fit,minmax(122px,1fr));gap:9px;margin-bottom:12px}
+  .ksc{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 11px 7px;
+       cursor:pointer;text-align:left;font:inherit;color:var(--text);position:relative;overflow:hidden}
+  .ksc:hover{border-color:var(--text3)}
+  .ksc .n3{font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .ksc .v3{font-size:19px;font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-top:1px;
+           font-variant-numeric:tabular-nums}
+  .ksc .c3{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .ksc .c3.up{color:var(--bull)} .ksc .c3.dn{color:var(--red)}
+  .ksc .sp3{margin-top:3px;height:26px}
+  .ksc .sp3 svg{width:100%;height:26px;display:block}
+  .ksc.hot{border-color:var(--amber)}
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -419,6 +443,7 @@
 </nav>
 <div class="main">
 <div class="wrap">
+  <div class="ks" id="keystrip"></div>
   <div class="gl" id="glance"></div>
 
   <div class="grid">
@@ -558,11 +583,11 @@ async function load() {
     SECS = sectorBoard(BUNDLE);
     STATE = marketState(BUNDLE, SCORED);
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
-    renderTf(); renderGlance(); renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
+    renderTf(); renderKeyStrip(); renderGlance(); renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    renderVol(); renderLearn(); renderMap();
+    renderVol(); renderLearn(); renderMap(); renderKeyStrip();
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -1222,6 +1247,32 @@ function tierOf(z) {
   return a >= THRESHOLDS.extreme ? { cls: 'hot', word: ' · rare' }
        : a >= THRESHOLDS.unusual ? { cls: 'warm', word: ' · unusual' }
        : { cls: '', word: '' };
+}
+
+/**
+ * The key strip.
+ *
+ * Nine markets, big numbers, a real sparkline each. It is the first thing on the page
+ * because orientation has to come before analysis: before you can care that a link
+ * has come apart you need to know whether the market is up or down today. The
+ * counters underneath answer "is anything unusual"; this answers "what is happening".
+ *
+ * The sparkline is 60 sessions, which is long enough to show shape and short enough
+ * that today is still visible at the end of it.
+ */
+const KEYSTRIP = ['spx', 'nq', 'r2k', 'vix', 'us10y', 'curve', 'dxy', 'gold', 'oil'];
+function renderKeyStrip() {
+  const rows = KEYSTRIP.map(k => SCORED.find(r => r.key === k)).filter(Boolean);
+  if (!rows.length) { $('keystrip').innerHTML = ''; return; }
+  $('keystrip').innerHTML = rows.map(r => {
+    const T = tierOf(r.z), up = r.change > 0;
+    return `<button class="ksc ${T.cls}" onclick="selTile('${esc(r.key)}')" title="${esc(r.what)}">
+      <div class="n3">${esc(r.label)}</div>
+      <div class="v3">${esc(fmtLevel(r))}</div>
+      <div class="c3 ${up ? 'up' : 'dn'}">${esc(fmtChange(r))}</div>
+      <div class="sp3">${spark((BUNDLE?.series?.[r.key] ?? []).slice(-60), { w: 120, h: 26 })}</div>
+    </button>`;
+  }).join('');
 }
 
 function renderBoard() {

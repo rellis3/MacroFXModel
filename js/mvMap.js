@@ -37,7 +37,28 @@ export const LAYOUT = {
   gold: [4, 0], silver: [4, 1], oil: [4, 2.5], copper: [4, 4], btc: [4, 5],
 };
 
-const COLW = 196, ROWH = 74, PADX = 62, PADY = 42, RX = 46, RY = 17;
+
+/**
+ * The mechanism, in two or three words, written ON the line.
+ *
+ * This is the difference between a picture of connections and a picture that
+ * teaches. A bare line says "these two are related"; "cost of carry" says WHY, and
+ * after you have seen it on the line ten times you know it without reading it. The
+ * full sentence still lives in the panel underneath — this is the handle, not the
+ * explanation.
+ */
+export const EDGE_LABEL = {
+  'tips-gold': 'cost of carry', 'tips-nq': 'discount rate', 'oil-bei': 'pass-through',
+  'us2y-r2k': 'funding cost', 'hy-spx': 'lenders vote first', 'ccc-hy': 'same stack',
+  'vix-spx': 'insurance price', 'vix-ovx': 'both fear', 'copper-audusd': 'China proxy',
+  'oil-usdcad': 'oil exporter', 'dxy-gold': 'priced in $', 'dxy-btc': 'risk beta',
+  'jgbgap-usdjpy': 'carry pays', 'bundgap-eurusd': 'follow the yield',
+  'giltgap-gbpusd': 'follow the yield', 'spx-de30': 'global risk',
+  'usdjpy-jp225': 'exporter earnings', 'gold-silver': 'same metal trade',
+  'vix-hy': 'one worry, two prices', 'r2k-nq': 'breadth',
+};
+
+const COLW = 210, ROWH = 70, PADX = 54, PADY = 46, RX = 52, RY = 18;
 export const MAP_W = PADX * 2 + COLW * 4 + RX * 2;
 export const MAP_H = PADY * 2 + ROWH * 5 + RY * 2;
 
@@ -82,10 +103,21 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
     const cx = mx - (dy / len) * bow, cy = my + (dx / len) * bow;
     // thickness is the REAL strength of the link, so a loose one looks loose
     const w = L.weak ? 1 : 1.2 + Math.min(Math.abs(L.corr), 1) * 3.4;
-    return `<path class="mmE ${cls}" d="M${A.x},${A.y} Q${cx.toFixed(0)},${cy.toFixed(0)} ${B.x},${B.y}"
-      stroke-width="${w.toFixed(1)}" data-id="${esc(L.id)}"
-      onclick="mapPick('link','${esc(L.id)}')"><title>${esc(L.labelA)} ↔ ${esc(L.labelB)} — ${
-      L.weak ? 'too loose to mean anything' : apart ? 'come apart today' : 'holding'} (${Math.abs(L.corr).toFixed(2)})</title></path>`;
+    // trim the line so the arrowhead lands on the node edge, not under the box
+    const t = 0.88, qx = (1 - t) * (1 - t) * A.x + 2 * (1 - t) * t * cx + t * t * B.x;
+    const qy = (1 - t) * (1 - t) * A.y + 2 * (1 - t) * t * cy + t * t * B.y;
+    const lab = EDGE_LABEL[L.id];
+    // the label sits at the arc's midpoint, upright, on its own plate so it stays
+    // readable where lines cross
+    const lx = 0.25 * A.x + 0.5 * cx + 0.25 * B.x, ly = 0.25 * A.y + 0.5 * cy + 0.25 * B.y;
+    return `<g class="mmEg ${cls}" onclick="mapPick('link','${esc(L.id)}')">
+      <title>${esc(L.labelA)} → ${esc(L.labelB)} — ${
+        L.weak ? 'too loose to mean anything' : apart ? 'come apart today' : 'holding'} (${Math.abs(L.corr).toFixed(2)})${lab ? ' · ' + esc(lab) : ''}</title>
+      <path class="mmE ${cls}" d="M${A.x},${A.y} Q${cx.toFixed(0)},${cy.toFixed(0)} ${qx.toFixed(0)},${qy.toFixed(0)}"
+        stroke-width="${w.toFixed(1)}" marker-end="url(#mmArrow-${cls})"/>
+      ${lab && !L.weak ? `<text x="${lx.toFixed(0)}" y="${ly.toFixed(0)}" class="mmL ${cls}" text-anchor="middle"
+        paint-order="stroke" stroke-width="3.5">${esc(lab)}</text>` : ''}
+    </g>`;
   }).join('');
 
   const touched = new Set(drawn.flatMap(l => [l.a, l.b]));
@@ -102,6 +134,8 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
     return `<g class="mmN${hot}" onclick="mapPick('node','${esc(k)}')" tabindex="0">
       <rect x="${p.x - RX}" y="${p.y - RY}" width="${RX * 2}" height="${RY * 2}" rx="8"
         class="mmBox" stroke-width="${ring}"/>
+      <rect x="${p.x - RX}" y="${p.y - RY + 3}" width="3" height="${RY * 2 - 6}" rx="1.5"
+        class="mmStage s${LAYOUT[k][0]}"/>
       <text x="${p.x}" y="${p.y - 2}" class="mmT" text-anchor="middle">${esc(SHORT[k] ?? k)}</text>
       <text x="${p.x}" y="${p.y + 10}" class="mmV${dir}" text-anchor="middle">${esc(val)}</text>
     </g>`;
@@ -121,6 +155,8 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
   return {
     svg: `<svg class="mmap" viewBox="0 0 ${MAP_W} ${MAP_H}" role="img"
       aria-label="How the markets on this board connect: ${counts.hold} links holding, ${counts.apart} come apart today, ${counts.loose} too loose to mean anything. Left to right is roughly cause to effect.">
+      <defs>${['hold', 'apart', 'loose'].map(c => `<marker id="mmArrow-${c}" viewBox="0 0 10 10" refX="8" refY="5"
+        markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M1,1 L9,5 L1,9 Z" class="mmA ${c}"/></marker>`).join('')}</defs>
       ${heads}${edges}${nodes}</svg>`,
     counts, nodes: [...touched],
   };
