@@ -149,4 +149,14 @@ t('the reworded questions put both legs on the card', () => {
     assert.match(q.stem, /credit spreads/, 'the credit move must be shown'); break; }
 });
 
+t('only: asks for one named generator, or nothing at all', () => {
+  const b = bundle();
+  for (let s = 1; s < 25; s++) {
+    const q = buildQuestion(b, { seed: s, only: ['curve-led'] });
+    if (q) assert.equal(q.gen, 'curve-led', 'only must never fall back to another concept');
+  }
+  assert.equal(buildQuestion(b, { seed: 1, only: ['no-such-generator'] }), null,
+    'an unmatched only yields nothing rather than a different question');
+});
+
 console.log(`marketDrill: ${n} groups, all passed`);

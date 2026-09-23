@@ -276,11 +276,20 @@ export function assertDerivable(q) {
  * narrows it; `exclude` avoids repeating a generator back to back.
  * Returns null only if the bundle cannot support any question at all.
  */
-export function buildQuestion(bundle, { seed = 1, topics = null, exclude = [] } = {}) {
+/**
+ * `only` names specific GENERATORS (by id), where `topics` names categories. The
+ * spaced-repetition layer tracks mastery per generator, so it needs to ask for one
+ * exactly rather than for whatever happens to sit in the same category.
+ */
+export function buildQuestion(bundle, { seed = 1, topics = null, only = null, exclude = [] } = {}) {
   const dates = bundle?.dates ?? [];
   if (dates.length < WINDOW + 30) return null;
   const rand = rng(seed);
-  const pool = GENERATORS.filter(g => (!topics || topics.includes(g.topic)) && !exclude.includes(g.id));
+  const pool = GENERATORS.filter(g => (!topics || topics.includes(g.topic))
+    && (!only || only.includes(g.id)) && !exclude.includes(g.id));
+  // An `only` that matches nothing must yield NO question, not silently fall back to
+  // the whole pool -- the caller asked for one concept and would get a different one.
+  if (only && !pool.length) return null;
   const gens = pool.length ? pool : GENERATORS;
   // try random days until one of them can teach something; bounded so this
   // always terminates on a thin bundle

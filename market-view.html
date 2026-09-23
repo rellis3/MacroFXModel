@@ -442,6 +442,29 @@
   .wy li b{color:var(--text);font-weight:700} .wy li span.wh{color:var(--text3)}
   .wy li .mv{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:var(--text2)}
   .wy .cv{margin-top:9px;font-size:10.5px;color:var(--text3);line-height:1.5}
+  /* ── check yourself: retrieval practice, on today's numbers ──────────────── */
+  .ck{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--amber);
+      border-radius:13px;padding:16px 19px;margin-bottom:12px}
+  .ck h3{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);font-weight:800}
+  .ck h3 .dueN{color:var(--amber);margin-left:8px}
+  .ck .q{font-size:15.5px;line-height:1.6;color:var(--text);margin:9px 0 12px;max-width:72ch;font-weight:600}
+  .ck .opts{display:flex;flex-direction:column;gap:7px;max-width:640px}
+  .ck .opt{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 13px;
+           font:inherit;font-size:13.5px;color:var(--text);text-align:left;cursor:pointer;line-height:1.45}
+  .ck .opt:hover{border-color:var(--blue)}
+  .ck .opt.pick{border-color:var(--blue);background:var(--card)}
+  .ck .opt.right{border-color:var(--bull);background:rgba(60,180,120,.09)}
+  .ck .opt.wrong{border-color:var(--red);background:rgba(220,80,80,.08)}
+  .ck .rev{margin-top:12px;font-size:13.5px;line-height:1.65;color:var(--text2);
+           border-top:1px solid var(--border2);padding-top:11px}
+  .ck .rev b{color:var(--text)}
+  .ck .verdict{font-size:14px;font-weight:800;margin-bottom:5px}
+  .ck .verdict.y{color:var(--bull)} .ck .verdict.n{color:var(--red)}
+  .ck .bar{display:flex;gap:3px;margin-top:12px}
+  .ck .bar i{height:5px;flex:1;border-radius:3px;background:var(--border)}
+  .ck .bar i.s{background:var(--bull)} .ck .bar i.p{background:var(--amber)}
+  .ck .meta{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}
+  .ck .done{font-size:14px;color:var(--text2);line-height:1.6}
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -476,6 +499,7 @@
 <div class="wrap">
   <div class="ks" id="keystrip"></div>
   <div class="dr" id="deskread" data-panel="p-read"></div>
+  <div class="ck" id="check" data-panel="p-read"></div>
   <div class="gl" id="glance"></div>
 
   <div class="grid">
@@ -577,6 +601,8 @@ import { analogues, keysFor } from './js/analogue.js';
 import { buildMap } from './js/mvMap.js';
 import { deskRead, TERMS } from './js/deskRead.js';
 import { explainMove } from './js/explainMove.js';
+import { buildQuestion } from './js/marketDrill.js';
+import { CONCEPTS, answer as learnAnswer, nextTopic, progress, known } from './js/learnState.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
@@ -621,7 +647,7 @@ async function load() {
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    renderVol(); renderLearn(); renderMap(); renderKeyStrip(); renderRead();
+    renderVol(); renderLearn(); renderMap(); renderKeyStrip(); renderRead(); renderCheck();
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -1349,6 +1375,77 @@ function whyHtml(key) {
       <span class="mv">${esc(c.move)}</span></li>`).join('')}</ul>
     <div class="cv">${esc(r.caveat)}</div></div>`;
 }
+
+/**
+ * Check yourself — one question, from today's board, before you are told anything.
+ *
+ * This is the only part of the page that asks instead of telling, and it is the part
+ * that makes the rest stick. Re-reading an explanation feels like learning because
+ * the words get familiar; the familiarity is the illusion. Retrieving the answer from
+ * memory is what actually moves it, and you only find out whether you can retrieve it
+ * by committing before the reveal.
+ *
+ * The state lives in this browser only. It is per-device, costs nothing to run, and
+ * never reaches the server — which also means clearing site data clears your progress,
+ * and that is the honest trade for a feature that needs no account.
+ */
+const LEARN_KEY = 'mv_learn_v1';
+let LEARN = {};
+try { LEARN = JSON.parse(localStorage.getItem(LEARN_KEY) ?? '{}') ?? {}; } catch (e) { LEARN = {}; }
+const saveLearn = () => { try { localStorage.setItem(LEARN_KEY, JSON.stringify(LEARN)); } catch (e) {} };
+
+let QUIZ = null;        // { topic, q, picked, revealed }
+
+function renderCheck() {
+  const el = $('check'); if (!el || !BUNDLE) return;
+  const p = progress(LEARN);
+  const bar = `<div class="bar">${p.rows.map(r =>
+    `<i class="${r.mastery >= 0.7 ? 's' : r.mastery > 0 ? 'p' : ''}" title="${esc(r.label)} — ${Math.round(r.mastery * 100)}%"></i>`).join('')}</div>
+    <div class="meta">${p.solid} of ${p.total} readings solid${p.weakest ? ` · weakest right now: <b>${esc(p.weakest.label)}</b>` : ''}${p.answers ? ` · ${p.answers} answered` : ''}</div>`;
+
+  if (!QUIZ) {
+    const topic = nextTopic(LEARN);
+    if (!topic) {
+      // Nothing due is a real answer, not a reason to invent a question. Drilling a
+      // concept you just got right teaches nothing and trains you to skim the card.
+      el.innerHTML = `<h3>Check yourself</h3>
+        <div class="done">Nothing is due. Everything you have worked on is still fresh — come back tomorrow and the oldest reading will be waiting.
+        Spacing them out is what makes them stick; drilling the same thing twice in an afternoon does not.</div>${bar}`;
+      return;
+    }
+    let q = null;
+    try { q = buildQuestion(BUNDLE, { seed: Date.now() % 100000, only: [topic] }); } catch (e) { q = null; }
+    if (!q) { el.innerHTML = `<h3>Check yourself</h3><div class="done">Today's board does not carry the numbers for the next question. It will be back when it does.</div>${bar}`; return; }
+    QUIZ = { topic, q, picked: null, revealed: false };
+  }
+
+  const { q, picked, revealed } = QUIZ;
+  const opts = (q.options ?? []).map(o => {
+    const isRight = o.key === q.answer;
+    const cls = !revealed ? (picked === o.key ? 'pick' : '') : isRight ? 'right' : picked === o.key ? 'wrong' : '';
+    return `<button class="opt ${cls}" ${revealed ? 'disabled' : ''} onclick="pickAnswer('${esc(o.key)}')">${esc(o.label)}</button>`;
+  }).join('');
+
+  el.innerHTML = `<h3>Check yourself<span class="dueN">${esc(CONCEPTS[QUIZ.topic]?.label ?? '')}</span></h3>
+    <div class="q">${esc(q.stem)}<br><span style="font-weight:500;color:var(--text2)">${esc(q.ask ?? '')}</span></div>
+    <div class="opts">${opts}</div>
+    ${revealed ? `<div class="rev">
+      <div class="verdict ${picked === q.answer ? 'y' : 'n'}">${picked === q.answer ? '✓ Right' : '✕ Not this time'}</div>
+      ${esc(q.reveal ?? '')} ${esc(q.why ?? '')}
+      ${q.principle ? `<div style="margin-top:8px"><b>The principle:</b> ${esc(q.principle)}</div>` : ''}
+      <div class="lnk" style="margin-top:9px"><a href="#" onclick="nextQuestion();return false">another →</a> · <a href="drill.html" target="_blank">full drill ↗</a></div>
+    </div>` : ''}
+    ${bar}`;
+}
+
+window.pickAnswer = key => {
+  if (!QUIZ || QUIZ.revealed) return;
+  QUIZ.picked = key; QUIZ.revealed = true;
+  LEARN = learnAnswer(LEARN, QUIZ.topic, key === QUIZ.q.answer);
+  saveLearn();
+  renderCheck();
+};
+window.nextQuestion = () => { QUIZ = null; renderCheck(); };
 
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {
