@@ -302,6 +302,49 @@
     .mdl-p{max-width:none;max-height:94vh;border-radius:14px 14px 0 0}
     .mdl-h h3{font-size:16px}
   }
+  /* ── the sidebar: sections, so only one part of the page exists at a time ── */
+  /*
+     The grid made the page half as tall. This makes it a fifth as tall, because the
+     panels you are not reading are not rendered. Each section is a domain, and each
+     one carries a link to the existing page that owns it -- that page is the drill-
+     down, this is the summary with the live numbers already on it.
+  */
+  .shell{display:grid;grid-template-columns:206px minmax(0,1fr);gap:0;min-height:100vh}
+  .side{border-right:1px solid var(--border);background:var(--card);padding:14px 0 20px;position:sticky;top:0;
+        height:100vh;overflow-y:auto}
+  .side .brand{padding:0 16px 14px;border-bottom:1px solid var(--border);margin-bottom:10px}
+  .side .brand b{font-size:15px;font-weight:800;letter-spacing:-.01em;display:block}
+  .side .brand i{font-style:normal;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .nv{display:block;width:100%;background:transparent;border:0;border-left:3px solid transparent;
+      color:var(--text2);font:inherit;font-size:13px;text-align:left;padding:8px 14px;cursor:pointer}
+  .nv:hover{background:var(--card2);color:var(--text)}
+  .nv.on{background:var(--card2);color:var(--text);border-left-color:var(--blue);font-weight:700}
+  .nv .em{margin-right:8px;opacity:.85}
+  .nv .ct{float:right;font-size:9.5px;font-weight:700;color:var(--text3);background:var(--bg);
+          border-radius:9px;padding:1px 6px;margin-top:1px}
+  .nv.on .ct{color:var(--amber)}
+  .side .grp2{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);
+              font-weight:700;padding:14px 16px 5px}
+  .side .deep{padding:10px 16px 0;margin-top:10px;border-top:1px solid var(--border);font-size:11px}
+  .side .deep a{display:block;color:var(--blue);text-decoration:none;padding:3px 0}
+  .side .deep a:hover{text-decoration:underline}
+  .side .deep b{display:block;color:var(--text3);font-size:9px;letter-spacing:.09em;
+                text-transform:uppercase;margin-bottom:4px}
+  .main{min-width:0;padding:0}
+  .sec-hide{display:none !important}
+
+  @media(max-width:860px){
+    .shell{grid-template-columns:minmax(0,1fr)}
+    .side{position:sticky;top:0;height:auto;border-right:0;border-bottom:1px solid var(--border);
+          padding:0;z-index:40;display:flex;overflow-x:auto;overscroll-behavior-x:contain;
+          scrollbar-width:none}
+    .side::-webkit-scrollbar{display:none}
+    .side .brand,.side .grp2,.side .deep{display:none}
+    .nv{width:auto;flex:none;white-space:nowrap;border-left:0;border-bottom:3px solid transparent;
+        padding:11px 13px;font-size:12.5px}
+    .nv.on{border-left:0;border-bottom-color:var(--blue)}
+    .nv .ct{float:none;margin-left:6px}
+  }
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -325,27 +368,35 @@
   <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
 </div>
 
+<div class="shell">
+<nav class="side">
+  <div class="brand"><b>Market View</b><i>context · connections</i></div>
+  <div class="grp2">Sections</div>
+  <div id="nav"></div>
+  <div class="deep" id="deep"></div>
+</nav>
+<div class="main">
 <div class="wrap">
   <div class="gl" id="glance"></div>
 
   <div class="grid">
-    <div class="state s7" id="state">Reading the market…</div>
+    <div class="state s7" id="state" data-panel="p-state">Reading the market…</div>
 
-    <div class="card s5">
+    <div class="card s5" data-panel="p-scan">
       <h2>What is unusual right now</h2>
       <div class="sub">Ranked, with how many of each one’s implied consequences actually landed. <b>Tap any row</b> for the chart, the mechanism and the history.</div>
       <div id="scan">Reading the board…</div>
       <div class="srcbox" data-p="scan"></div>
     </div>
 
-    <div class="card s5">
+    <div class="card s7" data-panel="p-sectors">
       <h2>Where it landed — the eleven sectors</h2>
       <div class="sub">A macro move is abstract until you see which business it hit. <b>Financials answer the curve, Utilities and Real estate the level of rates, Technology the real yield.</b></div>
       <div id="sectors">Loading sectors…</div>
       <div class="srcbox" data-p="sectors"></div>
     </div>
 
-    <div class="card s7">
+    <div class="card s12" data-panel="p-board">
       <div class="hrow"><h2 style="margin:0">The whole board</h2><span class="tf" id="tf"></span></div>
       <div class="sub">Every market this desk carries, scored against <b>its own</b> history — so a 40bp move in the 2-year and a 6% move in gold are comparable. <b>Amber = rare.</b></div>
       <div id="board"></div>
@@ -353,21 +404,47 @@
       <div class="srcbox" data-p="board"></div>
     </div>
 
-    <div class="card s7">
+    <div class="card s12" data-panel="p-wire">
       <h2>How this market is wired today</h2>
       <div class="sub">Every relationship, ranked by how far apart the two markets are <b>today</b> against three years of how they actually moved. The bar is the real strength of the link — a loose one has nothing to break.</div>
       <div id="wire" class="cap-h">Scoring the relationships…</div>
       <div class="srcbox" data-p="wire"></div>
     </div>
 
-    <div class="card s5">
+    <div class="card s7" data-panel="p-book">
       <h2>The options book</h2>
       <div class="sub">Where price sits against the strikes carrying the open interest — the only panel here built from <b>positioning</b> rather than price. The bar runs put wall to call wall; <b>amber means price has left the band</b>.</div>
       <div id="book" class="cap-h">Reading the book…</div>
       <div class="srcbox" data-p="book"></div>
     </div>
 
-    <div class="card s12">
+
+    <div class="card s12" data-panel="p-rates">
+      <h2>Rates &amp; credit</h2>
+      <div class="sub">The discount rate everything else is priced off, and the ladder of who pays what to borrow. <b>The real-versus-inflation split is the most useful reading on this page</b> — it says whether a bond move is about growth or about prices.</div>
+      <div id="ratesBoard"></div>
+      <div class="srcbox" data-p="board"></div>
+    </div>
+
+    <div class="card s12" data-panel="p-equities">
+      <h2>Equities, FX and commodities</h2>
+      <div class="sub">Where the rates move actually arrives. Amber = rare against that market’s own three-year history.</div>
+      <div id="eqBoard"></div>
+    </div>
+
+    <div class="card s5" data-panel="p-vol">
+      <h2>The volatility surface</h2>
+      <div class="sub">Nine free CBOE feeds. <b>Read the term structure first</b> — when three-month insurance costs less than one-month, the market is paying up to be covered right now, and that is the one volatility reading this desk has validated (for range, never direction).</div>
+      <div id="volBoard"></div>
+      <div class="srcbox" data-p="range"></div>
+    </div>
+
+    <div class="card s12" data-panel="p-learn">
+      <h2>What this desk has actually tested</h2>
+      <div class="sub">Every claim on this page traces to a pre-registered study with a verdict — including the ones that came back null, which are the majority and the more useful half.</div>
+      <div id="learnBox"></div>
+    </div>
+    <div class="card s12" data-panel="p-impact">
       <h2>So what do I do with that?</h2>
       <div class="sub">Every finding above turned into the next thing to go and look at. This column is the habit worth building — a market you can explain but never check is one you are still only reading about.</div>
       <div id="impact"></div>
@@ -375,6 +452,8 @@
       <div class="note" id="foot"></div>
     </div>
   </div>
+</div>
+</div>
 </div>
 
 <div class="mdl" id="mdl" role="dialog" aria-modal="true" aria-labelledby="mdlT">
@@ -437,6 +516,10 @@ async function load() {
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
     renderTf(); renderGlance(); renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
+    renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
+    renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
+    renderVol(); renderLearn();
+    applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
 }
@@ -911,6 +994,147 @@ function renderScan() {
       <span class="ch">›</span>
     </button>`;
   }).join('');
+}
+
+/**
+ * The sections.
+ *
+ * `panels` are the ids shown when that section is active; everything else is hidden
+ * rather than scrolled past. `deep` is the existing page that OWNS this domain — the
+ * summary lives here with the live numbers already on it, and that link is where you
+ * go when the summary is not enough. That ordering is the point: a link you have to
+ * remember to click is a link you never click.
+ *
+ * `count` reads a live number onto the nav item, so the sidebar itself says where to
+ * look before you have opened anything.
+ */
+const SECTIONS = [
+  { id: 'overview', em: '🎯', label: 'Overview',
+    panels: ['p-state', 'p-scan', 'p-impact'],
+    deep: [['today.html', "Today's desk"], ['evidence.html', 'Evidence book']],
+    count: () => glance(SCORED, LINKZ).rare || null },
+  { id: 'board', em: '🌐', label: 'Whole board',
+    panels: ['p-board'],
+    deep: [['correlations.html', 'Correlations'], ['weekmap.html', 'Week map']],
+    count: () => glance(SCORED, LINKZ).rare || null },
+  { id: 'rates', em: '🏛️', label: 'Rates & credit',
+    panels: ['p-rates'],
+    deep: [['rates.html', 'Rates'], ['yield-curve.html', 'Yield curve'], ['real-yield.html', 'Real yield'], ['credit-stress.html', 'Credit stress']],
+    count: () => SCORED.filter(r => (r.group === 'Rates' || r.group === 'Credit & fear') && Math.abs(r.z) >= 2.6).length || null },
+  { id: 'equities', em: '📊', label: 'Equities & sectors',
+    panels: ['p-sectors', 'p-equities'],
+    deep: [['macro-scorecard.html', 'Macro scorecard'], ['credit-leadlag.html', 'Credit lead/lag']],
+    count: () => STATE?.breadth?.sectorsUp != null ? `${STATE.breadth.sectorsUp}/${STATE.breadth.sectorsTotal}` : null },
+  { id: 'wire', em: '🔗', label: 'Relationships',
+    panels: ['p-wire'],
+    deep: [['today.html', 'The full chain'], ['yield-coupling.html', 'Yield coupling']],
+    count: () => LINKZ.filter(l => !l.weak && Math.abs(l.z) >= 3.1).length || null },
+  { id: 'options', em: '🎲', label: 'Options & vol',
+    panels: ['p-book', 'p-vol'],
+    deep: [['oi-dashboard.html', 'OI dashboard'], ['oi-zones.html', 'OI zones'], ['expected-moves.html', 'Expected moves'], ['vol-forecast-v2.html', 'Vol forecast']],
+    count: () => BOOK?.ok ? (BOOK.stale ? '!' : BOOK.rows.filter(r => r.inside === false).length || null) : null },
+  { id: 'learn', em: '🎓', label: 'Learn',
+    panels: ['p-learn'],
+    deep: [['drill.html', 'Drill'], ['evidence.html', 'Evidence book'], ['market-sense.html', 'What has been tested']],
+    count: () => null },
+];
+
+let SEC = 'overview';
+try { const s = localStorage.getItem('mv_section'); if (SECTIONS.some(x => x.id === s)) SEC = s; } catch (e) {}
+
+function renderNav() {
+  $('nav').innerHTML = SECTIONS.map(s => {
+    let ct = null; try { ct = s.count(); } catch (e) {}
+    return `<button class="nv ${SEC === s.id ? 'on' : ''}" onclick="goSection('${s.id}')">
+      <span class="em">${s.em}</span>${esc(s.label)}${ct ? `<span class="ct">${esc(String(ct))}</span>` : ''}</button>`;
+  }).join('');
+  const cur = SECTIONS.find(s => s.id === SEC);
+  $('deep').innerHTML = cur?.deep?.length
+    ? `<b>Go deeper</b>${cur.deep.map(([h, l]) => `<a href="${esc(h)}" target="_blank">${esc(l)} ↗</a>`).join('')}`
+    : '';
+}
+
+/** Show one section's panels and hide the rest. */
+function applySection() {
+  const show = new Set(SECTIONS.find(s => s.id === SEC)?.panels ?? []);
+  for (const el of document.querySelectorAll('[data-panel]'))
+    el.classList.toggle('sec-hide', !show.has(el.dataset.panel));
+  renderNav();
+}
+window.goSection = id => {
+  if (!SECTIONS.some(s => s.id === id)) return;
+  SEC = id;
+  try { localStorage.setItem('mv_section', id); } catch (e) {}
+  applySection();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+/**
+ * The rates and equities sections reuse the board renderer, filtered to their own
+ * groups — the same scored rows, not a second copy that can disagree with the first.
+ */
+function renderGroupBoard(elId, groups) {
+  const rows = SCORED.filter(s => groups.includes(s.group));
+  if (!rows.length) { $(elId).innerHTML = '<span class="muted">Nothing scored in this group yet.</span>'; return; }
+  $(elId).innerHTML = [...new Set(rows.map(r => r.group))].map(g => `<div class="grp">${esc(g)}</div>
+    <div class="tiles">${rows.filter(r => r.group === g).map(s => {
+      const hot = Math.abs(s.z) >= 3.6, cls = s.change > 0 ? 'up' : s.change < 0 ? 'dn' : 'fl';
+      return `<button class="tile ${hot ? 'hot' : ''} ${SEL === s.key ? 'sel' : ''}" onclick="selTile('${esc(s.key)}')">
+        <div class="k">${esc(s.label)}</div><div class="v">${esc(fmtLevel(s))}</div>
+        <div class="c ${cls}">${esc(fmtChange(s))} <span class="z ${hot ? 'hot' : ''}">z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}${hot ? ' · rare' : ''}</span></div>
+        ${spark((BUNDLE?.series?.[s.key] ?? []).slice(-60))}</button>`;
+    }).join('')}</div>`).join('');
+}
+
+/** The vol surface, read as a curve rather than a list of numbers. */
+function renderVol() {
+  const by = k => SCORED.find(r => r.key === k);
+  const curve = ['vix9d', 'vix', 'vix3m', 'vix6m'].map(k => by(k)).filter(Boolean);
+  const term = by('vixterm');
+  const others = ['vvix', 'skew', 'dspx', 'ovx', 'gvz'].map(k => by(k)).filter(Boolean);
+  if (!curve.length) { $('volBoard').innerHTML = '<span class="muted">The volatility feeds have not loaded.</span>'; return; }
+  const inv = term?.last != null && term.last < 0;
+  $('volBoard').innerHTML =
+    `<div class="bkwarn" style="border-left-color:var(--${inv ? 'amber' : 'bull'})">
+       <b>${inv ? 'The curve is INVERTED' : 'The curve is normal'}</b> — three-month VIX is
+       ${term?.last != null ? `${Math.abs(term.last).toFixed(1)} points ${term.last < 0 ? 'BELOW' : 'above'} spot` : 'unreadable'}.
+       ${inv ? 'The market is paying more to be covered now than later. Validated for RANGE only (O1: the next month ran +0.52 [0.38, 0.88] wider on the S&P) — it says nothing about direction.'
+             : 'Longer cover costs more, which is the ordinary state and carries no signal.'}</div>
+     <div class="tiles">${[...curve, ...others].map(s2 => {
+       const hot = Math.abs(s2.z) >= 3.6;
+       return `<button class="tile ${hot ? 'hot' : ''}" onclick="selTile('${esc(s2.key)}')">
+         <div class="k">${esc(s2.label)}</div><div class="v">${esc(fmtLevel(s2))}</div>
+         <div class="c ${s2.change > 0 ? 'up' : 'dn'}">${esc(fmtChange(s2))}
+           <span class="z ${hot ? 'hot' : ''}">z ${s2.z >= 0 ? '+' : ''}${s2.z.toFixed(1)}</span></div></button>`;
+     }).join('')}</div>`;
+}
+
+/**
+ * The learn section: the desk's own verdicts, including the nulls.
+ *
+ * Deliberately leads with how many claims DIED. A page that only lists what
+ * survived is a page selling something.
+ */
+function renderLearn() {
+  const V = [
+    ['real', 'Inverted VIX curve → a wider month', 'O1, 14 firings: +0.52 [0.38, 0.88] on the S&P, +0.44 [0.26, 0.78] on the Nasdaq. Holds in both halves of the sample. Direction null.'],
+    ['real', 'A crowded market → a wider month', 'O1, 9 firings: +0.52 [0.37, 0.64]. Reaches D1’s secondary window by an independent path. D1’s weekly version stays dead.'],
+    ['null', 'A crowded market → a wider WEEK', 'D1, 68 setups since 2014: +0.07 [−0.06, +0.23]. The popular version of this claim is simply wrong.'],
+    ['null', 'Two markets coming apart → anything', 'O1, 17 firings: +0.01 [−0.11, +0.34], and the two halves flip sign. S5 separately found neither leg reliably corrects.'],
+    ['null', 'A rare move → anything', 'O1, 15 firings: +0.15 [−0.04, +0.40]. "Rare is a measurement, not a forecast" is now tested rather than asserted.'],
+    ['null', 'Price pins to options max pain', 'Tested properly 2026-09-10 after never having been tested at all. Null.'],
+    ['context', 'The credit stack moving → a wider month', 'O1, 12 firings: +0.16 [0.015, 0.33] on the S&P, null on the Nasdaq. Not enough to act on.'],
+  ];
+  const dead = V.filter(v => v[0] === 'null').length;
+  $('learnBox').innerHTML =
+    `<div class="bkwarn" style="border-left-color:var(--text3)"><b>${dead} of these ${V.length} claims are dead.</b>
+      That ratio is the single most useful thing on this page. Anything that survived did so on RANGE only —
+      every direction test this desk has run has died, without exception.</div>
+     <div class="wire">${V.map(([v, claim, res]) => `<div class="wrow" style="cursor:default;grid-template-columns:70px minmax(0,1fr)">
+       <span class="state ${v === 'real' ? 'st-hold' : v === 'null' ? 'st-apart' : 'st-weak'}" style="text-align:left">${v.toUpperCase()}</span>
+       <span><b style="font-size:12.5px">${esc(claim)}</b><br><span class="muted" style="font-size:11.5px">${esc(res)}</span></span>
+     </div>`).join('')}</div>
+     <div class="lnk" style="margin-top:9px"><a href="evidence.html" target="_blank">the full evidence book →</a> · <a href="drill.html" target="_blank">drill these readings →</a></div>`;
 }
 
 function renderBoard() {
