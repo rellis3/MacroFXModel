@@ -49,6 +49,7 @@ import { benchInstrument as hurstBenchInstrument, poolBench as hurstPoolBench } 
 import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/bookStress.js';
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
+import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
 import { rawDayDecision, mergeRawDay, oiContentFingerprint, oiFreshnessStreak,
          settledFreshnessInputs } from './js/oiRawArchive.js';
@@ -14181,6 +14182,17 @@ const _YAHOO_EQ = {
   xlu: 'XLU', xly: 'XLY', xlb: 'XLB', xlc: 'XLC', xlre: 'XLRE',
   smh: 'SMH', rsp: 'RSP', spy: 'SPY',
 };
+// Single names (2026-09-23). "Sectors" is not the same as "stocks": a rates move
+// that hits Financials is one fact, and the same move sparing the two names that
+// carry the index is a different one. These are the largest index weights plus a
+// bank, an oil major and a defensive, so the board can say WHICH names the move
+// reached. Three years, not six -- exactly the z-window, and 12 more six-year
+// series would put another ~130KB on a bundle that is already the egress bill.
+const _YAHOO_STOCK = {
+  nvda: 'NVDA', aapl: 'AAPL', msft: 'MSFT', meta: 'META', amzn: 'AMZN',
+  googl: 'GOOGL', tsla: 'TSLA', avgo: 'AVGO', lly: 'LLY', jpm: 'JPM',
+  xom: 'XOM', brk: 'BRK-B',
+};
 async function _yahooDaily(ticker, range = '6y') {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=1d`;
   const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(25_000) });
@@ -14224,6 +14236,10 @@ async function _refreshDrillBundle() {
       try { const d = await _yahooDaily(t); raw[k] = new Map(d.filter(o => o.date >= since).map(o => [o.date, o.value])); }
       catch (e) { console.warn('[drill]', k, e.message); }
     }
+    for (const [k, t] of Object.entries(_YAHOO_STOCK)) {
+      try { const d = await _yahooDaily(t, '3y'); raw[k] = new Map(d.map(o => [o.date, o.value])); }
+      catch (e) { console.warn('[drill]', k, e.message); }
+    }
     for (const [k, sym] of Object.entries(_DRILL_OANDA)) {
       try { const bars = await _btFetchD1(sym, 1600); raw[k] = new Map(bars.filter(b => b.date >= since).map(b => [b.date, b.close])); }
       catch (e) { console.warn('[drill]', k, e.message); }
@@ -14245,7 +14261,7 @@ async function _refreshDrillBundle() {
       if (series[k].some(v => v != null)) carried.push(k);
     }
     if (carried.length) console.warn(`[drill] carried forward (upstream failed this run): ${carried.join(', ')}`);
-    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), ...Object.keys(_CBOE_EXTRA), ...Object.keys(_YAHOO_EQ), 'dspx'].filter(k => !series[k]?.some(v => v != null));
+    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), ...Object.keys(_CBOE_EXTRA), ...Object.keys(_YAHOO_EQ), ...Object.keys(_YAHOO_STOCK), 'dspx'].filter(k => !series[k]?.some(v => v != null));
     _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length, carried, missing } };
   } catch (e) { _drillBundle.error = e.message; console.warn('[drill]', e.message); }
   return _drillBundle;
@@ -19965,6 +19981,34 @@ app.get('/api/vol-forecast/ladder/export', async (req, res) => {
         if (raw) text += buildSessionAddendum(JSON.parse(raw));
       } catch { /* session block is an add-on — never fail the export for it */ }
     }
+    res.type('text/plain').send(text);
+  } catch (e) {
+    res.status(500).type('text/plain').send(`Error: ${e.message}`);
+  }
+});
+
+// GET /api/vol-forecast/iv-ladder/export
+//
+// The daily Forecast export with σ swapped to CME 30-day ATM implied vol on the five
+// USD majors where that beat the realized ladder out of sample (js/ivLadderExport.js
+// has the evidence). Every other block is the production ladder unchanged, and the
+// text comes from the same buildLadderExportText, so the Pine indicators parse it
+// as-is. IV is read from oi_store's nightly QuikStrike capture; a missing or stale
+// capture falls back to the realized block for that instrument, never to old IV.
+// Response headers say which instruments were swapped, for the page's status line.
+app.get('/api/vol-forecast/iv-ladder/export', async (_req, res) => {
+  if (!forecastState.latest) {
+    return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
+  }
+  try {
+    let oiStore = {};
+    try {
+      const raw = await kv.get('oi_store');
+      if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; }
+    } catch { /* no OI -> every block falls back to realized */ }
+    const { text, swapped, skipped } = buildIvLadderExportText(forecastState.latest, oiStore, VOL_INSTRUMENTS, Date.now());
+    res.set('X-IV-Swapped', swapped.map(s => `${s.name}:${s.iv30}`).join(',') || 'none');
+    res.set('X-IV-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',') || 'none');
     res.type('text/plain').send(text);
   } catch (e) {
     res.status(500).type('text/plain').send(`Error: ${e.message}`);

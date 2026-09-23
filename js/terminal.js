@@ -206,3 +206,78 @@ export function feedHealth(bundle = null, book = null, cal = null, nowMs = Date.
 
   return { rows, bad: rows.filter(r => r.state === 'bad').length, warn: rows.filter(r => r.state === 'warn').length };
 }
+
+/**
+ * The desk brief — what is happening, what is exposed, what we cannot see.
+ *
+ * WHY THIS EXISTS AFTER I REMOVED IT. Building the terminal I stripped out the
+ * narrative along with the teaching, on the theory that a professional reader wants
+ * numbers rather than prose. That was wrong and the owner said so. Synthesis and
+ * hand-holding are different things: an institutional reader still wants the
+ * conclusion first, they just do not want the mechanism explained on the way past.
+ *
+ * So this is the same computation as deskRead in a different register. Terse lines,
+ * no sentences where a clause will do, no explaining what a real yield is. Every
+ * line is still a computed number and a line with no number does not print.
+ *
+ * BLIND is the one no reference dashboard carries and every desk needs: what this
+ * screen cannot currently see. A monitor that never reports its own blind spots is
+ * worse than no monitor, because you trust it.
+ */
+export function deskBrief({ board = [], sectors = [], links = [], horizons = [], state = null, health = null } = {}) {
+  const B = Array.isArray(board) ? board : [];
+  const by = k => B.find(x => x.key === k) ?? null;
+  const sec = k => (sectors ?? []).find(x => x.key === k) ?? null;
+  const L = [];
+  const pct = v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+  const bp = v => `${v > 0 ? '+' : ''}${Math.round(v)}bp`;
+
+  if (state && !state.quiet) {
+    const b = state.breadth ?? {};
+    L.push({ tag: 'STATE', text: [state.state,
+      b.sectorsUp != null ? `${b.sectorsUp}/${b.sectorsTotal} sectors up` : null,
+      b.concentration != null ? `avg share vs index ${pct(b.concentration)}` : null].filter(Boolean).join(' · ') });
+  }
+
+  const t = by('tips'), be = by('bei'), n10 = by('us10y'), n2 = by('us2y');
+  if (t && be && n10 && Math.abs(n10.change) >= 12) {
+    const d = Math.abs(t.change) + Math.abs(be.change);
+    const share = d > 0 ? Math.abs(t.change) / d : 0.5;
+    L.push({ tag: 'DRIVING', text: `10y ${bp(n10.change)}, ${Math.round(share * 100)}% ${share >= 0.65 ? 'real' : 'breakevens'} (real ${bp(t.change)} / BE ${bp(be.change)})${n2 ? ` · 2y ${bp(n2.change)}` : ''}` });
+  }
+
+  const hit = ['xlre', 'xlu', 'xlf'].map(sec).filter(Boolean).filter(s => s.change < 0);
+  if (hit.length >= 2) L.push({ tag: 'LANDED', text: hit.map(s => `${s.label} ${pct(s.change)}`).join(' · ') });
+
+  // which single names the move actually reached -- the thing sectors cannot say
+  const names = B.filter(x => x.group === 'Single names' && x.change != null);
+  if (names.length >= 4) {
+    const srt = names.slice().sort((a, b2) => b2.change - a.change);
+    L.push({ tag: 'NAMES', text: `${srt.slice(0, 3).map(s => `${s.label} ${pct(s.change)}`).join(' · ')}  |  ${srt.slice(-3).map(s => `${s.label} ${pct(s.change)}`).join(' · ')}` });
+  }
+
+  const rev = (horizons ?? []).filter(h => h.shape === 'reversing');
+  const stall = (horizons ?? []).filter(h => h.shape === 'stalling');
+  if (rev.length || stall.length) L.push({ tag: 'ROLLING', text: [
+    rev.length ? `${rev.length} reversing (${rev.slice(0, 3).map(r => r.label).join(', ')})` : null,
+    stall.length ? `${stall.length} stalling (${stall.slice(0, 3).map(r => r.label).join(', ')})` : null].filter(Boolean).join(' · ') });
+
+  // EXPOSED: what a move already on the board lands on next, named not explained
+  const exp = [];
+  const curve = by('curve');
+  if (curve && curve.change <= -15) exp.push(`banks (curve ${bp(curve.change)})`);
+  if (t && t.change >= 15) exp.push('long-duration equity and anything priced off the real rate');
+  if ((by('dxy')?.change ?? 0) >= 1.5) exp.push('dollar-funded and commodity exporters');
+  const ccc = by('ccc'), ig = by('ig');
+  if (ccc && ig && ccc.change > 20 && Math.abs(ig.change) < 10) exp.push('weakest borrowers only, not the system');
+  if (exp.length) L.push({ tag: 'EXPOSED', text: exp.join(' · ') });
+
+  const apart = (links ?? []).filter(l => !l.weak && Math.abs(l.z) >= 3.1);
+  if (apart.length) L.push({ tag: 'APART', text: apart.slice(0, 3).map(l => `${l.labelA}/${l.labelB}`).join(' · ') });
+
+  const blind = (health?.rows ?? []).filter(r => r.state === 'bad');
+  if (blind.length) L.push({ tag: 'BLIND', text: blind.map(r => `${r.label.toLowerCase()} — ${r.detail}`).join(' · '), bad: true });
+
+  if (!L.length) L.push({ tag: 'STATE', text: 'Nothing on the board is outside its own ordinary range.' });
+  return L;
+}

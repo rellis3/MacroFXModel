@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { riskMonitor, movers, matrix, eventRisk, feedHealth } from './terminal.js';
+import { riskMonitor, movers, matrix, eventRisk, feedHealth, deskBrief } from './terminal.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const row = (key, last, change, z, extra = {}) => ({ key, label: key, last, change, z, kind: 'price', ...extra });
@@ -130,6 +130,58 @@ t('feed health flags a stale board, carried series and an old book', () => {
   const ok = feedHealth({ to: new Date(now).toISOString().slice(0, 10), n: 1583, series: { a: [] }, carried: [], missing: [] },
     { ok: true, stale: false, ageH: 9, count: 11 }, { csvLastMs: 0, events: [{ ms: now }] }, now);
   assert.equal(ok.bad, 0);
+});
+
+t('the brief is terse, and every line carries a number', () => {
+  const b = deskBrief({
+    board: [row('tips', 2.62, 24, 1.4), row('bei', 2.33, 1, 0.1), row('us10y', 4.96, 26, 1.2),
+            row('us2y', 4.76, 52, 2.4), row('curve', 0.2, -26, -2.4), row('dxy', 119, 1.2, 1.1)],
+    sectors: [{ key: 'xlre', label: 'Real estate', change: -6.0 }, { key: 'xlu', label: 'Utilities', change: -5.9 }],
+    state: { state: 'Narrow and concentrated', breadth: { sectorsUp: 2, sectorsTotal: 11, concentration: -5.5 } },
+    horizons: [{ shape: 'reversing', label: 'Crude' }], links: [], health: null,
+  });
+  const tags = b.map(x => x.tag);
+  assert.deepEqual(tags, ['STATE', 'DRIVING', 'LANDED', 'ROLLING', 'EXPOSED']);
+  assert.match(b.find(x => x.tag === 'DRIVING').text, /96% real/);
+  assert.match(b.find(x => x.tag === 'EXPOSED').text, /banks \(curve -26bp\)/);
+  // terse: no line may be a paragraph, and none may explain a mechanism
+  for (const l of b) {
+    assert.ok(l.text.length < 220, `${l.tag} is running to prose: ${l.text}`);
+    assert.doesNotMatch(l.text, /(because|which means|that is why|in other words)/i, `${l.tag} is teaching`);
+    assert.doesNotMatch(l.text, /(will|expect|should|target)/i, `${l.tag} is predicting`);
+  }
+});
+
+t('BLIND names what the screen cannot see, and only when something is down', () => {
+  const health = { rows: [{ id: 'calendar', label: 'Economic calendar', state: 'bad', detail: 'feed returned nothing' },
+                          { id: 'board', label: 'Price board', state: 'ok', detail: 'fine' }] };
+  const b = deskBrief({ board: [], state: { state: 'X', breadth: {} }, health });
+  const blind = b.find(x => x.tag === 'BLIND');
+  assert.ok(blind, 'a dead feed must reach the brief');
+  assert.equal(blind.bad, true);
+  assert.match(blind.text, /economic calendar/);
+  assert.doesNotMatch(blind.text, /price board/, 'a healthy feed must not be listed as blind');
+  // nothing down, no BLIND line at all
+  const clean = deskBrief({ board: [], state: { state: 'X', breadth: {} }, health: { rows: [{ state: 'ok', label: 'a', detail: 'b' }] } });
+  assert.equal(clean.some(x => x.tag === 'BLIND'), false);
+});
+
+t('single names get their own line, because sectors cannot say which name it reached', () => {
+  const names = ['NVIDIA', 'Apple', 'Meta', 'JPMorgan', 'Exxon'].map((n, i) =>
+    ({ key: 'n' + i, label: n, group: 'Single names', change: 10 - i * 5, z: 1, kind: 'price' }));
+  const b = deskBrief({ board: names, state: { state: 'X', breadth: {} } });
+  const line = b.find(x => x.tag === 'NAMES');
+  assert.ok(line, 'five names is enough to report');
+  assert.match(line.text, /NVIDIA \+10\.0%/);
+  assert.match(line.text, /Exxon -10\.0%/, 'and the laggards, which is the half that matters');
+  // too few names to be worth a line
+  assert.equal(deskBrief({ board: names.slice(0, 2), state: { state: 'X', breadth: {} } }).some(x => x.tag === 'NAMES'), false);
+});
+
+t('a quiet board gets one honest line, not six empty ones', () => {
+  const b = deskBrief({ board: [], sectors: [], state: null });
+  assert.equal(b.length, 1);
+  assert.match(b[0].text, /outside its own ordinary range/);
 });
 
 console.log(`terminal: ${n} groups, all passed`);

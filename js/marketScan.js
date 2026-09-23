@@ -86,6 +86,19 @@ export const BOARD = [
   { key: 'copper',  label: 'Copper',        group: 'Commodities', kind: 'price', what: 'The growth commodity: up with global demand, down with a scare.' },
   { key: 'ovx',     label: 'Crude vol',     group: 'Commodities', kind: 'level', what: 'CBOE’s OVX — the VIX of oil. Read it against the VIX: oil pricing far more fear than equities means the risk is a supply story, not an economic one.' },
   { key: 'gvz',     label: 'Gold vol',      group: 'Commodities', kind: 'level', what: 'CBOE’s GVZ — the VIX of gold. It rises with genuine reserve and currency stress rather than with equity drawdowns.' },
+  // ── single names: which stocks the move actually reached ────────────────────
+  { key: 'nvda',  label: 'NVIDIA',     group: 'Single names', kind: 'price', what: 'The AI trade itself. When the index and this disagree, the index is not the story.' },
+  { key: 'msft',  label: 'Microsoft',  group: 'Single names', kind: 'price', what: 'The largest weight with a real earnings base — less reflexive than the pure AI names.' },
+  { key: 'aapl',  label: 'Apple',      group: 'Single names', kind: 'price', what: 'A hardware cycle wearing a megacap multiple. Often the odd one out of the big five.' },
+  { key: 'meta',  label: 'Meta',       group: 'Single names', kind: 'price', what: 'The most rate-sensitive of the platforms, and the one options flow crowds into hardest.' },
+  { key: 'googl', label: 'Alphabet',   group: 'Single names', kind: 'price', what: 'Search plus cloud, with a regulatory leg the others do not carry.' },
+  { key: 'amzn',  label: 'Amazon',     group: 'Single names', kind: 'price', what: 'Half retail, half cloud — it answers the consumer AND the capex cycle.' },
+  { key: 'avgo',  label: 'Broadcom',   group: 'Single names', kind: 'price', what: 'The semis complex without the retail crowd. Read it against NVIDIA.' },
+  { key: 'tsla',  label: 'Tesla',      group: 'Single names', kind: 'price', what: 'The highest-beta megacap: it leads risk appetite up and down, and leads nothing else.' },
+  { key: 'jpm',   label: 'JPMorgan',   group: 'Single names', kind: 'price', what: 'The bank the curve actually lands on. Where a flattening becomes a number.' },
+  { key: 'xom',   label: 'Exxon',      group: 'Single names', kind: 'price', what: 'The crude trade with a balance sheet. It lags oil, and that lag is the information.' },
+  { key: 'lly',   label: 'Eli Lilly',  group: 'Single names', kind: 'price', what: 'Defensive growth — it holds up when the AI trade does not, which makes it the rotation tell.' },
+  { key: 'brk',   label: 'Berkshire',  group: 'Single names', kind: 'price', what: 'The anti-momentum megacap. Leading means money is leaving the crowded trade.' },
   // ── crypto ──────────────────────────────────────────────────────────────────
   { key: 'btc',     label: 'Bitcoin',       group: 'Crypto', kind: 'price', what: 'High-beta risk most days; the anti-dollar trade on the days the dollar story is about credibility.' },
 ];
