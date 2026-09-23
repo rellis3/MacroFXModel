@@ -368,7 +368,11 @@
   /* stage colour: the columns read as groups without needing a second legend */
   .mmStage.s0{fill:#7c8cff} .mmStage.s1{fill:#e0794a} .mmStage.s2{fill:#39b3a6}
   .mmStage.s3{fill:#6aa9e0} .mmStage.s4{fill:#c98ad6}
-  .mmH{fill:var(--text2)}
+  .mmH{fill:var(--text2);font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+  .mmHr{fill:var(--text3);font-size:8.5px;font-weight:600;letter-spacing:.04em}
+  /* what the market IS, under what it did -- the densest teaching on the page */
+  .mmR{fill:var(--text3);font-size:7.8px;font-weight:600;letter-spacing:.01em}
+  .mmN:hover .mmR{fill:var(--text2)}
   .mmN{cursor:pointer}
   .mmBox{fill:var(--card);stroke:var(--border)}
   .mmN:hover .mmBox{stroke:var(--blue)}
@@ -411,6 +415,20 @@
   .ksc .sp3{margin-top:3px;height:26px}
   .ksc .sp3 svg{width:100%;height:26px;display:block}
   .ksc.hot{border-color:var(--amber)}
+  /* ── the desk read: today, narrated, from computed numbers ───────────────── */
+  .dr{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:17px 20px;margin-bottom:12px;
+      border-left:4px solid var(--blue)}
+  .dr h3{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:9px}
+  .dr p{font-size:14.5px;line-height:1.72;color:var(--text);margin-bottom:11px;max-width:74ch}
+  .dr p:last-of-type{margin-bottom:0}
+  .dr p.lead{font-size:17px;font-weight:700;line-height:1.5;letter-spacing:-.01em}
+  .dr p.watch{color:var(--text2);font-size:13.5px;border-top:1px solid var(--border2);padding-top:10px;margin-top:2px}
+  .dr .tm{border-bottom:1px dotted var(--text3);cursor:help}
+  .dr .terms{margin-top:11px;display:flex;gap:7px;flex-wrap:wrap}
+  .dr .terms button{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:3px 11px;
+        font:inherit;font-size:11px;color:var(--text2);cursor:pointer}
+  .dr .terms button:hover{border-color:var(--blue);color:var(--text)}
+  @media(max-width:620px){ .dr{padding:14px 15px} .dr p{font-size:14px} .dr p.lead{font-size:16px} }
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -444,6 +462,7 @@
 <div class="main">
 <div class="wrap">
   <div class="ks" id="keystrip"></div>
+  <div class="dr" id="deskread" data-panel="p-read"></div>
   <div class="gl" id="glance"></div>
 
   <div class="grid">
@@ -543,6 +562,7 @@ import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js
 import { dualLine, levelLine, histogram, spark } from './js/mvChart.js';
 import { analogues, keysFor } from './js/analogue.js';
 import { buildMap } from './js/mvMap.js';
+import { deskRead, TERMS } from './js/deskRead.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
@@ -587,7 +607,7 @@ async function load() {
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    renderVol(); renderLearn(); renderMap(); renderKeyStrip();
+    renderVol(); renderLearn(); renderMap(); renderKeyStrip(); renderRead();
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -1079,7 +1099,7 @@ function renderScan() {
  */
 const SECTIONS = [
   { id: 'overview', em: '🎯', label: 'Overview',
-    panels: ['p-state', 'p-scan', 'p-impact'],
+    panels: ['p-read', 'p-state', 'p-scan', 'p-impact'],
     deep: [['today.html', "Today's desk"], ['evidence.html', 'Evidence book']],
     count: () => glance(SCORED, LINKZ).rare || null },
   { id: 'board', em: '🌐', label: 'Whole board',
@@ -1274,6 +1294,28 @@ function renderKeyStrip() {
     </button>`;
   }).join('');
 }
+
+/**
+ * The desk read.
+ *
+ * Deliberately checks the real-versus-inflation mechanism whether or not the headline
+ * finding fired. The calibrated thresholds mean a finding is rare by design, but a
+ * mechanism is worth CHECKING every day — checking is free, and "the Nasdaq was the
+ * one thing that ignored it" is the most useful sentence on the page whether or not
+ * the move itself cleared a bar.
+ */
+function renderRead() {
+  const n10 = SCORED.find(r => r.key === 'us10y');
+  const conf = (n10 && Math.abs(n10.change) >= 12)
+    ? confirmations({ kind: 'ratekind' }, SCORED, SECS, STATE?.breadth)
+    : FINDS.map(f => confirmations(f, SCORED, SECS, STATE?.breadth)).find(c => c && c.met < c.total) ?? null;
+  const r = deskRead({ state: STATE, sectors: SECS, board: SCORED, links: LINKZ, findings: FINDS, confirmations: conf, book: BOOK });
+  $('deskread').innerHTML = `<h3>The read — ${esc(BUNDLE?.to ?? '')}</h3>
+    ${r.paragraphs.map((p, i) => `<p class="${i === 0 ? 'lead' : p.id === 'watch' ? 'watch' : ''}">${esc(p.text)}</p>`).join('')}
+    ${r.terms.length ? `<div class="terms">${r.terms.map(t =>
+      `<button onclick="defineTerm('${esc(t)}')">${esc(t)} ?</button>`).join('')}</div>` : ''}`;
+}
+window.defineTerm = t => openModal('In plain English', t, `<div class="lead">${esc(TERMS[t] ?? '')}</div>`);
 
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {

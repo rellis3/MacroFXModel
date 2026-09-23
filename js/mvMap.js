@@ -58,7 +58,7 @@ export const EDGE_LABEL = {
   'vix-hy': 'one worry, two prices', 'r2k-nq': 'breadth',
 };
 
-const COLW = 210, ROWH = 70, PADX = 54, PADY = 46, RX = 52, RY = 18;
+const COLW = 214, ROWH = 84, PADX = 54, PADY = 52, RX = 58, RY = 25;
 export const MAP_W = PADX * 2 + COLW * 4 + RX * 2;
 export const MAP_H = PADY * 2 + ROWH * 5 + RY * 2;
 
@@ -76,7 +76,40 @@ const SHORT = {
   spx: 'S&P 500', nq: 'Nasdaq', r2k: 'Russell', de30: 'DAX', jp225: 'Nikkei',
   gold: 'Gold', silver: 'Silver', oil: 'Crude', copper: 'Copper', btc: 'Bitcoin',
 };
-export const STAGES = ['What sets\nthe price of money', 'What borrowing\nand fear cost', 'Currencies', 'Equity', 'Real things'];
+/**
+ * Stages named by the ROLE they play, not by what they contain.
+ *
+ * "Currencies" is a category; "Transmission" tells you what currencies are DOING in
+ * the story -- carrying a rates move into everything priced in another unit. Naming
+ * the role is what turns a diagram into an explanation, and it costs nothing.
+ */
+export const STAGES = [
+  ['Drivers', "what's moving"],
+  ['Mechanism', 'what it costs'],
+  ['Transmission', 'how it travels'],
+  ['Result', 'who pays'],
+  ['Real things', 'the other side'],
+];
+
+/**
+ * What each market IS, in three or four words, under its name on the map.
+ *
+ * The densest piece of teaching available: "US 2-year * policy expectations" tells a
+ * reader what the number is FOR, every single time they look at it, with no tooltip
+ * and no click. A value with no role attached is trivia.
+ */
+export const ROLE = {
+  us2y: 'policy expectations', tips: 'the true cost of money', bei: 'expected inflation',
+  jgbgap: 'the carry trade', bundgap: "the euro's rate leg", giltgap: "the pound's rate leg",
+  vix: 'price of insurance', ovx: 'fear, in oil', hy: 'what junk pays', ccc: 'the weakest borrowers',
+  dxy: 'the unit of account',
+  usdjpy: 'carry and haven', eurusd: 'the biggest pair', gbpusd: 'rates plus risk premium',
+  audusd: 'China and metals', usdcad: 'the oil currency',
+  spx: 'the benchmark', nq: 'long-duration equity', r2k: 'small, domestic, floating',
+  de30: 'European industry', jp225: "the yen's mirror",
+  gold: 'four trades, one name', silver: 'gold with a factory leg', oil: 'the first domino',
+  copper: 'the growth metal', btc: 'high-beta risk',
+};
 
 /**
  * Build the map.
@@ -136,15 +169,16 @@ export function buildMap(links = [], board = [], { apartZ = 3.1 } = {}) {
         class="mmBox" stroke-width="${ring}"/>
       <rect x="${p.x - RX}" y="${p.y - RY + 3}" width="3" height="${RY * 2 - 6}" rx="1.5"
         class="mmStage s${LAYOUT[k][0]}"/>
-      <text x="${p.x}" y="${p.y - 2}" class="mmT" text-anchor="middle">${esc(SHORT[k] ?? k)}</text>
-      <text x="${p.x}" y="${p.y + 10}" class="mmV${dir}" text-anchor="middle">${esc(val)}</text>
+      <text x="${p.x}" y="${p.y - 8}" class="mmT" text-anchor="middle">${esc(SHORT[k] ?? k)}</text>
+      <text x="${p.x}" y="${p.y + 5}" class="mmV${dir}" text-anchor="middle">${esc(val)}${b?.change == null ? '' : b.change > 0 ? ' ↑' : ' ↓'}</text>
+      <text x="${p.x}" y="${p.y + 16}" class="mmR" text-anchor="middle">${esc(ROLE[k] ?? '')}</text>
     </g>`;
   }).join('');
 
-  const heads = STAGES.map((s, i) => {
+  const heads = STAGES.map(([name, role], i) => {
     const x = PADX + RX + i * COLW;
-    return s.split('\n').map((ln, j) =>
-      `<text x="${x}" y="${18 + j * 12}" class="mmH" text-anchor="middle">${esc(ln)}</text>`).join('');
+    return `<text x="${x}" y="18" class="mmH" text-anchor="middle">${esc(name)}</text>
+            <text x="${x}" y="31" class="mmHr" text-anchor="middle">${esc(role)}</text>`;
   }).join('');
 
   const counts = {

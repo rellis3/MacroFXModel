@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildMap, LAYOUT, STAGES, EDGE_LABEL, MAP_W, MAP_H } from './mvMap.js';
+import { buildMap, LAYOUT, STAGES, EDGE_LABEL, ROLE, MAP_W, MAP_H } from './mvMap.js';
 import { LINKS, BOARD } from './marketScan.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -13,8 +13,20 @@ t('every market in a link has a place on the map, or the link is silently invisi
   assert.deepEqual([...new Set(missing)], [], 'these link legs have no position');
 });
 
-t('the map reads left to right as cause to effect', () => {
+t('every market says what it IS, not just what it did', () => {
+  const m = buildMap([link('tips-gold', 'tips', 'gold', -0.6, 0)], [row('tips', 1, 24, 'rate')]);
+  assert.match(m.svg, /class="mmR"[^>]*>the true cost of money</);
+  assert.match(m.svg, /class="mmV up"[^>]*>\+24bp ↑</, 'and carries a direction arrow');
+  for (const k of Object.keys(LAYOUT)) {
+    assert.ok(ROLE[k], `${k} has no role line -- a value with no role attached is trivia`);
+    assert.ok(ROLE[k].length <= 28, `"${ROLE[k]}" is too long for a node`);
+  }
+});
+
+t('stages are named by the role they play, not by what they contain', () => {
   assert.equal(STAGES.length, 5);
+  assert.deepEqual(STAGES.map(x => x[0]), ['Drivers', 'Mechanism', 'Transmission', 'Result', 'Real things']);
+  for (const [, role] of STAGES) assert.ok(role && role.length <= 20, `role "${role}" too long`);
   // rates in the first column, real things in the last -- the direction of the story
   assert.equal(LAYOUT.us2y[0], 0); assert.equal(LAYOUT.tips[0], 0);
   assert.equal(LAYOUT.gold[0], 4); assert.equal(LAYOUT.copper[0], 4);
