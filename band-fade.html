@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<!--
+  band-fade.html — "price at a band → back to fair value", tested on DAILY bars
+  across 25 FX pairs + gold. Stage 1: does the stretch predict the next week at
+  all (bucket test vs a shuffled-return null)? Stage 2: the one fixed fade rule
+  as a vol-targeted book vs a random-entry control.
+  Routes: POST /api/band-fade/run → GET /api/band-fade/status/:jobId (async).
+  Pre-registration + results: MD files/BAND_FADE_DAILY.md.
+  Read-only research: feeds no live signal, bot or order.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Band Fade — Daily</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; background:#0b0d12; color:#e6e8ec; font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:1060px; margin:0 auto; padding:24px 16px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  .sub { color:#8891a0; font-size:12px; margin-bottom:18px; line-height:1.55; }
+  .panel { background:#12151c; border:1px solid #2a2f3a; border-radius:10px; padding:16px; margin-bottom:16px; }
+  button { background:#1f6feb; color:#fff; border:0; border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; margin:4px 6px 0 0; }
+  button.alt { background:#2a2f3a; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th, td { text-align:left; padding:5px 8px; border-bottom:1px solid #1d222c; white-space:nowrap; }
+  th { color:#8891a0; font-weight:500; }
+  .scroll { overflow-x:auto; }
+  .pos { color:#3fb950; } .neg { color:#f85149; } .mut { color:#8891a0; }
+  .verdict { font-size:16px; font-weight:600; padding:10px 14px; border-radius:8px; margin-bottom:10px; }
+  .v-bad { background:#2d1417; border:1px solid #6e2b31; } .v-good { background:#12261a; border:1px solid #2f6b3f; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin:10px 0; }
+  .tile { background:#171b23; border:1px solid #232834; border-radius:8px; padding:8px 10px; }
+  .tile b { display:block; font-size:17px; } .tile span { color:#8891a0; font-size:11px; }
+  .chk { display:inline-block; margin:2px 6px 2px 0; padding:2px 8px; border-radius:10px; font-size:11.5px; }
+  .chk.y { background:#12261a; color:#3fb950; } .chk.n { background:#2d1417; color:#f85149; }
+  canvas { width:100%; height:240px; display:block; }
+  .heat td { text-align:center; font-size:11px; padding:3px 4px; }
+  .note { color:#8891a0; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📏 Band Fade: daily</h1>
+  <div class="sub">
+    When price closes outside a volatility band, does it come back to fair value (EMA20)? This page tests that
+    on <b>daily</b> bars across 25 FX pairs and gold, with costs and a true in-sample / out-of-sample split.
+    The intraday versions of this idea are already null on cost (VWAP ±2σ: 0/26 pairs; Keltner on M1; level touches).
+    The daily version had never been run.<br>
+    <b>The band unit:</b> ex-ante EWMA σ, scaled so ±2 is a 2-sd stretch for a random walk on every instrument.
+    Keltner (ATR) and Bollinger (σ of the window) are reported next to it as context.
+    Pre-registration: <code>MD files/BAND_FADE_DAILY.md</code>. Read-only research: feeds no signal, bot or order.
+  </div>
+
+  <div class="panel">
+    <button id="runBtn">Run (≈3 min first time, then cached 6h)</button>
+    <button id="freshBtn" class="alt">Force fresh run</button>
+    <span id="status" class="note"></span>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (v, d = 2) => (v == null || !Number.isFinite(+v)) ? '—' : (+v).toFixed(d);
+const cls = v => (v == null ? 'mut' : v > 0 ? 'pos' : v < 0 ? 'neg' : 'mut');
+const cell = (v, d = 3) => `<td class="${cls(v)}">${fmt(v, d)}</td>`;
+
+async function run(fresh) {
+  $('status').textContent = 'starting…';
+  try {
+    const r = await fetch('/api/band-fade/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fresh }) }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'run failed');
+    poll(r.jobId);
+  } catch (e) { $('status').textContent = 'error: ' + e.message; }
+}
+async function poll(jobId) {
+  const r = await fetch('/api/band-fade/status/' + jobId).then(r => r.json()).catch(e => ({ ok: false, error: e.message }));
+  if (r.status === 'running') { $('status').textContent = `running ${r.elapsed}s — ${r.stage || ''}`; return setTimeout(() => poll(jobId), 3000); }
+  if (!r.ok || r.status !== 'done') { $('status').textContent = 'error: ' + (r.error || 'unknown'); return; }
+  $('status').textContent = `done${r.cached ? ' (cached)' : ''} · generated ${r.generatedAt}`;
+  render(r);
+}
+$('runBtn').onclick = () => run(false);
+$('freshBtn').onclick = () => run(true);
+
+function bucketTable(rows, label = 'Bucket |stretch|') {
+  return `<div class="scroll"><table><thead><tr><th>${label}</th><th>obs</th><th>dates</th><th>mean fade (σ)</th><th>t</th><th>IS mean</th><th>OOS mean</th><th>cost hurdle (σ)</th></tr></thead><tbody>${
+    rows.map(b => `<tr><td>${b.bucket ?? b.stack ?? b.label}</td><td>${b.n}</td><td>${b.nDates}</td>${cell(b.mean)}${cell(b.t, 2)}${cell(b.isMean)}${cell(b.oosMean)}<td class="mut">${fmt(b.costHurdle, 3)}</td></tr>`).join('')
+  }</tbody></table></div>`;
+}
+
+function render(r) {
+  const s1 = r.stage1, s2 = r.stage2, p = s1.primary, m = s2.metrics;
+  const chks = obj => Object.entries(obj).map(([k, v]) => `<span class="chk ${v ? 'y' : 'n'}">${v ? '✓' : '✗'} ${k}</span>`).join('');
+  const ctxLabels = { volBand_h1: 'Vol band, h=1', volBand_h10: 'Vol band, h=10', keltner_h5: 'Keltner (ATR) ≥2, h=5', bollinger_h5: 'Bollinger ≥2, h=5', adxLow_h5: 'Vol band, ADX<25', adxHigh_h5: 'Vol band, ADX≥25', fxOnly_h5: 'FX only', goldOnly_h5: 'Gold only' };
+  const ctxRows = Object.entries(s1.context).filter(([, v]) => v).map(([k, v]) => ({ ...v, label: ctxLabels[k] || k }));
+  const verRow = (name, x) => x ? `<tr><td>${name}</td>${cell(x.cagrPct, 2)}${cell(x.sharpe, 2)}<td class="mut">±${fmt(x.sharpeSE, 2)}</td>${cell(x.sortino, 2)}${cell(x.maxDdPct, 1)}<td>${fmt(x.annVolPct, 1)}</td><td>${x.trades ?? '—'}</td><td>${x.winRatePct ?? '—'}</td><td>${x.profitFactor ?? '—'}</td></tr>` : '';
+
+  $('out').innerHTML = `
+  <div class="panel">
+    <h2>Stage 1: does the stretch predict reversion at all?</h2>
+    <div class="verdict ${p.reading.verdict === 'BUCKET-EDGE' ? 'v-good' : 'v-bad'}">${p.reading.verdict} · primary cell: ${p.cell}</div>
+    <div class="tiles">
+      <div class="tile"><b class="${cls(p.mean)}">${fmt(p.mean, 3)}σ</b><span>mean fade, 5 days</span></div>
+      <div class="tile"><b>${fmt(p.t, 2)}</b><span>t (per-date pooled)</span></div>
+      <div class="tile"><b>${fmt(p.null.p95, 2)}</b><span>shuffled-null t, 95th pct (${p.null.draws} draws)</span></div>
+      <div class="tile"><b>${fmt(p.costHurdle, 3)}σ</b><span>cost hurdle</span></div>
+      <div class="tile"><b class="${cls(p.isMean)}">${fmt(p.isMean, 3)}</b><span>IS mean</span></div>
+      <div class="tile"><b class="${cls(p.oosMean)}">${fmt(p.oosMean, 3)}</b><span>OOS mean (from ${r.splitDate})</span></div>
+    </div>
+    <div>${chks(p.reading.checks)}</div>
+    <p class="note">Fade return = the move back toward the EMA over the next h days, in units of the ex-ante σ·√h. Observations are taken every h-th date (non-overlapping) and averaged across instruments per date before the t-stat, because correlated pairs on the same day are not independent evidence. <b>The null</b> is the identical procedure on each instrument's shuffled daily returns.</p>
+    <h2 style="margin-top:14px">Buckets: vol band</h2>
+    ${Object.entries(s1.buckets).map(([h, rows]) => `<div class="note" style="margin:8px 0 4px">${h.replace('h', 'h = ')} days</div>` + bucketTable(rows)).join('')}
+    <h2 style="margin-top:14px">Context cells (${s1.contextCellsCounted} counted; ~0.6 false positives expected at 5% by chance)</h2>
+    ${bucketTable(ctxRows, 'Cell')}
+    <h2 style="margin-top:14px">Stacked bands: how many of {vol, Keltner, Bollinger} closed outside (h=5)</h2>
+    ${bucketTable(s1.stack_h5, 'Bands outside')}
+    <h2 style="margin-top:14px">Keltner / Bollinger buckets (h=5)</h2>
+    <div class="note">Keltner</div>${bucketTable(s1.keltnerBuckets_h5)}
+    <div class="note" style="margin-top:6px">Bollinger</div>${bucketTable(s1.bollingerBuckets_h5)}
+    <h2 style="margin-top:14px">Per instrument (vol band ≥2, h=5)</h2>
+    <div class="scroll"><table><thead><tr><th>Instrument</th><th>cost RT %</th><th>obs</th><th>mean fade (σ)</th><th>t</th><th>IS</th><th>OOS</th></tr></thead><tbody>${
+      s1.perInstrument.map(x => `<tr><td>${x.key}</td><td class="mut">${x.costRtPct}</td><td>${x.n}</td>${cell(x.mean)}${cell(x.t, 2)}${cell(x.isMean)}${cell(x.oosMean)}</tr>`).join('')
+    }</tbody></table></div>
+    <p class="note">26 instruments with 5–19 observations each: at 5%, one or two |t| ≥ 2 are expected from noise.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Stage 2: the fixed fade rule as a sized book</h2>
+    <div class="verdict ${s2.verdict === 'SYSTEM-WORTHY' ? 'v-good' : 'v-bad'}">${s2.verdict}</div>
+    <div>${chks(s2.checks)}</div>
+    <p class="note">Rule: close with |z| ≥ ${r.config.entryZ} → fade; exit at the first close back through the EMA20, or after ${r.config.maxHold} days; re-arm after |z| < ${r.config.rearmZ}. Each trade is weighted 1/σ; the book is scaled to ${r.config.targetVol * 100}% ex-ante vol (60-day covariance), with a ${r.config.maxGross}× gross cap. Costs are per-pair round trip on every change in notional.</p>
+    <div class="tiles">
+      <div class="tile"><b class="${cls(m.full.cagrPct)}">${fmt(m.full.cagrPct, 2)}%</b><span>CAGR (full)</span></div>
+      <div class="tile"><b class="${cls(m.full.sharpe)}">${fmt(m.full.sharpe, 2)} ± ${fmt(m.full.sharpeSE, 2)}</b><span>Sharpe (full)</span></div>
+      <div class="tile"><b class="${cls(m.oos.sharpe)}">${fmt(m.oos.sharpe, 2)} ± ${fmt(m.oos.sharpeSE, 2)}</b><span>Sharpe OOS</span></div>
+      <div class="tile"><b class="neg">${fmt(m.full.maxDdPct, 1)}%</b><span>max drawdown</span></div>
+      <div class="tile"><b>${m.full.trades}</b><span>trades · hold ${m.full.avgHoldDays}d</span></div>
+      <div class="tile"><b>${fmt(s2.control.p95, 2)}</b><span>random-entry Sharpe, 95th pct</span></div>
+      <div class="tile"><b>${fmt(m.full.costDragPctPerYr, 2)}%</b><span>cost drag / yr</span></div>
+      <div class="tile"><b>${fmt(m.full.meanUsdSharePct, 0)}%</b><span>net USD share of FX legs</span></div>
+    </div>
+    <div class="scroll"><table><thead><tr><th>Version</th><th>CAGR %</th><th>Sharpe</th><th>SE</th><th>Sortino</th><th>Max DD %</th><th>Vol %</th><th>Trades</th><th>Win %</th><th>PF</th></tr></thead><tbody>
+      ${verRow('Full (1× cost)', m.full)}${verRow('In-sample', m.is)}${verRow('Out-of-sample', m.oos)}${verRow('Full, 2× cost', m.full2x)}${verRow('Full, no cost', m.grossNoCost)}
+    </tbody></table></div>
+    <p class="note">Random-entry control: each real trade keeps its instrument and length but gets a random date and direction (${s2.control.draws} draws). Sharpe 5th/50th/95th = ${fmt(s2.control.p05, 2)} / ${fmt(s2.control.p50, 2)} / ${fmt(s2.control.p95, 2)}; the fade ranks at the ${fmt(s2.control.rankOfFade * 100, 0)}th percentile. Exits: ${Object.entries(s2.exitMix).map(([k, v]) => `${k} ${v}`).join(' · ')}.</p>
+    <canvas id="eq"></canvas>
+    <h2 style="margin-top:14px">Yearly (%)</h2>
+    <div class="scroll"><table><tr>${Object.keys(s2.yearly).map(y => `<th>${y}</th>`).join('')}</tr><tr>${Object.values(s2.yearly).map(v => cell(v, 1)).join('')}</tr></table></div>
+    <h2 style="margin-top:14px">Monthly (%)</h2>
+    <div class="scroll">${heat(s2.monthly)}</div>
+    <h2 style="margin-top:14px">Trades</h2>
+    <div class="note">Account $100,000, compounding. R = the trade's entry weight × σ × √${r.config.maxHold}: its ex-ante 1σ over the max hold, as % of equity, so R varies per trade. MAE comes from the <b>daily</b> high/low between entry and exit at the entry weight (the finest path this daily walk has).</div>
+    <button id="csvPct" class="alt">⬇ % Returns CSV</button><button id="csvR" class="alt">⬇ R-Multiples CSV</button><button id="csvUsd" class="alt">⬇ Currency P&amp;L CSV</button>
+    <div class="scroll" style="margin-top:8px"><table><thead><tr><th>Entry</th><th>Exit</th><th>Instrument</th><th>Dir</th><th>z</th><th>Days</th><th>Exit</th><th>Net %</th><th>R</th><th>MAE %</th></tr></thead><tbody>${
+      s2.trades.slice(-150).reverse().map(t => `<tr><td>${t.entryDate}</td><td>${t.exitDate}</td><td>${t.key}</td><td>${t.dir > 0 ? 'long' : 'short'}</td><td>${fmt(t.entryZ, 2)}</td><td>${t.days}</td><td class="mut">${t.exitReason}</td>${cell(t.retPct, 3)}${cell(t.R, 2)}${cell(t.maePct, 3)}</tr>`).join('')
+    }</tbody></table></div>
+    <div class="note">Latest 150 of ${s2.trades.length} shown; the CSVs hold all of them.</div>
+  </div>`;
+
+  drawEquity(s2.curve);
+  const byExit = [...s2.trades].sort((a, b) => (a.exitDate < b.exitDate ? -1 : 1));
+  const dl = (name, rows) => { const b = new Blob([rows.join('\n')], { type: 'text/csv' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = name; a.click(); };
+  $('csvPct').onclick = () => dl('band_fade_pct.csv', ['Date,Return %,MAE %', ...byExit.map(t => `${t.exitDate},${t.retPct},${t.maePct}`)]);
+  $('csvR').onclick = () => dl('band_fade_R.csv', ['date,R,MAE (R)', ...byExit.map(t => `${t.exitDate},${t.R ?? ''},${t.riskPct > 0 ? (t.maePct / t.riskPct).toFixed(3) : ''}`)]);
+  $('csvUsd').onclick = () => {
+    let eq = 100000; const rows = ['Trade Date,PnL ($),Risk ($)'];
+    for (const t of byExit) { const pnl = eq * t.retPct / 100, risk = eq * t.riskPct / 100; rows.push(`${t.exitDate},${pnl.toFixed(2)},${risk.toFixed(2)}`); eq += pnl; }
+    dl('band_fade_usd.csv', rows);
+  };
+}
+
+function heat(monthly) {
+  const years = [...new Set(Object.keys(monthly).map(k => k.slice(0, 4)))].sort();
+  const col = v => v == null ? '' : `background:${v >= 0 ? `rgba(63,185,80,${Math.min(0.85, Math.abs(v) / 6)})` : `rgba(248,81,73,${Math.min(0.85, Math.abs(v) / 6)})`}`;
+  return `<table class="heat"><tr><th></th>${['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map(x => `<th>${x}</th>`).join('')}</tr>${
+    years.map(y => `<tr><th>${y}</th>${Array.from({ length: 12 }, (_, i) => { const v = monthly[`${y}-${String(i + 1).padStart(2, '0')}`]; return `<td style="${col(v)}">${v == null ? '' : v.toFixed(1)}</td>`; }).join('')}</tr>`).join('')
+  }</table>`;
+}
+
+function drawEquity(curve) {
+  const c = $('eq'), dpr = window.devicePixelRatio || 1;
+  const W = c.clientWidth, H = c.clientHeight; c.width = W * dpr; c.height = H * dpr;
+  const g = c.getContext('2d'); g.scale(dpr, dpr);
+  const top = H * 0.68, n = curve.length;
+  const eqs = curve.map(p => Math.log(p.eq)); const lo = Math.min(...eqs), hi = Math.max(...eqs);
+  const dmin = Math.min(...curve.map(p => p.dd));
+  const x = i => 40 + (W - 50) * i / (n - 1);
+  g.fillStyle = '#8891a0'; g.font = '10px system-ui';
+  g.fillText('equity (log)', 4, 12); g.fillText('drawdown', 4, top + 16);
+  g.strokeStyle = '#1f6feb'; g.lineWidth = 1.4; g.beginPath();
+  curve.forEach((p, i) => { const y = 8 + (top - 16) * (1 - (eqs[i] - lo) / ((hi - lo) || 1)); i ? g.lineTo(x(i), y) : g.moveTo(x(i), y); }); g.stroke();
+  g.fillStyle = 'rgba(248,81,73,0.45)'; g.beginPath(); g.moveTo(x(0), top + 6);
+  curve.forEach((p, i) => g.lineTo(x(i), top + 6 + (H - top - 12) * (p.dd / (dmin || -1)))); g.lineTo(x(n - 1), top + 6); g.fill();
+  g.fillStyle = '#8891a0'; g.fillText(curve[0].d, 40, H - 1); g.fillText(curve[n - 1].d, W - 70, H - 1);
+  g.fillText(`${dmin.toFixed(1)}%`, 4, H - 8);
+}
+</script>
+</body>
+</html>
