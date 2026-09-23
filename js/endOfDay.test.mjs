@@ -243,4 +243,23 @@ t('a plan captured outside the morning window is refused, not scored', () => {
   assert.match(undated.reason, /no timestamp/);
 });
 
+// The move is counted in pips, so its `dp` is 0 — using that for the PRICE rounded
+// every FX pair to two decimals and printed "EURUSD opened 1.14, now 1.14".
+t("price precision is the instrument's, not the move's", () => {
+  const eur = scorePair('EURUSD', morning({ price: 1.1465, expRange: 47 }),
+    { session_open: 1.14653, current_price: 1.13847, ac: 'fx', sym: 'EUR_USD', dp: 5 });
+  assert.equal(eur.open, 1.14653);
+  assert.equal(eur.now, 1.13847);
+  assert.equal(eur.move, -81, 'the move is still whole pips');
+  // no dp from the feed: the convention, not two decimals
+  const noDp = scorePair('GBPUSD', morning({ price: 1.3, expRange: 60 }),
+    { session_open: 1.32416, current_price: 1.32109, ac: 'fx', sym: 'GBP_USD' });
+  assert.equal(noDp.open, 1.32416);
+  const jpy = scorePair('USDJPY', morning({ price: 157, expRange: 90 }),
+    { session_open: 157.392, current_price: 158.211, ac: 'fx', sym: 'USD_JPY' });
+  assert.equal(jpy.open, 157.392, 'a JPY pair carries three, not five');
+  const gold = scorePair('GOLD', morning(), live());
+  assert.equal(gold.open, 4362.35);
+});
+
 console.log(`endOfDay: ${n} groups, all passed`);

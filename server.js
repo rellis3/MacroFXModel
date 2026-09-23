@@ -151,6 +151,8 @@ import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageW
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
+import { buildEodReviewPrompt } from './js/eodReview.js';
+import { plannedInWindow } from './js/endOfDay.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
 import { expectedRanges as _expectedRanges, formatDigest as _formatDigest } from './js/digest.js';
@@ -3976,6 +3978,95 @@ app.post('/api/explain', async (req, res) => {
     if (_explainCache.size > 200) _explainCache.clear();
     _explainCache.set(ck, { at: Date.now(), data: explain });
     res.json({ ok: true, cached: false, explain });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── The paid end-of-day review ──────────────────────────────────────────────
+// The free brief (js/endOfDayBrief.js) renders every day and is untouched by this.
+// This is the button: the day's assembled facts handed to a model and asked to explain
+// and TEACH them — what happened, what the morning got right and wrong, and what to
+// carry into tomorrow. It is worth paying for only because the facts are already
+// assembled; the model narrates them, it does not go and find them.
+//
+// CLICK-ONLY, like every other model call on this page. There is no interval, no warm
+// job and no auto toggle. One review per day is the expected pattern, so the cache key
+// is the day plus the morning stamp — a second press inside the TTL returns the first
+// one rather than charging twice, and `?force=1` is the deliberate re-write.
+const _EOD_REVIEW_KV = 'eod_review_v1';
+const _EOD_REVIEW_TTL_MS = 30 * 60_000;
+const _EOD_REVIEW_KEEP = 6;
+let _eodReviewCache = { at: 0, data: null, key: '' };
+
+async function _loadEodReviewStore() {
+  try {
+    const raw = await kv.get(_EOD_REVIEW_KV);
+    if (!raw) return { latest: null, history: [] };
+    const p = JSON.parse(raw);
+    return { latest: p?.latest ?? null, history: Array.isArray(p?.history) ? p.history : [] };
+  } catch (e) { console.warn('[eod-review] store unreadable, not touching it:', e.message); return null; }
+}
+async function _persistEodReview(data) {
+  const store = await _loadEodReviewStore();
+  if (!store) return;   // unparseable: leave it for a human rather than overwrite
+  const day = String(data.generatedAt).slice(0, 10);
+  const history = [store.latest, ...store.history].filter(Boolean)
+    .filter(x => String(x.generatedAt).slice(0, 10) === day)
+    .slice(0, _EOD_REVIEW_KEEP - 1);
+  await kv.put(_EOD_REVIEW_KV, JSON.stringify({ latest: data, history }));
+}
+async function _warmEodReview() {   // the first GET after a deploy should not be empty
+  const st = await _loadEodReviewStore();
+  if (st?.latest?.generatedAt) _eodReviewCache = { at: Date.parse(st.latest.generatedAt) || 0, data: st.latest, key: String(st.latest.snapKey ?? '') };
+}
+
+// Free read of whatever was last written, however old — the page shows its stamp and
+// renders it on load without spending anything.
+app.get('/api/eod-review', async (_req, res) => {
+  let latest = _eodReviewCache.data, history = [];
+  try { const st = await _loadEodReviewStore(); if (st?.latest) { if (!latest || Date.parse(st.latest.generatedAt) > (Date.parse(latest.generatedAt) || 0)) latest = st.latest; history = st.history ?? []; } } catch { /* memory copy will do */ }
+  if (!latest) return res.json({ ok: false, none: true });
+  const ageMs = Date.now() - (Date.parse(latest.generatedAt) || 0);
+  const today = new Date().toISOString().slice(0, 10);
+  res.json({ ok: true, cached: true, ageMin: Math.round(ageMs / 60_000),
+    stale: String(latest.generatedAt).slice(0, 10) !== today,   // yesterday's review is not today's
+    ...latest, earlier: history.map(h => ({ generatedAt: h.generatedAt, hook: h.review?.hook ?? null })) });
+});
+
+app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) => {
+  const key = process.env.ANT_KEY;
+  if (!key) return res.status(503).json({ error: 'ANT_KEY not configured' });
+  try {
+    const { snapshot } = req.body ?? {};
+    if (!snapshot?.asOf) return res.status(400).json({ error: 'Missing snapshot' });
+    // The review is a look-back, so it refuses to run on a plan that was not a morning
+    // plan — the same guard endOfDay() applies. Without it the "what did the page get
+    // wrong" section would be marking a record written this afternoon.
+    if (!plannedInWindow(snapshot.morningAt) && !plannedInWindow(snapshot.plannedAt))
+      return res.status(409).json({ error: "the day's plan was not captured in the 06:00-11:00 UTC window, so there is no morning record to review against" });
+    const force = req.query.force === '1';
+    const ck = `${String(snapshot.asOf).slice(0, 10)}|${String(snapshot.morningAt ?? '')}`;
+    if (!force && _eodReviewCache.data && _eodReviewCache.key === ck && Date.now() - _eodReviewCache.at < _EOD_REVIEW_TTL_MS)
+      return res.json({ ok: true, cached: true, ..._eodReviewCache.data });
+
+    const prompt = buildEodReviewPrompt(snapshot, _evidenceForPrompt());
+    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-opus-5',
+        max_tokens: 5000,
+        system: 'You are a former macro trader writing an end-of-day review for one reader who is learning to read markets. The session is finished; you are looking back at it, never forward. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
+    const j = await antRes.json();
+    const review = _parseModelJson(_antText(j), 'eod-review');
+    if (!review) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (truncated at the token cap)' : ''} -- press it once more` });
+    const data = { review, generatedAt: new Date().toISOString(), snapKey: ck, morningAt: snapshot.morningAt ?? null };
+    _eodReviewCache = { at: Date.now(), data, key: ck };
+    _persistEodReview(data).catch(e => console.warn('[eod-review] persist failed:', e.message));
+    res.json({ ok: true, cached: false, ageMin: 0, stale: false, ...data });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -33322,6 +33413,7 @@ svcTimeout('scorecardHistory', () => _recordScorecardHistory().catch(e => consol
 svcTimeout('bookHistory', () => _recordBookHistory().catch(e => console.error('[book-history] first run failed (store left untouched):', e.message)), 4 * 60_000);
 svcTimeout('scoreLedger', () => _scoreLedger().catch(e => console.error('[ledger] first scoring pass failed (store left untouched):', e.message)), 5 * 60_000);
 _warmChainRead().catch(e => console.warn('[chain-read] warm from KV failed:', e.message));
+_warmEodReview().catch(e => console.warn('[eod-review] warm from KV failed:', e.message));
 // First desk-watch pass after the FRED history has had a chance to seed (the
 // triggers read it); after kv.load() because the store is read-modify-write.
 setTimeout(() => _deskWatchTick().catch(e => console.error('[desk-watch] first pass failed (store left untouched):', e.message)), 6 * 60_000);

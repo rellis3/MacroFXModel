@@ -465,6 +465,31 @@
   .eb-mr{font-size:11px;line-height:1.55;color:var(--text3);margin-top:3px;max-width:90ch}
   .eb-mr span{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin-right:6px;color:var(--text3)}
 
+  /* The paid review. Visually a continuation of the free brief, but the AI tag and
+     the button are unmistakable — nothing on this page should ever spend money without
+     the reader knowing they asked for it. */
+  .eb-btn{background:var(--card2);border:1px solid var(--border2);color:var(--text);border-radius:6px;
+          padding:4px 12px;font-size:11.5px;font-weight:700;letter-spacing:0;text-transform:none;cursor:pointer}
+  .eb-btn:hover:not(:disabled){border-color:var(--blue);color:var(--blue)}
+  .eb-btn:disabled{opacity:.55;cursor:default}
+  .eb-ai{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:1px 7px;
+         border-radius:4px;background:var(--amber-bg);color:var(--amber)}
+  .eb-rv{display:grid;gap:5px;margin-top:8px}
+  .eb-rv-s{font-size:11.5px;line-height:1.6;color:var(--text2);padding:5px 10px;border-radius:7px;
+           background:var(--card2);border-left:3px solid var(--border2)}
+  .eb-rv-s .k{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-bottom:2px}
+  .eb-les{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;padding:6px 0;border-top:1px dashed var(--border2)}
+  .eb-les:first-of-type{border-top:0}
+  .eb-les-n{font-size:11px;font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums}
+  .eb-les-p{font-size:12.5px;font-weight:600;line-height:1.5;color:var(--text)}
+  .eb-les-w{font-size:11.5px;line-height:1.6;color:var(--text2);margin-top:2px}
+  .eb-les-s{font-size:11px;line-height:1.55;color:var(--text3);margin-top:3px}
+  .eb-les-s span{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin-right:6px}
+  .eb-terms{margin-top:9px;font-size:11.5px}
+  .eb-terms>summary{cursor:pointer;color:var(--text3);font-size:10.5px;letter-spacing:.04em}
+  .eb-term{line-height:1.6;color:var(--text2);padding:3px 0 0 12px}
+  .eb-term b{color:var(--text)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -8251,6 +8276,7 @@ function loadEodExtras() {
   _eodExtrasAt = Date.now();
   jget('/api/eod-activity').then(j => { if (j?.ok) { _eodAct = j; render(); } }).catch(() => {});
   jget('/api/calendar-feed').then(j => { if (j?.ok) { _eodCal = j; render(); } }).catch(() => {});
+  loadEodReview();   // whatever was last written; spends nothing
 }
 
 const _EOD_RANK = { high: 3, medium: 2, low: 1, holiday: 0 };
@@ -8341,6 +8367,85 @@ function renderEodBrief(r, inp, amTxt) {
     ${said ? `<div class="eb-fwd"><div class="eb-h">What this page said at ${esc0(amTxt)}</div>${said}
       <div class="eb-note">Quoted, not graded. Prose is not scoreable, and marking it would be the same mistake as calling a lean right on one day — the numbers above are the measured half, and the comparison is yours to make.</div></div>` : ''}
     ${fwd}
+    ${(() => { try { return renderEodReviewBlock(); } catch (e) { console.error('[eod review]', e); return ''; } })()}
+  </div>`;
+}
+
+// ── The paid review: a button, never a schedule ─────────────────────────────
+// The free brief above it renders every day and is unchanged by this. This spends a
+// model call and only ever on a click — same rule as the morning brief's Generate and
+// the chain read's re-read. On load the page shows whatever was last written, with its
+// age, and spends nothing; yesterday's review is marked stale rather than passed off
+// as today's.
+let _eodReview = null, _eodReviewBusy = false;
+async function loadEodReview() {
+  try { const j = await jget('/api/eod-review'); if (j?.ok) { _eodReview = j; render(); } }
+  catch { /* the button is still there */ }
+}
+async function writeEodReview(force) {
+  if (_eodReviewBusy) return;
+  const R = window.eodReviewBrick, inp = eodInputs();
+  if (!R || !inp) return;
+  let r, b;
+  try {
+    r = window.endOfDayBrick.endOfDay({ morning: inp.row, live: inp.live, hl: inp.hl, chainAM: inp.chainAM, chainPM: inp.chainPM });
+    b = window.eodBriefBrick.endOfDayBrief({ morning: inp.row, eod: r, moved: macroMoved?.rows ?? [], ahead: eodAhead(),
+          printed: _eodCal?.printed ?? null, sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {} });
+  } catch (e) { console.error('[eod review]', e); return; }
+  const snapshot = R.eodSnapshot({ eod: r, brief: b, morning: inp.row, activity: _eodAct?.instruments ?? {} });
+  if (!snapshot) return;
+  snapshot.plannedAt = inp.row?.plan?.at ?? null;
+
+  _eodReviewBusy = true; render();
+  try {
+    const res = await fetch(`/api/eod-review${force ? '?force=1' : ''}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ snapshot }),
+    });
+    const j = await res.json();
+    if (j?.ok) _eodReview = j;
+    else alert(`Could not write the review: ${j?.error ?? res.status}`);
+  } catch (e) { alert(`Could not write the review: ${e.message}`); }
+  finally { _eodReviewBusy = false; render(); }
+}
+
+/** The review, rendered under the free brief. Returns '' when none has been written. */
+function renderEodReviewBlock() {
+  const rv = _eodReview?.review;
+  const btn = `<button class="eb-btn" ${_eodReviewBusy ? 'disabled' : ''} onclick="writeEodReview(${rv ? 'true' : 'false'})">
+      ${_eodReviewBusy ? 'writing…' : rv ? '↻ re-write' : '✍ Write it up'}</button>`;
+  const head = `<div class="eb-h" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span>The written review</span>
+      <span class="eb-ai">AI · costs a call · not backtested</span>
+      ${rv ? `<span class="muted" style="font-size:10.5px;font-weight:400;letter-spacing:0;text-transform:none">${
+        _eodReview.stale ? 'from an earlier day — press re-write for today' : `written ${_eodReview.ageMin ?? 0} min ago`}</span>` : ''}
+      <span style="flex:1"></span>${btn}</div>`;
+
+  if (!rv) return `<div class="eb-fwd">${head}
+      <div class="eb-note">Everything above is measured and free. This adds the part a number cannot give you: the day walked open to close, an honest verdict on what this page got right and wrong this morning, and what to take into tomorrow. One click, one model call.</div></div>`;
+
+  const sec = (k, body) => body ? `<div class="eb-rv-s"><span class="k">${esc0(k)}</span>${body}</div>` : '';
+  const paras = String(rv.story ?? '').split(/\n\s*\n/).filter(Boolean).map(p => `<p class="eb-p">${esc0(p)}</p>`).join('');
+  const lessons = (rv.lessons ?? []).map((l, i) => `<div class="eb-les">
+      <div class="eb-les-n">${i + 1}</div>
+      <div><div class="eb-les-p">${esc0(l.point ?? '')}</div>
+        ${l.why ? `<div class="eb-les-w">${esc0(l.why)}</div>` : ''}
+        ${l.howToSpot ? `<div class="eb-les-s"><span>how to spot it</span>${esc0(l.howToSpot)}</div>` : ''}</div></div>`).join('');
+  const terms = (rv.terms ?? []).length
+    ? `<details class="eb-terms"><summary>${rv.terms.length} terms, in plain words</summary>
+        ${rv.terms.map(t => `<div class="eb-term"><b>${esc0(t.term ?? '')}</b> — ${esc0(t.plain ?? '')}</div>`).join('')}</details>` : '';
+
+  return `<div class="eb-fwd">${head}
+    ${rv.hook ? `<div class="eb-hl" style="font-size:14px">${esc0(rv.hook)}</div>` : ''}
+    ${paras}
+    ${rv.plan ? `<div class="eb-rv">
+        ${sec('Got right', esc0(rv.plan.right ?? ''))}
+        ${sec('Got wrong', esc0(rv.plan.wrong ?? ''))}
+        ${sec('Not knowable at the open', esc0(rv.plan.unknowable ?? ''))}
+      </div>` : ''}
+    ${lessons ? `<div class="eb-h" style="margin-top:10px">What to take from it</div>${lessons}` : ''}
+    ${rv.tomorrow ? `<div class="eb-rv" style="margin-top:9px">${sec('Into tomorrow', esc0(rv.tomorrow))}</div>` : ''}
+    ${terms}
+    <div class="eb-note">Written by a model from the measured facts above — it may phrase something badly, but every number in it came from this page. It is asked never to say which way anything goes tomorrow: the priced-in claim tested null here and surprise size validated for range only.</div>
   </div>`;
 }
 
@@ -11988,6 +12093,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as EndOfDayBrief from './js/endOfDayBrief.js';
   window.eodBriefBrick = EndOfDayBrief;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The paid end-of-day review (js/eodReview.js): builds the snapshot and the prompt.
+     The call itself is click-only and runs server-side; nothing here spends anything. -->
+<script type="module">
+  import * as EodReview from './js/eodReview.js';
+  window.eodReviewBrick = EodReview;
   try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">

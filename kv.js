@@ -59,6 +59,9 @@ const _CF_EXACT = new Set([
   'chain_read_v1',           // the last trader's-voice chain read (+ the day's earlier ones). A paid
                              // model call each; the reader expects to find the last one hours later
                              // and after a redeploy. Must also be in _worker.js PERMANENT_KEYS.
+  'eod_review_v1',           // the last paid end-of-day review (+ the day's earlier ones). A model
+                             // call each; the reader presses the button once and expects to find it
+                             // there tomorrow morning. Must also be in _worker.js PERMANENT_KEYS.
   'pair_ledger_v1',          // what today.html CALLED each day, scored against what happened. The
                              // only track record the page's direction tag has ever had; a lost store
                              // is that record, gone. Must also be in _worker.js PERMANENT_KEYS.

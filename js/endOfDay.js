@@ -91,8 +91,13 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
   const leanRight = committed ? ((move > 0) === leanUp) : null;
 
   const used = usedPct(realised, expected);
+  // PRICE precision is not MOVE precision. `dp` is the decimals for the move in its own
+  // unit (0, because a pip count is a whole number); rounding a price by it produced
+  // "EURUSD opened 1.14, now 1.14" and threw away the entire day. The instrument's own
+  // `dp` is used where the feed carries it, with the conventional fallback otherwise.
+  const pdp = Number.isFinite(live.dp) ? live.dp : (unit === 'pips' ? (mult === 100 ? 3 : 5) : 2);
   return {
-    name, unit, dp,
+    name, unit, dp, pdp,
     // carried so a caller can group the board without a second lookup table — the
     // brief needs to know an index from a currency pair to say anything about the day
     ac: live.ac ?? null,
@@ -102,7 +107,7 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
     regimeNow: live.regime?.label ?? null,
     regimeOkNow: live.regime?.reliable ?? null,
     volPctNow: live.vol_pct ?? null,
-    open: +open.toFixed(dp + 2), now: +now.toFixed(dp + 2),
+    open: +open.toFixed(pdp), now: +now.toFixed(pdp),
     move: +move.toFixed(dp), moveUp: move > 0,
     expected: expected == null ? null : +expected.toFixed(dp),
     realised: +realised.toFixed(dp),
