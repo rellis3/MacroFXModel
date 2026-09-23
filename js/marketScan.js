@@ -166,6 +166,33 @@ export const LINKS = [
 ];
 
 const WINDOW = 20, HIST = 750;                      // 20 sessions, ranked against ~3 years
+
+/**
+ * CALIBRATED THRESHOLDS — the most important numbers in this file.
+ *
+ * The board tests 50 tiles and 20 links every session. Against a fixed |z| >= 1.5,
+ * something clears it essentially always: measured over 763 sessions (O1, the
+ * outcome study), the `extreme` finding fired on 96% of days and `dislocation` on
+ * 67%. A finding that appears on 96% of days is not a finding, it is the default
+ * state wearing an alarm, and it is why a reader stops believing the page.
+ *
+ * That is a multiple-comparisons problem, not an observation about markets. The fix
+ * is to define "rare" against the distribution of the board's OWN MAXIMUM rather
+ * than against a single series. Measured by analysis/calibrate_thresholds.mjs over
+ * 2023-09 → 2026-09, at all three windows:
+ *
+ *              board max|z|              link max|z|
+ *   median        2.10 – 2.35              1.80 – 2.03
+ *   p85           3.46 – 3.71              3.01 – 3.17
+ *   p90           4.00 – 4.12              3.47 – 3.68
+ *
+ * So the MEDIAN day already has a tile at z 2.3. These are set at roughly the 85th
+ * percentile, which targets a finding about three sessions a month — often enough
+ * to be worth opening, rare enough to mean something. Re-run the calibration after
+ * adding tiles: a wider board raises its own maximum, and a threshold that is not
+ * re-derived silently gets looser every time the board grows.
+ */
+export const THRESHOLDS = { extreme: 3.6, unusual: 2.6, link: 3.1, calibratedOn: '2026-09-23' };
 const MIN_HIST = 60;                                // below this there is nothing to rank against
 const WEAK_CORR = 0.2;                              // a link this loose has nothing to break
 
@@ -230,17 +257,17 @@ export const WINDOWS = [{ n: 1, label: '1 day' }, { n: 5, label: '1 week' }, { n
 
 /** Orientation before detail: how many things are unusual, and how many are noise. */
 export function glance(board = [], scored = []) {
-  const rare = board.filter(b => Math.abs(b.z) >= 2).length;
-  const unusual = board.filter(b => Math.abs(b.z) >= 1.5 && Math.abs(b.z) < 2).length;
+  const rare = board.filter(b => Math.abs(b.z) >= THRESHOLDS.extreme).length;
+  const unusual = board.filter(b => Math.abs(b.z) >= THRESHOLDS.unusual && Math.abs(b.z) < THRESHOLDS.extreme).length;
   const live = (scored ?? []).filter(l => !l.weak);
   return {
     rare, unusual,
     // a link is "apart" on the same threshold the findings use, so the count and the
     // headline can never disagree with one another
-    apart: live.filter(l => Math.abs(l.z) >= 1.8).length,
-    holding: live.filter(l => Math.abs(l.z) < 1.8).length,
+    apart: live.filter(l => Math.abs(l.z) >= THRESHOLDS.link).length,
+    holding: live.filter(l => Math.abs(l.z) < THRESHOLDS.link).length,
     tooLoose: (scored ?? []).length - live.length,
-    inside: board.filter(b => Math.abs(b.z) < 1.5).length,
+    inside: board.filter(b => Math.abs(b.z) < THRESHOLDS.unusual).length,
     total: board.length,
   };
 }
@@ -328,10 +355,14 @@ const fmtUnit = (v, kind) => {
 export function findings(board = [], { links = [], limit = 3, scored = [] } = {}) {
   const by = k => board.find(b => b.key === k) ?? null;
   const out = [];
-  const rare = z => Math.abs(z) >= 2 ? 'rare' : Math.abs(z) >= 1.5 ? 'unusual' : null;
+  // Only the RARE tier produces a finding. The "unusual" tier still colours tiles and
+  // feeds the glance counts, but emitting a headline for it put `extreme` on 38% of
+  // sessions -- testable only in the sense that there was nothing left to compare it
+  // against. A finding has to be scarce enough to have a control.
+  const rare = z => Math.abs(z) >= THRESHOLDS.extreme ? 'rare' : null;
 
   // 1. THE HEADLINE: links that have come apart. This is the market view.
-  for (const L of (scored ?? []).filter(l => !l.weak && Math.abs(l.z) >= 1.8).slice(0, 2)) {
+  for (const L of (scored ?? []).filter(l => !l.weak && Math.abs(l.z) >= THRESHOLDS.link).slice(0, 2)) {
     const together = L.corr > 0 ? 'together' : 'in opposite directions';
     const bWord = Math.abs(L.moveB) < 0.05 ? 'has barely moved' : `is ${fmtUnit(L.moveB, L.kindB)}`;
     out.push({
@@ -339,7 +370,7 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
       title: `${L.labelA} and ${L.labelB} have come apart`,
       seen: `${L.labelA} is ${fmtUnit(L.moveA, L.kindA)} over twenty sessions while ${L.labelB} ${bWord}. These two normally move ${together} (${Math.abs(L.corr).toFixed(2)} over the last three years); today they sit further apart than on ${Math.round(L.pct * 100)}% of the days in that window.`,
       means: `${L.normally} ${L.apart}`,
-      notMeans: `It does not mean the gap closes, and it does not say which of the two is wrong. Tested here (S5): when a link breaks there is no tendency for either leg to be the one that corrects. Note too that twenty-session windows overlap heavily, so treat the percentage above as the real reading — it is a distance, not a one-in-forty event.`,
+      notMeans: `It does not mean the gap closes, and it does not say which of the two is wrong. Tested twice now: S5 found neither leg reliably corrects, and O1 replayed this page's own dislocations over 763 sessions and found NOTHING follows them — range +0.01 [−0.11, +0.34] on the S&P, direction 71% up against an 80% control, and the two halves of the sample flip sign. Note too that twenty-session windows overlap heavily, so treat the percentage above as the real reading — it is a distance, not a one-in-forty event.`,
     });
   }
 
@@ -357,7 +388,9 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
   // 3. What KIND of rate move this is — the real-versus-inflation split. This is the
   //    single most useful thing you can do with a bond move, and it is pure arithmetic.
   { const t = by('tips'), be = by('bei'), n = by('us10y');
-    if (t && be && n && Math.abs(n.change) >= 15) {
+    // was a fixed 15bp, which fired on 28% of sessions -- the move itself now has
+    // to be unusual for its own history before the split is worth calling out
+    if (t && be && n && Math.abs(n.change) >= 15 && Math.abs(n.z) >= THRESHOLDS.unusual) {
       const denom = Math.abs(t.change) + Math.abs(be.change);
       const realShare = denom > 0 ? Math.abs(t.change) / denom : 0.5;
       const isReal = realShare >= 0.7, isInfl = realShare <= 0.3;
@@ -378,7 +411,7 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
     out.push({ kind: 'extreme', key: b.key, rank: 2 + Math.abs(b.z), title: `${b.label} is ${word}`,
       seen: `${b.label} has moved ${fmtChange(b)} over twenty sessions — ${b.z > 0 ? 'higher' : 'lower'} than ${Math.round((b.z > 0 ? b.pct : 1 - b.pct) * 100)}% of twenty-session moves in the last three years (z ${b.z >= 0 ? '+' : ''}${b.z.toFixed(1)}).`,
       means: `${b.what} A move this size in ${b.label.toLowerCase()} is the kind that reprices the things attached to it, so the question is what else on the board has followed and what has not — that is where the story usually is.`,
-      notMeans: 'Rare is a measurement, not a forecast. A move being unusual says nothing about whether it continues, reverses or stalls — the only forward claims on this desk live in the evidence book, each with its interval.', z: b.z });
+      notMeans: 'Rare is a measurement, not a forecast — and that is now TESTED rather than asserted. O1 replayed this page over 763 sessions: after a rare move the next month was +0.15 [−0.04, +0.40] wider on the S&P, an interval that holds zero, and the market was higher 73% of the time against a 79% control. It says nothing about what happens next, in either range or direction.', z: b.z });
     break;
   }
 
@@ -388,7 +421,7 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
       title: 'The VIX curve is inverted',
       seen: `Three-month VIX is ${Math.abs(t.last).toFixed(1)} points BELOW spot VIX${v && v.last != null ? ` (spot ${v.last.toFixed(1)})` : ''}.`,
       means: 'Normally the longer-dated contract costs more, because more can go wrong in three months than in one. When it inverts, the market is paying up to be covered RIGHT NOW — the difference between a live scare and a background worry.',
-      notMeans: 'Validated on this desk for RANGE only: inversions precede wider sessions. It carries no direction — an inverted curve says the next few days are likely to be bigger, not which way they go.' }); }
+      notMeans: 'Validated for RANGE only, and now twice from independent harnesses: O1 replayed this page over 763 sessions and found the next month ran +0.52 [+0.38, +0.88] wider on the S&P and +0.44 [+0.26, +0.78] on the Nasdaq, holding in both halves of the sample. Direction is null — 57% higher against an 80%+ control. It says the next few weeks are likely to be bigger, never which way.' }); }
 
   // 6. where in the credit stack the repricing is
   { const ig = by('ig'), hy = by('hy'), ccc = by('ccc');
@@ -400,7 +433,7 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
         means: deep
           ? 'Weak borrowers repricing while the safest ones do not is a sector or single-name problem rather than a systemic one. It is the ordinary way a credit cycle begins, and it very often goes nowhere.'
           : 'When investment-grade moves with the rest, the market is repricing the cost of capital for everybody rather than worrying about particular borrowers. That is the version that reaches equities and the real economy.',
-        notMeans: 'This desk has no tested credit-leads-equity effect. The stack tells you what KIND of credit move this is; it makes no claim about what equity does next.' }); } }
+        notMeans: 'This desk has no tested credit-leads-equity effect. O1 did find the next month runs marginally wider after this fires (+0.16 [+0.015, +0.33] on the S&P) but it is NULL on the Nasdaq and rests on 12 firings, so it is recorded as context rather than something to act on. The stack tells you what KIND of credit move this is; it makes no claim about direction.' }); } }
 
   // 7. a broken link on the chain — a mechanism failing rather than a big number
   { const broken = (links ?? []).filter(l => l.verdict === 'broken');
@@ -417,11 +450,11 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
 
   // 8. dispersion: the index calm while its constituents are not
   { const d = by('dspx'), v = by('vix');
-    if (d && d.last != null && (d.pct >= 0.85 || d.z >= 1.5)) out.push({ kind: 'dispersion', key: 'dspx', rank: 2.2 + Math.max(d.z, 0),
+    if (d && d.last != null && d.pct >= 0.95) out.push({ kind: 'dispersion', key: 'dspx', rank: 2.2 + Math.max(d.z, 0),
       title: 'The index looks calmer than the shares inside it',
       seen: `Dispersion is ${d.last.toFixed(1)}, ${Math.round(d.pct * 100)}% of its own readings since 2014${v && v.last != null ? `, with the VIX at ${v.last.toFixed(1)}` : ''}${d.change != null ? ` and the twenty-session change ${d.change > 0 ? 'up' : 'down'} ${Math.abs(d.change).toFixed(1)}` : ''}.`,
       means: 'Dispersion is the gap between what single-name options cost and what the index’s cost. It rises when money crowds into a few names: the individual shares get expensive to hedge while the index, whose constituents are pulling against each other, stays cheap. That combination — a calm index over a violently disagreeing market — is the state where an index hedge protects you least, because the thing that hurts you is concentration, not the market falling as a whole.',
-      notMeans: 'It is NOT a crash signal, and the popular version of the claim is dead: tested here on 68 setups since 2014 (D1), a crowded market did NOT precede a wider week (+0.07 [-0.06, +0.23] on the S&P) and did not raise the odds of a violent day within it (33% against 30%). The next MONTH did run wider (+0.23 [+0.04, +0.51]), and that survives holding the VIX down — but it was a secondary window on a small count, so it is a reason to re-run, not to trade.' }); }
+      notMeans: 'It is NOT a crash signal, and the popular version of the claim is dead: tested here on 68 setups since 2014 (D1), a crowded market did NOT precede a wider week (+0.07 [-0.06, +0.23] on the S&P) and did not raise the odds of a violent day within it (33% against 30%). The next MONTH did run wider (+0.23 [+0.04, +0.51]), and that survives holding the VIX down — but it was a secondary window on a small count. O1 has since reached the same 20-day result by an independent path (+0.52 [+0.37, +0.64] on the S&P, holding in both halves) — which raises it from a curiosity to a re-run worth doing, and still not to a trade.' }); }
 
   // 9. the commodity complex disagreeing with itself
   { const o = by('oil'), c = by('crack'), b = by('bei');

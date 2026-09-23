@@ -103,6 +103,103 @@ result (D1) and the same one the analogue panel applies live.
 
 Harness: `analysis/outcome_loop.mjs`. Output: `analysis/output/outcome_loop.json`.
 
-## Findings
+## Findings — run 2026-09-23
 
-*To be filled by the harness run. Nothing below this line has been computed.*
+763 sessions replayed (2023-09 → 2026-08), calling the live page's own
+`scanBoard`/`scanLinks`/`findings` at each index.
+
+### The first result was about the page, not the market
+
+The initial run could not test three of the six finding-kinds, and the reason
+matters more than any interval: **they had no control group**, because they fired
+on almost every session.
+
+| kind | fired on | control days |
+|---|---|---|
+| extreme | **96%** of sessions | 0 |
+| dislocation | 67% | 0 |
+| ratekind | 28% | 0 |
+| dispersion | 22% | 81 |
+
+A finding that appears on 96% of days is not a finding. That is a
+multiple-comparisons artefact: the board tests 50 tiles and 20 links every
+session against a fixed `|z| >= 1.5`, and with 50 draws something always clears
+it. `analysis/calibrate_thresholds.mjs` measured the board's own maximum:
+
+|  | median | p85 | p90 |
+|---|---|---|---|
+| board max\|z\| | 2.10 – 2.35 | 3.46 – 3.71 | 4.00 – 4.12 |
+| link max\|z\| | 1.80 – 2.03 | 3.01 – 3.17 | 3.47 – 3.68 |
+
+**The median day already carries a tile at z 2.3.** Thresholds were re-set at
+roughly the 85th percentile of that distribution (`THRESHOLDS` in
+`js/marketScan.js`: extreme 3.6, link 3.1), and the `extreme` headline now fires
+only at the rare tier rather than also at "unusual". Base rates fell to 8–18%.
+
+*(The harness itself had the matching bug: it reported "null — the hedge is
+correct" for kinds whose control set was empty. An empty control produces
+nothing, not a null. Now refused explicitly with `MIN_CONTROL`.)*
+
+### O1a — range, after re-calibration
+
+| kind | firings | fires on | SPX range diff | NQ range diff | verdict |
+|---|---|---|---|---|---|
+| **vixterm** | 14 | 8% | **+0.522 [0.378, 0.878]** | **+0.443 [0.262, 0.775]** | **real** |
+| **dispersion** | 9 | 8% | **+0.518 [0.365, 0.644]** | **+0.550 [0.367, 0.693]** | **real** |
+| **creditstack** | 12 | 16% | **+0.162 [0.015, 0.333]** | +0.139 [−0.133, 0.424] | marginal |
+| extreme | 15 | 17% | +0.148 [−0.041, 0.399] | +0.152 [−0.151, 0.443] | null |
+| dislocation | 17 | 18% | +0.007 [−0.112, 0.335] | +0.118 [−0.107, 0.400] | null |
+| quiet | 33 | 61% | — | — | untestable, and correctly so |
+
+### O1b — direction: null everywhere, as pre-registered
+
+Not one kind beat its control. Every setup's up-share sat at or BELOW the control
+share: dislocation 71% vs 80%, extreme 73% vs 79%, vixterm 57% vs 94%, dispersion
+67% vs 85%, creditstack 83% vs 77% (the only one above, and its interval
+[55–95] swallows the control entirely). This was pre-registered as the expected
+outcome and it is confirmed. **No finding on this page carries direction.**
+
+### O1d — one regime, or many?
+
+The three survivors hold in **both halves** of the sample, which is what separates
+an effect from an episode:
+
+- vixterm — early +0.697 [0.548, 0.865], late +0.347 [0.202, 0.515]
+- dispersion — early +0.733 [0.591, 0.858], late +0.345 [0.202, 0.457]
+- creditstack — early +0.147 [0.024, 0.285], late +0.176 [0.037, 0.316]
+
+Both nulls behave as nulls should: dislocation's halves flip sign entirely
+(+0.285 early, −0.239 late), which is noise, not a decaying effect.
+
+### O1c — was the page's hedge correct?
+
+**Mostly yes, and now it is evidenced rather than assumed.**
+
+- `dislocation` and `extreme`: the `notMeans` was right. Wording becomes "tested
+  here, null" rather than an assertion.
+- `vixterm`: survives, and independently reproduces the already-validated VIX
+  inversion claim from a completely different harness — a useful cross-check.
+- `dispersion`: survives at 20 sessions, reproducing D1's *secondary* window
+  (+0.23 [+0.04, +0.51]) from an independent path. D1's headline weekly claim
+  stays null; this does not revive it.
+- `creditstack`: marginal — real on the S&P, null on the Nasdaq, on 12 firings.
+  Recorded as context, not validated.
+
+### Limits, restated
+
+The bundle is not point-in-time: FRED revises, so a 2024 firing sees today's
+vintage. Counts are small (9–17 firings). Twenty-session windows overlap heavily,
+which is why the intervals are wide and must stay that way. **Nothing here becomes
+a live trigger without a forward test** — the tracker that records findings as
+they fire is the next step, and it takes a year to say anything.
+
+## What went on the page
+
+- `THRESHOLDS` in `js/marketScan.js`, with the calibration table recorded at the
+  definition and a note to re-derive it whenever tiles are added — a wider board
+  raises its own maximum and silently loosens an un-rederived threshold.
+- Ledger: `mv-vixterm-range` and `mv-dispersion-range` as real (range only),
+  `mv-creditstack-range` as context, `mv-dislocation-forward` and
+  `mv-extreme-forward` as null.
+- No Desk Watch trigger. Range-only claims with 9–17 firings on revised data earn
+  a re-run, not an alert.

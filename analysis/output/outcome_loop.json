@@ -1,0 +1,328 @@
+{
+ "ranAt": "2026-09-23T07:46:47.792Z",
+ "bundle": {
+  "from": "2020-09-22",
+  "to": "2026-09-22",
+  "n": 1583
+ },
+ "horizon": 20,
+ "warmup": 800,
+ "minFirings": 8,
+ "kinds": {
+  "quiet": {
+   "rawFirings": 468,
+   "daysFired": 468,
+   "baseRate": 0.613,
+   "firings": 33,
+   "control": 0,
+   "first": "2023-10-04",
+   "last": "2026-08-25",
+   "verdict": "UNTESTABLE — fires on 61% of sessions, leaving 0 control days"
+  },
+  "dislocation": {
+   "rawFirings": 167,
+   "daysFired": 134,
+   "baseRate": 0.176,
+   "firings": 17,
+   "control": 218,
+   "first": "2023-10-26",
+   "last": "2026-04-08",
+   "o1a_spx": {
+    "nA": 17,
+    "nB": 218,
+    "diff": 0.007,
+    "lo": -0.112,
+    "hi": 0.335
+   },
+   "o1a_nq": {
+    "nA": 17,
+    "nB": 218,
+    "diff": 0.118,
+    "lo": -0.107,
+    "hi": 0.4
+   },
+   "o1b_dir": {
+    "setup": {
+     "n": 17,
+     "k": 12,
+     "share": 0.706,
+     "lo": 0.469,
+     "hi": 0.867
+    },
+    "control": {
+     "n": 208,
+     "k": 166,
+     "share": 0.798,
+     "lo": 0.738,
+     "hi": 0.847
+    }
+   },
+   "o1d_halves": {
+    "splitAt": "2025-05-02",
+    "early": {
+     "nA": 8,
+     "nB": 218,
+     "diff": 0.285,
+     "lo": 0.135,
+     "hi": 0.46
+    },
+    "late": {
+     "nA": 9,
+     "nB": 218,
+     "diff": -0.239,
+     "lo": -0.391,
+     "hi": -0.067
+    }
+   },
+   "verdict": "null — the hedge is correct",
+   "o1c": {
+    "rangeReal": false,
+    "dirReal": false
+   }
+  },
+  "extreme": {
+   "rawFirings": 126,
+   "daysFired": 126,
+   "baseRate": 0.165,
+   "firings": 15,
+   "control": 267,
+   "first": "2024-01-12",
+   "last": "2026-04-02",
+   "o1a_spx": {
+    "nA": 15,
+    "nB": 267,
+    "diff": 0.148,
+    "lo": -0.041,
+    "hi": 0.399
+   },
+   "o1a_nq": {
+    "nA": 15,
+    "nB": 267,
+    "diff": 0.152,
+    "lo": -0.151,
+    "hi": 0.443
+   },
+   "o1b_dir": {
+    "setup": {
+     "n": 15,
+     "k": 11,
+     "share": 0.733,
+     "lo": 0.48,
+     "hi": 0.891
+    },
+    "control": {
+     "n": 257,
+     "k": 204,
+     "share": 0.794,
+     "lo": 0.74,
+     "hi": 0.839
+    }
+   },
+   "o1d_halves": {
+    "splitAt": "2025-06-09",
+    "early": {
+     "nA": 7,
+     "nB": 267,
+     "diff": 0.296,
+     "lo": 0.144,
+     "hi": 0.451
+    },
+    "late": {
+     "nA": 8,
+     "nB": 267,
+     "diff": 0.018,
+     "lo": -0.13,
+     "hi": 0.179
+    }
+   },
+   "verdict": "null — the hedge is correct",
+   "o1c": {
+    "rangeReal": false,
+    "dirReal": false
+   }
+  },
+  "creditstack": {
+   "rawFirings": 119,
+   "daysFired": 119,
+   "baseRate": 0.156,
+   "firings": 12,
+   "control": 354,
+   "first": "2024-04-16",
+   "last": "2026-04-24",
+   "o1a_spx": {
+    "nA": 12,
+    "nB": 354,
+    "diff": 0.162,
+    "lo": 0.015,
+    "hi": 0.333
+   },
+   "o1a_nq": {
+    "nA": 12,
+    "nB": 354,
+    "diff": 0.139,
+    "lo": -0.133,
+    "hi": 0.424
+   },
+   "o1b_dir": {
+    "setup": {
+     "n": 12,
+     "k": 10,
+     "share": 0.833,
+     "lo": 0.552,
+     "hi": 0.953
+    },
+    "control": {
+     "n": 340,
+     "k": 262,
+     "share": 0.771,
+     "lo": 0.723,
+     "hi": 0.812
+    }
+   },
+   "o1d_halves": {
+    "splitAt": "2025-03-04",
+    "early": {
+     "nA": 6,
+     "nB": 354,
+     "diff": 0.147,
+     "lo": 0.024,
+     "hi": 0.285
+    },
+    "late": {
+     "nA": 6,
+     "nB": 354,
+     "diff": 0.176,
+     "lo": 0.037,
+     "hi": 0.316
+    }
+   },
+   "verdict": "something survives",
+   "o1c": {
+    "rangeReal": true,
+    "dirReal": false
+   }
+  },
+  "vixterm": {
+   "rawFirings": 63,
+   "daysFired": 63,
+   "baseRate": 0.083,
+   "firings": 14,
+   "control": 211,
+   "first": "2023-10-03",
+   "last": "2026-07-29",
+   "o1a_spx": {
+    "nA": 14,
+    "nB": 211,
+    "diff": 0.522,
+    "lo": 0.378,
+    "hi": 0.878
+   },
+   "o1a_nq": {
+    "nA": 14,
+    "nB": 211,
+    "diff": 0.443,
+    "lo": 0.262,
+    "hi": 0.775
+   },
+   "o1b_dir": {
+    "setup": {
+     "n": 14,
+     "k": 8,
+     "share": 0.571,
+     "lo": 0.326,
+     "hi": 0.786
+    },
+    "control": {
+     "n": 198,
+     "k": 186,
+     "share": 0.939,
+     "lo": 0.897,
+     "hi": 0.965
+    }
+   },
+   "o1d_halves": {
+    "splitAt": "2025-03-28",
+    "early": {
+     "nA": 7,
+     "nB": 211,
+     "diff": 0.697,
+     "lo": 0.548,
+     "hi": 0.865
+    },
+    "late": {
+     "nA": 7,
+     "nB": 211,
+     "diff": 0.347,
+     "lo": 0.202,
+     "hi": 0.515
+    }
+   },
+   "verdict": "something survives",
+   "o1c": {
+    "rangeReal": true,
+    "dirReal": true
+   }
+  },
+  "dispersion": {
+   "rawFirings": 60,
+   "daysFired": 60,
+   "baseRate": 0.079,
+   "firings": 9,
+   "control": 356,
+   "first": "2023-10-11",
+   "last": "2026-07-08",
+   "o1a_spx": {
+    "nA": 9,
+    "nB": 356,
+    "diff": 0.518,
+    "lo": 0.365,
+    "hi": 0.644
+   },
+   "o1a_nq": {
+    "nA": 9,
+    "nB": 356,
+    "diff": 0.55,
+    "lo": 0.367,
+    "hi": 0.693
+   },
+   "o1b_dir": {
+    "setup": {
+     "n": 9,
+     "k": 6,
+     "share": 0.667,
+     "lo": 0.354,
+     "hi": 0.879
+    },
+    "control": {
+     "n": 337,
+     "k": 286,
+     "share": 0.849,
+     "lo": 0.806,
+     "hi": 0.883
+    }
+   },
+   "o1d_halves": {
+    "splitAt": "2025-09-30",
+    "early": {
+     "nA": 4,
+     "nB": 356,
+     "diff": 0.733,
+     "lo": 0.591,
+     "hi": 0.858
+    },
+    "late": {
+     "nA": 5,
+     "nB": 356,
+     "diff": 0.345,
+     "lo": 0.202,
+     "hi": 0.457
+    }
+   },
+   "verdict": "something survives",
+   "o1c": {
+    "rangeReal": true,
+    "dirReal": false
+   }
+  }
+ }
+}
