@@ -8061,7 +8061,10 @@ function booksCardHtml() {
       if (M) { const x = M.buildMatrix(window.deskEvidenceBrick?.DESK_EVIDENCE ?? [], []).stats;
         st = `<b>${x.validated}</b> tested · <b>${x.nulls}</b> null · ${x.blank} never asked`; }
     } catch { /* the row still links */ }
-    row('market-view.html', '🌐', 'Market View', st ?? 'what moves what, and what that is worth', 'who the tape is organised around, every X-against-Y this desk has asked, and what actually moved'); })();
+    row('market-view.html', '🌐', 'Market View', st ?? 'what moves what, and what that is worth', 'who the tape is organised around, every X-against-Y this desk has asked, and what actually moved');
+    // the same engines with the teaching stripped out -- a monitoring surface for
+    // when you already know what a real yield is and just want the board's state
+    row('terminal.html', '📈', 'Terminal', 'the whole board at density, no explanation', 'risk gauges, cross-asset matrix, momentum shapes, positioning and event risk on one screen'); })();
   // the week, scored
   const wm = weekMap; const loudW = wm ? Object.values(wm.series).filter(x => !x.hidden && Math.abs(x.latest?.z ?? 0) >= 2).sort((a, b) => Math.abs(b.latest.z) - Math.abs(a.latest.z)) : [];
   row('weekmap.html', '🗺', 'The week, scored', wm ? (loudW.length ? `unusual this week: ${esc0(loudW.slice(0, 3).map(x => `${x.label} z ${x.latest.z >= 0 ? '+' : ''}${x.latest.z.toFixed(1)}`).join(', '))}; the rest ordinary` : 'an ordinary week on every series') : 'every macro series scored against its own history', 'this week in each series’ distribution, and the weeks that sat like this');
