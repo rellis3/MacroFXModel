@@ -5,337 +5,217 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Market View</title>
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--card2:#1c2330;--border:#30363d;--border2:#3d444d;
+  /* Dark is the default; the light block overrides the same variable names on
+     <body class="light">, exactly as today.html does — same palette, same
+     localStorage key, so the toggle carries across both pages. */
+  :root{
+    --bg:#0d1117;--bg-rgb:13,17,23;--card:#161b22;--card2:#1c2330;--border:#30363d;--border-rgb:48,54,61;--border2:#1c2230;
     --text:#e6edf3;--text2:#9da7b3;--text3:#6e7681;
-    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--red:#f85149;--purple:#a371f7}
+    --bull:#10b981;--bear:#f97316;--amber:#d29922;--blue:#4f7df0;--purple:#8b5cf6;--red:#f85149;
+    --bull-bg:rgba(16,185,129,.12);--bear-bg:rgba(249,115,22,.12);--amber-bg:rgba(210,153,34,.12);
+    --blue-bg:rgba(79,125,240,.12);--neu-bg:rgba(110,118,129,.15);
+    --s1:#161b22;--s2:#1c2330;
+  }
+  body.light{
+    --bg:#f4f6fb;--bg-rgb:244,246,251;--card:#ffffff;--card2:#eef1f7;--border:#d8dee8;--border-rgb:216,222,232;--border2:#c9d1de;
+    --text:#0d1520;--text2:#4b5a6e;--text3:#7c8aa0;
+    --bull:#0a8a5c;--bear:#c2410c;--amber:#b45309;--blue:#1847c2;--purple:#6d28d9;--red:#c8222a;
+    --bull-bg:rgba(10,138,92,.10);--bear-bg:rgba(194,65,12,.10);--amber-bg:rgba(180,83,9,.10);
+    --blue-bg:rgba(24,71,194,.10);--neu-bg:rgba(75,90,110,.08);
+    --s1:#ffffff;--s2:#eef1f7;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font:13px/1.55 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
+  body{background:var(--bg);color:var(--text);font:13px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;padding-bottom:60px}
   a{color:var(--blue);text-decoration:none} a:hover{text-decoration:underline}
-  .hdr{position:sticky;top:0;z-index:50;background:rgba(13,17,23,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-  .hdr h1{font-size:17px;font-weight:700} .hdr .spacer{flex:1} .hdr .stamp{font-size:10.5px;color:var(--text3)}
-  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  .hdr{position:sticky;top:0;z-index:50;background:rgba(var(--bg-rgb),.94);backdrop-filter:blur(8px);
+       border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .hdr h1{font-size:17px;font-weight:700;letter-spacing:.01em}
+  .hdr .sess{font-size:12px;color:var(--text2)} .hdr .spacer{flex:1}
+  .hbtn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:5px 12px;
+        font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap}
   .hbtn:hover{border-color:var(--border2);color:var(--text);text-decoration:none}
-  .wrap{max-width:1180px;margin:0 auto;padding:16px 18px}
-  .intro{color:var(--text2);font-size:12.5px;line-height:1.7;margin-bottom:14px;max-width:78ch}
-  .intro b{color:var(--text)}
+  .wrap{max-width:1180px;margin:0 auto;padding:14px 18px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
-  .card h2{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:4px}
-  .card .sub{color:var(--text2);font-size:12px;line-height:1.6;margin-bottom:10px;max-width:80ch}
-  .card .sub b{color:var(--text)}
-  .lead{font-size:15px;line-height:1.55;font-weight:600;margin:2px 0 8px} .lead b{color:var(--text)}
+  .card h2{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:6px}
+  .sub{color:var(--text2);font-size:12px;line-height:1.6;margin-bottom:10px;max-width:82ch} .sub b{color:var(--text)}
   .muted{color:var(--text3)}
-  /* who's driving */
-  .drv{display:grid;grid-template-columns:132px 1fr 62px;gap:8px 12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
-  .drv:last-child{border-bottom:none}
-  .drv .k{font-weight:700;color:var(--text)} .drv .p{color:var(--text3);font-size:11px;min-width:0}
-  .drv .bar{display:block;height:8px;border-radius:4px;background:var(--card2);overflow:hidden;border:1px solid var(--border);margin-bottom:3px}
-  .drv .bar i{display:block;height:100%;background:var(--blue)}
-  .drv .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--text2)}
-  /* the matrix */
-  .mx{overflow-x:auto}
-  table.mx-t{border-collapse:separate;border-spacing:3px;font-size:11.5px;min-width:760px}
-  table.mx-t th{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-weight:700;text-align:left;padding:4px 6px;vertical-align:bottom}
-  table.mx-t th.row{width:150px}
-  table.mx-t td{padding:0}
-  .cl{display:block;width:100%;min-height:46px;border-radius:7px;border:1px solid var(--border);background:var(--card2);padding:5px 7px;cursor:pointer;text-align:left;font:inherit;color:var(--text2);line-height:1.35}
-  .cl:hover{border-color:var(--border2)}
-  .cl.validated{border-left:3px solid var(--bull)} .cl.null{border-left:3px solid var(--red)}
-  .cl.context{border-left:3px solid var(--blue)} .cl.untested{background:transparent;border-style:dashed;cursor:default;opacity:.45}
-  .cl .v{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;display:block}
-  .cl.validated .v{color:var(--bull)} .cl.null .v{color:var(--red)} .cl.context .v{color:var(--blue)} .cl.untested .v{color:var(--text3)}
-  .cl .n{font-size:11px;color:var(--text)}
-  .cl.sel{outline:2px solid var(--blue);outline-offset:1px}
-  .rowlab{font-weight:700;color:var(--text);font-size:12px;cursor:help}
-  .detail{border-left:3px solid var(--blue);background:var(--card2);border-radius:0 8px 8px 0;padding:9px 12px;margin-top:10px;font-size:12.5px;line-height:1.6;color:var(--text2)}
-  .detail b{color:var(--text)} .detail .h{font-weight:700;color:var(--text);font-size:13px}
-  .detail .x{float:right;cursor:pointer;color:var(--text3);font-size:11px}
-  .key{display:flex;gap:14px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:8px}
-  .key i{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:middle;margin-right:4px}
-  /* cross-asset grid */
-  table.xa{border-collapse:collapse;width:100%;font-size:12px}
-  table.xa th{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);text-align:right;padding:5px 8px;border-bottom:1px solid var(--border2)}
-  table.xa th:first-child,table.xa th:nth-child(2){text-align:left}
-  table.xa td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2);text-align:right;font-variant-numeric:tabular-nums}
-  table.xa td:first-child{text-align:left;color:var(--text);font-weight:600}
-  table.xa td:nth-child(2){text-align:left;color:var(--text3);font-size:11px}
-  table.xa tr.grp td{background:var(--card2);color:var(--text3);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:700}
-  .up{color:var(--bull)} .dn{color:var(--red)} .flat{color:var(--text3)}
-  .z{font-size:10px;color:var(--text3)}
-  /* the lesson */
-  .lesson{border-left:3px solid var(--amber)}
-  .ls-t{font-size:17px;font-weight:700;line-height:1.35;margin-bottom:8px;color:var(--text)}
-  .ls-p{display:grid;grid-template-columns:104px 1fr;gap:4px 14px;font-size:13px;line-height:1.65;margin-bottom:7px;align-items:baseline}
-  .ls-p .k{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:var(--text3);padding-top:3px}
-  .ls-p.seen .k{color:var(--text2)} .ls-p.trap .k{color:var(--red)} .ls-p.say .k{color:var(--amber)}
-  .ls-p .b{color:var(--text2)} .ls-p.seen .b{color:var(--text);font-weight:600}
-  .ls-p.say .b{color:var(--amber);font-style:italic}
-  .ls-foot{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:11px;color:var(--text3)}
-  .ls-btn{background:var(--card2);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;font-family:inherit;cursor:pointer}
-  .ls-btn:hover{border-color:var(--border2);color:var(--text)}
-  .ls-ev{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:10.5px;margin-right:4px}
-  .ls-ev.validated{border-left:2px solid var(--bull)} .ls-ev.null{border-left:2px solid var(--red)} .ls-ev.context{border-left:2px solid var(--blue)}
-  .gl{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;margin-top:6px}
-  .gl div{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.5;color:var(--text2)}
-  .gl div b{color:var(--text);font-size:12px} .gl div .sayit{color:var(--text3);font-style:italic}
-  .gl div .lv{float:right;color:var(--blue);font-variant-numeric:tabular-nums}
-  @media (max-width:560px){.ls-p{grid-template-columns:1fr}.ls-p .k{padding-top:6px}}
-  .note{color:var(--text3);font-size:11px;line-height:1.6;margin-top:10px;max-width:84ch}
-  @media (max-width:560px){.wrap{padding:12px}.drv{grid-template-columns:110px 1fr 54px}}
+  /* the scan — the headline of the page */
+  .scan{border-left:3px solid var(--amber)}
+  .fnd{border-top:1px solid var(--border);padding:11px 0} .fnd:first-of-type{border-top:none;padding-top:2px}
+  .fnd .n{display:inline-block;width:20px;font-weight:800;color:var(--text3);font-variant-numeric:tabular-nums}
+  .fnd .t{font-size:16px;font-weight:700;color:var(--text);line-height:1.35}
+  .fnd .s{font-size:13.5px;line-height:1.6;color:var(--text);margin:5px 0 0 20px;font-weight:600}
+  .fnd .m{font-size:13px;line-height:1.65;color:var(--text2);margin:6px 0 0 20px}
+  .fnd .nm{font-size:12.5px;line-height:1.6;color:var(--text2);margin:6px 0 0 20px;padding-left:9px;border-left:2px solid var(--red)}
+  .fnd .nm b{color:var(--red)}
+  .fnd .go{margin:7px 0 0 20px;font-size:11px}
+  /* the board */
+  .grp{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:700;margin:12px 0 6px}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px}
+  .tile{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:8px 10px;cursor:pointer;text-align:left;
+        color:var(--text2);font:inherit;display:block;width:100%}
+  .tile:hover{border-color:var(--border2)}
+  .tile.hot{border-color:var(--amber);background:var(--amber-bg)}
+  .tile.sel{outline:2px solid var(--blue);outline-offset:1px}
+  .tile .k{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .tile .v{font-size:17px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums;line-height:1.25}
+  .tile .c{font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums}
+  .tile .c.up{color:var(--bull)} .tile .c.dn{color:var(--red)} .tile .c.fl{color:var(--text3)}
+  .tile .z{font-size:10px;color:var(--text3);font-weight:400}
+  .tile .z.hot{color:var(--amber);font-weight:700}
+  .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
+       font-size:13px;line-height:1.65;color:var(--text2)}
+  .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
+  .exp .x{float:right;cursor:pointer;color:var(--text3);font-size:11px}
+  .exp .lnk{margin-top:6px;font-size:12px}
+  .note{color:var(--text3);font-size:11px;line-height:1.6;margin-top:10px;max-width:86ch}
+  @media (max-width:560px){.wrap{padding:11px}.tiles{grid-template-columns:repeat(auto-fill,minmax(142px,1fr))}.fnd .t{font-size:15px}}
 </style>
 </head>
 <body>
+<script>try{if(localStorage.getItem('macrofx_theme')==='light')document.body.classList.add('light');}catch(e){}</script>
 <div class="hdr">
   <h1>🌐 Market View</h1>
-  <span class="stamp" id="stamp">what moves what, and what that is worth</span>
+  <span class="sess" id="stamp">—</span>
   <span class="spacer"></span>
-  <a class="hbtn" href="drill.html">🎯 The Drill</a>
   <a class="hbtn" href="today.html">← Today</a>
+  <a class="hbtn" href="drill.html">🎯 Drill</a>
   <a class="hbtn" href="regime.html">Regime</a>
-  <a class="hbtn" href="weekmap.html">The week</a>
   <a class="hbtn" href="rates.html">Rates</a>
-  <a class="hbtn" href="evidence.html">Evidence Book</a>
+  <a class="hbtn" href="evidence.html">Evidence</a>
+  <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
 </div>
 
 <div class="wrap">
-  <div class="intro">
-    <b>How to read a market, in three questions.</b> First, <b>what is today organised around</b> — on any given day one or two things are moving everything else, and the rest are passengers. Second, <b>what does X do to Y</b> — separately for the same window (which explains) and for tomorrow (which is what you would trade on, and is mostly nothing). Third, <b>what actually moved</b>. This page is those three, in that order. Nothing here is a trade; the whole point is that most cross-asset stories are true as description and worthless as prediction, and the only way to know which is which is to have tested them and kept the answer.
-  </div>
-
-  <div class="card lesson" id="lessonCard">
-    <h2>Today's lesson <span id="lessonWhy" class="muted" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
-    <div id="lesson">Loading…</div>
+  <div class="card scan">
+    <h2>What is unusual right now</h2>
+    <div class="sub">Every market below scored against <b>its own</b> three-year history, so a 40bp move in the 2-year and a 6% move in gold are comparable. The page reads the board and says where to look first. <b>Rare is a measurement, not a forecast.</b></div>
+    <div id="scan">Reading the board…</div>
   </div>
 
   <div class="card">
-    <h2>1 · Who is driving</h2>
-    <div class="sub">Each market's daily moves against every other market's, over the last 60 sessions. High up the list = this thing moves when everything else moves. It is the tape's <b>organising principle</b>, not its cause: two markets can move together because a third moved both. <span class="muted">Description. No forward claim.</span></div>
-    <div class="lead" id="drvLead">Loading…</div>
-    <div id="drv"></div>
-  </div>
-
-  <div class="card">
-    <h2>2 · The impact matrix — X against Y</h2>
-    <div class="sub">Every cell is a question someone could ask. <b>Click one.</b> Four answers are possible and the fourth is the interesting one: a tested effect with a number, a tested <b>null</b>, a described mechanism that explains but does not predict, or <b>blank — nobody has asked</b>. The blanks are the research queue.</div>
-    <div class="mx" id="mx">Loading…</div>
-    <div class="key">
-      <span><i style="background:var(--bull)"></i>validated — a number and an interval</span>
-      <span><i style="background:var(--red)"></i>null — tested, nothing there</span>
-      <span><i style="background:var(--blue)"></i>context — explains, does not predict</span>
-      <span><i style="background:var(--border2)"></i>blank — never asked</span>
-    </div>
-    <div id="mxDetail"></div>
-    <div class="note" id="mxStats"></div>
-  </div>
-
-  <div class="card">
-    <h2>3 · What actually moved</h2>
-    <div class="sub">Every node on the board in one table: the level, and the change over one day, one week and one month. The macro series are the ones the chain judges; the prices are this desk's instruments.</div>
-    <div id="xa">Loading…</div>
-    <div class="note">Macro rows come from the same series the chain reads, each against its own cadence (a weekly series cannot have a one-day change). Price rows are OANDA daily closes.</div>
-  </div>
-  <div class="card">
-    <h2>4 · The words</h2>
-    <div class="sub">The vocabulary, defined against the live number where there is one. Learning to <b>talk</b> about a market is not decoration — the words are compressed concepts, and you cannot hold an idea you have no name for.</div>
-    <div class="gl" id="gl"></div>
+    <h2>The whole board</h2>
+    <div class="sub">Everything this desk carries, with its twenty-session move and how unusual that move is. <b>Amber = rare.</b> Tap a tile for what it is, where the move sits in its own history, and which textbook links touch it today.</div>
+    <div id="board"></div>
+    <div id="tileExp"></div>
+    <div class="note" id="foot"></div>
   </div>
 </div>
 
 <script type="module">
-import { DESK_EVIDENCE } from './js/deskEvidence.js';
-import { DRIVERS, TARGETS, buildMatrix, leadership } from './js/impactMatrix.js';
-import { CHAIN_NODES, CHAIN_WINDOW_DAYS, nodeDelta, evaluateChain } from './js/macroChain.js';
-import { GLOSSARY, pickLesson, lessonsToday } from './js/marketLessons.js';
+import { BOARD, scanBoard, findings, fmtChange, fmtLevel } from './js/marketScan.js';
+import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const jget = async u => { const r = await fetch(u); if (!r.ok) throw new Error(u + ' ' + r.status); return r.json(); };
-// /api/ohlc returns { values: [...] } NEWEST-FIRST with string prices and a
-// `datetime` key -- sorting ascending here rather than trusting the order (the
-// newest-first trap has bitten this repo before).
-const ascending = j => { const a = j?.values ?? j?.candles ?? j?.bars ?? j ?? [];
-  const out = (Array.isArray(a) ? a : []).map(c => ({ date: String(c.datetime ?? c.time ?? c.date ?? '').slice(0, 10), value: +(c.mid?.c ?? c.close ?? c.c ?? c.value) }))
-    .filter(p => p.date && Number.isFinite(p.value));
-  out.sort((x, y) => x.date < y.date ? -1 : 1); return out; };
+const $ = id => document.getElementById(id);
+window.toggleTheme = () => {
+  const isLight = document.body.classList.toggle('light');
+  try { localStorage.setItem('macrofx_theme', isLight ? 'light' : 'dark'); } catch (e) {}
+  $('themeToggleBtn').textContent = isLight ? '🌙 Dark' : '☀️ Light';
+};
+try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn').textContent = '🌙 Dark'; } catch (e) {}
 
-const FRED_KEYS = 'us2y,us10y,us30y,tips,bei,vix,vix3m,dxy,hy,sofr,iorb,tp10';
-const OHLC = { oil: 'WTICO_USD', gold: 'XAU_USD', copper: 'XCU_USD', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD',
-               eurusd: 'EUR_USD', gbpusd: 'GBP_USD', usdjpy: 'USD_JPY', audusd: 'AUD_USD', usdcad: 'USD_CAD' };
-const LABELS = { us2y: 'US 2Y', us10y: 'US 10Y', us30y: 'US 30Y', tips: 'Real 10Y', bei: 'Breakevens', vix: 'VIX', dxy: 'Dollar', hy: 'Credit (HY)',
-                 oil: 'Oil', gold: 'Gold', copper: 'Copper', btc: 'Bitcoin', nq: 'Nasdaq', spx: 'S&P 500',
-                 eurusd: 'EUR/USD', gbpusd: 'GBP/USD', usdjpy: 'USD/JPY', audusd: 'AUD/USD', usdcad: 'USD/CAD',
-                 giltgap: 'Gilt−UST gap', bundgap: 'Bund−UST gap', jgbgap: 'JGB−UST gap', crack: 'Crack spread' };
-
-let SERIES = {}, MATRIX = null, SEL = null;
+let BUNDLE = null, SCORED = [], LINKS = [], SEL = null;
 
 async function load() {
-  const [fred, crack, intl, mc, watch, regime, ...ohlc] = await Promise.all([
-    jget(`/api/fredhistory?keys=${FRED_KEYS}`).catch(() => ({})),
-    jget('/api/crack').catch(() => null),
-    jget('/api/intl-yields').catch(() => null),
-    jget('/api/macro-changes').catch(() => ({ rows: [] })),
-    jget('/api/desk-watch').catch(() => null),
-    jget('/api/regime').catch(() => null),
-    ...Object.values(OHLC).map(s => jget(`/api/ohlc?symbol=${s}`).catch(() => null)),
-  ]);
-  for (const k of ['us2y', 'us10y', 'us30y', 'tips', 'bei', 'vix', 'dxy', 'hy']) if (fred?.[k]?.length) SERIES[k] = fred[k];
-  Object.keys(OHLC).forEach((k, i) => { const p = ascending(ohlc[i]); if (p.length) SERIES[k] = p; });
-  if (crack?.series?.length) SERIES.crack = crack.series.map(r => ({ date: r.date, value: r.value }));
-  // the foreign gaps, on the Treasury's own dates
-  if (intl?.series && fred?.us10y?.length) {
-    const u = new Map(fred.us10y.map(p => [p.date, p.value]));
-    for (const [k, key] of [['giltgap', 'gb10y'], ['bundgap', 'de10y'], ['jgbgap', 'jp10y']]) {
-      const f = intl.series[key]; if (!f?.length) continue;
-      const g = f.filter(p => u.has(p.date)).map(p => ({ date: p.date, value: (p.value - u.get(p.date)) * 100 }));
-      if (g.length > 20) SERIES[k] = g;
-    }
-  }
-  renderDriving();
-  const links = chainToday();
-  renderMatrix(links);
-  renderCrossAsset(mc?.rows ?? []);
-  renderLesson(links, { crack, watch, regime });
-  renderGlossary();
+  try {
+    const [bundleRes, intl, crack] = await Promise.all([
+      fetch('/api/drill-series').then(r => r.json()),
+      fetch('/api/intl-yields').then(r => r.json()).catch(() => null),
+      fetch('/api/crack').then(r => r.json()).catch(() => null),
+    ]);
+    if (!bundleRes?.ok) throw new Error(bundleRes?.error ?? 'no series');
+    BUNDLE = bundleRes;
+    mergeExtras(intl, crack);
+    SCORED = scanBoard(BUNDLE);
+    LINKS = chainToday();
+    $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
+    renderScan(); renderBoard();
+    $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
+  } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
 }
 
-/* ── the lesson: today's tape, explained, and it remembers what you have met ──
-   The curriculum is written by the market: a lesson only fires when the tape is
-   actually doing that thing, and the same idea deepens a level each time you
-   meet it rather than repeating. What you have seen lives in this browser only
-   (localStorage) -- nothing about it is sent anywhere. */
-const SEEN_KEY = 'mv_lessons_seen_v1';
-const seenRead = () => { try { return JSON.parse(localStorage.getItem(SEEN_KEY) ?? '{}') ?? {}; } catch { return {}; } };
-const seenWrite = o => { try { localStorage.setItem(SEEN_KEY, JSON.stringify(o)); } catch { /* private window: the lesson still shows, it just will not remember */ } };
-let LCTX = null, LSKIP = [];
-
-function lessonContext(links, extra = {}) {
-  const st = MATRIX?.stats ?? null;
-  const ev = (extra.crack?.context?.percentile != null) ? extra.crack.context : null;
-  const last = k => SERIES[k]?.length ? SERIES[k][SERIES[k].length - 1].value : null;
-  return {
-    links, matrix: st, regime: extra.regime?.now ?? extra.regime ?? null,
-    watch: extra.watch?.states ?? [], events: (extra.events ?? []),
-    vix: last('vix'), vix3m: null, series: { tips: last('tips'), bei: last('bei'), hy: last('hy') },
-    crackLevel: extra.crack?.last?.crack ?? null, crackPercentile: ev?.percentile ?? null,
+/** The gaps and the crack are not in the bundle; align them onto its date spine. */
+function mergeExtras(intl, crack) {
+  const S = BUNDLE.series, idx = new Map(BUNDLE.dates.map((d, i) => [d, i]));
+  const place = (key, rows, mul = 1, sub = null) => {
+    if (!rows?.length) return;
+    const out = new Array(BUNDLE.dates.length).fill(null);
+    for (const r of rows) { const i = idx.get(r.date); if (i == null) continue;
+      const base = sub ? S[sub]?.[i] : 0; if (sub && base == null) continue;
+      out[i] = +(((r.value ?? r) - (base ?? 0)) * mul).toFixed(3); }
+    S[key] = out;
   };
+  // gaps in PERCENT, like every other rate series here -- the board converts to
+  // basis points once, in marketScan. Doing it here as well read +400bp for +4bp.
+  if (intl?.series) { place('giltgap', intl.series.gb10y, 1, 'us10y'); place('bundgap', intl.series.de10y, 1, 'us10y'); place('jgbgap', intl.series.jp10y, 1, 'us10y'); }
+  if (crack?.series) place('crack', crack.series);
 }
 
-function renderLesson(links, extra) {
-  LCTX = lessonContext(links, extra);
-  paintLesson();
-}
-function paintLesson() {
-  const seen = seenRead();
-  const p = pickLesson(LCTX, seen, { exclude: LSKIP });
-  const box = document.getElementById('lesson');
-  if (!p) { box.innerHTML = '<span class="muted">No lesson fits today’s tape.</span>'; return; }
-  const { lesson, body, why } = p;
-  document.getElementById('lessonWhy').textContent = `· ${why}`;
-  const evChips = (body.evidence ?? []).map(id => { const e = DESK_EVIDENCE.find(x => x.id === id); return e ? `<span class="ls-ev ${e.verdict}" title="${esc(e.claim)}">${esc(e.id)} · ${esc(e.verdict)}</span>` : ''; }).join('');
-  box.innerHTML = `
-    <div class="ls-t">${esc(lesson.title)}</div>
-    <div class="ls-p seen"><span class="k">What you see</span><span class="b">${esc(body.seen)}</span></div>
-    <div class="ls-p"><span class="k">What it means</span><span class="b">${esc(body.means)}</span></div>
-    <div class="ls-p trap"><span class="k">What it does NOT mean</span><span class="b">${esc(body.notMeans)}</span></div>
-    <div class="ls-p say"><span class="k">Say it like this</span><span class="b">${esc(body.words)}</span></div>
-    <div class="ls-foot">
-      <button class="ls-btn" onclick="lessonGot()">Got it — next time go deeper</button>
-      <button class="ls-btn" onclick="lessonSkip()">Another one</button>
-      ${evChips ? `<span>backed by: ${evChips}</span>` : '<span class="muted">no forward test — this one is mechanism only</span>'}
-      <span class="muted">topic: ${esc(lesson.topic)} · level ${lesson.level} of 3 · ${lessonsToday(LCTX).length} lessons fit today</span>
-    </div>`;
-  window.__lesson = p;
-}
-window.lessonGot = () => { const p = window.__lesson; if (!p) return; const s = seenRead(); s[p.lesson.id] = Math.max(s[p.lesson.id] ?? 0, p.lesson.level); seenWrite(s); LSKIP = []; paintLesson(); };
-window.lessonSkip = () => { const p = window.__lesson; if (!p) return; LSKIP.push(`${p.lesson.id}:${p.lesson.level}`); paintLesson(); };
-
-function renderGlossary() {
-  const c = LCTX ?? {};
-  document.getElementById('gl').innerHTML = GLOSSARY.map(g => {
-    let live = null; try { live = g.live ? g.live(c) : null; } catch { live = null; }
-    return `<div>${live != null ? `<span class="lv">${esc(typeof live === 'number' ? live.toFixed(2) : live)}</span>` : ''}<b>${esc(g.term)}</b>${g.say ? ` <span class="sayit">“${esc(g.say)}”</span>` : ''}<br>${esc(g.def)}</div>`;
-  }).join('');
-}
-
-/* ── the chain, evaluated here so a matrix cell can show today's verdict ── */
+/** Today's chain verdicts, from the same numbers, so the board cannot disagree with it. */
 function chainToday() {
+  const S = BUNDLE.series, i = BUNDLE.dates.length - 1;
+  const pts = key => { const a = S[key]; if (!a) return null; const out = [];
+    for (let k = Math.max(0, i - 45); k <= i; k++) if (a[k] != null) out.push({ date: BUNDLE.dates[k], value: a[k] });
+    return out.length > 20 ? out : null; };
   const map = { real: 'tips', dxy: 'dxy', oil: 'oil', gold: 'gold', copper: 'copper', btc: 'btc', nq: 'nq', spx: 'spx',
                 us2y: 'us2y', us10y: 'us10y', us30y: 'us30y', bei: 'bei', vix: 'vix', hy: 'hy',
                 audusd: 'audusd', usdcad: 'usdcad', usdjpy: 'usdjpy', eurusd: 'eurusd', gbpusd: 'gbpusd',
                 giltgap: 'giltgap', bundgap: 'bundgap', jgbgap: 'jgbgap', crack: 'crack' };
   const vals = {};
-  for (const [node, key] of Object.entries(map)) { const pts = SERIES[key]; vals[node] = pts?.length ? nodeDelta(pts, CHAIN_NODES[node]) : null; }
+  for (const [node, key] of Object.entries(map)) { const p = pts(key); vals[node] = p ? nodeDelta(p, CHAIN_NODES[node]) : null; }
   try { return evaluateChain(vals); } catch { return []; }
 }
 
-/* ── 1. who is driving ── */
-function renderDriving() {
-  const rank = leadership(SERIES, { window: 60, labels: LABELS });
-  if (!rank.length) { document.getElementById('drvLead').textContent = 'Not enough series loaded to rank.'; return; }
-  const top = rank[0], second = rank[1], last = rank[rank.length - 1];
-  document.getElementById('drvLead').innerHTML =
-    `Today’s tape is organised around <b>${esc(top.label)}</b>${second ? ` and <b>${esc(second.label)}</b>` : ''} — ${esc(top.label)} moves with everything else at a mean |r| of <b>${top.meanAbsCorr.toFixed(2)}</b> over 60 sessions. <b>${esc(last.label)}</b> is the passenger at ${last.meanAbsCorr.toFixed(2)}: it is doing its own thing.`;
-  const max = rank[0].meanAbsCorr || 1;
-  document.getElementById('drv').innerHTML = rank.map(r => `
-    <div class="drv">
-      <span class="k">${esc(r.label)}</span>
-      <span><span class="bar"><i style="width:${Math.round(100 * r.meanAbsCorr / max)}%"></i></span>
-        <span class="p">moves most with ${r.partners.map(p => `${esc(p.label)} ${p.r >= 0 ? '+' : ''}${p.r}`).join(' · ')}</span></span>
-      <span class="v">${r.meanAbsCorr.toFixed(2)}</span>
+function renderScan() {
+  const f = findings(SCORED, { links: LINKS, limit: 3 });
+  $('scan').innerHTML = f.map((x, i) => `
+    <div class="fnd">
+      <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
+      <div class="s">${esc(x.seen)}</div>
+      <div class="m">${esc(x.means)}</div>
+      <div class="nm"><b>What it does not mean:</b> ${esc(x.notMeans)}</div>
+      ${x.key && x.key !== 'chain' ? `<div class="go"><a href="#" onclick="selTile('${esc(x.key)}');return false">see it on the board ↓</a></div>` : ''}
     </div>`).join('');
 }
 
-/* ── 2. the matrix ── */
-function renderMatrix(links) {
-  MATRIX = buildMatrix(DESK_EVIDENCE, links);
-  const VW = { validated: 'tested', null: 'null', context: 'explains', untested: '' };
-  const head = `<tr><th class="row"></th>${TARGETS.map(t => `<th title="${esc(t.what)}">${esc(t.label)}</th>`).join('')}</tr>`;
-  const body = MATRIX.rows.map(r => `<tr><td><span class="rowlab" title="${esc(r.what)}">${esc(r.label)}</span></td>${
-    r.cells.map(c => {
-      const key = `${c.driver}|${c.target}`;
-      if (c.verdict === 'untested') return `<td><span class="cl untested"><span class="v">not asked</span></span></td>`;
-      const n = c.face ?? (c.chain?.length ? `${c.chain.length} chain link${c.chain.length > 1 ? 's' : ''}` : '');
-      return `<td><button class="cl ${c.verdict}${SEL === key ? ' sel' : ''}" onclick="selectCell('${key}')"><span class="v">${VW[c.verdict]}</span><span class="n">${esc(n)}</span></button></td>`;
-    }).join('')}</tr>`).join('');
-  document.getElementById('mx').innerHTML = `<table class="mx-t">${head}${body}</table>`;
-  const s = MATRIX.stats;
-  document.getElementById('mxStats').innerHTML =
-    `<b>${s.asked} of ${s.asked + s.blank}</b> cells have been asked: ${s.validated} carry a tested number, ${s.nulls} came back null, ${s.context} explain without predicting. The other <b>${s.blank}</b> are blank — that is the research queue, and it is the most honest thing on this page. Every number is read live from <a href="evidence.html">the Evidence Book</a>, so this grid cannot drift from the book.`;
-  if (SEL) renderDetail();
+function renderBoard() {
+  $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {
+    const rows = SCORED.filter(s => s.group === g);
+    if (!rows.length) return '';
+    return `<div class="grp">${esc(g)}</div><div class="tiles">${rows.map(s => {
+      const hot = Math.abs(s.z) >= 2, cls = s.change > 0 ? 'up' : s.change < 0 ? 'dn' : 'fl';
+      return `<button class="tile ${hot ? 'hot' : ''} ${SEL === s.key ? 'sel' : ''}" onclick="selTile('${esc(s.key)}')">
+        <div class="k">${esc(s.label)}</div>
+        <div class="v">${esc(fmtLevel(s))}</div>
+        <div class="c ${cls}">${esc(fmtChange(s))} <span class="z ${hot ? 'hot' : ''}">z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}${hot ? ' · rare' : ''}</span></div>
+      </button>`; }).join('')}</div>`;
+  }).join('');
 }
 
-window.selectCell = key => { SEL = SEL === key ? null : key; renderMatrix(chainToday()); if (SEL) document.getElementById('mxDetail').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); };
-function renderDetail() {
-  const c = MATRIX.byKey.get(SEL); const box = document.getElementById('mxDetail');
-  if (!c) { box.innerHTML = ''; return; }
-  const d = DRIVERS.find(x => x.id === c.driver), t = TARGETS.find(x => x.id === c.target);
-  const e = c.evidence;
-  const chain = c.chain?.length ? `<div style="margin-top:6px"><b>Same window, today:</b> ${c.chain.map(l => `${esc(l.textbook ?? l.short)} — <b>${l.verdict ? esc(l.verdict) : 'not loaded'}</b>`).join(' · ')}. <span class="muted">The chain judges these fresh every day on 20-day moves.</span></div>` : '';
-  const ev = e ? `<div style="margin-top:6px"><b>The claim:</b> ${esc(e.claim)}<br><b>What the test found:</b> ${esc(e.result)}<br><b>How to use it:</b> ${esc(e.use)}<div class="muted" style="margin-top:3px">${esc(e.verdict)} · ${esc(e.date)} · ${esc(e.doc ?? '')}</div></div>`
-    : '<div style="margin-top:6px" class="muted">No forward test on this desk. If the chain line above matters to you, it is a candidate for the queue.</div>';
-  box.innerHTML = `<div class="detail"><span class="x" onclick="selectCell('${SEL}')">close ✕</span>
-    <span class="h">${esc(d?.label)} → ${esc(t?.label)}</span>
-    <div class="muted" style="margin-top:2px">${esc(d?.what)}</div>
-    ${c.note ? `<div style="margin-top:6px">${esc(c.note)}</div>` : ''}${chain}${ev}</div>`;
-}
+const chainKeyFor = k => ({ tips: 'real' }[k] ?? k);
+window.selTile = key => {
+  SEL = SEL === key ? null : key;
+  renderBoard();
+  const box = $('tileExp'), s = SCORED.find(x => x.key === key);
+  if (!SEL || !s) { box.innerHTML = ''; return; }
+  const ck = chainKeyFor(key);
+  const touching = LINKS.filter(l => l.a?.key === ck || l.b?.key === ck);
+  const judged = touching.filter(l => l.verdict === 'holding' || l.verdict === 'broken');
+  const chain = judged.length
+    ? `<div style="margin-top:6px"><b>What it is connected to, today:</b> ${judged.map(l => `${esc(l.textbook)} — <b style="color:var(--${l.verdict === 'broken' ? 'amber' : 'bull'})">${esc(l.verdict)}</b>`).join(' · ')}.</div>`
+    : touching.length ? `<div style="margin-top:6px" class="muted">${touching.length} textbook link${touching.length > 1 ? 's' : ''} touch this, all quiet this month — at least one end is inside its noise floor, so there is nothing to judge.</div>` : '';
+  const pctWord = s.pct >= 0.95 ? 'the top 5%' : s.pct >= 0.8 ? 'the top fifth' : s.pct <= 0.05 ? 'the bottom 5%' : s.pct <= 0.2 ? 'the bottom fifth' : 'the ordinary middle';
+  box.innerHTML = `<div class="exp"><span class="x" onclick="selTile('${esc(key)}')">close ✕</span>
+    <span class="h">${esc(s.label)}</span> · ${esc(fmtLevel(s))}, ${esc(fmtChange(s))} over twenty sessions
+    <div style="margin-top:4px">${esc(s.what)}</div>
+    <div style="margin-top:6px">That move sits in <b>${pctWord}</b> of this series’ own twenty-session moves over the last three years (z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}, ${s.n} windows).</div>
+    ${chain}
+    <div class="lnk"><a href="drill.html" target="_blank">drill this kind of reading →</a> · <a href="evidence.html" target="_blank">what this desk has tested →</a></div></div>`;
+};
 
-/* ── 3. what actually moved ── */
-function renderCrossAsset(mcRows) {
-  const fmt = (v, unit) => v == null ? '<span class="flat">—</span>' : `<span class="${v > 0 ? 'up' : v < 0 ? 'dn' : 'flat'}">${v > 0 ? '+' : ''}${unit === 'bps' ? Math.round(v) : (+v).toFixed(2)}${unit === 'bps' ? 'bp' : unit === 'pct' ? '%' : ''}</span>`;
-  const macro = mcRows.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.lastDate ?? '')}</td><td>${r.last}</td>${[1, 5, 20].map(w => `<td>${fmt(r.deltas?.[w], r.unit)}</td>`).join('')}</tr>`).join('');
-  const pctChg = (pts, back) => { if (!pts || pts.length < back + 1) return null; const a = pts[pts.length - 1 - back]?.value, b = pts[pts.length - 1]?.value; return (a > 0 && b > 0) ? (b / a - 1) * 100 : null; };
-  const price = Object.keys(OHLC).map(k => { const p = SERIES[k]; if (!p?.length) return ''; const last = p[p.length - 1];
-    return `<tr><td>${esc(LABELS[k] ?? k)}</td><td>${esc(last.date)}</td><td>${last.value}</td>${[1, 5, 20].map(w => `<td>${fmt(pctChg(p, w), 'pct')}</td>`).join('')}</tr>`; }).join('');
-  const gaps = ['giltgap', 'bundgap', 'jgbgap', 'crack'].map(k => { const p = SERIES[k]; if (!p?.length) return ''; const last = p[p.length - 1];
-    const d = w => p.length > w ? last.value - p[p.length - 1 - w].value : null;
-    const unit = k === 'crack' ? '' : 'bps';
-    return `<tr><td>${esc(LABELS[k] ?? k)}</td><td>${esc(last.date)}</td><td>${k === 'crack' ? '$' + last.value.toFixed(1) : Math.round(last.value) + 'bp'}</td>${[1, 5, 20].map(w => `<td>${fmt(d(w), unit)}</td>`).join('')}</tr>`; }).join('');
-  document.getElementById('xa').innerHTML = `<table class="xa">
-    <tr><th>Series</th><th>as of</th><th>level</th><th>1 day</th><th>1 week</th><th>1 month</th></tr>
-    <tr class="grp"><td colspan="6">Rates, credit, volatility</td></tr>${macro}
-    <tr class="grp"><td colspan="6">Prices</td></tr>${price}
-    <tr class="grp"><td colspan="6">Spreads this desk built</td></tr>${gaps}</table>`;
-}
-
-load().catch(e => { document.getElementById('drvLead').textContent = 'Could not load: ' + e.message; });
+load();
 </script>
 </body>
 </html>

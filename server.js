@@ -14136,7 +14136,7 @@ svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e
 // "next" is instant and free.
 let _drillBundle = { at: 0, data: null, error: null };
 const _DRILL_FRED = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', tips: 'DFII10', bei: 'T10YIE', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS' };
-const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
+const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
 async function _refreshDrillBundle() {
   try {
     const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
@@ -14155,7 +14155,19 @@ async function _refreshDrillBundle() {
     if (dates.length < 300) throw new Error(`only ${dates.length} dates`);
     const series = {};
     for (const [k, m] of Object.entries(raw)) series[k] = dates.map(d => { const v = m.get(d); return v == null ? null : +v.toFixed(4); });
-    _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length } };
+    // A transient upstream failure (OANDA 504s happen in bursts) must not silently
+    // DELETE a market from the board -- the caller cannot tell "quiet" from "gone".
+    // Carry the previous bundle's series forward and say so.
+    const prev = _drillBundle.data?.series ?? null; const carried = [];
+    if (prev) for (const k of Object.keys(prev)) {
+      if (series[k]?.some(v => v != null)) continue;
+      const byDate = new Map(_drillBundle.data.dates.map((d, i) => [d, prev[k][i]]));
+      series[k] = dates.map(d => byDate.get(d) ?? null);
+      if (series[k].some(v => v != null)) carried.push(k);
+    }
+    if (carried.length) console.warn(`[drill] carried forward (upstream failed this run): ${carried.join(', ')}`);
+    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA)].filter(k => !series[k]?.some(v => v != null));
+    _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length, carried, missing } };
   } catch (e) { _drillBundle.error = e.message; console.warn('[drill]', e.message); }
   return _drillBundle;
 }
