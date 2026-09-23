@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { scorePair, endOfDay, pairReview } from './endOfDay.js';
+import { scorePair, endOfDay, pairReview, plannedInWindow, PLAN_WINDOW_UTC } from './endOfDay.js';
 
+const AM = '2026-09-23T07:30:00.000Z';   // inside the capture window
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
 const morning = (over = {}) => ({ price: 4362.35, lean: 'flat', expRange: 97, o5: 'BEARISH', o5c: 59, o20: 'BEARISH', o20c: 51, ...over });
@@ -66,7 +67,7 @@ t('a realised range given as a percent is used before falling back to open-to-no
 // which is the day worth knowing about — so the count is reported, not hidden.
 t('the board counts how many rows are on the weak measure', () => {
   const r = endOfDay({
-    morning: { plan: { pairs: { GOLD: morning(), NQ: morning({ price: 30785, expRange: 432 }) } } },
+    morning: { plan: { at: AM, pairs: { GOLD: morning(), NQ: morning({ price: 30785, expRange: 432 }) } } },
     live: { GOLD: live(), NQ: { session_open: 30785, current_price: 30751 } },
     hl: { GOLD: { high: 4370, low: 4280 } },
   });
@@ -85,7 +86,7 @@ t('"flat" is the absence of a call, not a wrong one', () => {
 
 t('the tally counts only pairs the page committed on, and shows the denominator', () => {
   const r = endOfDay({
-    morning: { plan: { pairs: {
+    morning: { plan: { at: AM, pairs: {
       GOLD: morning({ lean: 'down' }),
       NQ: morning({ price: 30785, expRange: 432, lean: 'up' }),
       SPX500: morning({ price: 7778, expRange: 75, lean: 'flat' }),
@@ -107,7 +108,7 @@ t('range verdicts band honestly: quiet, about right, missed', () => {
 
 t('chain links that CHANGED state between morning and now are reported', () => {
   const r = endOfDay({
-    morning: { plan: { pairs: { GOLD: morning() } }, },
+    morning: { plan: { at: AM, pairs: { GOLD: morning() } }, },
     live: { GOLD: live() },
     chainAM: [{ id: 'oil-bei', broken: false }, { id: 'tips-gold', broken: true }, { id: 'hy-spx', broken: true }],
     chainPM: [{ id: 'oil-bei', broken: true }, { id: 'tips-gold', broken: false }, { id: 'hy-spx', broken: true }],
@@ -118,14 +119,14 @@ t('chain links that CHANGED state between morning and now are reported', () => {
 });
 
 t('the caveat is always present and never claims a day proves anything', () => {
-  const r = endOfDay({ morning: { plan: { pairs: { GOLD: morning({ lean: 'down' }) } } }, live: { GOLD: live() } });
+  const r = endOfDay({ morning: { plan: { at: AM, pairs: { GOLD: morning({ lean: 'down' }) } } }, live: { GOLD: live() } });
   assert.match(r.caveat, /One day settles nothing/);
   assert.match(r.caveat, /has not yet beaten a coin flip/);
   assert.doesNotMatch(JSON.stringify(r), /\b(will|expect .* to|tomorrow)\b/i);
 });
 
 t('no morning snapshot says so rather than inventing a comparison', () => {
-  for (const bad of [null, {}, { plan: null }, { plan: { pairs: {} } }]) {
+  for (const bad of [null, {}, { plan: null }, { plan: { at: AM, pairs: {} } }]) {
     const r = endOfDay({ morning: bad, live: {} });
     assert.equal(r.ok, false);
     assert.ok(r.reason.length > 10);
@@ -196,7 +197,7 @@ t('a pair with no morning row reviews as nothing, not as a blank verdict', () =>
 
 t('the board counts the commitments separately from the closing tally', () => {
   const r = endOfDay({
-    morning: { plan: { pairs: {
+    morning: { plan: { at: AM, pairs: {
       GOLD: morning({ lean: 'down', wrongAt: 4400, aim: { target: 4280, side: 'below' } }),
       NQ:   morning({ price: 30785, expRange: 432, lean: 'up', wrongAt: 30600 }),
       SPX500: morning({ price: 7778, expRange: 75 }),
@@ -212,6 +213,34 @@ t('the board counts the commitments separately from the closing tally', () => {
   // and the closing tally still disagrees with the falsifier, which is the point
   assert.equal(r.leans.n, 2);
   assert.match(r.rows.find(x => x.name === 'GOLD').verdict, /cannot say which came first/);
+});
+
+// A plan captured in the evening is not a morning plan, whatever the row calls it.
+// Seen live: a tab opened at 21:43 wrote the day's record, which then scored 20 leans
+// right out of 20 — for the obvious reason.
+t('a plan captured outside the morning window is refused, not scored', () => {
+  assert.equal(plannedInWindow(AM), true);
+  assert.equal(plannedInWindow('2026-09-23T05:59:00.000Z'), false, 'before the window');
+  assert.equal(plannedInWindow('2026-09-23T11:00:00.000Z'), false, 'the end is exclusive');
+  assert.equal(plannedInWindow('2026-09-23T20:43:02.205Z'), false, 'the evening post that started this');
+  assert.equal(plannedInWindow('2026-09-23T00:15:57.118Z'), false, 'the midnight post that started this');
+  assert.equal(plannedInWindow(null), false);
+  assert.equal(plannedInWindow('not a date'), false);
+  assert.ok(PLAN_WINDOW_UTC.from < PLAN_WINDOW_UTC.to);
+
+  const late = endOfDay({
+    morning: { plan: { at: '2026-09-23T20:43:02.205Z', pairs: { GOLD: morning({ lean: 'down' }) } } },
+    live: { GOLD: live() },
+  });
+  assert.equal(late.ok, false);
+  assert.equal(late.outOfWindow, true);
+  assert.match(late.reason, /20:43 UTC, outside the 06:00-11:00 window/);
+  assert.match(late.reason, /nothing here to mark/);
+  assert.equal('leans' in late, false, 'a refused day publishes no tally at all');
+
+  const undated = endOfDay({ morning: { plan: { pairs: { GOLD: morning() } } }, live: { GOLD: live() } });
+  assert.equal(undated.ok, false);
+  assert.match(undated.reason, /no timestamp/);
 });
 
 console.log(`endOfDay: ${n} groups, all passed`);

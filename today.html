@@ -435,6 +435,29 @@
   .eod-cmt span b{color:var(--text)}
   .eod-scroll{overflow-x:auto}
 
+  /* The narrated half of the end-of-day pane: the morning brief's opposite number.
+     Same register, same card grid, but every number in it is measured rather than
+     written, so it carries no AI badge and costs nothing to produce. */
+  .eb{margin-bottom:12px}
+  .eb-hl{font-size:15px;font-weight:700;line-height:1.45;color:var(--text);margin-bottom:8px;text-wrap:balance}
+  .eb-p{font-size:12.5px;line-height:1.65;color:var(--text2);margin-bottom:8px;max-width:88ch}
+  .eb-p b{color:var(--text);font-weight:600}
+  .eb-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:9px;margin:11px 0}
+  .eb-card{background:var(--card2);border:1px solid var(--border2);border-radius:9px;padding:9px 11px}
+  .eb-ck{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:4px}
+  .eb-cb{font-size:11.5px;line-height:1.6;color:var(--text2)}
+  .eb-bt{font-size:12px;line-height:1.6;padding:7px 11px;border-radius:8px;border-left:3px solid var(--text3);
+         background:var(--card2);margin-bottom:10px}
+  .eb-bt.ok{border-left-color:var(--bull)} .eb-bt.no{border-left-color:var(--red)}
+  .eb-bt .k,.eb-said .k{display:inline-block;min-width:98px;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
+         color:var(--text3);font-weight:800;vertical-align:baseline;margin-right:6px}
+  .eb-fwd{border-top:1px solid var(--border2);padding-top:9px;margin-top:10px}
+  .eb-h{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:6px}
+  .eb-said{font-size:11.5px;line-height:1.65;color:var(--text2);padding:3px 0;max-width:92ch}
+  .eb-said b{color:var(--text);font-weight:600}
+  .eb-note{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:5px;max-width:88ch}
+  @media(max-width:560px){.eb-bt .k,.eb-said .k{display:block;min-width:0;margin-bottom:1px}}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -4913,10 +4936,15 @@ let _planPosted = null;
 // behind it, so every lean came back "flat" at 0 of 0 reads and wrongAt/aim were null.
 // The record was being written before there was anything to record. Nothing is posted
 // before London is open; the 3-hourly retry picks it up on the first cycle after.
-const PLAN_MIN_UTC_HOUR = 6;
+// A WINDOW, not a floor. The first version of this gated on "after 06:00 UTC", and a
+// tab opened in the evening wrote the day's plan at 20:43 — which then scored 20 leans
+// right out of 20, for the obvious reason. Outside 06:00-11:00 UTC nothing is written:
+// no record beats a record that says "this morning" and means "ten minutes ago".
+const PLAN_WINDOW_UTC = { from: 6, to: 11 };
 async function postDailyPlan() {
   const day = new Date().toISOString().slice(0, 10); if (_planPosted === day) return;
-  if (new Date().getUTCHours() < PLAN_MIN_UTC_HOUR) return;   // retried in 3h
+  const h = new Date().getUTCHours();
+  if (h < PLAN_WINDOW_UTC.from || h >= PLAN_WINDOW_UTC.to) return;   // retried in 3h
   const rs = allRows(); if (!rs.length || !window.outlookBrick) return;
   const pairs = {};
   for (const r of rs) {
@@ -8194,6 +8222,89 @@ function renderDrawerEod(r) {
     `<div class="tl-foot">Every line is something this page published at ${esc0(amTxt)} and has not been allowed to change since — the plan is stored once a day, first write wins. One pair on one day proves nothing either way; the point is whether the commitments were the kind that could be checked at all.</div>`;
 }
 
+// The narrated half of the end-of-day pane (js/endOfDayBrief.js). Deliberately NOT an
+// AI call: every line is a comparison between two records this page already holds —
+// what it published this morning and what the tape did since — and a comparison is
+// arithmetic. A model call would cost money to restate numbers already in memory, and
+// would be free to drift from them. The morning brief buys a voice on an open question;
+// this buys nothing, so it runs every day for nothing.
+//
+// The forward calendar comes from `events`, already loaded, mapped into the same shape
+// js/calendarFeed.js groups — one implementation of "what is ahead", not two.
+const _EOD_RANK = { high: 3, medium: 2, low: 1, holiday: 0 };
+function eodAhead() {
+  const C = window.calendarFeedBrick; if (!C) return [];
+  const rows = (Array.isArray(events) ? events : []).map(e => ({
+    ms: e.ms, ccy: e.country, rank: _EOD_RANK[String(e.impact ?? '').toLowerCase()] ?? 0,
+    event: e.event, forecast: e.estimate ?? null, previous: e.prev ?? null,
+  }));
+  return C.upcoming(rows, Date.now(), { days: 7, minRank: 3 });
+}
+
+function renderEodBrief(r, inp, amTxt) {
+  const B = window.eodBriefBrick, C = window.calendarFeedBrick;
+  if (!B) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  const fired = (deskWatch?.states ?? []).filter(t => t.firing && String(t.since ?? '').slice(0, 10) === today);
+  let b;
+  try {
+    b = B.endOfDayBrief({ morning: inp.row, eod: r, moved: macroMoved?.rows ?? [],
+                          ahead: eodAhead(), watchFired: fired, nowMs: Date.now() });
+  } catch (e) { console.error('[eod brief]', e); return ''; }
+  if (!b?.ok) return '';
+
+  // The morning's own words, quoted back rather than graded. Prose is not scoreable and
+  // pretending otherwise would be the same mistake as scoring a lean on one day — but
+  // sitting it beside the measured outcome is the whole point, and the reader does the
+  // comparing. The one exception is the named trade, which IS a closeable call.
+  const said = [
+    b.regime ? `<div class="eb-said"><span class="k">Regime called</span>${esc0(b.regime)}</div>` : '',
+    b.morningHook ? `<div class="eb-said"><span class="k">The read opened</span>${esc0(b.morningHook)}</div>` : '',
+    ...(b.morningWatch ?? []).slice(0, 3).map(w => `<div class="eb-said"><span class="k">Watch</span>${esc0(w)}</div>`),
+  ].filter(Boolean).join('');
+
+  const bt = b.boardTrade
+    ? `<div class="eb-bt ${b.boardTrade.right ? 'ok' : 'no'}">
+        <span class="k">Trade of the day</span>
+        <b>${esc0(b.boardTrade.direction)} ${esc0(dispName(b.boardTrade.pair))}</b>
+        ${b.boardTrade.right ? '✓ went the right way' : '✗ went the wrong way'} —
+        ${(b.boardTrade.move > 0 ? '+' : '') + b.boardTrade.move.toFixed(b.boardTrade.dp)} ${esc0(b.boardTrade.unit)}
+        <span class="muted">· one call on one day proves nothing; it is here because it is the only part of the morning brief that can be marked</span></div>`
+    : '';
+
+  const cards = `<div class="eb-cards">${b.cards.map(c => `<div class="eb-card">
+      <div class="eb-ck">${esc0(c.k)}</div><div class="eb-cb">${c.body}</div></div>`).join('')}</div>`;
+
+  // Tomorrow is an INVENTORY, not a view: what is scheduled, which tiles it lands on,
+  // and which calls are still standing. No direction anywhere — the priced-in claim was
+  // tested on this desk and came back null.
+  const T = b.tomorrow;
+  let fwd = '';
+  if (T.day || T.standing.up || T.standing.down) {
+    const rows = T.day && C ? C.annotate(T.day.events) : [];
+    const tiles = T.day && C ? C.watchKeys([T.day], { limit: 5 }) : [];
+    const dayName = T.day ? new Date(T.day.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : null;
+    fwd = `<div class="eb-fwd">
+      <div class="eb-h">Into tomorrow — what is scheduled, not what it does</div>
+      ${T.day ? `<div class="eb-said"><span class="k">${esc0(dayName)}</span>${T.day.n} high-impact ${T.day.n === 1 ? 'release' : 'releases'}: ${
+          rows.slice(0, 5).map(e => `<b>${esc0(e.ccy ?? '')} ${esc0(e.event)}</b> ${new Date(e.ms).toISOString().slice(11, 16)}`).join(' · ')}</div>` : ''}
+      ${tiles.length ? `<div class="eb-said"><span class="k">Lands on</span>${tiles.map(t => esc0(t.key)).join(', ')} — a count of where tomorrow's news transmits, never a view on what it does there. <a href="market-view.html#diary" target="_blank">the diary ↗</a></div>` : ''}
+      <div class="eb-said"><span class="k">Still standing</span>${T.standing.up} instrument${T.standing.up === 1 ? '' : 's'} carrying a 5-session bias up, ${T.standing.down} down, ${T.standing.none} with no view — an inventory of the book this page runs into tomorrow, not a forecast.</div>
+      ${b.freshness.sameDay ? '' : `<div class="eb-said"><span class="k">Note</span>The macro series settle behind the tape, so tomorrow's first read will still be working off ${esc0(b.freshness.lastDate ?? 'an older print')}.</div>`}
+    </div>`;
+  }
+
+  return `<div class="eb">
+    <div class="eb-hl">${esc0(b.headline)}</div>
+    ${b.paragraphs.map(p => `<p class="eb-p">${p}</p>`).join('')}
+    ${cards}
+    ${bt}
+    ${said ? `<div class="eb-fwd"><div class="eb-h">What this page said at ${esc0(amTxt)}</div>${said}
+      <div class="eb-note">Quoted, not graded. Prose is not scoreable, and marking it would be the same mistake as calling a lean right on one day — the numbers above are the measured half, and the comparison is yours to make.</div></div>` : ''}
+    ${fwd}
+  </div>`;
+}
+
 // ── End of day: the morning's published numbers, marked ──────────────────────
 // A chain RE-read at the close cannot do this job. It reads the CURRENT state with
 // no memory of the morning, so it can say what the market looks like now but not
@@ -8240,7 +8351,18 @@ function renderEndOfDay() {
   let r;
   try { r = window.endOfDayBrick.endOfDay({ morning: inp.row, live: inp.live, hl: inp.hl, chainAM: inp.chainAM, chainPM: inp.chainPM }); }
   catch (e) { console.error('[eod]', e); el.style.display = 'none'; return; }
-  if (!r?.ok) { el.style.display = 'none'; return; }
+  // A silent panel and a panel with nothing to say look identical, and this repo has
+  // been bitten by that before. After the European close, say WHY there is nothing to
+  // mark rather than rendering nothing — a day with no morning record is information.
+  if (!r?.ok) {
+    if (new Date().getUTCHours() < 15) { el.style.display = 'none'; return; }
+    el.style.display = 'block'; el.className = 'mread eod';
+    el.innerHTML = `<div class="mread-h">End of day</div>
+      <div class="eod-foot" style="font-size:11.5px;color:var(--text2)">Nothing to mark today — ${esc0(r?.reason ?? 'no plan was captured')}.
+      The plan is captured once, between 06:00 and 11:00 UTC, from an open browser tab; outside that window nothing is written,
+      because a record labelled "this morning" that was taken in the afternoon scores itself right for the wrong reason.</div>`;
+    return;
+  }
 
   const closed = new Date().getUTCHours() >= 20;
   const amTxt = Number.isFinite(plannedAt) ? new Date(plannedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'this morning';
@@ -8292,10 +8414,18 @@ function renderEndOfDay() {
 
   el.style.display = 'block';
   el.className = 'mread eod';
-  el.innerHTML = `<div class="mread-h">${closed ? 'End of day' : 'The day so far'} — what this page published at ${esc0(amTxt)}, marked</div>
-    <div class="eod-sum">The median pair used <b>${r.range.medianUsed == null ? '–' : r.range.medianUsed + '%'}</b> of the range forecast for it this morning —
+  // The narrated brief already opens with the range verdict, so the one-line summary is
+  // only rendered when the brief could not be built — two copies of the same sentence
+  // stacked on each other reads as a bug, and the second one is always the weaker.
+  let narrated = '';
+  try { narrated = renderEodBrief(r, inp, amTxt); } catch (e) { console.error('[eod brief]', e); }
+  const summary = narrated ? '' : `<div class="eod-sum">The median pair used <b>${r.range.medianUsed == null ? '–' : r.range.medianUsed + '%'}</b> of the range forecast for it this morning —
       <b>${r.range.over}</b> ran past it, <b>${r.range.about}</b> landed about right, <b>${r.range.under}</b> stayed inside, of ${r.range.n} scored.
-      ${r.leans.n ? `Of the <b>${r.leans.n}</b> ${r.leans.n === 1 ? 'pair' : 'pairs'} the page committed a direction on, <b>${r.leans.right}</b> ${r.leans.right === 1 ? 'is' : 'are'} the right way ${closed ? 'at the close' : 'so far'}.` : 'The page committed no direction on any pair today — not a miss, the absence of a call.'}</div>
+      ${r.leans.n ? `Of the <b>${r.leans.n}</b> ${r.leans.n === 1 ? 'pair' : 'pairs'} the page committed a direction on, <b>${r.leans.right}</b> ${r.leans.right === 1 ? 'is' : 'are'} the right way ${closed ? 'at the close' : 'so far'}.` : 'The page committed no direction on any pair today — not a miss, the absence of a call.'}</div>`;
+
+  el.innerHTML = `<div class="mread-h">${closed ? 'End of day' : 'The day so far'} — what this page published at ${esc0(amTxt)}, marked</div>
+    ${narrated}
+    ${summary}
     ${chips ? `<div class="eod-cmt">${chips}</div>` : ''}
     <div class="eod-scroll"><table>
       <thead><tr><th>Pair</th><th>Move</th><th>Expected</th><th>Realised</th><th style="width:84px">Range used</th><th></th><th>Lean</th></tr></thead>
@@ -11811,6 +11941,18 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as EndOfDay from './js/endOfDay.js';
   window.endOfDayBrick = EndOfDay;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The narrated end-of-day brief (js/endOfDayBrief.js) and the calendar feed it uses
+     for the forward section. Both pure; neither spends a model call. -->
+<script type="module">
+  import * as EndOfDayBrief from './js/endOfDayBrief.js';
+  window.eodBriefBrick = EndOfDayBrief;
+  try { window.render?.(); } catch (e) {}
+</script>
+<script type="module">
+  import * as CalendarFeed from './js/calendarFeed.js';
+  window.calendarFeedBrick = CalendarFeed;
   try { window.render?.(); } catch (e) {}
 </script>
 <!-- The impact matrix (js/impactMatrix.js): the map from a driver/target pair to

@@ -93,12 +93,16 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
   const used = usedPct(realised, expected);
   return {
     name, unit, dp,
+    // carried so a caller can group the board without a second lookup table — the
+    // brief needs to know an index from a currency pair to say anything about the day
+    ac: live.ac ?? null,
     open: +open.toFixed(dp + 2), now: +now.toFixed(dp + 2),
     move: +move.toFixed(dp), moveUp: move > 0,
     expected: expected == null ? null : +expected.toFixed(dp),
     realised: +realised.toFixed(dp),
     rangeFrom: haveHL ? 'high-low' : havePct ? 'range-pct' : 'open-to-now',
     used,
+    movedPct: open ? +(((now / open) - 1) * 100).toFixed(2) : null,
     // the honest bands: under 60% is a quiet day, over 140% is one the forecast missed
     rangeVerdict: used == null ? null : used >= 140 ? 'over' : used <= 60 ? 'under' : 'about right',
     lean: committed ? (leanUp ? 'up' : 'down') : 'flat',
@@ -114,9 +118,28 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
  * `leans` counts only pairs where the page committed, and carries `n` so a reader can
  * see the denominator — 3 of 4 and 3 of 12 are very different days.
  */
+export const PLAN_WINDOW_UTC = { from: 6, to: 11 };   // 07:00-12:00 London in BST
+
+/** Was this plan captured in the morning window, or just labelled as if it were? */
+export function plannedInWindow(at) {
+  const ms = Date.parse(at ?? '');
+  if (!Number.isFinite(ms)) return false;
+  const h = new Date(ms).getUTCHours();
+  return h >= PLAN_WINDOW_UTC.from && h < PLAN_WINDOW_UTC.to;
+}
+
 export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, chainPM = null } = {}) {
   const plan = morning?.plan?.pairs ?? null;
   if (!plan) return { ok: false, reason: 'no morning snapshot for today yet' };
+  // A plan captured at 20:43 is not a morning plan, whatever the row calls it. Scoring
+  // one would read 20 leans right out of 20 for the obvious reason, and a look-back that
+  // flatters itself that hard is worse than no look-back. Seen live: the first version
+  // of this gated on "after 06:00 UTC" only, and a tab opened in the evening wrote the
+  // day's record minutes before it was read back.
+  const at = morning?.plan?.at ?? null;
+  if (!plannedInWindow(at)) return { ok: false, outOfWindow: true, plannedAt: at,
+    reason: at ? `the day's plan was captured at ${String(at).slice(11, 16)} UTC, outside the 06:00-11:00 window — that is a snapshot of the afternoon, not a morning call, so there is nothing here to mark`
+               : "the day's plan carries no timestamp, so it cannot be told apart from an afternoon snapshot" };
 
   const rows = [];
   for (const [name, m] of Object.entries(plan)) {
@@ -252,6 +275,5 @@ export function pairReview(name, morning, live, opts = {}) {
       morning.o5 && morning.o5 !== 'NEUTRAL' ? { horizon: '5 sessions', bias: morning.o5, confidence: morning.o5c ?? null } : null,
       morning.o20 && morning.o20 !== 'NEUTRAL' ? { horizon: '20 sessions', bias: morning.o20, confidence: morning.o20c ?? null } : null,
     ].filter(Boolean),
-    movedPct: open ? +(((now / open) - 1) * 100).toFixed(2) : null,
   };
 }

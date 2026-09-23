@@ -3533,14 +3533,21 @@ app.post('/api/daily-snapshot/plan', async (req, res) => {
     const day = new Date().toISOString().slice(0, 10);
     let i = store.days.findIndex(d => d.day === day);
     if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
-    // First post of the day wins -- EXCEPT a post from before London was open, which is
-    // not a plan. The day flips at 00:00 UTC and a tab left open overnight used to post
-    // at 00:15 with no session data behind it: every lean stored as "flat" at 0 of 0
-    // reads, wrongAt and aim null. Such a row is a placeholder and a later, real one
-    // replaces it; once a plan from 06:00 UTC or after is stored, nothing overwrites it.
+    // First post of the MORNING wins. Two failures this replaces, both seen live:
+    // a tab left open overnight posted at 00:15 with no session data behind it (every
+    // lean stored "flat" at 0 of 0 reads), and a tab opened in the evening posted at
+    // 20:43 -- which then scored 20 leans right out of 20, for the obvious reason.
+    // Outside 06:00-11:00 UTC nothing is stored at all: no record beats a record that
+    // says "this morning" and means "ten minutes ago". Judged on the SERVER clock, so a
+    // wrong client timezone cannot smuggle one in.
+    const PLAN_WINDOW_UTC = { from: 6, to: 11 };
+    const hourNow = new Date().getUTCHours();
+    if (hourNow < PLAN_WINDOW_UTC.from || hourNow >= PLAN_WINDOW_UTC.to)
+      return res.json({ ok: true, kept: true, skipped: 'outside the 06:00-11:00 UTC capture window', plannedAt: store.days[i].plan?.at ?? null });
     const prev = store.days[i].plan;
     const prevHour = prev?.at ? new Date(prev.at).getUTCHours() : null;
-    if (prev && prevHour != null && prevHour >= 6) return res.json({ ok: true, kept: true, plannedAt: prev.at });
+    const prevInWindow = prevHour != null && prevHour >= PLAN_WINDOW_UTC.from && prevHour < PLAN_WINDOW_UTC.to;
+    if (prev && prevInWindow) return res.json({ ok: true, kept: true, plannedAt: prev.at });
     const compact = JSON.parse(JSON.stringify(plan)); compact.at = new Date().toISOString();
     if (JSON.stringify(compact).length > 60_000) return res.status(413).json({ ok: false, error: 'plan too large' });
     store.days[i].plan = compact;
