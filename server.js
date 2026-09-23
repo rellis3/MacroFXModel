@@ -98,6 +98,7 @@ import { validateInstrument as _mveValidate, poolConsistency as _mvePoolConsiste
 import { runBookFactorAudit as _mveBookAudit, BOOK_SLEEVE_CONFIG as _MVE_BOOK_CFG } from './js/mve/bookFactorEngine.js';
 import { runForwardTick as _mveForwardTick, readForward as _mveForwardRead } from './js/mve/bookForwardEngine.js';
 import { runSystemBacktest as _mveSystemBacktest } from './js/mve/bookSystemEngine.js';
+import { runBandFade as _runBandFade } from './js/bandFade/bandFadeEngine.js';
 import { volOuDiagnostic as _volOuDiagnostic, scoreVolPredictsForwardVol as _scoreVolPredictsForwardVol, scoreVolPredictsForwardReturn as _scoreVolPredictsForwardReturn } from './js/volReversionCore.js';
 import { validateResidualReversion as _validateResidualReversion } from './js/residualReversionCore.js';
 import { backtestBasket as _trendBacktestBasket, robustness as _trendRobustness, isOosSplit as _trendIsOos, DEFAULTS as _TREND_DEFAULTS, buildPortfolioReturns as _trendBuildPortfolio, portfolioReturnsByDate as _trendReturnsByDate } from './js/trendFollowEngine.js';
@@ -15887,6 +15888,46 @@ app.get('/api/mve-book/system/status/:jobId', (req, res) => {
   const job = _mveSysJobs.get(req.params.jobId);
   if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
   if (job.status === 'running') return res.json({ ok: true, status: 'running', elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
+  if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
+  return res.status(500).json({ ok: false, status: 'error', error: job.error });
+});
+
+// ── Band fade, daily (MD files/BAND_FADE_DAILY.md) ─────────────────────────────
+// Price at a vol band → back to EMA20 fair value, on daily bars across 25 FX pairs +
+// gold: stage 1 bucket test vs a shuffled null, stage 2 a vol-targeted book vs a
+// random-entry control. Async job, 6h cache; reads M1 (R2 / parquet), writes nothing.
+const _bandFadeJobs = new Map();
+let _bandFadeCache = null;
+app.post('/api/band-fade/run', (req, res) => {
+  const fresh = req.body && (req.body.fresh === true || req.body.fresh === 'true');
+  if (!fresh && _bandFadeCache && Date.now() - _bandFadeCache.at < 6 * 60 * 60 * 1000) {
+    const jobId = `bf_cached_${_bandFadeCache.at}`;
+    _bandFadeJobs.set(jobId, { status: 'done', startedAt: _bandFadeCache.at, result: { ..._bandFadeCache.result, cached: true } });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  for (const [id, job] of _bandFadeJobs) if (Date.now() - job.startedAt > 60 * 60_000) _bandFadeJobs.delete(id);
+  const running = [..._bandFadeJobs.entries()].find(([, j]) => j.status === 'running');
+  if (running) return res.json({ ok: true, jobId: running[0], alreadyRunning: true });
+  const jobId = `bf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = Date.now();
+  _bandFadeJobs.set(jobId, { status: 'running', startedAt, stage: 'loading M1' });
+  (async () => {
+    try {
+      const result = await _runBandFade({ progress: m => { const j = _bandFadeJobs.get(jobId); if (j) j.stage = m; } });
+      _bandFadeCache = { at: Date.now(), result };
+      _bandFadeJobs.set(jobId, { status: 'done', startedAt, result });
+    } catch (e) {
+      const msg = e?.message || String(e) || 'Unknown engine error';
+      console.error('[band-fade]', msg, e?.stack ?? '');
+      _bandFadeJobs.set(jobId, { status: 'error', error: msg, startedAt });
+    }
+  })();
+  res.json({ ok: true, jobId });
+});
+app.get('/api/band-fade/status/:jobId', (req, res) => {
+  const job = _bandFadeJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ ok: false, error: 'Job not found or expired' });
+  if (job.status === 'running') return res.json({ ok: true, status: 'running', stage: job.stage || null, elapsed: Math.round((Date.now() - job.startedAt) / 1000) });
   if (job.status === 'done') return res.json({ ok: true, status: 'done', ...job.result });
   return res.status(500).json({ ok: false, status: 'error', error: job.error });
 });

@@ -185,6 +185,12 @@ export const DESK_EVIDENCE = [
     use: 'Extension is a sizing and risk fact, not an entry. Anything that trades it has to clear spread/ATR first.',
   },
   {
+    id: 'daily-band-fade', domain: 'price', verdict: 'null', date: '2026-09-23', doc: 'MD files/BAND_FADE_DAILY.md',
+    claim: 'On DAILY bars, a close outside a volatility band (vol-unit, Keltner or Bollinger) reverts toward the EMA20 fair value -- the daily test the intraday band-fade nulls never ran',
+    result: 'Pre-registered, 25 FX pairs + gold, 2016-2026, costs on, OOS from 2022-06. Stage 1 (vol band, 5 days, |z| >= 2): +0.08 sigma, t 0.85 vs a shuffled-return null 95th pct of 2.00; OOS mean negative; all five sampling phases t -0.18 to 0.85. Keltner t 1.77, Bollinger t 0.71; stacking 1/2/3 bands no stronger. Stage 2 (vol-targeted book, 485 trades): Sharpe 0.14 +/- 0.30 (IS -0.26, OOS 0.74 carried by 2023-24), 82nd percentile of a random-entry control whose 95th is 0.40, 2x cost 0.05.',
+    use: 'A band on the chart is a map at every timeframe now, not an entry: price outside it is no more likely to come back than shuffled prices are. Use the bands for how far price travels (band-reach-from-here), not which way.',
+  },
+  {
     id: 'execution-gate', domain: 'execution', verdict: 'validated', date: '2026-09-02', doc: 'memory project_execution_feasibility_gate',
     claim: 'When the spread is a large fraction of the day\'s range, no short-horizon edge survives it',
     result: 'Spread/ATR above 0.15: zero of 30 strategy × timeframe cells profitable. Cost outruns edge as the timeframe speeds up; the crossover is the same across strategies.',
