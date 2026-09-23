@@ -917,6 +917,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
       <button class="v2-tool-btn" id="vfExpPillBtn" onclick="toggleExpDropdown(event)" disabled>⬇ Export ▾</button>
       <div class="vf-exp-menu">
         <button class="vf-exp-item" id="vfLadderBtn"     onclick="closeExpDropdown();exportLadder('daily')"          disabled>⬇ Forecast <span style="font-size:9px;opacity:.55">p50/75/90</span></button>
+        <button class="vf-exp-item" id="vfIvLadderBtn"   onclick="closeExpDropdown();exportIvLadder()"               disabled title="Same paste as Forecast; EURUSD/GBPUSD/AUDUSD/USDCAD/USDCHF use CME 30-day implied vol (beat realized vol out of sample, forge/IV_LADDER_PREREG.md). Every other block is unchanged.">⬇ Forecast (IV) <span style="font-size:9px;opacity:.55">implied-vol σ</span></button>
         <button class="vf-exp-item" id="vfLadderWkBtn"   onclick="closeExpDropdown();exportLadder('weekly')"         disabled>⬇ Forecast Weekly <span style="font-size:9px;opacity:.55">5-day + 20-day in one</span></button>
         <button class="vf-exp-item" id="vfLadderSessBtn" onclick="closeExpDropdown();exportLadder('daily',true)"     disabled>⬇ Forecast + Session <span style="font-size:9px;opacity:.55">+ Asia/Ldn/NY</span></button>
         <div class="vf-exp-sep"></div>
@@ -1487,6 +1488,7 @@ body:not(.dark) .vf-hist-table tr:hover, body:not(.dark) .vf-levels-tbl tr:hover
       <p>Every item copies to the clipboard (and falls back to a .txt download if the clipboard is blocked). Two live families, plus an <strong>Archived</strong> group holding the formats they replaced.</p>
       <table class="vfh-tbl">
         <tr><td>⬇ Forecast <span style="opacity:.6">p50/75/90</span></td><td>The fitted ladder — O-H and O-L at p50/p75/p90, each rung a multiplier fit to realized data. Built server-side by <code>/api/vol-forecast/ladder/export</code> so the page and the bot can't drift apart.</td></tr>
+        <tr><td>⬇ Forecast (IV)</td><td>The same daily paste as Forecast, parsed by the same indicators. EURUSD, GBPUSD, AUDUSD, USDCAD and USDCHF take σ from CME 30-day at-the-money implied vol (the nightly QuikStrike capture) instead of realized vol — it beat the realized ladder out of sample on those five by 2.5–4.1% (forge/IV_LADDER_PREREG.md). USDJPY and NQ lost, so they and every other block stay on the standard ladder. A stale or missing capture falls back to the standard block. Daily only.</td></tr>
         <tr><td>⬇ Forecast Weekly</td><td>Same ladder on the 5-day and 20-day horizons in one paste — <code>weekly_vol_overlay.pine</code>'s "Both" mode needs them together. Weekly and monthly use their OWN fitted widths, not √-scaled daily ones.</td></tr>
         <tr><td>⬇ Forecast + Session</td><td>The daily ladder with the Asia/London/NY consumption block appended underneath.</td></tr>
         <tr><td>⬇ COG <span style="opacity:.6">reverse-eng</span></td><td>COG's own published line, reproduced from his constants (1.56 / 1.93 / 0.74 / 1.24) rather than fit to realized range. NQ and EURUSD use his close-to-close HV so the levels match his.</td></tr>
@@ -1714,7 +1716,7 @@ function loadForecast(date) {
       }
 
       // Enable export/tools buttons
-      ['vfLadderBtn','vfLadderWkBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
+      ['vfLadderBtn','vfIvLadderBtn','vfLadderWkBtn','vfLadderSessBtn','vfCogBtn','vfCogWkBtn','vfCZExportBtn','vfHistoryBtn','vfLevelsBtn','vfWeeklyBtn','vfExpPillBtn',
        // Archived group — everything that needs only the forecast payload
        'vfExportBtn','vfExtendedBtn','vfExportV2Btn','vfCalibratedBtn','vfCalExtBtn','vfCogV2Btn'].forEach(id => {
         const el = document.getElementById(id);
@@ -2637,6 +2639,25 @@ async function exportLadder(horizon = 'daily', withSession = false) {
     btn.disabled = false;
     const date = (currentForecast && currentForecast.session_date) || 'latest';
     _emitCalibrated(btnId, text, `vol-forecast-${horizon}-${date}.txt`);
+  } catch (e) {
+    btn.textContent = '✗ failed';
+    setTimeout(() => _btnRestore(btn), 2600);
+  }
+}
+
+// IV Forecast — the same daily paste with σ from CME 30-day implied vol on the five
+// USD majors where it beat the realized ladder OOS (js/ivLadderExport.js). Built
+// server-side for the same reason as exportLadder: one source, one output.
+async function exportIvLadder() {
+  const btn = document.getElementById('vfIvLadderBtn');
+  _btnLabel(btn); btn.textContent = '… building'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/vol-forecast/iv-ladder/export');
+    const text = await r.text();
+    if (!r.ok) { btn.textContent = r.status === 202 ? '… not ready' : '✗ failed'; setTimeout(() => _btnRestore(btn), 2600); return; }
+    btn.disabled = false;
+    const date = (currentForecast && currentForecast.session_date) || 'latest';
+    _emitCalibrated('vfIvLadderBtn', text, `vol-forecast-iv-${date}.txt`);
   } catch (e) {
     btn.textContent = '✗ failed';
     setTimeout(() => _btnRestore(btn), 2600);

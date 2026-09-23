@@ -1,0 +1,115 @@
+{
+  "EUR_USD": {
+    "G1": {
+      "diff_log_range_below_minus_above": -0.14269255896354682,
+      "nw_t": -2.355671893555641,
+      "share_below_flip": 0.5180555555555556,
+      "n": 720
+    },
+    "G2": {
+      "improve_pct": 0.0032774966222337554,
+      "dm_t": 0.003179694931015892,
+      "dm_p_one_sided": 0.498731487390781,
+      "n_oos": 220
+    }
+  },
+  "GBP_USD": {
+    "G1": {
+      "diff_log_range_below_minus_above": -0.013540435117515107,
+      "nw_t": -0.2523956735906332,
+      "share_below_flip": 0.35991820040899797,
+      "n": 978
+    },
+    "G2": {
+      "improve_pct": -0.8991961424664296,
+      "dm_t": -1.9015216981540959,
+      "dm_p_one_sided": 0.9713831434079598,
+      "n_oos": 478
+    }
+  },
+  "AUD_USD": {
+    "G1": {
+      "diff_log_range_below_minus_above": -0.04395191980665835,
+      "nw_t": -1.0097156201769342,
+      "share_below_flip": 0.5829428303655108,
+      "n": 1067
+    },
+    "G2": {
+      "improve_pct": -0.27415920215727585,
+      "dm_t": -0.538325632607813,
+      "dm_p_one_sided": 0.7048238709488859,
+      "n_oos": 567
+    }
+  },
+  "USD_CAD": {
+    "G1": {
+      "diff_log_range_below_minus_above": -0.03415616140842898,
+      "nw_t": -0.7273758690049715,
+      "share_below_flip": 0.4312638580931264,
+      "n": 902
+    },
+    "G2": {
+      "improve_pct": -0.3411822361649497,
+      "dm_t": -1.9440685155101418,
+      "dm_p_one_sided": 0.9740564053160112,
+      "n_oos": 402
+    }
+  },
+  "USD_CHF": {
+    "G1": {
+      "diff_log_range_below_minus_above": -0.01606534149294685,
+      "nw_t": -0.3545791641533352,
+      "share_below_flip": 0.32597266035751843,
+      "n": 951
+    },
+    "G2": {
+      "improve_pct": -0.5924155052530633,
+      "dm_t": -0.8286911933015246,
+      "dm_p_one_sided": 0.7963604148099669,
+      "n_oos": 451
+    }
+  },
+  "USD_JPY": {
+    "G1": {
+      "diff_log_range_below_minus_above": -0.09613979443081369,
+      "nw_t": -1.524188377418576,
+      "share_below_flip": 0.598951507208388,
+      "n": 763
+    },
+    "G2": {
+      "improve_pct": -2.6636689381605683,
+      "dm_t": -1.018585257597055,
+      "dm_p_one_sided": 0.8458000469396869,
+      "n_oos": 263
+    }
+  },
+  "NAS100_USD": {
+    "G1": {
+      "diff_log_range_below_minus_above": 0.038242156051675996,
+      "nw_t": 0.4557221072901861,
+      "share_below_flip": 0.6634980988593155,
+      "n": 526
+    },
+    "G2": {
+      "improve_pct": 0.2851308668111452,
+      "dm_t": 0.31217393092330814,
+      "dm_p_one_sided": 0.3774541714614912,
+      "n_oos": 26
+    }
+  },
+  "G0_EUR_USD": {
+    "n": 679,
+    "median_abs_flip_diff_pct_spot": 0.27917644828669963,
+    "regime_disagree_share": 0.19882179675994108
+  },
+  "G1_verdict": {
+    "textbook_sign": 1,
+    "t_gt_2": 0,
+    "PASS": false
+  },
+  "G2_verdict": {
+    "beats_iv_model": 2,
+    "dm_sig": 0,
+    "PASS": false
+  }
+}

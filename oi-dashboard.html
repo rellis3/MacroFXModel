@@ -276,8 +276,8 @@ const HELP = {
   refmove:['Reference move','The yardstick everything else is measured against — how far price could plausibly travel by expiry.','A wall ten reference moves away is abandoned paper, not a level. <b>Careful:</b> this is measured to the <b>main</b> expiry, so for a same-day trade it overstates what is reachable. For intraday use the &ldquo;what is realistic today&rdquo; line in Today&rsquo;s read at the top of the page.'],
   expiry:['Expiry','Which option expiry these levels come from. Different expiries pin at different prices, so the label matters.','Chosen automatically as the nearest expiry with real near-the-money open interest.'],
   saved:['Saved','When you last pressed Analyse. Open interest updates once a day, so a stale save means stale levels.'],
-  callwall:['Call wall','The strike with the most call options above price — a <b>ceiling other people have already sold into</b>.','As price rises toward it the dealers who sold those calls must <b>buy</b> to stay hedged, which helps price up. At the strike that buying stops. So rallies tend to <b>stall there</b>: it is a place to take profit on a long or look for a short — not a place to buy a breakout.','<b>Tested</b> on 6yr EUR/USD CME data (oi_research_book/): a real touch of <b>yesterday\'s</b> call wall rejects ~68% of the time in the next 15min, ~61% in 60min — survives an episode-clustered significance test (p&lt;0.01, 27 independent wall-episodes, not just a raw touch count). Fades to a coin flip by 4hrs. Wall size (OI) did <b>not</b> reliably predict which touches break vs reject.'],
-  putwall:['Put wall','The strike with the most put options below price — a <b>floor other people have already bought protection at</b>.','As price falls toward it dealers must <b>sell</b> to stay hedged, which speeds the drop. At the strike that selling stops. So falls tend to <b>stall there</b>: a place to cover a short or look for a long — not a place to sell a breakdown.','<b>Tested</b> on 6yr EUR/USD CME data: a real touch of <b>yesterday\'s</b> put wall rejects ~63% of the time in 15min, ~58% in 60min (p&lt;0.02, 43 independent wall-episodes) — but decays to a coin flip by 4hrs, faster than the call side. Wall size did not predict outcome here either.'],
+  callwall:['Call wall','The strike with the most call options above price — a <b>ceiling other people have already sold into</b>.','<b>The theory:</b> as price rises toward it the dealers who sold those calls must buy to stay hedged, and at the strike that buying stops, so rallies should stall there. <b>The data does not support it as a trading level</b> — see below.','<b>Tested, and it does not hold as a wall effect</b> (oi_research_book/WALL_PLACEBO_PREREG.md, 7 instruments, 6yr CME data): touches of the call wall turn back ~62% of the time within 15min, but the neighbouring strikes and arbitrary prices do exactly the same (15-min break rate 38.0% wall vs 38.7% neighbours vs 36.5% arbitrary). That stall is how any touched level behaves. Wall size did not predict outcome either. Treat it as a location, not an edge.'],
+  putwall:['Put wall','The strike with the most put options below price — a <b>floor other people have already bought protection at</b>.','<b>The theory:</b> as price falls toward it dealers must sell to stay hedged, and at the strike that selling stops, so falls should stall there. <b>The data does not support it as a trading level</b> — see below.','<b>Tested, and it does not hold as a wall effect</b> (oi_research_book/WALL_PLACEBO_PREREG.md, 7 instruments): touches of the put wall turn back ~60% of the time within 15min, but neighbouring strikes and arbitrary prices do the same (15-min break rate 40.1% wall vs 38.1% neighbours vs 38.3% arbitrary — the wall breaks slightly MORE). Wall size did not predict outcome either. Treat it as a location, not an edge.'],
   maxpain:['Max pain','The price where the most options expire worthless, so the people who sold them make the most money.','Price tends to <b>drift toward it as expiry approaches</b>, and the pull is only real in the last day or two — more than about five days out, ignore it. Even close in, only trade it if the pin is <b>near enough to reach today</b>. A magnet three days of movement away is not a target.','<b>Tested</b> on 6yr EUR/USD CME data: the naive "price drifts to the biggest strike" read (p=0.0002) evaporated once compared to a matched control strike starting the same distance from spot (p=0.17) — most likely a distance-matching artifact, not real magnetism. The "last day or two" framing above is this page\'s working assumption, not a confirmed effect on this data.'],
   gflip:['Gamma flip','The same calm-versus-jumpy border as the GEX flip, but read off the per-strike chart — the rougher of the two.','Above it moves get damped and ranges hold. Below it moves get amplified and trends run. When the two flips disagree, trust the GEX flip.','<b>Tested</b> on 6yr EUR/USD CME data: no significant volatility difference above vs below this level was found, at daily or intraday resolution. Same caveat as the GEX flip below.'],
   gexflip:['GEX flip','The price where dealers switch from <b>calming</b> the market to <b>stirring it up</b>.','Above it, fade extremes. Below it, follow breaks. If price is sitting close to it the regime is fragile and can switch on you intraday, so trade smaller until price picks a side. Where this and the gamma flip disagree, trust this one.','<b>Tested</b> on 6yr EUR/USD CME data (oi_research_book/, using a comparable realized-vol-based proxy — no real IV field exists to compute true dealer gamma): next-day and intraday realized volatility showed no significant difference above vs below this level (p=0.45–0.93 across 4 separate tests). The damped/amplified framing above is this page\'s working theory, not a measured effect on this data — treat it as context, not confirmation.'],
@@ -1213,11 +1213,10 @@ function _gammaLevels(e, n){
   return { src: day ? ('the '+day.dte+'DTE book') : ((e.dte!=null) ? ('the '+e.dte+'DTE book') : 'the primary book'), rows: pick };
 }
 
-// Live application of oi_research_book/RESEARCH_BOOK.md Part 9b/12's one
-// clustering-verified finding: a real touch of the call/put wall rejects most
-// of the time in the next 15-60 minutes (call ~68%/61%, put ~63%/58%,
-// p<0.01 both sides on 27-43 independent wall-episodes over 6yr EUR/USD),
-// decaying to near-coinflip by 4 hours. TOUCH_PIPS matches the study's own
+// Originally the live application of oi_research_book/RESEARCH_BOOK.md Part 9b/12's
+// "one clustering-verified finding" (call ~68%/61%, put ~63%/58% rejection in
+// 15-60 min). WITHDRAWN 2026-09-23: a placebo (WALL_PLACEBO_PREREG.md) showed any
+// touched level rejects at the same rate, so the read below is location only. TOUCH_PIPS matches the study's own
 // touch-detection buffer (~2 pips) so "AT WALL" here means the same thing it
 // meant in the backtest, not a looser live redefinition of it.
 const TOUCH_PIPS = 2;
@@ -1239,28 +1238,32 @@ function touchZoneRead(e, S, dist, lvl){
   const dCw = Math.abs(dist(cw)), dPw = Math.abs(dist(pw));
   const atCall = Number.isFinite(dCw) && dCw <= TOUCH_PIPS;
   const atPut  = Number.isFinite(dPw) && dPw <= TOUCH_PIPS;
-  const NOTE = ' Tested on 6yr EUR/USD CME data — decays fast: by 4 hours the '
-    + 'call-side edge is much weaker and the put-side edge is gone (~48%, a coin '
-    + 'flip). This is a short-horizon read: do not hold a fade on this alone '
-    + 'past about an hour, and it reads today’s live wall rather than the '
-    + 'prior-day-lagged level the backtest used (walls are 88-95% the same '
-    + 'strike day to day, so usually no difference in practice).';
+  // WITHDRAWN AS AN EDGE 2026-09-23 (oi_research_book/WALL_PLACEBO_PREREG.md). The
+  // ~60-68% "rejection" replicated on 7 instruments, but the SAME detector run on the
+  // neighbouring listed strikes and on arbitrary off-grid prices, same days, gives the
+  // same rate (15-min break: wall 38.0% vs neighbours 38.7% vs arbitrary 36.5%, calls;
+  // puts 40.1 / 38.1 / 38.3). It is touch mechanics + short-horizon mean reversion,
+  // true of any level — so the panel still says you are AT the wall, but no longer
+  // presents the base rate as evidence the wall matters.
+  const NOTE = ' Price turns back from ANY touched level roughly 60% of the time over '
+    + '15 minutes — neighbouring strikes and arbitrary prices do the same as the wall '
+    + '(7-instrument placebo test, 2026-09-23). Context only, not an edge on its own.';
   if(atCall){
-    return _rd('warn','Live wall-touch read',
-      '🎯 <b>AT CALL WALL</b> ('+lvl(cw)+') — historically rejects <b>~68%</b> of touches within 15min, <b>~61%</b> within 60min',
-      'p&lt;0.01, 27 independent wall-episodes (not just a raw touch count).'+daysNote('call',cw)+NOTE);
+    return _rd('off','Live wall-touch read',
+      '🎯 <b>AT CALL WALL</b> ('+lvl(cw)+')',
+      'The max-OI call strike.'+daysNote('call',cw)+NOTE);
   }
   if(atPut){
-    return _rd('warn','Live wall-touch read',
-      '🎯 <b>AT PUT WALL</b> ('+lvl(pw)+') — historically rejects <b>~63%</b> of touches within 15min, <b>~58%</b> within 60min',
-      'p&lt;0.01, 43 independent wall-episodes (not just a raw touch count).'+daysNote('put',pw)+NOTE);
+    return _rd('off','Live wall-touch read',
+      '🎯 <b>AT PUT WALL</b> ('+lvl(pw)+')',
+      'The max-OI put strike.'+daysNote('put',pw)+NOTE);
   }
   const nearer = (Number.isFinite(dCw)&&Number.isFinite(dPw)) ? (dCw<dPw?['call wall',dCw,cw,'call']:['put wall',dPw,pw,'put'])
     : Number.isFinite(dCw) ? ['call wall',dCw,cw,'call'] : Number.isFinite(dPw) ? ['put wall',dPw,pw,'put'] : null;
   return _rd('off','Live wall-touch read',
     nearer ? 'Not currently at a wall — nearest is the '+nearer[0]+' ('+lvl(nearer[2])+'), '+Math.round(nearer[1])+'p away'
            : 'No wall levels stored',
-    nearer ? ('The validated reject-rate below only applies to a real touch (within '+TOUCH_PIPS+'p) — it is not a live read at this distance.'+daysNote(nearer[3],nearer[2])) : '');
+    nearer ? ('A touch means within '+TOUCH_PIPS+'p. Walls turn price back no more often than any other level (placebo test, 2026-09-23), so this is location context, not a signal.'+daysNote(nearer[3],nearer[2])) : '');
 }
 
 function todaysRead(e){
