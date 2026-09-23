@@ -96,6 +96,28 @@ export function ivTermStructure(rows) {
   };
 }
 
+// 30-day constant-maturity ATM IV from the term-structure points (`[{dte, iv(%)}]`),
+// by total-variance interpolation between the expiries bracketing `days` — the same
+// construction as oi_research_book/scripts/14_iv_surface.py's `iv30`, which the IV
+// forecast ladder (js/forecastLadderParamsIV.js) is calibrated on. Expiries under
+// `minDte` are dropped: a 1-3 day option's IV is dominated by a single session.
+// Flat-extrapolates outside the listed range. Returns a DECIMAL (0.0612) or null.
+// Checked 2026-09-23 against the settlement inversion on 16 overlapping days: median
+// gap 0.05-0.19 vol on FX, 0.5 on NQ.
+export function constantMaturityIV(points, { days = 30, minDte = 5 } = {}) {
+  const r = (Array.isArray(points) ? points : [])
+    .filter(x => Number.isFinite(x?.dte) && x.dte >= minDte && Number.isFinite(x?.iv) && x.iv > 0)
+    .sort((a, b) => a.dte - b.dte);
+  if (!r.length) return null;
+  const T = r.map(x => x.dte / 365), v = r.map(x => x.iv / 100), t = days / 365;
+  if (t <= T[0]) return v[0];
+  if (t >= T[T.length - 1]) return v[v.length - 1];
+  const j = T.findIndex(x => x >= t);
+  const w0 = v[j - 1] ** 2 * T[j - 1], w1 = v[j] ** 2 * T[j];
+  const tv = w0 + (w1 - w0) * (t - T[j - 1]) / (T[j] - T[j - 1]);
+  return Math.sqrt(tv / t);
+}
+
 // Per-strike IV change → ATM direction + skew steepening. `wingPct` = how far OTM a
 // strike must be to count as a "wing". skewSteepening > 0 ⇒ wings' IV rising faster
 // than ATM (tail-hedging demand up).
