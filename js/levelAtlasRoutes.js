@@ -291,6 +291,19 @@ async function runOne(instrument, { rearmFracs = [0.15, 0.3, 0.5], onLog = () =>
 const liveCache = new Map();   // pair -> { packed, lastBarTime, result: {date,touches,pending} }
 const liveWarming = new Set(); // pairs currently doing their one-time cold load
 
+// Cold-start failure cooldown (2026-09-23) -- without this, a pair with no M1
+// archive anywhere (R2 or the Google Drive fallback -- BTCUSD is a known,
+// accepted gap per REFERENCE_ENGINE_PAIRS' own comment in server.js; DAX/
+// FTSE/RUT turned out to share it) re-attempts the FULL cold start on every
+// single poll from today.html's drawer (every ~45-90s), forever: each attempt
+// is 2 R2 GetObject calls (one retry) that can only ever 404, and Railway's
+// log alerting was flagging the resulting steady stream of error-level lines.
+// A failed cold start now sits out this cooldown before the next pair-request
+// is allowed to retry it -- cheap, and self-healing once real data lands
+// (the very next attempt after the cooldown expires just succeeds normally).
+const liveColdStartFailedAt = new Map(); // pair -> Date.now() of its last failed cold start
+const COLD_START_FAIL_COOLDOWN_MS = 30 * 60_000;
+
 const LIVE_WINDOW_DAYS = 180;   // comfortable margin over the widest context lookback (60 trading days)
 
 function boundPacked(packed, days) {
@@ -445,8 +458,10 @@ async function coldStartLiveCache(pair) {
     const bounded = boundPacked(packed, LIVE_WINDOW_DAYS);
     const result = computeLiveContext(pair, bounded);
     liveCache.set(pair, { packed: bounded, lastBarTime: bounded.times[bounded.n - 1], result, snapshotSavedAt });
+    liveColdStartFailedAt.delete(pair);   // clear any earlier cooldown -- this pair is warm now
     console.log(`[level-atlas-live] ${sym}: warm (${bounded.n.toLocaleString()} bars, ${LIVE_WINDOW_DAYS}d window${fromSnapshot ? ', from R2 snapshot' : ''})`);
   } catch (e) {
+    liveColdStartFailedAt.set(pair, Date.now());
     console.error(`[level-atlas-live] ${sym}: cold start failed — ${e.message}`);
   } finally {
     liveWarming.delete(pair);
@@ -463,6 +478,18 @@ async function getFastLive(pair) {
   const sym = pair.toUpperCase();
   let entry = liveCache.get(pair);
   if (!entry) {
+    const failedAt = liveColdStartFailedAt.get(pair);
+    if (failedAt != null && Date.now() - failedAt < COLD_START_FAIL_COOLDOWN_MS) {
+      // Sitting out the post-failure cooldown -- no retry this poll (see the
+      // cooldown's own doc above liveColdStartFailedAt). `warming: false`
+      // (not `true`): nothing is in flight, so a client that keeps polling
+      // "while warming" would otherwise spin forever on a pair with no data.
+      // Same empty shape every other "no live coverage yet" path already
+      // returns, so existing callers (m1-tail's 404, fastlive's empty
+      // drawer, vote-preview's "no live coverage yet" skip) handle it
+      // unchanged.
+      return { warming: false, date: null, touches: [], pending: [] };
+    }
     if (!liveWarming.has(pair)) coldStartLiveCache(pair).catch(() => {});
     return { warming: true, date: null, touches: [], pending: [] };
   }
