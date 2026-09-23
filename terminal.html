@@ -137,7 +137,7 @@ table.t .k{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:e
   </div>
 
   <div class="p c4">
-    <h2>Event risk <i>next 10 days, high impact</i></h2>
+    <h2>Event risk &amp; feed health <i>next 10 days</i></h2>
     <div class="bd" id="events"></div>
   </div>
 
@@ -188,7 +188,7 @@ import { BOARD, THRESHOLDS, scanBoard, scanLinks, fmtChange, fmtLevel } from './
 import { marketState, sectorBoard } from './js/marketState.js';
 import { horizonBoard, horizonFindings, SHAPES } from './js/horizons.js';
 import { readBook, fmtBookPx } from './js/oiBoard.js';
-import { riskMonitor, movers, matrix, eventRisk } from './js/terminal.js';
+import { riskMonitor, movers, matrix, eventRisk, feedHealth } from './js/terminal.js';
 import { spark } from './js/mvChart.js';
 
 const $ = id => document.getElementById(id);
@@ -222,7 +222,7 @@ async function load() {
   SCORED = scanBoard(B); LINKZ = scanLinks(B); SECS = sectorBoard(B);
   STATE = marketState(B, SCORED); BOOKD = readBook(oiToday, oiHist);
   HRZ = horizonBoard(B, BOARD);
-  window.__cal = cal?.events ?? [];
+  window.__cal = cal ?? null;
   window.__regime = regime?.now ?? null;
   draw(renderTop, renderTick, renderRisk, renderEvents, renderMatrix, renderMovers,
        renderSectors, renderMomentum, renderVol, renderBook, renderLinks, renderBoard, renderFoot);
@@ -276,15 +276,31 @@ function renderRisk() {
 }
 
 function renderEvents() {
-  const groups = eventRisk(window.__cal ?? [], Date.now(), { days: 10 });
-  if (!groups.length) { $('events').innerHTML = '<div class="mut">No high-impact releases scheduled in the next ten days.</div>'; return; }
-  $('events').innerHTML = groups.map(g => g.events.map(e => {
-    const t = new Date(e.ms);
-    return `<div class="ev ${g.imminent ? 'soon' : ''}">
-      <span class="d num">${t.toISOString().slice(5, 10)} ${t.toISOString().slice(11, 16)}</span>
-      <span class="c">${esc(e.ccy)}</span>
-      <span>${esc(e.event)}</span></div>`;
-  }).join('')).join('') + `<div class="mut" style="margin-top:7px">Times UTC. Rank 3 only — the releases that actually move a board.</div>`;
+  const cal = window.__cal;
+  const groups = eventRisk(cal?.events ?? [], Date.now(), { days: 10 });
+  const H = feedHealth(B, BOOKD, cal);
+  const calRow = H.rows.find(r => r.id === 'calendar');
+  // "no events" and "the feed is dead" must never render the same. On the day this
+  // panel shipped, both calendar sources were silent and it said the diary was clear.
+  const head = groups.length
+    ? groups.map(g => g.events.map(e => {
+        const t = new Date(e.ms);
+        return `<div class="ev ${g.imminent ? 'soon' : ''}">
+          <span class="d num">${t.toISOString().slice(5, 10)} ${t.toISOString().slice(11, 16)}</span>
+          <span class="c">${esc(e.ccy)}</span>
+          <span>${esc(e.event)}</span></div>`;
+      }).join('')).join('') + `<div class="mut" style="margin-top:7px">Times UTC. Rank 3 only.</div>`
+    : `<div class="mut" style="color:${calRow.state === 'bad' ? 'var(--hot)' : 'var(--text3)'};line-height:1.55">
+        <b>${calRow.state === 'bad' ? 'The calendar cannot be read.' : 'Nothing scheduled in range.'}</b><br>${esc(calRow.detail)}</div>`;
+
+  $('events').innerHTML = head + `
+    <div style="margin-top:11px;padding-top:9px;border-top:1px solid var(--line2)">
+      <div style="font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:6px">Feed health</div>
+      ${H.rows.map(r => `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:10.5px">
+        <span class="tg ${r.state === 'ok' ? 'g' : r.state === 'warn' ? 'w' : 'r'}">${r.state === 'ok' ? 'OK' : r.state === 'warn' ? 'WARN' : r.state === 'bad' ? 'DOWN' : '?'}</span>
+        <span style="color:var(--text2);min-width:104px">${esc(r.label)}</span>
+        <span style="color:var(--text3);flex:1">${esc(r.detail)}</span></div>`).join('')}
+    </div>`;
 }
 
 function renderMatrix() {

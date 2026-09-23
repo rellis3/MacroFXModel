@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { riskMonitor, movers, matrix, eventRisk } from './terminal.js';
+import { riskMonitor, movers, matrix, eventRisk, feedHealth } from './terminal.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const row = (key, last, change, z, extra = {}) => ({ key, label: key, last, change, z, kind: 'price', ...extra });
@@ -101,6 +101,35 @@ t('missing inputs produce dashes, never NaN or a crash', () => {
     assert.doesNotMatch(String(g.value), /NaN|undefined/);
     assert.doesNotMatch(String(g.sub), /NaN|undefined/);
   }
+});
+
+t('an empty calendar past the file end is UNKNOWN, never clear', () => {
+  const now = Date.UTC(2026, 8, 23);
+  const csvEnd = Date.UTC(2026, 6, 2);                 // the file really did end here
+  const dead = feedHealth({ to: '2026-09-22', n: 1583, series: {} }, null, { csvLastMs: csvEnd, events: [] }, now);
+  const cal = dead.rows.find(r => r.id === 'calendar');
+  assert.equal(cal.state, 'bad', 'both sources silent must not read as a quiet diary');
+  assert.match(cal.detail, /treat as UNKNOWN, not clear/);
+  // and a live feed that actually answered is fine
+  const live = feedHealth({ to: '2026-09-22', n: 1583, series: {} }, null,
+    { csvLastMs: csvEnd, events: [{ ms: now + 864e5 }] }, now);
+  assert.equal(live.rows.find(r => r.id === 'calendar').state, 'ok');
+});
+
+t('feed health flags a stale board, carried series and an old book', () => {
+  const now = Date.UTC(2026, 8, 23);
+  const h = feedHealth({ to: '2026-09-01', n: 1500, series: { a: [] }, carried: ['gold'], missing: [] },
+    { ok: true, stale: true, ageH: 54, count: 11 }, { csvLastMs: 0, events: [] }, now);
+  assert.equal(h.rows.find(r => r.id === 'board').state, 'bad', '22 days behind is not ok');
+  assert.equal(h.rows.find(r => r.id === 'series').state, 'warn');
+  assert.match(h.rows.find(r => r.id === 'series').detail, /carried forward/);
+  assert.equal(h.rows.find(r => r.id === 'book').state, 'warn');
+  assert.match(h.rows.find(r => r.id === 'book').detail, /54h old/);
+  assert.ok(h.bad >= 1 && h.warn >= 2);
+  // a healthy set reports clean
+  const ok = feedHealth({ to: new Date(now).toISOString().slice(0, 10), n: 1583, series: { a: [] }, carried: [], missing: [] },
+    { ok: true, stale: false, ageH: 9, count: 11 }, { csvLastMs: 0, events: [{ ms: now }] }, now);
+  assert.equal(ok.bad, 0);
 });
 
 console.log(`terminal: ${n} groups, all passed`);

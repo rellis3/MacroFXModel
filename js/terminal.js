@@ -159,3 +159,50 @@ export function eventRisk(events = [], nowMs = Date.now(), { days = 10 } = {}) {
     events: list,
   }));
 }
+
+/**
+ * Feed health — what this screen actually knows, and what it is guessing at.
+ *
+ * WHY A MONITORING SURFACE NEEDS THIS. The event panel reported "No high-impact
+ * releases scheduled in the next ten days" on a day when the calendar CSV had ended
+ * twelve weeks earlier and the live top-up was returning nothing. Both sources were
+ * dead and the page said the calendar was CLEAR. Absence of data rendered as absence
+ * of risk is the single worst thing a monitor can do, and it is the failure this desk
+ * has hit before on other feeds.
+ *
+ * So every source reports its own state, and "cannot tell" is a state.
+ */
+export function feedHealth(bundle = null, book = null, cal = null, nowMs = Date.now()) {
+  const rows = [];
+  const day = 864e5;
+
+  const to = bundle?.to ? Date.parse(bundle.to + 'T00:00:00Z') : null;
+  const lag = to == null ? null : Math.round((nowMs - to) / day);
+  rows.push({ id: 'board', label: 'Price board',
+    state: lag == null ? 'unknown' : lag <= 4 ? 'ok' : lag <= 8 ? 'warn' : 'bad',
+    detail: lag == null ? 'no date on the bundle' : `${bundle.n?.toLocaleString?.() ?? '?'} sessions to ${bundle.to} (${lag}d ago)` });
+
+  const carried = (bundle?.carried ?? []).length, missing = (bundle?.missing ?? []).length;
+  rows.push({ id: 'series', label: 'Series',
+    state: missing ? 'bad' : carried ? 'warn' : 'ok',
+    detail: missing ? `${missing} missing: ${(bundle.missing ?? []).slice(0, 4).join(', ')}`
+      : carried ? `${carried} carried forward from the previous run` : `${Object.keys(bundle?.series ?? {}).length} series, none carried` });
+
+  rows.push({ id: 'book', label: 'Options book',
+    state: !book?.ok ? 'bad' : book.stale ? 'warn' : 'ok',
+    detail: !book?.ok ? 'not captured' : `${book.count} instruments, ${Math.round(book.ageH ?? 0)}h old${book.stale ? ' — past the 30h mark' : ''}` });
+
+  // The one that matters: a calendar window entirely past the CSV's end depends
+  // wholly on the live top-up, so zero events means the top-up said nothing, NOT
+  // that the diary is empty.
+  const csvEnd = cal?.csvLastMs ?? 0;
+  const n = cal?.events?.length ?? 0;
+  const beyondCsv = csvEnd > 0 && nowMs > csvEnd;
+  rows.push({ id: 'calendar', label: 'Economic calendar',
+    state: !cal ? 'bad' : (beyondCsv && n === 0) ? 'bad' : n ? 'ok' : 'warn',
+    detail: !cal ? 'request failed'
+      : (beyondCsv && n === 0) ? `file ends ${new Date(csvEnd).toISOString().slice(0, 10)} and the live feed returned nothing — treat as UNKNOWN, not clear`
+      : n ? `${n} high-impact releases ahead` : 'no releases in range' });
+
+  return { rows, bad: rows.filter(r => r.state === 'bad').length, warn: rows.filter(r => r.state === 'warn').length };
+}
