@@ -1,0 +1,260 @@
+{
+  "at": "2026-09-23T21:47:06.126Z",
+  "gate": 1.8,
+  "gap": 20,
+  "minEvents": 15,
+  "narrow": 35,
+  "broad": 33,
+  "control": 267,
+  "results": [
+    {
+      "h": 5,
+      "field": "spx",
+      "label": "H1  narrowing -> S&P direction",
+      "n": 35,
+      "nCtl": 267,
+      "signal": -0.005,
+      "control": 0.14,
+      "diff": -0.145,
+      "ci": [
+        -1.039,
+        0.723
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "spx",
+      "label": "H1  narrowing -> S&P direction",
+      "n": 35,
+      "nCtl": 267,
+      "signal": 0.313,
+      "control": 0.787,
+      "diff": -0.475,
+      "ci": [
+        -2.696,
+        1.567
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "spx",
+      "mirror": true,
+      "label": "H1  narrowing -> S&P direction",
+      "n": 33,
+      "nCtl": 267,
+      "signal": 0.416,
+      "control": 0.14,
+      "diff": 0.276,
+      "ci": [
+        -0.779,
+        1.212
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "spx",
+      "mirror": true,
+      "label": "H1  narrowing -> S&P direction",
+      "n": 33,
+      "nCtl": 267,
+      "signal": -0.262,
+      "control": 0.787,
+      "diff": -1.05,
+      "ci": [
+        -3.558,
+        1.053
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "vol",
+      "label": "H2  narrowing -> S&P range",
+      "n": 35,
+      "nCtl": 267,
+      "signal": 1.106,
+      "control": 0.835,
+      "diff": 0.271,
+      "ci": [
+        -0.08,
+        0.63
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "vol",
+      "label": "H2  narrowing -> S&P range",
+      "n": 35,
+      "nCtl": 267,
+      "signal": 1.316,
+      "control": 0.948,
+      "diff": 0.368,
+      "ci": [
+        -0.102,
+        0.849
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "vol",
+      "mirror": true,
+      "label": "H2  narrowing -> S&P range",
+      "n": 33,
+      "nCtl": 267,
+      "signal": 1.007,
+      "control": 0.835,
+      "diff": 0.171,
+      "ci": [
+        -0.119,
+        0.462
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "vol",
+      "mirror": true,
+      "label": "H2  narrowing -> S&P range",
+      "n": 33,
+      "nCtl": 267,
+      "signal": 1.225,
+      "control": 0.948,
+      "diff": 0.276,
+      "ci": [
+        -0.077,
+        0.679
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "spread",
+      "label": "H3  narrowing -> spread reverts",
+      "n": 35,
+      "nCtl": 267,
+      "signal": -0.186,
+      "control": -0.031,
+      "diff": -0.155,
+      "ci": [
+        -0.519,
+        0.137
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "spread",
+      "label": "H3  narrowing -> spread reverts",
+      "n": 35,
+      "nCtl": 267,
+      "signal": -0.09,
+      "control": -0.028,
+      "diff": -0.062,
+      "ci": [
+        -0.403,
+        0.294
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "spread",
+      "mirror": true,
+      "label": "H3  narrowing -> spread reverts",
+      "n": 33,
+      "nCtl": 267,
+      "signal": -0.298,
+      "control": -0.031,
+      "diff": -0.267,
+      "ci": [
+        -0.772,
+        0.203
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "spread",
+      "mirror": true,
+      "label": "H3  narrowing -> spread reverts",
+      "n": 33,
+      "nCtl": 267,
+      "signal": 0.183,
+      "control": -0.028,
+      "diff": 0.211,
+      "ci": [
+        -0.204,
+        0.665
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "rota",
+      "label": "H4  narrowing -> rotation runs on",
+      "n": 35,
+      "nCtl": 267,
+      "signal": -0.56,
+      "control": -0.192,
+      "diff": -0.368,
+      "ci": [
+        -1.119,
+        0.382
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "rota",
+      "label": "H4  narrowing -> rotation runs on",
+      "n": 35,
+      "nCtl": 267,
+      "signal": -0.346,
+      "control": -0.279,
+      "diff": -0.067,
+      "ci": [
+        -0.942,
+        0.713
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 5,
+      "field": "rota",
+      "mirror": true,
+      "label": "H4  narrowing -> rotation runs on",
+      "n": 33,
+      "nCtl": 267,
+      "signal": -0.548,
+      "control": -0.192,
+      "diff": -0.356,
+      "ci": [
+        -0.868,
+        0.21
+      ],
+      "verdict": "NULL"
+    },
+    {
+      "h": 20,
+      "field": "rota",
+      "mirror": true,
+      "label": "H4  narrowing -> rotation runs on",
+      "n": 33,
+      "nCtl": 267,
+      "signal": -0.335,
+      "control": -0.279,
+      "diff": -0.056,
+      "ci": [
+        -0.552,
+        0.449
+      ],
+      "verdict": "NULL"
+    }
+  ],
+  "verdict": "NULL"
+}

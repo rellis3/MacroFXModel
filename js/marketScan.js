@@ -72,6 +72,12 @@ export const BOARD = [
   { key: 'nq',      label: 'Nasdaq',        group: 'Equities', kind: 'price', what: 'Long-duration equity: its earnings sit far out, so a real-yield move discounts them hardest.' },
   { key: 'r2k',     label: 'Russell 2000',  group: 'Equities', kind: 'price', what: 'Small, domestic, and indebted at floating rates. It answers the 2-year rather than the 30-year, and it is the honest read on the actual US economy.' },
   { key: 'breadth', label: 'Russell − Nasdaq', group: 'Equities', kind: 'level', what: 'Small caps against big tech over twenty sessions. Deeply negative means the index is being carried by a handful of names — the concentration the Dispersion Index prices.', pairPct: ['r2k', 'nq'] },
+  // The cleanest concentration read on the board, because both legs are the SAME 500
+  // companies and only the weighting differs: give every company one vote, or give the
+  // biggest ones the votes. Russell-minus-Nasdaq measures something close but confounds
+  // it with company size and sector mix; this one cannot. Negative = narrowing.
+  { key: 'eqwt', label: 'Equal-weight − cap-weight S&P', group: 'Equities', kind: 'level', pairPct: ['rsp', 'spy'],
+    what: 'RSP against SPY — the same 500 companies, one weighted equally and one by size. Negative means the cap-weighted index is being carried by its largest names while the median company is not participating. It is the difference between "the market went up" and "eight companies went up".' },
   { key: 'de30',    label: 'DAX',           group: 'Equities', kind: 'price', what: 'Europe’s industrial index. Against the S&P it says whether a move is American or global.' },
   { key: 'uk100',   label: 'FTSE 100',      group: 'Equities', kind: 'price', what: 'Barely a UK index — commodities and overseas earners, so it often tracks crude and a weak pound.' },
   { key: 'jp225',   label: 'Nikkei',        group: 'Equities', kind: 'price', what: 'Japan’s index, and the yen’s mirror: a weaker yen flatters it mechanically.' },
@@ -194,18 +200,21 @@ const WINDOW = 20, HIST = 750;                      // 20 sessions, ranked again
  * than against a single series. Measured by analysis/calibrate_thresholds.mjs over
  * 2023-09 → 2026-09, at all three windows:
  *
- *              board max|z|              link max|z|
- *   median        2.10 – 2.35              1.80 – 2.03
- *   p85           3.46 – 3.71              3.01 – 3.17
- *   p90           4.00 – 4.12              3.47 – 3.68
+ * Re-derived at 63 tiles after the equal-weight breadth row was added (windows 1/5/20):
  *
- * So the MEDIAN day already has a tile at z 2.3. These are set at roughly the 85th
+ *              board max|z|              link max|z|
+ *   median        2.46 – 2.54              1.81 – 2.10
+ *   p85           3.74 – 3.95              2.92 – 3.19
+ *   p90           4.38 – 4.76              3.31 – 3.58
+ *
+ * So the MEDIAN day already has a tile at z 2.5. These are set at roughly the 85th
  * percentile, which targets a finding about three sessions a month — often enough
  * to be worth opening, rare enough to mean something. Re-run the calibration after
  * adding tiles: a wider board raises its own maximum, and a threshold that is not
- * re-derived silently gets looser every time the board grows.
+ * re-derived silently gets looser every time the board grows. Adding ONE tile moved
+ * the board's p85 from 3.71 to 3.82, which is the whole argument for re-running it.
  */
-export const THRESHOLDS = { extreme: 3.6, unusual: 2.6, link: 3.1, calibratedOn: '2026-09-23' };
+export const THRESHOLDS = { extreme: 3.8, unusual: 2.5, link: 3.2, calibratedOn: '2026-09-23', tiles: 63 };
 const MIN_HIST = 60;                                // below this there is nothing to rank against
 const WEAK_CORR = 0.2;                              // a link this loose has nothing to break
 
@@ -469,14 +478,22 @@ export function findings(board = [], { links = [], limit = 3, scored = [] } = {}
       means: 'Dispersion is the gap between what single-name options cost and what the index’s cost. It rises when money crowds into a few names: the individual shares get expensive to hedge while the index, whose constituents are pulling against each other, stays cheap. That combination — a calm index over a violently disagreeing market — is the state where an index hedge protects you least, because the thing that hurts you is concentration, not the market falling as a whole.',
       notMeans: 'It is NOT a crash signal, and the popular version of the claim is dead: tested here on 68 setups since 2014 (D1), a crowded market did NOT precede a wider week (+0.07 [-0.06, +0.23] on the S&P) and did not raise the odds of a violent day within it (33% against 30%). The next MONTH did run wider (+0.23 [+0.04, +0.51]), and that survives holding the VIX down — but it was a secondary window on a small count. O1 has since reached the same 20-day result by an independent path (+0.52 [+0.37, +0.64] on the S&P, holding in both halves) — which raises it from a curiosity to a re-run worth doing, and still not to a trade.' }); }
 
-  // 9. the commodity complex disagreeing with itself
+  // 9. narrowing: the index carried by its biggest names while the median one is not
+  { const e = by('eqwt'), sp = by('spx'), r = by('r2k');
+    if (e && e.change != null && e.z <= -1.8) out.push({ kind: 'narrowing', key: 'eqwt', rank: 2.4 + Math.abs(e.z),
+      title: sp && sp.change >= 0 ? 'The index is up and the median company in it is not' : 'The market is narrowing',
+      seen: `Equal-weight has lagged cap-weight by ${Math.abs(e.change).toFixed(1)} points over twenty sessions (z ${e.z.toFixed(1)}, ${Math.round(e.pct * 100)}% of its own readings)${sp && sp.change != null ? `, with the S&P itself ${fmtChange(sp)}` : ''}${r && r.change != null ? ` and small caps ${fmtChange(r)}` : ''}.`,
+      means: 'Both legs are the same 500 companies; only the weighting differs. When the cap-weighted index outruns the equal-weighted one this hard, the return is coming from the largest names and the median company is not taking part — capital leaving the rate-sensitive and small corners of the market and crowding into a handful of large ones. A flat-looking index can sit on top of a violent rotation, and this is the ratio that shows it.',
+      notMeans: 'It predicts NOTHING, and that is measured rather than assumed. B1 tested this exact spread over 23 years (RSP from 2003, 35 de-clustered events): narrowing does not precede a fall (−0.5% at 20 sessions [−2.70, +1.57]), does not precede a wider tape (+0.37 [−0.10, +0.85] — and extreme BROADENING is just as positive, so the range belongs to the period, not the signal), does not revert, and does not predict the rotation continuing. So it carries no alert. What it is good for is positioning rather than timing: at a reading like this, being long the index is being long a handful of its largest companies rather than "the market", and an index hedge is hedging direction when the exposure is concentration.' }); }
+
+  // 10. the commodity complex disagreeing with itself
   { const o = by('oil'), c = by('crack'), b = by('bei');
     if (o && c && o.change <= -5 && c.z >= 1) out.push({ kind: 'crack', key: 'crack', rank: 2 + c.z, title: 'Crude is falling and the refining margin is not',
       seen: `Crude ${fmtChange(o)} while the crack spread ${fmtChange(c)} (z ${c.z.toFixed(1)})${b ? `, with breakevens ${fmtChange(b)}` : ''}.`,
       means: 'Crude and fuel are two markets. A wide crack means the pump price stays up even as crude falls — and this desk measured that inflation pricing does not take the relief either (+15bp of breakevens against the case where both fall).',
       notMeans: 'It is not a range fact and not a direction call on crude — both tested, both null. It changes what you expect from the next inflation print, not what you trade.' }); }
 
-  // 10. nothing unusual is itself the finding, and the common one
+  // 11. nothing unusual is itself the finding, and the common one
   if (!out.length) out.push({ kind: 'quiet', key: null, rank: 0, title: 'Nothing on the board is unusual',
     seen: `The largest twenty-session move is ${board.length ? board.slice().sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0].label : '—'}, and even that is inside its normal range, with every textbook link on the board holding together.`,
     means: 'This is the correct read on most days, and it is worth saying out loud: the base case is that nothing macro is happening. A quiet board is when stories get invented.',

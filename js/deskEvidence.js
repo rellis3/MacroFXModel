@@ -39,6 +39,12 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ'],
   },
   {
+    id: 'breadth-narrowing', domain: 'price', verdict: 'null', date: '2026-09-23', doc: 'MD files/BREADTH_NARROWING_PREREG.md',
+    claim: 'Market narrowing -- equal-weight (RSP) lagging cap-weight (SPY) hard -- is a "textbook rotation" worth acting on',
+    result: 'Null on all four pre-registered hypotheses. 23 years (RSP from 2003), 35 de-clustered NARROW events vs 267 controls. Direction -0.5% at 20d [-2.70, +1.57]; range +0.37 [-0.10, +0.85]; no reversion of the spread; no continuation of the rotation. The range near-miss dies on its mirror: extreme BROADENING raises forward range just as much (+0.28), so the effect belongs to the volatile period both readings sit inside, not to breadth. First half holds only 14 events, so the half-split could not be completed.',
+    use: 'Show the narrowing, never alert on it. Use it for positioning, not timing: at an extreme reading, long the index is long a handful of its largest companies rather than "the market", and an index hedge is hedging direction when the exposure is concentration.',
+  },
+  {
     id: 'front-end-shock', domain: 'macro', verdict: 'null', date: '2026-09-17', doc: 'MD files/MARKET_SENSE_TESTS.md#S3',
     claim: 'A front-end rates shock (2Y ±14bp in a week) means FX volatility the following week',
     result: 'Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran CALMER (−0.34 and −0.28 ATR, CIs clear of zero); after a 2Y DOWN shock USD/JPY was marginally wider (+0.33).',
