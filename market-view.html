@@ -572,6 +572,7 @@
       <h2>How this market is wired today</h2>
       <div class="sub">Every relationship, ranked by how far apart the two markets are <b>today</b> against three years of how they actually moved. The bar is the real strength of the link — a loose one has nothing to break.</div>
       <div id="wireMap"></div>
+      <div id="impactBox"></div>
       <div id="wire">Scoring the relationships…</div>
       <div class="srcbox" data-p="wire"></div>
     </div>
@@ -646,6 +647,7 @@ import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js
 import { dualLine, levelLine, histogram, spark } from './js/mvChart.js';
 import { analogues, keysFor } from './js/analogue.js';
 import { buildMap } from './js/mvMap.js';
+import { impactBoard, VERDICTS } from './js/impact.js';
 import { deskRead, TERMS } from './js/deskRead.js';
 import { explainMove } from './js/explainMove.js';
 import { buildQuestion } from './js/marketDrill.js';
@@ -700,7 +702,7 @@ async function load() {
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons);
+    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons, renderImpactProp);
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -1542,7 +1544,7 @@ window.goTime = i => {
   STATE = marketState(BUNDLE, SCORED, IDX);
   SEL = null; WSEL = null; QUIZ = null;
   draw(renderTime, renderKeyStrip, renderGlance, renderState, renderSectors, renderScan,
-       renderImpact, renderWire, renderMap, renderBoard, renderRead, renderCheck, renderVol, renderHorizons);
+       renderImpact, renderWire, renderMap, renderBoard, renderRead, renderCheck, renderVol, renderHorizons, renderImpactProp);
 };
 window.goLive = () => goTime(BUNDLE.dates.length - 1);
 
@@ -1583,6 +1585,32 @@ function renderHorizons() {
     <div class="note">${quiet} of ${rows.length} markets are doing nothing at any of the three windows, and are left off the table.
     That proportion is the context the rest is read against — a board where four markets are reversing is a different market from one where twenty are.
     "Doing nothing" is judged against each market's own ordinary day, scaled by the square root of the window, because a month's move is not twenty times a day's.</div>`;
+}
+
+/**
+ * Impact propagation, the teaching version: the same computation as the terminal's,
+ * with the mechanism spelled out and BLOCKED explained rather than just badged.
+ */
+function renderImpactProp() {
+  const el = $('impactBox'); if (!el) return;
+  const { rows, orphans } = impactBoard(SCORED, LINKZ, { top: 4, minZ: 1.1 });
+  if (!rows.length && !orphans.length) { el.innerHTML = ''; return; }
+  const tone = { transmitted: 'st-hold', overshot: '', partial: '', blocked: 'st-apart', reversed: 'st-apart', 'too small': 'st-weak' };
+  el.innerHTML = `<div class="an" style="margin-top:12px">
+    <h5>What each move actually did</h5>
+    <div class="sum" style="margin-bottom:8px">Every relationship implies a size, not just a direction: if a market moved and its partner normally moves ${'⅓'} as much, that partner has an implied move too. These are the biggest movers with a real link, and whether the move arrived.</div>
+    ${rows.map(r => `<div style="margin-bottom:9px">
+      <b>${esc(r.label)} ${esc(r.move)}</b>${r.travelled != null ? ` — reached ${Math.round(r.travelled * 100)}% of what it touches` : ''}
+      ${r.direct.map(d => `<div style="display:grid;grid-template-columns:minmax(0,1fr) 92px 78px;gap:8px;padding:3px 0 3px 12px;font-size:11.5px;align-items:baseline;border-top:1px solid var(--border2)">
+        <span>${esc(d.label)} <span class="muted">implied z${d.expectedZ > 0 ? '+' : ''}${d.expectedZ}</span></span>
+        <span class="muted" style="text-align:right">got ${esc(d.actual)}</span>
+        <span class="state ${tone[d.verdict]}" style="text-align:right">${esc(VERDICTS[d.verdict].label)}</span></div>`).join('')}
+      ${r.blocked.length ? `<div class="warn" style="margin-top:5px">${esc(r.blocked[0].label)} did not take it. ${esc(VERDICTS[r.blocked[0].verdict].means)}</div>` : ''}
+    </div>`).join('')}
+    ${orphans.length ? `<div class="warn"><b>Moved but connects to nothing:</b> ${orphans.map(o => esc(o.label)).join(', ')}.
+      No relationship on this board is tight enough to imply anything from them — worth knowing when they are among the biggest moves on it.</div>` : ''}
+    <div class="warn">Implied = the three-year relationship times the source move. Both legs are measured over the same twenty sessions, so this says whether two markets sit where the relationship puts them — never that one caused the other, and never what happens next.</div>
+  </div>`;
 }
 
 function renderBoard() {

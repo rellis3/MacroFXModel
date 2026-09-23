@@ -196,6 +196,11 @@ table.t .k{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:e
   </div>
 
   <div class="p c12">
+    <h2>Impact propagation <i>what each move did to everything it touches</i></h2>
+    <div class="bd" id="impact"></div>
+  </div>
+
+  <div class="p c12">
     <h2>The board <i id="boardN"></i></h2>
     <div class="bd" id="board"></div>
   </div>
@@ -208,6 +213,7 @@ import { marketState, sectorBoard } from './js/marketState.js';
 import { horizonBoard, horizonFindings, SHAPES } from './js/horizons.js';
 import { readBook, fmtBookPx } from './js/oiBoard.js';
 import { riskMonitor, movers, matrix, eventRisk, feedHealth, deskBrief } from './js/terminal.js';
+import { impactBoard, VERDICTS } from './js/impact.js';
 import { spark } from './js/mvChart.js';
 
 const $ = id => document.getElementById(id);
@@ -244,7 +250,7 @@ async function load() {
   window.__cal = cal ?? null;
   window.__regime = regime?.now ?? null;
   draw(renderTop, renderTick, renderBrief, renderRisk, renderEvents, renderMatrix, renderMovers,
-       renderSectors, renderMomentum, renderVol, renderBook, renderLinks, renderBoard, renderFoot);
+       renderSectors, renderMomentum, renderVol, renderBook, renderLinks, renderImpact, renderBoard, renderFoot);
 }
 
 /** The gaps and the crack live outside the bundle; align them onto its date spine. */
@@ -424,6 +430,34 @@ function renderLinks() {
       <td class="num ${apart ? 'dn' : 'fl'}">${Math.round(L.pct * 100)}%</td>
       <td style="text-align:left;padding-left:10px"><span class="tg ${L.weak ? '' : apart ? 'w' : 'g'}">${L.weak ? 'too loose' : apart ? 'apart' : 'holding'}</span></td></tr>`; }).join('')}
   </tbody></table><div class="mut" style="margin-top:7px">Gap = how far apart these two are today against three years of how they actually moved. A link under 0.20 has nothing to break.</div>`;
+}
+
+/**
+ * Impact propagation. The forward question: this moved, so what did it do?
+ *
+ * BLOCKED is the verdict worth the panel. A market that should have moved and did
+ * not is telling you something is holding it that is not on this board.
+ */
+function renderImpact() {
+  const { rows, orphans } = impactBoard(SCORED, LINKZ, { top: 5, minZ: 1.1 });
+  const tone = { transmitted: 'g', overshot: 'i', partial: '', blocked: 'w', reversed: 'r', 'too small': '' };
+  const body = rows.map(r => `<div style="margin-bottom:11px">
+    <div style="font-size:12.5px;font-weight:700;margin-bottom:4px">${esc(r.label)}
+      <span class="num ${cls(r.z)}">${esc(r.move)}</span>
+      <span class="mut" style="margin-left:8px">${r.travelled != null ? `travelled to ${Math.round(r.travelled * 100)}% of what it touches` : 'nothing large enough to judge'}</span></div>
+    <table class="t"><tbody>${r.direct.map(d => `<tr>
+      <td class="k" style="padding-left:14px">${esc(d.label)}</td>
+      <td class="num fl">implied z${d.expectedZ > 0 ? '+' : ''}${d.expectedZ}</td>
+      <td class="num">got z${d.actualZ > 0 ? '+' : ''}${d.actualZ}</td>
+      <td class="num ${cls(d.actualZ)}">${esc(d.actual)}</td>
+      <td style="text-align:left;padding-left:10px"><span class="tg ${tone[d.verdict]}">${esc(VERDICTS[d.verdict].label)}</span></td>
+    </tr>`).join('')}</tbody></table></div>`).join('');
+
+  $('impact').innerHTML = (body || '<div class="mut">No move on the board is large enough, or connected enough, to propagate.</div>')
+    + (orphans.length ? `<div class="mut" style="margin-top:9px;padding-top:8px;border-top:1px solid var(--line2)">
+        <b style="color:var(--warn)">Moved but connects to nothing:</b> ${orphans.map(o => `${esc(o.label)} z${o.z > 0 ? '+' : ''}${o.z}`).join(' · ')}.
+        Nothing on this board relates to these tightly enough to imply anything, which is worth knowing when they are the biggest moves on it.</div>` : '')
+    + `<div class="mut" style="margin-top:7px">Implied = the three-year relationship times the source move, in standardised terms. Both legs are measured over the same twenty sessions, so this shows whether two markets sit where the relationship puts them — not that one caused the other.</div>`;
 }
 
 function renderBoard() {
