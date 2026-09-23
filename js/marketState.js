@@ -255,3 +255,135 @@ export function impactRows(findings = []) {
     key: f.key ?? null,
   }));
 }
+
+/**
+ * Did the mechanism actually show up?
+ *
+ * This is the part that turns an explanation into a habit. A finding says "the curve
+ * flattened, and that compresses bank margins". Fine — but a claim like that makes a
+ * PREDICTION about something else on the board, and until you go and check it you have
+ * learned a sentence rather than a market.
+ *
+ * So each finding carries a short list of consequences its own mechanism implies, each
+ * one evaluated against a market that is actually on this page, and reported as met,
+ * failed, or unavailable — with the number, so the reader can disagree.
+ *
+ * WHY THE COUNT MATTERS MORE THAN ANY ONE LINE. One confirmation is a coincidence.
+ * A mechanism that implies four things and delivers one is a story that did not happen,
+ * and seeing "1 of 4" under a confident-sounding paragraph is the single most useful
+ * corrective this page can offer. Nothing here is weighted and nothing is scored.
+ *
+ * AND IT IS NOT A FORECAST. Every check is about what has ALREADY happened over the
+ * same twenty sessions. A confirmed mechanism means the pieces are consistent with one
+ * another today; it says nothing about tomorrow.
+ */
+
+/** Evaluate one consequence. `got` is the measured number, `ok` whether it landed. */
+const chk = (label, got, ok, unit = '') => ({
+  label, ok: got == null ? null : !!ok,
+  got: got == null ? null : `${got > 0 ? '+' : ''}${got.toFixed(unit === 'bp' ? 0 : 1)}${unit}`,
+});
+
+/**
+ * The consequences each finding implies, in the order a person would check them.
+ * `f` is the finding, `b` a key→row lookup of the board, `s` a key→sector lookup.
+ */
+const CONSEQUENCES = {
+  // A rising REAL yield is the cleanest mechanism on the board, and it implies four
+  // separate things. If none of them happened, the split is arithmetic rather than a
+  // market event, and that is worth knowing.
+  ratekind: (f, b, s) => {
+    const up = (b.tips?.change ?? 0) > 0;
+    return [
+      chk(`Gold should be ${up ? 'lower' : 'higher'} — it pays no interest, so real yields are its cost of carry`,
+        b.gold?.change, up ? (b.gold?.change ?? 0) < 0 : (b.gold?.change ?? 0) > 0, '%'),
+      chk(`The Nasdaq should ${up ? 'lag' : 'lead'} the S&P — its earnings sit furthest out, so it discounts hardest`,
+        (b.nq?.change ?? null) == null || b.spx?.change == null ? null : b.nq.change - b.spx.change,
+        up ? (b.nq?.change ?? 0) < (b.spx?.change ?? 0) : (b.nq?.change ?? 0) > (b.spx?.change ?? 0), 'pts'),
+      chk(`Real estate should ${up ? 'lag' : 'lead'} — borrowing cost is the whole business model`,
+        s.xlre?.change, up ? (s.xlre?.change ?? 0) < 0 : (s.xlre?.change ?? 0) > 0, '%'),
+      chk(`Utilities should ${up ? 'lag' : 'lead'} — a bond substitute wearing an equity's clothes`,
+        s.xlu?.change, up ? (s.xlu?.change ?? 0) < 0 : (s.xlu?.change ?? 0) > 0, '%'),
+    ];
+  },
+  // The textbook bank story, and the reason Financials earns its place on this page.
+  extreme: (f, b, s) => {
+    if (f.key === 'curve') {
+      const flat = (b.curve?.change ?? 0) < 0;
+      return [
+        chk(`Financials should ${flat ? 'underperform' : 'outperform'} — banks borrow short and lend long, so the spread IS the margin`,
+          s.xlf?.change, flat ? (s.xlf?.change ?? 0) < 0 : (s.xlf?.change ?? 0) > 0, '%'),
+        chk(`The front end should be the leg doing the work`, b.us2y?.change, Math.abs(b.us2y?.change ?? 0) > Math.abs(b.us30y?.change ?? 0), 'bp'),
+        chk(`Small caps should feel it — they fund at the short end`, s.xlf == null ? null : b.r2k?.change, (b.r2k?.change ?? 0) < (b.spx?.change ?? 0), '%'),
+      ];
+    }
+    if (f.key === 'us2y' || f.key === 'us10y') {
+      return [
+        chk('Rate-sensitive sectors should be at an extreme of the sector board',
+          s.xlu?.change, [s.xlu?.change, s.xlre?.change].some(v => v != null && Math.abs(v) >= 3), '%'),
+        chk('The curve should have reshaped rather than shifted in parallel',
+          b.curve?.change, Math.abs(b.curve?.change ?? 0) >= 10, 'bp'),
+        chk('The dollar should have answered', b.dxy?.change, Math.abs(b.dxy?.change ?? 0) >= 1, '%'),
+      ];
+    }
+    return [];
+  },
+  // A crowded market is a claim about breadth, and breadth is measurable.
+  dispersion: (f, b, s, br) => [
+    chk('The average share should be lagging the index — that is the same story measured a second way',
+      br?.concentration, (br?.concentration ?? 0) < 0, '%'),
+    chk('Fewer than half the sectors should be participating', br?.sectorsUp == null ? null : br.sectorsUp,
+      br?.sectorsUp != null && br.sectorsUp < br.sectorsTotal / 2),
+    chk('Semiconductors should be leading the sector board', s.smh?.change, (s.smh?.change ?? 0) > 0, '%'),
+  ],
+  // Credit stress that never reaches the lenders' own shares is contained.
+  creditstack: (f, b, s) => [
+    chk('Financials should be feeling it if this is systemic', s.xlf?.change, (s.xlf?.change ?? 0) < 0, '%'),
+    chk('The fear price should agree', b.vix?.change, (b.vix?.change ?? 0) > 0, ''),
+    chk('The broad index should be lower', b.spx?.change, (b.spx?.change ?? 0) < 0, '%'),
+  ],
+  // Crude only matters to macro if it reaches the things it is supposed to reach.
+  crack: (f, b, s) => [
+    chk('Breakevens should have moved with crude', b.bei?.change, Math.abs(b.bei?.change ?? 0) >= 5, 'bp'),
+    chk('Energy should be the sector carrying it', s.xle?.change, Math.abs(s.xle?.change ?? 0) >= 2, '%'),
+  ],
+  // A dislocation is the absence of a mechanism, so what it implies is that the OTHER
+  // markets on the same leg went with it -- which localises the oddity.
+  dislocation: (f, b, s) => [],
+};
+
+/**
+ * Confirmations for one finding. Returns `{ items, met, total }`, or null when the
+ * finding's mechanism implies nothing checkable on this board — which is honest and
+ * happens often, rather than inventing a consequence to fill the panel.
+ */
+export function confirmations(finding, board = [], sectors = [], br = null) {
+  const b = Object.fromEntries(board.map(r => [r.key, r]));
+  const s = Object.fromEntries(sectors.map(r => [r.key, r]));
+  const fn = CONSEQUENCES[finding?.kind];
+  const items = (fn ? fn(finding, b, s, br) : []).filter(x => x && x.ok !== null);
+  if (!items.length) return null;
+  return { items, met: items.filter(x => x.ok).length, total: items.length };
+}
+
+/**
+ * Which existing page owns each panel's data.
+ *
+ * This repo has 183 HTML pages and almost none of them link to each other, so work
+ * that was built and validated is effectively invisible. A summary panel that names
+ * the page it came from turns the scan into a front door rather than a twelfth
+ * disconnected dashboard: read the headline here, follow the link when it matters.
+ *
+ * Every href below is a file that exists in the repo root.
+ */
+export const FEEDS = {
+  state:    [{ href: 'regime.html', label: 'Regime engine' }, { href: 'macro-scorecard.html', label: 'Macro scorecard' }],
+  sectors:  [{ href: 'correlations.html', label: 'Correlations' }, { href: 'credit-leadlag.html', label: 'Credit lead/lag' }],
+  scan:     [{ href: 'market-sense.html', label: 'What has been tested' }, { href: 'evidence.html', label: 'Evidence book' }],
+  impact:   [{ href: 'today.html', label: "Today's desk" }, { href: 'weekmap.html', label: 'Week map' }],
+  wire:     [{ href: 'today.html#chain', label: 'The full chain' }, { href: 'yield-coupling.html', label: 'Yield coupling' }],
+  book:     [{ href: 'oi-dashboard.html', label: 'OI dashboard' }, { href: 'oi-zones.html', label: 'OI zones' }],
+  board:    [{ href: 'rates.html', label: 'Rates' }, { href: 'real-yield.html', label: 'Real yield' }, { href: 'yield-curve.html', label: 'Yield curve' }],
+  range:    [{ href: 'expected-moves.html', label: 'Expected moves' }, { href: 'vol-forecast-v2.html', label: 'Vol forecast' }],
+  learn:    [{ href: 'drill.html', label: 'Drill' }, { href: 'evidence.html', label: 'Evidence book' }],
+};

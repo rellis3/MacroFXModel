@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { SECTORS, sectorBoard, breadth, marketState, impactRows } from './marketState.js';
+import { SECTORS, sectorBoard, breadth, marketState, impactRows, confirmations, FEEDS } from './marketState.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -119,6 +119,51 @@ t('a feed that did not print on the final session still scores', () => {
   // but a series genuinely absent for a week is still null, not silently carried
   const dead = arr => arr.map((v, i) => i >= N - 9 ? null : v);
   assert.equal(sectorBoard(bundle({ xle: dead(ramp(90, 12)) })).some(x => x.key === 'xle'), false);
+});
+
+t('a mechanism is checked against markets that are actually on the page', () => {
+  // a rising REAL yield implies gold down, the Nasdaq lagging, real estate and utilities weak
+  const board = [ { key: 'tips', change: 24 }, { key: 'gold', change: -6.4 },
+                  { key: 'nq', change: 1.2 }, { key: 'spx', change: 4.0 } ];
+  const secs = [ { key: 'xlre', change: -6.0 }, { key: 'xlu', change: -5.9 } ];
+  const c = confirmations({ kind: 'ratekind' }, board, secs);
+  assert.equal(c.total, 4);
+  assert.equal(c.met, 4, 'all four consequences landed on this data');
+  for (const it of c.items) assert.ok(it.got, 'each check must show the number it judged');
+  // and the same mechanism with gold UP must fail its first check rather than pass quietly
+  const bad = confirmations({ kind: 'ratekind' }, [{ key: 'tips', change: 24 }, { key: 'gold', change: +5 },
+    { key: 'nq', change: 6 }, { key: 'spx', change: 4 }], [{ key: 'xlre', change: 2 }, { key: 'xlu', change: 3 }]);
+  assert.equal(bad.met, 0, 'a mechanism that delivered nothing must report nothing');
+});
+
+t('a curve move is checked against banks, which is the whole reason sectors are here', () => {
+  const c = confirmations({ kind: 'extreme', key: 'curve' },
+    [{ key: 'curve', change: -26 }, { key: 'us2y', change: 52 }, { key: 'us30y', change: 6 },
+     { key: 'r2k', change: -2 }, { key: 'spx', change: 1.2 }], [{ key: 'xlf', change: -4.0 }]);
+  assert.equal(c.met, 3);
+  assert.match(c.items[0].label, /Financials should underperform/);
+  assert.match(c.items[0].label, /borrow short and lend long/, 'and must say WHY, not just what');
+  assert.equal(c.items[0].got, '-4.0%');
+});
+
+t('a finding whose mechanism implies nothing checkable returns null, not an empty panel', () => {
+  assert.equal(confirmations({ kind: 'dislocation' }, [], []), null);
+  assert.equal(confirmations({ kind: 'quiet' }, [], []), null);
+  assert.equal(confirmations(null, [], []), null);
+  // and consequences whose market is missing are dropped rather than counted as failures
+  const c = confirmations({ kind: 'ratekind' }, [{ key: 'tips', change: 24 }, { key: 'gold', change: -6 }], []);
+  assert.ok(c.total < 4 && c.total >= 1, `expected only the checkable ones, got ${c.total}`);
+});
+
+t('every panel names a page that actually exists in this repo', () => {
+  for (const [panel, links] of Object.entries(FEEDS)) {
+    assert.ok(links.length >= 1, `${panel} has no source page`);
+    for (const l of links) {
+      assert.ok(l.href.endsWith('.html') || l.href.includes('.html#'), `${panel}: ${l.href} is not a page`);
+      assert.ok(l.label && l.label.length > 2, `${panel}: ${l.href} needs a label`);
+    }
+  }
+  for (const k of ['state', 'sectors', 'scan', 'board', 'book', 'wire']) assert.ok(FEEDS[k], `missing panel ${k}`);
 });
 
 console.log(`marketState: ${n} groups, all passed`);

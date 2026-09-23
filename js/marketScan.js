@@ -178,17 +178,17 @@ function specVal(b, spec, i) {
 }
 
 /** The 20-session change of a spec at index i, in that spec's own unit. */
-function change(b, spec, i) {
+function change(b, spec, i, WIN = WINDOW) {
   // A `pairPct` row is ITSELF a difference of two percentage changes (small caps
   // against big tech), so it is built from its two legs rather than differenced —
   // subtracting two index levels in different units would be meaningless.
   if (spec?.pairPct) {
     const [x, y] = spec.pairPct;
-    const nx = val(b, x, i), tx = val(b, x, i - WINDOW), ny = val(b, y, i), ty = val(b, y, i - WINDOW);
+    const nx = val(b, x, i), tx = val(b, x, i - WIN), ny = val(b, y, i), ty = val(b, y, i - WIN);
     if (nx == null || tx == null || ny == null || ty == null || tx === 0 || ty === 0) return null;
     return (nx / tx - 1) * 100 - (ny / ty - 1) * 100;
   }
-  const now = specVal(b, spec, i), then = specVal(b, spec, i - WINDOW);
+  const now = specVal(b, spec, i), then = specVal(b, spec, i - WIN);
   if (now == null || then == null) return null;
   if (spec.kind === 'price') return then !== 0 ? (now / then - 1) * 100 : null;
   if (spec.kind === 'rate' || spec.kind === 'gap') return (now - then) * 100;   // percent -> bp, once
@@ -196,9 +196,9 @@ function change(b, spec, i) {
 }
 
 /** z of the latest 20-session change against its own history of 20-session changes. */
-export function scoreSeries(bundle, spec, i) {
+export function scoreSeries(bundle, spec, i, WIN = WINDOW) {
   const hist = [];
-  for (let k = Math.max(WINDOW, i - HIST); k <= i; k++) { const c = change(bundle, spec, k); if (c != null) hist.push(c); }
+  for (let k = Math.max(WIN, i - HIST); k <= i; k++) { const c = change(bundle, spec, k, WIN); if (c != null) hist.push(c); }
   if (hist.length < MIN_HIST) return null;
   const now = hist[hist.length - 1];
   const mean = hist.reduce((s, v) => s + v, 0) / hist.length;
@@ -216,8 +216,33 @@ export function scoreSeries(bundle, spec, i) {
 }
 
 /** The whole board, scored. */
-export function scanBoard(bundle, i = (bundle?.dates?.length ?? 1) - 1) {
-  return BOARD.map(s => scoreSeries(bundle, s, i)).filter(Boolean);
+export function scanBoard(bundle, i = (bundle?.dates?.length ?? 1) - 1, WIN = WINDOW) {
+  return BOARD.map(s => scoreSeries(bundle, s, i, WIN)).filter(Boolean).map(r => ({ ...r, window: WIN }));
+}
+
+/**
+ * How the board splits, in one line of counts.
+ *
+ * A move over one session and the same move over a month are different questions, and
+ * the board was stuck answering only the month. `windows` are the ones the page offers.
+ */
+export const WINDOWS = [{ n: 1, label: '1 day' }, { n: 5, label: '1 week' }, { n: 20, label: '1 month' }];
+
+/** Orientation before detail: how many things are unusual, and how many are noise. */
+export function glance(board = [], scored = []) {
+  const rare = board.filter(b => Math.abs(b.z) >= 2).length;
+  const unusual = board.filter(b => Math.abs(b.z) >= 1.5 && Math.abs(b.z) < 2).length;
+  const live = (scored ?? []).filter(l => !l.weak);
+  return {
+    rare, unusual,
+    // a link is "apart" on the same threshold the findings use, so the count and the
+    // headline can never disagree with one another
+    apart: live.filter(l => Math.abs(l.z) >= 1.8).length,
+    holding: live.filter(l => Math.abs(l.z) < 1.8).length,
+    tooLoose: (scored ?? []).length - live.length,
+    inside: board.filter(b => Math.abs(b.z) < 1.5).length,
+    total: board.length,
+  };
 }
 
 const SPEC = Object.fromEntries(BOARD.map(s => [s.key, s]));
@@ -235,12 +260,12 @@ const meanOf = x => x.reduce((s, v) => s + v, 0) / x.length;
  * deliberate: it makes `corr` directly comparable across links whose raw units are
  * basis points, percent and index points.
  */
-export function scoreLink(bundle, link, i = (bundle?.dates?.length ?? 1) - 1) {
+export function scoreLink(bundle, link, i = (bundle?.dates?.length ?? 1) - 1, WIN = WINDOW) {
   const sa = SPEC[link.a], sb = SPEC[link.b];
   if (!sa || !sb) return null;
   const A = [], B = [];
-  for (let k = Math.max(WINDOW, i - HIST); k <= i; k++) {
-    const ca = change(bundle, sa, k), cb = change(bundle, sb, k);
+  for (let k = Math.max(WIN, i - HIST); k <= i; k++) {
+    const ca = change(bundle, sa, k, WIN), cb = change(bundle, sb, k, WIN);
     if (ca == null || cb == null) continue;
     A.push(ca); B.push(cb);
   }
@@ -275,8 +300,8 @@ export function scoreLink(bundle, link, i = (bundle?.dates?.length ?? 1) - 1) {
 }
 
 /** Every link, scored, most dislocated first. */
-export function scanLinks(bundle, i = (bundle?.dates?.length ?? 1) - 1) {
-  return LINKS.map(l => scoreLink(bundle, l, i)).filter(Boolean).sort((x, y) => Math.abs(y.z) - Math.abs(x.z));
+export function scanLinks(bundle, i = (bundle?.dates?.length ?? 1) - 1, WIN = WINDOW) {
+  return LINKS.map(l => scoreLink(bundle, l, i, WIN)).filter(Boolean).sort((x, y) => Math.abs(y.z) - Math.abs(x.z));
 }
 
 const fmtUnit = (v, kind) => {

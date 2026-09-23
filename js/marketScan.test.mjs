@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BOARD, LINKS, scanBoard, scanLinks, scoreSeries, scoreLink, findings, fmtChange, fmtLevel } from './marketScan.js';
+import { BOARD, LINKS, WINDOWS, scanBoard, scanLinks, scoreSeries, scoreLink, glance, findings, fmtChange, fmtLevel } from './marketScan.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -231,6 +231,40 @@ t('the rate-kind split names growth vs inflation from the two legs', () => {
 t('scanLinks survives a bundle that carries none of the series', () => {
   assert.deepEqual(scanLinks({ dates: [], series: {} }), []);
   assert.equal(scoreLink({ dates: ['a'], series: {} }, LINKS[0]), null);
+});
+
+t('the board can be read over a day, a week or a month, each against its own history', () => {
+  const N = 800; const dates = Array.from({ length: N }, (_, i) => `d${i}`);
+  // gold flat for years, then one violent SINGLE session at the end
+  const gold = dates.map((_, i) => i < N - 1 ? 2400 + Math.sin(i / 7) * 3 : 2600);
+  const b = { dates, series: { gold } };
+  const spec = BOARD.find(x => x.key === 'gold');
+  const d1 = scoreSeries(b, spec, N - 1, 1);
+  const d20 = scoreSeries(b, spec, N - 1, 20);
+  assert.ok(d1.z > 5, `a one-day shock must be extreme on the one-day view, got ${d1.z}`);
+  assert.ok(Math.abs(d1.change - 8.3) < 0.5, `+8.3% in a session, got ${d1.change}`);
+  assert.ok(d20.z > 0, 'and still visible over a month');
+  assert.ok(d1.z > d20.z, 'but the shorter window should register it harder');
+  assert.equal(scanBoard(b, N - 1, 5)[0].window, 5, 'a row must carry the window it was scored on');
+});
+
+t('WINDOWS offers a day, a week and a month, and nothing longer than the history allows', () => {
+  assert.deepEqual(WINDOWS.map(w => w.n), [1, 5, 20]);
+  for (const w of WINDOWS) assert.ok(w.label && !/^\d+$/.test(w.label), `${w.n} needs a human label`);
+});
+
+t('the glance counts agree with the findings rather than telling a second story', () => {
+  const N = 800; const dates = Array.from({ length: N }, (_, i) => `d${i}`);
+  let s = 5; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648 - 0.5; };
+  const walk = (st, sp) => { let v = st; return dates.map(() => (v += rnd() * sp)); };
+  const b = { dates, series: { gold: walk(2400, 5), tips: walk(2, 0.01), vix: walk(16, 0.2), hy: walk(3, 0.01) } };
+  const board = scanBoard(b), links = scanLinks(b);
+  const g = glance(board, links);
+  assert.equal(g.rare + g.unusual + g.inside, g.total, 'every row must land in exactly one bucket');
+  assert.equal(g.apart + g.holding + g.tooLoose, links.length, 'and every link too');
+  // the apart count uses the same 1.8 threshold the headline finding does
+  const apartFindings = findings(board, { links: [], scored: links, limit: 9 }).filter(f => f.kind === 'dislocation').length;
+  assert.ok(g.apart >= apartFindings, `glance says ${g.apart} apart but ${apartFindings} dislocations were emitted`);
 });
 
 console.log(`marketScan: ${n} groups, all passed`);

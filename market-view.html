@@ -171,6 +171,36 @@
     .imp td::before{content:attr(data-l);display:block;font-size:9px;letter-spacing:.07em;
       text-transform:uppercase;color:var(--text3);font-weight:700;margin-top:5px}
     .imp td:first-child::before{content:none} }
+  /* ── hub bits: glance counts, timeframe toggle, source links, confirmations ─ */
+  .gl{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px;margin-bottom:12px}
+  .gl a{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;
+        text-decoration:none;display:block;cursor:pointer}
+  .gl a:hover{border-color:var(--text3)}
+  .gl .v2{font-size:22px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+  .gl .k2{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-top:3px}
+  .gl .amber .v2{color:var(--amber)} .gl .red .v2{color:var(--red)}
+  .gl .bull .v2{color:var(--bull)} .gl .mut .v2{color:var(--text3)}
+
+  .tf{display:inline-flex;gap:0;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-left:auto}
+  .tf button{background:var(--card2);border:0;color:var(--text3);font:inherit;font-size:10.5px;font-weight:700;
+             padding:4px 11px;cursor:pointer;border-right:1px solid var(--border)}
+  .tf button:last-child{border-right:0}
+  .tf button.on{background:var(--blue);color:#fff}
+  .hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+  .src{margin-top:10px;padding-top:8px;border-top:1px solid var(--border2);font-size:11px;color:var(--text3)}
+  .src a{color:var(--blue);text-decoration:none;margin-right:12px;white-space:nowrap}
+  .src a:hover{text-decoration:underline}
+  .src b{color:var(--text3);font-weight:700;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-right:8px}
+
+  .cf{margin-top:9px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+  .cf h5{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:6px}
+  .cf h5 span{color:var(--text);margin-left:5px}
+  .cf ul{list-style:none;font-size:11.5px;line-height:1.55}
+  .cf li{padding-left:17px;position:relative;color:var(--text2);margin-bottom:3px}
+  .cf li::before{position:absolute;left:0;font-weight:700}
+  .cf li.y::before{content:'✓';color:var(--bull)} .cf li.n::before{content:'✕';color:var(--red)}
+  .cf li i{font-style:normal;color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -195,52 +225,60 @@
 </div>
 
 <div class="wrap">
+  <div class="gl" id="glance"></div>
+
   <div class="state" id="state">Reading the market…</div>
 
   <div class="card">
     <h2>Where it landed — the eleven sectors</h2>
     <div class="sub">A macro move is abstract until you see which business it hit. Twenty-session moves, ranked. <b>Financials answer the yield curve, Utilities and Real estate answer the level of rates, Technology answers the real yield.</b> Tap for what each one is.</div>
     <div id="sectors">Loading sectors…</div>
+    <div class="srcbox" data-p="sectors"></div>
   </div>
 
   <div class="card scan">
     <h2>What is unusual right now</h2>
     <div class="sub">Every market below scored against <b>its own</b> three-year history, so a 40bp move in the 2-year and a 6% move in gold are comparable. The page reads the board and says where to look first. <b>Rare is a measurement, not a forecast.</b></div>
     <div id="scan">Reading the board…</div>
+    <div class="srcbox" data-p="scan"></div>
   </div>
 
   <div class="card">
     <h2>So what do I do with that?</h2>
     <div class="sub">Every finding above, turned into the next thing to go and look at. This column is the habit worth building — a market you can explain but never check is a market you are still only reading about.</div>
     <div id="impact"></div>
+    <div class="srcbox" data-p="impact"></div>
   </div>
 
   <div class="card">
     <h2>How this market is wired today</h2>
     <div class="sub">Every relationship this desk understands, ranked by how far apart the two markets are <b>today</b> against how they have actually moved together over three years. The bar is the real strength of the link — a loose one has nothing to break. <b>Tap a row</b> for the mechanism and what to go and look at.</div>
     <div id="wire">Scoring the relationships…</div>
+    <div class="srcbox" data-p="wire"></div>
   </div>
 
   <div class="card">
     <h2>The options book</h2>
     <div class="sub">Where price is sitting against the strikes that carry the open interest — the one part of this page built from <b>positioning</b> rather than from price. Captured once a day from CME. The bar runs put wall to call wall, with a marker for spot; <b>amber means price has left the band</b>. <b>Tap a row</b> for what the numbers are and what they are not.</div>
     <div id="book">Reading the book…</div>
+    <div class="srcbox" data-p="book"></div>
   </div>
 
   <div class="card">
-    <h2>The whole board</h2>
+    <div class="hrow"><h2 style="margin:0">The whole board</h2><span class="tf" id="tf"></span></div>
     <div class="sub">Everything this desk carries, with its twenty-session move and how unusual that move is. <b>Amber = rare.</b> Tap a tile for what it is, where the move sits in its own history, and which textbook links touch it today.</div>
     <div id="board"></div>
     <div id="tileExp"></div>
+    <div class="srcbox" data-p="board"></div>
     <div class="note" id="foot"></div>
   </div>
 </div>
 
 <script type="module">
-import { BOARD, scanBoard, scanLinks, findings, fmtChange, fmtLevel } from './js/marketScan.js';
+import { BOARD, WINDOWS, scanBoard, scanLinks, glance, findings, fmtChange, fmtLevel } from './js/marketScan.js';
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
-import { marketState, sectorBoard, impactRows } from './js/marketState.js';
+import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js/marketState.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
@@ -256,6 +294,8 @@ try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn')
 // keep two different names -- the old single `LINKS` conflated them.
 let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], BOOK = null, STATE = null, SECS = [], FINDS = [];
 let SEL = null, WSEL = null, BSEL = null, SSEL = null;
+let WIN = 20;
+try { const w = +localStorage.getItem('mv_window'); if (WINDOWS.some(x => x.n === w)) WIN = w; } catch (e) {}
 
 async function load() {
   try {
@@ -272,14 +312,15 @@ async function load() {
     if (!bundleRes?.ok) throw new Error(bundleRes?.error ?? 'no series');
     BUNDLE = bundleRes;
     mergeExtras(intl, crack);
-    SCORED = scanBoard(BUNDLE);
-    LINKZ = scanLinks(BUNDLE);
+    SCORED = scanBoard(BUNDLE, undefined, WIN);
+    LINKZ = scanLinks(BUNDLE, undefined, WIN);
     CHAINV = chainToday();
     BOOK = readBook(oiToday, oiHist);
     SECS = sectorBoard(BUNDLE);
     STATE = marketState(BUNDLE, SCORED);
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
-    renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
+    renderTf(); renderGlance(); renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
+    for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
 }
@@ -331,6 +372,7 @@ function renderScan() {
       <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
       <div class="s">${esc(x.seen)}</div>
       <div class="m">${esc(x.means)}</div>
+      ${confHtml(x)}
       ${checks[x.title] ? `<div class="chk"><b>Check next</b>${esc(checks[x.title])}</div>` : ''}
       <div class="nmT" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">▸ what this does <i>not</i> mean</div>
       <div class="nmB" style="display:none">${esc(x.notMeans)}</div>
@@ -552,6 +594,64 @@ function renderImpact() {
       <td data-l="Who it touches">${esc(r.affects)}</td>
       <td data-l="What to check next">${esc(r.check)}</td>
     </tr>`).join('')}</tbody></table></div>`;
+}
+
+/**
+ * Orientation before detail: how much of the board is actually unusual.
+ *
+ * Four counts that have to add up, because a summary that disagrees with the thing it
+ * summarises is worse than no summary. The "inside its own noise" figure is deliberately
+ * the largest most days — that is the honest shape of a market and the page should not
+ * hide it behind four alarming headlines.
+ */
+function renderGlance() {
+  const g = glance(SCORED, LINKZ);
+  const cell = (v, k, cls, onclick) =>
+    `<a class="${cls}" ${onclick ? `onclick="${onclick};return false" href="#"` : 'href="#"'}><div class="v2">${v}</div><div class="k2">${k}</div></a>`;
+  $('glance').innerHTML = [
+    cell(g.rare, 'rare moves', 'red', "document.getElementById('board').scrollIntoView({behavior:'smooth'})"),
+    cell(g.unusual, 'unusual', 'amber', "document.getElementById('board').scrollIntoView({behavior:'smooth'})"),
+    cell(g.apart, 'links apart', g.apart ? 'amber' : 'bull', "document.getElementById('wire').scrollIntoView({behavior:'smooth'})"),
+    cell(g.holding, 'links holding', 'bull', "document.getElementById('wire').scrollIntoView({behavior:'smooth'})"),
+    cell(g.inside, 'inside its own noise', 'mut', "document.getElementById('board').scrollIntoView({behavior:'smooth'})"),
+  ].join('');
+}
+
+/** The timeframe toggle. A move today and a move over a month are different questions. */
+function renderTf() {
+  $('tf').innerHTML = WINDOWS.map(w =>
+    `<button class="${WIN === w.n ? 'on' : ''}" onclick="setWin(${w.n})">${esc(w.label)}</button>`).join('');
+}
+window.setWin = n => {
+  if (n === WIN) return;
+  WIN = n;
+  try { localStorage.setItem('mv_window', String(n)); } catch (e) {}
+  // everything downstream of the window has to be recomputed, not just relabelled --
+  // the z-scores are against that window's OWN history, so they all change
+  SCORED = scanBoard(BUNDLE, undefined, WIN);
+  LINKZ = scanLinks(BUNDLE, undefined, WIN);
+  STATE = marketState(BUNDLE, SCORED);
+  renderTf(); renderGlance(); renderState(); renderScan(); renderImpact(); renderWire(); renderBoard();
+};
+
+/** "Read the headline here, follow the link when it matters." */
+function srcLine(panel) {
+  const f = FEEDS[panel]; if (!f?.length) return '';
+  return `<div class="src"><b>Fed by</b>${f.map(x => `<a href="${esc(x.href)}" target="_blank">${esc(x.label)} ↗</a>`).join('')}</div>`;
+}
+
+/**
+ * Did the mechanism actually show up? Rendered under the finding that claimed it.
+ *
+ * The count is the point. A mechanism that implies four things and delivers one is a
+ * story that did not happen, and seeing "1 of 4" under a confident paragraph is the
+ * most useful corrective this page has.
+ */
+function confHtml(f) {
+  const c = confirmations(f, SCORED, SECS, STATE?.breadth);
+  if (!c) return '';
+  return `<div class="cf"><h5>Did it show up?<span>${c.met} of ${c.total} confirmed</span></h5>
+    <ul>${c.items.map(i => `<li class="${i.ok ? 'y' : 'n'}">${esc(i.label)} — <i>${esc(i.got)}</i></li>`).join('')}</ul></div>`;
 }
 
 function renderBoard() {
