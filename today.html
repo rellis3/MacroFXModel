@@ -458,6 +458,13 @@
   .eb-note{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:5px;max-width:88ch}
   @media(max-width:560px){.eb-bt .k,.eb-said .k{display:block;min-width:0;margin-bottom:1px}}
 
+  .eb-mkt{padding:7px 0;border-top:1px dashed var(--border2)}
+  .eb-mkt:first-of-type{border-top:0}
+  .eb-ml{font-size:12.5px;line-height:1.6;color:var(--text)}
+  .eb-mm{font-size:11.5px;line-height:1.55;color:var(--text2);margin-top:2px}
+  .eb-mr{font-size:11px;line-height:1.55;color:var(--text3);margin-top:3px;max-width:90ch}
+  .eb-mr span{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin-right:6px;color:var(--text3)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -4949,8 +4956,10 @@ async function postDailyPlan() {
   const pairs = {};
   for (const r of rs) {
     const w = pairOutlook(r, 'weekly'), m = pairOutlook(r, 'monthly'); const dir = directionFor(r); const wrong = wrongAtFor(r); const aim = bandAimFor(r);
-    pairs[r.name] = { price: r.d.current_price ?? null, lean: dir?.direction ?? null, agree: dir ? `${dir.agree}/${dir.total}` : null, wrongAt: wrong?.price ?? null, aim: aim ? { target: aim.target, side: aim.side, lift: aim.lift != null ? +aim.lift.toFixed(2) : null } : null, o5: w?.bias ?? null, o5c: w?.confidence ?? null, o20: m?.bias ?? null, o20c: m?.confidence ?? null, expRange: r.d.levels?.hl_med?.range_pts ?? null, band5: r.fc?.ladder_weekly?.oh?.p50 != null ? [r.fc.ladder_weekly.ol.p50, r.fc.ladder_weekly.oh.p50] : null, band20: r.fc?.ladder_monthly?.oh?.p50 != null ? [r.fc.ladder_monthly.ol.p50, r.fc.ladder_monthly.oh.p50] : null };
+    pairs[r.name] = { price: r.d.current_price ?? null, lean: dir?.direction ?? null, agree: dir ? `${dir.agree}/${dir.total}` : null, wrongAt: wrong?.price ?? null, aim: aim ? { target: aim.target, side: aim.side, lift: aim.lift != null ? +aim.lift.toFixed(2) : null } : null, o5: w?.bias ?? null, o5c: w?.confidence ?? null, o20: m?.bias ?? null, o20c: m?.confidence ?? null, expRange: r.d.levels?.hl_med?.range_pts ?? null, regime: r.d.regime?.label ?? null, regimeOk: r.d.regime?.reliable ?? null, volPct: r.d.vol_pct ?? null, volVov: r.d.vol_vov_label ?? null, band5: r.fc?.ladder_weekly?.oh?.p50 != null ? [r.fc.ladder_weekly.ol.p50, r.fc.ladder_weekly.oh.p50] : null, band20: r.fc?.ladder_monthly?.oh?.p50 != null ? [r.fc.ladder_monthly.ol.p50, r.fc.ladder_monthly.oh.p50] : null };
   }
+  // the regime and vol percentile each pair was working from this morning, so the
+  // end-of-day read can say whether they held rather than only comparing price
   const plan = { pairs, groups: leanGroupsText(), firing: (deskWatch?.states ?? []).filter(t => t.firing).map(t => t.id), aheadHigh: (events ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.ms > Date.now() && e.ms < Date.now() + 5 * 864e5).slice(0, 12).map(e => `${e.country} ${e.event}`) };
   try { const j = await fetch('/api/daily-snapshot/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ plan }) }).then(x => x.json()); if (j?.ok) _planPosted = day; } catch { /* retried next cycle */ }
 }
@@ -8231,6 +8240,19 @@ function renderDrawerEod(r) {
 //
 // The forward calendar comes from `events`, already loaded, mapped into the same shape
 // js/calendarFeed.js groups — one implementation of "what is ahead", not two.
+// Two small feeds the pane needs and nothing else on the page loads: the day's tick
+// counts against their own 20-session medians, and the calendar's printed rows with
+// their gaps to consensus. Both are fetched ONCE, and only when the pane is actually
+// about to draw — before the capture window has had three hours to run there is
+// nothing to narrate, and an unconditional fetch would pay for that on every load.
+let _eodAct = null, _eodCal = null, _eodExtrasAt = 0;
+function loadEodExtras() {
+  if (Date.now() - _eodExtrasAt < 30 * 60_000) return;
+  _eodExtrasAt = Date.now();
+  jget('/api/eod-activity').then(j => { if (j?.ok) { _eodAct = j; render(); } }).catch(() => {});
+  jget('/api/calendar-feed').then(j => { if (j?.ok) { _eodCal = j; render(); } }).catch(() => {});
+}
+
 const _EOD_RANK = { high: 3, medium: 2, low: 1, holiday: 0 };
 function eodAhead() {
   const C = window.calendarFeedBrick; if (!C) return [];
@@ -8249,7 +8271,9 @@ function renderEodBrief(r, inp, amTxt) {
   let b;
   try {
     b = B.endOfDayBrief({ morning: inp.row, eod: r, moved: macroMoved?.rows ?? [],
-                          ahead: eodAhead(), watchFired: fired, nowMs: Date.now() });
+                          ahead: eodAhead(), watchFired: fired, printed: _eodCal?.printed ?? null,
+                          sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {},
+                          nowMs: Date.now() });
   } catch (e) { console.error('[eod brief]', e); return ''; }
   if (!b?.ok) return '';
 
@@ -8271,6 +8295,20 @@ function renderEodBrief(r, inp, amTxt) {
         ${(b.boardTrade.move > 0 ? '+' : '') + b.boardTrade.move.toFixed(b.boardTrade.dp)} ${esc0(b.boardTrade.unit)}
         <span class="muted">· one call on one day proves nothing; it is here because it is the only part of the morning brief that can be marked</span></div>`
     : '';
+
+  // The markets a macro reader carries a view on, described every day. The role line is
+  // what makes the number teachable — "gold is four trades wearing one name" is the bit
+  // you can still use next month, and the percentage is not.
+  const one = d => `<div class="eb-mkt">
+      <div class="eb-ml">${d.line}</div>
+      ${d.regime || d.vol ? `<div class="eb-mm">${esc0([d.regime, d.vol].filter(Boolean).join(' '))}</div>` : ''}
+      ${d.role ? `<div class="eb-mr"><span>what it is</span>${esc0(d.role)}</div>` : ''}
+    </div>`;
+  const named = (b.named?.length || b.alsoMoved?.length)
+    ? `<div class="eb-fwd"><div class="eb-h">The markets, one by one</div>
+        ${(b.named ?? []).map(one).join('')}
+        ${b.alsoMoved?.length ? `<div class="eb-h" style="margin-top:9px">Also worth a line — far past their own forecasts</div>${b.alsoMoved.map(one).join('')}` : ''}
+       </div>` : '';
 
   const cards = `<div class="eb-cards">${b.cards.map(c => `<div class="eb-card">
       <div class="eb-ck">${esc0(c.k)}</div><div class="eb-cb">${c.body}</div></div>`).join('')}</div>`;
@@ -8298,6 +8336,7 @@ function renderEodBrief(r, inp, amTxt) {
     <div class="eb-hl">${esc0(b.headline)}</div>
     ${b.paragraphs.map(p => `<p class="eb-p">${p}</p>`).join('')}
     ${cards}
+    ${named}
     ${bt}
     ${said ? `<div class="eb-fwd"><div class="eb-h">What this page said at ${esc0(amTxt)}</div>${said}
       <div class="eb-note">Quoted, not graded. Prose is not scoreable, and marking it would be the same mistake as calling a lean right on one day — the numbers above are the measured half, and the comparison is yours to make.</div></div>` : ''}
@@ -8347,6 +8386,7 @@ function renderEndOfDay() {
   const hrs = Number.isFinite(plannedAt) ? (Date.now() - plannedAt) / 3600000 : null;
   // Scoring a plan three hours old tells you nothing except that the day is young.
   if (hrs != null && hrs < EOD_MIN_HOURS) { el.style.display = 'none'; return; }
+  loadEodExtras();
 
   let r;
   try { r = window.endOfDayBrick.endOfDay({ morning: inp.row, live: inp.live, hl: inp.hl, chainAM: inp.chainAM, chainPM: inp.chainPM }); }

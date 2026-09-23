@@ -11176,6 +11176,55 @@ async function fetchOandaCandleRange(instrument, gran, fromISO, toISO) {
   return out.filter(v => (seen.has(v._ms) ? false : (seen.add(v._ms), true))).map(({ _ms, ...v }) => v);
 }
 
+// ── /api/eod-activity — today's participation against its own recent norm ────
+// The end-of-day brief needs to say whether a move came on heavy or thin
+// participation. OANDA gives a TICK COUNT, not traded size (see the note in
+// fetchOandaCandleRange), so this is an activity proxy and the payload says so in
+// `unit` — a caller that prints it as "volume" without that word is misreporting it.
+//
+// Ratio is against the MEDIAN of the prior sessions, not the mean: one central-bank
+// day in the window drags a mean enough to make an ordinary day look quiet.
+//
+// Cached 30 minutes and limited to a fixed spine, because every miss is one OANDA
+// round trip per instrument and this page can sit open all day. The brief names these
+// markets whatever else the board did, which is the point of a spine.
+const _EOD_SPINE = [
+  { name: 'GOLD', sym: 'XAU_USD' }, { name: 'NQ', sym: 'NAS100_USD' },
+  { name: 'SPX500', sym: 'SPX500_USD' }, { name: 'USDJPY', sym: 'USD_JPY' },
+  { name: 'EURUSD', sym: 'EUR_USD' }, { name: 'GBPUSD', sym: 'GBP_USD' },
+  { name: 'AUDUSD', sym: 'AUD_USD' }, { name: 'BTCUSD', sym: 'BTC_USD' },
+];
+let _eodAct = { at: 0, data: null };
+async function _eodActivity() {
+  const to = new Date().toISOString().slice(0, 10);
+  const from = new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10);
+  const out = {};
+  for (const { name, sym } of _EOD_SPINE) {
+    try {
+      const bars = await fetchOandaCandleRange(sym, 'D', `${from}T00:00:00Z`, `${to}T23:59:59Z`);
+      const vols = bars.map(b => Number(b.volume)).filter(v => Number.isFinite(v) && v > 0);
+      if (vols.length < 6) continue;
+      const today = vols[vols.length - 1];
+      // the PRIOR sessions only -- including today in its own baseline pulls the ratio
+      // toward 1 and is worst exactly on the days worth flagging
+      const prior = vols.slice(0, -1).slice(-20).sort((a, b) => a - b);
+      const med = prior[Math.floor(prior.length / 2)];
+      out[name] = { today, median: med, n: prior.length, ratio: med > 0 ? +(today / med).toFixed(2) : null };
+    } catch (e) { console.warn('[eod-activity]', name, e.message); }
+  }
+  return { ok: true, unit: 'OANDA tick count — an activity proxy, not traded size', instruments: out, at: new Date().toISOString() };
+}
+app.get('/api/eod-activity', async (_req, res) => {
+  try {
+    if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured' });
+    if (!_eodAct.data || Date.now() - _eodAct.at > 30 * 60_000) {
+      _eodAct = { at: Date.now(), data: await _eodActivity() };
+    }
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json({ ..._eodAct.data, cached: Date.now() - _eodAct.at > 1000 });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── /api/ohlc-range — OHLC candles over an explicit date window (paginated) ──
 // ?symbol=EUR/USD&from=YYYY-MM-DD&to=YYYY-MM-DD[&granularity=M15]
 // Powers the forecast-replay chart. Defaults to M15.

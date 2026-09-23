@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { macroFreshness, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief } from './endOfDayBrief.js';
+import { macroFreshness, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
+         SPINE, activityWord, pathWord, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
 import { endOfDay } from './endOfDay.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -191,6 +192,121 @@ t('a plan captured outside the morning window produces no brief at all', () => {
   assert.equal(b.ok, false);
   assert.match(b.reason, /outside the 06:00-11:00 window/);
   assert.equal(b.headline, undefined, 'nothing is narrated off a record that is not a morning record');
+});
+
+// ── the spine: the markets described every day, whatever the board did ───────
+t('activity is described as busy, never as traded size', () => {
+  assert.equal(activityWord(1.8), 'far busier than usual');
+  assert.equal(activityWord(1.25), 'busier than usual');
+  assert.equal(activityWord(1.0), 'about as busy as usual');
+  assert.equal(activityWord(0.7), 'quieter than usual');
+  assert.equal(activityWord(0.3), 'far quieter than usual');
+  assert.equal(activityWord(null), null);
+  assert.equal(activityWord('x'), null);
+});
+
+t('path efficiency separates a trend day from one that went nowhere loudly', () => {
+  assert.match(pathWord(0.85), /straight line/);
+  assert.match(pathWord(0.45), /usual amount of back-and-forth/);
+  assert.match(pathWord(0.25), /long way round/);
+  assert.match(pathWord(0.1), /several times the distance/);
+  assert.equal(pathWord(null), null);
+});
+
+t('a described market carries the numbers and their caveats, and never a reason', () => {
+  const d = describe('GOLD', {
+    row: { name: 'GOLD', move: -78, dp: 0, unit: '$', movedPct: -1.79, used: 114, regimeNow: 'RANGE', volPctNow: 33 },
+    session: { vol_state: { path_efficiency: { efficiency: 0.22 } } },
+    activity: { ratio: 0.82 },
+    morning: { regime: 'RANGE', volPct: 31 },
+  });
+  assert.match(d.line, /Gold finished down 78 \$/);
+  assert.match(d.line, /114% of the range forecast/);
+  assert.match(d.line, /the long way round/);
+  assert.match(d.line, /0\.82× its 20-session median/);
+  assert.match(d.line, /activity proxy, not traded size/);
+  assert.match(d.regime, /Still RANGE/);
+  assert.ok(d.role.length > 40, 'the role is what makes the number teachable');
+  // the thing it must never do on one session
+  assert.doesNotMatch(JSON.stringify(d), /(because|driven by|on the back of|due to)/i);
+});
+
+t('a regime that turned is said plainly; one that did not is not dressed up', () => {
+  const turned = describe('NQ', { row: { name: 'NQ', move: 120, dp: 0, unit: 'pts', movedPct: 0.4, used: 90, regimeNow: 'TREND' }, morning: { regime: 'RANGE' } });
+  assert.match(turned.regime, /called it RANGE this morning and now reads TREND/);
+  assert.match(turned.regime, /turned under the position/);
+  // a plan captured before the field existed must read as silence, not as "unchanged"
+  const older = describe('NQ', { row: { name: 'NQ', move: 120, dp: 0, unit: 'pts', movedPct: 0.4, used: 90, regimeNow: 'TREND' }, morning: {} });
+  assert.equal(older.regime, null);
+  assert.equal(describe('NQ', { row: null }), null);
+});
+
+t('the spine is covered every day, and a wild outsider is appended not promoted', () => {
+  const rows = [
+    { name: 'GOLD', move: -78, dp: 0, unit: '$', movedPct: -1.8, used: 114 },
+    { name: 'NQ', move: -300, dp: 0, unit: 'pts', movedPct: -1.0, used: 95 },
+    { name: 'AUDCAD', move: -79, dp: 0, unit: 'pips', movedPct: -1.1, used: 245 },
+    { name: 'EURCHF', move: 3, dp: 0, unit: 'pips', movedPct: 0.03, used: 20 },
+  ];
+  const r = spineRead({ rows });
+  assert.deepEqual(r.spine.map(x => x.name), ['GOLD', 'NQ'], 'only the spine members present are described');
+  assert.deepEqual(r.extra.map(x => x.name), ['AUDCAD'], 'the 245% cross earns a line');
+  assert.equal(r.extra.some(x => x.name === 'EURCHF'), false, 'a 20% day is not news');
+  assert.ok(SPINE.some(s => s.name === 'USDJPY') && SPINE.some(s => s.name === 'BTCUSD'));
+  for (const s of SPINE) assert.ok(s.role.length > 40, `${s.name} says what it IS`);
+});
+
+t('regime turns across the board are counted, and silent when the plan has no regime', () => {
+  const rows = [{ name: 'A', regimeNow: 'TREND' }, { name: 'B', regimeNow: 'RANGE' }, { name: 'C', regimeNow: 'RANGE' }];
+  assert.deepEqual(regimeTurns(rows, { A: { regime: 'RANGE' }, B: { regime: 'RANGE' } }), [{ name: 'A', from: 'RANGE', to: 'TREND' }]);
+  assert.deepEqual(regimeTurns(rows, {}), [], 'a plan with no regime field claims nothing');
+  assert.deepEqual(regimeTurns(null, {}), []);
+});
+
+t('a print is described by its gap, with the units caveat, and never as good or bad', () => {
+  const w = printedRead({ rows: [
+    { country: 'United Kingdom', event: 'CBI Industrial Trends Orders', surprise: 24, raw: { consensus: '-33' } },
+    { country: 'United States', event: 'Richmond Manufacturing Index', surprise: -4, raw: { consensus: '2' } },
+    { country: 'X', event: 'Unscored', surprise: null },
+  ], n: 3 });
+  assert.match(w, /24 above the -33 expected/);
+  assert.match(w, /4 below the 2 expected/);
+  assert.doesNotMatch(w, /(beat|missed|better|worse|strong|weak)/i);
+  assert.equal(printedRead({ rows: [] }), null);
+  assert.equal(printedRead(null), null);
+});
+
+t('the brief carries the spine, and still never explains a move', () => {
+  const b = endOfDayBrief({ eod: buildEod(), moved: [], nowMs: NOW,
+    sessions: { SPX500: { vol_state: { path_efficiency: { efficiency: 0.3 } } } },
+    activity: { SPX500: { ratio: 1.4 } } });
+  assert.ok(b.named.length >= 1, 'the spine is described whatever the board did');
+  const spx = b.named.find(x => x.name === 'SPX500');
+  assert.match(spx.line, /the S&P finished down/);
+  assert.match(spx.line, /1\.4× its 20-session median/);
+  assert.doesNotMatch(JSON.stringify([b.named, b.alsoMoved]), /(because|driven by|on the back of)/i);
+});
+
+t('percentiles are ordered properly, including the 11-13 trap', () => {
+  const at = p => describe('GOLD', { row: { name: 'GOLD', move: 1, dp: 0, unit: '$', movedPct: 0, used: 100, volPctNow: p } }).vol;
+  assert.match(at(1),  /the 1st percentile/);
+  assert.match(at(2),  /the 2nd percentile/);
+  assert.match(at(3),  /the 3rd percentile/);
+  assert.match(at(11), /the 11th percentile/);
+  assert.match(at(12), /the 12th percentile/);
+  assert.match(at(13), /the 13th percentile/);
+  assert.match(at(21), /the 21st percentile/);
+  assert.match(at(33), /the 33rd percentile/);
+  assert.match(at(85), /the 85th percentile/);
+  for (const p of [1, 2, 3, 11, 21, 33, 85]) assert.doesNotMatch(at(p), /NaN|undefined/);
+});
+
+t('a moved volatility percentile says where it came from', () => {
+  const d = describe('GOLD', { row: { name: 'GOLD', move: 1, dp: 0, unit: '$', movedPct: 0, used: 100, volPctNow: 62 }, morning: { volPct: 33 } });
+  assert.match(d.vol, /the 62nd percentile of its history, from the 33rd this morning/);
+  // a small drift is not a story, so it is not told
+  const quiet = describe('GOLD', { row: { name: 'GOLD', move: 1, dp: 0, unit: '$', movedPct: 0, used: 100, volPctNow: 36 }, morning: { volPct: 33 } });
+  assert.doesNotMatch(quiet.vol, /this morning/);
 });
 
 console.log(`endOfDayBrief: ${n} groups, all passed`);

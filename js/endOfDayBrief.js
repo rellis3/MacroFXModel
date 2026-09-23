@@ -30,6 +30,11 @@ const pct1 = v => (v > 0 ? '+' : '') + v.toFixed(1) + '%';
 const pct2 = v => (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 const mean = xs => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
 const fxPair = name => /^[A-Z]{6}$/.test(name) ? [name.slice(0, 3), name.slice(3)] : null;
+/** 1st, 2nd, 3rd, 4th ... 11th-13th are the exceptions that catch a naive rule. */
+const ord = n => {
+  const v = Math.abs(Math.round(n)), t = v % 100;
+  return `${n}${t >= 11 && t <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][v % 10] ?? 'th'}`;
+};
 
 /**
  * How stale the macro series are.
@@ -172,7 +177,7 @@ export function tomorrow({ ahead = [], rows = [], nowMs = Date.now() } = {}) {
  * structure, never HTML — the renderer decides how it looks, and the wording lives here
  * where it can be tested.
  */
-export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = [], printed = null, watchFired = [], nowMs = Date.now() } = {}) {
+export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = [], printed = null, watchFired = [], sessions = {}, activity = {}, nowMs = Date.now() } = {}) {
   if (!eod?.ok) return { ok: false, reason: eod?.reason ?? 'nothing to compare against yet' };
   const rows = eod.rows ?? [];
   const fresh = macroFreshness(moved, nowMs);
@@ -182,6 +187,10 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
   const bt = boardTradeVerdict(morning?.brief?.boardTrade, rows);
   const fwd = tomorrow({ ahead, rows, nowMs });
   const med = eod.range.medianUsed;
+  const plan = morning?.plan?.pairs ?? {};
+  const named = spineRead({ rows, sessions, activity, plan });
+  const turns = regimeTurns(rows, plan);
+  const prints = printedRead(printed);
 
   // The headline leads with whatever was most out of the ordinary, because that is what
   // a reader wants first. Range beats direction: it is the measurement this desk has
@@ -211,6 +220,14 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     eod.commitments.nFalsifiers ? `; ${eod.commitments.falsified} of ${eod.commitments.nFalsifiers} named falsifiers traded` : ''}. That is a tally, not a verdict — the running record is 19 of 33 and a single day cannot move it off a coin flip.`);
   else paragraphs.push(`The page committed no direction on any instrument today. That is the absence of a call rather than a miss, and it is the honest outcome on a board where the read is mostly about size.`);
 
+  // Regime is the page changing its mind about what KIND of market it is looking at,
+  // which is the input to sizing — a bigger deal than any one price move, and silent on
+  // days whose plan predates the field rather than claiming nothing changed.
+  if (turns.length) paragraphs.push(`The regime turned under ${turns.length} ${turns.length === 1 ? 'instrument' : 'instruments'} today: ${
+    turns.map(t => `<b>${t.name}</b> ${t.from} → ${t.to}`).join(', ')}. That is the page changing its mind about what kind of market it is looking at, which feeds position sizing before it feeds any view.`);
+
+  if (prints) paragraphs.push(`What printed: ${prints}. The gap is in each release's own units and is not standardised, so a big-looking number on one series is not comparable with a small one on another — and this desk's tested position is that surprise size moves RANGE, not direction.`);
+
   if (bt) paragraphs.push(`The brief's one named trade was <b>${bt.direction} ${bt.pair}</b>, and it ${bt.right ? 'went the right way' : 'went the wrong way'} — ${(bt.move > 0 ? '+' : '') + bt.move.toFixed(bt.dp)} ${bt.unit}${bt.movedPct != null ? ` (${pct2(bt.movedPct)})` : ''}. One call on one day proves nothing; it is here because it is the only part of the morning brief that can be marked at all.`);
 
   // The cards mirror the morning brief's four, so the two read as a pair.
@@ -238,9 +255,143 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     morningWatch: Array.isArray(morning?.brief?.watch) ? morning.brief.watch : [],
     morningHook: morning?.chainRead?.hook ?? null,
     headline, paragraphs, cards,
+    // the markets a macro reader carries a view on every day, described every day —
+    // ranking by range-used alone produces a brief about whichever cross went wild
+    named: named.spine, alsoMoved: named.extra, regimeTurns: turns, printedWords: prints,
     dollar: usd, risk, standouts: out, boardTrade: bt, freshness: fresh,
     printed: printed ?? null,
     tomorrow: fwd,
     caveat: 'Written from the numbers on the page, not from a model call — every figure here is a comparison between what this page published this morning and what the tape has done since. Nothing in it says which way anything goes tomorrow: this desk tested the priced-in claim and it came back null, and surprise size validated for range only.',
   };
+}
+
+/**
+ * THE SPINE — the markets that get described whatever the board did.
+ *
+ * Ranking by range-used alone produces a brief about whichever cross happened to be
+ * wild, and on a day the AUD block moved you would read four paragraphs about AUD/CAD
+ * and nothing about gold, the Nasdaq or the yen. These are the markets a macro reader
+ * carries a view on every day, so they are covered every day, and the standouts are
+ * reported ALONGSIDE rather than instead.
+ *
+ * `role` is what the market IS — the reason it earns a permanent line rather than a
+ * rank — and it is what turns a number into something a reader can learn from.
+ */
+export const SPINE = [
+  { name: 'GOLD',   label: 'Gold',     role: 'four trades wearing one name — real yields, the dollar, central-bank reserves and fear. It is read by which of the four the rest of the board agrees with.' },
+  { name: 'NQ',     label: 'the Nasdaq', role: 'long-duration equity: its earnings sit far out, so it discounts a real-yield move harder than anything else on the board.' },
+  { name: 'SPX500', label: 'the S&P',  role: 'the broad benchmark. Against the Nasdaq it says whether a move is the whole market or the long-duration corner of it.' },
+  { name: 'USDJPY', label: 'USD/JPY',  role: 'the haven pair and the carry trade’s home. It answers the rate gap, and it answers fear, and telling those apart is most of reading it.' },
+  { name: 'EURUSD', label: 'EUR/USD',  role: 'the biggest pair — mostly the dollar, partly the Bund gap.' },
+  { name: 'BTCUSD', label: 'Bitcoin',  role: 'high-beta risk most days; the anti-dollar trade on the days the story is about credibility. Which one it is today is readable from whether it moved with the Nasdaq or against the dollar.' },
+];
+
+/** Activity in words. The unit is a TICK COUNT, so the wording never says "traded". */
+export function activityWord(ratio) {
+  if (!Number.isFinite(ratio)) return null;
+  return ratio >= 1.6 ? 'far busier than usual' : ratio >= 1.2 ? 'busier than usual'
+    : ratio <= 0.5 ? 'far quieter than usual' : ratio <= 0.8 ? 'quieter than usual' : 'about as busy as usual';
+}
+
+/**
+ * How directly a market got where it finished.
+ *
+ * `efficiency` is net move over path length: 1.0 is a straight line, 0.2 is a market
+ * that travelled five times its net distance to end up there. It needs no baseline and
+ * no history, which is why it is worth saying — and it is the difference between a
+ * trend day and a day that paid out nothing while looking like it moved.
+ */
+export function pathWord(eff) {
+  if (!Number.isFinite(eff)) return null;
+  return eff >= 0.6 ? 'in close to a straight line' : eff >= 0.35 ? 'with the usual amount of back-and-forth'
+    : eff >= 0.2 ? 'the long way round' : 'having travelled several times the distance it ended up covering';
+}
+
+/**
+ * One market, described.
+ *
+ * Every clause is a measured number with its own caveat attached. It deliberately never
+ * gives a reason for the move: attribution on a single session is a story, and this desk
+ * has a whole book of nulls built from testing exactly those stories.
+ */
+export function describe(name, { row = null, session = null, activity = null, morning = null } = {}) {
+  const spec = SPINE.find(s => s.name === name);
+  if (!row) return null;
+  const bits = [];
+  const moveTxt = `${row.move > 0 ? 'up' : row.move < 0 ? 'down' : 'flat at'} ${Math.abs(row.move).toFixed(row.dp)} ${row.unit}${row.movedPct != null ? ` (${row.movedPct > 0 ? '+' : ''}${row.movedPct}%)` : ''}`;
+  bits.push(`${moveTxt}`);
+  if (row.used != null) bits.push(`${row.used}% of the range forecast for it`);
+
+  const eff = session?.vol_state?.path_efficiency?.efficiency;
+  const pw = pathWord(eff);
+  if (pw) bits.push(`and it got there ${pw}`);
+
+  const aw = activityWord(activity?.ratio);
+  if (aw) bits.push(`on a tick count ${aw} (${activity.ratio}× its 20-session median — an activity proxy, not traded size)`);
+
+  // The regime the page was working from this morning, and whether it held. Only sayable
+  // once the morning plan started carrying it, so it degrades to silence rather than to
+  // a guess on any day captured before that.
+  const reg = [];
+  if (morning?.regime && row.regimeNow && morning.regime !== row.regimeNow)
+    reg.push(`The page called it ${morning.regime} this morning and now reads ${row.regimeNow} — the regime turned under the position.`);
+  else if (morning?.regime && row.regimeNow)
+    reg.push(`Still ${row.regimeNow}, the regime the page was working from at the open.`);
+
+  const vol = (row.volPctNow != null)
+    ? `Its own volatility sits at the ${ord(row.volPctNow)} percentile of its history${morning?.volPct != null && Math.abs(row.volPctNow - morning.volPct) >= 10 ? `, from the ${ord(morning.volPct)} this morning` : ''}.`
+    : '';
+
+  return {
+    name, label: spec?.label ?? name, role: spec?.role ?? null,
+    line: `${spec?.label ?? name} finished ${bits.join(', ')}.`,
+    regime: reg[0] ?? null, vol: vol || null,
+    used: row.used, movedPct: row.movedPct, ratio: activity?.ratio ?? null, efficiency: eff ?? null,
+  };
+}
+
+/**
+ * The spine, described, plus any standout that is not already on it.
+ *
+ * A market that ran 250% of its forecast earns a line even when it is a cross nobody
+ * carries a view on — that is the day's actual news. It is appended rather than ranked
+ * above the spine, so the brief always reads in the same order.
+ */
+export function spineRead({ rows = [], sessions = {}, activity = {}, plan = {} } = {}) {
+  const byName = new Map((Array.isArray(rows) ? rows : []).map(r => [r.name, r]));
+  const out = [];
+  for (const s of SPINE) {
+    const d = describe(s.name, { row: byName.get(s.name), session: sessions[s.name], activity: activity[s.name], morning: plan[s.name] });
+    if (d) out.push(d);
+  }
+  const onSpine = new Set(SPINE.map(s => s.name));
+  const extra = (Array.isArray(rows) ? rows : [])
+    .filter(r => !onSpine.has(r.name) && r.used != null && r.used >= 160)
+    .sort((a, b) => b.used - a.used).slice(0, 3)
+    .map(r => describe(r.name, { row: r, session: sessions[r.name], activity: activity[r.name], morning: plan[r.name] }))
+    .filter(Boolean);
+  return { spine: out, extra };
+}
+
+/**
+ * The regimes that turned today, across the whole board.
+ *
+ * A regime flip is the page changing its mind about what KIND of market it is looking
+ * at, which matters more than a price move: it is the input to sizing. Reported as a
+ * count with the names, and silent on any day whose plan predates the field.
+ */
+export function regimeTurns(rows = [], plan = {}) {
+  const turned = [];
+  for (const r of (Array.isArray(rows) ? rows : [])) {
+    const was = plan?.[r.name]?.regime, now = r.regimeNow;
+    if (was && now && was !== now) turned.push({ name: r.name, from: was, to: now });
+  }
+  return turned;
+}
+
+/** What printed today, in words, biggest gap to consensus first. */
+export function printedRead(printed, { limit = 3 } = {}) {
+  const rows = (printed?.rows ?? []).filter(r => r.surprise != null).slice(0, limit);
+  if (!rows.length) return null;
+  return rows.map(r => `${r.country} ${r.event} came in ${Math.abs(r.surprise)} ${r.surprise > 0 ? 'above' : 'below'} the ${r.raw?.consensus ?? r.consensus} expected`).join('; ');
 }

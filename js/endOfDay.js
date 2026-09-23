@@ -96,6 +96,12 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
     // carried so a caller can group the board without a second lookup table — the
     // brief needs to know an index from a currency pair to say anything about the day
     ac: live.ac ?? null,
+    // today's regime and volatility percentile, so the brief can set them against the
+    // ones the morning plan stored. Null on any day whose plan predates those fields,
+    // which reads as silence rather than as a false "unchanged"
+    regimeNow: live.regime?.label ?? null,
+    regimeOkNow: live.regime?.reliable ?? null,
+    volPctNow: live.vol_pct ?? null,
     open: +open.toFixed(dp + 2), now: +now.toFixed(dp + 2),
     move: +move.toFixed(dp), moveUp: move > 0,
     expected: expected == null ? null : +expected.toFixed(dp),
