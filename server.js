@@ -50,6 +50,7 @@ import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
+import { parseForexFactory as _calParseFF, parseNasdaq as _calParseNasdaq, upcoming as _calUpcoming, printed as _calPrinted, calendarHealth as _calHealth } from './js/calendarFeed.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
 import { rawDayDecision, mergeRawDay, oiContentFingerprint, oiFreshnessStreak,
          settledFreshnessInputs } from './js/oiRawArchive.js';
@@ -26111,6 +26112,50 @@ function _loadNewsCalendar() {
 // currencies / minimum impact rank (3 = Major).
 const _CAL_COUNTRY_TO_CCY = { US: 'USD', EU: 'EUR', GB: 'GBP', JP: 'JPY', AU: 'AUD', NZ: 'NZD', CA: 'CAD', CH: 'CHF', CN: 'CNY' };
 const _CAL_IMPACT_RANK = { high: 3, medium: 2, low: 1 };
+
+// ── The economic calendar, from two feeds that still work ────────────────────
+// /api/calendar-events above parses a ForexFactory CSV that ended 2026-07-02 and
+// tops it up from Finnhub -- whose free tier has dropped the economic calendar and
+// answers "You don't have access to this resource". So that route returns an empty
+// list for any window past July, and the terminal rendered that as a CLEAR diary.
+//
+// This one uses ForexFactory's own JSON for what is AHEAD (it carries the impact
+// rating) and Nasdaq's for what has PRINTED (it carries actual vs consensus). Both
+// free, neither needs a key. Cached 30 minutes; a failure leaves the previous
+// payload in place and is reported rather than served as silence.
+let _calFeed = { at: 0, data: null, error: null };
+async function _refreshCalFeed() {
+  const today = new Date().toISOString().slice(0, 10);
+  const H = { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' };
+  let ff = null, nas = null;
+  try {
+    const r = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json',
+      { headers: H, signal: AbortSignal.timeout(20_000) });
+    if (r.ok) ff = _calParseFF(await r.json());
+  } catch (e) { console.warn('[calendar] forexfactory:', e.message); }
+  try {
+    const r = await fetch(`https://api.nasdaq.com/api/calendar/economicevents?date=${today}`,
+      { headers: H, signal: AbortSignal.timeout(20_000) });
+    if (r.ok) nas = _calParseNasdaq(await r.json(), today);
+  } catch (e) { console.warn('[calendar] nasdaq:', e.message); }
+  const health = _calHealth(ff, nas);
+  // never overwrite a good payload with a failed fetch
+  if (health.state === 'bad' && _calFeed.data) { _calFeed.error = health.detail; return _calFeed; }
+  _calFeed = { at: Date.now(), error: health.state === 'bad' ? health.detail : null,
+    data: { ahead: _calUpcoming(ff ?? [], Date.now(), { days: 7, minRank: 3 }),
+            printed: _calPrinted(nas ?? []), health, today } };
+  return _calFeed;
+}
+app.get('/api/calendar-feed', async (_req, res) => {
+  try {
+    if (Date.now() - _calFeed.at > 30 * 60_000) await _refreshCalFeed();
+    if (!_calFeed.data) return res.status(503).json({ ok: false, error: _calFeed.error ?? 'no calendar yet' });
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json({ ok: true, ..._calFeed.data, at: new Date(_calFeed.at).toISOString(), error: _calFeed.error });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+
 app.get('/api/calendar-events', async (req, res) => {
   try {
     const events = _loadNewsCalendar();
