@@ -175,6 +175,27 @@ def test_enter_duplicate_block():
     assert fake.sent_orders == []
 
 
+# ── dedupe_tag: scoping the duplicate guard to one motif/zone at a time ─────
+# Without dedupe_tag, the guard above blocks on ANY open position for the
+# pair with this magic -- the default every existing caller keeps. A caller
+# that wants several concurrent positions per pair (motif_bot allowing
+# max_concurrent_per_pair distinct touch-motifs, range_line_bot's per
+# source/side slots) narrows the check with dedupe_tag instead.
+
+def test_enter_dedupe_tag_still_blocks_a_matching_tag():
+    fake = FakeMt5(positions=[_pos(1, MAGIC, comment='MT[abc0123456]')])
+    assert _broker(fake).enter('EUR/USD', 'LONG', 1.09, 1.11, 0.5, 5.0,
+                               paper_mode=False, dedupe_tag='abc0123456') is None
+    assert fake.sent_orders == []
+
+
+def test_enter_dedupe_tag_allows_a_different_tag_past_an_unrelated_open_position():
+    fake = FakeMt5(positions=[_pos(1, MAGIC, comment='MT[abc0123456]')])
+    assert _broker(fake).enter('EUR/USD', 'LONG', 1.09, 1.11, 0.5, 5.0,
+                               paper_mode=False, dedupe_tag='def7654321') == 555111
+    assert len(fake.sent_orders) == 1
+
+
 UK100_TICK = SimpleNamespace(bid=10350.0, ask=10350.5)   # index-scale quote for the index fixtures
 
 

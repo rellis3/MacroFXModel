@@ -142,6 +142,17 @@ def _log_guard_transition(log: logging.Logger, state: dict, key: str,
         log.info(f'RiskGuard [{key}]: clear{" — entries resumed" if enforced else ""}')
 
 
+def _motif_tag(motif_key: str) -> str:
+    """Deterministic short hash of `motif_key` (10 hex chars) -- same tag
+    every time for the same motif, independent of n_touches/bar-index length
+    (see `_position_comment`'s own doc for why the raw key can't be embedded
+    directly). Shared by `_position_comment` (what actually lands in the
+    broker's comment field) and `broker.enter`'s `dedupe_tag` (what the
+    duplicate guard matches against), so the two can never drift out of the
+    same identity."""
+    return hashlib.sha1(motif_key.encode()).hexdigest()[:10]
+
+
 def _position_comment(motif_key: str) -> str:
     """Short, FIXED-LENGTH order comment (14 chars) instead of embedding
     `motif_key` verbatim -- caught live 2026-09-18: `MT[{motif_key}]` grows
@@ -160,7 +171,7 @@ def _position_comment(motif_key: str) -> str:
     -- it's still the position's audit identity everywhere else (acted_keys,
     motif_bot_decision_log, the Telegram alert text); the broker comment only
     ever needed to be human-recognisable, not load-bearing."""
-    return f"MT[{hashlib.sha1(motif_key.encode()).hexdigest()[:10]}]"
+    return f"MT[{_motif_tag(motif_key)}]"
 
 
 def _mt5_sym(pair: str) -> str:
@@ -685,15 +696,31 @@ def run(base_url: str, force_live: bool) -> None:
                 pip = I.pip_size(pair)
                 sl, tp = _sl_tp_from_fill(entry, exp_px, pip)
                 sl_dist = abs(exp_px - sl)
-                lots = size_for(pair, bal, cfg.get("risk_pct", 0.25), sl_dist, cfg.get("max_lot", 5.0))
+                # Split risk_pct across however many motifs will then be
+                # concurrently open on this pair (this one plus open_for_pair
+                # already-open ones), so max_concurrent_per_pair=2 caps this
+                # pair's TOTAL simultaneous risk at one ordinary trade's worth
+                # (e.g. 2 concurrent -> 0.125% each) rather than doubling it.
+                # size_for's own sizing math is otherwise identical to every
+                # other bot's -- this is the only place concurrency enters it.
+                concurrent_n = open_for_pair + 1
+                risk_pct_eff = cfg.get("risk_pct", 0.25) / concurrent_n
+                lots = size_for(pair, bal, risk_pct_eff, sl_dist, cfg.get("max_lot", 5.0))
 
                 # broker.enter() takes "LONG"/"SHORT" (both Mt5Broker and
                 # PaperBroker); the plan's own direction field is "BUY"/"SELL"
                 # (matching motif_track.py's trade-log convention and the
                 # dashboard's serialized-output shape) -- translate here, once,
                 # rather than let the two vocabularies leak into each other.
+                # dedupe_tag=motif's own tag (2026-09-23): without this,
+                # broker.enter's duplicate guard blocks on ANY open position
+                # for the pair, silently overriding the max_concurrent_per_pair
+                # check just above -- caught live as repeated "duplicate
+                # (ticket ... already open)" skips on a SECOND, genuinely
+                # distinct motif while the pair was still under its cap.
                 tid = broker.enter(pair, "LONG" if is_long else "SHORT", sl, tp, lots,
-                                   max_spread(pair, cfg), paper, comment=_position_comment(motif_key))
+                                   max_spread(pair, cfg), paper, comment=_position_comment(motif_key),
+                                   dedupe_tag=_motif_tag(motif_key))
                 filled = tid is not None and tid != -1
                 if filled:
                     acted_keys.add(motif_key)

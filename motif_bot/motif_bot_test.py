@@ -239,6 +239,57 @@ def test_position_comment_is_deterministic_per_motif_key():
     assert mb._position_comment("eurusd:top:1-2") != mb._position_comment("eurusd:top:1-3")
 
 
+def test_motif_tag_matches_the_hash_embedded_in_position_comment():
+    # _motif_tag is what gets passed as broker.enter's dedupe_tag -- it must
+    # be the EXACT same hash _position_comment embeds, or the dedupe_tag's
+    # `[{tag}]` substring match against the position's own comment silently
+    # never matches anything.
+    key = "gbpnzd:bottom:31151-31173"
+    assert mb._position_comment(key) == f"MT[{mb._motif_tag(key)}]"
+
+
+# ── max_concurrent_per_pair vs broker.enter's duplicate guard ──────────────
+# Caught live 2026-09-22: motif_bot's own max_concurrent_per_pair check (cap
+# default 2) passed for a second, genuinely distinct motif on a pair that
+# already had one open position -- but broker.enter() was never told a
+# dedupe_tag, so its duplicate guard blocked on ANY open position for the
+# pair regardless, silently vetoing what the bot-level check had just
+# allowed ("duplicate (ticket ... already open)" skips repeating every 5
+# min while the config said 2 concurrent motifs should be fine).
+
+# The bug itself only ever lived in Mt5Broker's default (blocks on ANY open
+# position for the pair when no dedupe_tag is given) -- PaperBroker's own
+# equivalent default is documented as "paper stacks freely, same as before"
+# (pylego/broker/paper.py's enter() docstring), so it was never the broker
+# that under-tested this; motif_bot.py simply never passed a dedupe_tag to
+# either broker, silently relying on paper's permissive default while live
+# hit Mt5Broker's strict one instead. There is nothing to regression-test
+# via PaperBroker for "blocked without dedupe_tag" -- it was never blocked
+# there. The test below is the actual fix: motif_bot now always passes
+# dedupe_tag, so this is what both brokers do from here on.
+
+def test_second_distinct_motif_on_same_pair_allowed_with_dedupe_tag():
+    """The fix: tagging each motif's entry with its own _motif_tag lets a
+    second, distinct motif open on a pair that already has one position,
+    while still refusing to double-enter the SAME motif_key."""
+    b = PaperBroker(balance=10_000.0)
+    b.set_price("audusd", 0.7150)
+    key1, key2 = "audusd:top:1-2", "audusd:top:5-9"
+    tid1 = b.enter("audusd", "SHORT", 0.7170, 0.7100, 0.5, 3.0, True,
+                   comment=mb._position_comment(key1), dedupe_tag=mb._motif_tag(key1))
+    tid2 = b.enter("audusd", "SHORT", 0.7170, 0.7100, 0.25, 3.0, True,
+                   comment=mb._position_comment(key2), dedupe_tag=mb._motif_tag(key2))
+    assert tid1 is not None and tid1 != -1
+    assert tid2 is not None and tid2 != -1
+    assert len(b.serialize_open_positions()) == 2
+
+    # Re-entering key1 (e.g. a duplicated plan poll) is still refused --
+    # dedupe_tag narrows the block to "this exact motif", not "no block at all".
+    tid1_again = b.enter("audusd", "SHORT", 0.7170, 0.7100, 0.5, 3.0, True,
+                         comment=mb._position_comment(key1), dedupe_tag=mb._motif_tag(key1))
+    assert tid1_again is None
+
+
 def test_default_risk_guard_enabled_is_false():
     """OFF by default (2026-09-16): with the guard not enforced, the live bot
     trades the SAME population motif_alert_backtest.py's ungated export does
