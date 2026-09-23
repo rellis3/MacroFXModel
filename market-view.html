@@ -201,6 +201,47 @@
   .cf li::before{position:absolute;left:0;font-weight:700}
   .cf li.y::before{content:'✓';color:var(--bull)} .cf li.n::before{content:'✕';color:var(--red)}
   .cf li i{font-style:normal;color:var(--text);font-weight:700;font-variant-numeric:tabular-nums}
+  /* ── charts: every colour a token, so both themes work undrawn ───────────── */
+  .mvc{margin:10px 0 2px}
+  .mvc svg{display:block;width:100%;height:auto;overflow:visible}
+  .mvc.small svg{max-width:330px}
+  .mvc-none{font-size:11.5px;color:var(--text3);font-style:italic;padding:8px 0}
+  .mvc-grid{stroke:var(--border2);stroke-width:1;vector-effect:non-scaling-stroke}
+  .mvc-zero{stroke:var(--text3);stroke-width:1;stroke-dasharray:3 3;opacity:.7;vector-effect:non-scaling-stroke}
+  .mvc-ax{fill:var(--text3);font-size:9.5px;font-weight:600}
+  .mvc-a{fill:none;stroke:var(--blue);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .mvc-b{fill:none;stroke:var(--amber);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .mvc-band{opacity:.15}
+  .mvc-band.pos{fill:var(--bull)} .mvc-band.neg{fill:var(--red)}
+  .mvc-dota{fill:var(--blue)} .mvc-dotb{fill:var(--amber)}
+  .mvc-line{fill:none;stroke-width:2.2;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+  .mvc-line.pos{stroke:var(--bull)} .mvc-line.neg{stroke:var(--red)}
+  .mvc-fill{opacity:.13} .mvc-fill.pos{fill:var(--bull)} .mvc-fill.neg{fill:var(--red)}
+  .mvc-mark{fill:var(--text3)} .mvc-mark.now{fill:var(--text)}
+  .mvc-tag{fill:var(--text3);font-size:10.5px;font-weight:700}
+  .mvc-tag.now{fill:var(--text);font-size:11.5px}
+  .mvc-bar{fill:var(--border)} .mvc-bar.now{fill:var(--amber)}
+  .mvc-nowline{stroke:var(--amber);stroke-width:1.6;vector-effect:non-scaling-stroke}
+  .mvc-cap{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);
+           margin-top:4px;font-variant-numeric:tabular-nums}
+  .mvc-cap .ka{color:var(--blue);font-weight:700} .mvc-cap .kb{color:var(--amber);font-weight:700}
+  .mvc-cap .kg{color:var(--text);font-weight:700}
+  .mvc-spark{width:90px;height:24px;display:block}
+  .mvc-spark polyline{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
+  .mvc-spark polyline.pos{stroke:var(--bull)} .mvc-spark polyline.neg{stroke:var(--red)}
+
+  /* ── the analogue strip: "this is what broke the market in June" ──────────── */
+  .an{margin-top:10px;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .an h5{font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);font-weight:700;margin-bottom:7px}
+  .an .eps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .an .ep{font-size:10.5px;font-variant-numeric:tabular-nums;border:1px solid var(--border);
+          border-radius:5px;padding:2px 7px;color:var(--text2)}
+  .an .ep b{font-weight:700}
+  .an .ep.up b{color:var(--bull)} .an .ep.dn b{color:var(--red)}
+  .an .sum{font-size:12px;line-height:1.6;color:var(--text2)}
+  .an .sum b{color:var(--text)}
+  .an .warn{font-size:11px;color:var(--text3);line-height:1.55;margin-top:7px;
+            border-left:2px solid var(--border);padding-left:9px}
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -279,6 +320,8 @@ import { BOARD, WINDOWS, scanBoard, scanLinks, glance, findings, fmtChange, fmtL
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
 import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js/marketState.js';
+import { dualLine, levelLine, histogram, spark } from './js/mvChart.js';
+import { analogues, keysFor } from './js/analogue.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
@@ -371,8 +414,10 @@ function renderScan() {
     <div class="fnd">
       <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
       <div class="s">${esc(x.seen)}</div>
+      ${chartFor(x)}
       <div class="m">${esc(x.means)}</div>
       ${confHtml(x)}
+      ${analogueHtml(x)}
       ${checks[x.title] ? `<div class="chk"><b>Check next</b>${esc(checks[x.title])}</div>` : ''}
       <div class="nmT" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">▸ what this does <i>not</i> mean</div>
       <div class="nmB" style="display:none">${esc(x.notMeans)}</div>
@@ -654,6 +699,93 @@ function confHtml(f) {
     <ul>${c.items.map(i => `<li class="${i.ok ? 'y' : 'n'}">${esc(i.label)} — <i>${esc(i.got)}</i></li>`).join('')}</ul></div>`;
 }
 
+/** The last `n` values of a series, for charting. */
+const tail = (key, n = 130) => (BUNDLE?.series?.[key] ?? []).slice(-n);
+
+/**
+ * The right chart for each kind of finding.
+ *
+ * Not decoration. Each finding makes a claim that is unconvincing as a sentence and
+ * obvious as a picture — "crude fell and the S&P closed flat" is an assertion until you
+ * see the two lines pull apart. The chart IS the argument.
+ */
+function chartFor(f) {
+  if (!BUNDLE) return '';
+  const lbl = k => (BOARD.find(b => b.key === k)?.label ?? k);
+  if (f.kind === 'dislocation' && typeof f.key === 'string' && f.key.includes('-')) {
+    const [a, b] = f.key.split('-');
+    if (BUNDLE.series[a] && BUNDLE.series[b])
+      return dualLine(tail(a), tail(b), { labelA: lbl(a), labelB: lbl(b),
+        note: 'both rebased to 0% six months ago — the shading is how far apart they have travelled' });
+  }
+  if (f.kind === 'ratekind' && BUNDLE.series.tips && BUNDLE.series.bei)
+    return dualLine(tail('tips'), tail('bei'), { labelA: 'Real 10-year', labelB: 'Breakevens',
+      note: 'the whole question is which of these two legs carried the nominal yield' });
+  if (f.kind === 'vixterm' && BUNDLE.series.vix3m && BUNDLE.series.vix)
+    return dualLine(tail('vix3m'), tail('vix'), { labelA: '3-month VIX', labelB: 'Spot VIX',
+      note: 'when the blue line drops below the amber one, the market is paying more to be covered now than later' });
+  if (f.kind === 'creditstack' && BUNDLE.series.ccc && BUNDLE.series.ig)
+    return dualLine(tail('ccc'), tail('ig'), { labelA: 'CCC spread', labelB: 'Investment-grade spread',
+      note: 'the bottom of the credit stack against the top — a gap says the stress is not systemic' });
+  if (f.kind === 'dispersion' && BUNDLE.series.dspx && BUNDLE.series.vix)
+    return dualLine(tail('dspx'), tail('vix'), { labelA: 'Dispersion', labelB: 'VIX',
+      note: 'dispersion climbing while the VIX sits still is the crowded-market shape' });
+  if (f.kind === 'extreme' && f.key) {
+    const spec = BOARD.find(b => b.key === f.key);
+    const row = SCORED.find(r => r.key === f.key);
+    // a rate or a spread is about its LEVEL and where it came from; a price is about
+    // how unusual the move is, which is a different chart
+    if (spec && (spec.kind === 'rate' || spec.kind === 'gap') && BUNDLE.series[f.key])
+      return levelLine(tail(f.key, 90), { label: spec.label, unit: 'bp', mult: 100, decimals: 0 });
+    if (row) {
+      const hist = [];
+      const s = BUNDLE.series[f.key] ?? [];
+      for (let i = Math.max(WIN, s.length - 750); i < s.length; i++) {
+        const a = s[i - WIN], b = s[i];
+        if (a != null && b != null && a !== 0) hist.push(spec?.kind === 'price' ? (b / a - 1) * 100 : (b - a) * (spec?.kind === 'gap' ? 100 : 1));
+      }
+      if (hist.length > 40) return histogram(hist, row.change, { unit: spec?.kind === 'price' ? '%' : '' });
+    }
+  }
+  return '';
+}
+
+/**
+ * "This exact price action is what broke the market in June."
+ *
+ * The most persuasive sentence a desk commentator says, and almost always unsupported —
+ * one remembered episode, chosen because it fits. This shows every comparable episode
+ * and what actually followed each, so the claim can be checked instead of believed.
+ *
+ * Deliberately blunt about its own limits: small samples, no pre-registration, and a
+ * count rather than an average, so a 4-of-7 reads as the coin flip it is.
+ */
+function analogueHtml(f) {
+  const keys = keysFor(f);
+  if (!keys || !BUNDLE) return '';
+  let r = null;
+  try { r = analogues(BUNDLE, keys, { outcomes: ['spx', 'vix'] }); } catch { return ''; }
+  if (!r) return '';
+  const o = r.outcomes.spx;
+  if (!o) return '';
+  const eps = o.each.map(e =>
+    `<span class="ep ${e.pct > 0 ? 'up' : 'dn'}">${esc(e.date)} <b>${e.pct > 0 ? '+' : ''}${e.pct.toFixed(1)}%</b></span>`).join('');
+  const mixed = o.up > 0 && o.up < o.n;
+  const vix = r.outcomes.vix;
+  return `<div class="an"><h5>Has this happened before?</h5>
+    <div class="sum">The board has looked like this on <b>${o.n}</b> other occasions since ${esc(r.episodes[0].date)}, judged on
+      ${esc(r.keys.join(', '))}. Over the ${r.horizon} sessions that followed, the S&amp;P was
+      <b>higher ${o.up} times and lower ${o.n - o.up}</b> — anywhere from <b>${o.lo}%</b> to <b>${o.hi}%</b>, median ${o.median}%.
+      ${vix ? `The VIX was higher ${vix.up} of ${vix.n} times.` : ''}</div>
+    <div class="eps" style="margin-top:7px">${eps}</div>
+    <div class="warn">${r.oneRegime
+      ? `<b>Read that as ONE observation, not ${o.n}.</b> Every match falls between ${esc(r.span.from)} and ${esc(r.span.to)} — a single stretch of market history rather than ${o.n} independent occasions. Counting it as ${o.n} overstates the sample by about that factor. `
+      : ''}${mixed
+      ? `The spread is what matters rather than the median — ${o.n} episodes ranging ${o.lo}% to ${o.hi}% do not describe a tendency, they describe a market that could do either.`
+      : `Every episode went the same way, which on a sample of ${o.n} is as likely to be an accident of a small count as a pattern.`}
+      None of this has been through this desk's pre-registration, the sample is small by construction, and episodes are only similar on ${r.keys.length} dimensions. It is history arranged so the claim can be checked — not a forecast, and not a tested edge.</div></div>`;
+}
+
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {
     const rows = SCORED.filter(s => s.group === g);
@@ -664,6 +796,7 @@ function renderBoard() {
         <div class="k">${esc(s.label)}</div>
         <div class="v">${esc(fmtLevel(s))}</div>
         <div class="c ${cls}">${esc(fmtChange(s))} <span class="z ${hot ? 'hot' : ''}">z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}${hot ? ' · rare' : ''}</span></div>
+        ${spark((BUNDLE?.series?.[s.key] ?? []).slice(-60))}
       </button>`; }).join('')}</div>`;
   }).join('');
 }
