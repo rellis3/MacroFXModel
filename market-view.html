@@ -64,6 +64,27 @@
   .tile .c.up{color:var(--bull)} .tile .c.dn{color:var(--red)} .tile .c.fl{color:var(--text3)}
   .tile .z{font-size:10px;color:var(--text3);font-weight:400}
   .tile .z.hot{color:var(--amber);font-weight:700}
+  /* ── the wiring card: relationships as first-class rows ──────────────────── */
+  .wire{display:flex;flex-direction:column;gap:1px;margin-top:4px}
+  .wrow{display:grid;grid-template-columns:minmax(0,1fr) 62px 74px;gap:8px;align-items:center;
+        background:transparent;border:0;border-bottom:1px solid var(--border2);color:var(--text);
+        padding:7px 4px;cursor:pointer;text-align:left;font:inherit;width:100%;min-width:0}
+  .wrow:hover{background:var(--card2)}
+  .wrow.sel{background:var(--card2)}
+  .wrow .pair{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+  .wrow .pair .arw{color:var(--text3);margin:0 5px}
+  .wrow .tight{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .wrow .bar{flex:1;height:4px;border-radius:2px;background:var(--border);overflow:hidden;min-width:14px}
+  .wrow .bar i{display:block;height:100%;background:var(--text3);border-radius:2px}
+  .wrow .state{font-size:10px;font-weight:700;text-align:right;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+  .st-apart{color:var(--amber)} .st-hold{color:var(--bull)} .st-weak{color:var(--text3);font-weight:600}
+  .wrow.inv .pair::after{content:'inverted';font-size:9px;font-weight:700;color:var(--amber);
+        border:1px solid var(--amber);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:1px}
+  .legs{display:flex;gap:14px;flex-wrap:wrap;margin-top:7px;font-size:11px;font-variant-numeric:tabular-nums}
+  .legs b{font-weight:700}
+  /* .up/.dn are scoped to .tile .c, so the link legs need their own colour rules */
+  .legs b.up{color:var(--bull)} .legs b.dn{color:var(--red)}
+  @media(max-width:520px){ .wrow{grid-template-columns:minmax(0,1fr) 44px 66px;gap:6px} .wrow .pair{font-size:11.5px} }
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -95,6 +116,12 @@
   </div>
 
   <div class="card">
+    <h2>How this market is wired today</h2>
+    <div class="sub">Every relationship this desk understands, ranked by how far apart the two markets are <b>today</b> against how they have actually moved together over three years. The bar is the real strength of the link — a loose one has nothing to break. <b>Tap a row</b> for the mechanism and what to go and look at.</div>
+    <div id="wire">Scoring the relationships…</div>
+  </div>
+
+  <div class="card">
     <h2>The whole board</h2>
     <div class="sub">Everything this desk carries, with its twenty-session move and how unusual that move is. <b>Amber = rare.</b> Tap a tile for what it is, where the move sits in its own history, and which textbook links touch it today.</div>
     <div id="board"></div>
@@ -104,7 +131,7 @@
 </div>
 
 <script type="module">
-import { BOARD, scanBoard, findings, fmtChange, fmtLevel } from './js/marketScan.js';
+import { BOARD, scanBoard, scanLinks, findings, fmtChange, fmtLevel } from './js/marketScan.js';
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -116,7 +143,10 @@ window.toggleTheme = () => {
 };
 try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn').textContent = '🌙 Dark'; } catch (e) {}
 
-let BUNDLE = null, SCORED = [], LINKS = [], SEL = null;
+// CHAINV = the macroChain verdicts (computed elsewhere, different rules);
+// LINKZ  = this page's own scored relationships. Two different objects, so they
+// keep two different names -- the old single `LINKS` conflated them.
+let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], SEL = null, WSEL = null;
 
 async function load() {
   try {
@@ -129,9 +159,10 @@ async function load() {
     BUNDLE = bundleRes;
     mergeExtras(intl, crack);
     SCORED = scanBoard(BUNDLE);
-    LINKS = chainToday();
+    LINKZ = scanLinks(BUNDLE);
+    CHAINV = chainToday();
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
-    renderScan(); renderBoard();
+    renderScan(); renderWire(); renderBoard();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
 }
@@ -169,7 +200,7 @@ function chainToday() {
 }
 
 function renderScan() {
-  const f = findings(SCORED, { links: LINKS, limit: 3 });
+  const f = findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 });
   $('scan').innerHTML = f.map((x, i) => `
     <div class="fnd">
       <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
@@ -178,6 +209,67 @@ function renderScan() {
       <div class="nm"><b>What it does not mean:</b> ${esc(x.notMeans)}</div>
       ${x.key && x.key !== 'chain' ? `<div class="go"><a href="#" onclick="selTile('${esc(x.key)}');return false">see it on the board ↓</a></div>` : ''}
     </div>`).join('');
+}
+
+/**
+ * The wiring card. Every relationship this desk understands, ranked by how far apart
+ * the two markets are TODAY against how they have actually related over three years.
+ *
+ * This is the card that makes the page a market view rather than a leaderboard: a
+ * tile can only tell you something moved, and the interesting macro question is
+ * almost always which things moved TOGETHER and which refused to.
+ */
+function renderWire() {
+  if (!LINKZ.length) { $('wire').innerHTML = '<span class="muted">Not enough overlapping history to score the relationships yet.</span>'; return; }
+  $('wire').innerHTML = `<div class="wire">${LINKZ.map(L => {
+    const apart = !L.weak && Math.abs(L.z) >= 1.8;
+    const state = L.weak ? ['st-weak', 'too loose'] : apart ? ['st-apart', 'apart'] : ['st-hold', 'holding'];
+    return `<button class="wrow ${WSEL === L.id ? 'sel' : ''} ${!L.weak && !L.agrees ? 'inv' : ''}" onclick="selWire('${esc(L.id)}')">
+      <span class="pair">${esc(L.labelA)}<span class="arw">${L.corr > 0 ? '↗↗' : '↗↘'}</span>${esc(L.labelB)}</span>
+      <span class="tight" title="How tightly these two have actually moved over the last three years (0 = unrelated, 1 = locked together).">
+        <span class="bar"><i style="width:${Math.round(Math.min(Math.abs(L.corr), 1) * 100)}%"></i></span>${Math.abs(L.corr).toFixed(2)}</span>
+      <span class="state ${state[0]}">${state[1]}${apart ? ` ${Math.round(L.pct * 100)}%` : ''}</span>
+    </button>`;
+  }).join('')}</div><div id="wireExp"></div>`;
+  if (WSEL) renderWireExp();
+}
+
+function renderWireExp() {
+  const box = $('wireExp'), L = LINKZ.find(x => x.id === WSEL);
+  if (!box) return;
+  if (!L) { box.innerHTML = ''; return; }
+  const apart = !L.weak && Math.abs(L.z) >= 1.8;
+  // A link nobody should lean on says so first -- the alternative is a page that
+  // presents a 0.05 correlation with the same confidence as a 0.9 one.
+  const verdict = L.weak
+    ? `<b>These two have not actually moved together.</b> Over the last three years the relationship measures ${L.corr.toFixed(2)}, which is close enough to nothing that there is no link here to break. Whatever they are doing today, it is not evidence about this mechanism.`
+    : !L.agrees
+      ? `<b>Over this sample they have been the wrong way round.</b> The textbook says ${L.expect > 0 ? 'together' : 'opposite'}; the last three years say ${L.corr > 0 ? 'together' : 'opposite'} (${L.corr.toFixed(2)}). Something other than the stated mechanism has been driving both legs.`
+      : apart
+        ? `<b>Today they are further apart than on ${Math.round(L.pct * 100)}% of the last three years.</b> They normally move ${L.corr > 0 ? 'together' : 'in opposite directions'} (${Math.abs(L.corr).toFixed(2)}).`
+        : `<b>Holding.</b> They normally move ${L.corr > 0 ? 'together' : 'in opposite directions'} (${Math.abs(L.corr).toFixed(2)}), and today's gap is ordinary — bigger than only ${Math.round(L.pct * 100)}% of the last three years.`;
+  box.innerHTML = `<div class="exp"><span class="x" onclick="selWire('${esc(L.id)}')">close ✕</span>
+    <span class="h">${esc(L.labelA)} → ${esc(L.labelB)}</span>
+    <div class="legs"><span>${esc(L.labelA)} <b class="${L.moveA > 0 ? 'up' : 'dn'}">${esc(fmtUnitJs(L.moveA, L.kindA))}</b></span>
+      <span>${esc(L.labelB)} <b class="${L.moveB > 0 ? 'up' : 'dn'}">${esc(fmtUnitJs(L.moveB, L.kindB))}</b></span>
+      <span class="muted">over twenty sessions</span></div>
+    <div style="margin-top:7px">${esc(L.normally)}</div>
+    <div style="margin-top:6px">${verdict}</div>
+    ${apart ? `<div style="margin-top:6px"><b>So what do you go and look at?</b> ${esc(L.apart)}</div>` : ''}
+    <div style="margin-top:6px" class="muted">${apart ? 'This does not say which of the two is wrong, and it does not say the gap closes — tested here (S5), neither leg is reliably the one that corrects. ' : ''}Twenty-session windows overlap, so read the percentage rather than treating it as a one-in-forty event.</div>
+    <div class="lnk"><a href="#" onclick="selTile('${esc(L.a)}');return false">${esc(L.labelA)} on the board ↓</a> · <a href="#" onclick="selTile('${esc(L.b)}');return false">${esc(L.labelB)} on the board ↓</a></div></div>`;
+}
+
+window.selWire = id => { WSEL = WSEL === id ? null : id; renderWire(); };
+
+/** Same unit rules as marketScan's own formatter, for the two raw legs of a link. */
+function fmtUnitJs(v, kind) {
+  if (v == null) return '—';
+  const s = v > 0 ? '+' : '';
+  if (kind === 'price') return `${s}${v.toFixed(1)}%`;
+  if (kind === 'usd') return `${v < 0 ? '-' : '+'}$${Math.abs(v).toFixed(0)}`;
+  if (kind === 'level') return `${s}${v.toFixed(1)}`;
+  return `${s}${Math.round(v)}bp`;
 }
 
 function renderBoard() {
@@ -201,7 +293,7 @@ window.selTile = key => {
   const box = $('tileExp'), s = SCORED.find(x => x.key === key);
   if (!SEL || !s) { box.innerHTML = ''; return; }
   const ck = chainKeyFor(key);
-  const touching = LINKS.filter(l => l.a?.key === ck || l.b?.key === ck);
+  const touching = CHAINV.filter(l => l.a?.key === ck || l.b?.key === ck);
   const judged = touching.filter(l => l.verdict === 'holding' || l.verdict === 'broken');
   const chain = judged.length
     ? `<div style="margin-top:6px"><b>What it is connected to, today:</b> ${judged.map(l => `${esc(l.textbook)} — <b style="color:var(--${l.verdict === 'broken' ? 'amber' : 'bull'})">${esc(l.verdict)}</b>`).join(' · ')}.</div>`

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BOARD, scanBoard, scoreSeries, findings, fmtChange, fmtLevel } from './marketScan.js';
+import { BOARD, LINKS, scanBoard, scanLinks, scoreSeries, scoreLink, findings, fmtChange, fmtLevel } from './marketScan.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -107,6 +107,130 @@ t('formatting speaks each market in its own unit', () => {
 t('a thin bundle scores nothing rather than guessing', () => {
   assert.deepEqual(scanBoard({ dates: ['a', 'b'], series: { gold: [1, 2] } }), []);
   assert.deepEqual(scanBoard({ dates: [], series: {} }), []);
+});
+
+
+// ── the link layer (2026-09-23): relationships, not a leaderboard ─────────────
+
+/** A bundle where B tracks A exactly, until the last day when B refuses to follow. */
+function linked({ breakAt = true, sign = 1 } = {}) {
+  const N = 800;
+  const dates = Array.from({ length: N }, (_, i) => `d${String(i).padStart(4, '0')}`);
+  let s = 7; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648 - 0.5; };
+  const tips = []; let t = 2;
+  for (let i = 0; i < N; i++) { t += rnd() * 0.02; tips.push(t); }
+  // gold moves -40x the real-yield move, i.e. tightly coupled with the textbook sign
+  const gold = tips.map(v => 2400 - sign * (v - 2) * 40 * 20);
+  if (breakAt) for (let i = N - 20; i < N; i++) gold[i] += (i - (N - 20)) * 14;   // gold walks away
+  return { dates, series: { tips, gold } };
+}
+
+t('a link is scored against how the two markets actually relate, not a textbook constant', () => {
+  const b = linked({ breakAt: false });
+  const r = scoreLink(b, LINKS.find(l => l.id === 'tips-gold'));
+  assert.ok(r, 'tips-gold should score');
+  assert.ok(Math.abs(r.corr) > 0.9, `a near-deterministic link should read as tight, got ${r.corr}`);
+  assert.equal(r.weak, false);
+  assert.equal(r.agrees, true, 'gold falling as real yields rise is the textbook sign');
+  assert.ok(Math.abs(r.z) < 2, `an intact link must not read as dislocated, got z ${r.z}`);
+});
+
+t('a planted dislocation is caught, and the fit does not absorb it', () => {
+  const r = scoreLink(linked({ breakAt: true }), LINKS.find(l => l.id === 'tips-gold'));
+  assert.ok(Math.abs(r.z) >= 2, `gold walking away from real yields should read as far apart, got z ${r.z}`);
+  assert.ok(r.pct >= 0.9, `and should sit in the top decile of past gaps, got ${r.pct}`);
+});
+
+t('today never sets its own baseline', () => {
+  // If today were included in the fit, a big enough final-day shock would drag the
+  // mean and sd toward itself and SHRINK its own z. Doubling the shock must raise it.
+  const one = linked({ breakAt: true });
+  const two = { dates: one.dates, series: { tips: one.series.tips, gold: one.series.gold.slice() } };
+  two.series.gold[two.series.gold.length - 1] += 200;
+  const zA = Math.abs(scoreLink(one, LINKS.find(l => l.id === 'tips-gold')).z);
+  const zB = Math.abs(scoreLink(two, LINKS.find(l => l.id === 'tips-gold')).z);
+  assert.ok(zB > zA, `a bigger break must score higher, got ${zA} then ${zB}`);
+});
+
+t('a link whose sign is backwards from the textbook is flagged, not silently scored', () => {
+  const r = scoreLink(linked({ breakAt: false, sign: -1 }), LINKS.find(l => l.id === 'tips-gold'));
+  assert.equal(r.agrees, false, 'gold RISING with real yields contradicts the stated mechanism');
+  assert.ok(r.corr > 0, 'and the measured correlation should carry the wrong sign');
+});
+
+t('two unrelated markets are marked weak so they cannot produce a false dislocation', () => {
+  const N = 800; const dates = Array.from({ length: N }, (_, i) => `d${i}`);
+  let s = 11, q = 29;
+  const r1 = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648 - 0.5; };
+  const r2 = () => { q = (q * 16807) % 2147483647; return q / 2147483647 - 0.5; };
+  const walk = (st, sp, r) => { let v = st; return dates.map(() => (v += r() * sp)); };
+  const b = { dates, series: { tips: walk(2, 0.02, r1), gold: walk(2400, 20, r2) } };
+  const r = scoreLink(b, LINKS.find(l => l.id === 'tips-gold'));
+  assert.equal(r.weak, true, `independent series must be weak, got corr ${r.corr}`);
+  const f = findings(scanBoard(b), { links: [], scored: [r], limit: 3 });
+  assert.equal(f.some(x => x.kind === 'dislocation'), false, 'a weak link must never headline');
+});
+
+t('a dislocation outranks a big single number', () => {
+  const b = linked({ breakAt: true });
+  const scored = scanLinks(b);
+  const f = findings(scanBoard(b), { links: [], scored, limit: 3 });
+  assert.equal(f[0].kind, 'dislocation', `expected a relationship to lead, got ${f[0].kind}`);
+  assert.match(f[0].title, /have come apart/);
+  assert.match(f[0].seen, /normally move/, 'the finding must say what normal looks like');
+  assert.match(f[0].seen, /further apart than on \d+%/, 'and give the plain percentage, not just a z');
+  assert.match(f[0].notMeans, /overlap/i, 'and admit that overlapping windows inflate the z');
+});
+
+t('every link points at real board keys and carries its mechanism in words', () => {
+  const keys = new Set(BOARD.map(b => b.key));
+  for (const l of LINKS) {
+    assert.ok(keys.has(l.a), `${l.id}: unknown key ${l.a}`);
+    assert.ok(keys.has(l.b), `${l.id}: unknown key ${l.b}`);
+    assert.ok(l.expect === 1 || l.expect === -1, `${l.id}: expect must be +1 or -1`);
+    assert.ok(l.normally && l.normally.length > 60, `${l.id}: needs the mechanism in plain English`);
+    assert.ok(l.apart && l.apart.length > 60, `${l.id}: needs what it means when it comes apart`);
+    assert.doesNotMatch(l.apart, /will (rise|fall|revert|close)\b/, `${l.id}: 'apart' must not predict`);
+  }
+  assert.equal(new Set(LINKS.map(l => l.id)).size, LINKS.length, 'duplicate link ids');
+  assert.ok(LINKS.length >= 15, 'a market view needs more than a handful of relationships');
+});
+
+t('the board is wide enough to be a market view rather than the chain again', () => {
+  const g = {}; for (const b of BOARD) g[b.group] = (g[b.group] ?? 0) + 1;
+  assert.ok(BOARD.length >= 45, `got ${BOARD.length} tiles`);
+  assert.ok(g.Equities >= 6, `equities was the thinnest group and must not be two tiles again, got ${g.Equities}`);
+  assert.ok(g['Credit & fear'] >= 8, `credit needs the stack and the vol surface, got ${g['Credit & fear']}`);
+});
+
+t('the breadth row is a difference of two percentage moves, not of two index levels', () => {
+  const N = 800; const dates = Array.from({ length: N }, (_, i) => `d${i}`);
+  // the Russell flat, the Nasdaq +10% over the final twenty sessions
+  const r2k = dates.map(() => 2000);
+  const nq = dates.map((_, i) => i < N - 20 ? 18000 : 18000 * (1 + 0.10 * (i - (N - 21)) / 20));
+  const r = scoreSeries({ dates, series: { r2k, nq } }, BOARD.find(b => b.key === 'breadth'), N - 1);
+  assert.ok(r, 'breadth should score');
+  assert.ok(Math.abs(r.change - -10) < 0.6, `expected about -10 points of breadth, got ${r.change}`);
+});
+
+t('the rate-kind split names growth vs inflation from the two legs', () => {
+  const N = 800; const dates = Array.from({ length: N }, (_, i) => `d${i}`);
+  let s = 3; const rnd = () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648 - 0.5; };
+  const jitter = (base, sp) => { let v = base; return dates.map(() => (v += rnd() * sp)); };
+  // 10y +30bp over the window, ALL of it real: breakevens flat
+  const bump = (arr, by) => arr.map((v, i) => i < N - 20 ? v : v + by * (i - (N - 21)) / 20);
+  const b = { dates, series: { us10y: bump(jitter(4, 0.01), 0.30), tips: bump(jitter(2, 0.01), 0.30), bei: jitter(2, 0.004) } };
+  const f = findings(scanBoard(b), { links: [], scored: [], limit: 4 });
+  const rk = f.find(x => x.kind === 'ratekind');
+  assert.ok(rk, 'a 30bp all-real move should produce the split');
+  assert.match(rk.title, /real-yield move/);
+  assert.match(rk.seen, /REAL yield/);
+  assert.match(rk.notMeans, /not a forecast/i);
+});
+
+t('scanLinks survives a bundle that carries none of the series', () => {
+  assert.deepEqual(scanLinks({ dates: [], series: {} }), []);
+  assert.equal(scoreLink({ dates: ['a'], series: {} }, LINKS[0]), null);
 });
 
 console.log(`marketScan: ${n} groups, all passed`);

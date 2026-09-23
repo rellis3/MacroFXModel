@@ -14136,20 +14136,38 @@ svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e
 // the client fetches it once and builds every question locally, so pressing
 // "next" is instant and free.
 let _drillBundle = { at: 0, data: null, error: null };
-const _DRILL_FRED = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', tips: 'DFII10', bei: 'T10YIE', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS' };
+const _DRILL_FRED = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', tips: 'DFII10', bei: 'T10YIE', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS',
+  // Added for the scan board (2026-09-23). IG sits above high-yield in the capital
+  // structure and CCC below it, so the three together say WHERE in the credit stack
+  // the repricing is -- which high-yield alone cannot.
+  us5y: 'DGS5', ig: 'BAMLC0A0CM', ccc: 'BAMLH0A3HYC', natgas: 'DHHNGSP' };
 // CBOE's Dispersion Index: the implied spread between single-name and index
 // volatility -- high means the index looks calm while its constituents do not,
 // which is the crowded-into-one-trade shape. Free, daily, no key, back to 2014.
 // FRED does not carry it; CBOE's own CSV does, dated MM/DD/YYYY.
-async function _cboeDspx() {
-  const r = await fetch('https://cdn.cboe.com/api/global/us_indices/daily_prices/DSPX_History.csv', { signal: AbortSignal.timeout(25_000) });
-  if (!r.ok) throw new Error(`CBOE DSPX HTTP ${r.status}`);
+async function _cboeCsv(sym) {
+  const r = await fetch(`https://cdn.cboe.com/api/global/us_indices/daily_prices/${sym}_History.csv`, { signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`CBOE ${sym} HTTP ${r.status}`);
   return (await r.text()).trim().split('\n').slice(1).map(l => {
     const [d, v] = l.split(','); const m = String(d).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
     return m ? { date: `${m[3]}-${m[1]}-${m[2]}`, value: parseFloat(v) } : null;
   }).filter(o => o && Number.isFinite(o.value));
 }
-const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
+const _cboeDspx = () => _cboeCsv('DSPX');
+// The rest of CBOE's free daily index file -- same URL shape, no key, one value a
+// day. Checked 2026-09-23: every one of these was current to 09/22. DELIBERATELY
+// EXCLUDED -- EVZ (last printed 2025-03-11) and VIXTLT (last 2026-07-30) are stale,
+// VOLI 403s, and PUT/BXM/CLLZ are covered-call STRATEGY indices (a portfolio's
+// return, not a risk gauge) so they do not belong on a board that ranks moves
+// against their own history.
+const _CBOE_EXTRA = { ovx: 'OVX', gvz: 'GVZ', vix9d: 'VIX9D', vix3m: 'VIX3M', vix6m: 'VIX6M', vvix: 'VVIX', skew: 'SKEW', vxn: 'VXN', rvx: 'RVX' };
+const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD',
+  // Scan-board additions (2026-09-23). Two equity indices was not a market view:
+  // the Russell carries domestic/small-cap, the three non-US indices say whether a
+  // move is American or global, and the JPY crosses are the carry trade's own tape.
+  r2k: 'US2000_USD', de30: 'DE30_EUR', uk100: 'UK100_GBP', jp225: 'JP225_USD',
+  silver: 'XAG_USD', platinum: 'XPT_USD', brent: 'BCO_USD',
+  eurjpy: 'EUR_JPY', audjpy: 'AUD_JPY', nzdusd: 'NZD_USD', eurgbp: 'EUR_GBP', usdchf: 'USD_CHF' };
 async function _refreshDrillBundle() {
   try {
     const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
@@ -14160,6 +14178,12 @@ async function _refreshDrillBundle() {
     }
     try { const d = await _cboeDspx(); raw.dspx = new Map(d.filter(o => o.date >= since).map(o => [o.date, o.value])); }
     catch (e) { console.warn('[drill] dspx', e.message); }
+    // One at a time rather than Promise.all: nine parallel hits on the same CDN is
+    // the shape that gets rate-limited, and this runs once a day with nobody waiting.
+    for (const [k, sym] of Object.entries(_CBOE_EXTRA)) {
+      try { const d = await _cboeCsv(sym); raw[k] = new Map(d.filter(o => o.date >= since).map(o => [o.date, o.value])); }
+      catch (e) { console.warn('[drill]', k, e.message); }
+    }
     for (const [k, sym] of Object.entries(_DRILL_OANDA)) {
       try { const bars = await _btFetchD1(sym, 1600); raw[k] = new Map(bars.filter(b => b.date >= since).map(b => [b.date, b.close])); }
       catch (e) { console.warn('[drill]', k, e.message); }
@@ -14181,7 +14205,7 @@ async function _refreshDrillBundle() {
       if (series[k].some(v => v != null)) carried.push(k);
     }
     if (carried.length) console.warn(`[drill] carried forward (upstream failed this run): ${carried.join(', ')}`);
-    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), 'dspx'].filter(k => !series[k]?.some(v => v != null));
+    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), ...Object.keys(_CBOE_EXTRA), 'dspx'].filter(k => !series[k]?.some(v => v != null));
     _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length, carried, missing } };
   } catch (e) { _drillBundle.error = e.message; console.warn('[drill]', e.message); }
   return _drillBundle;
