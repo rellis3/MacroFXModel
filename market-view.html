@@ -481,6 +481,28 @@
   .tmbar{font-size:12px;line-height:1.55;color:var(--text2);background:var(--card2);
          border-left:3px solid var(--amber);border-radius:0 9px 9px 0;padding:9px 13px;margin-bottom:12px}
   .tmbar b{color:var(--text)}
+  /* ── horizons: the same market over a day, a week and a month ────────────── */
+  .hz{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
+  .hz th{text-align:right;font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);
+         font-weight:800;padding:5px 9px 6px 0;border-bottom:1px solid var(--border)}
+  .hz th:first-child{text-align:left}
+  .hz td{padding:6px 9px 6px 0;border-bottom:1px solid var(--border2);text-align:right;
+         font-variant-numeric:tabular-nums;font-weight:700;color:var(--text2)}
+  .hz td:first-child{text-align:left;color:var(--text);font-weight:600}
+  .hz td.up{color:var(--bull)} .hz td.dn{color:var(--red)} .hz td.fl{color:var(--text3);font-weight:500}
+  .hz tr{cursor:pointer} .hz tr:hover td{background:var(--card2)}
+  .hz .sh{font-size:9.5px;font-weight:800;letter-spacing:.03em;border-radius:4px;padding:2px 7px;
+          display:inline-block;border:1px solid var(--border);color:var(--text3)}
+  .hz .sh.amber{color:var(--amber);border-color:var(--amber)}
+  .hz .sh.blue{color:var(--blue);border-color:var(--blue)}
+  .hz .sh.bull{color:var(--bull);border-color:var(--bull)}
+  .hzc{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-bottom:11px}
+  .hzc>div{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:10px 12px}
+  .hzc h5{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;margin-bottom:4px}
+  .hzc h5 i{font-style:normal;color:var(--text3);font-weight:700;margin-left:6px}
+  .hzc .amber h5{color:var(--amber)} .hzc .blue h5{color:var(--blue)} .hzc .grey h5{color:var(--text3)}
+  .hzc p{font-size:11.5px;line-height:1.55;color:var(--text2);margin-top:4px}
+  .hzc .mk{font-size:11px;color:var(--text);font-weight:700;margin-top:5px}
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -561,6 +583,12 @@
     </div>
 
 
+    <div class="card s12" data-panel="p-horizon">
+      <h2>Today vs this week vs this month</h2>
+      <div class="sub">The same market over three windows. <b>The interesting information is in the disagreement</b> — a trend still running and a trend that rolled over last Tuesday look identical on a monthly number. Sorted so the ones that disagree with themselves come first. <b>Tap a row</b> for that market.</div>
+      <div id="horizons"></div>
+    </div>
+
     <div class="card s12" data-panel="p-rates">
       <h2>Rates &amp; credit</h2>
       <div class="sub">The discount rate everything else is priced off, and the ladder of who pays what to borrow. <b>The real-versus-inflation split is the most useful reading on this page</b> — it says whether a bond move is about growth or about prices.</div>
@@ -621,6 +649,7 @@ import { deskRead, TERMS } from './js/deskRead.js';
 import { explainMove } from './js/explainMove.js';
 import { buildQuestion } from './js/marketDrill.js';
 import { episodes, resolveIndex, context, whatFollowed } from './js/timeMachine.js';
+import { horizonBoard, horizonFindings, bigDay, SHAPES } from './js/horizons.js';
 import { CONCEPTS, answer as learnAnswer, nextTopic, progress, known } from './js/learnState.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -670,7 +699,7 @@ async function load() {
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime);
+    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons);
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -1163,11 +1192,11 @@ function renderScan() {
  */
 const SECTIONS = [
   { id: 'overview', em: '🎯', label: 'Overview',
-    panels: ['p-read', 'p-state', 'p-scan', 'p-impact'],
+    panels: ['p-read', 'p-state', 'p-scan', 'p-horizon', 'p-impact'],
     deep: [['today.html', "Today's desk"], ['evidence.html', 'Evidence book']],
     count: () => glance(SCORED, LINKZ).rare || null },
   { id: 'board', em: '🌐', label: 'Whole board',
-    panels: ['p-board'],
+    panels: ['p-board', 'p-horizon'],
     deep: [['correlations.html', 'Correlations'], ['weekmap.html', 'Week map']],
     count: () => glance(SCORED, LINKZ).rare || null },
   { id: 'rates', em: '🏛️', label: 'Rates & credit',
@@ -1512,9 +1541,48 @@ window.goTime = i => {
   STATE = marketState(BUNDLE, SCORED, IDX);
   SEL = null; WSEL = null; QUIZ = null;
   draw(renderTime, renderKeyStrip, renderGlance, renderState, renderSectors, renderScan,
-       renderImpact, renderWire, renderMap, renderBoard, renderRead, renderCheck, renderVol);
+       renderImpact, renderWire, renderMap, renderBoard, renderRead, renderCheck, renderVol, renderHorizons);
 };
 window.goLive = () => goTime(BUNDLE.dates.length - 1);
+
+/**
+ * Today vs this week vs this month.
+ *
+ * Sorted so the markets that DISAGREE with themselves come first: a reversal or a
+ * stall is information, and a steady trend is the base case. A board sorted by size
+ * would bury the reversal under whatever happened to have the biggest number.
+ */
+function renderHorizons() {
+  const el = $('horizons'); if (!el || !BUNDLE) return;
+  const rows = horizonBoard(BUNDLE, BOARD, IDX ?? undefined);
+  if (!rows.length) { el.innerHTML = '<span class="muted">Not enough history to compare horizons.</span>'; return; }
+  const rank = { reversing: 0, stalling: 1, accelerating: 2, steady: 3, quiet: 4 };
+  const sorted = rows.slice().sort((a, b) => rank[a.shape] - rank[b.shape] || Math.abs(b.d20) - Math.abs(a.d20));
+  const f = (v, k) => v == null ? '—'
+    : k === 'price' ? `${v > 0 ? '+' : ''}${v.toFixed(1)}%`
+    : (k === 'rate' || k === 'gap') ? `${v > 0 ? '+' : ''}${Math.round(v)}bp`
+    : `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
+  const cls = v => v == null ? 'fl' : v > 0 ? 'up' : v < 0 ? 'dn' : 'fl';
+  const quiet = rows.filter(r => r.shape === 'quiet').length;
+
+  const cards = horizonFindings(rows).map(x => `<div class="${SHAPES[x.shape].tone === 'amber' ? 'amber' : SHAPES[x.shape].tone === 'blue' ? 'blue' : 'grey'}">
+      <h5>${esc(x.label)}<i>${x.n} market${x.n > 1 ? 's' : ''} · ${esc(x.weight)}</i></h5>
+      <div class="mk">${esc(x.markets.join(' · '))}</div>
+      <p>${esc(x.means)}</p></div>`).join('');
+
+  el.innerHTML = `${cards ? `<div class="hzc">${cards}</div>` : ''}
+    <table class="hz"><thead><tr><th>Market</th><th>Today</th><th>5 days</th><th>20 days</th><th style="text-align:left;padding-left:12px">Shape</th></tr></thead>
+    <tbody>${sorted.filter(r => r.shape !== 'quiet').map(r => `<tr onclick="selTile('${esc(r.key)}')">
+      <td>${esc(r.label)}</td>
+      <td class="${cls(r.d1)}">${esc(f(r.d1, r.kind))}</td>
+      <td class="${cls(r.d5)}">${esc(f(r.d5, r.kind))}</td>
+      <td class="${cls(r.d20)}">${esc(f(r.d20, r.kind))}</td>
+      <td style="text-align:left;padding-left:12px"><span class="sh ${esc(SHAPES[r.shape].tone)}">${esc(SHAPES[r.shape].label)}</span></td>
+    </tr>`).join('')}</tbody></table>
+    <div class="note">${quiet} of ${rows.length} markets are doing nothing at any of the three windows, and are left off the table.
+    That proportion is the context the rest is read against — a board where four markets are reversing is a different market from one where twenty are.
+    "Doing nothing" is judged against each market's own ordinary day, scaled by the square root of the window, because a month's move is not twenty times a day's.</div>`;
+}
 
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {
