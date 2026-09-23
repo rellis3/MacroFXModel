@@ -305,6 +305,12 @@ export const DESK_EVIDENCE = [
     use: 'State the two economies’ regimes as the backdrop of a pair; never call divergence a setup or a warning.',
   },
   {
+    id: 'dispersion-crowded-week', domain: 'volatility', verdict: 'null', date: '2026-09-23', doc: 'MD files/DISPERSION.md#D1',
+    claim: 'A crowded market -- CBOE dispersion high and rising, single-name volatility dear while the index stays cheap -- is fragile, and is followed by a wider week and mini flash crashes',
+    result: '68 setups 2014-2026 (DSPX at or above its own trailing 80th percentile and rising over 20 sessions). Next-5-session range vs control: SPX500 +0.07 [-0.06, +0.23], NQ +0.07 [-0.03, +0.17]. A day of twice the trailing median range within five: 33% [23-46] vs 30% [28-32] control on SPX500, 33% vs 27% on NQ. Secondary window, pre-registered as also-reported: the next 20 sessions run +0.23 [+0.04, +0.51] and +0.21 [+0.08, +0.38], and that survives restricting to a below-median VIX (+0.233, +0.221 on n=24), so it is not the VIX in disguise -- but it sits in the late half of the sample and rests on a small count.',
+    use: 'Do not write that a crowded market means a wild week: tested here, null at five sessions and null on the tail. Dispersion is a structural read -- the index hedge protects least when the risk is concentration rather than the market falling as a whole. The month result is unconfirmed and earns a re-run, not a trigger.',
+  },
+  {
     id: 'fear-gold', domain: 'macro', verdict: 'null', date: '2026-09-21', doc: 'MD files/FOUR_GOLDS.md#G1',
     claim: 'Fear buys gold: a spike in the VIX brings a gold bid that lasts days, not months',
     result: '58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on +0.42% vs +0.35% ordinary: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on +0.01% vs +1.20%: excess -1.19% [-2.30, -0.48]. Spiked then gave back half by day 20: 24% of spikes; the rest never spiked.',

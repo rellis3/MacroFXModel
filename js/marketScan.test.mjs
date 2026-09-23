@@ -13,7 +13,7 @@ function bundle(overrides = {}) {
     hy: walk(3, 0.01), vix: walk(16, 0.2), dxy: walk(100, 0.1),
     eurusd: walk(1.1, 0.002), gbpusd: walk(1.3, 0.002), usdjpy: walk(150, 0.2), audusd: walk(0.7, 0.001), usdcad: walk(1.35, 0.002),
     spx: walk(5000, 8), nq: walk(18000, 30), oil: walk(75, 0.4), gold: walk(2400, 5), copper: walk(4, 0.01), btc: walk(60000, 400),
-    crack: walk(20, 0.15), giltgap: walk(50, 0.5), bundgap: walk(-150, 0.5), jgbgap: walk(-300, 0.5) };
+    crack: walk(20, 0.15), giltgap: walk(0.5, 0.005), bundgap: walk(-1.5, 0.005), jgbgap: walk(-3, 0.005), dspx: walk(30, 0.2) };
   return { dates, series: { ...series, ...overrides(dates, series) ?? {} } };
 }
 const plain = () => bundle(() => ({}));
@@ -79,6 +79,19 @@ t('a broken chain link becomes a finding, and names the common end', () => {
   assert.match(br.title, /2 textbook links/);
   assert.match(br.means, /Dollar is an end of 2/);
   assert.match(br.notMeans, /no tendency|does not mean the link will resolve/i);
+});
+
+t('a crowded market surfaces as a dispersion finding, marked untested', () => {
+  const N = 800; const dates = Array.from({ length: N }, (_, i) => `d${i}`);
+  let q = 3; const rnd = () => { q = (q * 1103515245 + 12345) % 2147483648; return q / 2147483648 - 0.5; };
+  const walk = (st, sp) => { let v = st; return dates.map(() => (v += rnd() * sp)); };
+  const b = { dates, series: { vix: walk(15, 0.15), dspx: dates.map((_, i) => 20 + i * 0.02), us2y: walk(4, 0.01), us10y: walk(4, 0.01) } };
+  const f = findings(scanBoard(b), { links: [], limit: 5 });
+  const d = f.find(x => x.kind === 'dispersion');
+  assert.ok(d, 'a dispersion extreme should surface');
+  assert.match(d.means, /single-name options cost/);
+  assert.match(d.notMeans, /tested here|D1/i, 'the finding must carry the verdict, not claim it is untested');
+  assert.match(d.notMeans, /NOT a crash signal/);
 });
 
 t('formatting speaks each market in its own unit', () => {

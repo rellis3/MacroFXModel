@@ -14137,6 +14137,18 @@ svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e
 // "next" is instant and free.
 let _drillBundle = { at: 0, data: null, error: null };
 const _DRILL_FRED = { us2y: 'DGS2', us10y: 'DGS10', us30y: 'DGS30', tips: 'DFII10', bei: 'T10YIE', vix: 'VIXCLS', hy: 'BAMLH0A0HYM2', dxy: 'DTWEXBGS' };
+// CBOE's Dispersion Index: the implied spread between single-name and index
+// volatility -- high means the index looks calm while its constituents do not,
+// which is the crowded-into-one-trade shape. Free, daily, no key, back to 2014.
+// FRED does not carry it; CBOE's own CSV does, dated MM/DD/YYYY.
+async function _cboeDspx() {
+  const r = await fetch('https://cdn.cboe.com/api/global/us_indices/daily_prices/DSPX_History.csv', { signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`CBOE DSPX HTTP ${r.status}`);
+  return (await r.text()).trim().split('\n').slice(1).map(l => {
+    const [d, v] = l.split(','); const m = String(d).trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    return m ? { date: `${m[3]}-${m[1]}-${m[2]}`, value: parseFloat(v) } : null;
+  }).filter(o => o && Number.isFinite(o.value));
+}
 const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD' };
 async function _refreshDrillBundle() {
   try {
@@ -14146,6 +14158,8 @@ async function _refreshDrillBundle() {
       try { raw[k] = new Map((await _fredCsv(id)).filter(o => o.date >= since).map(o => [o.date, o.value])); }
       catch (e) { console.warn('[drill]', k, e.message); }
     }
+    try { const d = await _cboeDspx(); raw.dspx = new Map(d.filter(o => o.date >= since).map(o => [o.date, o.value])); }
+    catch (e) { console.warn('[drill] dspx', e.message); }
     for (const [k, sym] of Object.entries(_DRILL_OANDA)) {
       try { const bars = await _btFetchD1(sym, 1600); raw[k] = new Map(bars.filter(b => b.date >= since).map(b => [b.date, b.close])); }
       catch (e) { console.warn('[drill]', k, e.message); }
@@ -14167,7 +14181,7 @@ async function _refreshDrillBundle() {
       if (series[k].some(v => v != null)) carried.push(k);
     }
     if (carried.length) console.warn(`[drill] carried forward (upstream failed this run): ${carried.join(', ')}`);
-    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA)].filter(k => !series[k]?.some(v => v != null));
+    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), 'dspx'].filter(k => !series[k]?.some(v => v != null));
     _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length, carried, missing } };
   } catch (e) { _drillBundle.error = e.message; console.warn('[drill]', e.message); }
   return _drillBundle;

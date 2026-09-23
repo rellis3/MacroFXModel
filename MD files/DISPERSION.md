@@ -77,6 +77,57 @@ crashes" part of the claim, stated as a frequency rather than a story.
 
 Harness: `analysis/dispersion_study.mjs`. Output: `analysis/output/dispersion.json`.
 
-## Findings
+## Findings — run 2026-09-23
 
-*(to be filled after the run)*
+DSPX 2014-06-19 → 2026-09-22, 3,083 sessions. **68 setups** (crowded and rising,
+no re-fire inside 20 sessions), of which **26** with the VIX below its own
+median. Correlation between DSPX and the VIX: **0.48** — related, not the same
+thing, which is why the VIX cut matters.
+
+**D1a — the pre-registered claim, a wider WEEK: NULL.** Next-5-session range
+against control: SPX500 **+0.07 [−0.06, +0.23]**, NQ **+0.07 [−0.03, +0.17]**.
+Both intervals hold zero. Crown's "mini flash crashes" framing does not show up
+at the horizon he implies.
+
+**D1c — the tail, also null.** A day of twice the trailing median range within
+five sessions: 33% [23–46] after a setup against 30% [28–32] control on SPX500,
+33% [23–46] against 27% [25–28] on NQ. The setup intervals are wide and overlap
+the control on both.
+
+**The secondary window, and it is the interesting part.** Over the next **20**
+sessions the range ratio is **+0.23 [+0.04, +0.51]** on SPX500 and **+0.21
+[+0.08, +0.38]** on NQ — both clear of zero. This was pre-registered as "also
+reported", not as the headline, so it is a secondary outcome and is recorded as
+such: a month, not a week.
+
+**Is it just the VIX?** No, and this is what makes it worth keeping. Restricting
+to setups where the VIX was **below** its own median — the "VIX trades 14" case
+— the 20-day effect is **unchanged in size**: +0.233 [+0.068, +0.338] SPX500,
++0.221 [+0.071, +0.297] NQ, on n=24. Dispersion is saying something the VIX was
+not. (The 5-day remains null in that cut too: −0.02 and +0.01.)
+
+**Is it one episode?** Partly, and this is the honest caveat. Split at
+2018-09-09: the late half carries it (+0.29 [+0.02, +0.59] SPX500, +0.29
+[+0.11, +0.48] NQ, n=46) while the early half does not (+0.08 [−0.10, +0.24],
++0.14 [−0.04, +0.24], n=14). The early half has only 14 setups, so this is as
+consistent with "not enough data then" as with "the effect is recent" — it does
+not separate them.
+
+**Verdict.** The claim as stated is **null**: a crowded market does not precede
+a wider week, and does not raise the odds of a violent day within the week. What
+survives is a *secondary, one-sided-sample, small-n* result — a wider month,
+independent of the VIX. That is not enough to act on and it is recorded as
+**context**, not validated. It earns a re-run, not a trigger.
+
+**Today, for the record:** DSPX 36.38, the 95th percentile of its own history and
+the 83rd of the last three years, up 1.7 over twenty sessions — the setup is
+live as this was written.
+
+## What went on the page
+
+- The **Dispersion tile** on market-view.html (Credit & fear) and a scan finding
+  that describes the structure — the index calm over a market disagreeing with
+  itself — and says plainly that the week claim was tested here and came back
+  null, with the month result stated as unconfirmed.
+- Ledger: `dispersion-crowded-week` as null.
+- No Desk Watch trigger.

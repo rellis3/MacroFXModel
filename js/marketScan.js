@@ -35,6 +35,7 @@ export const BOARD = [
   // credit and volatility
   { key: 'hy',      label: 'High-yield OAS',   group: 'Credit & fear', kind: 'rate', what: 'What junk borrowers pay over Treasuries. Lenders vote here before equity does.' },
   { key: 'vix',     label: 'VIX',              group: 'Credit & fear', kind: 'level', what: 'The price of thirty days of insurance on the S&P.' },
+  { key: 'dspx',    label: 'Dispersion',       group: 'Credit & fear', kind: 'level', what: 'CBOE’s Dispersion Index: how much more expensive single-name volatility is than the index’s. High means the index looks calm while its constituents do not — the shape of a market crowded into one trade.' },
   // the dollar and FX
   { key: 'dxy',     label: 'Broad dollar',     group: 'FX', kind: 'price', what: 'The price of the unit everything else is quoted in.' },
   { key: 'eurusd',  label: 'EUR/USD',          group: 'FX', kind: 'price', what: 'The biggest pair — mostly the dollar, partly the Bund gap.' },
@@ -131,13 +132,20 @@ export function findings(board = [], { links = [], limit = 3 } = {}) {
           ? `${common[0]} is an end of ${common[1]} of them, which usually means that market — not the several on the other side — is the one behaving unusually. Something not on this board is driving it.`
           : 'The usual driver is not what is moving the second market. That is the story worth going to find.',
         notMeans: 'It does not mean the link will resolve. Tested here (S5): when a link breaks there is no tendency for either leg to be the one that corrects.' }); } }
-  // 4. the commodity complex disagreeing with itself
+  // 4. dispersion: the index calm while its constituents are not
+  { const d = by('dspx'), v = by('vix');
+    if (d && (d.pct >= 0.85 || d.z >= 1.5)) out.push({ kind: 'dispersion', key: 'dspx', rank: 2.2 + Math.max(d.z, 0),
+      title: 'The index looks calmer than the shares inside it',
+      seen: `Dispersion is ${d.last.toFixed(1)}, ${Math.round(d.pct * 100)}% of its own readings since 2014${v ? `, with the VIX at ${v.last.toFixed(1)}` : ''}${d.change != null ? ` and the twenty-session change ${d.change > 0 ? 'up' : 'down'} ${Math.abs(d.change).toFixed(1)}` : ''}.`,
+      means: 'Dispersion is the gap between what single-name options cost and what the index’s cost. It rises when money crowds into a few names: the individual shares get expensive to hedge while the index, whose constituents are pulling against each other, stays cheap. That combination — a calm index over a violently disagreeing market — is the state where an index hedge protects you least, because the thing that hurts you is concentration, not the market falling as a whole.',
+      notMeans: 'It is NOT a crash signal, and the popular version of the claim is dead: tested here on 68 setups since 2014 (D1), a crowded market did NOT precede a wider week (+0.07 [-0.06, +0.23] on the S&P) and did not raise the odds of a violent day within it (33% against 30%). The next MONTH did run wider (+0.23 [+0.04, +0.51]), and that survives holding the VIX down — but it was a secondary window on a small count, so it is a reason to re-run, not to trade.' }); }
+  // 5. the commodity complex disagreeing with itself
   { const o = by('oil'), c = by('crack'), b = by('bei');
     if (o && c && o.change <= -5 && c.z >= 1) out.push({ kind: 'crack', key: 'crack', rank: 2 + c.z, title: 'Crude is falling and the refining margin is not',
       seen: `Crude ${fmtChange(o)} while the crack spread ${fmtChange(c)} (z ${c.z.toFixed(1)})${b ? `, with breakevens ${fmtChange(b)}` : ''}.`,
       means: 'Crude and fuel are two markets. A wide crack means the pump price stays up even as crude falls — and this desk measured that inflation pricing does not take the relief either (+15bp of breakevens against the case where both fall).',
       notMeans: 'It is not a range fact and not a direction call on crude — both tested, both null. It changes what you expect from the next inflation print, not what you trade.' }); }
-  // 5. nothing unusual is itself the finding, and the common one
+  // 6. nothing unusual is itself the finding, and the common one
   if (!out.length) out.push({ kind: 'quiet', key: null, rank: 0, title: 'Nothing on the board is unusual',
     seen: `The largest twenty-session move is ${board.length ? board.slice().sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0].label : '—'}, and even that is inside its normal range.`,
     means: 'This is the correct read on most days, and it is worth saying out loud: the base case is that nothing macro is happening. A quiet board is when stories get invented.',
