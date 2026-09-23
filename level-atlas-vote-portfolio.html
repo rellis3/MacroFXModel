@@ -334,6 +334,7 @@
     <table id="tradeTable">
       <thead><tr>
         <th data-k="date">Date</th><th data-k="pair">Pair</th><th data-k="side">Side</th><th data-k="rung">Rung</th><th data-k="session">Session</th>
+        <th data-k="entry" class="num">Entry</th><th data-k="targetPips" class="num">TP</th><th data-k="stopPips" class="num">SL</th>
         <th data-k="decision">Dec</th><th data-k="margin">Marg</th><th data-k="win">Res</th><th data-k="pnlPct" class="num">PnL%</th>
       </tr></thead>
       <tbody id="tradeBody"></tbody>
@@ -491,25 +492,44 @@ function renderTradeTable(rows) {
     return cmp * sortDir;
   });
   document.getElementById('tradeCount').textContent = sorted.length;
-  tradeBody.innerHTML = sorted.map((t, i) => `
+  tradeBody.innerHTML = sorted.map((t, i) => {
+    const { target, stop } = targetStopPrice(t);
+    return `
     <tr data-i="${i}" class="${t === selectedTrade ? 'selected' : ''}">
       <td>${t.date}</td><td>${(t.pair || t.instrument || '').toUpperCase()}</td><td>${t.side}</td><td>${t.rung}</td><td>${t.session ?? '—'}</td>
+      <td class="num" title="the exact rung price this trade entered on">${fmtPriceForPip(t.entry, t.pip)}</td>
+      <td class="num">${fmtPriceForPip(target, t.pip)}</td>
+      <td class="num">${fmtPriceForPip(stop, t.pip)}</td>
       <td>${t.decision}</td><td>${t.margin ?? '—'}</td>
       <td class="${t.win ? 'green' : 'red'}">${t.win ? 'WIN' : 'LOSS'}</td>
       <td class="num ${signClass(t.pnlPct)}">${fmtPct(t.pnlPct, 3)}</td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   [...tradeBody.querySelectorAll('tr')].forEach(tr => tr.addEventListener('click', () => loadTradeChart(sorted[+tr.dataset.i])));
 }
 
-function priceLinesFor(t) {
+// ONE definition of target/stop price, shared by the chart lines below and
+// the trade table's TP/SL columns — two consumers computing the same thing
+// from t.entry/targetPips/stopPips/pip is exactly the kind of drift risk
+// tonight's ladder-fix investigation spent hours chasing elsewhere; not
+// repeating it here even though this one's a display-only calc.
+function targetStopPrice(t) {
   const isUp = t.side === 'up';
   const contSign = isUp ? 1 : -1;
   const targetSign = t.decision === 'fade' ? -contSign : contSign;
   const stopSign = t.decision === 'fade' ? contSign : -contSign;
+  return {
+    target: t.entry + targetSign * t.targetPips * t.pip,
+    stop: t.entry + stopSign * t.stopPips * t.pip,
+  };
+}
+
+function priceLinesFor(t) {
+  const { target, stop } = targetStopPrice(t);
   return [
     { price: t.entry, kind: 'voteEntry', label: `entry ${t.entry.toFixed(5)}` },
-    { price: t.entry + targetSign * t.targetPips * t.pip, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
-    { price: t.entry + stopSign * t.stopPips * t.pip, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
+    { price: target, kind: 'voteTarget', label: `target (+${t.targetPips}p)` },
+    { price: stop, kind: 'voteStop', label: `stop (-${t.stopPips}p)` },
   ];
 }
 
@@ -907,6 +927,14 @@ document.querySelectorAll('#tradeTable thead th').forEach(th => {
 
 function fmt1(v) { return v == null ? '—' : Number(v).toFixed(1); }
 function fmt2(v) { return v == null ? '—' : Number(v).toFixed(2); }
+// Decimal places from the trade's own pip size, not a fixed toFixed(5) —
+// a trade table spans FX (0.0001), JPY crosses (0.01), gold/indices (1),
+// so one fixed precision reads wrong for most rows.
+function fmtPriceForPip(price, pip) {
+  if (price == null) return '—';
+  const dp = pip >= 1 ? 2 : pip >= 0.01 ? 3 : 5;
+  return Number(price).toFixed(dp);
+}
 function fmtPct(v, dp = 1) { return v == null ? '—' : (v >= 0 ? '+' : '') + Number(v).toFixed(dp) + '%'; }
 function ciStr(o) { return o?.sharpeCI95 ? `[${fmt2(o.sharpeCI95[0])}, ${fmt2(o.sharpeCI95[1])}]` : '—'; }
 function signClass(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
