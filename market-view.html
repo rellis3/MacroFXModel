@@ -109,6 +109,68 @@
           padding:8px 11px;margin:6px 0 2px;font-size:11.5px;color:var(--text2)}
   @media(max-width:520px){ .brow{grid-template-columns:82px minmax(60px,1fr) 56px 48px;gap:6px}
     .brow .nm{font-size:11.5px} .band em{display:none} }
+  /* ── the state header: the answer, before the evidence ───────────────────── */
+  .state{background:linear-gradient(180deg,rgba(var(--border-rgb),.35),transparent);
+         border:1px solid var(--border);border-radius:12px;padding:15px 17px;margin-bottom:12px}
+  .state .lbl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .state h3{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:3px 0 2px;line-height:1.15;text-wrap:balance}
+  .state .ln{font-size:14px;color:var(--text2);line-height:1.6}
+  .state .tch{font-size:12.5px;color:var(--text2);line-height:1.65;margin-top:9px;
+              border-left:3px solid var(--blue);padding-left:10px}
+  .ev{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .ev>div{background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:9px 11px}
+  .ev h4{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;margin-bottom:5px}
+  .ev .for h4{color:var(--bull)} .ev .ag h4{color:var(--amber)}
+  .ev ul{list-style:none;font-size:11.5px;line-height:1.55;color:var(--text2)}
+  .ev li{padding-left:13px;position:relative}
+  .ev li::before{position:absolute;left:0;font-weight:700}
+  .ev .for li::before{content:'✓';color:var(--bull)} .ev .ag li::before{content:'✕';color:var(--amber)}
+  .ev .none{color:var(--text3);font-style:italic;padding-left:0}
+  .bline{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-size:11.5px;color:var(--text3);
+         font-variant-numeric:tabular-nums;border-top:1px solid var(--border2);padding-top:9px}
+  .bline b{color:var(--text);font-weight:700}
+  @media(max-width:560px){ .ev{grid-template-columns:1fr} .state h3{font-size:20px} }
+
+  /* ── sectors: where a macro move actually lands ──────────────────────────── */
+  .sec{display:flex;flex-direction:column;gap:2px;margin-top:5px}
+  .srow{display:grid;grid-template-columns:104px minmax(0,1fr) 50px;gap:9px;align-items:center;
+        background:transparent;border:0;color:var(--text);padding:4px;cursor:pointer;text-align:left;
+        font:inherit;width:100%;border-radius:5px;min-width:0}
+  .srow:hover,.srow.sel{background:var(--card2)}
+  .srow .n2{font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srow .bw{position:relative;height:13px;min-width:0}
+  .srow .bw i{position:absolute;top:0;bottom:0;border-radius:2px}
+  .srow .bw i.p{background:var(--bull)} .srow .bw i.n{background:var(--red)}
+  .srow .bw u{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--border);text-decoration:none}
+  .srow .pc{font-size:11px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .srow .pc.p{color:var(--bull)} .srow .pc.n{color:var(--red)}
+
+  /* ── findings: the hedge goes behind a toggle, not in 16px of red ─────────── */
+  .nmT{margin-top:6px;font-size:11.5px;color:var(--text3);cursor:pointer;user-select:none}
+  .nmT:hover{color:var(--text2)}
+  .nmB{margin-top:5px;font-size:11.5px;line-height:1.6;color:var(--text3);
+       border-left:2px solid var(--border);padding-left:10px}
+  .chk{margin-top:8px;font-size:12px;line-height:1.6;color:var(--text2)}
+  .chk b{color:var(--text);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+         display:block;margin-bottom:3px;color:var(--text3)}
+
+  /* ── impact table ───────────────────────────────────────────────────────── */
+  .imp{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:5px}
+  .imp th{text-align:left;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);
+          font-weight:700;padding:5px 8px 5px 0;border-bottom:1px solid var(--border)}
+  .imp td{padding:8px 8px 8px 0;border-bottom:1px solid var(--border2);vertical-align:top;
+          color:var(--text2);line-height:1.55}
+  .imp td:first-child{color:var(--text);font-weight:600;width:24%}
+  .imp td:last-child{color:var(--text2)}
+  .impw{overflow-x:auto}
+  @media(max-width:560px){ .imp,.imp tbody,.imp tr,.imp td{display:block;width:auto}
+    .imp thead{display:none}
+    .imp tr{border-bottom:1px solid var(--border);padding:8px 0}
+    .imp td{border:0;padding:2px 0}
+    .imp td:first-child{width:auto;font-size:13px;margin-bottom:3px}
+    .imp td::before{content:attr(data-l);display:block;font-size:9px;letter-spacing:.07em;
+      text-transform:uppercase;color:var(--text3);font-weight:700;margin-top:5px}
+    .imp td:first-child::before{content:none} }
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -133,10 +195,24 @@
 </div>
 
 <div class="wrap">
+  <div class="state" id="state">Reading the market…</div>
+
+  <div class="card">
+    <h2>Where it landed — the eleven sectors</h2>
+    <div class="sub">A macro move is abstract until you see which business it hit. Twenty-session moves, ranked. <b>Financials answer the yield curve, Utilities and Real estate answer the level of rates, Technology answers the real yield.</b> Tap for what each one is.</div>
+    <div id="sectors">Loading sectors…</div>
+  </div>
+
   <div class="card scan">
     <h2>What is unusual right now</h2>
     <div class="sub">Every market below scored against <b>its own</b> three-year history, so a 40bp move in the 2-year and a 6% move in gold are comparable. The page reads the board and says where to look first. <b>Rare is a measurement, not a forecast.</b></div>
     <div id="scan">Reading the board…</div>
+  </div>
+
+  <div class="card">
+    <h2>So what do I do with that?</h2>
+    <div class="sub">Every finding above, turned into the next thing to go and look at. This column is the habit worth building — a market you can explain but never check is a market you are still only reading about.</div>
+    <div id="impact"></div>
   </div>
 
   <div class="card">
@@ -164,6 +240,7 @@
 import { BOARD, scanBoard, scanLinks, findings, fmtChange, fmtLevel } from './js/marketScan.js';
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
+import { marketState, sectorBoard, impactRows } from './js/marketState.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
@@ -177,7 +254,8 @@ try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn')
 // CHAINV = the macroChain verdicts (computed elsewhere, different rules);
 // LINKZ  = this page's own scored relationships. Two different objects, so they
 // keep two different names -- the old single `LINKS` conflated them.
-let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], BOOK = null, SEL = null, WSEL = null, BSEL = null;
+let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], BOOK = null, STATE = null, SECS = [], FINDS = [];
+let SEL = null, WSEL = null, BSEL = null, SSEL = null;
 
 async function load() {
   try {
@@ -198,8 +276,10 @@ async function load() {
     LINKZ = scanLinks(BUNDLE);
     CHAINV = chainToday();
     BOOK = readBook(oiToday, oiHist);
+    SECS = sectorBoard(BUNDLE);
+    STATE = marketState(BUNDLE, SCORED);
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
-    renderScan(); renderWire(); renderBook(); renderBoard();
+    renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
 }
@@ -240,13 +320,20 @@ function renderScan() {
   // The book's findings are merged in rather than computed inside marketScan: that
   // module is pure price, and positioning is a different source with a different
   // evidence status (untested), so it stays a separate input.
-  const f = [...bookFindings(BOOK, { limit: 1 }), ...findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 })].slice(0, 4);
-  $('scan').innerHTML = f.map((x, i) => `
+  FINDS = [...bookFindings(BOOK, { limit: 1 }), ...findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 })].slice(0, 4);
+  const checks = Object.fromEntries(impactRows(FINDS).map(r => [r.event, r.check]));
+  // The caveat used to be the loudest thing on every finding -- bold, red-bordered,
+  // and often longer than the finding itself. Four of those stacked up read as a page
+  // that does not believe its own output. It is still on every finding, still in full,
+  // but it is one tap away instead of shouting over the thing it qualifies.
+  $('scan').innerHTML = FINDS.map((x, i) => `
     <div class="fnd">
       <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
       <div class="s">${esc(x.seen)}</div>
       <div class="m">${esc(x.means)}</div>
-      <div class="nm"><b>What it does not mean:</b> ${esc(x.notMeans)}</div>
+      ${checks[x.title] ? `<div class="chk"><b>Check next</b>${esc(checks[x.title])}</div>` : ''}
+      <div class="nmT" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">▸ what this does <i>not</i> mean</div>
+      <div class="nmB" style="display:none">${esc(x.notMeans)}</div>
       ${x.key && x.key !== 'chain' ? `<div class="go"><a href="#" onclick="selTile('${esc(x.key)}');return false">see it on the board ↓</a></div>` : ''}
     </div>`).join('');
 }
@@ -378,6 +465,94 @@ function renderBookExp() {
 }
 
 window.selBook = pair => { BSEL = BSEL === pair ? null : pair; renderBook(); };
+
+/**
+ * The state header — the answer first, then the working.
+ *
+ * The page used to open with "US 2-year is rare" followed immediately by a bolder
+ * line saying rare means nothing. That reads as a page arguing itself into silence.
+ * It now opens with a named state and shows BOTH the conditions that held and the
+ * ones that failed, so the reader can disagree with a specific clause rather than
+ * having to take or leave the whole thing.
+ */
+function renderState() {
+  const s = STATE; if (!s) return;
+  const b = s.breadth ?? {};
+  const li = (arr, cls) => arr.length
+    ? `<ul>${arr.map(x => `<li>${esc(x)}</li>`).join('')}</ul>`
+    : `<ul><li class="none">${cls === 'for' ? 'nothing supports this yet' : 'nothing on the board argues against it'}</li></ul>`;
+  const conf = s.confidence
+    ? `${s.confidence.met} of ${s.confidence.total} conditions`
+    : 'no conditions matched';
+  const alt = s.alternatives?.length
+    ? ` It was close to <b>${esc(s.alternatives[0].name)}</b> (${s.alternatives[0].met} of ${s.alternatives[0].total}).`
+    : '';
+  const bl = [
+    b.concentration != null ? `Average share vs index <b>${b.concentration > 0 ? '+' : ''}${b.concentration}%</b>` : null,
+    b.sectorsUp != null ? `<b>${b.sectorsUp} of ${b.sectorsTotal}</b> sectors rising` : null,
+    b.spread != null ? `Best-to-worst sector <b>${b.spread} pts</b>` : null,
+    b.leader ? `Leading <b>${esc(b.leader.label)}</b>` : null,
+    b.laggard ? `Lagging <b>${esc(b.laggard.label)}</b>` : null,
+  ].filter(Boolean).join(' · ');
+  $('state').innerHTML = `
+    <div class="lbl">The market right now — twenty sessions</div>
+    <h3>${esc(s.state)}</h3>
+    <div class="ln">${esc(s.line)}${alt}</div>
+    <div class="tch">${esc(s.teach)}</div>
+    <div class="ev">
+      <div class="for"><h4>What supports this (${conf})</h4>${li(s.evidence ?? [], 'for')}</div>
+      <div class="ag"><h4>What argues against it</h4>${li(s.against ?? [], 'ag')}</div>
+    </div>
+    ${bl ? `<div class="bline">${bl}</div>` : ''}`;
+}
+
+/**
+ * The sector strip. Eleven sectors plus semis, ranked, drawn from a shared centre so
+ * the bars are comparable at a glance — this is where a macro move becomes visible as
+ * something that happened to an actual business.
+ */
+function renderSectors() {
+  if (!SECS.length) { $('sectors').innerHTML = '<span class="muted">Sector data has not loaded.</span>'; return; }
+  const max = Math.max(...SECS.map(s => Math.abs(s.change)), 1);
+  $('sectors').innerHTML = `<div class="sec">${SECS.map(s => {
+    const w = (Math.abs(s.change) / max) * 50;      // half the track, either side of centre
+    const pos = s.change >= 0;
+    return `<button class="srow ${SSEL === s.key ? 'sel' : ''}" onclick="selSector('${esc(s.key)}')">
+      <span class="n2">${esc(s.label)}</span>
+      <span class="bw"><u style="left:50%"></u>
+        <i class="${pos ? 'p' : 'n'}" style="${pos ? `left:50%;width:${w}%` : `right:50%;width:${w}%`}"></i></span>
+      <span class="pc ${pos ? 'p' : 'n'}">${s.change > 0 ? '+' : ''}${s.change.toFixed(1)}%</span>
+    </button>`;
+  }).join('')}</div><div id="secExp"></div>`;
+  if (SSEL) {
+    const s = SECS.find(x => x.key === SSEL);
+    if (s) $('secExp').innerHTML = `<div class="exp"><span class="x" onclick="selSector('${esc(s.key)}')">close ✕</span>
+      <span class="h">${esc(s.label)}</span> · ${s.change > 0 ? '+' : ''}${s.change.toFixed(1)}% over twenty sessions
+      <div style="margin-top:5px">${esc(s.what)}</div></div>`;
+  }
+}
+window.selSector = k => { SSEL = SSEL === k ? null : k; renderSectors(); };
+
+/**
+ * Event → mechanism → who it touches → what to check next.
+ *
+ * The last column is the point. A page that explains and then stops leaves the reader
+ * where it found them; naming the next thing to go and look at is what turns reading
+ * into a habit. Every check is an instruction to LOOK, never to trade — a test enforces
+ * that in js/marketState.test.mjs.
+ */
+function renderImpact() {
+  const rows = impactRows(FINDS);
+  if (!rows.length) { $('impact').innerHTML = '<span class="muted">Nothing on the board needs following up today.</span>'; return; }
+  $('impact').innerHTML = `<div class="impw"><table class="imp">
+    <thead><tr><th>What happened</th><th>Why it matters</th><th>Who it touches</th><th>What to check next</th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${esc(r.event)}</td>
+      <td data-l="Why it matters">${esc(r.mechanism)}</td>
+      <td data-l="Who it touches">${esc(r.affects)}</td>
+      <td data-l="What to check next">${esc(r.check)}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
 
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {

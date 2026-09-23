@@ -14161,6 +14161,42 @@ const _cboeDspx = () => _cboeCsv('DSPX');
 // return, not a risk gauge) so they do not belong on a board that ranks moves
 // against their own history.
 const _CBOE_EXTRA = { ovx: 'OVX', gvz: 'GVZ', vix9d: 'VIX9D', vix3m: 'VIX3M', vix6m: 'VIX6M', vvix: 'VVIX', skew: 'SKEW', vxn: 'VXN', rvx: 'RVX' };
+
+// ── Sectors and breadth (2026-09-23) ────────────────────────────────────────
+// The scan had no equities beyond two index futures, so it could never show the
+// thing that teaches best: a macro move arriving in the sector it should hit.
+// Curve flattens -> bank net interest margin compresses -> XLF underperforms is a
+// mechanism you can WATCH, unlike "the 2-year is rare".
+//
+// Yahoo's chart endpoint is free, keyless and already used elsewhere in this file
+// for the VIX and for futures. Verified 2026-09-23: all fourteen return 1,505
+// daily closes back to 2020-09.
+//
+// RSP/SPY (equal-weight against cap-weight) is the honest concentration measure
+// and the reason RSP and SPY are both here. Nothing on a free feed gives real
+// advance/decline, so breadth is computed from what CAN be sourced rather than
+// quoted from a number nobody can check.
+const _YAHOO_EQ = {
+  xlf: 'XLF', xlk: 'XLK', xle: 'XLE', xlv: 'XLV', xli: 'XLI', xlp: 'XLP',
+  xlu: 'XLU', xly: 'XLY', xlb: 'XLB', xlc: 'XLC', xlre: 'XLRE',
+  smh: 'SMH', rsp: 'RSP', spy: 'SPY',
+};
+async function _yahooDaily(ticker, range = '6y') {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=1d`;
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(25_000) });
+  if (!r.ok) throw new Error(`yahoo ${ticker} HTTP ${r.status}`);
+  const res = (await r.json())?.chart?.result?.[0];
+  const ts = res?.timestamp, close = res?.indicators?.quote?.[0]?.close;
+  if (!Array.isArray(ts) || !Array.isArray(close)) throw new Error(`yahoo ${ticker}: no series`);
+  const out = [];
+  for (let k = 0; k < ts.length; k++) {
+    const v = close[k];
+    if (v == null || !Number.isFinite(v)) continue;
+    out.push({ date: new Date(ts[k] * 1000).toISOString().slice(0, 10), value: v });
+  }
+  return out;
+}
+
 const _DRILL_OANDA = { gold: 'XAU_USD', oil: 'WTICO_USD', copper: 'XCU_USD', audusd: 'AUD_USD', usdjpy: 'USD_JPY', usdcad: 'USD_CAD', eurusd: 'EUR_USD', gbpusd: 'GBP_USD', btc: 'BTC_USD', nq: 'NAS100_USD', spx: 'SPX500_USD',
   // Scan-board additions (2026-09-23). Two equity indices was not a market view:
   // the Russell carries domestic/small-cap, the three non-US indices say whether a
@@ -14184,6 +14220,10 @@ async function _refreshDrillBundle() {
       try { const d = await _cboeCsv(sym); raw[k] = new Map(d.filter(o => o.date >= since).map(o => [o.date, o.value])); }
       catch (e) { console.warn('[drill]', k, e.message); }
     }
+    for (const [k, t] of Object.entries(_YAHOO_EQ)) {
+      try { const d = await _yahooDaily(t); raw[k] = new Map(d.filter(o => o.date >= since).map(o => [o.date, o.value])); }
+      catch (e) { console.warn('[drill]', k, e.message); }
+    }
     for (const [k, sym] of Object.entries(_DRILL_OANDA)) {
       try { const bars = await _btFetchD1(sym, 1600); raw[k] = new Map(bars.filter(b => b.date >= since).map(b => [b.date, b.close])); }
       catch (e) { console.warn('[drill]', k, e.message); }
@@ -14205,7 +14245,7 @@ async function _refreshDrillBundle() {
       if (series[k].some(v => v != null)) carried.push(k);
     }
     if (carried.length) console.warn(`[drill] carried forward (upstream failed this run): ${carried.join(', ')}`);
-    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), ...Object.keys(_CBOE_EXTRA), 'dspx'].filter(k => !series[k]?.some(v => v != null));
+    const missing = [...Object.keys(_DRILL_FRED), ...Object.keys(_DRILL_OANDA), ...Object.keys(_CBOE_EXTRA), ...Object.keys(_YAHOO_EQ), 'dspx'].filter(k => !series[k]?.some(v => v != null));
     _drillBundle = { at: Date.now(), error: null, data: { dates, series, from: dates[0], to: dates[dates.length - 1], n: dates.length, carried, missing } };
   } catch (e) { _drillBundle.error = e.message; console.warn('[drill]', e.message); }
   return _drillBundle;
