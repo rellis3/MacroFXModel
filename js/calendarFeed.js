@@ -150,3 +150,97 @@ export function calendarHealth(ff = null, nas = null) {
   if (nasN == null || !nasN) return { state: 'warn', detail: `${ffN} scheduled, but no released data to score against` };
   return { state: 'ok', detail: `${ffN} scheduled this week, ${nasN} rows released today` };
 }
+
+/**
+ * WHAT TO WATCH WHEN IT PRINTS — the release, the tiles it lands on, and why.
+ *
+ * A diary that says "US CPI, 13:30" tells you when to look and nothing about where.
+ * This maps a release family onto the board keys it transmits through, with the
+ * mechanism named, so the panel can say *watch breakevens and the real 10-year*
+ * rather than *high impact*.
+ *
+ * TWO HONEST LIMITS, BOTH DELIBERATE.
+ *
+ * The `keys` are a TRANSMISSION CHANNEL, not a prediction: they say which tiles
+ * carry the news, never which way any of them goes. The sign genuinely depends on
+ * what was already priced, and this desk's own tests are blunt about that — the
+ * "priced-in" claim came back null, and surprise size validated for RANGE only, not
+ * for direction. Nothing here says up or down.
+ *
+ * The match is on the event NAME, and names drift. An unmatched release is returned
+ * with `family: null` and is still shown — a diary that quietly drops what it cannot
+ * classify is worse than one that admits the gap, because the release still happens.
+ */
+export const FAMILIES = [
+  { family: 'CPI', re: /\b(cpi|consumer price|inflation rate|harmonised index|hicp)\b/i,
+    keys: ['bei', 'tips', 'us2y', 'realshare', 'gold'],
+    why: 'Inflation data splits a yield move into its two halves: breakevens carry the inflation part, the real 10-year the policy part. Watch which one takes it — that is what "real vs inflation" on this board is for.' },
+  { family: 'Payrolls', re: /\b(non[- ]?farm|nfp|employment change|unemployment rate|payroll|jobless|claims|average (hourly )?earnings)\b/i,
+    keys: ['us2y', 'curve', 'r2k', 'breadth', 'dxy'],
+    why: 'Labour data is the front end\'s data. The 2-year moves first, the curve re-shapes around it, and the Russell answers before the Nasdaq because small caps borrow at floating rates.' },
+  { family: 'Central bank', re: /\b(fomc|rate (decision|statement)|monetary policy|interest rate decision|policy (rate|assessment)|press conference|bank rate)\b/i,
+    keys: ['us2y', 'curve', 'dxy', 'vixterm', 'eurusd'],
+    why: 'A decision is priced long before it lands; what re-prices is the path. The front end and the curve carry that, and the VIX term structure tells you whether the market thought the risk was this meeting or the next.' },
+  { family: 'Speech', re: /\b(speaks|speech|testimony|testifies|remarks)\b/i,
+    keys: ['us2y', 'dxy'],
+    why: 'Unscheduled in content even when scheduled in time. The front end and the dollar are where a changed tone shows up first; nothing else is worth watching for it.' },
+  { family: 'Growth', re: /\b(gdp|pmi|ism|manufacturing|industrial (production|trends)|retail sales|factory orders|durable goods|trade balance|business climate|ifo|zew|tankan|sentiment|confidence)\b/i,
+    keys: ['copper', 'r2k', 'curve', 'audusd', 'oil'],
+    why: 'Growth data lands on the growth assets, not on the safe ones. Copper and the Russell carry it; if the curve steepens with them the market read it as real growth rather than as a rate story.' },
+  { family: 'Energy', re: /\b(crude oil inventories|eia|natural gas storage|opec|rig count)\b/i,
+    keys: ['oil', 'brent', 'crack', 'ovx', 'natgas'],
+    why: 'Supply data, so it moves crude without moving the growth complex — and the crack spread says whether the pump price follows. A crude move that does not reach copper was about barrels.' },
+  { family: 'Housing', re: /\b(housing starts|building permits|home sales|house price|mortgage)\b/i,
+    keys: ['us10y', 'r2k', 'tips'],
+    why: 'Housing is the long end\'s economy: it responds to the 30-year mortgage, which follows the 10-year. It is the slowest transmission on this board and the one that confirms rather than leads.' },
+];
+
+/** The family for one event name, or null when nothing matches. */
+export function familyOf(event) {
+  const s = String(event ?? '');
+  return FAMILIES.find(f => f.re.test(s)) ?? null;
+}
+
+/**
+ * Attach the family to every row of a day group or a printed list.
+ *
+ * Returns a NEW array; the input is untouched, so the same feed can be annotated by
+ * two panels without one seeing the other's additions.
+ */
+export function annotate(rows = []) {
+  return (Array.isArray(rows) ? rows : []).map(r => {
+    const f = familyOf(r.event);
+    return { ...r, family: f?.family ?? null, keys: f?.keys ?? [], why: f?.why ?? null };
+  });
+}
+
+/**
+ * The board keys worth watching over a set of upcoming days, most-cited first.
+ *
+ * Counts how many scheduled releases transmit through each tile, so a week with three
+ * inflation prints and one speech points at breakevens rather than at the dollar. A
+ * count is all it is — it says where the news lands, never what it will do there.
+ */
+export function watchKeys(groups = [], { limit = 6 } = {}) {
+  const n = new Map();
+  for (const g of (Array.isArray(groups) ? groups : []))
+    for (const e of (g.events ?? []))
+      for (const k of (familyOf(e.event)?.keys ?? [])) n.set(k, (n.get(k) ?? 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit).map(([key, count]) => ({ key, count }));
+}
+
+/**
+ * A printed release in words.
+ *
+ * Deliberately says BIGGER or SMALLER than expected, not better or worse: whether a
+ * hot CPI is good news depends on what you own, and a diary that decides that for you
+ * is editorialising. The size is the raw gap in the release's own units — this desk's
+ * surprise store (econ_surprise_v1) is what standardises against history, and pretending
+ * a 0.1 miss on CPI and a 0.1 miss on a PMI are the same size would be wrong.
+ */
+export function surpriseWords(row) {
+  if (!row?.released) return 'has not printed';
+  if (row.surprise == null) return row.consensus == null ? 'printed, with no consensus to score it against' : 'printed';
+  if (row.surprise === 0) return 'printed exactly on consensus';
+  return `printed ${Math.abs(row.surprise)} ${row.surprise > 0 ? 'above' : 'below'} the ${row.raw?.consensus ?? row.consensus} expected`;
+}

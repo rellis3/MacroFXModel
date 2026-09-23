@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { parseForexFactory, parseNasdaq, upcoming, printed, calendarHealth, num } from './calendarFeed.js';
+import { parseForexFactory, parseNasdaq, upcoming, printed, calendarHealth, num,
+         FAMILIES, familyOf, annotate, watchKeys, surpriseWords } from './calendarFeed.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const NOW = Date.UTC(2026, 8, 23, 12, 0);
@@ -96,6 +97,71 @@ t('garbage in never throws', () => {
   }
   assert.deepEqual(parseForexFactory(null), []);
   assert.deepEqual(parseNasdaq(null, null), []);
+});
+
+// ── What to watch when it prints ─────────────────────────────────────────────
+t('a release maps onto the tiles that carry it, with the mechanism named', () => {
+  const f = familyOf('US CPI y/y');
+  assert.equal(f.family, 'CPI');
+  assert.ok(f.keys.includes('bei') && f.keys.includes('tips'), 'inflation lands on both halves of a yield');
+  assert.ok(f.why.length > 40, 'the mechanism is named, not just the tiles');
+  assert.equal(familyOf('Non-Farm Employment Change').family, 'Payrolls');
+  assert.equal(familyOf('Unemployment Rate').family, 'Payrolls');
+  assert.equal(familyOf('SNB Monetary Policy Assessment').family, 'Central bank');
+  assert.equal(familyOf('BOE Gov Bailey Speaks').family, 'Speech');
+  assert.equal(familyOf('Richmond Manufacturing Index').family, 'Growth');
+  assert.equal(familyOf('Crude Oil Inventories').family, 'Energy');
+  assert.equal(familyOf('Building Permits').family, 'Housing');
+});
+
+t('nothing here says which way anything goes', () => {
+  const txt = JSON.stringify(FAMILIES.map(f => [f.family, f.why, f.keys]));
+  assert.doesNotMatch(txt, /\b(will (rise|fall)|expect .* to (rise|fall)|bullish|bearish|buy|sell)\b/i);
+});
+
+t('a release the map does not know is kept, not dropped', () => {
+  assert.equal(familyOf('Leading Indicators'), null);
+  const rows = annotate([{ event: 'US CPI m/m' }, { event: 'Leading Indicators' }]);
+  assert.equal(rows.length, 2, 'the unmatched release still happens, so it is still shown');
+  assert.equal(rows[1].family, null);
+  assert.deepEqual(rows[1].keys, []);
+  assert.equal(rows[1].why, null);
+  assert.equal(annotate(null).length, 0);
+  assert.equal(annotate('nope').length, 0);
+});
+
+t('annotate does not mutate the feed it is given', () => {
+  const src = [{ event: 'US CPI m/m' }];
+  annotate(src);
+  assert.equal('family' in src[0], false, 'two panels must be able to annotate the same feed');
+});
+
+t('the week points at the tiles its releases actually land on', () => {
+  const groups = [
+    { date: '2026-09-24', events: [{ event: 'CPI y/y' }, { event: 'Core CPI m/m' }] },
+    { date: '2026-09-25', events: [{ event: 'BOE Gov Bailey Speaks' }] },
+  ];
+  const w = watchKeys(groups, { limit: 3 });
+  // the front end is cited by BOTH the inflation prints and the speech, so it tops the
+  // list on 3 — which is the honest answer: it is the tile most of the week lands on
+  assert.equal(w[0].key, 'us2y');
+  assert.equal(w[0].count, 3);
+  assert.equal(w.find(x => x.key === 'bei').count, 2, 'and breakevens carry both CPI prints');
+  assert.equal(w.length, 3, 'the limit is respected');
+  assert.equal(watchKeys([]).length, 0);
+  assert.equal(watchKeys(null).length, 0);
+  assert.equal(watchKeys([{ date: 'x', events: [{ event: 'Leading Indicators' }] }]).length, 0,
+    'an unclassified release points at nothing rather than at everything');
+});
+
+t('a surprise is described as bigger or smaller, never as better or worse', () => {
+  assert.match(surpriseWords({ released: true, surprise: 24, raw: { consensus: '-33' } }), /24 above the -33 expected/);
+  assert.match(surpriseWords({ released: true, surprise: -0.5, consensus: -16 }), /0\.5 below/);
+  assert.match(surpriseWords({ released: true, surprise: 0 }), /exactly on consensus/);
+  assert.match(surpriseWords({ released: true, surprise: null, consensus: null }), /no consensus to score it against/);
+  assert.match(surpriseWords({ released: false }), /has not printed/);
+  for (const r of [{ released: true, surprise: 24 }, { released: true, surprise: -24 }])
+    assert.doesNotMatch(surpriseWords(r), /\b(beat|missed|better|worse|good|bad|hot|cool)\b/i);
 });
 
 console.log(`calendarFeed: ${n} groups, all passed`);

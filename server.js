@@ -3532,12 +3532,19 @@ app.post('/api/daily-snapshot/plan', async (req, res) => {
     const day = new Date().toISOString().slice(0, 10);
     let i = store.days.findIndex(d => d.day === day);
     if (i < 0) { store.days.push({ day, at: new Date().toISOString() }); store.days.sort((a, b) => a.day < b.day ? -1 : 1); i = store.days.findIndex(d => d.day === day); }
-    if (store.days[i].plan) return res.json({ ok: true, kept: true, plannedAt: store.days[i].plan.at });
+    // First post of the day wins -- EXCEPT a post from before London was open, which is
+    // not a plan. The day flips at 00:00 UTC and a tab left open overnight used to post
+    // at 00:15 with no session data behind it: every lean stored as "flat" at 0 of 0
+    // reads, wrongAt and aim null. Such a row is a placeholder and a later, real one
+    // replaces it; once a plan from 06:00 UTC or after is stored, nothing overwrites it.
+    const prev = store.days[i].plan;
+    const prevHour = prev?.at ? new Date(prev.at).getUTCHours() : null;
+    if (prev && prevHour != null && prevHour >= 6) return res.json({ ok: true, kept: true, plannedAt: prev.at });
     const compact = JSON.parse(JSON.stringify(plan)); compact.at = new Date().toISOString();
     if (JSON.stringify(compact).length > 60_000) return res.status(413).json({ ok: false, error: 'plan too large' });
     store.days[i].plan = compact;
     await kv.put(_SNAP_KV, JSON.stringify(store));
-    res.json({ ok: true, kept: false, plannedAt: compact.at });
+    res.json({ ok: true, kept: false, replaced: prev ? prev.at : null, plannedAt: compact.at });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 // ── Release scorecard: the book closing its own loop, every print ─────────────

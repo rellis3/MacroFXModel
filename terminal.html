@@ -239,7 +239,9 @@ async function load() {
     fetch('/api/oi-history').then(r => r.json()).catch(() => null),
     fetch('/api/regime').then(r => r.json()).catch(() => null),
     // the unfiltered calendar is 4MB; the same route with a window is under 1KB
-    fetch(`/api/calendar-events?from=${from}&to=${to}&minRank=3`).then(r => r.json()).catch(() => null),
+    // /api/calendar-events is dead past 2026-07 (stale CSV + a Finnhub tier that
+    // dropped the endpoint). /api/calendar-feed is ForexFactory ahead + Nasdaq printed.
+    fetch('/api/calendar-feed').then(r => r.json()).catch(() => null),
   ]);
   if (!bundle?.ok) { $('foot').textContent = `Could not load the board: ${bundle?.error ?? 'no series'}`; return; }
   B = bundle;
@@ -313,9 +315,13 @@ function renderRisk() {
 
 function renderEvents() {
   const cal = window.__cal;
-  const groups = eventRisk(cal?.events ?? [], Date.now(), { days: 10 });
+  // the feed groups its own days and scores its own surprises, so eventRisk() is only
+  // needed for the legacy shape
+  const groups = cal?.ahead ?? eventRisk(cal?.events ?? [], Date.now(), { days: 10 });
   const H = feedHealth(B, BOOKD, cal);
-  const calRow = H.rows.find(r => r.id === 'calendar');
+  const calRow = cal?.health
+    ? { state: cal.health.state === 'ok' ? 'ok' : cal.health.state, detail: cal.health.detail }
+    : H.rows.find(r => r.id === 'calendar');
   // "no events" and "the feed is dead" must never render the same. On the day this
   // panel shipped, both calendar sources were silent and it said the diary was clear.
   const head = groups.length
@@ -329,7 +335,21 @@ function renderEvents() {
     : `<div class="mut" style="color:${calRow.state === 'bad' ? 'var(--hot)' : 'var(--text3)'};line-height:1.55">
         <b>${calRow.state === 'bad' ? 'The calendar cannot be read.' : 'Nothing scheduled in range.'}</b><br>${esc(calRow.detail)}</div>`;
 
-  $('events').innerHTML = head + `
+  const pr = cal?.printed;
+  const printedBlock = pr?.rows?.length ? `
+    <div style="margin-top:11px;padding-top:9px;border-top:1px solid var(--line2)">
+      <div style="font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:6px">
+        Printed today · ${pr.scored} of ${pr.n} scored</div>
+      ${pr.rows.slice(0, 6).map(r => `<div class="ev">
+        <span class="d num">${new Date(r.ms).toISOString().slice(11, 16)}</span>
+        <span class="c" style="min-width:52px">${esc(String(r.country).slice(0, 12))}</span>
+        <span style="flex:1">${esc(r.event)}</span>
+        <span class="num" style="color:var(--text2)">${esc(r.raw.actual ?? '—')}</span>
+        <span class="num ${r.surprise == null ? 'fl' : r.surprise > 0 ? 'up' : 'dn'}" style="min-width:56px;text-align:right">${
+          r.surprise == null ? 'no cons.' : (r.surprise > 0 ? '+' : '') + r.surprise}</span></div>`).join('')}
+    </div>` : '';
+
+  $('events').innerHTML = head + printedBlock + `
     <div style="margin-top:11px;padding-top:9px;border-top:1px solid var(--line2)">
       <div style="font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:6px">Feed health</div>
       ${H.rows.map(r => `<div style="display:flex;gap:8px;align-items:baseline;padding:3px 0;font-size:10.5px">

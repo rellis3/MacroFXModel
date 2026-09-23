@@ -191,6 +191,38 @@
   .tf button.on{background:var(--blue);color:#fff}
   .hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
+  /* ── The diary ───────────────────────────────────────────────────────────
+     A calendar that names the tiles a release transmits through, not just the
+     time it lands. The tile chips are clickable, so "watch breakevens" goes
+     somewhere instead of being advice. Nothing here carries a direction. ──── */
+  .dy-day{margin-bottom:12px}
+  .dy-dh{display:flex;align-items:baseline;gap:8px;font-size:11px;font-weight:800;letter-spacing:.06em;
+         text-transform:uppercase;color:var(--text3);padding-bottom:5px;border-bottom:1px solid var(--border2);margin-bottom:6px}
+  .dy-dh b{color:var(--text);letter-spacing:0;text-transform:none;font-size:13px}
+  .dy-dh .soon{background:var(--amber-bg);color:var(--amber);border-radius:4px;padding:1px 7px;font-size:9.5px;letter-spacing:.06em}
+  .dy-ev{padding:7px 0;border-top:1px dashed var(--border2)}
+  .dy-ev:first-of-type{border-top:0}
+  .dy-r1{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+  .dy-t{font-variant-numeric:tabular-nums;color:var(--text3);font-size:11.5px;min-width:42px}
+  .dy-c{font-size:10px;font-weight:800;letter-spacing:.05em;background:var(--neu-bg);color:var(--text2);border-radius:4px;padding:1px 6px}
+  .dy-n{font-weight:600;color:var(--text);font-size:12.5px}
+  .dy-fam{font-size:10px;color:var(--text3);letter-spacing:.04em;text-transform:uppercase}
+  .dy-why{font-size:11.5px;line-height:1.6;color:var(--text2);margin-top:3px;max-width:88ch}
+  .dy-keys{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+  .dy-keys button{background:var(--blue-bg);border:1px solid rgba(79,125,240,.32);color:var(--blue);
+                  border-radius:5px;padding:1px 8px;font-size:10.5px;font-weight:600}
+  .dy-keys button:hover{border-color:var(--blue)}
+  .dy-head{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}
+  .dy-head span{font-size:11px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;padding:3px 9px;color:var(--text2)}
+  .dy-head span b{color:var(--text)}
+  .dy-pr{display:grid;grid-template-columns:44px minmax(0,1fr) auto auto;gap:4px 10px;align-items:baseline;
+         padding:5px 0;border-top:1px dashed var(--border2);font-size:12px}
+  .dy-pr .a{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text)}
+  .dy-pr .s{font-variant-numeric:tabular-nums;font-size:11.5px;text-align:right;min-width:74px}
+  .dy-pr .s.big{color:var(--amber);font-weight:700} .dy-pr .s.none{color:var(--text3)}
+  .dy-pr .cc{grid-column:2;font-size:10.5px;color:var(--text3)}
+  .dy-bad{background:var(--bear-bg);border:1px solid rgba(249,115,22,.4);border-radius:8px;padding:9px 12px;
+          font-size:12px;line-height:1.6;color:var(--text)}
   .src{margin-top:10px;padding-top:8px;border-top:1px solid var(--border2);font-size:11px;color:var(--text3)}
   .src a{color:var(--blue);text-decoration:none;margin-right:12px;white-space:nowrap}
   .src a:hover{text-decoration:underline}
@@ -591,6 +623,12 @@
       <div id="horizons"></div>
     </div>
 
+    <div class="card s12" data-panel="p-diary">
+      <h2>The diary &mdash; what is coming, and which tiles carry it</h2>
+      <div class="sub">A calendar that only gives you a time tells you when to look. This one names the <b>tiles the release transmits through</b> and the mechanism, so you know where to look and what the answer would mean &mdash; tap a tile to go straight to it. <b>Nothing here carries a direction</b>: this desk tested the priced-in claim and it came back null, and surprise size validated for range only.</div>
+      <div id="diary"></div>
+    </div>
+
     <div class="card s12" data-panel="p-rates">
       <h2>Rates &amp; credit</h2>
       <div class="sub">The discount rate everything else is priced off, and the ladder of who pays what to borrow. <b>The real-versus-inflation split is the most useful reading on this page</b> — it says whether a bond move is about growth or about prices.</div>
@@ -644,6 +682,7 @@ import { BOARD, WINDOWS, THRESHOLDS, scanBoard, scanLinks, glance, findings, fmt
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
 import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js/marketState.js';
+import { annotate, watchKeys, surpriseWords } from './js/calendarFeed.js';
 import { dualLine, levelLine, histogram, spark } from './js/mvChart.js';
 import { analogues, keysFor } from './js/analogue.js';
 import { buildMap } from './js/mvMap.js';
@@ -671,6 +710,7 @@ try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn')
 // failure available to a page whose job is to be looked at every morning.
 const draw = (...fns) => { for (const fn of fns) { try { fn(); } catch (e) { console.error('[market-view] render failed:', e); } } };
 let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], BOOK = null, STATE = null, SECS = [], FINDS = [];
+let CAL = null;   // /api/calendar-feed — the diary, from two keyless feeds
 let SEL = null, WSEL = null, BSEL = null, SSEL = null;
 let WIN = 20, IDX = null, EPS = [];
 try { const w = +localStorage.getItem('mv_window'); if (WINDOWS.some(x => x.n === w)) WIN = w; } catch (e) {}
@@ -680,12 +720,15 @@ async function load() {
     // NOT the raw `oi_store` KV key -- that is 851KB because it carries the scraped
     // text blobs, and this repo's Railway bill is egress. /api/oi-today is the lean
     // projection (~39KB) and /api/oi-history the day-over-day archive (~13KB).
-    const [bundleRes, intl, crack, oiToday, oiHist] = await Promise.all([
+    const [bundleRes, intl, crack, oiToday, oiHist, cal] = await Promise.all([
       fetch('/api/drill-series').then(r => r.json()),
       fetch('/api/intl-yields').then(r => r.json()).catch(() => null),
       fetch('/api/crack').then(r => r.json()).catch(() => null),
       fetch('/api/oi-today').then(r => r.json()).catch(() => null),
       fetch('/api/oi-history').then(r => r.json()).catch(() => null),
+      // two keyless feeds, cached 15 minutes at the edge: ForexFactory ahead (it carries
+      // the impact rating) and Nasdaq printed (it carries actual vs consensus)
+      fetch('/api/calendar-feed').then(r => r.json()).catch(() => null),
     ]);
     if (!bundleRes?.ok) throw new Error(bundleRes?.error ?? 'no series');
     BUNDLE = bundleRes;
@@ -695,6 +738,7 @@ async function load() {
     LINKZ = scanLinks(BUNDLE, IDX, WIN);
     CHAINV = chainToday();
     BOOK = readBook(oiToday, oiHist);
+    CAL = cal;
     SECS = sectorBoard(BUNDLE, IDX);
     STATE = marketState(BUNDLE, SCORED, IDX);
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
@@ -702,7 +746,7 @@ async function load() {
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons, renderImpactProp);
+    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons, renderImpactProp, renderDiary);
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -998,6 +1042,89 @@ window.setWin = n => {
 };
 
 /** "Read the headline here, follow the link when it matters." */
+/**
+ * The diary — what is coming, and which tiles on THIS board carry it.
+ *
+ * WHY THE OLD CALENDAR IS GONE. `/api/calendar-events` reads a ForexFactory CSV that
+ * stopped on 2026-07-02 and topped it up from Finnhub, whose free tier dropped the
+ * economic calendar. Both were silent, and the panel that used it rendered a clear
+ * diary — absence of data as absence of risk, which is the worst failure a risk panel
+ * has. `/api/calendar-feed` is two live keyless feeds: ForexFactory's own JSON for what
+ * is ahead (it carries the impact rating) and Nasdaq's for what has printed (it carries
+ * actual against consensus, so a release can be scored rather than merely noted).
+ *
+ * WHAT MAKES IT A TEACHING PANEL RATHER THAN A LIST OF TIMES. Each release names the
+ * tiles it transmits through and the mechanism, from `FAMILIES` in js/calendarFeed.js,
+ * and each tile is a button into the board. "US CPI, 13:30, high impact" tells you when
+ * to look. "Breakevens carry the inflation part, the real 10-year the policy part —
+ * watch which one takes it" tells you where, and what the answer would mean.
+ *
+ * WHAT IT REFUSES TO SAY. Nothing here carries a direction. This desk tested the
+ * priced-in claim and it came back null; surprise size validated for RANGE only. So a
+ * release points at tiles and never at an outcome, and a print is described as bigger
+ * or smaller than expected, never as better or worse — whether a hot number is good
+ * news depends on what you own.
+ */
+function renderDiary() {
+  const el = $('diary'); if (!el) return;
+  const cal = CAL;
+
+  // "no events" and "the feed is dead" must never render the same.
+  if (!cal?.ok) {
+    el.innerHTML = `<div class="dy-bad"><b>The calendar cannot be read.</b> ${esc(cal?.error ?? 'the feed did not answer')}
+      — treat event risk as <b>unknown</b>, not as clear. An empty diary and a dead feed look identical on screen, which is
+      why this box exists.</div>`;
+    return;
+  }
+  const H = cal.health ?? {};
+  const ahead = Array.isArray(cal.ahead) ? cal.ahead : [];
+  const pr = cal.printed ?? { rows: [], n: 0, scored: 0 };
+  const watch = watchKeys(ahead, { limit: 6 });
+  const lbl = k => (BOARD.find(b => b.key === k)?.label ?? k);
+  const hhmm = ms => new Date(ms).toISOString().slice(11, 16);
+
+  const head = `<div class="dy-head">
+    <span title="${esc(H.detail ?? '')}">feed <b>${esc(H.state ?? 'unknown')}</b></span>
+    <span>ahead <b>${ahead.reduce((a, g) => a + g.n, 0)}</b> high-impact over ${ahead.length} ${ahead.length === 1 ? 'day' : 'days'}</span>
+    <span>printed today <b>${pr.n}</b>, ${pr.scored} with a consensus to score against</span>
+    ${watch.length ? `<span title="How many of the scheduled releases transmit through each tile. A count of where the news lands — never a view on what it does there.">most cited: ${watch.slice(0, 3).map(w => `<b>${esc(lbl(w.key))}</b>`).join(', ')}</span>` : ''}
+  </div>`;
+
+  const aheadHtml = ahead.length ? ahead.map(g => {
+    const rows = annotate(g.events);
+    const day = new Date(g.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+    return `<div class="dy-day">
+      <div class="dy-dh"><b>${esc(day)}</b><span>${g.n} high impact</span>${g.imminent ? '<span class="soon">within 48h</span>' : ''}</div>
+      ${rows.map(e => `<div class="dy-ev">
+        <div class="dy-r1"><span class="dy-t">${esc(hhmm(e.ms))}</span><span class="dy-c">${esc(e.ccy ?? '')}</span>
+          <span class="dy-n">${esc(e.event)}</span>
+          ${e.family ? `<span class="dy-fam">${esc(e.family)}</span>` : '<span class="dy-fam" title="the map does not recognise this name — it is still shown, because the release still happens">unclassified</span>'}</div>
+        ${e.why ? `<div class="dy-why">${esc(e.why)}</div>` : ''}
+        ${e.keys.length ? `<div class="dy-keys">${e.keys.map(k => `<button onclick="selTile('${esc(k)}')">${esc(lbl(k))}</button>`).join('')}</div>` : ''}
+      </div>`).join('')}
+    </div>`;
+  }).join('') : `<div class="dy-bad" style="background:var(--neu-bg);border-color:var(--border2)">
+      <b>Nothing high-impact scheduled in the window the feed carries.</b> ${esc(H.detail ?? '')}
+      The schedule feed runs one week at a time — there is no next-week URL — so a quiet tail end of a week is normal and is not the same as a quiet fortnight.</div>`;
+
+  const prHtml = pr.rows?.length ? `<div class="grp">Printed today — biggest gap to consensus first</div>
+    ${annotate(pr.rows).map(r => `<div class="dy-pr" title="${esc(surpriseWords(r))}${r.why ? ' · ' + esc(r.why) : ''}">
+      <span class="dy-t">${esc(hhmm(r.ms))}</span>
+      <span><span class="dy-n" style="font-size:12px">${esc(r.event)}</span></span>
+      <span class="a">${esc(r.raw?.actual ?? '—')}</span>
+      <span class="s ${r.surprise == null ? 'none' : Math.abs(r.surprise) > 0 ? 'big' : ''}">${
+        r.surprise == null ? 'no consensus' : (r.surprise > 0 ? '+' : '') + r.surprise}</span>
+      <span class="cc">${esc(r.country)}${r.raw?.consensus && String(r.raw.consensus).trim() ? ` · consensus ${esc(r.raw.consensus)}` : ''}${r.raw?.previous && String(r.raw.previous).trim() ? ` · prior ${esc(r.raw.previous)}` : ''}${r.family ? ` · ${esc(r.family)}` : ''}</span>
+    </div>`).join('')}` : '';
+
+  el.innerHTML = head + aheadHtml + prHtml + `<div class="note">
+    The gap to consensus is in the release's own units and is <b>not</b> standardised — a 0.1 miss on CPI and a 0.1 miss on a
+    survey are not the same size, and the store that scores surprises against each series' own history
+    (<a href="event-response.html" target="_blank">Event Response Book ↗</a>) is what does that job properly.
+    Nothing on this panel says which way a tile goes: the priced-in claim was tested here and came back null, and
+    surprise size validated for <b>range only</b>. The tiles are where the news arrives, not what it does when it gets there.</div>`;
+}
+
 function srcLine(panel) {
   const f = FEEDS[panel]; if (!f?.length) return '';
   return `<div class="src"><b>Fed by</b>${f.map(x => `<a href="${esc(x.href)}" target="_blank">${esc(x.label)} ↗</a>`).join('')}</div>`;
@@ -1202,6 +1329,10 @@ const SECTIONS = [
     panels: ['p-board', 'p-horizon'],
     deep: [['correlations.html', 'Correlations'], ['weekmap.html', 'Week map']],
     count: () => glance(SCORED, LINKZ).rare || null },
+  { id: 'diary', em: '🗓️', label: 'The diary',
+    panels: ['p-diary'],
+    deep: [['event-response.html', 'Event Response Book'], ['econ-surprise.html', 'Surprise store'], ['terminal.html', 'Terminal']],
+    count: () => (CAL?.ahead ?? []).filter(g => g.imminent).reduce((a, g) => a + g.n, 0) || null },
   { id: 'rates', em: '🏛️', label: 'Rates & credit',
     panels: ['p-rates'],
     deep: [['rates.html', 'Rates'], ['yield-curve.html', 'Yield curve'], ['real-yield.html', 'Real yield'], ['credit-stress.html', 'Credit stress']],
