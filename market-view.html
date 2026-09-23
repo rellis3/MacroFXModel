@@ -85,6 +85,30 @@
   /* .up/.dn are scoped to .tile .c, so the link legs need their own colour rules */
   .legs b.up{color:var(--bull)} .legs b.dn{color:var(--red)}
   @media(max-width:520px){ .wrow{grid-template-columns:minmax(0,1fr) 44px 66px;gap:6px} .wrow .pair{font-size:11.5px} }
+  /* ── the options book: where price sits against the strikes ──────────────── */
+  .bk{display:flex;flex-direction:column;gap:1px;margin-top:4px}
+  .brow{display:grid;grid-template-columns:96px minmax(90px,1fr) 66px 58px;gap:9px;align-items:center;
+        background:transparent;border:0;border-bottom:1px solid var(--border2);color:var(--text);
+        padding:8px 4px;cursor:pointer;text-align:left;font:inherit;width:100%;min-width:0}
+  .brow:hover,.brow.sel{background:var(--card2)}
+  .brow .nm{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brow .nm i{display:block;font-style:normal;font-size:10px;color:var(--text3);font-weight:400;font-variant-numeric:tabular-nums}
+  /* the band: put wall on the left, call wall on the right, a marker for spot */
+  .band{position:relative;height:16px;border-radius:4px;background:var(--border);min-width:0}
+  .band u{position:absolute;top:0;bottom:0;width:2px;background:var(--text2);text-decoration:none}
+  .band s{position:absolute;top:-1px;bottom:-1px;width:3px;background:var(--blue);border-radius:2px;text-decoration:none}
+  .band s.out{background:var(--amber)}
+  .band em{position:absolute;top:50%;transform:translateY(-50%);font-style:normal;font-size:8.5px;
+           color:var(--text3);letter-spacing:.04em}
+  .band em.l{left:3px} .band em.r{right:3px}
+  .brow .rg{font-size:9.5px;font-weight:700;letter-spacing:.03em;text-align:center;border-radius:4px;padding:2px 0}
+  .rg-pin{color:var(--bull);border:1px solid var(--bull)} .rg-brk{color:var(--amber);border:1px solid var(--amber)}
+  .brow .fl{font-size:10px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text3)}
+  .brow .fl.up{color:var(--bull)} .brow .fl.dn{color:var(--red)}
+  .bkwarn{border-left:3px solid var(--amber);background:var(--card2);border-radius:0 8px 8px 0;
+          padding:8px 11px;margin:6px 0 2px;font-size:11.5px;color:var(--text2)}
+  @media(max-width:520px){ .brow{grid-template-columns:82px minmax(60px,1fr) 56px 48px;gap:6px}
+    .brow .nm{font-size:11.5px} .band em{display:none} }
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -122,6 +146,12 @@
   </div>
 
   <div class="card">
+    <h2>The options book</h2>
+    <div class="sub">Where price is sitting against the strikes that carry the open interest — the one part of this page built from <b>positioning</b> rather than from price. Captured once a day from CME. The bar runs put wall to call wall, with a marker for spot; <b>amber means price has left the band</b>. <b>Tap a row</b> for what the numbers are and what they are not.</div>
+    <div id="book">Reading the book…</div>
+  </div>
+
+  <div class="card">
     <h2>The whole board</h2>
     <div class="sub">Everything this desk carries, with its twenty-session move and how unusual that move is. <b>Amber = rare.</b> Tap a tile for what it is, where the move sits in its own history, and which textbook links touch it today.</div>
     <div id="board"></div>
@@ -133,6 +163,7 @@
 <script type="module">
 import { BOARD, scanBoard, scanLinks, findings, fmtChange, fmtLevel } from './js/marketScan.js';
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
+import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const $ = id => document.getElementById(id);
@@ -146,14 +177,19 @@ try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn')
 // CHAINV = the macroChain verdicts (computed elsewhere, different rules);
 // LINKZ  = this page's own scored relationships. Two different objects, so they
 // keep two different names -- the old single `LINKS` conflated them.
-let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], SEL = null, WSEL = null;
+let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], BOOK = null, SEL = null, WSEL = null, BSEL = null;
 
 async function load() {
   try {
-    const [bundleRes, intl, crack] = await Promise.all([
+    // NOT the raw `oi_store` KV key -- that is 851KB because it carries the scraped
+    // text blobs, and this repo's Railway bill is egress. /api/oi-today is the lean
+    // projection (~39KB) and /api/oi-history the day-over-day archive (~13KB).
+    const [bundleRes, intl, crack, oiToday, oiHist] = await Promise.all([
       fetch('/api/drill-series').then(r => r.json()),
       fetch('/api/intl-yields').then(r => r.json()).catch(() => null),
       fetch('/api/crack').then(r => r.json()).catch(() => null),
+      fetch('/api/oi-today').then(r => r.json()).catch(() => null),
+      fetch('/api/oi-history').then(r => r.json()).catch(() => null),
     ]);
     if (!bundleRes?.ok) throw new Error(bundleRes?.error ?? 'no series');
     BUNDLE = bundleRes;
@@ -161,8 +197,9 @@ async function load() {
     SCORED = scanBoard(BUNDLE);
     LINKZ = scanLinks(BUNDLE);
     CHAINV = chainToday();
+    BOOK = readBook(oiToday, oiHist);
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
-    renderScan(); renderWire(); renderBoard();
+    renderScan(); renderWire(); renderBook(); renderBoard();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
 }
@@ -200,7 +237,10 @@ function chainToday() {
 }
 
 function renderScan() {
-  const f = findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 });
+  // The book's findings are merged in rather than computed inside marketScan: that
+  // module is pure price, and positioning is a different source with a different
+  // evidence status (untested), so it stays a separate input.
+  const f = [...bookFindings(BOOK, { limit: 1 }), ...findings(SCORED, { links: CHAINV, scored: LINKZ, limit: 4 })].slice(0, 4);
   $('scan').innerHTML = f.map((x, i) => `
     <div class="fnd">
       <div><span class="n">${i + 1}</span><span class="t">${esc(x.title)}</span></div>
@@ -271,6 +311,73 @@ function fmtUnitJs(v, kind) {
   if (kind === 'level') return `${s}${v.toFixed(1)}`;
   return `${s}${Math.round(v)}bp`;
 }
+
+/**
+ * The options book card. Every other card on this page is built from price; this one
+ * is built from positioning — which strikes carry the open interest and where price
+ * is sitting relative to them.
+ *
+ * The band draws the put wall at the left edge, the call wall at the right, and spot
+ * as a marker between them. When spot leaves the band the marker pins to the edge and
+ * turns amber, because "outside the book" is the configuration worth seeing at a glance.
+ */
+function renderBook() {
+  const el = $('book');
+  if (!BOOK?.ok) { el.innerHTML = `<span class="muted">The options book has not been captured yet, so there is nothing to show. It is scraped once a day; a gap means the capture job did not run.</span>`; return; }
+  const warn = BOOK.stale
+    ? `<div class="bkwarn"><b>This book is ${BOOK.ageH == null ? 'of unknown age' : `${Math.round(BOOK.ageH)} hours old`}.</b> It is captured once a day by a job that needs its machine awake, and a missed night leaves the previous capture in place looking exactly like a fresh one. The numbers were right when taken — they just describe an older market.</div>`
+    : '';
+  el.innerHTML = warn + `<div class="bk">${BOOK.rows.map(r => {
+    const known = r.putWall != null && r.callWall != null && r.callWall > r.putWall;
+    // position spot inside the band, clamped, so an outside-the-book row still draws
+    const posRaw = known ? (r.spot - r.putWall) / (r.callWall - r.putWall) : 0.5;
+    const pos = Math.max(0, Math.min(1, posRaw));
+    const out = known && (posRaw < 0 || posRaw > 1);
+    const flow = r.change?.oiChangePct;
+    return `<button class="brow ${BSEL === r.pair ? 'sel' : ''}" onclick="selBook('${esc(r.pair)}')">
+      <span class="nm">${esc(r.label)}<i>${esc(fmtBookPx(r.spot))}</i></span>
+      <span class="band" title="Put wall ${esc(fmtBookPx(r.putWall))} · spot ${esc(fmtBookPx(r.spot))} · call wall ${esc(fmtBookPx(r.callWall))}">
+        ${known ? `<em class="l">put</em><em class="r">call</em><u style="left:0"></u><u style="right:0"></u>
+        <s class="${out ? 'out' : ''}" style="left:calc(${(pos * 100).toFixed(1)}% - 1.5px)"></s>` : ''}
+      </span>
+      <span class="rg ${r.regime === 'PIN' ? 'rg-pin' : r.regime === 'BREAKOUT' ? 'rg-brk' : ''}">${esc(r.regime ?? '—')}</span>
+      <span class="fl ${flow > 0 ? 'up' : flow < 0 ? 'dn' : ''}">${flow == null ? '—' : `${flow > 0 ? '+' : ''}${flow.toFixed(0)}%`}</span>
+    </button>`;
+  }).join('')}</div><div id="bookExp"></div>`;
+  if (BSEL) renderBookExp();
+}
+
+function renderBookExp() {
+  const box = $('bookExp'); if (!box) return;
+  const r = BOOK.rows.find(x => x.pair === BSEL);
+  if (!r) { box.innerHTML = ''; return; }
+  const where = r.inside === false
+    ? `<b>Price has traded outside the book.</b> The heaviest strikes were written around a range that no longer contains this market, so whatever hedging they implied now sits behind price rather than around it.`
+    : r.inside === true
+      ? `Price is inside the band, ${esc(fmtBookPct(r.toCall))} from the call wall and ${esc(fmtBookPct(r.toPut))} from the put wall.`
+      : 'The walls for this market could not be read from the capture.';
+  const ch = r.change;
+  const flowLine = ch && ch.oiChangePct != null
+    ? `Open interest ${ch.oiChangePct > 0 ? 'ROSE' : 'FELL'} ${Math.abs(ch.oiChangePct).toFixed(1)}% against ${esc(ch.from ?? 'the prior capture')}${ch.flow ? ` — the archive classes this as “${esc(ch.flow)}”` : ''}. ${ch.oiChangePct > 0 ? 'Contracts were created, so somebody opened a new position rather than closing an old one.' : 'Contracts were closed, so this is a crowd leaving rather than arriving.'}${ch.days ? ` The archive holds ${ch.days} days for this market.` : ''}`
+    : 'No day-over-day comparison is available for this market yet.';
+  box.innerHTML = `<div class="exp"><span class="x" onclick="selBook('${esc(r.pair)}')">close ✕</span>
+    <span class="h">${esc(r.label)} — the options book</span>
+    <div class="legs">
+      <span>put wall <b>${esc(fmtBookPx(r.putWall))}</b></span>
+      <span>spot <b>${esc(fmtBookPx(r.spot))}</b></span>
+      <span>call wall <b>${esc(fmtBookPx(r.callWall))}</b></span>
+      <span>max pain <b>${esc(fmtBookPx(r.maxPain))}</b></span>
+      ${r.dte != null ? `<span class="muted">${r.dte} days to the main expiry</span>` : ''}
+    </div>
+    <div style="margin-top:7px">A <b>wall</b> is simply the strike carrying the most open contracts above (call) or below (put) the price. <b>Max pain</b> is the strike where the most options expire worthless. <b>${esc(r.regime ?? 'No regime')}</b> is this desk's label for the sign of dealer gamma — positive is said to dampen moves, negative to amplify them.</div>
+    <div style="margin-top:6px">${where}</div>
+    <div style="margin-top:6px">${flowLine}</div>
+    <div class="nm" style="margin-top:7px;border-left:3px solid var(--red);padding-left:9px;font-size:11.5px;color:var(--text2)">
+      <b>What none of this means.</b> These are descriptions of where contracts sit, not forecasts. Max pain was tested properly on this desk on 2026-09-10 and came back <b>null</b> — price does not pin to it into expiry — and the walls have never been tested at all. The PIN/BREAKOUT label is a convention, not a measured effect. Read a wall as a crowded strike; do not trade it as support or resistance.</div>
+    ${r.key ? `<div class="lnk"><a href="#" onclick="selTile('${esc(r.key)}');return false">${esc(r.label)} on the board ↓</a></div>` : ''}</div>`;
+}
+
+window.selBook = pair => { BSEL = BSEL === pair ? null : pair; renderBook(); };
 
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {
