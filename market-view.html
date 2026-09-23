@@ -465,6 +465,22 @@
   .ck .bar i.s{background:var(--bull)} .ck .bar i.p{background:var(--amber)}
   .ck .meta{font-size:11px;color:var(--text3);margin-top:7px;line-height:1.5}
   .ck .done{font-size:14px;color:var(--text2);line-height:1.6}
+  /* ── the time machine ────────────────────────────────────────────────────── */
+  .tm{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);
+      border:1px solid var(--border);border-radius:11px;padding:10px 14px;margin-bottom:12px}
+  .tm.past{border-color:var(--amber);background:linear-gradient(90deg,rgba(240,160,40,.09),var(--card) 45%)}
+  .tm .lab{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:800}
+  .tm .dt{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .tm input[type=range]{flex:1;min-width:180px;accent-color:var(--blue);cursor:pointer}
+  .tm .eps{display:flex;gap:6px;flex-wrap:wrap}
+  .tm .ep2{background:var(--card2);border:1px solid var(--border);border-radius:13px;padding:3px 10px;
+           font:inherit;font-size:10.5px;color:var(--text2);cursor:pointer;white-space:nowrap}
+  .tm .ep2:hover{border-color:var(--blue);color:var(--text)}
+  .tm .live{background:var(--blue);border:0;color:#fff;border-radius:7px;padding:5px 13px;
+            font:inherit;font-size:11.5px;font-weight:700;cursor:pointer}
+  .tmbar{font-size:12px;line-height:1.55;color:var(--text2);background:var(--card2);
+         border-left:3px solid var(--amber);border-radius:0 9px 9px 0;padding:9px 13px;margin-bottom:12px}
+  .tmbar b{color:var(--text)}
   .exp{margin-top:10px;border-left:3px solid var(--blue);background:var(--card2);border-radius:0 9px 9px 0;padding:10px 13px;
        font-size:13px;line-height:1.65;color:var(--text2)}
   .exp b{color:var(--text)} .exp .h{font-size:14px;font-weight:700;color:var(--text)}
@@ -497,6 +513,8 @@
 </nav>
 <div class="main">
 <div class="wrap">
+  <div class="tm" id="timebar"></div>
+  <div id="timenote"></div>
   <div class="ks" id="keystrip"></div>
   <div class="dr" id="deskread" data-panel="p-read"></div>
   <div class="ck" id="check" data-panel="p-read"></div>
@@ -602,6 +620,7 @@ import { buildMap } from './js/mvMap.js';
 import { deskRead, TERMS } from './js/deskRead.js';
 import { explainMove } from './js/explainMove.js';
 import { buildQuestion } from './js/marketDrill.js';
+import { episodes, resolveIndex, context, whatFollowed } from './js/timeMachine.js';
 import { CONCEPTS, answer as learnAnswer, nextTopic, progress, known } from './js/learnState.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -616,9 +635,12 @@ try { if (localStorage.getItem('macrofx_theme') === 'light') $('themeToggleBtn')
 // CHAINV = the macroChain verdicts (computed elsewhere, different rules);
 // LINKZ  = this page's own scored relationships. Two different objects, so they
 // keep two different names -- the old single `LINKS` conflated them.
+// Eleven renderers now. One throwing used to blank the whole page, which is the worst
+// failure available to a page whose job is to be looked at every morning.
+const draw = (...fns) => { for (const fn of fns) { try { fn(); } catch (e) { console.error('[market-view] render failed:', e); } } };
 let BUNDLE = null, SCORED = [], CHAINV = [], LINKZ = [], BOOK = null, STATE = null, SECS = [], FINDS = [];
 let SEL = null, WSEL = null, BSEL = null, SSEL = null;
-let WIN = 20;
+let WIN = 20, IDX = null, EPS = [];
 try { const w = +localStorage.getItem('mv_window'); if (WINDOWS.some(x => x.n === w)) WIN = w; } catch (e) {}
 
 async function load() {
@@ -636,18 +658,19 @@ async function load() {
     if (!bundleRes?.ok) throw new Error(bundleRes?.error ?? 'no series');
     BUNDLE = bundleRes;
     mergeExtras(intl, crack);
-    SCORED = scanBoard(BUNDLE, undefined, WIN);
-    LINKZ = scanLinks(BUNDLE, undefined, WIN);
+    IDX = BUNDLE.dates.length - 1; EPS = episodes(BUNDLE);
+    SCORED = scanBoard(BUNDLE, IDX, WIN);
+    LINKZ = scanLinks(BUNDLE, IDX, WIN);
     CHAINV = chainToday();
     BOOK = readBook(oiToday, oiHist);
-    SECS = sectorBoard(BUNDLE);
-    STATE = marketState(BUNDLE, SCORED);
+    SECS = sectorBoard(BUNDLE, IDX);
+    STATE = marketState(BUNDLE, SCORED, IDX);
     $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
-    renderTf(); renderKeyStrip(); renderGlance(); renderState(); renderSectors(); renderScan(); renderImpact(); renderWire(); renderBook(); renderBoard();
+    draw(renderTf, renderKeyStrip, renderGlance, renderState, renderSectors, renderScan, renderImpact, renderWire, renderBook, renderBoard);
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    renderVol(); renderLearn(); renderMap(); renderKeyStrip(); renderRead(); renderCheck();
+    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime);
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -935,10 +958,11 @@ window.setWin = n => {
   try { localStorage.setItem('mv_window', String(n)); } catch (e) {}
   // everything downstream of the window has to be recomputed, not just relabelled --
   // the z-scores are against that window's OWN history, so they all change
-  SCORED = scanBoard(BUNDLE, undefined, WIN);
-  LINKZ = scanLinks(BUNDLE, undefined, WIN);
-  STATE = marketState(BUNDLE, SCORED);
-  renderTf(); renderGlance(); renderState(); renderScan(); renderImpact(); renderWire(); renderMap(); renderBoard();
+  SCORED = scanBoard(BUNDLE, IDX, WIN);
+  LINKZ = scanLinks(BUNDLE, IDX, WIN);
+  SECS = sectorBoard(BUNDLE, IDX);
+  STATE = marketState(BUNDLE, SCORED, IDX);
+  draw(renderTf, renderGlance, renderState, renderScan, renderImpact, renderWire, renderMap, renderBoard, renderRead, renderCheck);
 };
 
 /** "Read the headline here, follow the link when it matters." */
@@ -1026,7 +1050,7 @@ function analogueHtml(f) {
   const keys = keysFor(f);
   if (!keys || !BUNDLE) return '';
   let r = null;
-  try { r = analogues(BUNDLE, keys, { outcomes: ['spx', 'vix'] }); } catch { return ''; }
+  try { r = analogues(BUNDLE, keys, { i: IDX ?? undefined, outcomes: ['spx', 'vix'] }); } catch { return ''; }
   if (!r) return '';
   const o = r.outcomes.spx;
   if (!o) return '';
@@ -1108,7 +1132,7 @@ function renderScan() {
   $('scan').innerHTML = FINDS.map((x, i) => {
     const c = confirmations(x, SCORED, SECS, STATE?.breadth);
     let hist = null;
-    try { const k = keysFor(x); hist = k ? analogues(BUNDLE, k, { outcomes: ['spx'] }) : null; } catch (e) {}
+    try { const k = keysFor(x); hist = k ? analogues(BUNDLE, k, { i: IDX ?? undefined, outcomes: ['spx'] }) : null; } catch (e) {}
     return `<button class="fr" onclick="openFinding(${i})">
       <span class="i2">${i + 1}</span>
       <span>
@@ -1446,6 +1470,51 @@ window.pickAnswer = key => {
   renderCheck();
 };
 window.nextQuestion = () => { QUIZ = null; renderCheck(); };
+
+/**
+ * The time machine bar.
+ *
+ * Scrub to any session in six years and the entire page regenerates as of that date.
+ * The jump buttons are the extremes the bundle actually contains -- found in the data,
+ * not a list of dates somebody decided were important.
+ *
+ * The banner is not decoration. A page showing 2022 that looks identical to a page
+ * showing today is a trap, so the whole bar changes colour and the note says how far
+ * back you are and what happened next.
+ */
+function renderTime() {
+  if (!BUNDLE?.dates?.length) return;
+  const ctx = context(BUNDLE, IDX);
+  const bar = $('timebar');
+  bar.className = `tm ${ctx.isLive ? '' : 'past'}`;
+  bar.innerHTML = `
+    <span class="lab">${ctx.isLive ? 'Live' : 'Replaying'}</span>
+    <span class="dt">${esc(ctx.date)}</span>
+    <input type="range" min="300" max="${BUNDLE.dates.length - 1}" value="${IDX}"
+      oninput="goTime(+this.value)" aria-label="Scrub to any past session">
+    ${ctx.isLive ? '' : '<button class="live" onclick="goLive()">→ back to today</button>'}
+    <span class="eps">${EPS.slice(0, 6).map(e =>
+      `<button class="ep2" onclick="goTime(${e.i})" title="${esc(e.note)}">${esc(e.date)} · ${esc(e.kind)}</button>`).join('')}</span>`;
+  const note = whatFollowed(ctx);
+  $('timenote').innerHTML = ctx.isLive ? '' :
+    `<div class="tmbar"><b>You are reading ${esc(ctx.date)}</b>, ${ctx.sessionsBack} sessions ago — every number below is
+     as it stood then. ${note ? esc(note) : ''}
+     <br><span class="muted">Note this is not point-in-time: FRED revises, so a replay sees today’s vintage of that history.
+     Excellent for learning the shape of a regime, unusable as a backtest.</span></div>`;
+}
+
+window.goTime = i => {
+  if (!BUNDLE) return;
+  IDX = resolveIndex(BUNDLE, i);
+  SCORED = scanBoard(BUNDLE, IDX, WIN);
+  LINKZ = scanLinks(BUNDLE, IDX, WIN);
+  SECS = sectorBoard(BUNDLE, IDX);
+  STATE = marketState(BUNDLE, SCORED, IDX);
+  SEL = null; WSEL = null; QUIZ = null;
+  draw(renderTime, renderKeyStrip, renderGlance, renderState, renderSectors, renderScan,
+       renderImpact, renderWire, renderMap, renderBoard, renderRead, renderCheck, renderVol);
+};
+window.goLive = () => goTime(BUNDLE.dates.length - 1);
 
 function renderBoard() {
   $('board').innerHTML = [...new Set(BOARD.map(b => b.group))].map(g => {
