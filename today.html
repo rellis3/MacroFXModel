@@ -490,6 +490,17 @@
   .eb-term{line-height:1.6;color:var(--text2);padding:3px 0 0 12px}
   .eb-term b{color:var(--text)}
 
+  /* What the news actually did — the half the playbook was missing. Deliberately
+     quieter than the scenario boxes: the boxes are a claim, this is the mark. */
+  .nev-out{margin-top:6px;font-size:11.5px;line-height:1.6;color:var(--text2);padding:6px 10px;
+           border-radius:7px;background:var(--card2);border-left:3px solid var(--text3)}
+  .nev-out.ok{border-left-color:var(--bull)} .nev-out.no{border-left-color:var(--red)}
+  .nev-out .k{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-bottom:2px}
+  .nev-out b{color:var(--text)} .nev-out.ok b.r{color:var(--bull)} .nev-out.no b.r{color:var(--red)}
+  .nev-tally{margin-top:9px;padding:6px 10px;border-radius:7px;background:var(--bg3);
+             font-size:11.5px;line-height:1.6;color:var(--text2)}
+  .nev-tally .k{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-bottom:2px}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -2124,6 +2135,8 @@ async function loadGate() {
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
+  setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
+  setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
   jget('/api/econ-surprise').then(r => { if (r?.ok) { econSurprise = r; render(); } }).catch(() => {});   // actual-vs-consensus surprise per currency
   jget('/api/macro-regime-fx').then(r => { if (r?.ok) { regimeFx = r; render(); } }).catch(() => {});   // regime-conditional FX base rates
@@ -2395,15 +2408,30 @@ function renderNewsPlay() {
       return `<div class="nscen ${k}" style="${fired ? 'outline:2px solid var(--amber);outline-offset:-1px' : ''}">
         <div class="l">${sc[k].l}${fired ? ' ← happened' : ''}</div><div class="e">${sc[k].e}</div></div>`;
     }).join('');
+    // The number landing in a box was always marked. What the MARKET then did was not,
+    // and that is the claim the box actually makes.
+    const oc = (_newsOut ?? []).find(r => r.ms === e.ts) ?? null;
     const resultLine = out
       ? `<div class="nev-result">Result: came in at <b>${e.actual}</b> vs <b>${e.estimate}</b> expected — ${out.side === 'mid' ? 'about in line' : out.hotter ? 'higher' : 'lower'} than forecast. ${out.side === 'up' ? `Supportive for the <b>${ccy}</b>.` : out.side === 'dn' ? `A drag on the <b>${ccy}</b>.` : 'Muted reaction likely.'}</div>`
       : '';
+    const ocLine = oc?.moved
+      ? `<div class="nev-out ${oc.claimHeld === true ? 'ok' : oc.claimHeld === false ? 'no' : ''}">
+          <span class="k">what the market did</span>
+          <b>${esc0(oc.instrument)}</b> moved <b>${oc.moved.move > 0 ? '+' : ''}${oc.moved.move} ${esc0(oc.moved.unit)}</b> in the thirty minutes after the print${
+            oc.moved.ratio != null ? ` — ${esc0(oc.sizeWord ?? '')} at <b>${oc.moved.ratio}×</b> an ordinary half-hour` : ''}.
+          ${oc.claimHeld === true ? `The box${"'"}s direction <b class="r">held</b>.`
+            : oc.claimHeld === false ? `The box${"'"}s direction <b class="r">did not hold</b>.`
+            : `<span class="muted">Not scorable — ${esc0(oc.why ?? 'no directional claim to test')}.</span>`}
+          <span class="muted" style="display:block;margin-top:2px">The SIZE is the part this desk has validated; the direction is a coin flip, which is why it is tallied rather than trusted.</span>
+        </div>`
+      : (out && !oc ? `<div class="nev-out"><span class="k">what the market did</span><span class="muted">not measured yet — the thirty-minute window has to close first</span></div>` : '');
     return `<div class="nev">
       <div class="nev-hd"><span class="tm">${hh(e.ts)}</span> ${flag} <span class="nm">${e.event}</span>
         <span class="exp">${expTxt}</span> ${cd}</div>
       <div class="nev-meas">${NEWS_MEASURES[kind]} A move in the <b>${ccy}</b> is the main knock-on.</div>
       <div class="nev-scen">${scen}</div>
       ${resultLine}
+      ${ocLine}
     </div>`;
   }).join('');
 
@@ -2418,9 +2446,30 @@ function renderNewsPlay() {
     </div>
     <div class="news-body">
       ${blocks}
+      ${(() => { const N = window.newsOutcomeBrick; if (!N) return '';
+          const tt = N.claimTally(newsOutcomeHistory());
+          if (!tt.n) return '';
+          return `<div class="nev-tally"><span class="k">the playbook's own record</span>${esc0(tt.line)}</div>`; })()}
       <div class="muted" style="font-size:10.5px;margin-top:6px">Scenarios are the typical reaction — the current backdrop (see the macro panel) can amplify or mute them. Not a prediction of the number.</div>
     </div>`;
 }
+// What the news ACTUALLY did. The playbook's three boxes are published before the
+// print; this marks the one that fired AND — the half that was missing — whether the
+// named market then moved the way that box said. It is not expected to vindicate the
+// playbook: this desk's own brief says direction after news is a coin flip, and the
+// running tally is here to show that rather than hide it.
+let _newsOut = null;
+async function loadNewsOutcomes() {
+  try { const j = await jget('/api/news-outcome'); if (j?.ok) { _newsOut = j.rows ?? []; renderNewsPlay(); } }
+  catch { /* the playbook still renders its scenarios */ }
+}
+/** Outcome rows across the stored days, so the tally has a denominator worth quoting. */
+function newsOutcomeHistory() {
+  const past = (_tl.snapshots ?? []).flatMap(d => d.newsOutcomes ?? []);
+  const today = (_newsOut ?? []).map(r => r.ms);
+  return [...past.filter(r => !today.includes(r.ms)), ...(_newsOut ?? [])];
+}
+
 let _newsOpen = (() => { try { return localStorage.getItem('news_open') !== '0'; } catch { return true; } })();
 function toggleNews() {
   _newsOpen = !_newsOpen;
@@ -12101,6 +12150,12 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as EodReview from './js/eodReview.js';
   window.eodReviewBrick = EodReview;
   try { window.render?.(); } catch (e) {}
+</script>
+<!-- What the news actually did (js/newsOutcome.js): the second half of the playbook. -->
+<script type="module">
+  import * as NewsOutcome from './js/newsOutcome.js';
+  window.newsOutcomeBrick = NewsOutcome;
+  try { window.renderNewsPlay?.(); } catch (e) {}
 </script>
 <script type="module">
   import * as CalendarFeed from './js/calendarFeed.js';

@@ -152,6 +152,7 @@ import { createReleasePoller as _createReleasePoller, latestObservationDate as _
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
+import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 import { plannedInWindow } from './js/endOfDay.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -4814,6 +4815,73 @@ app.post('/api/morning-brief', async (_req, res) => {
 // feed (econCalendar brick); the client re-derives ms/ts from `time` and filters
 // to today itself. On feed failure returns { ok:false, error } so the client can
 // tell a dead feed from a quiet week (a bare [] still degrades gracefully).
+// ── /api/news-outcome — what the news actually did ──────────────────────────
+// The playbook publishes three boxes before a release and, until now, only ever marked
+// which box the NUMBER landed in. The claim inside the box — "the Aussie dollar usually
+// strengthens" — went unchecked. This measures it: the named instrument's thirty-minute
+// move after the print, against an ordinary half-hour for that instrument.
+//
+// It is NOT expected to vindicate the playbook. This desk's own morning brief says
+// "direction after news is a coin flip", the priced-in claim tested null and surprise
+// size validated for RANGE only. The running tally exists to show that, which is the
+// whole reason the panel is worth having.
+//
+// Cached ten minutes and capped, because each uncached release is an OANDA M5 fetch.
+// Results are written onto the day's snapshot row so the tally survives a reload and
+// can be counted across days without re-measuring anything.
+const _NEWS_OUT_TTL_MS = 10 * 60_000;
+const _NEWS_OUT_MAX = 10;
+let _newsOut = { at: 0, day: '', rows: [] };
+
+function _newsKindServer(name) {
+  const n = String(name || '').toLowerCase();
+  if (/rate decision|interest rate|policy rate|bank rate|rate statement|cash rate/.test(n)) return 'rate';
+  if (/\bcpi\b|\bppi\b|\bpce\b|inflation|price index/.test(n)) return 'inflation';
+  if (/unemployment rate|jobless rate/.test(n)) return 'unemp';
+  if (/nonfarm|non-farm|payroll|employment change|\bjobs\b/.test(n)) return 'jobs';
+  if (/\bgdp\b|growth rate/.test(n)) return 'growth';
+  if (/\bpmi\b|\bism\b|sentiment|confidence|zew|ifo/.test(n)) return 'survey';
+  if (/retail sales/.test(n)) return 'spending';
+  return 'generic';
+}
+
+async function _computeNewsOutcomes() {
+  const day = new Date().toISOString().slice(0, 10);
+  const d0 = Date.parse(day + 'T00:00:00Z'), now = Date.now();
+  const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
+  // A release is only measurable once the full thirty-minute window has closed; asking
+  // OANDA for bars that do not exist yet returns a reaction built on two candles.
+  const evs = (r.events ?? [])
+    .filter(e => e.impact === 'high' && e.ms >= d0 && e.ms < d0 + 864e5 && e.ms + 32 * 60_000 <= now)
+    .sort((a, b) => a.ms - b.ms).slice(0, _NEWS_OUT_MAX);
+  const rows = [];
+  for (const e of evs) {
+    const ev = { country: e.country, event: e.event, ms: e.ms, kind: _newsKindServer(e.event),
+                 actual: e.actual ?? null, estimate: e.estimate ?? null };
+    const instrument = _NEWS_HEADLINE[e.country] ?? null;
+    let reaction = null;
+    if (instrument) { try { reaction = await _scReaction(instrument, e.ms); } catch (err) { console.warn('[news-outcome]', instrument, err.message); } }
+    rows.push(_scoreRelease({ ...ev, instrument }, reaction));
+  }
+  return rows;
+}
+
+app.get('/api/news-outcome', async (_req, res) => {
+  try {
+    const day = new Date().toISOString().slice(0, 10);
+    if (_newsOut.day !== day || Date.now() - _newsOut.at > _NEWS_OUT_TTL_MS) {
+      _newsOut = { at: Date.now(), day, rows: await _computeNewsOutcomes() };
+      // kept on the day's row so the tally can be counted across days for free
+      if (_newsOut.rows.length) {
+        _snapUpdateDay(day, async r => { r.newsOutcomes = _newsOut.rows; })
+          .catch(e => console.warn('[news-outcome] persist failed:', e.message));
+      }
+    }
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ok: true, day, rows: _newsOut.rows, at: new Date(_newsOut.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/events', async (_req, res) => {
   try {
     const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
