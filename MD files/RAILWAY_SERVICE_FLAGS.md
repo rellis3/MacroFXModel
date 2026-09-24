@@ -114,6 +114,27 @@ jobs overlap. It covers the scheduled half of `server.js` only: not the eight
 `start.sh` bot processes (flag state only), not request-time work from page
 loads. Railway's Metrics tab remains the source of truth for total CPU/RAM.
 
+**`/api/services` now also reports `memory`** (added 2026-09-24, after
+Railway's own Usage-by-Project graph showed a 33GB average / 66GB peak RSS
+that nothing here had any visibility into — every number up to that point was
+CPU time). It is `process.memoryUsage()` for the **node process only**, sampled
+every 60s and kept as a high-water mark (`peakRssMB`) since a request-time
+single read can land in a trough between GCs. It resets on every redeploy —
+there is no R2 persistence for memory the way there is for the run counters.
+
+**Read `peakRssMB` next to Railway's graph, not instead of it.** Railway's
+number is the whole container: `node server.js` plus the eight `start.sh`
+bot processes, each its own OS process with its own heap that `memoryUsage()`
+here cannot see at all. If `peakRssMB` from this endpoint is small (tens of MB)
+while Railway's graph shows tens of GB, the gap is almost certainly on the
+Python side — several of the `start.sh` bots do pandas/numpy work over long
+history (AnalogML's "full history" shape-matching, RegimeV2's HMM fits), and
+pandas DataFrames commonly run 5–10× the size of the data they hold. Railway
+does not break memory out per-process; the practical way to isolate which bot
+is responsible is to flip one `SVC_BOT_*` off at a time (see §2) and watch the
+graph, starting with the non-trading ones (`botAnalogPaper`, `botAnalogNearing`,
+`botAnalogMotif`) before anything live-trading.
+
 ---
 
 ## 4. What actually runs 24/7

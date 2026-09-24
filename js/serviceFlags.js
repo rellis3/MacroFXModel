@@ -134,6 +134,10 @@ export const SERVICES = [
   { id: 'serviceStats', where: 'server', label: 'Service-stat flush to R2',
     cadence: 'every SVC_STATS_FLUSH_MS (15 min default) + once on SIGTERM', cost: 'low', lean: true, on: true,
     feeds: '/api/services\'s `today`/`window` totals. This is the meter itself: off ⇒ the per-job numbers go back to resetting on every redeploy, which is what made them useless in the first place.' },
+  { id: 'memSample', where: 'server', label: 'Memory high-water sampler',
+    cadence: 'every 60s, no I/O', cost: 'low', lean: true, on: true,
+    feeds: '/api/services\'s `memory` block (rss/heap/peak). Added 2026-09-24: Railway\'s own usage dashboard showed a 33GB avg / 66GB peak RSS this project '
+        + 'had no visibility into at all — every existing number here was CPU wall-time, nothing measured memory. Off ⇒ memory goes back to that same blind spot.' },
   { id: 'dailySnapshot', where: 'server', label: 'Daily snapshot (one row per day of what the page thought)',
     cadence: 'hourly, overwrites the current UTC day\'s row', cost: 'low', lean: false, on: true,
     feeds: '/api/daily-snapshot -> the day-history strip. Reads KV that other jobs already wrote; it adds no upstream fetches of its own, so off just freezes the history at the last row written.' },
