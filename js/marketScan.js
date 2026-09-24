@@ -256,17 +256,45 @@ export function scoreSeries(bundle, spec, i, WIN = WINDOW) {
   const sorted = hist.slice().sort((a, b) => a - b);
   const pct = sorted.filter(v => v <= now).length / sorted.length;
   // FRED skips US holidays and OANDA does not, so the newest date can be blank
-  // for a rates row -- walk back to the last real print rather than showing a dash
-  let last = null;
-  if (spec.pairPct) last = now;                      // a spread row's "level" IS its move
-  else for (let j = i; j > i - 10 && j >= 0; j--) { const v = specVal(bundle, spec, j); if (v != null) { last = v; break; } }
+  // for a rates row -- walk back to the last real print rather than showing a dash.
+  //
+  // HOW FAR BACK IT WALKED IS THE POINT, and it used to be discarded. The board printed
+  // one "board to <date>" header over tiles whose real vintages differed by SIX
+  // SESSIONS: prices to yesterday, VIX and the 10-year one further back, and the broad
+  // dollar to 2026-09-18 -- shown at full confidence beside a price from last night.
+  // `staleDays` is how many sessions behind the board's own newest date this tile's
+  // last real print is, so a renderer can say so instead of implying they are current.
+  let last = null, lastIdx = null;
+  if (spec.pairPct) { last = now; lastIdx = i; }     // a spread row's "level" IS its move
+  else for (let j = i; j > i - 10 && j >= 0; j--) { const v = specVal(bundle, spec, j); if (v != null) { last = v; lastIdx = j; break; } }
+  const lastDate = lastIdx != null ? (bundle?.dates?.[lastIdx] ?? null) : null;
+  const staleDays = lastIdx != null ? i - lastIdx : null;
   return { key: spec.key, label: spec.label, group: spec.group, kind: spec.kind, what: spec.what,
-           last, change: now, z: (now - mean) / sd, pct, n: hist.length };
+           last, lastDate, staleDays, change: now, z: (now - mean) / sd, pct, n: hist.length };
 }
 
 /** The whole board, scored. */
 export function scanBoard(bundle, i = (bundle?.dates?.length ?? 1) - 1, WIN = WINDOW) {
   return BOARD.map(s => scoreSeries(bundle, s, i, WIN)).filter(Boolean).map(r => ({ ...r, window: WIN }));
+}
+
+/**
+ * The board's freshness, as a spread rather than a single date.
+ *
+ * `boardTo` is the newest date on the spine; `worst` is the tile furthest behind it.
+ * A caller that prints only `boardTo` is claiming a currency the board does not have —
+ * which is exactly what the header did while the broad dollar sat six sessions back.
+ */
+export function boardFreshness(board = [], bundle = null) {
+  const rows = (Array.isArray(board) ? board : []).filter(r => r.staleDays != null);
+  if (!rows.length) return { boardTo: bundle?.to ?? null, worst: null, lagging: [], n: 0 };
+  const lagging = rows.filter(r => r.staleDays >= 2).sort((a, b) => b.staleDays - a.staleDays);
+  return {
+    boardTo: bundle?.to ?? null,
+    worst: lagging[0] ? { key: lagging[0].key, label: lagging[0].label, lastDate: lagging[0].lastDate, staleDays: lagging[0].staleDays } : null,
+    lagging: lagging.map(r => ({ key: r.key, label: r.label, lastDate: r.lastDate, staleDays: r.staleDays })),
+    n: rows.length,
+  };
 }
 
 /**

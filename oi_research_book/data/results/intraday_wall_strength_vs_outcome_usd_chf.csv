@@ -1,0 +1,7 @@
+side,oi_tercile,n_events,pct_break
+call,weak,81,34.5679012345679
+call,mid,80,42.5
+call,strong,80,50.0
+put,weak,81,60.49382716049383
+put,mid,80,63.74999999999999
+put,strong,80,32.5

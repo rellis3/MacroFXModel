@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { BOARD, LINKS, WINDOWS, scanBoard, scanLinks, scoreSeries, scoreLink, glance, findings, fmtChange, fmtLevel } from './marketScan.js';
+import { BOARD, LINKS, WINDOWS, scanBoard, scanLinks, scoreSeries, scoreLink, glance, findings, fmtChange, fmtLevel, boardFreshness } from './marketScan.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 
@@ -265,6 +265,50 @@ t('the glance counts agree with the findings rather than telling a second story'
   // the apart count uses the same 1.8 threshold the headline finding does
   const apartFindings = findings(board, { links: [], scored: links, limit: 9 }).filter(f => f.kind === 'dislocation').length;
   assert.ok(g.apart >= apartFindings, `glance says ${g.apart} apart but ${apartFindings} dislocations were emitted`);
+});
+
+// ── freshness: a tile must not imply a currency the series does not have ─────
+// The board draws one "board to <date>" header over series that settle at different
+// speeds. Live, the broad dollar sat three sessions behind the price tiles under a
+// header claiming they were all current.
+t("a tile carries the date of its own last real print, not the board's", () => {
+  const b = plain();
+  const i = b.dates.length - 1;
+  // blank the dollar's last four prints, as FRED does over a weekend plus a holiday
+  for (let k = 0; k < 4; k++) b.series.dxy[i - k] = null;
+  const dxy = scoreSeries(b, BOARD.find(x => x.key === 'dxy'), i);
+  assert.equal(dxy.lastDate, b.dates[i - 4]);
+  assert.equal(dxy.staleDays, 4);
+  const spx = scoreSeries(b, BOARD.find(x => x.key === 'spx'), i);
+  assert.equal(spx.staleDays, 0, 'a series that printed today is not stale');
+  assert.equal(spx.lastDate, b.dates[i]);
+});
+
+t('the board names its worst vintage instead of one date for everything', () => {
+  const b = plain();
+  const i = b.dates.length - 1;
+  for (let k = 0; k < 3; k++) b.series.dxy[i - k] = null;
+  b.to = b.dates[i];
+  const f = boardFreshness(scanBoard(b, i), b);
+  assert.equal(f.boardTo, b.dates[i]);
+  assert.equal(f.worst.key, 'dxy');
+  assert.equal(f.worst.staleDays, 3);
+  assert.ok(f.lagging.length >= 1);
+  assert.ok(f.n > 20, 'it counts the whole board, not just the laggards');
+});
+
+t('one session behind is ordinary and is not flagged', () => {
+  const b = plain();
+  const i = b.dates.length - 1;
+  b.series.dxy[i] = null;   // FRED lands a day later; that says nothing
+  const f = boardFreshness(scanBoard(b, i), b);
+  assert.equal(f.lagging.some(r => r.key === 'dxy'), false);
+  assert.equal(f.worst, null);
+  // and a board with nothing behind reports nothing rather than a false alarm
+  const clean = boardFreshness(scanBoard(plain()), plain());
+  assert.equal(clean.worst, null);
+  assert.deepEqual(boardFreshness([], null).lagging, []);
+  assert.deepEqual(boardFreshness(null, null).lagging, []);
 });
 
 console.log(`marketScan: ${n} groups, all passed`);

@@ -49,6 +49,21 @@ body{background:var(--bg);color:var(--text);
 .top .clock{font-size:11px;color:var(--text3)}
 
 /* ── ticker strip ────────────────────────────────────────────────────────── */
+.live{display:flex;align-items:center;gap:1px;overflow-x:auto;background:var(--panel,#0e1116);
+       border-bottom:1px solid var(--line2,#1c2230);padding:0 2px;white-space:nowrap}
+.live .lv-h{display:flex;align-items:center;gap:5px;font-size:8.5px;font-weight:800;letter-spacing:.11em;
+       text-transform:uppercase;color:var(--text3,#6e7681);padding:6px 10px 6px 8px;flex:none}
+.lv-dot{width:6px;height:6px;border-radius:50%;background:var(--up,#10b981)}
+.lv-dot.warn{background:var(--amber,#d29922)} .lv-dot.bad{background:var(--hot,#f85149)}
+.lv-i{display:flex;align-items:baseline;gap:6px;padding:6px 10px;border-left:1px solid var(--line2,#1c2230);flex:none;cursor:help}
+.lv-i.old{opacity:.5}
+.lv-n{font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--text3,#6e7681)}
+.lv-p{font-size:12px;font-weight:700}
+.lv-c{font-size:11px;font-weight:700} .lv-m{font-size:10px;opacity:.72}
+.lv-old{font-size:8px;font-weight:800;letter-spacing:.06em;color:var(--amber,#d29922)}
+.lv-hz{margin-left:auto;font-size:9px;padding:6px 10px;color:var(--text3,#6e7681);flex:none;cursor:help}
+.lv-hz.warn{color:var(--amber,#d29922)} .lv-hz.bad{color:var(--hot,#f85149)}
+.lv-none{padding:7px 10px;font-size:10.5px;color:var(--hot,#f85149);line-height:1.5}
 .tick{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;
       background:var(--line2);border-bottom:1px solid var(--line)}
 .tk{background:var(--panel);padding:7px 10px 6px;cursor:pointer;position:relative}
@@ -146,6 +161,8 @@ table.t .k{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:e
   </nav>
 </div>
 
+<!-- The only current thing on the page. Everything below it is daily closes. -->
+<div class="live" id="live"></div>
 <div class="tick" id="tick"></div>
 <div class="brf" id="brief"></div>
 
@@ -208,11 +225,11 @@ table.t .k{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:e
 
 <div class="foot" id="foot">Loading…</div>
 <script type="module">
-import { BOARD, THRESHOLDS, scanBoard, scanLinks, fmtChange, fmtLevel } from './js/marketScan.js';
+import { BOARD, THRESHOLDS, scanBoard, scanLinks, fmtChange, fmtLevel, boardFreshness } from './js/marketScan.js';
 import { marketState, sectorBoard } from './js/marketState.js';
 import { horizonBoard, horizonFindings, SHAPES } from './js/horizons.js';
 import { readBook, fmtBookPx } from './js/oiBoard.js';
-import { riskMonitor, movers, matrix, eventRisk, feedHealth, deskBrief } from './js/terminal.js';
+import { riskMonitor, movers, matrix, eventRisk, feedHealth, deskBrief, liveTape, tapeHealth } from './js/terminal.js';
 import { impactBoard, VERDICTS } from './js/impact.js';
 import { spark } from './js/mvChart.js';
 
@@ -255,6 +272,64 @@ async function load() {
        renderSectors, renderMomentum, renderVol, renderBook, renderLinks, renderImpact, renderBoard, renderFoot);
 }
 
+// ── The live layer ──────────────────────────────────────────────────────────
+// Everything else on this page is built from the daily-close bundle: the board, the
+// momentum shapes, the sectors, the links. That is the right source for a twenty-session
+// z-score and the wrong one for a page calling itself a monitor — and until now it
+// fetched once on load and never refreshed at all, so a tab left open at 08:00 was still
+// showing 08:00 at midnight.
+//
+// THE CADENCES ARE DELIBERATE AND DIFFERENT, because this repo's bill is egress:
+//   prices    2.9KB   45s    the only thing that actually moves second to second
+//   calendar  3.4KB   15min  a release prints, then nothing changes for hours
+//   opens     48KB    once   a session open does not change once the session is running
+//   bundle    735KB   once   daily closes; re-pulling it on a timer would be pure waste
+// Polling the 48KB brief every minute would be ~70MB a day from one open tab.
+//
+// Nothing polls while the tab is hidden. A background terminal costs the same as a
+// foreground one otherwise, and it is the commonest way a page quietly becomes expensive.
+const LIVE_SPINE = ['SPX500', 'NQ', 'GOLD', 'EURUSD', 'USDJPY', 'GBPUSD', 'AUDUSD', 'BTCUSD'];
+const LIVE_MS = 90_000, CAL_MS = 15 * 60_000;   // the source writes every ~5 min; 90s keeps the age honest without paying for nothing
+let OPENS = null, PX = null, LIVE_AT = 0;
+
+async function loadOpens() {                       // once: the session open and the regime
+  try { const j = await fetch('/api/daily-brief').then(r => r.json()); if (j?.instruments) OPENS = j.instruments; }
+  catch { /* the strip says it has no opens */ }
+}
+async function loadPrices() {
+  if (document.hidden) return;
+  try {
+    const j = await fetch('/api/hedge-signals/prices').then(r => r.json());
+    if (j?.prices) { PX = j.prices; LIVE_AT = Date.now(); draw(renderLive, renderTop); }
+  } catch { /* the age on the strip will grow and say so */ }
+}
+async function loadCal() {
+  if (document.hidden) return;
+  try { const j = await fetch('/api/calendar-feed').then(r => r.json()); if (j?.ok) { window.__cal = j; draw(renderEvents); } }
+  catch { /* the panel keeps the last one, with its own health line */ }
+}
+
+function renderLive() {
+  const el = $('live'); if (!el) return;
+  if (!OPENS) { el.innerHTML = '<div class="lv-none">no session opens loaded — the live strip is showing nothing, which is not the same as a quiet market</div>'; return; }
+  const rows = liveTape(OPENS, PX ?? {}, { only: LIVE_SPINE });
+  const h = tapeHealth(rows);
+  if (!rows.length) { el.innerHTML = `<div class="lv-none">${esc(h.detail)}</div>`; return; }
+  // NOT labelled "live". The upstream writes roughly every five minutes, whatever its
+  // own comment claims, so calling it live would be the same overstatement the board's
+  // single "board to <date>" header was making. It says what it is, and the age is on
+  // the strip where it can be read rather than assumed.
+  el.innerHTML = `<div class="lv-h"><span class="lv-dot ${h.state}"></span>TODAY · move from the session open</div>` +
+    rows.map(r => `<div class="lv-i ${r.stale ? 'old' : ''}" title="${esc(r.name)} opened ${r.open} and is ${r.price} now${
+        r.ageS != null ? ` — quote ${r.ageS}s old` : ' — from the daily brief, not the live feed'}${r.regime ? ` · regime ${r.regime}` : ''}">
+      <span class="lv-n">${esc(r.name)}</span>
+      <span class="lv-p num">${r.price.toFixed(r.dp)}</span>
+      <span class="lv-c num ${r.pct > 0 ? 'up' : r.pct < 0 ? 'dn' : 'fl'}">${r.pct > 0 ? '+' : ''}${r.pct}%</span>
+      <span class="lv-m num">${r.move > 0 ? '+' : ''}${r.move}${r.unit === 'pips' ? 'p' : ''}</span>
+      ${r.stale || !r.fromStream ? '<span class="lv-old">old</span>' : ''}</div>`).join('') +
+    `<div class="lv-hz ${h.state}" title="${esc(h.detail)}">${esc(h.state === 'ok' ? `${h.worstAgeS}s` : h.detail)}</div>`;
+}
+
 /** The gaps and the crack live outside the bundle; align them onto its date spine. */
 function mergeExtras(intl, crack) {
   const S = B.series, idx = new Map(B.dates.map((d, i) => [d, i]));
@@ -288,7 +363,18 @@ function renderTop() {
     ? `<span class="pill ${R.stressed ? 'str' : R.elevated ? 'elev' : 'calm'}">${esc(r.label ?? r.regime)}</span>
        <span>month ${esc(String(r.months ?? '?'))} · ${esc(r.what ?? '')}</span>`
     : `<span class="pill">regime unavailable</span>`;
-  $('clock').textContent = `board to ${B.to} · ${B.n.toLocaleString()} sessions`;
+  // One "board to <date>" over series that settle at different speeds overstates the
+  // board's currency: prices print every session, FRED lands one to three behind, and
+  // the broad dollar has sat six sessions back beside a price from last night.
+  const FRESH = boardFreshness(SCORED, B);
+  // The strip above is live; everything below it is closes. Saying "board to <date>"
+  // without that distinction is what made a page called a terminal look like a feed.
+  const liveTxt = LIVE_AT ? `prices ${new Date(LIVE_AT).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : 'prices not loaded';
+  $('clock').textContent = `${liveTxt} · board (closes) to ${B.to} · ${B.n.toLocaleString()} sessions`
+    + (FRESH.worst ? ` · ${FRESH.worst.label.toUpperCase()} ONLY TO ${FRESH.worst.lastDate}` : '');
+  $('clock').title = FRESH.lagging.length
+    ? `Behind the rest of the board: ${FRESH.lagging.map(r => `${r.label} to ${r.lastDate} (${r.staleDays} sessions)`).join('; ')}.`
+    : 'Every series is current to the same session.';
   $('riskCount').textContent = `${R.stressed} stressed · ${R.elevated} elevated · ${R.calm} calm`;
 }
 
@@ -505,6 +591,11 @@ function renderFoot() {
 }
 
 load();
+// The live layer, on its own cadences. Nothing polls while the tab is hidden.
+loadOpens().then(loadPrices);
+setInterval(loadPrices, LIVE_MS);
+setInterval(loadCal, CAL_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { loadPrices(); draw(renderLive); } });
 </script>
 </body>
 </html>

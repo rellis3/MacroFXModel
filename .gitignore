@@ -533,3 +533,10 @@ backfill/*.ndjson
 # be committed.
 local_decision_engine/data/
 fib_local_decision_engine/data/
+OI Data/AUD_USD.csv
+OI Data/EUR_USD.csv
+OI Data/GBP_USD.csv
+OI Data/NAS100_USD.csv
+OI Data/USD_CAD.csv
+OI Data/USD_CHF.csv
+OI Data/USD_JPY.csv

@@ -1,0 +1,3 @@
+regime,n_days,mean_intraday_range_pct,mean_intraday_rv_ann,mannwhitney_p_range_above_vs_below
+above_flip,760,0.7820159608533599,0.08025257117570415,0.25336176347046013
+below_flip,382,0.7678323235199641,0.07655345794296807,0.25336176347046013

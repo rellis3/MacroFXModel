@@ -223,6 +223,9 @@
   .dy-pr .cc{grid-column:2;font-size:10.5px;color:var(--text3)}
   .dy-bad{background:var(--bear-bg);border:1px solid rgba(249,115,22,.4);border-radius:8px;padding:9px 12px;
           font-size:12px;line-height:1.6;color:var(--text)}
+  .agetag{display:inline-block;margin-left:5px;font-size:8.5px;font-weight:800;letter-spacing:.04em;
+          padding:0 4px;border-radius:3px;background:var(--amber-bg);color:var(--amber);vertical-align:middle;cursor:help}
+
   .src{margin-top:10px;padding-top:8px;border-top:1px solid var(--border2);font-size:11px;color:var(--text3)}
   .src a{color:var(--blue);text-decoration:none;margin-right:12px;white-space:nowrap}
   .src a:hover{text-decoration:underline}
@@ -678,7 +681,7 @@
 </div>
 
 <script type="module">
-import { BOARD, WINDOWS, THRESHOLDS, scanBoard, scanLinks, glance, findings, fmtChange, fmtLevel } from './js/marketScan.js';
+import { BOARD, WINDOWS, THRESHOLDS, scanBoard, scanLinks, glance, findings, fmtChange, fmtLevel, boardFreshness } from './js/marketScan.js';
 import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
 import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js/marketState.js';
@@ -741,7 +744,15 @@ async function load() {
     CAL = cal;
     SECS = sectorBoard(BUNDLE, IDX);
     STATE = marketState(BUNDLE, SCORED, IDX);
-    $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`;
+    // The header used to claim one date for the whole board. It now names the worst
+    // vintage on it, because "board to 2026-09-23" over a dollar tile from the 18th is
+    // the kind of quiet overstatement this page exists to avoid.
+    const FRESH = boardFreshness(SCORED, BUNDLE);
+    $('stamp').textContent = `board to ${BUNDLE.to} · twenty-session moves, ranked against three years`
+      + (FRESH.worst ? ` · ${FRESH.worst.label} only to ${FRESH.worst.lastDate}` : '');
+    $('stamp').title = FRESH.lagging.length
+      ? `These series settle behind the rest of the board: ${FRESH.lagging.map(r => `${r.label} to ${r.lastDate} (${r.staleDays} sessions)`).join('; ')}. Prices come from OANDA and Yahoo and print every session; rates, credit and the dollar index come from FRED, which settles later.`
+      : 'Every series on the board is current to the same session.';
     draw(renderTf, renderKeyStrip, renderGlance, renderState, renderSectors, renderScan, renderImpact, renderWire, renderBook, renderBoard);
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
@@ -1389,6 +1400,19 @@ window.goSection = id => {
  * The rates and equities sections reuse the board renderer, filtered to their own
  * groups — the same scored rows, not a second copy that can disagree with the first.
  */
+/**
+ * The age marker on a tile whose last real print is behind the board's newest date.
+ *
+ * The board draws one "board to <date>" header over series that settle at different
+ * speeds: OANDA and Yahoo print every session, FRED lands one to three behind, and the
+ * broad dollar has been six sessions back while sitting at full confidence next to last
+ * night's S&P. One session is ordinary and says nothing; two or more is a different
+ * vintage and the reader has to be told, or the tile is quietly lying about when.
+ */
+const ageTag = s => (s?.staleDays >= 2)
+  ? `<span class="agetag" title="This series last printed on ${esc(s.lastDate ?? '?')}, ${s.staleDays} sessions before the rest of the board. Its move is real but it is not today's, and it should not be read alongside the price tiles as if it were.">${s.staleDays}d old</span>`
+  : '';
+
 function renderGroupBoard(elId, groups) {
   const rows = SCORED.filter(s => groups.includes(s.group));
   if (!rows.length) { $(elId).innerHTML = '<span class="muted">Nothing scored in this group yet.</span>'; return; }
@@ -1396,7 +1420,7 @@ function renderGroupBoard(elId, groups) {
     <div class="tiles">${rows.filter(r => r.group === g).map(s => {
       const T = tierOf(s.z), cls = s.change > 0 ? 'up' : s.change < 0 ? 'dn' : 'fl';
       return `<button class="tile ${T.cls} ${SEL === s.key ? 'sel' : ''}" onclick="selTile('${esc(s.key)}')">
-        <div class="k">${esc(s.label)}</div><div class="v">${esc(fmtLevel(s))}</div>
+        <div class="k">${esc(s.label)}${ageTag(s)}</div><div class="v">${esc(fmtLevel(s))}</div>
         <div class="c ${cls}">${esc(fmtChange(s))} <span class="z ${T.cls}">z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}${T.word}</span></div>
         ${spark((BUNDLE?.series?.[s.key] ?? []).slice(-60))}</button>`;
     }).join('')}</div>`).join('');
@@ -1419,7 +1443,7 @@ function renderVol() {
      <div class="tiles">${[...curve, ...others].map(s2 => {
        const T = tierOf(s2.z);
        return `<button class="tile ${T.cls}" onclick="selTile('${esc(s2.key)}')">
-         <div class="k">${esc(s2.label)}</div><div class="v">${esc(fmtLevel(s2))}</div>
+         <div class="k">${esc(s2.label)}${ageTag(s2)}</div><div class="v">${esc(fmtLevel(s2))}</div>
          <div class="c ${s2.change > 0 ? 'up' : 'dn'}">${esc(fmtChange(s2))}
            <span class="z ${T.cls}">z ${s2.z >= 0 ? '+' : ''}${s2.z.toFixed(1)}${T.word}</span></div></button>`;
      }).join('')}</div>`;
@@ -1751,7 +1775,7 @@ function renderBoard() {
     return `<div class="grp">${esc(g)}</div><div class="tiles">${rows.map(s => {
       const T = tierOf(s.z), cls = s.change > 0 ? 'up' : s.change < 0 ? 'dn' : 'fl';
       return `<button class="tile ${T.cls} ${SEL === s.key ? 'sel' : ''}" onclick="selTile('${esc(s.key)}')">
-        <div class="k">${esc(s.label)}</div>
+        <div class="k">${esc(s.label)}${ageTag(s)}</div>
         <div class="v">${esc(fmtLevel(s))}</div>
         <div class="c ${cls}">${esc(fmtChange(s))} <span class="z ${T.cls}">z ${s.z >= 0 ? '+' : ''}${s.z.toFixed(1)}${T.word}</span></div>
         ${spark((BUNDLE?.series?.[s.key] ?? []).slice(-60))}

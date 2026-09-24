@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { parseForexFactory, parseNasdaq, upcoming, printed, calendarHealth, num,
-         FAMILIES, familyOf, annotate, watchKeys, surpriseWords } from './calendarFeed.js';
+         FAMILIES, familyOf, annotate, watchKeys, surpriseWords, etClockToUtcMs } from './calendarFeed.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const NOW = Date.UTC(2026, 8, 23, 12, 0);
@@ -162,6 +162,54 @@ t('a surprise is described as bigger or smaller, never as better or worse', () =
   assert.match(surpriseWords({ released: false }), /has not printed/);
   for (const r of [{ released: true, surprise: 24 }, { released: true, surprise: -24 }])
     assert.doesNotMatch(surpriseWords(r), /\b(beat|missed|better|worse|good|bad|hot|cool)\b/i);
+});
+
+// ── the field is called gmt and it is NOT gmt ───────────────────────────────
+// Verified against a release whose time is known: the US flash PMI prints 09:45 in New
+// York, 13:45 UTC, and this feed reports gmt "09:45". Reading it as UTC put every
+// printed row four or five hours early, silently, on both pages that show it.
+t('the Eastern clock is converted to UTC, in both halves of the year', () => {
+  assert.equal(new Date(etClockToUtcMs('2026-09-24', '09', '45')).toISOString(), '2026-09-24T13:45:00.000Z');
+  assert.equal(new Date(etClockToUtcMs('2026-01-15', '08', '30')).toISOString(), '2026-01-15T13:30:00.000Z',
+    'EST is five hours, EDT is four — the offset is read at the instant, not assumed');
+});
+
+// The row's DATE is UTC while its clock is Eastern, so an Australian release at 01:30
+// UTC is filed under that date with gmt 21:30 — the previous evening in New York.
+t('a release is pulled onto the UTC date the row is filed under', () => {
+  assert.equal(new Date(etClockToUtcMs('2026-09-24', '21', '30')).toISOString(), '2026-09-24T01:30:00.000Z',
+    'naive conversion would have put it a day late and dropped it off the panel');
+  assert.equal(etClockToUtcMs('nonsense', '09', '45'), null);
+});
+
+t('a parsed day carries the corrected instants end to end', () => {
+  const rows = parseNasdaq({ data: { rows: [
+    { gmt: '09:45', country: 'United States', eventName: 'S&P Global Manufacturing PMI', actual: '57.0', consensus: '53.6' },
+    { gmt: '21:30', country: 'Australia', eventName: 'Employment Change', actual: '39.5K', consensus: '21.5K' },
+  ] } }, '2026-09-24');
+  assert.equal(rows.length, 2);
+  const us = rows.find(r => r.country === 'United States');
+  assert.equal(new Date(us.ms).toISOString(), '2026-09-24T13:45:00.000Z');
+  assert.equal(us.surprise, 3.4);
+  const au = rows.find(r => r.country === 'Australia');
+  assert.equal(new Date(au.ms).toISOString(), '2026-09-24T01:30:00.000Z');
+  assert.equal(au.released, true, 'it printed, even though "39.5K" is not a scorable number');
+  assert.equal(au.surprise, null, 'and printed is not the same as scorable');
+  assert.equal(au.raw.actual, '39.5K', 'the raw value is kept so the panel can still show it');
+});
+
+t('printed and scorable are kept apart', () => {
+  const rows = parseNasdaq({ data: { rows: [
+    { gmt: '10:00', country: 'X', eventName: 'Headcount', actual: '39.5K', consensus: '21.5K' },
+    { gmt: '10:00', country: 'Y', eventName: 'Not out yet', actual: '', consensus: '2.0%' },
+    { gmt: '10:00', country: 'Z', eventName: 'No consensus', actual: '1.4%', consensus: ' ' },
+  ] } }, '2026-09-24');
+  const [a, b, c] = ['X', 'Y', 'Z'].map(k => rows.find(r => r.country === k));
+  assert.equal(a.released, true); assert.equal(a.surprise, null);
+  assert.equal(b.released, false, 'an empty actual has not printed');
+  assert.equal(c.released, true); assert.equal(c.surprise, null, 'nobody had a number to be surprised against');
+  assert.equal(printed(rows).n, 2, 'two printed');
+  assert.equal(printed(rows).scored, 0, 'none scorable');
 });
 
 console.log(`calendarFeed: ${n} groups, all passed`);
