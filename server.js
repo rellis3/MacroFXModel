@@ -156,6 +156,7 @@ import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INST
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
 import { scanBoard as _msScanBoard, scanLinks as _msScanLinks, boardFreshness as _msBoardFreshness, THRESHOLDS as _msTHRESHOLDS } from './js/marketScan.js';
 import { marketState as _mtMarketState, sectorBoard as _mtSectorBoard } from './js/marketState.js';
+import { buildQuestion as _buildQuestion } from './js/marketDrill.js';
 import { plannedInWindow } from './js/endOfDay.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -14555,6 +14556,32 @@ async function _computeWider() {
       .slice(0, 4).map(l => ({ id: l.id, labelA: l.labelA, labelB: l.labelB, normally: l.normally })),
   };
 }
+// ── /api/drill-question — one reading question, from today's real board ─────
+// The drill exists and is the right shape: seven RECOGNITION skills, each generated
+// from actual numbers, each with a knowable answer, and not one of them asking which
+// way anything will go. It has sat on market-view.html since it was built and the
+// progress bar reads 0 of 7 — because it lives on a page you have to remember to open.
+//
+// Reading an explanation feels like learning and mostly is not. Being asked, committing
+// to an answer, and THEN seeing the working is what sticks. So the question moves to the
+// page that actually gets opened, and the ~700KB bundle it needs stays on the server:
+// the question itself is about a kilobyte.
+app.get('/api/drill-question', async (req, res) => {
+  try {
+    if (Date.now() - _drillBundle.at > 24 * 3600_000 || !_drillBundle.data) await _refreshDrillBundle();
+    const B = _drillBundle.data;
+    if (!B?.dates?.length) return res.status(503).json({ ok: false, error: 'no bundle yet' });
+    const topic = String(req.query.topic ?? '').trim() || null;
+    // the seed is the DAY, so the same question stands all day and a reload cannot be
+    // used to shop for an easier one
+    const seed = Number(new Date().toISOString().slice(0, 10).replace(/-/g, '')) % 100000;
+    const q = _buildQuestion(B, { seed, only: topic ? [topic] : null });
+    if (!q) return res.json({ ok: false, none: true, reason: "today's board does not carry the numbers for that reading" });
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, topic, question: q, boardTo: B.to });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/wider-market', async (_req, res) => {
   try {
     if (!_wider.data || Date.now() - _wider.at > 60 * 60_000) _wider = { at: Date.now(), data: await _computeWider() };
