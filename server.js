@@ -32663,12 +32663,27 @@ app.get('/api/services', (req, res) => {
     || (b.sinceBoot.totalMs - a.sinceBoot.totalMs)
     || (order[a.cost] - order[b.cost])
     || a.id.localeCompare(b.id));
+  const mem = process.memoryUsage();
+  const mb = n => +(n / (1024 * 1024)).toFixed(1);
   res.json({
     ok: true,
     bootedAt: new Date(bootedAt).toISOString(),
     uptimeSec: Math.round(upMs / 1000),
     profile: process.env.SERVICE_PROFILE || null,
     counts: { total: rows.length, enabled: rows.filter(r => r.enabled).length },
+    memory: {
+      rssMB: mb(mem.rss),
+      heapUsedMB: mb(mem.heapUsed),
+      heapTotalMB: mb(mem.heapTotal),
+      externalMB: mb(mem.external),
+      arrayBuffersMB: mb(mem.arrayBuffers),
+      peakRssMB: mb(_memPeak.rssBytes),
+      peakAt: _memPeak.at,
+      sampledAt: new Date().toISOString(),
+      note: 'This process only, not the container total (start.sh bots run as separate OS processes with their own RSS Railway meters separately). '
+          + 'peakRssMB is the highest 60s sample since boot, not the true peak, and resets on every redeploy — there is no R2 persistence for '
+          + 'memory the way there is for the CPU/run counters above.',
+    },
     note: '`today` and `window` (7d) are UTC day totals persisted to R2, so they survive a redeploy — cut from those. '
         + '`sinceBoot` is this process only. start.sh bots report flag state only (observable: false); '
         + 'their CPU is not measured here. Switch a service off with its env var (see MD files/RAILWAY_SERVICE_FLAGS.md).',
@@ -33607,6 +33622,18 @@ try {
 // longer throws away the morning's measurements.
 await svcStatsLoad();
 svcInterval('serviceStats', () => svcStatsFlush('interval'), SVC_STATS_FLUSH_MS);
+
+// Memory has NO instrumentation anywhere else in this file -- every other
+// number on /api/services is CPU wall-time, and Railway's own usage graph is
+// the only place RSS has ever been visible. A single `process.memoryUsage()`
+// read at request time can straddle a trough between GCs and undersell a real
+// high-water mark, so sample every minute instead and keep the peak. Cheap:
+// no I/O, no allocation beyond the one object.
+let _memPeak = { rssBytes: 0, at: null };
+svcInterval('memSample', () => {
+  const m = process.memoryUsage();
+  if (m.rss > _memPeak.rssBytes) _memPeak = { rssBytes: m.rss, at: new Date().toISOString() };
+}, 60_000);
 
 svcInterval('monitor', monitorTick, MONITOR_MS);
 if (svcEnabled('monitor')) svcRun('monitor', monitorTick).catch(console.error);
