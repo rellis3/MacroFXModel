@@ -208,7 +208,7 @@ table.t .k{color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:e
 
 <div class="foot" id="foot">Loading…</div>
 <script type="module">
-import { BOARD, THRESHOLDS, scanBoard, scanLinks, fmtChange, fmtLevel } from './js/marketScan.js';
+import { BOARD, THRESHOLDS, scanBoard, scanLinks, fmtChange, fmtLevel, boardFreshness } from './js/marketScan.js';
 import { marketState, sectorBoard } from './js/marketState.js';
 import { horizonBoard, horizonFindings, SHAPES } from './js/horizons.js';
 import { readBook, fmtBookPx } from './js/oiBoard.js';
@@ -288,7 +288,15 @@ function renderTop() {
     ? `<span class="pill ${R.stressed ? 'str' : R.elevated ? 'elev' : 'calm'}">${esc(r.label ?? r.regime)}</span>
        <span>month ${esc(String(r.months ?? '?'))} · ${esc(r.what ?? '')}</span>`
     : `<span class="pill">regime unavailable</span>`;
-  $('clock').textContent = `board to ${B.to} · ${B.n.toLocaleString()} sessions`;
+  // One "board to <date>" over series that settle at different speeds overstates the
+  // board's currency: prices print every session, FRED lands one to three behind, and
+  // the broad dollar has sat six sessions back beside a price from last night.
+  const FRESH = boardFreshness(SCORED, B);
+  $('clock').textContent = `board to ${B.to} · ${B.n.toLocaleString()} sessions`
+    + (FRESH.worst ? ` · ${FRESH.worst.label.toUpperCase()} ONLY TO ${FRESH.worst.lastDate}` : '');
+  $('clock').title = FRESH.lagging.length
+    ? `Behind the rest of the board: ${FRESH.lagging.map(r => `${r.label} to ${r.lastDate} (${r.staleDays} sessions)`).join('; ')}.`
+    : 'Every series is current to the same session.';
   $('riskCount').textContent = `${R.stressed} stressed · ${R.elevated} elevated · ${R.calm} calm`;
 }
 
