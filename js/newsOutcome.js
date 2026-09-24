@@ -75,7 +75,11 @@ export function numberSide(actual, consensus, { tol = 0.02 } = {}) {
  * way ("Stronger (fewer out of work)").
  */
 export function scoreClaim({ side = null, instrument = null, dir = null, invert = false } = {}) {
-  if (!side || side === 'mid') return { claimHeld: null, why: 'the in-line box claims a drift, which thirty minutes cannot falsify' };
+  // A MISSING consensus and an IN-LINE print are both unscorable and are not the same
+  // thing. Seen live: the SNB rows carry no consensus at all and were being told they
+  // had landed in the in-line box, which is a different and wrong explanation.
+  if (!side) return { claimHeld: null, why: 'no consensus was published, so there is no box for the number to land in' };
+  if (side === 'mid') return { claimHeld: null, why: 'the in-line box claims a drift, which thirty minutes cannot falsify' };
   if (!dir || dir === 'flat') return { claimHeld: null, why: 'the market did not move enough to say' };
   const baseUp = CCY_UP_IS_INSTRUMENT_UP[instrument];
   if (baseUp == null) return { claimHeld: null, why: `no polarity known for ${instrument}` };
