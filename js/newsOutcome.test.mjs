@@ -47,6 +47,10 @@ t('an inverted release flips what "strong" means, once, at one place', () => {
 t('what cannot be scored is refused, never counted as a win', () => {
   assert.equal(scoreClaim({ side: 'mid', instrument: 'AUDUSD', dir: 'up' }).claimHeld, null);
   assert.match(scoreClaim({ side: 'mid', instrument: 'AUDUSD', dir: 'up' }).why, /thirty minutes cannot falsify/);
+  // a MISSING consensus and an IN-LINE print are both unscorable and are not the same
+  // thing -- the SNB rows have no consensus and were being told they landed in-line
+  assert.match(scoreClaim({ side: null, instrument: 'USDCHF', dir: 'up' }).why, /no consensus was published/);
+  assert.doesNotMatch(scoreClaim({ side: null, instrument: 'USDCHF', dir: 'up' }).why, /in-line/);
   assert.equal(scoreClaim({ side: 'up', instrument: 'AUDUSD', dir: 'flat' }).claimHeld, null);
   assert.equal(scoreClaim({ side: 'up', instrument: 'AUDUSD', dir: null }).claimHeld, null);
   assert.equal(scoreClaim({ side: 'up', instrument: 'XAUUSD', dir: 'up' }).claimHeld, null, 'no polarity known');

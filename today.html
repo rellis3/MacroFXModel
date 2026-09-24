@@ -516,6 +516,42 @@
   .mth-tag{margin-left:7px;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
            padding:1px 6px;border-radius:4px;background:var(--amber-bg);color:var(--amber)}
 
+  .bl{margin:0 0 8px;font-size:11.5px;border:1px solid var(--border2);border-radius:8px;padding:6px 9px;background:var(--card2)}
+  .bl>summary{cursor:pointer;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:var(--text3)}
+  .bl-r{display:flex;align-items:baseline;gap:8px;padding:3px 0;border-top:1px dashed var(--border2);color:var(--text2)}
+  .bl-r:first-of-type{border-top:0;margin-top:5px}
+  .bl-r.chg{background:var(--amber-bg);border-radius:5px;padding-left:5px;margin-left:-5px}
+  .bl-cp{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text);min-width:38px}
+  .bl-ar{min-width:10px} .bl-b{flex:1;min-width:0}
+  .bl-p{font-variant-numeric:tabular-nums;font-weight:700;color:var(--text);white-space:nowrap}
+  .bl-tag{font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--amber);white-space:nowrap}
+  .bl-q{margin-left:6px;font-size:9px;color:var(--text3);border-bottom:1px dotted var(--text3);cursor:help}
+  .bl-why{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:6px}
+
+  .dq-stem{font-size:13.5px;line-height:1.6;color:var(--text);margin-bottom:5px}
+  .dq-ask{font-size:12.5px;line-height:1.55;color:var(--text2);margin-bottom:8px}
+  .dq-opts{display:grid;gap:6px;margin-bottom:8px}
+  .dq-opt{text-align:left;background:var(--card2);border:1px solid var(--border2);color:var(--text);
+          border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.5;cursor:pointer;font-family:inherit}
+  .dq-opt:hover:not(:disabled){border-color:var(--blue)}
+  .dq-opt:disabled{cursor:default}
+  .dq-opt.right{border-color:var(--bull);background:var(--bull-bg)}
+  .dq-opt.wrong{border-color:var(--red);background:rgba(248,81,73,.10)}
+  .dq-opt.dim{opacity:.5}
+  .dq-hint{font-size:11px;line-height:1.55;color:var(--text3)}
+  .dq-rev{font-size:12px;line-height:1.6;color:var(--text2);padding:8px 11px;border-radius:8px;
+          background:var(--card2);border-left:3px solid var(--text3)}
+  .dq-rev.ok{border-left-color:var(--bull)} .dq-rev.no{border-left-color:var(--red)}
+  .dq-rev b{color:var(--text)}
+  .dq-why{margin-top:4px} .dq-pr{margin-top:5px;font-size:11.5px;color:var(--text3)}
+  .dq-pr span{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin-right:6px}
+  .dq-done{font-size:12px;line-height:1.6;color:var(--text2)}
+  .dq-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .dq-bar{display:flex;gap:3px}
+  .dq-bar i{width:15px;height:4px;border-radius:2px;background:var(--bg3)}
+  .dq-bar i.p{background:var(--amber)} .dq-bar i.s{background:var(--bull)}
+  .dq-meta{font-size:10.5px;color:var(--text3)} .dq-meta b{color:var(--text2)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -1153,6 +1189,10 @@
       <!-- The equity half of the board, which this page was blind to. ~1KB summary of
            what market-view draws; the detail is one click away. -->
       <div class="mread" id="widerPanel" style="display:none"></div>
+
+      <!-- Recognition before prediction. The drill existed on market-view since it was
+           built and its bar read 0 of 7 — it never came to you. -->
+      <div class="mread" id="drillPanel" style="display:none"></div>
 
       <div class="mread" id="regimeLine" style="display:none"></div>
       <div class="mread" id="deskWatch" style="display:none"></div>
@@ -2154,7 +2194,8 @@ async function loadGate() {
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
-  setTimeout(() => loadWiderMarket().catch(() => {}), 4000);       // the equity half of the board
+  setTimeout(() => loadWiderMarket().catch(() => {}), 4000);
+  setTimeout(() => loadDrill().catch(() => {}), 5000);                // one reading a day       // the equity half of the board
   setInterval(() => loadWiderMarket().catch(() => {}), 60 * 60_000);
   setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
@@ -8592,6 +8633,86 @@ function renderWiderMarket() {
       <a href="market-view.html" target="_blank">the full 63-market board ↗</a></div>`;
 }
 
+// ── One reading a day ───────────────────────────────────────────────────────
+// The objection that produced this: scoring your own calls is useless if you cannot
+// read the setup yet. Correct — prediction before recognition is backwards.
+//
+// So this asks about what IS, never what WILL BE. "The 10-year moved +16bp; was that
+// real yields or inflation pricing?" has a right answer, knowable from the numbers on
+// the page, and knowing it IS the skill. None of the seven readings asks which way
+// anything goes — this desk has tested direction repeatedly and it is null.
+//
+// It asks BEFORE it explains, which is the whole point. Reading an explanation feels
+// like learning and mostly is not; committing to an answer and being wrong is what
+// sticks. The drill has existed on market-view.html since it was built and its progress
+// bar reads 0 of 7, for the same reason everything on that page goes unused: it does not
+// come to you.
+//
+// Progress shares market-view's key, so a reading learned on either page counts on both.
+const DRILL_KEY = 'mv_learn_v1';
+let DRILL = {};
+try { DRILL = JSON.parse(localStorage.getItem(DRILL_KEY) ?? '{}') ?? {}; } catch { DRILL = {}; }
+let _drill = null, _drillPick = null, _drillAsked = null;
+
+async function loadDrill() {
+  const L = window.learnStateBrick; if (!L) return;
+  const topic = L.nextTopic(DRILL);
+  // Nothing due is a real answer. Drilling a reading you just got right teaches nothing
+  // and trains you to skim the card.
+  if (!topic) { _drill = { none: true }; render(); return; }
+  if (_drillAsked === topic && _drill) return;
+  try {
+    const j = await jget(`/api/drill-question?topic=${encodeURIComponent(topic)}`);
+    _drillAsked = topic;
+    _drill = j?.ok ? { topic, q: j.question, boardTo: j.boardTo } : { none: true, reason: j?.reason };
+    _drillPick = null; render();
+  } catch { /* the block stays hidden */ }
+}
+
+window.pickDrill = key => {
+  const L = window.learnStateBrick; if (!L || !_drill?.q || _drillPick) return;
+  _drillPick = key;
+  DRILL = L.answer(DRILL, _drill.topic, key === _drill.q.answer);
+  try { localStorage.setItem(DRILL_KEY, JSON.stringify(DRILL)); } catch {}
+  render();
+};
+window.nextDrill = () => { _drill = null; _drillAsked = null; _drillPick = null; loadDrill().catch(() => {}); };
+
+function renderDrill() {
+  const el = $('drillPanel'); if (!el) return;
+  const L = window.learnStateBrick;
+  if (!L || !_drill) { el.style.display = 'none'; return; }
+  const p = L.progress(DRILL);
+  const bar = `<div class="dq-bar">${p.rows.map(r => `<i class="${r.mastery >= 0.7 ? 's' : r.mastery > 0 ? 'p' : ''}" title="${esc0(r.label)} — ${Math.round(r.mastery * 100)}%"></i>`).join('')}</div>
+    <span class="dq-meta">${p.solid} of ${p.total} readings solid${p.weakest ? ` · weakest: <b>${esc0(p.weakest.label)}</b>` : ''}</span>`;
+
+  el.style.display = 'block';
+  if (_drill.none) {
+    el.innerHTML = `<div class="mread-h">One reading a day</div>
+      <div class="dq-done">${esc0(_drill.reason ?? 'Nothing is due — everything you have worked on is still fresh. Come back tomorrow and the oldest reading will be waiting. Spacing them out is what makes them stick; drilling the same one twice in an afternoon does not.')}</div>
+      <div class="dq-foot">${bar}</div>`;
+    return;
+  }
+  const q = _drill.q, done = _drillPick != null;
+  const opts = (q.options ?? []).map(o => {
+    const right = o.key === q.answer;
+    const cls = !done ? '' : right ? 'right' : _drillPick === o.key ? 'wrong' : 'dim';
+    return `<button class="dq-opt ${cls}" ${done ? 'disabled' : ''} onclick="pickDrill('${esc0(o.key)}')">${esc0(o.label)}</button>`;
+  }).join('');
+
+  el.innerHTML = `<div class="mread-h">One reading a day — ${esc0(L.CONCEPTS?.[_drill.topic]?.label ?? '')}</div>
+    <div class="dq-stem">${esc0(q.stem ?? '')}</div>
+    ${q.ask ? `<div class="dq-ask">${esc0(q.ask)}</div>` : ''}
+    <div class="dq-opts">${opts}</div>
+    ${done ? `<div class="dq-rev ${_drillPick === q.answer ? 'ok' : 'no'}">
+        <b>${_drillPick === q.answer ? 'Right.' : 'Not this time.'}</b> ${esc0(q.reveal ?? '')}
+        ${q.why ? `<div class="dq-why">${esc0(q.why)}</div>` : ''}
+        ${q.principle ? `<div class="dq-pr"><span>the principle</span>${esc0(q.principle)}</div>` : ''}
+        <button class="eb-btn" style="margin-top:7px" onclick="nextDrill()">next reading →</button>
+      </div>` : `<div class="dq-hint">Commit to one before you look. Being wrong is what makes it stick — reading the explanation first feels like learning and mostly is not.</div>`}
+    <div class="dq-foot">${bar}<span class="dq-meta"> · board to ${esc0(_drill.boardTo ?? '—')} · asks what IS, never what will be</span></div>`;
+}
+
 // ── End of day: the morning's published numbers, marked ──────────────────────
 // A chain RE-read at the close cannot do this job. It reads the CURRENT state with
 // no memory of the morning, so it can say what the market looks like now but not
@@ -8743,6 +8864,7 @@ function render() {
   renderWeekAhead();
   renderRegimePanel();
   try { renderWiderMarket(); } catch (e) { const t = $('widerPanel'); if (t) t.style.display = 'none'; }
+  try { renderDrill(); } catch (e) { const t = $('drillPanel'); if (t) t.style.display = 'none'; }
   try { renderEndOfDay(); } catch (e) { const t = $('eodPanel'); if (t) t.style.display = 'none'; }
   renderConcept();
   const rs = sortRows(rows());
@@ -9403,7 +9525,38 @@ function renderDrawerBand(r) {
   const asiaTxt = asia.length ? `<div class="ccy-explain" style="margin-top:6px"><b>Asia</b> · a wide Asia range changes the odds here: ${asia.map(([k, v]) => `${k} reached after 07:00 in ${Math.round(v.high * 100)}% of wide-Asia days vs ${Math.round(v.low * 100)}% of narrow ones`).join('; ')}.</div>` : `<div class="ccy-explain muted" style="margin-top:6px;font-size:11px">Asia's range does not change these odds on this instrument (tested; no tercile difference clears 15pp).</div>`;
   const aim = bandAimFor(r);
   const head = aim ? `<div class="chain-hook" style="font-size:13.5px;margin-bottom:6px;padding:8px 10px;border-left:3px solid var(--amber);background:var(--card2);border-radius:0 6px 6px 0">${esc0(aim.text)}<div class="muted" style="font-size:10.5px;font-weight:400;margin-top:3px">A target guide, not an entry · as at ${aim.cp} UK</div></div>` : '';
-  box.innerHTML = head + side('up', s.oh_reached_at, s.oh_75_reached_at, 'oh_med', 'oh_75', 'Typical high:', row.up) + side('dn', s.ol_reached_at, s.ol_75_reached_at, 'ol_med', 'ol_75', 'Typical low:', row.dn) + clock + asiaTxt +
+  // ── the day's ladder of reads, and which one actually said something ──
+  // The obvious question about a panel that re-reads eight times is whether the morning
+  // read was the useful one. The parameters answer it: p(median reached | not yet)
+  // decays monotonically through the session (EUR/USD 48% at 07:00, 8% by 16:30) — that
+  // is the clock, not a sharper read. What IS informative is a band being REACHED, which
+  // lifts the odds of the next band by a median 3.3x on every one of the 128 cells. So
+  // the ladder marks the checkpoints where the read changed branch and says the rest are
+  // time running down.
+  let ladderHtml = '';
+  try {
+    const L = window.bandLadderBrick;
+    const res = L && L.ladder({ params: P, session: s, checkpoints: B.BAND_REACH_CHECKPOINTS, nowMins: _ukHM() });
+    if (res?.ok && res.rows.length > 1) {
+      const BR = { stretch: 'the 75th is in — stretch territory', extended: 'median reached, playing for the 75th', waiting: 'neither band reached yet' };
+      const pc = x => x == null ? '—' : Math.round(x * 100) + '%';
+      const rows = res.rows.map(x => `<div class="bl-r ${x.changed ? 'chg' : ''}">
+          <span class="bl-cp">${esc0(x.cp)}</span>
+          <span class="bl-ar">${x.side === 'up' ? '↑' : '↓'}</span>
+          <span class="bl-b">${esc0(BR[x.branch])}${x.sideAssumed ? '<span class="bl-q" title="Neither band had been reached, so which side the panel would have shown rests on how far price had travelled — a figure only known as it stands now. The odds on this row are exact; the side is not.">side inferred</span>' : ''}</span>
+          <span class="bl-p">${pc(x.p)}${x.lift ? ` <span class="muted">${x.lift}× the hour</span>` : ''}</span>
+          ${x.changed ? '<span class="bl-tag">read changed</span>' : ''}
+        </div>`).join('');
+      ladderHtml = `<details class="bl" ${res.changes ? 'open' : ''}>
+        <summary>Today's reads — all ${res.rows.length} checkpoints${res.changes ? `, ${res.changes} changed` : ', none changed'}</summary>
+        ${rows}
+        <div class="bl-why">${esc0(res.whyUnchanged)}</div>
+        <div class="bl-why muted">Reconstructed from the timestamps the session already stores, so whether a band had been reached by an earlier checkpoint is a fact rather than an estimate.</div>
+      </details>`;
+    }
+  } catch (e) { console.error('[band ladder]', e); }
+
+  box.innerHTML = head + ladderHtml + side('up', s.oh_reached_at, s.oh_75_reached_at, 'oh_med', 'oh_75', 'Typical high:', row.up) + side('dn', s.ol_reached_at, s.ol_75_reached_at, 'ol_med', 'ol_75', 'Typical low:', row.dn) + clock + asiaTxt +
     `<div class="mread-precise" style="margin-top:8px">Base rates from ${P.n.toLocaleString()} London sessions since 2016 (T7b). Bands here are the fitted ladder's O-H / O-L p50 and p75 — the same lines the bots trade and the chart draws — and the study (T7b) was run on those same lines. A target guide, never an entry: the fade at these bands tested null as a trade, and so did the level touch. ${_EV('c', _EV_T.c)}</div>`;
 }
 async function renderDrawerTape(sym) {
@@ -12257,6 +12410,19 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as MacroChanged from './js/macroChanged.js';
   window.macroChangedBrick = MacroChanged;
   try { window.renderMacro?.(); } catch (e) {}
+</script>
+<!-- The day's ladder of band reads (js/bandLadder.js): which checkpoint actually
+     changed the read, and which were just the clock running down. -->
+<script type="module">
+  import * as BandLadder from './js/bandLadder.js';
+  window.bandLadderBrick = BandLadder;
+</script>
+<!-- The reading drill's spaced-repetition state (js/learnState.js). Shares
+     market-view's storage key, so a reading learned on either page counts on both. -->
+<script type="module">
+  import * as LearnState from './js/learnState.js';
+  window.learnStateBrick = LearnState;
+  try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">
   import * as CalendarFeed from './js/calendarFeed.js';
