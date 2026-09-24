@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { riskMonitor, movers, matrix, eventRisk, feedHealth, deskBrief } from './terminal.js';
+import { riskMonitor, movers, matrix, eventRisk, feedHealth, deskBrief, liveTape, tapeHealth } from './terminal.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const row = (key, last, change, z, extra = {}) => ({ key, label: key, last, change, z, kind: 'price', ...extra });
@@ -182,6 +182,104 @@ t('a quiet board gets one honest line, not six empty ones', () => {
   const b = deskBrief({ board: [], sectors: [], state: null });
   assert.equal(b.length, 1);
   assert.match(b[0].text, /outside its own ordinary range/);
+});
+
+// ── the live tape: the one current thing on a page built from daily closes ──
+const OPENS = {
+  EURUSD: { session_open: 1.14466, ac: 'fx', dp: 5, regime: { label: 'RANGE' }, vol_pct: 4 },
+  USDJPY: { session_open: 157.392, ac: 'fx', dp: 3 },
+  GOLD:   { session_open: 4362.35, ac: 'commodity', dp: 2, current_price: 4300 },
+  SPX500: { session_open: 7777, ac: 'index', dp: 1 },
+};
+const PRICES = {
+  'EUR/USD': { price: 1.13845, digits: 5, pip: 0.0001, ageS: 12 },
+  'USD/JPY': { price: 158.211, digits: 3, pip: 0.01, ageS: 8 },
+  SPX500:    { price: 7723.6, digits: 1, pip: 1, ageS: 40 },
+};
+
+t("the live move is price minus the session open, in the instrument's own unit", () => {
+  const rows = liveTape(OPENS, PRICES);
+  const eur = rows.find(r => r.name === 'EURUSD');
+  assert.equal(eur.move, -62, 'pips, not price');
+  assert.equal(eur.pct, -0.54);
+  assert.equal(eur.unit, 'pips');
+  const jpy = rows.find(r => r.name === 'USDJPY');
+  assert.equal(jpy.move, 82, 'a JPY pair is 0.01 a pip');
+  const spx = rows.find(r => r.name === 'SPX500');
+  assert.equal(spx.move, -53);
+  assert.equal(spx.unit, 'pts');
+});
+
+// The feed keys gold as XAU/USD and the Nasdaq as NAS100/USD. A naive slash rule found
+// four of eight and fell back to the brief's older price for the rest — a gap that
+// looked exactly like data.
+t('feed aliases resolve the instruments a slash rule cannot', () => {
+  const opens = { GOLD: { session_open: 4362.35, ac: 'commodity', dp: 2 }, NQ: { session_open: 30500, ac: 'index', dp: 1 },
+                  OIL: { session_open: 96, ac: 'commodity', dp: 2 }, SPX500: { session_open: 7777, ac: 'index', dp: 1 } };
+  const px = { 'XAU/USD': { price: 4262.04, pip: 1, digits: 2, ageS: 30 }, 'NAS100/USD': { price: 30176.3, pip: 1, digits: 1, ageS: 30 },
+               'WTICO/USD': { price: 95.1, pip: 1, digits: 2, ageS: 30 }, 'SPX500/USD': { price: 7668.9, pip: 1, digits: 1, ageS: 30 } };
+  const rows = liveTape(opens, px);
+  assert.equal(rows.length, 4);
+  assert.ok(rows.every(r => r.fromStream), 'every one resolved to a real quote');
+  assert.equal(rows.find(r => r.name === 'GOLD').move, -100);
+  assert.equal(rows.find(r => r.name === 'NQ').move, -324);
+});
+
+// The upstream writes every ~5 minutes, so a 3-minute threshold would paint the strip
+// amber all day — a marker that always fires teaches nothing.
+t('the stale threshold matches how often the source actually writes', () => {
+  const opens = { EURUSD: { session_open: 1.14466, ac: 'fx', dp: 5 } };
+  const at300 = liveTape(opens, { 'EUR/USD': { price: 1.138, pip: 0.0001, ageS: 300 } });
+  assert.equal(at300[0].stale, false, '5 minutes is how this feed normally behaves');
+  assert.equal(tapeHealth(at300).state, 'ok');
+  const at900 = liveTape(opens, { 'EUR/USD': { price: 1.138, pip: 0.0001, ageS: 900 } });
+  assert.equal(at900[0].stale, true, 'fifteen minutes is a feed that has stopped');
+  assert.equal(at300[0].ageS, 300, 'the exact age travels regardless of the verdict');
+});
+
+t('a slash-named quote is matched to the six-letter instrument', () => {
+  const rows = liveTape(OPENS, PRICES);
+  assert.equal(rows.find(r => r.name === 'EURUSD').fromStream, true, "'EUR/USD' must find 'EURUSD'");
+  // gold has no live quote, so it falls back to the brief's own price and says so
+  const gold = rows.find(r => r.name === 'GOLD');
+  assert.equal(gold.fromStream, false);
+  assert.equal(gold.price, 4300);
+  assert.equal(gold.ageS, null);
+});
+
+t('rows are ranked by how much they have moved, not alphabetically', () => {
+  const rows = liveTape(OPENS, PRICES);
+  const pcts = rows.map(r => Math.abs(r.pct));
+  assert.deepEqual(pcts, [...pcts].sort((a, b) => b - a));
+});
+
+t('an instrument with no open, or a zero open, is dropped rather than divided by', () => {
+  assert.equal(liveTape({ X: { ac: 'fx' } }, {}).length, 0);
+  assert.equal(liveTape({ X: { session_open: 0, ac: 'fx', current_price: 1 } }, {}).length, 0);
+  assert.equal(liveTape(null, null).length, 0);
+  assert.equal(liveTape({ EURUSD: OPENS.EURUSD }, PRICES, { only: ['GOLD'] }).length, 0, 'the filter is respected');
+});
+
+// A feed that has stopped and a market that has stopped look identical on a screen.
+t('a dead feed is reported, never drawn as a calm market', () => {
+  const fresh = liveTape(OPENS, PRICES);
+  assert.equal(tapeHealth(fresh).state, 'ok');
+  assert.equal(tapeHealth(fresh).worstAgeS, 40);
+
+  // only EURUSD, so "every quote is stale" is unambiguous — gold has no live quote at
+  // all and would otherwise sit in the same strip as a different kind of not-live
+  const old = liveTape(OPENS, { 'EUR/USD': { price: 1.13845, pip: 0.0001, ageS: 900 } }, { only: ['EURUSD'] });
+  const h = tapeHealth(old);
+  assert.equal(h.state, 'bad');
+  assert.match(h.detail, /the feed has stopped, the market has not necessarily/);
+
+  const mixed = liveTape(OPENS, { 'EUR/USD': { price: 1.13845, pip: 0.0001, ageS: 900 }, 'USD/JPY': { price: 158.211, pip: 0.01, ageS: 5 } }, { only: ['EURUSD', 'USDJPY'] });
+  assert.equal(tapeHealth(mixed).state, 'warn');
+
+  assert.equal(tapeHealth([]).state, 'bad');
+  assert.match(tapeHealth([]).detail, /not a quiet market/);
+  // prices that came only from the brief are minutes old and must not read as live
+  assert.equal(tapeHealth(liveTape({ GOLD: OPENS.GOLD }, {})).state, 'warn');
 });
 
 console.log(`terminal: ${n} groups, all passed`);

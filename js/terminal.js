@@ -281,3 +281,89 @@ export function deskBrief({ board = [], sectors = [], links = [], horizons = [],
   if (!L.length) L.push({ tag: 'STATE', text: 'Nothing on the board is outside its own ordinary range.' });
   return L;
 }
+
+/**
+ * The live tape — the one thing on this page that is actually current.
+ *
+ * WHY IT EXISTS. Everything else the terminal draws comes from the daily-close bundle:
+ * the board, the momentum shapes, the sector split, the links. That is the right source
+ * for a twenty-session z-score and the wrong one for a page calling itself a monitor —
+ * until now it fetched once on load, never refreshed, and showed last night's closes
+ * with no indication that is what they were.
+ *
+ * HOW IT IS BUILT, AND WHY THAT WAY. The session open comes from the daily brief (48KB)
+ * and does not change once the session is running, so it is read ONCE. The price comes
+ * from the hedge-signals feed, which is 2.9KB for thirty-two instruments and can
+ * therefore be polled without the egress bill noticing — this repo's cost is egress, and
+ * polling the 48KB brief every minute would be roughly 70MB a day from a single tab left
+ * open. Move is simply price minus open.
+ *
+ * `ageS` travels with each quote and is carried through, because a feed that has stopped
+ * updating and a market that has stopped moving look identical on a screen. A quote past
+ * `staleAfterS` is marked rather than drawn as live.
+ */
+/**
+ * The price feed keys its own way, and not the board's. FX is the six-letter name with
+ * a slash, but gold is XAU/USD, the Nasdaq is NAS100/USD and crude is WTICO/USD — so a
+ * naive slash rule silently found four of eight instruments and quietly fell back to the
+ * brief's older price for the rest, which looked like data rather than like a gap.
+ */
+const FEED_ALIAS = {
+  GOLD: 'XAU/USD', XAUUSD: 'XAU/USD', SILVER: 'XAG/USD', PLATINUM: 'XPT/USD', COPPER: 'XCU/USD',
+  NQ: 'NAS100/USD', SPX500: 'SPX500/USD', US30: 'US30/USD', US2000: 'US2000/USD',
+  OIL: 'WTICO/USD', WTI: 'WTICO/USD', BRENT: 'BCO/USD',
+};
+const feedKeys = name => [name, FEED_ALIAS[name], name.length === 6 ? `${name.slice(0, 3)}/${name.slice(3)}` : null].filter(Boolean);
+
+/**
+ * `staleAfterS` defaults to ten minutes, not one.
+ *
+ * The upstream writes every ~5 minutes despite a comment claiming 3 seconds, so a
+ * 3-minute threshold would paint the strip amber all day. A marker that fires
+ * permanently teaches nothing — the same reason a one-session FRED lag is not flagged on
+ * the board. The exact age travels with every row regardless, so the reader always has
+ * the real number rather than a verdict derived from a made-up threshold.
+ */
+export function liveTape(opens = {}, prices = {}, { staleAfterS = 600, only = null } = {}) {
+  const rows = [];
+  for (const [name, o] of Object.entries(opens ?? {})) {
+    if (only && !only.includes(name)) continue;
+    const open = o?.session_open;
+    let q = null;
+    for (const k of feedKeys(name)) { if (prices?.[k]) { q = prices[k]; break; } }
+    const px = q?.price ?? o?.current_price ?? null;
+    if (!Number.isFinite(open) || !Number.isFinite(px) || open === 0) continue;
+    const pip = q?.pip ?? (o?.ac === 'fx' ? (/JPY/.test(name) ? 0.01 : 0.0001) : 1);
+    const ageS = Number.isFinite(q?.ageS) ? q.ageS : null;
+    rows.push({
+      name, open, price: px,
+      move: +((px - open) / pip).toFixed(0),
+      pct: +(((px / open) - 1) * 100).toFixed(2),
+      unit: pip === 1 ? 'pts' : 'pips',
+      dp: q?.digits ?? o?.dp ?? (pip === 1 ? 2 : 5),
+      ageS, stale: ageS != null && ageS > staleAfterS,
+      fromStream: !!q,          // false = the brief's own last price, which is older
+      regime: o?.regime?.label ?? null,
+      volPct: o?.vol_pct ?? null,
+    });
+  }
+  return rows.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+}
+
+/**
+ * Is the live layer actually live?
+ *
+ * A monitor whose feed has died must say so rather than keep drawing the last quote it
+ * happened to receive. `worstAgeS` is the oldest quote on the strip, because one frozen
+ * instrument is the tell that the stream is half-broken.
+ */
+export function tapeHealth(rows = [], { staleAfterS = 600 } = {}) {
+  const live = (Array.isArray(rows) ? rows : []).filter(r => r.ageS != null);
+  if (!rows.length) return { state: 'bad', detail: 'no live prices — the strip is showing nothing, not a quiet market' };
+  if (!live.length) return { state: 'warn', detail: 'prices came from the daily brief, not the live feed — minutes old, not seconds' };
+  const worstAgeS = Math.max(...live.map(r => r.ageS));
+  const stale = rows.filter(r => r.stale).length;
+  if (stale === rows.length) return { state: 'bad', worstAgeS, detail: `every quote is over ${staleAfterS}s old — the feed has stopped, the market has not necessarily` };
+  if (stale) return { state: 'warn', worstAgeS, detail: `${stale} of ${rows.length} quotes are over ${staleAfterS}s old` };
+  return { state: 'ok', worstAgeS, detail: `${rows.length} instruments, oldest quote ${worstAgeS}s` };
+}
