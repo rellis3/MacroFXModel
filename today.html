@@ -556,6 +556,21 @@
           border-radius:4px;background:var(--amber-bg);color:var(--amber);cursor:help}
   .eb-win.fin{background:var(--bull-bg);color:var(--bull)}
 
+  /* The per-market block: numbers, not a sentence. Eight markets each repeating the
+     same forty-word caveat is what made this a wall of text; the caveats are tooltips. */
+  .eb-mhd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .eb-mi{font-size:15px;line-height:1}
+  .eb-mn{font-size:13.5px;font-weight:700;color:var(--text)}
+  .eb-mv{font-size:13.5px;font-weight:800;font-variant-numeric:tabular-nums}
+  .eb-mp{font-size:11.5px;font-weight:600;opacity:.8;font-variant-numeric:tabular-nums}
+  .eb-mv.up,.eb-mp.up{color:var(--bull)} .eb-mv.dn,.eb-mp.dn{color:var(--bear)}
+  .eb-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+  .eb-chip{font-size:10px;font-weight:700;letter-spacing:.02em;padding:2px 7px;border-radius:5px;
+           background:var(--bg3);color:var(--text2);white-space:nowrap;cursor:help}
+  .eb-chip.hot{background:var(--bear-bg);color:var(--bear)}
+  .eb-chip.cool{background:var(--blue-bg);color:var(--blue)}
+  .eb-chip.warn{background:var(--amber-bg);color:var(--amber)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -8460,15 +8475,45 @@ function renderEodBrief(r, inp, amTxt) {
   // The markets a macro reader carries a view on, described every day. The role line is
   // what makes the number teachable — "gold is four trades wearing one name" is the bit
   // you can still use next month, and the percentage is not.
-  const one = d => `<div class="eb-mkt">
-      <div class="eb-ml">${d.line}</div>
-      ${d.regime || d.vol ? `<div class="eb-mm">${esc0([d.regime, d.vol].filter(Boolean).join(' '))}</div>` : ''}
+  const MKT_ICON = { GOLD: '\u{1F947}', NQ: '\u{1F4BB}', SPX500: '\u{1F3DB}\uFE0F', USDJPY: '\u{1F1EF}\u{1F1F5}',
+                     EURUSD: '\u{1F1EA}\u{1F1FA}', BTCUSD: '\u20BF', GBPUSD: '\u{1F1EC}\u{1F1E7}', AUDUSD: '\u{1F1E6}\u{1F1FA}' };
+  // The same facts as the sentence, laid out as numbers. Eight markets each repeating
+  // "and it got there having travelled several times the distance it ended up covering,
+  // on a tick count about as busy as usual (an activity proxy, not traded size)" IS the
+  // wall of text. The caveats live in one tooltip each now rather than eight paragraphs.
+  // the words are already short since the bands were recalibrated on the measured
+  // distribution; only the longest needs trimming for a chip
+  const PATH_SHORT = { 'direct for an intraday path': 'direct path' };
+  const chip = (txt, cls, tip) => `<span class="eb-chip ${cls || ''}"${tip ? ` title="${esc0(tip)}"` : ''}>${txt}</span>`;
+  const one = d => {
+    const up = d.moveUp, mv = d.move == null ? '' : `${up ? '+' : ''}${d.move.toFixed(d.dp)} ${esc0(d.unit)}`;
+    const chips = [
+      d.used != null ? chip(`${d.used}% of range`, d.used >= 140 ? 'hot' : d.used <= 60 ? 'cool' : '',
+        'Realised against the range this page forecast at the open. Over 140% is a day the forecast missed; under 60% is one that never got going.') : '',
+      d.pathWord ? chip(esc0(PATH_SHORT[d.pathWord] ?? d.pathWord), d.pathWord === 'very winding' ? 'warn' : d.pathWord === 'direct path' || d.pathWord.startsWith('direct') ? 'cool' : '',
+        `Net move over path length${d.efficiency != null ? `: ${d.efficiency}` : ''}. 1.0 is a straight line; 0.2 means it travelled five times the distance it ended up covering.`) : '',
+      d.ratio != null ? chip(`${d.ratio}\u00d7 ticks`, d.ratio >= 1.4 ? 'hot' : d.ratio <= 0.7 ? 'cool' : '',
+        'Tick count against its own 20-session median. OANDA gives a TICK COUNT, not traded size \u2014 an activity proxy.') : '',
+      d.volPct != null ? chip(`vol p${d.volPct}`, d.volPct >= 80 ? 'hot' : d.volPct <= 20 ? 'cool' : '',
+        "Where this market's own volatility sits in its own history.") : '',
+      d.regimeNow ? chip(esc0(d.regimeNow), d.regimeTurned ? 'warn' : '',
+        d.regimeTurned ? 'The page called a different regime at the open \u2014 it turned under the position.' : 'The regime the page was working from at the open, still in place.') : '',
+    ].filter(Boolean).join('');
+    return `<div class="eb-mkt">
+      <div class="eb-mhd">
+        <span class="eb-mi">${MKT_ICON[d.name] ?? '\u{1F4CA}'}</span>
+        <span class="eb-mn">${esc0(d.label)}</span>
+        <span class="eb-mv ${up ? 'up' : 'dn'}">${mv}</span>
+        ${d.movedPct != null ? `<span class="eb-mp ${up ? 'up' : 'dn'}">${d.movedPct > 0 ? '+' : ''}${d.movedPct}%</span>` : ''}
+      </div>
+      <div class="eb-chips">${chips}</div>
       ${d.role ? `<div class="eb-mr"><span>what it is</span>${esc0(d.role)}</div>` : ''}
     </div>`;
+  };
   const named = (b.named?.length || b.alsoMoved?.length)
-    ? `<div class="eb-fwd"><div class="eb-h">The markets, one by one</div>
+    ? `<div class="eb-fwd"><div class="eb-h">\u{1F4C8} The markets, one by one</div>
         ${(b.named ?? []).map(one).join('')}
-        ${b.alsoMoved?.length ? `<div class="eb-h" style="margin-top:9px">Also worth a line — far past their own forecasts</div>${b.alsoMoved.map(one).join('')}` : ''}
+        ${b.alsoMoved?.length ? `<div class="eb-h" style="margin-top:9px">\u26A1 Also worth a line \u2014 far past their own forecasts</div>${b.alsoMoved.map(one).join('')}` : ''}
        </div>` : '';
 
   const cards = `<div class="eb-cards">${b.cards.map(c => `<div class="eb-card">
@@ -8484,7 +8529,7 @@ function renderEodBrief(r, inp, amTxt) {
     const tiles = T.day && C ? C.watchKeys([T.day], { limit: 5 }) : [];
     const dayName = T.day ? new Date(T.day.date + 'T12:00:00Z').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : null;
     fwd = `<div class="eb-fwd">
-      <div class="eb-h">Into tomorrow — what is scheduled, not what it does</div>
+      <div class="eb-h">\u{1F5D3}\uFE0F Into tomorrow \u2014 what is scheduled, not what it does</div>
       ${T.day ? `<div class="eb-said"><span class="k">${esc0(dayName)}</span>${T.day.n} high-impact ${T.day.n === 1 ? 'release' : 'releases'}: ${
           rows.slice(0, 5).map(e => `<b>${esc0(e.ccy ?? '')} ${esc0(e.event)}</b> ${new Date(e.ms).toISOString().slice(11, 16)}`).join(' · ')}</div>` : ''}
       ${tiles.length ? `<div class="eb-said"><span class="k">Lands on</span>${tiles.map(t => esc0(t.key)).join(', ')} — a count of where tomorrow's news transmits, never a view on what it does there. <a href="market-view.html#diary" target="_blank">the diary ↗</a></div>` : ''}
@@ -8499,7 +8544,7 @@ function renderEodBrief(r, inp, amTxt) {
     ${cards}
     ${named}
     ${bt}
-    ${said ? `<div class="eb-fwd"><div class="eb-h">What this page said at ${esc0(amTxt)}</div>${said}
+    ${said ? `<div class="eb-fwd"><div class="eb-h">\u{1F4DC} What this page said at ${esc0(amTxt)}</div>${said}
       <div class="eb-note">Quoted, not graded. Prose is not scoreable, and marking it would be the same mistake as calling a lean right on one day — the numbers above are the measured half, and the comparison is yours to make.</div></div>` : ''}
     ${fwd}
     ${(() => { try { return renderEodReviewBlock(); } catch (e) { console.error('[eod review]', e); return ''; } })()}
@@ -8552,7 +8597,7 @@ function renderEodReviewBlock() {
   // Saying which it was is the difference between a read and an overstatement.
   const W = window.eodReviewBrick?.sessionWindow?.() ?? null;
   const head = `<div class="eb-h" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span>The written review</span>
+      <span>\u{1F58A}\uFE0F The written review</span>
       ${W ? `<span class="eb-win ${W.final ? 'fin' : ''}" title="${esc0(W.note)}">${W.final ? 'final · all sessions closed' : 'interim · US still open'}</span>` : ''}
       <span class="eb-ai">AI · costs a call · not backtested</span>
       ${rv ? `<span class="muted" style="font-size:10.5px;font-weight:400;letter-spacing:0;text-transform:none">${
@@ -8841,7 +8886,12 @@ function renderEndOfDay() {
       <b>${r.range.over}</b> ran past it, <b>${r.range.about}</b> landed about right, <b>${r.range.under}</b> stayed inside, of ${r.range.n} scored.
       ${r.leans.n ? `Of the <b>${r.leans.n}</b> ${r.leans.n === 1 ? 'pair' : 'pairs'} the page committed a direction on, <b>${r.leans.right}</b> ${r.leans.right === 1 ? 'is' : 'are'} the right way ${closed ? 'at the close' : 'so far'}.` : 'The page committed no direction on any pair today — not a miss, the absence of a call.'}</div>`;
 
-  el.innerHTML = `<div class="mread-h">${closed ? 'End of day' : 'The day so far'} — what this page published at ${esc0(amTxt)}, marked</div>
+  // Collapsible, with the page's own chevron pattern and its localStorage memory, so a
+  // long panel can be folded away and stays folded.
+  const W2 = window.eodReviewBrick?.sessionWindow?.() ?? null;
+  const hd = `${W2 ? esc0(W2.label) : (closed ? 'End of day' : 'The day so far')} \u2014 what this page published at ${esc0(amTxt)}, marked`;
+  el.innerHTML = `<div class="sec-hd-row"><span class="sec-title">\u{1F4D3} ${hd}</span>${secChev('eodPanel')}</div>
+    ${secBody('eodPanel', `
     ${narrated}
     ${summary}
     ${chips ? `<div class="eod-cmt">${chips}</div>` : ''}
@@ -8850,7 +8900,7 @@ function renderEndOfDay() {
       <tbody>${rows}</tbody></table></div>
     ${rest}
     ${ch}
-    <div class="eod-foot">${esc0(r.caveat)} Expected range is the median high-low forecast at ${esc0(amTxt)}; realised is the live session high-low where the feed carries one. A <b>?</b> means the aim and the falsifier both traded, and a high and a low cannot say which came first — that pair is genuinely unscoreable today, not a win. Open a pair for its own morning commitments.</div>`;
+    <div class="eod-foot">${esc0(r.caveat)} Expected range is the median high-low forecast at ${esc0(amTxt)}; realised is the live session high-low where the feed carries one. A <b>?</b> means the aim and the falsifier both traded, and a high and a low cannot say which came first — that pair is genuinely unscoreable today, not a win. Open a pair for its own morning commitments.</div>`)}`;
 }
 
 function render() {

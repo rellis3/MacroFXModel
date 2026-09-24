@@ -296,15 +296,29 @@ export function activityWord(ratio) {
 /**
  * How directly a market got where it finished.
  *
- * `efficiency` is net move over path length: 1.0 is a straight line, 0.2 is a market
- * that travelled five times its net distance to end up there. It needs no baseline and
- * no history, which is why it is worth saying — and it is the difference between a
- * trend day and a day that paid out nothing while looking like it moved.
+ * `efficiency` is net move over path length: 1.0 would be a straight line. It needs no
+ * baseline and no history, which is why it is worth saying — it separates a trend day
+ * from a day that paid nothing while looking like it moved.
+ *
+ * THE BANDS ARE MEASURED, NOT GUESSED, AND THE FIRST VERSION WAS GUESSED. Set at
+ * 0.6/0.35/0.2 on an assumption, "very winding" fired on 20 of 30 instruments and
+ * "straight line" was unreachable — a label that fires on two thirds of the board
+ * describes nothing. The observed cross-section is min 0.02, p25 0.09, median 0.16,
+ * p75 0.23, max 0.51: intraday paths are inherently inefficient and never come close
+ * to 1.0.
+ *
+ * These are the QUARTILES of that distribution, so each word fires on about a quarter
+ * of the board. Re-derive them if the instrument set changes — the same rule the
+ * board's own z-thresholds carry, and for the same reason. Measured on one session's
+ * thirty instruments (2026-09-24); a longer sample would tighten them.
  */
+export const PATH_BANDS = { direct: 0.23, usual: 0.16, winding: 0.09, measuredOn: '2026-09-24', n: 30 };
 export function pathWord(eff) {
   if (!Number.isFinite(eff)) return null;
-  return eff >= 0.6 ? 'in close to a straight line' : eff >= 0.35 ? 'with the usual amount of back-and-forth'
-    : eff >= 0.2 ? 'the long way round' : 'having travelled several times the distance it ended up covering';
+  return eff >= PATH_BANDS.direct ? 'direct for an intraday path'
+    : eff >= PATH_BANDS.usual ? 'the usual back-and-forth'
+    : eff >= PATH_BANDS.winding ? 'winding'
+    : 'very winding';
 }
 
 /**
@@ -347,6 +361,14 @@ export function describe(name, { row = null, session = null, activity = null, mo
     line: `${spec?.label ?? name} finished ${bits.join(', ')}.`,
     regime: reg[0] ?? null, vol: vol || null,
     used: row.used, movedPct: row.movedPct, ratio: activity?.ratio ?? null, efficiency: eff ?? null,
+    // The same facts as `line`, kept apart so a renderer can lay them out as numbers
+    // instead of a sentence. Eight markets each repeating "and it got there having
+    // travelled several times the distance it ended up covering, on a tick count about
+    // as busy as usual (an activity proxy, not traded size)" is the wall of text, and
+    // the caveat belongs in one tooltip rather than eight paragraphs.
+    move: row.move, unit: row.unit, dp: row.dp, moveUp: row.move > 0,
+    pathWord: pw, activityWord: aw, volPct: row.volPctNow ?? null, regimeNow: row.regimeNow ?? null,
+    regimeTurned: !!(morning?.regime && row.regimeNow && morning.regime !== row.regimeNow),
   };
 }
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { macroFreshness, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
-         SPINE, activityWord, pathWord, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
+         SPINE, activityWord, pathWord, PATH_BANDS, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
 import { endOfDay } from './endOfDay.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -205,12 +205,28 @@ t('activity is described as busy, never as traded size', () => {
   assert.equal(activityWord('x'), null);
 });
 
-t('path efficiency separates a trend day from one that went nowhere loudly', () => {
-  assert.match(pathWord(0.85), /straight line/);
-  assert.match(pathWord(0.45), /usual amount of back-and-forth/);
-  assert.match(pathWord(0.25), /long way round/);
-  assert.match(pathWord(0.1), /several times the distance/);
+// The first bands were guessed at 0.6/0.35/0.2 and "very winding" then fired on 20 of
+// 30 instruments while "straight line" was unreachable. Intraday paths are inherently
+// inefficient: the measured cross-section is p25 0.09, median 0.16, p75 0.23, max 0.51.
+t('the path bands are quartiles of the measured distribution, not a guess', () => {
+  assert.match(pathWord(0.51), /direct for an intraday path/, 'the straightest on the board');
+  assert.match(pathWord(0.20), /the usual back-and-forth/);
+  assert.match(pathWord(0.12), /^winding$/);
+  assert.match(pathWord(0.02), /very winding/, 'the most wandering on the board');
   assert.equal(pathWord(null), null);
+  // each word covers roughly a quarter, so none of them fires on most of the board
+  const sample = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.14, 0.16, 0.18, 0.20, 0.24, 0.31, 0.38, 0.51];
+  const counts = {};
+  for (const v of sample) counts[pathWord(v)] = (counts[pathWord(v)] ?? 0) + 1;
+  assert.equal(Object.keys(counts).length, 4, 'all four words are reachable');
+  for (const [w, c] of Object.entries(counts))
+    assert.ok(c <= sample.length * 0.5, `"${w}" fires on ${c} of ${sample.length} — a label on half the board says nothing`);
+});
+
+t('the bands carry when and on what they were measured', () => {
+  assert.equal(PATH_BANDS.n, 30);
+  assert.ok(PATH_BANDS.direct > PATH_BANDS.usual && PATH_BANDS.usual > PATH_BANDS.winding);
+  assert.match(PATH_BANDS.measuredOn, /^\d{4}-\d{2}-\d{2}$/);
 });
 
 t('a described market carries the numbers and their caveats, and never a reason', () => {
@@ -222,7 +238,7 @@ t('a described market carries the numbers and their caveats, and never a reason'
   });
   assert.match(d.line, /Gold finished down 78 \$/);
   assert.match(d.line, /114% of the range forecast/);
-  assert.match(d.line, /the long way round/);
+  assert.match(d.line, /the usual back-and-forth/);
   assert.match(d.line, /0\.82× its 20-session median/);
   assert.match(d.line, /activity proxy, not traded size/);
   assert.match(d.regime, /Still RANGE/);
