@@ -74,13 +74,47 @@ export function num(v) {
  * this desk has a surprise store (econ_surprise_v1) that does that job properly with
  * historical dispersion. This is the raw gap, labelled as such.
  */
+/**
+ * The field is called `gmt` and it is NOT GMT. It is US Eastern.
+ *
+ * Verified against a known release: the US flash PMI prints at 09:45 New York / 13:45
+ * UTC, and this feed reports `gmt: "09:45"`. Reading it as UTC put every printed row
+ * four or five hours early, silently, on both pages that show it.
+ *
+ * The row's DATE is the UTC date, though, while the clock is Eastern — an Australian
+ * release at 01:30 UTC is filed under that UTC date with `gmt: "21:30"`, which is the
+ * previous evening in New York. So the wall clock is converted from Eastern and then
+ * pulled onto the row's own date: whichever of the day before, the day, or the day
+ * after lands on the stated UTC date is the right instant. Getting this wrong by a day
+ * is worse than getting it wrong by hours, because the release drops off the panel
+ * entirely.
+ */
+const _ET = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false,
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+/** How far New York's wall clock is from UTC at this instant, in ms (negative). */
+function etOffsetMs(ms) {
+  const p = Object.fromEntries(_ET.formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second) - ms;
+}
+export function etClockToUtcMs(isoDate, hh, mm) {
+  const guess = Date.parse(`${isoDate}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00Z`);
+  if (!Number.isFinite(guess)) return null;
+  let ms = guess - etOffsetMs(guess);
+  ms = guess - etOffsetMs(ms);                       // one refinement, for the DST edges
+  // pull it onto the row's stated UTC date
+  for (const shift of [0, -864e5, 864e5]) {
+    if (new Date(ms + shift).toISOString().slice(0, 10) === isoDate) return ms + shift;
+  }
+  return ms;
+}
+
 export function parseNasdaq(json, isoDate) {
   const rows = json?.data?.rows ?? [];
   const out = [];
   for (const r of rows) {
     const t = String(r?.gmt ?? '').match(/^(\d{1,2}):(\d{2})/);
     if (!t || !isoDate) continue;
-    const ms = Date.parse(`${isoDate}T${String(t[1]).padStart(2, '0')}:${t[2]}:00Z`);
+    const ms = etClockToUtcMs(isoDate, t[1], t[2]);
     if (!Number.isFinite(ms)) continue;
     const actual = num(r.actual), consensus = num(r.consensus), previous = num(r.previous);
     out.push({
@@ -89,7 +123,12 @@ export function parseNasdaq(json, isoDate) {
       actual, consensus, previous,
       raw: { actual: r.actual ?? null, consensus: r.consensus ?? null, previous: r.previous ?? null },
       surprise: (actual != null && consensus != null) ? +(actual - consensus).toFixed(4) : null,
-      released: actual != null,
+      // A release HAPPENED if the feed carries any actual at all. Deriving this from the
+      // PARSED number meant "39.5K" — which num() deliberately leaves alone, because a
+      // headcount surprise is not comparable with a percentage one — read as not yet
+      // printed, and Australia's employment report vanished from the panel. Printed and
+      // scorable are two different things and this is the first of them.
+      released: String(r.actual ?? '').trim() !== '',
       source: 'nasdaq',
     });
   }

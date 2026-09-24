@@ -4857,10 +4857,32 @@ async function _computeNewsOutcomes() {
   const evs = (r.events ?? [])
     .filter(e => e.impact === 'high' && e.ms >= d0 && e.ms < d0 + 864e5 && e.ms + 32 * 60_000 <= now)
     .sort((a, b) => a.ms - b.ms).slice(0, _NEWS_OUT_MAX);
+  // THE EVENTS FEED CARRIES NO ACTUALS. It is the ForexFactory CSV plus a Finnhub tier
+  // that dropped the endpoint, so `actual` is null on every row and nothing could be
+  // scored -- the direction claim stayed untestable no matter how well the reaction was
+  // measured. Nasdaq's calendar does carry them, and /api/calendar-feed already fetches
+  // it, so the two are joined on country and event name.
+  let printedRows = [];
+  try { if (Date.now() - _calFeed.at > 30 * 60_000) await _refreshCalFeed(); printedRows = _calFeed.data?.printed?.rows ?? []; }
+  catch { /* the join degrades to no actuals, which is where it started */ }
+  const NAS_COUNTRY = { 'United States': 'US', 'Euro Zone': 'EU', Germany: 'DE', France: 'FR', Italy: 'IT', Spain: 'ES',
+    'United Kingdom': 'GB', Japan: 'JP', Switzerland: 'CH', Australia: 'AU', 'New Zealand': 'NZ', Canada: 'CA' };
+  const norm = x => String(x ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const findPrinted = (country, event) => {
+    const want = norm(event);
+    const same = printedRows.filter(r => NAS_COUNTRY[r.country] === country);
+    return same.find(r => norm(r.event) === want)
+        ?? same.find(r => { const n = norm(r.event); return n.includes(want) || want.includes(n); })
+        ?? null;
+  };
+
   const rows = [];
   for (const e of evs) {
+    const hit = (e.actual == null || e.actual === '') ? findPrinted(e.country, e.event) : null;
     const ev = { country: e.country, event: e.event, ms: e.ms, kind: _newsKindServer(e.event),
-                 actual: e.actual ?? null, estimate: e.estimate ?? null };
+                 actual: e.actual ?? hit?.raw?.actual ?? null,
+                 estimate: e.estimate ?? hit?.raw?.consensus ?? null,
+                 actualFrom: hit ? 'nasdaq' : (e.actual ? 'calendar' : null) };
     const instrument = _NEWS_HEADLINE[e.country] ?? null;
     let reaction = null;
     if (instrument) { try { reaction = await _scReaction(instrument, e.ms); } catch (err) { console.warn('[news-outcome]', instrument, err.message); } }
@@ -26458,7 +26480,7 @@ async function _refreshCalFeed() {
   if (health.state === 'bad' && _calFeed.data) { _calFeed.error = health.detail; return _calFeed; }
   _calFeed = { at: Date.now(), error: health.state === 'bad' ? health.detail : null,
     data: { ahead: _calUpcoming(ff ?? [], Date.now(), { days: 7, minRank: 3 }),
-            printed: _calPrinted(nas ?? []), health, today } };
+            printed: _calPrinted(nas ?? [], { limit: 60 }), health, today } };
   return _calFeed;
 }
 app.get('/api/calendar-feed', async (_req, res) => {
