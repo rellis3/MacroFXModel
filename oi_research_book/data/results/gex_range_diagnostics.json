@@ -1,0 +1,67 @@
+{
+  "generated": "2026-09-24T17:25:09.234557+00:00",
+  "injection_control": {
+    "injected_lift": 0.15,
+    "expected_deltaDR": 0.135,
+    "recovered_deltaDR": 0.129,
+    "p": 0.0045,
+    "pass": true
+  },
+  "vol_staleness": {
+    "vol_ratio_short": 1.0223,
+    "vol_ratio_long": 0.8461,
+    "rv20_level_short": 0.2303,
+    "rv20_level_long": 0.1786
+  },
+  "matched_by_vol": {
+    "pooled_within_stratum_deltaDR": 0.3154,
+    "p": 0.0,
+    "strata": [
+      {
+        "stratum": 0,
+        "n_short": 18,
+        "n_long": 141,
+        "rv20_mid": 0.1101,
+        "DR_short": 1.4943,
+        "DR_long": 1.009,
+        "deltaDR": 0.4853
+      },
+      {
+        "stratum": 1,
+        "n_short": 26,
+        "n_long": 132,
+        "rv20_mid": 0.1456,
+        "DR_short": 1.25,
+        "DR_long": 0.9381,
+        "deltaDR": 0.3119
+      },
+      {
+        "stratum": 2,
+        "n_short": 53,
+        "n_long": 106,
+        "rv20_mid": 0.1807,
+        "DR_short": 1.0841,
+        "DR_long": 0.8107,
+        "deltaDR": 0.2734
+      },
+      {
+        "stratum": 3,
+        "n_short": 60,
+        "n_long": 98,
+        "rv20_mid": 0.2205,
+        "DR_short": 0.8969,
+        "DR_long": 0.7342,
+        "deltaDR": 0.1627
+      },
+      {
+        "stratum": 4,
+        "n_short": 87,
+        "n_long": 72,
+        "rv20_mid": 0.3187,
+        "DR_short": 0.9053,
+        "DR_long": 0.5627,
+        "deltaDR": 0.3426
+      }
+    ]
+  }
+}

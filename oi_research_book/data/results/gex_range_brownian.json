@@ -1,0 +1,131 @@
+{
+  "generated": "2026-09-24T17:23:37.873425+00:00",
+  "prereg": "GEX_RANGE_BROWNIAN_PREREG.md",
+  "results": [
+    {
+      "surface": "near",
+      "normaliser": "rv20_ann",
+      "gex_col": "net_gex_sum",
+      "n": 793,
+      "n_short": 244,
+      "n_long": 549,
+      "dropped": 0,
+      "deltaDR": 0.1762,
+      "p": 0.0008,
+      "boot_se": 0.0503,
+      "DR_short": 1.0223,
+      "DR_short_vs1_p": 0.5722,
+      "DR_long": 0.8461,
+      "DR_long_vs1_p": 0.0
+    },
+    {
+      "surface": "near",
+      "normaliser": "atr14",
+      "gex_col": "net_gex_sum",
+      "n": 793,
+      "n_short": 244,
+      "n_long": 549,
+      "dropped": 0,
+      "deltaDR": 0.0706,
+      "p": 0.1535,
+      "boot_se": 0.0499,
+      "DR_short": 1.0478,
+      "DR_short_vs1_p": 0.1657,
+      "DR_long": 0.9772,
+      "DR_long_vs1_p": 0.4089
+    },
+    {
+      "surface": "all",
+      "normaliser": "rv20_ann",
+      "gex_col": "net_gex_sum",
+      "n": 1516,
+      "n_short": 540,
+      "n_long": 976,
+      "dropped": 0,
+      "deltaDR": 0.0761,
+      "p": 0.0347,
+      "boot_se": 0.0364,
+      "DR_short": 0.9682,
+      "DR_short_vs1_p": 0.2176,
+      "DR_long": 0.8921,
+      "DR_long_vs1_p": 0.0
+    },
+    {
+      "surface": "all",
+      "normaliser": "atr14",
+      "gex_col": "net_gex_sum",
+      "n": 1516,
+      "n_short": 540,
+      "n_long": 976,
+      "dropped": 0,
+      "deltaDR": 0.0363,
+      "p": 0.26,
+      "boot_se": 0.0325,
+      "DR_short": 1.0279,
+      "DR_short_vs1_p": 0.2305,
+      "DR_long": 0.9916,
+      "DR_long_vs1_p": 0.6568
+    },
+    {
+      "surface": "near",
+      "normaliser": "rv20_ann",
+      "gex_col": "net_gex",
+      "n": 743,
+      "n_short": 253,
+      "n_long": 490,
+      "dropped": 0,
+      "deltaDR": 0.1968,
+      "p": 0.0004,
+      "boot_se": 0.0527,
+      "DR_short": 1.0468,
+      "DR_short_vs1_p": 0.2012,
+      "DR_long": 0.85,
+      "DR_long_vs1_p": 0.0
+    },
+    {
+      "surface": "all",
+      "normaliser": "rv20_ann",
+      "gex_col": "net_gex",
+      "n": 743,
+      "n_short": 253,
+      "n_long": 490,
+      "dropped": 0,
+      "deltaDR": 0.1968,
+      "p": 0.0001,
+      "boot_se": 0.0513,
+      "DR_short": 1.0468,
+      "DR_short_vs1_p": 0.1985,
+      "DR_long": 0.85,
+      "DR_long_vs1_p": 0.0
+    }
+  ],
+  "variance_ratios": {
+    "short_gamma": {
+      "VR2": 0.8241246178134106,
+      "VR3": 0.7601427747427782,
+      "VR5": 0.6828413602556404
+    },
+    "long_gamma": {
+      "VR2": 0.9533094736436457,
+      "VR3": 0.8997077102584993,
+      "VR5": 0.8873897998673023
+    }
+  },
+  "harness": {
+    "placebo": {
+      "deltaDR": -0.0046,
+      "p": 0.925,
+      "pass": true
+    },
+    "positive_control": {
+      "deltaDR": 0.061,
+      "p": 0.1965,
+      "pass": false
+    },
+    "no_lookahead": {
+      "pass": true
+    }
+  },
+  "verdict": "SUPPORTED",
+  "operational": "PASS"
+}

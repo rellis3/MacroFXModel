@@ -2,6 +2,41 @@
 
 Newest first. Every entry: what was decided, why, and what would reverse it.
 
+## 2026-09-24 — the GEX prerequisite is discharged, and the OI archive exists
+
+**Decided:** G2's premise is validated for range, the "cannot be backtested"
+constraint is void, and G2's *emphasis* is wrong.
+**Why:** the check this log demanded on 2026-07-29 and never ran has now run --
+`oi_research_book/GEX_RANGE_BROWNIAN_RESULTS.md`, pre-registered in `0663f29`.
+On 793 days of NQ, next-day realised range relative to a same-trailing-vol
+Brownian baseline is **+0.176 higher on short-gamma days** (p 0.0008), rising to
+**+0.315 when matched on trailing vol** -- the vol confound was diluting it, not
+creating it. Positive in 4/4 specifications and 6/6 usable years.
+
+Two corrections fall out:
+
+1. **The archive.** `OI Data/NAS100_USD.csv` holds 1,521 dated days of per-strike
+   OI (2020-09 -> 2026-09), already processed into `oi_research_book/data/`. The
+   2026-07-29 decision "forward-test, don't backtest" named its own reversal
+   condition -- "a real dated OI archive appears" -- and it has. **Backtesting the
+   OI layers is now available and should be preferred to waiting.**
+2. **G2 reads the asymmetry backwards.** Short-gamma days sit at DR ~ 1.02, i.e.
+   essentially Brownian. Long-gamma days sit at DR ~ 0.85. The reliable state is
+   **"long gamma is quiet"**, not "short gamma is wild". G2 currently treats short
+   gamma as the actionable one (-> conservative tier).
+
+**Caveat:** this is a RANGE finding with no directional content. It does not touch
+G3, the wall-magnet premise, or the trade/no-trade decision -- G2 has never moved
+that. It also does not rescue the 2026-08-22 band-position null, which tested a
+different variable at a thirtieth of the power.
+**Deviation logged:** the pre-registered positive control was mis-specified (it
+tested a signal the DR statistic removes by construction) and was replaced with a
+synthetic-injection control, which passes. Recorded in the results file, not
+quietly swapped.
+**Reverses if:** the untested event-day confound explains it -- negative net GEX
+may simply proxy for CPI/FOMC/opex days. Run the event-day exclusion before
+building anything on this.
+
 ## 2026-07-30 — G2 remapped: GEX picks the TIER, it does not widen the stop
 
 **Decided:** the stop is clamped to COG's observed 0.20–0.48% envelope, and GEX
