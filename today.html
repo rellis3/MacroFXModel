@@ -440,7 +440,10 @@
      written, so it carries no AI badge and costs nothing to produce. */
   .eb{margin-bottom:12px}
   .eb-hl{font-size:15px;font-weight:700;line-height:1.45;color:var(--text);margin-bottom:8px;text-wrap:balance}
-  .eb-p{font-size:12.5px;line-height:1.65;color:var(--text2);margin-bottom:8px;max-width:88ch}
+  /* No max-width. A reading measure belongs in a narrow column; this card is the full
+     width of the page, and capping the prose stranded half the panel -- the same mistake
+     as the drawer's `.dr p{max-width:74ch}` earlier. */
+  .eb-p{font-size:12.5px;line-height:1.65;color:var(--text2);margin-bottom:8px}
   .eb-p b{color:var(--text);font-weight:600}
   .eb-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:9px;margin:11px 0}
   .eb-card{background:var(--card2);border:1px solid var(--border2);border-radius:9px;padding:9px 11px}
@@ -453,16 +456,16 @@
          color:var(--text3);font-weight:800;vertical-align:baseline;margin-right:6px}
   .eb-fwd{border-top:1px solid var(--border2);padding-top:9px;margin-top:10px}
   .eb-h{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:800;margin-bottom:6px}
-  .eb-said{font-size:11.5px;line-height:1.65;color:var(--text2);padding:3px 0;max-width:92ch}
+  .eb-said{font-size:11.5px;line-height:1.65;color:var(--text2);padding:3px 0}
   .eb-said b{color:var(--text);font-weight:600}
-  .eb-note{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:5px;max-width:88ch}
+  .eb-note{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:5px}
   @media(max-width:560px){.eb-bt .k,.eb-said .k{display:block;min-width:0;margin-bottom:1px}}
 
   .eb-mkt{padding:7px 0;border-top:1px dashed var(--border2)}
   .eb-mkt:first-of-type{border-top:0}
   .eb-ml{font-size:12.5px;line-height:1.6;color:var(--text)}
   .eb-mm{font-size:11.5px;line-height:1.55;color:var(--text2);margin-top:2px}
-  .eb-mr{font-size:11px;line-height:1.55;color:var(--text3);margin-top:3px;max-width:90ch}
+  .eb-mr{font-size:11px;line-height:1.55;color:var(--text3);margin-top:3px}
   .eb-mr span{font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;margin-right:6px;color:var(--text3)}
 
   /* The paid review. Visually a continuation of the free brief, but the AI tag and
@@ -6146,7 +6149,11 @@ function renderMacro() {
     const M = window.macroChangedBrick;
     const today = new Date().toISOString().slice(0, 10);
     const prior = (_tl.snapshots ?? []).filter(d => d.day < today && (d.moved ?? []).length).slice(-1)[0];
-    if (M && prior) chg = { res: M.whatChangedToday(macroMoved?.rows ?? [], prior.moved, prior.day), M };
+    // `macroMoved` IS the rows array -- loadGate does `macroMoved = mc.rows`. Reading
+    // `.rows` off it gave undefined, so this and both end-of-day paths silently scored
+    // an EMPTY macro set: the brief printed "the macro series did not load" and the
+    // paid review repeated it as a finding while the feed was answering with 11 rows.
+    if (M && prior) chg = { res: M.whatChangedToday((macroMoved ?? []), prior.moved, prior.day), M };
   } catch (e) { chg = null; }
   const movedKeys = new Set((chg?.res?.changed ?? []).map(c => c.key));
   const THREAD_KEY = { 'Interest rates & the dollar': 'us10y', 'Real yields & gold': 'tips',
@@ -8446,7 +8453,7 @@ function renderEodBrief(r, inp, amTxt) {
   const fired = (deskWatch?.states ?? []).filter(t => t.firing && String(t.since ?? '').slice(0, 10) === today);
   let b;
   try {
-    b = B.endOfDayBrief({ morning: inp.row, eod: r, moved: macroMoved?.rows ?? [],
+    b = B.endOfDayBrief({ morning: inp.row, eod: r, moved: (macroMoved ?? []),
                           ahead: eodAhead(), watchFired: fired, printed: _eodCal?.printed ?? null,
                           sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {},
                           nowMs: Date.now() });
@@ -8569,7 +8576,7 @@ async function writeEodReview(force) {
   let r, b;
   try {
     r = window.endOfDayBrick.endOfDay({ morning: inp.row, live: inp.live, hl: inp.hl, chainAM: inp.chainAM, chainPM: inp.chainPM });
-    b = window.eodBriefBrick.endOfDayBrief({ morning: inp.row, eod: r, moved: macroMoved?.rows ?? [], ahead: eodAhead(),
+    b = window.eodBriefBrick.endOfDayBrief({ morning: inp.row, eod: r, moved: (macroMoved ?? []), ahead: eodAhead(),
           printed: _eodCal?.printed ?? null, sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {} });
   } catch (e) { console.error('[eod review]', e); return; }
   const snapshot = R.eodSnapshot({ eod: r, brief: b, morning: inp.row, activity: _eodAct?.instruments ?? {} });
