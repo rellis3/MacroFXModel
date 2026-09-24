@@ -597,7 +597,24 @@
   .focusable:hover>.focus-btn,.focus-btn:focus{opacity:1}
   .focus-btn:hover{color:var(--blue);border-color:var(--blue)}
   .in-focus>.focus-btn{display:none}
-  @media(max-width:700px){.focus-panel{inset:0;border-radius:0}.focus-btn{opacity:.7}}
+  /* A hover-reveal is unreachable on a touch screen. The width query I first wrote
+     covered phones and left TABLETS with an invisible button — the right test is
+     whether the device has hover at all, not how wide it is. */
+  @media(hover:none){
+    .focus-btn{opacity:.75;width:32px;height:32px;font-size:14px}   /* a real tap target */
+  }
+  @media(max-width:700px){.focus-panel{inset:0;border-radius:0}}
+  /* On a narrow screen the chain is still a 1020px diagram. Crushing it to fit makes
+     the labels unreadable, so in focus it stays full size and pans instead. */
+  @media(max-width:900px){
+    .focus-body{padding:10px}
+    .focus-body .chain-g{overflow-x:auto}
+    .focus-body .chain-g svg{min-width:1020px;width:1020px}
+  }
+
+  .taptip{position:absolute;z-index:400;background:var(--card);border:1px solid var(--border2);
+          border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.55;color:var(--text);
+          box-shadow:0 10px 30px rgba(0,0,0,.45)}
 
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
@@ -8797,6 +8814,48 @@ function renderDrill() {
         <button class="eb-btn" style="margin-top:7px" onclick="nextDrill()">next reading →</button>
       </div>` : `<div class="dq-hint">Commit to one before you look. Being wrong is what makes it stick — reading the explanation first feels like learning and mostly is not.</div>`}
     <div class="dq-foot">${bar}<span class="dq-meta"> · board to ${esc0(_drill.boardTo ?? '—')} · asks what IS, never what will be</span></div>`;
+}
+
+// ── Tap to read a tooltip ───────────────────────────────────────────────────
+// `title` shows on hover and a touch screen has no hover, so on a phone every one of
+// them is invisible. That has always been true of this page's `.help` spans; it became
+// a REGRESSION when the end-of-day panel moved its caveats into tooltips to stop being
+// a wall of text — on the device this is mostly read on, that deleted the caveats
+// rather than tidying them.
+//
+// So on a no-hover device, a tap on anything carrying a title shows it. Buttons and
+// links are excluded: they have a job already, and hijacking their tap to show a note
+// would break them.
+let _tipEl = null;
+function showTapTip(target, text) {
+  hideTapTip();
+  _tipEl = document.createElement('div');
+  _tipEl.className = 'taptip';
+  _tipEl.textContent = text;
+  document.body.appendChild(_tipEl);
+  const r = target.getBoundingClientRect();
+  const w = Math.min(320, window.innerWidth - 20);
+  _tipEl.style.width = `${w}px`;
+  const top = r.bottom + window.scrollY + 6;
+  _tipEl.style.top = `${top}px`;
+  _tipEl.style.left = `${Math.max(10, Math.min(window.innerWidth - w - 10, r.left + r.width / 2 - w / 2))}px`;
+}
+function hideTapTip() { _tipEl?.remove(); _tipEl = null; }
+if (window.matchMedia?.('(hover: none)')?.matches) {
+  // Anything INTERACTIVE is left alone, and the listener never swallows a tap. A chain
+  // row carries both a title and an onclick that expands it; a capture-phase
+  // stopPropagation would have shown the note instead of opening the row, trading one
+  // broken affordance for another. Only informational elements get the treatment.
+  const CLICKABLE = '[onclick], button, a, [role="button"], input, select, textarea, summary, label';
+  document.addEventListener('click', e => {
+    const t = e.target.closest?.('[title]');
+    if (!t) { hideTapTip(); return; }
+    if (t.closest(CLICKABLE)) { hideTapTip(); return; }   // it has a job already
+    const text = t.getAttribute('title');
+    if (!text) { hideTapTip(); return; }
+    showTapTip(t, text);
+  });
+  document.addEventListener('scroll', hideTapTip, { passive: true });
 }
 
 // ── Focus mode ──────────────────────────────────────────────────────────────
