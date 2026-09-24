@@ -223,6 +223,41 @@
   .dy-pr .cc{grid-column:2;font-size:10.5px;color:var(--text3)}
   .dy-bad{background:var(--bear-bg);border:1px solid rgba(249,115,22,.4);border-radius:8px;padding:9px 12px;
           font-size:12px;line-height:1.6;color:var(--text)}
+  .rp-intro{font-size:12.5px;line-height:1.7;color:var(--text2);max-width:88ch}
+  .rp-warn{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.55}
+  .rp-go{margin-top:9px;background:var(--card2);border:1px solid var(--border2);color:var(--text);
+         border-radius:7px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+  .rp-go:hover{border-color:var(--blue);color:var(--blue)}
+  .rp-hd{display:flex;align-items:center;gap:10px;margin-bottom:9px;flex-wrap:wrap}
+  .rp-dots{display:flex;gap:4px}
+  .rp-dots i{width:20px;height:5px;border-radius:3px;background:var(--bg3,#1c2330)}
+  .rp-dots i.on{background:var(--blue)} .rp-dots i.ok{background:var(--bull)} .rp-dots i.no{background:var(--red)}
+  .rp-n{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3)}
+  .rp-ev{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:1px;margin-bottom:8px;
+         background:var(--border2);border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+  .rp-e{background:var(--card);padding:6px 9px;display:flex;align-items:baseline;gap:6px}
+  .rp-e .k{font-size:10px;color:var(--text3);flex:1;min-width:0}
+  .rp-e .v{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+  .rp-e .v.up{color:var(--bull)} .rp-e .v.dn{color:var(--bear)} .rp-e .v.fl{color:var(--text3)}
+  .rp-e .z{font-size:9.5px;color:var(--text3);font-variant-numeric:tabular-nums}
+  .rp-br{font-size:11.5px;color:var(--text2);margin-bottom:9px}
+  .rp-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px}
+  .rp-opt{text-align:left;background:var(--card2);border:1px solid var(--border2);color:var(--text);
+          border-radius:8px;padding:8px 11px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .rp-opt:hover:not(:disabled){border-color:var(--blue)}
+  .rp-opt:disabled{cursor:default}
+  .rp-opt.right{border-color:var(--bull);background:var(--bull-bg)}
+  .rp-opt.wrong{border-color:var(--red);background:rgba(248,81,73,.10)}
+  .rp-opt.dim{opacity:.45}
+  .rp-rev{margin-top:9px;font-size:12.5px;line-height:1.65;color:var(--text2);padding:9px 12px;
+          border-radius:8px;background:var(--card2);border-left:3px solid var(--text3)}
+  .rp-rev.ok{border-left-color:var(--bull)} .rp-rev.no{border-left-color:var(--red)}
+  .rp-rev b{color:var(--text)}
+  .rp-turn{margin-top:4px;font-size:11.5px;color:var(--amber);font-weight:600}
+  .rp-path{margin-top:7px;font-size:12.5px;color:var(--text);font-weight:600}
+  .rp-path span{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-bottom:2px}
+  .rp-dates{font-size:10.5px;margin-top:3px}
+
   .agetag{display:inline-block;margin-left:5px;font-size:8.5px;font-weight:800;letter-spacing:.04em;
           padding:0 4px;border-radius:3px;background:var(--amber-bg);color:var(--amber);vertical-align:middle;cursor:help}
 
@@ -652,6 +687,12 @@
       <div class="srcbox" data-p="range"></div>
     </div>
 
+    <div class="card s12" data-panel="p-replay">
+      <h2>Replay &mdash; read a real window as it unfolded</h2>
+      <div class="sub">Five sessions of a real past window, one at a time, the whole board recomputed as it stood at each. <b>You read it before it tells you.</b> The window always contains a change of reading &mdash; a window where nothing turns is five questions with one answer. The turn is the whole exercise: getting the four steady sessions right and missing it is the failure this is built to surface.</div>
+      <div id="replay"></div>
+    </div>
+
     <div class="card s12" data-panel="p-learn">
       <h2>What this desk has actually tested</h2>
       <div class="sub">Every claim on this page traces to a pre-registered study with a verdict — including the ones that came back null, which are the majority and the more useful half.</div>
@@ -686,6 +727,8 @@ import { CHAIN_NODES, nodeDelta, evaluateChain } from './js/macroChain.js';
 import { readBook, bookFindings, fmtBookPx, fmtBookPct } from './js/oiBoard.js';
 import { marketState, sectorBoard, impactRows, confirmations, FEEDS } from './js/marketState.js';
 import { annotate, watchKeys, surpriseWords } from './js/calendarFeed.js';
+import * as ReplayDrill from './js/replayDrill.js';
+window.replayDrillBrick = ReplayDrill;
 import { dualLine, levelLine, histogram, spark } from './js/mvChart.js';
 import { analogues, keysFor } from './js/analogue.js';
 import { buildMap } from './js/mvMap.js';
@@ -757,7 +800,7 @@ async function load() {
     for (const el of document.querySelectorAll('.srcbox')) el.innerHTML = srcLine(el.dataset.p);
     renderGroupBoard('ratesBoard', ['Rates', 'Credit & fear']);
     renderGroupBoard('eqBoard', ['Equities', 'FX', 'Commodities', 'Crypto']);
-    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons, renderImpactProp, renderDiary);
+    draw(renderVol, renderLearn, renderMap, renderKeyStrip, renderRead, renderCheck, renderTime, renderHorizons, renderImpactProp, renderDiary, renderReplay);
     applySection();
     $('foot').innerHTML = `Rates, spreads and the VIX move in their own units (bp, points); prices in per cent. “Rare” means the twenty-session move sits beyond two standard deviations of that series’ own twenty-session moves over the last three years — which is why a big number is not automatically rare, and a small one can be. Built from ${BUNDLE.n.toLocaleString()} sessions, ${BUNDLE.from} to ${BUNDLE.to}.`;
   } catch (e) { $('scan').innerHTML = `<span class="muted">Could not read the board: ${esc(e.message)}</span>`; }
@@ -1361,7 +1404,7 @@ const SECTIONS = [
     deep: [['oi-dashboard.html', 'OI dashboard'], ['oi-zones.html', 'OI zones'], ['expected-moves.html', 'Expected moves'], ['vol-forecast-v2.html', 'Vol forecast']],
     count: () => BOOK?.ok ? (BOOK.stale ? '!' : BOOK.rows.filter(r => r.inside === false).length || null) : null },
   { id: 'learn', em: '🎓', label: 'Learn',
-    panels: ['p-learn'],
+    panels: ['p-replay', 'p-learn'],
     deep: [['drill.html', 'Drill'], ['evidence.html', 'Evidence book'], ['market-sense.html', 'What has been tested']],
     count: () => null },
 ];
@@ -1606,6 +1649,79 @@ try { LEARN = JSON.parse(localStorage.getItem(LEARN_KEY) ?? '{}') ?? {}; } catch
 const saveLearn = () => { try { localStorage.setItem(LEARN_KEY, JSON.stringify(LEARN)); } catch (e) {} };
 
 let QUIZ = null;        // { topic, q, picked, revealed }
+
+// ── Replay drill: read a real window as it unfolds ──────────────────────────
+// The time machine above this browses a past session and tells you what followed in
+// the same breath. That is useful for exploring and it does not teach, for the same
+// reason reading an explanation does not: nothing is committed before the answer
+// appears.
+//
+// This commits. Five sessions of a real window, oldest first, the board recomputed as
+// it stood at each. You name the reading; then it tells you. The window is chosen for
+// containing a CHANGE of reading — a window where nothing turns is five questions with
+// one answer, and the first version of this served exactly that before it was caught.
+let RUN = null, PICKS = [], STEP = 0;
+
+window.newReplay = () => {
+  if (!BUNDLE) return;
+  const R = window.replayDrillBrick; if (!R) return;
+  RUN = R.buildRun(BUNDLE, { seed: (Date.now() ^ Math.floor(Math.random() * 1e6)) % 1e6,
+                             engine: { scanBoard, marketState } });
+  PICKS = []; STEP = 0;
+  renderReplay();
+};
+window.pickReplay = key => {
+  if (!RUN || PICKS[STEP] != null) return;
+  PICKS[STEP] = key;
+  renderReplay();
+};
+window.nextReplay = () => { if (RUN && STEP < RUN.steps.length - 1 && PICKS[STEP] != null) { STEP++; renderReplay(); } };
+
+function renderReplay() {
+  const el = $('replay'); if (!el) return;
+  const R = window.replayDrillBrick;
+  if (!R) { el.innerHTML = ''; return; }
+  if (!RUN) {
+    el.innerHTML = `<div class="rp-intro">Five sessions of a real past window, one at a time. You read each one before it tells you.
+      <b>The window always contains a change of reading</b> — one where nothing turns is five questions with the same answer.
+      <div class="rp-warn">Not point-in-time: FRED revises, so this is today's vintage of that history. It teaches the shape of a regime and is not a track record.</div>
+      <button class="rp-go" onclick="newReplay()">start a replay →</button></div>`;
+    return;
+  }
+
+  const s = RUN.steps[STEP], picked = PICKS[STEP] ?? null, done = picked != null;
+  const finished = PICKS.filter(x => x != null).length === RUN.steps.length;
+  const ev = s.evidence.map(e => `<div class="rp-e"><span class="k">${esc(e.label)}</span><span class="v ${e.change > 0 ? 'up' : e.change < 0 ? 'dn' : 'fl'}">${e.change > 0 ? '+' : ''}${e.change}</span><span class="z">z${e.z >= 0 ? '+' : ''}${e.z}</span></div>`).join('');
+  const opts = R.STATES.map(st => {
+    const right = st === s.answer;
+    const cls = !done ? '' : right ? 'right' : picked === st ? 'wrong' : 'dim';
+    return `<button class="rp-opt ${cls}" ${done ? 'disabled' : ''} onclick="pickReplay('${esc(st)}')">${esc(st)}</button>`;
+  }).join('');
+
+  const dots = RUN.steps.map((x, k) => `<i class="${k === STEP ? 'on' : PICKS[k] != null ? (PICKS[k] === x.answer ? 'ok' : 'no') : ''}"></i>`).join('');
+
+  let tail = '';
+  if (done && !finished) {
+    tail = `<div class="rp-rev ${picked === s.answer ? 'ok' : 'no'}">
+      <b>${picked === s.answer ? 'Right — ' : 'It was '}${esc(s.answer)}.</b> ${esc(s.line ?? '')}
+      ${s.changed ? '<div class="rp-turn">This is the step where the reading turned.</div>' : ''}
+      <button class="rp-go" onclick="nextReplay()">next session →</button></div>`;
+  } else if (finished) {
+    const sc = R.scoreRun(RUN, PICKS);
+    tail = `<div class="rp-rev ${sc.caughtChange === false ? 'no' : 'ok'}">
+      <b>${sc.right} of ${sc.n} readings.</b> ${esc(sc.verdict)}
+      <div class="rp-path"><span>the path</span>${esc(R.pathOf(RUN))}</div>
+      <div class="rp-dates muted">${esc(RUN.from)} → ${esc(RUN.to)}</div>
+      <button class="rp-go" onclick="newReplay()">another window →</button></div>`;
+  }
+
+  el.innerHTML = `<div class="rp-hd"><span class="rp-dots">${dots}</span>
+      <span class="rp-n">session ${STEP + 1} of ${RUN.steps.length}${finished ? '' : ' · what kind of market is this?'}</span></div>
+    <div class="rp-ev">${ev}</div>
+    ${s.breadth ? `<div class="rp-br">${s.breadth.sectorsUp} of ${s.breadth.sectorsTotal} sectors rising${s.breadth.concentration != null ? ` · equal-weight ${s.breadth.concentration > 0 ? '+' : ''}${s.breadth.concentration} vs cap-weight` : ''}</div>` : ''}
+    <div class="rp-opts">${opts}</div>
+    ${tail}`;
+}
 
 function renderCheck() {
   const el = $('check'); if (!el || !BUNDLE) return;
