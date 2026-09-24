@@ -33,6 +33,35 @@ def test_daily_dd_locks_out():
     assert g.block_reason(10_000, "EUR/USD").startswith("Locked out"), "should remain locked"
 
 
+def test_risk_guard_enabled_false_disables_the_dd_lockout():
+    # 2026-09-24: Vote Atlas's own backtest has no equivalent to this lockout,
+    # and volatility_bot_v2/v3 now default risk_guard_enabled=False in their
+    # own DEFAULT_CFG. A breach must not lock at all -- not lock-then-report-
+    # unlocked, genuinely never set _locked_until.
+    g = _guard(ddlimit=3.0, risk_guard_enabled=False)
+    g.update_balance(10_000)
+    assert g.block_reason(9_600, "EUR/USD") is None, "disabled guard must not block on a real DD breach"
+    assert g.snapshot(9_600)["locked"] is False
+
+
+def test_risk_guard_enabled_false_leaves_cooldown_untouched():
+    # The per-pair cooldown is a separate mechanism this flag was never meant
+    # to touch -- only the daily/monthly DD lockout is Vote-Atlas-unvalidated.
+    g = _guard(cooldown=240, risk_guard_enabled=False)
+    g.update_balance(10_000)
+    g.record_trade("EUR/USD")
+    assert "Cooldown" in g.block_reason(10_000, "EUR/USD")
+
+
+def test_risk_guard_enabled_defaults_true_for_every_other_caller():
+    # oi_bot/regime_bot/etc never set this key -- must see the exact
+    # pre-existing lockout behavior, unchanged.
+    g = _guard(ddlimit=3.0)
+    g.update_balance(10_000)
+    why = g.block_reason(9_600, "EUR/USD")
+    assert why and "Daily DD" in why, "unset risk_guard_enabled must still default to enforcing"
+
+
 def test_monthly_dd_locks_out():
     g = _guard(ddlimit=99.0, monthlydd=5.0)  # disable daily so monthly triggers
     g.update_balance(10_000)

@@ -90,6 +90,15 @@ DEFAULT_CFG = {
                                      # loadBestConfigBtn for the full isolated-test numbers.
     # RiskGuard — daily/monthly DD lockout + per-pair entry cooldown (blocks NEW
     # entries only; the broker-enforced SL/TP always run).
+    # risk_guard_enabled=False (2026-09-24): the daily/monthly DD lockout has
+    # no equivalent anywhere in the Vote Atlas backtest (js/levelAtlasEngine.js
+    # never models a drawdown-triggered halt), and its 3%/5%/3h thresholds are
+    # unmodified defaults inherited from bot/main.py -> regime_bot -> oi_bot,
+    # never calibrated for this strategy. Two OTHER mechanisms already handle
+    # drawdown here and ARE backtest-validated with disclosed metrics: throttle
+    # (graded size reduction, see drawdown_throttle.py) and ccy_loss_gate (see
+    # currency_gate.py). The per-pair cooldown below is untouched by this flag.
+    "risk_guard_enabled": False,
     "ddlimit": 3.0,
     "monthlydd": 5.0,
     "lockout": 3,

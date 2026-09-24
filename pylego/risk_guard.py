@@ -45,6 +45,7 @@ class RiskGuard:
         self._now_fn = now_fn
         self._today_fn = today_fn or (lambda: datetime.now(timezone.utc).date())
 
+        self.enabled:        bool  = True
         self.dd_limit_pct:   float = 3.0
         self.monthly_dd_pct: float = 5.0
         self.lockout_secs:   float = 3 * 3600
@@ -57,6 +58,15 @@ class RiskGuard:
         self._reset_date:  date_type | None = None
 
     def sync_cfg(self, cfg: dict) -> None:
+        # Default True everywhere this class is shared (oi_bot, regime_bot,
+        # RegimeV2/V7, DynAnchorBot, volatility_bot_v2/v3) so adding this key
+        # is a no-op for any bot that doesn't explicitly opt out in its own
+        # DEFAULT_CFG. 2026-09-24: confirmed this strategy's own backtest has
+        # no equivalent lockout (js/levelAtlasEngine.js never models one) and
+        # its 3%/5%/3h thresholds are unmodified defaults inherited from
+        # bot/main.py, never calibrated for Vote Atlas specifically -- see
+        # git log for the investigation.
+        self.enabled         = bool(cfg.get('risk_guard_enabled', True))
         self.dd_limit_pct   = float(cfg.get('ddlimit',    3.0))
         self.monthly_dd_pct = float(cfg.get('monthlydd',  5.0))
         self.lockout_secs   = float(cfg.get('lockout',    3)) * 3600
@@ -87,7 +97,10 @@ class RiskGuard:
     def block_reason(self, bal: float, pair: str = '') -> str | None:
         now = self._now_fn()
 
-        if now < self._locked_until:
+        # `enabled` gates the daily/monthly DD lockout only -- the per-pair
+        # cooldown below is a separate mechanism this investigation never
+        # touched, so it stays live either way.
+        if self.enabled and now < self._locked_until:
             return f'Locked out — {(self._locked_until - now) / 60:.0f}m remaining'
 
         if pair and pair in self._last_trade:
@@ -95,13 +108,13 @@ class RiskGuard:
             if elapsed < self.cooldown_secs:
                 return f'[{pair}] Cooldown — {(self.cooldown_secs - elapsed) / 60:.1f}m remaining'
 
-        if self._day_start:
+        if self.enabled and self._day_start:
             dd = (self._day_start - bal) / self._day_start * 100
             if dd >= self.dd_limit_pct:
                 self._locked_until = now + self.lockout_secs
                 return f'Daily DD {dd:.1f}% ≥ {self.dd_limit_pct}% — locked {self.lockout_secs / 3600:.0f}h'
 
-        if self._month_start:
+        if self.enabled and self._month_start:
             mdd = (self._month_start - bal) / self._month_start * 100
             if mdd >= self.monthly_dd_pct:
                 self._locked_until = now + self.lockout_secs
@@ -120,8 +133,9 @@ class RiskGuard:
         day_dd = ((self._day_start - bal) / self._day_start * 100) if (self._day_start and bal) else None
         month_dd = ((self._month_start - bal) / self._month_start * 100) if (self._month_start and bal) else None
         return {
-            "locked": locked_secs > 0,
-            "locked_mins_remaining": round(locked_secs / 60, 1) if locked_secs > 0 else 0,
+            "enabled": self.enabled,
+            "locked": self.enabled and locked_secs > 0,
+            "locked_mins_remaining": round(locked_secs / 60, 1) if (self.enabled and locked_secs > 0) else 0,
             "day_dd_pct": round(day_dd, 2) if day_dd is not None else None,
             "month_dd_pct": round(month_dd, 2) if month_dd is not None else None,
             "dd_limit_pct": self.dd_limit_pct,
