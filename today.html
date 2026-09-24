@@ -501,6 +501,21 @@
              font-size:11.5px;line-height:1.6;color:var(--text2)}
   .nev-tally .k{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-bottom:2px}
 
+  .wm-state{font-size:13px;line-height:1.55;color:var(--text2);margin-bottom:8px} .wm-state b{color:var(--text)}
+  .wm-r{font-size:11.5px;line-height:1.6;color:var(--text2);padding:4px 0;border-top:1px dashed var(--border2)}
+  .wm-r:first-of-type{border-top:0} .wm-r b{color:var(--text);font-weight:600}
+  .wm-r .k{display:inline-block;min-width:96px;font-size:9px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-right:6px}
+  .wm-foot{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:8px}
+  @media(max-width:560px){.wm-r .k{display:block;min-width:0}}
+
+  .mth-chg{font-size:11.5px;line-height:1.6;color:var(--text2);padding:6px 10px;border-radius:7px;
+           background:var(--bg3);margin-bottom:10px}
+  .mth-chg .k{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;color:var(--text3);margin-bottom:2px}
+  .mth-chg b{color:var(--text)}
+  .mth-new{border-left:3px solid var(--amber);padding-left:9px;margin-left:-12px}
+  .mth-tag{margin-left:7px;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+           padding:1px 6px;border-radius:4px;background:var(--amber-bg);color:var(--amber)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -1134,6 +1149,10 @@
            day actually did. Additive; nothing above or below it changes. Hidden
            until there is a morning snapshot to compare against. -->
       <div class="mread" id="eodPanel" style="display:none"></div>
+
+      <!-- The equity half of the board, which this page was blind to. ~1KB summary of
+           what market-view draws; the detail is one click away. -->
+      <div class="mread" id="widerPanel" style="display:none"></div>
 
       <div class="mread" id="regimeLine" style="display:none"></div>
       <div class="mread" id="deskWatch" style="display:none"></div>
@@ -2135,6 +2154,8 @@ async function loadGate() {
   setTimeout(() => postDailyPlan().catch(() => {}), 45_000);       // capture today's plan once
   setInterval(() => postDailyPlan().catch(() => {}), 3 * 3600_000);
   setInterval(loadDeskWatch, 5 * 60_000);
+  setTimeout(() => loadWiderMarket().catch(() => {}), 4000);       // the equity half of the board
+  setInterval(() => loadWiderMarket().catch(() => {}), 60 * 60_000);
   setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
@@ -6057,12 +6078,31 @@ function renderMacro() {
   if (!m || !m.threads.length) { el.style.display = 'none'; return; }
   el.style.display = 'block';
   el.classList.toggle('open', _macroOpen);
-  const threadsHtml = m.threads.map(th => `
-    <div class="mth">
-      <div class="mth-t">${th.ic} ${th.t}</div>
+  // Which of the six is the one that is NEW. Measured over 250 sessions each thread
+  // holds its verdict for 4-7 sessions, so five of six say what they said yesterday —
+  // correct for a 20-session read, and useless if you cannot see which is the odd one.
+  let chg = null;
+  try {
+    const M = window.macroChangedBrick;
+    const today = new Date().toISOString().slice(0, 10);
+    const prior = (_tl.snapshots ?? []).filter(d => d.day < today && (d.moved ?? []).length).slice(-1)[0];
+    if (M && prior) chg = { res: M.whatChangedToday(macroMoved?.rows ?? [], prior.moved, prior.day), M };
+  } catch (e) { chg = null; }
+  const movedKeys = new Set((chg?.res?.changed ?? []).map(c => c.key));
+  const THREAD_KEY = { 'Interest rates & the dollar': 'us10y', 'Real yields & gold': 'tips',
+    'Credit spreads — the early warning': 'hy', 'The market mood': 'vix', 'The yield curve': 'us2s10s', 'Oil': 'oil' };
+
+  const threadsHtml = m.threads.map(th => {
+    const isNew = movedKeys.has(THREAD_KEY[th.t]);
+    return `
+    <div class="mth${isNew ? ' mth-new' : ''}">
+      <div class="mth-t">${th.ic} ${th.t}${isNew ? '<span class="mth-tag">changed today</span>' : ''}</div>
       <div class="mth-b">${th.body}</div>
       ${th.so ? `<div class="mth-so"><b>What it means for you:</b> ${th.so}</div>` : ''}
-    </div>`).join('');
+    </div>`; }).join('');
+  const chgHtml = chg?.res?.ok
+    ? `<div class="mth-chg"><span class="k">what changed since ${esc0(chg.res.priorDay)}</span>${chg.M.changedLine(chg.res)}</div>`
+    : '';
   const ccyHtml = m.ccy.map(x => `<div class="mccy-row ${x.sign > 0 ? 'pos' : x.sign < 0 ? 'neg' : ''}"><span class="c">${x.c}:</span> ${x.txt}</div>`).join('');
   el.innerHTML = `
     <div class="macro-hd" onclick="toggleMacro()">
@@ -6072,6 +6112,7 @@ function renderMacro() {
       <span class="tw">${_macroOpen ? 'hide ▲' : 'why is this happening? ▾'}</span>
     </div>
     <div class="macro-body">
+      ${chgHtml}
       ${threadsHtml}
       <div class="mth">
         <div class="mth-t">🎯 What this means for each currency</div>
@@ -8498,6 +8539,59 @@ function renderEodReviewBlock() {
   </div>`;
 }
 
+// ── The wider market, in one block ──────────────────────────────────────────
+// This page is strong on macro and FX and was blind to equity internals — sectors,
+// breadth, concentration, single names. That read already existed on market-view.html,
+// but behind a 735KB bundle and behind a tab you have to remember to open, updating
+// about twice a week. Measured: the market state changes every 3.4 sessions. That is
+// the wrong cadence for a destination and the right one for a block that comes to you.
+//
+// /api/wider-market is the same computation, server-side, at ~1KB. The detail stays on
+// market-view and this links to it.
+let _wider = null;
+async function loadWiderMarket() {
+  try { const j = await jget('/api/wider-market'); if (j?.ok) { _wider = j; render(); } }
+  catch { /* the panel stays hidden */ }
+}
+
+function renderWiderMarket() {
+  const el = $('widerPanel'); if (!el) return;
+  const w = _wider;
+  if (!w?.state) { el.style.display = 'none'; return; }
+  const b = w.breadth ?? {};
+  const t = w.tiles ?? {};
+  const s = w.sectors ?? {};
+  const num = (v, dp = 1) => v == null ? '—' : (v > 0 ? '+' : '') + Number(v).toFixed(dp);
+
+  // Concentration is the cleanest of these: both legs are the same 500 companies and
+  // only the weighting differs. Tested here and it predicts nothing, so it is described
+  // and never turned into a signal — see the Evidence book.
+  const conc = t.concentration
+    ? `<div class="wm-r"><span class="k">concentration</span>equal-weight is <b>${num(t.concentration.change)}</b> points ${t.concentration.change < 0 ? 'behind' : 'ahead of'} cap-weight over twenty sessions (z ${num(t.concentration.z)}) — ${
+        t.concentration.change < 0 ? 'the index is being carried by its largest names' : 'the median company is keeping up'}. <span class="muted">Tested here: it predicts nothing. Read it as what your index exposure IS, not as timing.</span></div>` : '';
+
+  const sect = s.leader && s.laggard
+    ? `<div class="wm-r"><span class="k">sectors</span><b>${b.sectorsUp ?? s.up} of ${b.sectorsTotal ?? s.total}</b> rising. Best <b>${esc0(s.leader.label)}</b> ${num(s.leader.change)}%, worst <b>${esc0(s.laggard.label)}</b> ${num(s.laggard.change)}%${
+        b.spread != null ? ` — a ${num(b.spread)}-point spread` : ''}.</div>` : '';
+
+  const rare = (w.rare ?? []).length
+    ? `<div class="wm-r"><span class="k">unusual</span>${w.rare.map(r => `<b>${esc0(r.label)}</b> ${num(r.change)} (z ${num(r.z)})`).join(' · ')}</div>`
+    : `<div class="wm-r"><span class="k">unusual</span><span class="muted">nothing on the 63-market board is beyond its own normal range. That is the correct read most days, and it is worth saying: a quiet board is when stories get invented.</span></div>`;
+
+  const broke = (w.brokenLinks ?? []).length
+    ? `<div class="wm-r"><span class="k">apart</span>${w.brokenLinks.map(l => `<b>${esc0(l.labelA)} → ${esc0(l.labelB)}</b>`).join(' · ')} — moving against the textbook. <span class="muted">Tested here: a broken link shows no tendency to resolve either way.</span></div>` : '';
+
+  const stale = w.boardFreshness?.worst
+    ? ` <span class="muted">(${esc0(w.boardFreshness.worst.label)} only to ${esc0(w.boardFreshness.worst.lastDate)})</span>` : '';
+
+  el.style.display = 'block';
+  el.innerHTML = `<div class="mread-h">The wider market — equities, sectors, concentration</div>
+    <div class="wm-state"><b>${esc0(w.state.name)}</b>${w.state.met ? ` <span class="muted">(${w.state.met.met} of ${w.state.met.total} conditions)</span>` : ''} — ${esc0(w.state.line)}</div>
+    ${sect}${conc}${rare}${broke}
+    <div class="wm-foot">Daily closes to ${esc0(w.to ?? '—')}${stale} — this is the slow half of the picture and it changes about twice a week, which is why it is a block here rather than a page you have to remember to open.
+      <a href="market-view.html" target="_blank">the full 63-market board ↗</a></div>`;
+}
+
 // ── End of day: the morning's published numbers, marked ──────────────────────
 // A chain RE-read at the close cannot do this job. It reads the CURRENT state with
 // no memory of the morning, so it can say what the market looks like now but not
@@ -8648,6 +8742,7 @@ function render() {
   try { renderTimelinePanel(); } catch (e) { const t = $('timelinePanel'); if (t) t.style.display = 'none'; }
   renderWeekAhead();
   renderRegimePanel();
+  try { renderWiderMarket(); } catch (e) { const t = $('widerPanel'); if (t) t.style.display = 'none'; }
   try { renderEndOfDay(); } catch (e) { const t = $('eodPanel'); if (t) t.style.display = 'none'; }
   renderConcept();
   const rs = sortRows(rows());
@@ -12156,6 +12251,12 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   import * as NewsOutcome from './js/newsOutcome.js';
   window.newsOutcomeBrick = NewsOutcome;
   try { window.renderNewsPlay?.(); } catch (e) {}
+</script>
+<!-- Which macro thread is the one that is NEW today (js/macroChanged.js). -->
+<script type="module">
+  import * as MacroChanged from './js/macroChanged.js';
+  window.macroChangedBrick = MacroChanged;
+  try { window.renderMacro?.(); } catch (e) {}
 </script>
 <script type="module">
   import * as CalendarFeed from './js/calendarFeed.js';
