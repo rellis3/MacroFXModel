@@ -1,0 +1,105 @@
+{
+  "generated": "2026-09-24T17:38:36.183075+00:00",
+  "prereg": "G3_AND_EVENTDAY_PREREG.md",
+  "test_a_eventday": {
+    "verdict": "SURVIVES",
+    "cal_end": "2025-04-07",
+    "dropped_tail_rows": 190,
+    "n_covered": 602,
+    "n_clean": 449,
+    "n_event": 153,
+    "dDR_covered_all": 0.3037127466757731,
+    "dDR_non_event": 0.3058286385341881,
+    "dDR_event_only": 0.30612255349741535,
+    "event_counts": {
+      "Non-Farm Employment Change": 220,
+      "Core CPI m/m": 219,
+      "CPI m/m": 219,
+      "Federal Funds Rate": 149
+    }
+  },
+  "test_b_g3": {
+    "verdict": "NULL",
+    "population": {
+      "VALID": 615,
+      "NEUTRAL_balanced": 170,
+      "NEUTRAL_pinned": 8
+    },
+    "n_valid": 615,
+    "splits": {
+      "IS": {
+        "n": 369,
+        "hit_rate": 0.5068,
+        "ci95": [
+          0.4558,
+          0.5578
+        ],
+        "spearman_ic": 0.1011,
+        "ic_p": 0.0522
+      },
+      "OOS": {
+        "n": 246,
+        "hit_rate": 0.4878,
+        "ci95": [
+          0.4253,
+          0.5503
+        ],
+        "spearman_ic": 0.0606,
+        "ic_p": 0.3442
+      }
+    },
+    "buckets": {
+      "IS": {
+        "< -1.5": {
+          "n": 197,
+          "mean_ret_pct": -0.0627
+        },
+        "-1.5..-0.5": {
+          "n": 10,
+          "mean_ret_pct": -0.5734
+        },
+        "-0.5..0.5": {
+          "n": 10,
+          "mean_ret_pct": 0.2363
+        },
+        "0.5..1.5": {
+          "n": 15,
+          "mean_ret_pct": -0.3377
+        },
+        "> 1.5": {
+          "n": 137,
+          "mean_ret_pct": 0.2343
+        }
+      },
+      "OOS": {
+        "< -1.5": {
+          "n": 119,
+          "mean_ret_pct": 0.041
+        },
+        "-1.5..-0.5": {
+          "n": 10,
+          "mean_ret_pct": -0.2222
+        },
+        "-0.5..0.5": {
+          "n": 12,
+          "mean_ret_pct": 0.5468
+        },
+        "0.5..1.5": {
+          "n": 16,
+          "mean_ret_pct": 0.1368
+        },
+        "> 1.5": {
+          "n": 89,
+          "mean_ret_pct": 0.2502
+        }
+      }
+    },
+    "placebo_hit_rate": 0.4992,
+    "feasibility": {
+      "spread_pts_assumed": 2.0,
+      "atr14_median": 268.55,
+      "spread_over_atr": 0.0074
+    },
+    "staircase_predicted_direction": true
+  }
+}

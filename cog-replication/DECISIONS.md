@@ -2,6 +2,42 @@
 
 Newest first. Every entry: what was decided, why, and what would reverse it.
 
+## 2026-09-24 — G3's wall-magnet direction is falsified; the range layer survives its confound
+
+**Decided:** Gate 3 does not carry direction. Gate 2's range finding stands.
+**Why:** both pre-registered in `0afafbb`, results in
+`oi_research_book/G3_AND_EVENTDAY_RESULTS.md`.
+
+*G3 (615 tradable days, chronological 60/40 split).* Out-of-sample hit rate
+**48.8%** — below a coin flip, inside the pre-registered null band — with
+Spearman IC +0.061 (p 0.34), against IS IC +0.101 (p 0.052). The placebo returned
+49.9%, and execution is not the binding constraint (spread/ATR 0.007 vs the 0.15
+gate): there is simply nothing there. The extreme buckets lean the predicted way
+in both halves, but the OOS gap is 0.21%/day against an SE of ~0.22% — noise.
+A null was written into the pre-registration as the EXPECTED outcome before the
+run, so this confirms a stated prior rather than arriving as a surprise.
+
+*Event-day confound (Test A).* The reversal condition the GEX range result named
+for itself is closed: vol-matched dDR is **+0.306 on non-event days, +0.306 on
+event days, +0.304 overall**. Identical. FOMC/CPI/NFP/opex contribute nothing to
+the effect.
+
+**Consequences:**
+
+1. The shadow's trade/no-trade rule is `G1.bias === G3.direction`, and G2 cannot
+   move it — so the direction is **G1's macro bias gated by a coin flip**. The
+   live G3 alert must stop presenting its direction as informative.
+2. The 2026-07-29 "macro stays in" entry named the runs test as its reversal
+   condition, to be waited for. It no longer needs waiting: G3 is settled on 615
+   days, and the runs test was only ever a low-power proxy for this question.
+3. **G1 alone is now the last untested layer** — and the only one COG actually
+   stated he uses. It needs its own pre-registration; the data is already assembled.
+
+**Also settled:** this is independent of the 2026-09-23 wall placebo (walls as
+barriers) and agrees with it. Walls are neither barriers nor magnets.
+**Reverses if:** nothing foreseeable for the magnet rule at this sample size. Do
+not reopen G3 without a genuinely new mechanism, not a re-cut.
+
 ## 2026-09-24 — the GEX prerequisite is discharged, and the OI archive exists
 
 **Decided:** G2's premise is validated for range, the "cannot be backtested"
