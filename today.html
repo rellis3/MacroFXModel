@@ -574,6 +574,31 @@
   .eb-chip.cool{background:var(--blue-bg);color:var(--blue)}
   .eb-chip.warn{background:var(--amber-bg);color:var(--amber)}
 
+  /* Focus mode. The panel is MOVED into here, so it keeps its handlers and its state. */
+  .focus-ov{position:fixed;inset:0;z-index:300;display:none}
+  .focus-ov.on{display:block}
+  .focus-bd{position:absolute;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(3px)}
+  .focus-panel{position:absolute;inset:2.5vh 2.5vw;background:var(--bg);border:1px solid var(--border);
+               border-radius:14px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+  .focus-hd{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border);
+            font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);flex:none}
+  .focus-esc{flex:1;font-size:10.5px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--text3)}
+  .focus-x{background:none;border:0;color:var(--text3);font-size:17px;cursor:pointer;line-height:1;padding:2px 6px}
+  .focus-x:hover{color:var(--text)}
+  .focus-body{flex:1;overflow:auto;padding:16px}
+  .focus-body>.in-focus{margin:0;border:0;background:transparent;padding:0;max-width:none}
+  /* the chain's SVG has a viewBox, so a bigger box simply draws it bigger */
+  .focus-body .chain-g svg{min-width:0;width:100%}
+  .focus-body .chain-g{overflow:visible}
+  .focusable{position:relative}
+  .focus-btn{position:absolute;top:8px;right:8px;z-index:2;background:var(--card2);border:1px solid var(--border2);
+             color:var(--text3);border-radius:6px;width:24px;height:24px;line-height:1;font-size:12px;cursor:pointer;
+             opacity:0;transition:opacity .12s}
+  .focusable:hover>.focus-btn,.focus-btn:focus{opacity:1}
+  .focus-btn:hover{color:var(--blue);border-color:var(--blue)}
+  .in-focus>.focus-btn{display:none}
+  @media(max-width:700px){.focus-panel{inset:0;border-radius:0}.focus-btn{opacity:.7}}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -1206,22 +1231,22 @@
       <!-- The end-of-day read: this morning's published numbers against what the
            day actually did. Additive; nothing above or below it changes. Hidden
            until there is a morning snapshot to compare against. -->
-      <div class="mread" id="eodPanel" style="display:none"></div>
+      <div class="mread" id="eodPanel" data-focus="End of day" style="display:none"></div>
 
       <!-- The equity half of the board, which this page was blind to. ~1KB summary of
            what market-view draws; the detail is one click away. -->
-      <div class="mread" id="widerPanel" style="display:none"></div>
+      <div class="mread" id="widerPanel" data-focus="The wider market" style="display:none"></div>
 
       <!-- Recognition before prediction. The drill existed on market-view since it was
            built and its bar read 0 of 7 — it never came to you. -->
-      <div class="mread" id="drillPanel" style="display:none"></div>
+      <div class="mread" id="drillPanel" data-focus="One reading a day" style="display:none"></div>
 
       <div class="mread" id="regimeLine" style="display:none"></div>
       <div class="mread" id="deskWatch" style="display:none"></div>
 
       <div class="qstrip delta" id="sinceYday" style="display:none"></div>
 
-      <div class="mread" id="mread" style="display:none"></div>
+      <div class="mread" id="mread" data-focus="Market read" style="display:none"></div>
 
       <div class="mread" id="outlookPanel" style="display:none"></div>
       <div class="mread" id="timelinePanel" style="display:none"></div>
@@ -3602,7 +3627,7 @@ function crackHtml() {
   const pts = (d.series ?? []).slice(-250); const spark = (() => { if (pts.length < 20) return ''; const vals = pts.map(p => p.value); const lo = Math.min(...vals, c.p25), hi = Math.max(...vals, c.p90); const W = 300, H = 46; const x = i => (i / (pts.length - 1) * W).toFixed(1), y = v => (H - 4 - (v - lo) / (hi - lo || 1) * (H - 8)).toFixed(1);
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:46px;display:block"><rect x="0" y="${y(c.p75)}" width="${W}" height="${(y(c.p25) - y(c.p75)).toFixed(1)}" fill="var(--text3)" opacity=".16"/><line x1="0" x2="${W}" y1="${y(c.median)}" y2="${y(c.median)}" stroke="var(--text3)" stroke-width="1" vector-effect="non-scaling-stroke" stroke-dasharray="3 3"/><polyline points="${pts.map((p, i) => `${x(i)},${y(p.value)}`).join(' ')}" fill="none" stroke="var(--amber)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><div class="muted" style="font-size:10px;margin-top:2px">the crack, one year · grey band = its normal quarter-to-quarter range since 2010 ($${c.p25}–$${c.p75}), dotted = the median $${c.median}</div>`; })();
   const tip = 'The 3-2-1 crack: three barrels of crude in, two of gasoline and one of diesel out, priced at the NY Harbor spot prices FRED carries from the EIA. ((2 x gasoline + heating oil) x 42 gallons - 3 x WTI) / 3 = the refiner\u2019s margin per barrel of crude. Crude and fuel are two markets; the crack is what says whether fuel is tight when crude moves.';
-  return `<div class="chain">
+  return `<div class="chain" id="chainPanel" data-focus="The chain, today">
     <div class="chain-h help" title="${esc0(tip)}">Crude &amp; the crack <span class="muted" style="font-weight:400;letter-spacing:0;text-transform:none">· the refiner\u2019s margin, fuel minus crude</span></div>
     <div class="chain-sum ${c.percentile >= 0.9 ? 'broke' : 'quiet'}">The 3-2-1 crack is <b>${usd(c.last)} a barrel</b> (FRED to ${c.date}) — ${esc0(c.word)}, in ${pctWord}; normal is $${c.p25}–$${c.p75}.${ch.crack != null ? ` Over 20 sessions the crack is ${ch.crack >= 0 ? 'up' : 'down'} ${usd(Math.abs(ch.crack))} while crude is ${ch.wtiPct >= 0 ? '+' : ''}${ch.wtiPct}%${dis ? ' — <b>crude down, fuel tight</b>: the disagreement that says the sell-off is not the whole story' : agr ? ' — crude and fuel falling together: a genuine easing' : ''}.` : ''}${esc0(oilNote)}</div>
     <div class="ccy-explain" style="margin:2px 0 8px"><b>What 3-2-1 means.</b> A refinery buys crude and sells fuel. Three barrels of crude in, two barrels of gasoline and one of diesel out — the 3-2-1 is that recipe priced: the fuel it makes (gasoline and heating oil are quoted per gallon, so ×42 for a barrel) minus the crude it bought, divided by three, so it reads as <b>dollars of margin per barrel of crude</b>. Crude and fuel are two different markets with two different sets of buyers, and this number is the gap between them.
@@ -8774,6 +8799,98 @@ function renderDrill() {
     <div class="dq-foot">${bar}<span class="dq-meta"> · board to ${esc0(_drill.boardTo ?? '—')} · asks what IS, never what will be</span></div>`;
 }
 
+// ── Focus mode ──────────────────────────────────────────────────────────────
+// A panel lifted out of the page into a full-screen overlay, with everything else
+// darkened. Built for the chain graphic — an SVG with a viewBox, so a bigger box simply
+// draws it bigger — but the mechanism is generic and any panel can opt in with one
+// attribute.
+//
+// IT MOVES THE NODE, IT DOES NOT CLONE IT. A clone would be a second copy of the same
+// ids, drifting out of date the moment anything re-rendered, and every `$('x')` lookup
+// would keep finding the original hidden behind the overlay. Moving keeps one node: its
+// handlers, its selected chip, its open rows and its next re-render all follow it in and
+// back out again. A placeholder holds the gap so it returns to exactly where it was,
+// even if siblings changed while it was away.
+let _focusId = null, _focusMark = null;
+
+function focusPanel(id) {
+  if (_focusId) closeFocus();
+  const node = document.getElementById(id); if (!node) return;
+  const ov = $('focusOv'), body = $('focusBody'); if (!ov || !body) return;
+  _focusMark = document.createComment(`focus:${id}`);
+  node.parentNode.insertBefore(_focusMark, node);
+  body.appendChild(node);
+  node.classList.add('in-focus');
+  $('focusTitle').textContent = node.dataset.focus || 'Focus';
+  ov.classList.add('on');
+  document.body.style.overflow = 'hidden';
+  _focusId = id;
+}
+function closeFocus() {
+  const ov = $('focusOv');
+  if (_focusId) {
+    const node = document.getElementById(_focusId);
+    if (node && _focusMark?.parentNode) { _focusMark.parentNode.insertBefore(node, _focusMark); node.classList.remove('in-focus'); }
+    _focusMark?.remove?.();
+  }
+  _focusId = null; _focusMark = null;
+  ov?.classList.remove('on');
+  document.body.style.overflow = '';
+}
+window.focusPanel = focusPanel;
+window.closeFocus = closeFocus;
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _focusId) closeFocus(); });
+
+/**
+ * Put the button on every panel that opted in.
+ *
+ * Run after each render rather than baked into each panel's markup: the panels rebuild
+ * their own innerHTML on every tick, so a button written into the template would be
+ * rewritten away by half of them and duplicated by the other half. One pass, keyed on
+ * `data-focus`, is the only version that survives a re-render.
+ */
+/**
+ * Re-attach a focused panel that its parent rebuilt underneath it.
+ *
+ * The chain lives inside #mread's innerHTML, and #mread rewrites that on every render.
+ * With the chain lifted into the overlay, the next render builds a FRESH chain inside
+ * #mread and the one on screen becomes an orphan — still interactive, quietly frozen at
+ * the numbers it had when it was opened. A stale panel that still responds to clicks is
+ * worse than a blank one, because nothing about it looks wrong.
+ *
+ * So after every render: if the focused id is no longer inside the overlay, the parent
+ * rebuilt it. Take the new node, leave a fresh placeholder where it now sits, and move
+ * it in. The overlay always shows the live one.
+ */
+function reattachFocus() {
+  if (!_focusId) return;
+  const body = $('focusBody'); if (!body) return;
+  const node = document.getElementById(_focusId);
+  if (!node || body.contains(node)) return;              // still the one we lifted
+  const stale = body.querySelector('.in-focus');
+  if (stale) stale.remove();                             // the orphan, now replaced
+  _focusMark?.remove?.();
+  _focusMark = document.createComment(`focus:${_focusId}`);
+  node.parentNode.insertBefore(_focusMark, node);
+  node.classList.add('in-focus');
+  body.appendChild(node);
+}
+
+function mountFocusButtons() {
+  for (const el of document.querySelectorAll('[data-focus]')) {
+    if (el.querySelector(':scope > .focus-btn')) continue;
+    if (!el.id) continue;
+    el.classList.add('focusable');
+    const b = document.createElement('button');
+    b.className = 'focus-btn';
+    b.title = `Open "${el.dataset.focus}" on its own, with everything else dimmed (Esc to close)`;
+    b.setAttribute('aria-label', `Focus ${el.dataset.focus}`);
+    b.textContent = '⤡';
+    b.onclick = ev => { ev.stopPropagation(); focusPanel(el.id); };
+    el.appendChild(b);
+  }
+}
+
 // ── End of day: the morning's published numbers, marked ──────────────────────
 // A chain RE-read at the close cannot do this job. It reads the CURRENT state with
 // no memory of the morning, so it can say what the market looks like now but not
@@ -8947,6 +9064,7 @@ function render() {
     $('grid').style.display = 'grid';
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
+  try { reattachFocus(); mountFocusButtons(); } catch (e) {}
   $('footNote').innerHTML = 'The morning funnel: <b>Market Read</b> up top synthesises the whole board in one sentence + a currency-strength meter (FX + haven) and an equities/risk strip (what is the market thinking?) → calendar + risk state (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree; ⚠ COT extreme = crowded positioning / squeeze risk; ◎ PIN/BREAKOUT = CME gamma regime) → click a card for the full story (Asia, recent days, rate driver, COT positioning, options walls, cached AI read), M5 chart and Decision Engine zones → a pulsing card means price is at a level now.<br>Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates. COT is automatic (weekly CFTC); options/OI is manual CME paste (shown with age, only pairs with a CME chain); AI shows the last Analyse run, not a fresh call.';
 }
 
@@ -12555,5 +12673,17 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
   window.outlookBrick = OutlookEngine;
   try { window.render?.(); } catch (e) {}
 </script>
+<!-- Focus mode: a panel lifted out of the page with everything else dimmed. The node
+     is MOVED here, not copied, so its handlers, selection and next re-render come with
+     it and go back again. -->
+<div class="focus-ov" id="focusOv" role="dialog" aria-modal="true" aria-labelledby="focusTitle">
+  <div class="focus-bd" onclick="closeFocus()"></div>
+  <div class="focus-panel">
+    <div class="focus-hd"><span id="focusTitle"></span>
+      <span class="focus-esc">Esc or click outside to close</span>
+      <button class="focus-x" onclick="closeFocus()" aria-label="Close">✕</button></div>
+    <div class="focus-body" id="focusBody"></div>
+  </div>
+</div>
 </body>
 </html>
