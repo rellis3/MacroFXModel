@@ -552,6 +552,10 @@
   .dq-bar i.p{background:var(--amber)} .dq-bar i.s{background:var(--bull)}
   .dq-meta{font-size:10.5px;color:var(--text3)} .dq-meta b{color:var(--text2)}
 
+  .eb-win{font-size:9px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:1px 7px;
+          border-radius:4px;background:var(--amber-bg);color:var(--amber);cursor:help}
+  .eb-win.fin{background:var(--bull-bg);color:var(--bull)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -8544,8 +8548,12 @@ function renderEodReviewBlock() {
   const rv = _eodReview?.review;
   const btn = `<button class="eb-btn" ${_eodReviewBusy ? 'disabled' : ''} onclick="writeEodReview(${rv ? 'true' : 'false'})">
       ${_eodReviewBusy ? 'writing…' : rv ? '↻ re-write' : '✍ Write it up'}</button>`;
+  // The review can be written at lunchtime; that is fine and it is not the day's record.
+  // Saying which it was is the difference between a read and an overstatement.
+  const W = window.eodReviewBrick?.sessionWindow?.() ?? null;
   const head = `<div class="eb-h" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <span>The written review</span>
+      ${W ? `<span class="eb-win ${W.final ? 'fin' : ''}" title="${esc0(W.note)}">${W.final ? 'final · all sessions closed' : 'interim · US still open'}</span>` : ''}
       <span class="eb-ai">AI · costs a call · not backtested</span>
       ${rv ? `<span class="muted" style="font-size:10.5px;font-weight:400;letter-spacing:0;text-transform:none">${
         _eodReview.stale ? 'from an earlier day — press re-write for today' : `written ${_eodReview.ageMin ?? 0} min ago`}</span>` : ''}
@@ -8576,6 +8584,7 @@ function renderEodReviewBlock() {
     ${lessons ? `<div class="eb-h" style="margin-top:10px">What to take from it</div>${lessons}` : ''}
     ${rv.tomorrow ? `<div class="eb-rv" style="margin-top:9px">${sec('Into tomorrow', esc0(rv.tomorrow))}</div>` : ''}
     ${terms}
+    ${W && !W.final ? `<div class="eb-note" style="color:var(--amber)">${esc0(W.note)} Press re-write after ${Math.floor(W.minsToUsClose / 60)}h ${W.minsToUsClose % 60}m for the day's final read.</div>` : ''}
     <div class="eb-note">Written by a model from the measured facts above — it may phrase something badly, but every number in it came from this page. It is asked never to say which way anything goes tomorrow: the priced-in claim tested null here and surprise size validated for range only.</div>
   </div>`;
 }

@@ -150,7 +150,7 @@ import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
-import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt } from './js/deskEvidence.js';
+import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief } from './js/deskEvidence.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
 import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
@@ -4053,21 +4053,40 @@ app.post('/api/eod-review', express.json({ limit: '256kb' }), async (req, res) =
     if (!force && _eodReviewCache.data && _eodReviewCache.key === ck && Date.now() - _eodReviewCache.at < _EOD_REVIEW_TTL_MS)
       return res.json({ ok: true, cached: true, ..._eodReviewCache.data });
 
-    const prompt = buildEodReviewPrompt(snapshot, _evidenceForPrompt());
-    const antRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: 'claude-opus-5',
-        max_tokens: 5000,
-        system: 'You are a former macro trader writing an end-of-day review for one reader who is learning to read markets. The session is finished; you are looking back at it, never forward. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!antRes.ok) return res.status(502).json({ error: `Anthropic ${antRes.status}` });
-    const j = await antRes.json();
-    const review = _parseModelJson(_antText(j), 'eod-review');
-    if (!review) return res.status(502).json({ error: `model did not return parseable JSON${j.stop_reason === 'max_tokens' ? ' (truncated at the token cap)' : ''} -- press it once more` });
+    // The full ledger is ~10,300 tokens of a ~13,000-token prompt, and the first live
+    // run came back truncated at the cap with no review at all. The short form keeps
+    // every entry and drops each one's counts and intervals: a model told not to
+    // contradict a finding needs the claim and the use, not the methodology.
+    const prompt = buildEodReviewPrompt(snapshot, _evidenceBrief());
+    const ask = async (maxTokens) => {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-opus-5',
+          max_tokens: maxTokens,
+          system: 'You are a former macro trader writing an end-of-day review for one reader who is learning to read markets. The session is finished; you are looking back at it, never forward. You ALWAYS respond with valid complete JSON only -- no markdown, no backticks, no text before or after the JSON object.',
+          messages: [{ role: 'user', content: prompt }],
+        }),
+      });
+      if (!r.ok) return { httpError: r.status };
+      const j = await r.json();
+      return { j, review: _parseModelJson(_antText(j), 'eod-review') };
+    };
+    let out = await ask(8000);
+    if (out.httpError) return res.status(502).json({ error: `Anthropic ${out.httpError}` });
+    // ONE automatic retry, and only for the failure a retry actually fixes. Telling the
+    // reader to "press it once more" on a truncation charged them twice for the same
+    // fault -- the cap was mine to get right, not theirs to work around.
+    if (!out.review && out.j?.stop_reason === 'max_tokens') {
+      console.warn('[eod-review] truncated at 8000 tokens, retrying once at 14000');
+      out = await ask(14000);
+      if (out.httpError) return res.status(502).json({ error: `Anthropic ${out.httpError}` });
+    }
+    const { j, review } = out;
+    if (!review) return res.status(502).json({ error: j?.stop_reason === 'max_tokens'
+      ? 'the review did not fit even at 14,000 tokens — the prompt is asking for too much, which is a fault at this end rather than something pressing again will fix'
+      : 'the model did not return parseable JSON — press it once more' });
     const data = { review, generatedAt: new Date().toISOString(), snapKey: ck, morningAt: snapshot.morningAt ?? null };
     _eodReviewCache = { at: Date.now(), data, key: ck };
     _persistEodReview(data).catch(e => console.warn('[eod-review] persist failed:', e.message));

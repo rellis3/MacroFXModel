@@ -60,6 +60,8 @@ export function eodSnapshot({ eod = null, brief = null, morning = null, activity
   return {
     asOf: nowISO,
     morningAt: eod.morningAt ?? morning?.plan?.at ?? null,
+    // whether the day is actually over, so an interim read cannot stand as the record
+    session: sessionWindow(Date.parse(nowISO) || Date.now()),
     morning: {
       regime: morning?.brief?.regime ?? null,
       headline: morning?.brief?.headline ?? null,
@@ -116,7 +118,9 @@ const pairLine = p => `  ${p.name}: opened ${p.open}, now ${p.now} (${p.move}${p
 export function buildEodReviewPrompt(s, evidence = '') {
   const m = s?.morning ?? {};
   const b = s?.board ?? {};
-  return `You are a former macro trader writing the END-OF-DAY REVIEW for one reader who is learning to read markets. The session is over. This is a retrospective: what happened today, what it did to the board, what this page got right and wrong this morning, and what is worth carrying into tomorrow.
+  const w = s?.session ?? null;
+  return `You are a former macro trader writing the ${w && !w.final ? 'INTERIM' : 'END-OF-DAY'} REVIEW for one reader who is learning to read markets. ${
+    w ? (w.final ? 'Every major session has closed.' : `IMPORTANT: the day is NOT over — ${w.note} Write it as a read on the day SO FAR, say plainly near the top that the US session has not closed, and do not describe anything as final or as a close.`) : 'The session is over.'} This is a retrospective: what happened today, what it did to the board, what this page got right and wrong this morning, and what is worth carrying into tomorrow.
 
 Everything below is measured. You have no other source. Do not add a number that is not here, and never restate one at a different value.
 
@@ -178,4 +182,48 @@ HOW TO WRITE IT:
 Respond with a single valid JSON object, no markdown, no text outside it:
 {"hook":"one sentence: the day in a line, specific and plain","story":"4-6 short paragraphs separated by blank lines, 200-320 words: the day as it unfolded, open to close, market by market, with the knock-on effects","plan":{"right":"1-3 sentences: what this page got right this morning, with the numbers","wrong":"1-3 sentences: what it got wrong, in plain words, worst thing first","unknowable":"1-2 sentences: what could not have been known at the open — the part that is not a mistake"},"lessons":[{"point":"one sentence a reader could repeat next week","why":"1-2 sentences: the mechanism, using today's numbers","howToSpot":"one sentence: what to put on a screen to see this happening again"}],"tomorrow":"2-3 sentences: what is scheduled, which markets it lands on, and what is still standing. NO direction.","terms":[{"term":"a term used above a beginner would stumble on","plain":"one sentence in plain words"}]}
 Give 3-5 lessons and 5-10 terms.`;
+}
+
+/**
+ * Is the day actually over?
+ *
+ * The morning plan is captured around 07:00 UK and the pane is readable three hours
+ * later, so a review can be written at lunchtime. Nothing stops that and nothing
+ * should — but a lunchtime review is an INTERIM read, and one written at 18:30 with
+ * the US equity session still two and a half hours from its close is reviewing a day
+ * that has not finished. Calling that "end of day" would be the same overstatement as
+ * a board header claiming one date for series with six days between their vintages.
+ *
+ * The clocks that matter, in order: London equities close 16:30 UK, and the US closes
+ * at 16:00 New York — which is 21:00 UK in summer and 21:00 UK in winter too, since
+ * both shift together. New York is used as the authority because it is the one that
+ * decides whether the day is done, and it is read at the instant rather than assumed,
+ * so the March and November switches need no special case.
+ *
+ * There is no automatic later run. Every model call on this page is click-only, so the
+ * FINAL review is the one written after the close — and the page has to say that rather
+ * than let an interim read stand as the day's record.
+ */
+const _NY = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, hour: '2-digit', minute: '2-digit' });
+const _LDN = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
+const _mins = (fmt, ms) => {
+  const p = Object.fromEntries(fmt.formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+  return (+p.hour % 24) * 60 + +p.minute;
+};
+
+export function sessionWindow(nowMs = Date.now()) {
+  const ny = _mins(_NY, nowMs), ldn = _mins(_LDN, nowMs);
+  const usClosed = ny >= 16 * 60;            // 16:00 New York
+  const londonClosed = ldn >= 16 * 60 + 30;  // 16:30 London
+  const minsToUsClose = usClosed ? 0 : 16 * 60 - ny;
+  return {
+    londonClosed, usClosed, final: usClosed,
+    nyMins: ny, londonMins: ldn, minsToUsClose,
+    label: usClosed ? 'End of day' : londonClosed ? 'After the London close' : 'The day so far',
+    note: usClosed
+      ? 'Every major session is closed — this is the final read on the day.'
+      : londonClosed
+      ? `London has closed but New York has not: ${Math.floor(minsToUsClose / 60)}h ${minsToUsClose % 60}m of the US session still to run. This is an interim read and the day can still change.`
+      : `Both London and New York are still open — ${Math.floor(minsToUsClose / 60)}h ${minsToUsClose % 60}m until the US close. This is an interim read, not the day's record.`,
+  };
 }

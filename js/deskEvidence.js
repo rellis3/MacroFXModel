@@ -469,3 +469,21 @@ export function evidenceForPrompt(list = DESK_EVIDENCE) {
   const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE' };
   return list.map(e => `- [${tag[e.verdict] ?? e.verdict.toUpperCase()}, ${e.date}] ${e.claim}. ${e.result} USE: ${e.use}`).join('\n');
 }
+
+/**
+ * The same ledger, short enough to leave room for an answer.
+ *
+ * The full block is 70 entries and ~10,300 tokens — 78% of the end-of-day review's
+ * prompt — and the first live run came back truncated at the token cap with no review
+ * at all. Each entry's `result` is the bulk of that: the counts, the intervals, the
+ * methodology. A model being told not to contradict a finding needs the CLAIM and the
+ * USE; it does not need the bootstrap intervals in order to obey them.
+ *
+ * Every entry is KEPT and shortened, rather than some being dropped. A filtered ledger
+ * that happens to omit the relevant null reads to the model as permission, which is the
+ * one failure mode worse than a long prompt.
+ */
+export function evidenceBrief(list = DESK_EVIDENCE) {
+  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE' };
+  return list.map(e => `- [${tag[e.verdict] ?? e.verdict.toUpperCase()}] ${e.claim} -> ${e.use}`).join('\n');
+}

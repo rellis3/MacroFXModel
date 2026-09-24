@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { eodSnapshot, buildEodReviewPrompt } from './eodReview.js';
+import { eodSnapshot, buildEodReviewPrompt, sessionWindow } from './eodReview.js';
 import { endOfDay } from './endOfDay.js';
 import { endOfDayBrief } from './endOfDayBrief.js';
 
@@ -75,7 +75,7 @@ t('the prompt says plainly that it is an end-of-day review of a finished session
   const { eod, brief } = build();
   const p = buildEodReviewPrompt(eodSnapshot({ eod, brief, morning, nowISO: new Date(NOW).toISOString() }));
   assert.match(p, /END-OF-DAY REVIEW/);
-  assert.match(p, /The session is over/);
+  assert.match(p, /Every major session has closed/);
   assert.match(p, /retrospective/);
   assert.match(p, /REVIEW, past tense/);
   assert.match(p, /Not a preview, not a call/);
@@ -172,6 +172,45 @@ t('the prompt survives a thin day without producing "undefined"', () => {
   assert.doesNotMatch(p, /undefined|NaN|\[object Object\]/);
   assert.match(p, /nothing high-impact in the window/);
   assert.match(p, /no direction was committed on any instrument/);
+});
+
+// The plan is captured ~07:00 and the pane is readable three hours later, so a review
+// can be written at lunchtime. That is fine; calling it "end of day" is not.
+t('the day is only over once New York has closed, in both halves of the year', () => {
+  assert.equal(sessionWindow(Date.parse('2026-09-24T11:00:00Z')).final, false, 'midday UK, both open');
+  assert.equal(sessionWindow(Date.parse('2026-09-24T17:39:00Z')).final, false, '18:39 UK — London shut, New York has 2h+ to run');
+  assert.equal(sessionWindow(Date.parse('2026-09-24T20:30:00Z')).final, true, '21:30 UK in BST');
+  assert.equal(sessionWindow(Date.parse('2026-01-15T21:30:00Z')).final, true, 'and in GMT, where the offset differs');
+  assert.equal(sessionWindow(Date.parse('2026-01-15T20:30:00Z')).final, false, 'the same UK clock time is NOT closed in winter');
+});
+
+t('the three windows are named differently and say how long is left', () => {
+  const mid = sessionWindow(Date.parse('2026-09-24T11:00:00Z'));
+  assert.equal(mid.label, 'The day so far');
+  assert.match(mid.note, /Both London and New York are still open/);
+  assert.match(mid.note, /until the US close/);
+  const late = sessionWindow(Date.parse('2026-09-24T17:39:00Z'));
+  assert.equal(late.label, 'After the London close');
+  assert.match(late.note, /interim read/);
+  assert.ok(late.minsToUsClose > 0 && late.minsToUsClose < 180);
+  const done = sessionWindow(Date.parse('2026-09-24T20:30:00Z'));
+  assert.equal(done.label, 'End of day');
+  assert.equal(done.minsToUsClose, 0);
+  assert.match(done.note, /final read/);
+});
+
+// Writing an interim review as if it were the close is the same overstatement as a
+// board header claiming one date for series with six days between their vintages.
+t('an unfinished day is written as INTERIM, and the model is told so', () => {
+  const { eod, brief } = build();
+  const s = eodSnapshot({ eod, brief, morning, nowISO: '2026-09-24T17:39:00Z' });
+  assert.equal(s.session.final, false);
+  const p = buildEodReviewPrompt(s);
+  assert.match(p, /INTERIM REVIEW/);
+  assert.doesNotMatch(p, /END-OF-DAY REVIEW/);
+  assert.match(p, /the day is NOT over/);
+  assert.match(p, /say plainly near the top that the US session has not closed/);
+  assert.match(p, /do not describe anything as final or as a close/);
 });
 
 console.log(`eodReview: ${n} groups, all passed`);
