@@ -1,0 +1,188 @@
+{
+  "EUR_USD": {
+    "feasibility_spread_over_atr_median": 0.4381,
+    "feasibility_verdict": "DEAD",
+    "m5_bars": 796471,
+    "span": [
+      "2016-01-04",
+      "2026-09-10"
+    ],
+    "population": {
+      "crosses": 37938,
+      "expired_no_pullback": 4610,
+      "expired_no_continue": 19743,
+      "blocked_by_h4": 1550,
+      "blocked_nan": 295,
+      "entered": 11739
+    },
+    "oos_starts": "2022-05-02",
+    "targets": {
+      "1.0R": {
+        "IS": {
+          "n": 7043,
+          "gross_exp_R": -0.0592,
+          "net_exp_R": -0.704,
+          "gross_pf": 0.88,
+          "net_pf": 0.222,
+          "win_rate": 0.3791,
+          "median_bars": 5
+        },
+        "OOS": {
+          "n": 4696,
+          "gross_exp_R": -0.0297,
+          "net_exp_R": -0.7582,
+          "gross_pf": 0.938,
+          "net_pf": 0.196,
+          "win_rate": 0.3737,
+          "median_bars": 5
+        }
+      },
+      "2.0R": {
+        "IS": {
+          "n": 7043,
+          "gross_exp_R": -0.0751,
+          "net_exp_R": -0.7228,
+          "gross_pf": 0.872,
+          "net_pf": 0.309,
+          "win_rate": 0.3014,
+          "median_bars": 9
+        },
+        "OOS": {
+          "n": 4696,
+          "gross_exp_R": -0.0381,
+          "net_exp_R": -0.7676,
+          "gross_pf": 0.933,
+          "net_pf": 0.296,
+          "win_rate": 0.3073,
+          "median_bars": 10
+        }
+      }
+    }
+  },
+  "GBP_USD": {
+    "feasibility_spread_over_atr_median": 0.4234,
+    "feasibility_verdict": "DEAD",
+    "m5_bars": 795794,
+    "span": [
+      "2016-01-04",
+      "2026-09-10"
+    ],
+    "population": {
+      "crosses": 38131,
+      "expired_no_pullback": 4662,
+      "expired_no_continue": 20059,
+      "blocked_by_h4": 1501,
+      "blocked_nan": 300,
+      "entered": 11609
+    },
+    "oos_starts": "2022-06-03",
+    "targets": {
+      "1.0R": {
+        "IS": {
+          "n": 6965,
+          "gross_exp_R": -0.0694,
+          "net_exp_R": -0.7612,
+          "gross_pf": 0.86,
+          "net_pf": 0.207,
+          "win_rate": 0.3691,
+          "median_bars": 5
+        },
+        "OOS": {
+          "n": 4644,
+          "gross_exp_R": -0.0337,
+          "net_exp_R": -0.8012,
+          "gross_pf": 0.93,
+          "net_pf": 0.194,
+          "win_rate": 0.3857,
+          "median_bars": 5
+        }
+      },
+      "2.0R": {
+        "IS": {
+          "n": 6965,
+          "gross_exp_R": -0.057,
+          "net_exp_R": -0.7523,
+          "gross_pf": 0.901,
+          "net_pf": 0.305,
+          "win_rate": 0.3009,
+          "median_bars": 9
+        },
+        "OOS": {
+          "n": 4644,
+          "gross_exp_R": -0.0287,
+          "net_exp_R": -0.8021,
+          "gross_pf": 0.95,
+          "net_pf": 0.297,
+          "win_rate": 0.3144,
+          "median_bars": 9
+        }
+      }
+    }
+  },
+  "NAS100_USD": {
+    "feasibility_spread_over_atr_median": 0.2064,
+    "feasibility_verdict": "DEAD",
+    "m5_bars": 752410,
+    "span": [
+      "2016-01-04",
+      "2026-09-10"
+    ],
+    "population": {
+      "crosses": 34012,
+      "expired_no_pullback": 4018,
+      "expired_no_continue": 17790,
+      "blocked_by_h4": 1271,
+      "blocked_nan": 118,
+      "entered": 10815
+    },
+    "oos_starts": "2022-05-27",
+    "targets": {
+      "1.0R": {
+        "IS": {
+          "n": 6489,
+          "gross_exp_R": -0.0288,
+          "net_exp_R": -0.4394,
+          "gross_pf": 0.94,
+          "net_pf": 0.387,
+          "win_rate": 0.4246,
+          "median_bars": 5
+        },
+        "OOS": {
+          "n": 4326,
+          "gross_exp_R": -0.024,
+          "net_exp_R": -0.2355,
+          "gross_pf": 0.95,
+          "net_pf": 0.6,
+          "win_rate": 0.473,
+          "median_bars": 5
+        }
+      },
+      "2.0R": {
+        "IS": {
+          "n": 6489,
+          "gross_exp_R": 0.0016,
+          "net_exp_R": -0.4086,
+          "gross_pf": 1.003,
+          "net_pf": 0.509,
+          "win_rate": 0.3534,
+          "median_bars": 9
+        },
+        "OOS": {
+          "n": 4326,
+          "gross_exp_R": -0.0026,
+          "net_exp_R": -0.2139,
+          "gross_pf": 0.995,
+          "net_pf": 0.694,
+          "win_rate": 0.3678,
+          "median_bars": 9
+        }
+      }
+    }
+  },
+  "verdict": "NULL",
+  "per_instrument": {
+    "EUR_USD": "fail",
+    "GBP_USD": "fail",
+    "NAS100_USD": "fail"
+  }
+}
