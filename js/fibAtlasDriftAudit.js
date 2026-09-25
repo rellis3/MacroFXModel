@@ -91,6 +91,22 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
     const { touches } = walkFn(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
     const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
 
+    // Fib Atlas's book has ~38 rung cells per side (every fib extension level)
+    // vs Vote Atlas's fixed 3 (p50/p75/p90) -- buildAsiaFibAtlasBook is real
+    // work per call. A caller auditing ONE calendar date at a time (this
+    // feature's own daily reconciliation, not necessarily every caller) has
+    // every trade on a pair share the identical `trade.date`, so memoize by
+    // date rather than rebuild per trade -- confirmed live 2026-09-25 this
+    // was the actual cause of a multi-minute stall, not the M1 walk itself.
+    const bookCache = new Map(); // date -> book|null
+    const bookFor = (date) => {
+      if (bookCache.has(date)) return bookCache.get(date);
+      const isOnly = atRearm.filter(t => t.date < date);
+      const book = isOnly.length ? buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) : null;
+      bookCache.set(date, book);
+      return book;
+    };
+
     for (const trade of trades) {
       const sameDaySideLevel = atRearm.filter(t => t.date === trade.date && t.side === trade.side && t.level === trade.level);
       if (!sameDaySideLevel.length) { results.push({ ...trade, note: 'no matching touch found' }); continue; }
@@ -100,8 +116,7 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
         if (dt < bestDt) { touch = t; bestDt = dt; }
       }
 
-      const isOnly = atRearm.filter(t => t.date < trade.date);
-      const book = isOnly.length ? buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) : null;
+      const book = bookFor(trade.date);
       const vd = book ? voteDecision(book, touch) : null;
 
       if (!vd || vd.margin < minMargin) {
