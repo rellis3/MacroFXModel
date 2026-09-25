@@ -1,5 +1,12 @@
 # NQ net GEX vs next-day diffusion, against a Brownian baseline — results (2026-09-24)
 
+> **AMENDED 2026-09-24 — read with `GEX_FX_CROSSMATCH_RESULTS.md`.** The FX
+> cross-match came back **MIXED**: EUR/GBP/AUD are all positive but pooled to
+> +0.038 (p 0.155, CI crosses zero), 8.4x smaller than NQ's +0.315, none
+> individually significant. The effect below is **instrument-specific and
+> unexplained**, not evidence of a general dealer-hedging mechanism, and must not
+> be built into a cross-instrument range layer.
+
 Pre-registration: [`GEX_RANGE_BROWNIAN_PREREG.md`](GEX_RANGE_BROWNIAN_PREREG.md),
 committed in `0663f29` **before** the run.
 Scripts: `scripts/18_gex_range_brownian.py`, `scripts/19_gex_range_diagnostics.py`.
