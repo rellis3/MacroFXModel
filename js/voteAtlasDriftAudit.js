@@ -172,7 +172,15 @@ export async function countVoteAtlasCandidates(pairs, date, {
     if (!stored) { missing.push({ pair, reason }); continue; }
     const filtered = stored.filter(t => t.margin >= minMargin);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
-    perPairKept[pair] = (capped?.kept ?? []).map(t => ({ ...t, pair }));
+    // Tagged UPPERCASE (not the caller's lowercase `pair`) -- CCY_LEGS's keys
+    // are uppercase ('EURUSD') and currencyLegs() does a direct, case-
+    // sensitive lookup with no normalization. Tagging lowercase here silently
+    // sent every pair through the `?? [pair]` single-currency fallback,
+    // meaning the gate could never see two pairs sharing a real leg (e.g.
+    // EURUSD and EURAUD both carrying EUR exposure) -- confirmed live
+    // 2026-09-25 as a real bug: it was why the currency loss gate barely ever
+    // fired, leaving the candidate count far above the real backtest's own.
+    perPairKept[pair] = (capped?.kept ?? []).map(t => ({ ...t, pair: pair.toUpperCase() }));
   }
 
   let finalByPair = perPairKept;
@@ -180,7 +188,7 @@ export async function countVoteAtlasCandidates(pairs, date, {
     const merged = Object.values(perPairKept).flat();
     const gated = applyCurrencyLossGate(merged, { maxDailyLossPct });
     const byPair = {};
-    for (const t of gated.kept) (byPair[t.pair] ??= []).push(t);
+    for (const t of gated.kept) (byPair[t.pair.toLowerCase()] ??= []).push(t);
     finalByPair = byPair;
   }
 
