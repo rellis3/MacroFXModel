@@ -39,6 +39,12 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ'],
   },
   {
+    id: 'dr-copper', domain: 'macro', verdict: 'null', date: '2026-09-25', doc: 'MD files/DR_COPPER_PREREG.md',
+    claim: '"Dr Copper does not miss": copper falls three months before GDP turns negative, every single time',
+    result: 'The universal claim is FALSIFIED and needs no statistics: 12 of the 14 negative US quarters since 1990 had no 15% copper fall in front of them. Copper was RISING (+5.5%) into 2020 Q1, and US GDP was already negative in 2008 Q1 -- two quarters BEFORE the July 2008 copper peak the story cites. Whether copper has any weaker lift is UNTESTABLE: only 5 signals at the pre-registered 15% gate, against a floor of 6. Descriptively, a 10% gate fires 22 times with an 82% false alarm rate and 1.77x lift.',
+    use: 'Copper is a growth DESCRIPTION, not a recession signal. Never imply it forecasts a contraction. The general form: "every single time" is a sensitivity claim, and sensitivity without a false-alarm rate is nearly worthless.',
+  },
+  {
     id: 'driver-roundtrip', domain: 'price', verdict: 'null', date: '2026-09-25', doc: 'MD files/ROUNDTRIP_PREREG.md',
     claim: 'When a driver spikes and fully retraces intraday, the markets it drives follow it back -- "crude moves back, stocks recover, but bonds never forget"',
     result: 'Null on every testable leg. 400 days of M15, 35 crude round trips vs 81 held excursions: USD/CAD +0.33 [-0.22,+0.88], S&P +0.47 [-0.07,+1.01], Nasdaq -0.13 [-0.90,+0.50]. The direction split is incoherent (S&P gives back 0.19 of an up-spike and 1.00 of a down-spike), which argues the positive point estimates are noise. UNDERPOWERED: 26-30 events, intervals span +/-0.55 of a move, so only a large effect could have been found. BONDS WERE NOT TESTED -- no intraday rates data here.',
