@@ -127,6 +127,10 @@ export async function auditFibAtlasDrift(tradeEntries, { minMargin = 2 } = {}) {
       results.push({
         ...trade, myDecision: matched.decision, myMargin: matched.margin, myDir, actualDir, dirMatch: myDir === actualDir,
         timedOut: matched.timedOut, myWinLoss: matched.win ? 'WIN' : 'LOSS', winLossMatch, expectedPnlPct: matched.pnlPct ?? null,
+        // Same cross-reference field as js/voteAtlasDriftAudit.js's own
+        // matchedTime -- identifies which stored candidate this real trade
+        // consumed, against countFibAtlasCandidates' own kept-candidate list.
+        matchedTime: matched.time,
       });
     }
   }
@@ -172,6 +176,7 @@ export async function countFibAtlasCandidates(pairs, date, {
 } = {}) {
   let total = 0;
   const byPair = {};
+  const allCandidates = [];
   for (const pair of pairs) {
     let n = 0;
     const notes = [];
@@ -184,9 +189,10 @@ export async function countFibAtlasCandidates(pairs, date, {
       const capped = applyConcurrencyCap(gapFiltered, { maxConcurrent, perDirection });
       const dayTrades = (capped?.kept ?? []).filter(t => t.date === date);
       n += dayTrades.length;
+      for (const t of dayTrades) allCandidates.push({ pair, ladder, side: t.side, rung: t.rung, margin: t.margin, decision: t.decision, time: t.time });
     }
     byPair[pair] = notes.length ? { candidates: n, note: notes.join('; ') } : { candidates: n };
     total += n;
   }
-  return { total, byPair };
+  return { total, byPair, allCandidates };
 }

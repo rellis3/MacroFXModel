@@ -18870,7 +18870,7 @@ async function _computeDailyReconciliation(date) {
     // even on a zero-real-trade day (a day with real candidates but zero
     // real trades is a far more useful thing to surface than "no closed
     // trades this date" silently reading as "nothing to check").
-    let backtestCandidateCount = null, candidatesByPair = null;
+    let backtestCandidateCount = null, candidatesByPair = null, allCandidates = [];
     if (enabledPairs.length) {
       try {
         const c = engine === 'fibAtlas'
@@ -18887,11 +18887,17 @@ async function _computeDailyReconciliation(date) {
             });
         backtestCandidateCount = c.total;
         candidatesByPair = c.byPair;
+        allCandidates = c.allCandidates || [];
       } catch (e) { console.warn(`[daily-recon] ${bot} candidate count failed:`, e.message); }
     }
+    // Cross-reference key: engine === 'fibAtlas' candidates carry a ladder
+    // (two per pair are possible the same day), Vote Atlas ones don't.
+    const candKey = (c) => engine === 'fibAtlas' ? `${c.pair}|${c.ladder}|${c.time}` : `${c.pair}|${c.time}`;
 
     if (!raw.length) {
-      out.push({ bot, date, tradeCount: 0, backtestCandidateCount, candidatesByPair, note: backtestCandidateCount ? `no closed trades this date, but the backtest found ${backtestCandidateCount} candidate(s) — worth checking why none were taken` : 'no closed trades this date' });
+      // Every candidate is trivially "missed" on a zero-real-trade day --
+      // exactly the case worth seeing in full, not just a count.
+      out.push({ bot, date, tradeCount: 0, backtestCandidateCount, candidatesByPair, missedCandidates: allCandidates.slice(0, 30), note: backtestCandidateCount ? `no closed trades this date, but the backtest found ${backtestCandidateCount} candidate(s) — worth checking why none were taken` : 'no closed trades this date' });
       continue;
     }
     const realPnl = raw.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
@@ -18905,9 +18911,21 @@ async function _computeDailyReconciliation(date) {
         report = await _auditVoteAtlasDrift(normalized);
       }
     } catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), backtestCandidateCount, candidatesByPair, note: `audit failed: ${e.message}` }); continue; }
+
+    // Candidates a real trade actually consumed (matchedTime, set by the
+    // audit's own stored-trade lookup) vs the full candidate list -- the
+    // difference is genuinely missed signals, not just a count gap. Keyed
+    // by pair+time (Vote Atlas) or pair+ladder+time (Fib Atlas) since a
+    // margin/decision pairing alone isn't unique across rearms.
+    const consumed = new Set(
+      report.results.filter(r => r.matchedTime != null)
+        .map(r => engine === 'fibAtlas' ? `${r.pair}|${r.ladder}|${r.matchedTime}` : `${r.pair}|${r.matchedTime}`)
+    );
+    const missedCandidates = allCandidates.filter(c => !consumed.has(candKey(c))).slice(0, 30);
+
     out.push({
       bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2),
-      backtestCandidateCount, candidatesByPair,
+      backtestCandidateCount, candidatesByPair, missedCandidates,
       decisionMatchRate: report.matchRate, decisionMatches: report.directionMatches, decisionChecked: report.checkedWithVote,
       winLossMatchRate: report.winLossMatchRate, winLossMatches: report.winLossMatches, winLossChecked: report.winLossChecked,
       unresolvedInBacktest: report.unresolvedInBacktest, thinMarginOrNoVote: report.thinMarginOrNoVote,

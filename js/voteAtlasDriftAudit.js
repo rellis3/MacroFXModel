@@ -116,6 +116,12 @@ export async function auditVoteAtlasDrift(tradeLogEntries, { minMargin = 3 } = {
       results.push({
         ...trade, pair, side, rung, instance, myDecision: matched.decision, myMargin: matched.margin, myDir, actualDir, dirMatch: myDir === actualDir,
         timedOut: matched.timedOut, myWinLoss: matched.win ? 'WIN' : 'LOSS', winLossMatch, expectedPnlPct: matched.pnlPct ?? null,
+        // matchedTime identifies exactly which stored candidate this real
+        // trade consumed -- lets a caller cross-reference against
+        // countVoteAtlasCandidates' own kept-candidate list (same `.time`
+        // field, same source file) to find candidates NO real trade ever
+        // matched, i.e. genuinely missed signals, not just a count gap.
+        matchedTime: matched.time,
       });
     }
   }
@@ -194,12 +200,18 @@ export async function countVoteAtlasCandidates(pairs, date, {
 
   let total = 0;
   const byPair = {};
+  const allCandidates = [];
   for (const pair of pairs) {
     const trades = finalByPair[pair] ?? [];
     const dayTrades = trades.filter(t => t.date === date);
     byPair[pair] = { candidates: dayTrades.length };
     total += dayTrades.length;
+    // Kept minimal (pair/side/rung/margin/decision/time) -- enough for a
+    // caller to cross-reference against auditVoteAtlasDrift's own
+    // `matchedTime` field (find candidates no real trade ever consumed) and
+    // to show a human what was missed, without carrying every stat field.
+    for (const t of dayTrades) allCandidates.push({ pair, side: t.side, rung: t.rung, margin: t.margin, decision: t.decision, time: t.time });
   }
   for (const { pair, reason } of missing) byPair[pair] = { candidates: 0, note: reason };
-  return { total, byPair };
+  return { total, byPair, allCandidates };
 }

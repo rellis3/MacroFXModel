@@ -1442,14 +1442,27 @@ function renderRec() {
     <th title="Fade/follow direction, vs the honest as-of-that-day backtest — only over trades the bot actually took">Decision match</th>
     <th title="Win vs loss, vs the honest as-of-that-day backtest — only over trades the bot actually took">Win/loss match</th>
     <th title="Zones the backtest itself never resolved to a clean win/loss that session — not a mismatch, just unclassifiable">Unresolved</th>
+    <th title="Click to see exactly which candidates were missed, and which taken trades disagreed with the backtest">Detail</th>
   </tr></thead><tbody>` +
-    rows.map(r => {
+    rows.map((r, i) => {
       const bot = botOf(REC_BOT_KEY[r.bot] || r.bot);
       const flag = REC_UNVERIFIED.has(r.bot) ? ' <span style="color:var(--dim2);font-size:9px" title="Audit logic built, not yet cross-checked against a known-good reference">unverified</span>' : '';
       const cand = r.backtestCandidateCount;
       const gapPct = (cand && cand > 0) ? (r.tradeCount / cand) : null;
       const candCls = gapPct == null ? '' : gapPct >= 0.8 ? 'pos' : gapPct >= 0.4 ? '' : 'neg';
       const candCell = cand == null ? '<td style="color:var(--dim2)">—</td>' : `<td class="${candCls}" title="${r.tradeCount} traded of ${cand} candidate(s) found">${cand}</td>`;
+      const missed = r.missedCandidates || [];
+      const mism = r.mismatchDetail || [];
+      const detailId = `recDetail${i}`;
+      const hasDetail = missed.length || mism.length;
+      const detailBtn = hasDetail
+        ? `<td><span class="chip" style="cursor:pointer" onclick="document.getElementById('${detailId}').style.display = document.getElementById('${detailId}').style.display === 'none' ? '' : 'none'">${missed.length ? missed.length + ' missed' : ''}${missed.length && mism.length ? ' · ' : ''}${mism.length ? mism.length + ' mismatch' : ''}</span></td>`
+        : '<td style="color:var(--dim2)">—</td>';
+      const missedRows = missed.map(c => `<div>missed: <b>${esc((c.pair || '').toUpperCase())}</b> ${esc(c.side || '')} ${esc(String(c.rung ?? ''))}${c.ladder ? ' · ' + esc(c.ladder) : ''} · margin ${c.margin} · ${esc(c.decision || '')} · ${c.time ? new Date(c.time * 1000).toISOString().slice(11, 16) + ' UTC' : ''}</div>`).join('');
+      const mismRows = mism.map(m => `<div>mismatch: <b>${esc((m.pair || m.symbol || '').toUpperCase())}</b> live=${esc(m.direction || m.actualDir || '')} backtest=${esc(m.myDir || m.myDecision || '')} · ${m.winLossMatch === false ? 'win/loss also disagreed' : ''}${m.detail ? ' · ' + esc(m.detail) : ''}</div>`).join('');
+      const detailRow = hasDetail
+        ? `<tr id="${detailId}" style="display:none"><td colspan="9" style="background:var(--s2);font-size:10.5px;padding:8px 12px">${missedRows}${mismRows}</td></tr>`
+        : '';
       return `<tr>
         <td class="l mono">${r.date}</td>
         <td class="l"><span class="chip" style="background:${bot.bg || 'var(--s2)'};border:1px solid ${bot.bd || 'var(--border)'};color:${bot.color}">${esc(bot.label)}</span>${flag}</td>
@@ -1460,7 +1473,8 @@ function renderRec() {
         ${matchCell(r.decisionMatchRate, r.decisionChecked, r.decisionMatches)}
         ${matchCell(r.winLossMatchRate, r.winLossChecked, r.winLossMatches)}
         <td>${r.unresolvedInBacktest || 0}</td>
-      </tr>`;
+        ${detailBtn}
+      </tr>${detailRow}`;
     }).join('') + `</tbody></table></div></div>`;
 }
 
