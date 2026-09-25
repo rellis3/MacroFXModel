@@ -12651,7 +12651,7 @@ async function cogShadowRun(stage, manual = false) {
 <b>BIAS ONLY - NOT a trade</b>  ${g1.state}${g1.bias ? ' ' + g1.bias : ''}\n`
         + `Net liquidity: $${g1.netLiquidityUsdBn}bn  (as of ${g1.asOfDate})
 `
-        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. No order from this message - the tradeable call comes at 14:15 UK in G3 MAGNET.</i>`);
+        + `HY credit: ${g1.hyChgBp >= 0 ? '+' : ''}${g1.hyChgBp}bp\n${g1.reason}\n<i>Shadow only — no orders. G3 at 14:15 UK is a MEASUREMENT, not a tradeable call: its direction tested 48.8% out-of-sample on 615 days (2026-09-24).</i>`);
     }
     if (stage === 'g2') {
       const oi = await _cogOiFor(COG_SHADOW_INST);
@@ -12662,7 +12662,7 @@ async function cogShadowRun(stage, manual = false) {
         + (g2.state === 'VALID'
           ? `Regime: ${g2.regime} (GEX ${g2.gexBn}bn)\nStandard:     stop ${g2.standard.stopPct}%  risk ${g2.standard.riskPct}%\nConservative: stop ${g2.conservative.stopPct}%  risk ${g2.conservative.riskPct}%\n${g2.reason}`
           : g2.reason)
-        + `\n<i>Shadow only. GEX-to-stop mapping is OUR inference, uncalibrated.</i>`);
+        + `\n<i>Shadow only. GEX does predict next-day RANGE on NQ (+0.315 vol-matched, 793d) but it did NOT generalise to FX, so treat it as NQ-specific. The asymmetry runs the other way from this tier logic: LONG gamma is the quiet state.</i>`);
     }
     if (stage === 'g3') {
       const oi = await _cogOiFor(COG_SHADOW_INST);
@@ -12672,7 +12672,7 @@ async function cogShadowRun(stage, manual = false) {
       await _cogShadowWrite(today, { call: { ...call, at: new Date().toISOString() } });
       await nqSendTg(TAG + `\u{1F9F2} <b>COG-SHADOW | G3 MAGNET</b>  ${_cogUkNow()} UK` + `\n\n`
         + (call.action === 'TRADE'
-            ? `\u{1F535} <b>TRADE: ${call.direction} NQ</b>\n`
+            ? `\u{1F535} <b>GATES ALIGN: ${call.direction} NQ</b>  <i>(not a signal - G3 is a measured null)</i>\n`
               + `Entry   market, now\n`
               + `Stop    ${call.stopPct}% from entry\n`
               + `Target  ${call.target}\n`
@@ -12680,7 +12680,7 @@ async function cogShadowRun(stage, manual = false) {
               + `<i>why: ${g3.reason}</i>\n`
             : `\u{26AA} <b>NO TRADE TODAY</b>\n`
               + (call.reasons || []).map(r => '\u2022 ' + r).join('\n') + `\n`)
-        + `\n<i>Shadow only - no orders placed. Log COG's actual beside this in cog-replication/FORWARD_LOG.md.</i>`);
+        + `\n<i>Shadow only - no orders placed. Log COG's actual beside this in cog-replication/FORWARD_LOG.md. G3's wall-magnet direction is a MEASURED NULL (48.8% OOS, 615 days, 2026-09-24) - it is recorded here to track COG, not because it predicts.</i>`);
     }
   } catch (e) {
     _cogShadowSent[stage] = false;   // let a genuine failure retry in-window
