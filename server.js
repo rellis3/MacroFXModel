@@ -1976,7 +1976,19 @@ function tgOn(sender) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// STAGING_NO_TELEGRAM (2026-09-25): a single choke point so a staging/dev
+// deployment sharing production's KV (and therefore the same bot tokens)
+// can never send a real message no matter which of the many server-side
+// alert schedulers fires — added alongside the staging environment built to
+// stop heavy analysis queries from blocking the LIVE process. Both
+// sendTelegram/sendTelegramPhoto route through here; nothing else calls
+// api.telegram.org from server.js.
+function _stagingBlocksTelegram() {
+  return process.env.STAGING_NO_TELEGRAM === '1';
+}
+
 async function sendTelegram(token, chatId, text) {
+  if (_stagingBlocksTelegram()) { console.log('[TG] blocked — STAGING_NO_TELEGRAM=1'); return false; }
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method:  'POST',
@@ -1995,6 +2007,7 @@ async function sendTelegram(token, chatId, text) {
 // than folding the message into a caption — `formatAlert` output routinely
 // exceeds 1024 once the plain-English decoder block is appended.
 async function sendTelegramPhoto(token, chatId, png, caption = '') {
+  if (_stagingBlocksTelegram()) { console.log('[TG PHOTO] blocked — STAGING_NO_TELEGRAM=1'); return false; }
   try {
     const fd = new FormData();
     fd.append('chat_id', String(chatId));
