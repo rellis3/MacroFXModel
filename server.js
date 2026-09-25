@@ -174,7 +174,7 @@ import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, ver
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
-import { auditVoteAtlasDrift as _auditVoteAtlasDrift } from './js/voteAtlasDriftAudit.js';
+import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit } from './js/voteAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
@@ -18769,6 +18769,59 @@ setTimeout(_volatilityV2AccumulateTradeLog, 35_000);
 // snapshot — the whole point of the owner's own request for this job.
 const VOTE_DRIFT_HISTORY_KEY = 'volatility_bot_v2_drift_history';
 const VOTE_DRIFT_MAX_HISTORY = 52; // ~1 year of weekly snapshots
+
+// ── Daily bot reconciliation (2026-09-25) ────────────────────────────────
+// The standing daily check the weekly Vote Atlas drift audit above answers
+// only for v2, only weekly: for a given calendar date, per bot, does the
+// LIVE decision (fade/follow), the LIVE win/loss, and the LIVE $ P&L match
+// what the honest as-of-that-day backtest says they should have been.
+// Read directly from the same `trade_hist_<bot_key>_<date>` KV keys
+// _worker.js's own GET /api/trade-history route reads (server.js and
+// _worker.js are separate runtimes sharing one KV store — no HTTP round
+// trip to its own public URL needed).
+const DAILY_RECON_BOTS = [
+  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA' },
+  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3' },
+];
+
+async function _readTradeHistFor(botKey, date) {
+  try {
+    const raw = await kv.get(`trade_hist_${botKey}_${date}`);
+    if (!raw) return [];
+    return JSON.parse(raw).map(t => ({ ...t, bot_key: botKey, date }));
+  } catch { return []; }
+}
+
+async function _computeDailyReconciliation(date) {
+  const out = [];
+  for (const { bot, botKey, tag } of DAILY_RECON_BOTS) {
+    const raw = await _readTradeHistFor(botKey, date);
+    if (!raw.length) { out.push({ bot, date, tradeCount: 0, note: 'no closed trades this date' }); continue; }
+    const realPnl = raw.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
+    const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
+    let report;
+    try { report = await _auditVoteAtlasDrift(normalized, loadM1ForPair); }
+    catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), note: `audit failed: ${e.message}` }); continue; }
+    out.push({
+      bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2),
+      decisionMatchRate: report.matchRate, decisionMatches: report.directionMatches, decisionChecked: report.checkedWithVote,
+      winLossMatchRate: report.winLossMatchRate, winLossMatches: report.winLossMatches, winLossChecked: report.winLossChecked,
+      unresolvedInBacktest: report.unresolvedInBacktest, thinMarginOrNoVote: report.thinMarginOrNoVote,
+      expectedPnlPctTotal: report.expectedPnlPctTotal,
+      mismatchDetail: report.mismatchDetail.slice(0, 10),
+    });
+  }
+  return { date, generatedAt: new Date().toISOString(), bots: out };
+}
+
+app.get('/api/bot-audit/daily-reconciliation', async (req, res) => {
+  const date = req.query.date || new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
+  try {
+    const result = await _computeDailyReconciliation(date);
+    res.json({ ok: true, ...result });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 async function _volatilityV2WeeklyDriftAudit() {
   try {
