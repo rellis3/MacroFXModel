@@ -18846,20 +18846,19 @@ async function _computeMotifDailyReconciliation(date) {
 
 async function _computeDailyReconciliation(date) {
   const out = [];
-  // Vote Atlas v2 and v3 share the identical 17-pair enabled_pairs list
-  // (confirmed directly, not assumed); Fib Atlas and Fib Atlas v2 mostly
-  // overlap too. Without sharing, each bot's candidate count independently
-  // re-fetched full multi-year M1 for the SAME pairs — confirmed live
-  // 2026-09-25 this was the real reason a compute never finished in
-  // reasonable time, not a hang. One memoizing cache, scoped to this single
-  // date's compute, shared by every bot below: a pair loaded once by v2
-  // costs nothing when v3 asks for the same pair moments later.
-  const _m1Cache = new Map(); // pair -> Promise<packed>
-  const sharedLoadM1 = (pair) => {
-    if (!_m1Cache.has(pair)) _m1Cache.set(pair, loadM1ForPair(pair));
-    return _m1Cache.get(pair);
-  };
-
+  // 2026-09-25 rewrite: no M1/loadM1ForPair dependency left in this function
+  // at all -- both _countVoteAtlasCandidates/_auditVoteAtlasDrift and their
+  // Fib Atlas equivalents now read the same small, precomputed, nightly-
+  // refreshed {pair}-votetrades.json files /api/level-atlas/vote-portfolio
+  // (and the Fib Atlas equivalents) already read, instead of re-deriving
+  // everything from raw M1 via atlasWalk. That M1 approach caused a real,
+  // multi-hour production outage (CPU-bound parquet decode blocking the
+  // server's one event loop) AND was wrong -- it never applied the
+  // portfolio-level filters (concurrency cap, currency loss gate, cost/gap
+  // filters) the live bots' own configs actually use, producing a candidate
+  // count of 45 against a ground-truth backtest total of 17 for the same
+  // day. Params below are read directly off each bot's live KV config, not
+  // hardcoded, so this stays correct if a config changes.
   for (const { bot, botKey, tag, engine, configKey } of DAILY_RECON_BOTS) {
     const raw = await _readTradeHistFor(botKey, date);
     const cfg = await _readBotConfig(configKey);
@@ -18875,8 +18874,17 @@ async function _computeDailyReconciliation(date) {
     if (enabledPairs.length) {
       try {
         const c = engine === 'fibAtlas'
-          ? await _countFibAtlasCandidates(enabledPairs, date, sharedLoadM1, { minMargin: 1, ladders: Object.entries(cfg?.ladders || { asia: true, monday: true }).filter(([, on]) => on).map(([k]) => k) })
-          : await _countVoteAtlasCandidates(enabledPairs, date, sharedLoadM1, { minMargin: 3 });
+          ? await _countFibAtlasCandidates(enabledPairs, date, {
+              ladders: Object.entries(cfg?.ladders || { asia: true, monday: true }).filter(([, on]) => on).map(([k]) => k),
+              maxConcurrent: cfg?.max_concurrent_per_pair ?? 1,
+              gapFilterOn: cfg?.gap_filter || { asia: true, monday: true },
+            })
+          : await _countVoteAtlasCandidates(enabledPairs, date, {
+              minMargin: 3,
+              maxConcurrent: cfg?.max_concurrent_per_pair ?? 1,
+              ccyLossGate: cfg?.ccy_loss_gate === true,
+              maxDailyLossPct: cfg?.max_daily_loss_pct ?? 1,
+            });
         backtestCandidateCount = c.total;
         candidatesByPair = c.byPair;
       } catch (e) { console.warn(`[daily-recon] ${bot} candidate count failed:`, e.message); }
@@ -18891,10 +18899,10 @@ async function _computeDailyReconciliation(date) {
     try {
       if (engine === 'fibAtlas') {
         const normalized = _normalizeTradeHistoryForFibAtlasAudit(raw, tag);
-        report = await _auditFibAtlasDrift(normalized, sharedLoadM1);
+        report = await _auditFibAtlasDrift(normalized);
       } else {
         const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
-        report = await _auditVoteAtlasDrift(normalized, sharedLoadM1);
+        report = await _auditVoteAtlasDrift(normalized);
       }
     } catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), backtestCandidateCount, candidatesByPair, note: `audit failed: ${e.message}` }); continue; }
     out.push({
@@ -18912,12 +18920,13 @@ async function _computeDailyReconciliation(date) {
   return { date, generatedAt: new Date().toISOString(), bots: out };
 }
 
-// _computeDailyReconciliation calls loadM1ForPair (full multi-year R2 fetch)
-// per distinct pair across both bots' trades that day — confirmed live
-// 2026-09-25 to run past Railway's own request timeout ("upstream error")
-// for a normal trading day's trade count. Same shape as _laGetFastLive's own
-// warming pattern elsewhere in this file: never compute inline on a GET,
-// always serve from cache and kick off a background fill on a miss.
+// _computeDailyReconciliation reads a stored votetrades.json per distinct
+// pair/ladder across every bot's own pair universe (small R2 JSON fetches,
+// not M1 decodes since the 2026-09-25 rewrite, but still ~60+ sequential
+// fetches for the full 5-bot set) — kept off the synchronous GET path on the
+// same discipline as _laGetFastLive's own warming pattern elsewhere in this
+// file: never compute inline on a GET, always serve from cache and kick off
+// a background fill on a miss.
 const _dailyReconCache = new Map(); // date -> result
 const _dailyReconInFlight = new Set(); // dates currently computing
 

@@ -1,53 +1,48 @@
 /**
  * Fib Atlas drift audit — the js/voteAtlasDriftAudit.js pattern, ported for
- * Fib Atlas's own engine shape (2026-09-25).
+ * Fib Atlas's own engine shape (2026-09-25, REWRITTEN 2026-09-25).
  *
- * Structural differences from Vote Atlas, confirmed by direct investigation
- * before writing this (not guessed):
- *  - Two separate walk engines share ONE vote/pricing module: asiaFibAtlasWalk
- *    and mondayFibAtlasWalk both feed straight into asiaFibAtlasVoteReview.js's
- *    voteDecision/priceBarrierTrade and asiaFibAtlasReport.js's
- *    buildAsiaFibAtlasBook — no separate "mondayFibAtlasVoteReview.js" exists,
- *    because Monday's touch records deliberately reuse Asia's field names.
- *  - "rung" is a fib EXTENSION MULTIPLIER (e.g. 1.25, -2.5), not a p50/p75/p90
- *    label, keyed on the touch record as `level`; `side` is 'above'/'below',
- *    not 'up'/'down'.
+ * REWRITE, same day, same reason as js/voteAtlasDriftAudit.js's own rewrite:
+ * re-deriving everything from raw M1 via asiaFibAtlasWalk/mondayFibAtlasWalk
+ * on every call was both the cause of a real production outage (CPU-bound
+ * parquet decode blocking the server's one event loop) and — separately —
+ * wrong, since it never applied the SAME portfolio-level filters (margin,
+ * per-pair concurrency cap, cost-efficiency, gap filter) the live bot's own
+ * config actually uses. The source of truth is the SAME precomputed,
+ * nightly-refreshed `{ladder}-fib-atlas/{pair}-votetrades.json` files
+ * /api/asia-fib-atlas/vote-portfolio and /api/monday-fib-atlas/vote-portfolio
+ * already read — small R2 JSON fetches, not M1 decodes, already carrying
+ * decision/margin/win/pnlPct/gapMin/etc precomputed.
+ *
+ * Structural differences from Vote Atlas, confirmed by direct investigation:
+ *  - Two ladders, two separate R2 prefixes ('asia-fib-atlas',
+ *    'monday-fib-atlas'), but the SAME buildBarrierTrades schema (Level
+ *    Atlas's shared code) — confirmed directly against a real stored trade:
+ *    the fib extension multiplier (e.g. -0.25) lives on the STORED trade's
+ *    `rung` field, not `level` (level/entry is the raw price, same generic
+ *    naming Level Atlas's own touches use). `side` is 'above'/'below', not
+ *    'up'/'down'.
  *  - The comment tag (`FA[a_a1.25]` v1, `FA2[m_b-2.5]` v2) carries the ladder
  *    (a=asia, m=monday) and side+level, but — unlike Vote Atlas's own
  *    "downp50_1" — NO trailing instance-ordinal. Re-touches of the same rung
  *    reuse the identical tag; the live bot disambiguates via its own
  *    in-memory RearmTracker state, which isn't recoverable from a closed
  *    trade record after the fact. So a real trade is matched to the NEAREST
- *    same-day/side/level touch by time_open, not an ordinal lookup — the
- *    best available signal given what the tag actually carries, not a
- *    downgrade from Vote Atlas's method.
+ *    same-day/side/rung stored trade by time_open, not an ordinal lookup.
+ *  - Live default params (read directly off the frozen constants the live
+ *    zone pricers actually use — js/asiaFibAtlasZonePricer.js,
+ *    js/mondayFibAtlasZonePricer.js — not guessed): minMargin=2 (both),
+ *    maxGapMin=30 (asia) / 180 (monday) when gap_filter is on for that
+ *    ladder, minCostRatio=3 (asia) / 4 (monday). No currency-loss-gate
+ *    equivalent exists for Fib Atlas.
  */
-import { asiaFibAtlasWalk } from './asiaFibAtlasEngine.js';
-import { mondayFibAtlasWalk } from './mondayFibAtlasEngine.js';
-import { buildAsiaFibAtlasBook } from './asiaFibAtlasReport.js';
-import { voteDecision, priceBarrierTrade } from './asiaFibAtlasVoteReview.js';
-import { assetClassFor } from './forecastAnalyserStore.js';
-import { costForPair as _fibAuditCostForPair } from './perLineStrategy.js';
+import { applyConcurrencyCap, applyCostEfficiencyFilter, applyGapFilter } from './levelAtlasVoteReview.js';
+import { getJSON } from './r2Store.js';
 import { resolveKey } from './instrumentRegistry.js';
 
+const LADDER_PREFIX = { asia: 'asia-fib-atlas', monday: 'monday-fib-atlas' };
+
 const _SYMBOL_OVERRIDE = { DE40: 'de30', US2000: 'us2000', US30: 'dow', US500: 'spx', US100: 'nq', UK100: 'uk100' };
-const DEFAULT_REARM = 0.3;
-
-// REMOVED 2026-09-25: same incident as js/voteAtlasDriftAudit.js's own
-// _withTimeout removal -- see the comment there. Node's setTimeout can't
-// preempt loadM1ForPairFn's synchronous parquet decode, so the wrapper never
-// actually protected against the slow case, while still abandoning the real
-// promise to run on in the background once it "gave up". The R2 client's own
-// requestTimeout: 120_000 + one retry already bounds genuine network hangs.
-
-// REVERTED 2026-09-25: same incident as js/voteAtlasDriftAudit.js's own
-// _mapLimit -- see the comment there. Concurrency caused a real production
-// outage; this stays strictly sequential.
-async function _mapLimit(items, fn) {
-  const results = new Array(items.length);
-  for (let i = 0; i < items.length; i++) results[i] = await fn(items[i], i);
-  return results;
-}
 
 // Same continuation/reversal sign logic Vote Atlas's own betDirection uses,
 // re-derived rather than reused because betDirection's `side==='up'` check
@@ -77,18 +72,12 @@ export function normalizeTradeHistoryForFibAtlasAudit(rawTrades, commentPrefix) 
     if (!pair) pair = sym.toLowerCase();
     // MT5 stamps time_open on the BROKER's clock (commonly +2/+3h, see
     // pylego/broker/clock.py's own convention and project_broker_clock_
-    // offset.md) -- the backtest touch times this gets matched against
-    // (asiaFibAtlasWalk/mondayFibAtlasWalk's own `.time`) are true UTC.
-    // Vote Atlas's own audit module never hit this: it matches trades to
-    // touches by an ORDINAL parsed out of the comment tag ("downp50_1"),
-    // never comparing raw timestamps at all. Fib Atlas's tag carries no
-    // ordinal (this file's own header doc), so matching falls back to
-    // "nearest touch by time_open" -- and un-corrected, that's nearest by a
-    // clock running ~3h ahead, which doesn't just mis-rank candidates, it
-    // reliably picks the WRONG touch outright on any day with more than one
-    // real touch a few hours apart (confirmed live 2026-09-25, cross-checked
-    // against a manual reconciliation done independently earlier the same
-    // session: this bug alone was 100% of that day's reported "mismatches").
+    // offset.md) -- the stored trades' own `.time` is true UTC. Fib Atlas's
+    // tag carries no ordinal (this file's own header doc), so matching falls
+    // back to "nearest stored trade by time_open" -- un-corrected, that's
+    // nearest by a clock running ~3h ahead, which reliably picks the WRONG
+    // trade outright on any day with more than one real touch a few hours
+    // apart (confirmed live 2026-09-25).
     out.push({
       pair, ladder: ladderCode === 'a' ? 'asia' : 'monday',
       side: sideCode === 'a' ? 'above' : 'below',
@@ -100,74 +89,44 @@ export function normalizeTradeHistoryForFibAtlasAudit(rawTrades, commentPrefix) 
   return out;
 }
 
-// `loadM1ForPairFn` injected, same discipline as auditVoteAtlasDrift — no
-// hard dependency on a specific M1 source module.
-export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMargin = 1 } = {}) {
+async function loadStoredFibTrades(pair, ladder) {
+  const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);
+  if (!stored?.trades) return { trades: null, cost: null, reason: 'no vote-backtest data for this pair/ladder' };
+  return { trades: stored.trades, cost: stored.cost, reason: null };
+}
+
+export async function auditFibAtlasDrift(tradeEntries, { minMargin = 2 } = {}) {
   const byKey = {};
   for (const t of tradeEntries) (byKey[`${t.pair}|${t.ladder}`] ??= []).push(t);
 
   const results = [];
   for (const [key, trades] of Object.entries(byKey)) {
     const [pair, ladder] = key.split('|');
-    let packed;
-    try { packed = await loadM1ForPairFn(pair); } catch (e) {
-      for (const trade of trades) results.push({ ...trade, note: `M1 load failed: ${e.message}` });
-      continue;
-    }
-    if (!packed?.n) { for (const trade of trades) results.push({ ...trade, note: 'no M1 data for this pair' }); continue; }
-
-    const assetClass = assetClassFor(pair);
-    const cost = _fibAuditCostForPair(pair, assetClass);
-    const walkFn = ladder === 'asia' ? asiaFibAtlasWalk : mondayFibAtlasWalk;
-    const { touches } = walkFn(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
-    const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
-
-    // Fib Atlas's book has ~38 rung cells per side (every fib extension level)
-    // vs Vote Atlas's fixed 3 (p50/p75/p90) -- buildAsiaFibAtlasBook is real
-    // work per call. A caller auditing ONE calendar date at a time (this
-    // feature's own daily reconciliation, not necessarily every caller) has
-    // every trade on a pair share the identical `trade.date`, so memoize by
-    // date rather than rebuild per trade -- confirmed live 2026-09-25 this
-    // was the actual cause of a multi-minute stall, not the M1 walk itself.
-    const bookCache = new Map(); // date -> book|null
-    const bookFor = (date) => {
-      if (bookCache.has(date)) return bookCache.get(date);
-      const isOnly = atRearm.filter(t => t.date < date);
-      const book = isOnly.length ? buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) : null;
-      bookCache.set(date, book);
-      return book;
-    };
+    const { trades: stored, reason } = await loadStoredFibTrades(pair, ladder);
+    if (!stored) { for (const trade of trades) results.push({ ...trade, note: reason }); continue; }
 
     for (const trade of trades) {
-      const sameDaySideLevel = atRearm.filter(t => t.date === trade.date && t.side === trade.side && t.level === trade.level);
-      if (!sameDaySideLevel.length) { results.push({ ...trade, note: 'no matching touch found' }); continue; }
-      let touch = sameDaySideLevel[0], bestDt = Math.abs((touch.time || 0) - (trade.time_open || 0));
-      for (const t of sameDaySideLevel) {
+      const sameDaySideRung = stored.filter(t => t.date === trade.date && t.side === trade.side && t.rung === trade.level);
+      if (!sameDaySideRung.length) { results.push({ ...trade, note: 'no matching stored trade found' }); continue; }
+      let matched = sameDaySideRung[0], bestDt = Math.abs((matched.time || 0) - (trade.time_open || 0));
+      for (const t of sameDaySideRung) {
         const dt = Math.abs((t.time || 0) - (trade.time_open || 0));
-        if (dt < bestDt) { touch = t; bestDt = dt; }
+        if (dt < bestDt) { matched = t; bestDt = dt; }
       }
 
-      const book = bookFor(trade.date);
-      const vd = book ? voteDecision(book, touch) : null;
-
-      if (!vd || vd.margin < minMargin) {
-        results.push({ ...trade, note: vd ? `margin ${vd.margin} < ${minMargin}, should not have traded` : 'no vote (insufficient book)', myDecision: vd?.decision ?? null, myMargin: vd?.margin ?? null });
+      if (matched.margin < minMargin) {
+        results.push({ ...trade, note: `margin ${matched.margin} < ${minMargin}, should not have traded`, myDecision: matched.decision, myMargin: matched.margin });
         continue;
       }
-      const myDir = fibBetDirection(vd.decision, trade.side);
+      const myDir = fibBetDirection(matched.decision, trade.side);
       const actualDir = trade.direction === 'BUY' ? 'long' : 'short';
 
-      let winLossMatch, myWinLoss, priced;
-      if (touch.outcome !== 'neither') {
-        const won = (vd.decision === 'fade' && touch.outcome === 'back') || (vd.decision === 'follow' && touch.outcome === 'out');
-        myWinLoss = won ? 'WIN' : 'LOSS';
-        if (typeof trade.profit === 'number') winLossMatch = (trade.profit > 0) === won;
-      }
-      try { priced = priceBarrierTrade(touch, vd.decision, cost); } catch { priced = null; }
+      const realProfit = typeof trade.profit === 'number' ? trade.profit : null;
+      const winLossMatch = realProfit != null ? (realProfit > 0) === matched.win : undefined;
 
       results.push({
-        ...trade, myDecision: vd.decision, myMargin: vd.margin, myDir, actualDir, dirMatch: myDir === actualDir,
-        btOutcome: touch.outcome, myWinLoss, winLossMatch, expectedPnlPct: priced?.pnlPct ?? null,
+        ...trade, myDecision: matched.decision, myMargin: matched.margin, myDir, actualDir, dirMatch: myDir === actualDir,
+        timedOut: matched.timedOut, myWinLoss: matched.win ? 'WIN' : 'LOSS', winLossMatch, expectedPnlPct: matched.pnlPct ?? null,
       });
     }
   }
@@ -177,7 +136,7 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
   const noVoteOrThin = results.filter(r => r.dirMatch === undefined);
   const winLossChecked = results.filter(r => r.winLossMatch !== undefined);
   const winLossMismatches = winLossChecked.filter(r => !r.winLossMatch);
-  const unresolved = results.filter(r => r.btOutcome === 'neither');
+  const unresolved = results.filter(r => r.timedOut);
   const expectedPnlPctSum = results.reduce((s, r) => s + (r.expectedPnlPct ?? 0), 0);
   return {
     generatedAt: new Date().toISOString(),
@@ -198,32 +157,36 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
   };
 }
 
-// Population, not just output — same reasoning and same shape as Vote
-// Atlas's countVoteAtlasCandidates, ported here rather than shared, since
-// Fib Atlas's candidate count is per-pair-per-LADDER (a pair can generate
-// candidates on Asia AND Monday independently the same day).
-export async function countFibAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 1, ladders = ['asia', 'monday'] } = {}) {
+// Population, not just output — same reasoning as Vote Atlas's own
+// countVoteAtlasCandidates. Applies the SAME portfolio-level filters the
+// live bot's own config uses (margin, gap filter, cost-efficiency filter,
+// per-pair concurrency cap) — a raw margin>=minMargin count is NOT what
+// the live bot would actually take, which is exactly what produced Vote
+// Atlas's original 45-vs-17 mismatch.
+export async function countFibAtlasCandidates(pairs, date, {
+  ladders = ['asia', 'monday'], maxConcurrent = 1, perDirection = false,
+  minMargin = { asia: 2, monday: 2 },
+  maxGapMin = { asia: 30, monday: 180 },
+  minCostRatio = { asia: 3, monday: 4 },
+  gapFilterOn = { asia: true, monday: true },
+} = {}) {
   let total = 0;
   const byPair = {};
-  await _mapLimit(pairs, async (pair) => {
-    try {
-      const packed = await loadM1ForPairFn(pair);
-      if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; return; }
-      const assetClass = assetClassFor(pair);
-      let n = 0;
-      for (const ladder of ladders) {
-        const walkFn = ladder === 'asia' ? asiaFibAtlasWalk : mondayFibAtlasWalk;
-        const { touches } = walkFn(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
-        const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
-        const dayTouches = atRearm.filter(t => t.date === date);
-        const isOnly = atRearm.filter(t => t.date < date);
-        const book = isOnly.length ? buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) : null;
-        if (!book) continue;
-        for (const t of dayTouches) { const vd = voteDecision(book, t); if (vd && vd.margin >= minMargin) n++; }
-      }
-      byPair[pair] = { candidates: n };
-      total += n;
-    } catch (e) { byPair[pair] = { candidates: 0, note: e.message }; }
-  });
+  for (const pair of pairs) {
+    let n = 0;
+    const notes = [];
+    for (const ladder of ladders) {
+      const { trades: stored, cost, reason } = await loadStoredFibTrades(pair, ladder);
+      if (!stored) { notes.push(`${ladder}: ${reason}`); continue; }
+      const marginFiltered = stored.filter(t => t.margin >= (minMargin[ladder] ?? 2));
+      const costFiltered = applyCostEfficiencyFilter(marginFiltered, cost, minCostRatio[ladder] ?? null);
+      const gapFiltered = applyGapFilter(costFiltered, gapFilterOn[ladder] ? (maxGapMin[ladder] ?? null) : null);
+      const capped = applyConcurrencyCap(gapFiltered, { maxConcurrent, perDirection });
+      const dayTrades = (capped?.kept ?? []).filter(t => t.date === date);
+      n += dayTrades.length;
+    }
+    byPair[pair] = notes.length ? { candidates: n, note: notes.join('; ') } : { candidates: n };
+    total += n;
+  }
   return { total, byPair };
 }

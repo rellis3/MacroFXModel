@@ -1,21 +1,28 @@
-// One-off, isolated validation for countVoteAtlasCandidates -- run via
-// `railway ssh` as its own process, deliberately NOT through the live
-// server.js/_computeDailyReconciliation path, after that path caused a
-// production outage on 2026-09-25 (CPU-bound decode + non-cancelling
-// timeout + concurrency starved every other live bot's KV/R2 reads).
-// This script shares the box's CPU/network but not server.js's event loop,
-// connection pool, or in-memory caches -- a much smaller blast radius for a
-// first correctness check against known ground truth.
-import { loadM1ForPair } from '../js/volBacktestM1Engine.js';
+// One-off validation for the REWRITTEN countVoteAtlasCandidates/
+// countFibAtlasCandidates (2026-09-25) -- reads precomputed votetrades.json
+// (cheap R2 JSON, no M1 decode) instead of the old atlasWalk-based approach
+// that caused a production outage AND produced a wrong count (45 vs 17
+// ground truth for vote_atlas_v2 on 2026-09-24). Run via `railway ssh` as
+// its own process, deliberately separate from server.js's event loop, for a
+// first correctness check before wiring this into the live endpoint again.
 import { countVoteAtlasCandidates } from '../js/voteAtlasDriftAudit.js';
+import { countFibAtlasCandidates } from '../js/fibAtlasDriftAudit.js';
 
 const VOTE_ATLAS_PAIRS = ["eurusd","gbpusd","usdjpy","audusd","usdchf","euraud","eurchf","audjpy","cadjpy","chfjpy","gold","nq","spx","dow","us2000","de30","uk100"];
+const FIB_ATLAS_PAIRS = ["eurusd","gbpusd","usdjpy","audusd","nzdusd","usdcad","usdchf","eurgbp","euraud","gbpaud","audjpy","audnzd","audcad","cadjpy","nzdjpy","gold"];
 const DATE = process.argv[2] || '2026-09-24';
 
-console.log(`Testing countVoteAtlasCandidates for vote_atlas_v2 on ${DATE} (minMargin=3, ${VOTE_ATLAS_PAIRS.length} pairs)`);
-console.log('Ground truth (official backtest daily breakdown): 21 for 09-22, 19 for 09-23, 17 for 09-24');
+console.log(`Ground truth (official backtest daily breakdown): 21 for 09-22, 19 for 09-23, 17 for 09-24`);
+console.log(`\n=== vote_atlas_v2 candidates for ${DATE} (minMargin=3, maxConcurrent=3, ccyLossGate=true, maxDailyLossPct=1) ===`);
 const t0 = Date.now();
-const result = await countVoteAtlasCandidates(VOTE_ATLAS_PAIRS, DATE, loadM1ForPair, { minMargin: 3 });
-console.log(`Done in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
-console.log(`TOTAL CANDIDATES: ${result.total}`);
-console.log('By pair:', JSON.stringify(result.byPair, null, 2));
+const v2 = await countVoteAtlasCandidates(VOTE_ATLAS_PAIRS, DATE, { minMargin: 3, maxConcurrent: 3, ccyLossGate: true, maxDailyLossPct: 1 });
+console.log(`Done in ${((Date.now() - t0) / 1000).toFixed(2)}s`);
+console.log(`TOTAL: ${v2.total}`);
+console.log('By pair:', JSON.stringify(v2.byPair));
+
+console.log(`\n=== fib_atlas candidates for ${DATE} (live defaults: minMargin=2, maxConcurrent=4, gapFilterOn) ===`);
+const t1 = Date.now();
+const fa = await countFibAtlasCandidates(FIB_ATLAS_PAIRS, DATE, { maxConcurrent: 4, gapFilterOn: { asia: true, monday: true } });
+console.log(`Done in ${((Date.now() - t1) / 1000).toFixed(2)}s`);
+console.log(`TOTAL: ${fa.total}`);
+console.log('By pair:', JSON.stringify(fa.byPair));
