@@ -175,6 +175,7 @@ import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
 import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit } from './js/voteAtlasDriftAudit.js';
+import { auditFibAtlasDrift as _auditFibAtlasDrift, normalizeTradeHistoryForFibAtlasAudit as _normalizeTradeHistoryForFibAtlasAudit } from './js/fibAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
@@ -18780,8 +18781,13 @@ const VOTE_DRIFT_MAX_HISTORY = 52; // ~1 year of weekly snapshots
 // _worker.js are separate runtimes sharing one KV store — no HTTP round
 // trip to its own public URL needed).
 const DAILY_RECON_BOTS = [
-  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA' },
-  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3' },
+  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA', engine: 'voteAtlas' },
+  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3', engine: 'voteAtlas' },
+  // Fib Atlas: two walk engines (asia/monday) share one vote/pricing module;
+  // auditFibAtlasDrift groups trades by pair+ladder internally, so one call
+  // per bot (not per ladder) handles both.
+  { bot: 'fib_atlas', botKey: 'fib_atlas_bot_status', tag: 'FA', engine: 'fibAtlas' },
+  { bot: 'fib_atlas_v2', botKey: 'fib_atlas_bot_v2_status', tag: 'FA2', engine: 'fibAtlas' },
 ];
 
 async function _readTradeHistFor(botKey, date) {
@@ -18832,14 +18838,20 @@ async function _computeMotifDailyReconciliation(date) {
 
 async function _computeDailyReconciliation(date) {
   const out = [];
-  for (const { bot, botKey, tag } of DAILY_RECON_BOTS) {
+  for (const { bot, botKey, tag, engine } of DAILY_RECON_BOTS) {
     const raw = await _readTradeHistFor(botKey, date);
     if (!raw.length) { out.push({ bot, date, tradeCount: 0, note: 'no closed trades this date' }); continue; }
     const realPnl = raw.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
-    const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
     let report;
-    try { report = await _auditVoteAtlasDrift(normalized, loadM1ForPair); }
-    catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), note: `audit failed: ${e.message}` }); continue; }
+    try {
+      if (engine === 'fibAtlas') {
+        const normalized = _normalizeTradeHistoryForFibAtlasAudit(raw, tag);
+        report = await _auditFibAtlasDrift(normalized, loadM1ForPair);
+      } else {
+        const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
+        report = await _auditVoteAtlasDrift(normalized, loadM1ForPair);
+      }
+    } catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), note: `audit failed: ${e.message}` }); continue; }
     out.push({
       bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2),
       decisionMatchRate: report.matchRate, decisionMatches: report.directionMatches, decisionChecked: report.checkedWithVote,
