@@ -1401,11 +1401,19 @@ function renderRec() {
   // haven't been computed yet (a day with computed:false, or one that simply
   // isn't cached — the server's own daily job fills these in over time, this
   // tab just shows whatever's there rather than triggering the slow path).
+  //
+  // A zero-real-trade day is ONLY skipped when the backtest ALSO found
+  // nothing (genuinely quiet). A zero-trade day where the backtest found
+  // real candidates is exactly the case this table exists to catch — the
+  // bot silently skipping signals its own backtest would have taken — so it
+  // stays in, not filtered out the way it was before this column existed.
   const rows = [];
   for (const day of REC_DATA) {
     if (day.computed === false || !day.bots) continue;
     for (const b of day.bots) {
-      if (b.tradeCount === 0 || b.note) continue; // "no closed trades" / errored — not a row worth a line in a trend table
+      const hadCandidates = (b.backtestCandidateCount || 0) > 0;
+      if (b.tradeCount === 0 && !hadCandidates) continue; // nothing happened, nothing expected
+      if (b.note && b.note.startsWith('audit failed')) continue; // a real error, not a trend row
       rows.push({ date: day.date, ...b });
     }
   }
@@ -1424,22 +1432,30 @@ function renderRec() {
     return `<td class="${cls}" title="${matches}/${checked} checked">${rate.toFixed(0)}%</td>`;
   };
 
-  el.innerHTML = `<div class="note">Per-day, per-bot: does the live decision (fade/follow), the live win/loss, and the live $ P&amp;L match what the honest as-of-that-day backtest says they should have been. Computed automatically once a day (06:30 London) for the PREVIOUS day. <b>Fib Atlas / Fib Atlas v2 are flagged unverified</b> — the audit logic is built but its numbers haven't been cross-checked against a known-good reference yet, unlike Vote Atlas and Motif Touch.</div>
+  el.innerHTML = `<div class="note">Per-day, per-bot: does the live decision (fade/follow), the live win/loss, and the live $ P&amp;L match what the honest as-of-that-day backtest says they should have been — AND, separately, how many zones the backtest found across the bot's own full pair universe that day vs how many it actually traded. A bot that matches 100% on the trades it took but traded far fewer than "Backtest candidates" is silently skipping real signals — that gap is the number to watch, not just the match rate. Computed automatically once a day (06:30 London) for the PREVIOUS day. <b>Fib Atlas / Fib Atlas v2 are flagged unverified</b> — the audit logic is built but its numbers haven't been cross-checked against a known-good reference yet, unlike Vote Atlas and Motif Touch.</div>
   <div class="panel"><div class="ph"><span class="badge">REC</span>Daily reconciliation<span class="rt">${rows.length} bot-days · ${daysBtns}</span></div>
   <div class="scroll"><table><thead><tr>
-    <th class="l">Date</th><th class="l">Bot</th><th>Trades</th><th>Real P&amp;L</th><th>Expected P&amp;L%</th>
-    <th title="Fade/follow direction, vs the honest as-of-that-day backtest">Decision match</th>
-    <th title="Win vs loss, vs the honest as-of-that-day backtest">Win/loss match</th>
+    <th class="l">Date</th><th class="l">Bot</th>
+    <th title="Real closed trades">Trades</th>
+    <th title="Zones the honest as-of-that-day backtest voted margin-eligible on, across the bot's OWN full enabled-pairs universe — regardless of whether the bot traded any of them">Backtest candidates</th>
+    <th>Real P&amp;L</th><th>Expected P&amp;L%</th>
+    <th title="Fade/follow direction, vs the honest as-of-that-day backtest — only over trades the bot actually took">Decision match</th>
+    <th title="Win vs loss, vs the honest as-of-that-day backtest — only over trades the bot actually took">Win/loss match</th>
     <th title="Zones the backtest itself never resolved to a clean win/loss that session — not a mismatch, just unclassifiable">Unresolved</th>
   </tr></thead><tbody>` +
     rows.map(r => {
       const bot = botOf(REC_BOT_KEY[r.bot] || r.bot);
       const flag = REC_UNVERIFIED.has(r.bot) ? ' <span style="color:var(--dim2);font-size:9px" title="Audit logic built, not yet cross-checked against a known-good reference">unverified</span>' : '';
+      const cand = r.backtestCandidateCount;
+      const gapPct = (cand && cand > 0) ? (r.tradeCount / cand) : null;
+      const candCls = gapPct == null ? '' : gapPct >= 0.8 ? 'pos' : gapPct >= 0.4 ? '' : 'neg';
+      const candCell = cand == null ? '<td style="color:var(--dim2)">—</td>' : `<td class="${candCls}" title="${r.tradeCount} traded of ${cand} candidate(s) found">${cand}</td>`;
       return `<tr>
         <td class="l mono">${r.date}</td>
         <td class="l"><span class="chip" style="background:${bot.bg || 'var(--s2)'};border:1px solid ${bot.bd || 'var(--border)'};color:${bot.color}">${esc(bot.label)}</span>${flag}</td>
         <td>${r.tradeCount}</td>
-        <td class="${cls(r.realPnl)}">${money(r.realPnl)}</td>
+        ${candCell}
+        <td class="${r.realPnl != null ? cls(r.realPnl) : ''}">${r.realPnl != null ? money(r.realPnl) : '<span style="color:var(--dim2)">—</span>'}</td>
         <td>${r.expectedPnlPctTotal != null ? pct(r.expectedPnlPctTotal) : '<span style="color:var(--dim2)">—</span>'}</td>
         ${matchCell(r.decisionMatchRate, r.decisionChecked, r.decisionMatches)}
         ${matchCell(r.winLossMatchRate, r.winLossChecked, r.winLossMatches)}

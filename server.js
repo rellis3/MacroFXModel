@@ -174,8 +174,8 @@ import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, ver
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
-import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit } from './js/voteAtlasDriftAudit.js';
-import { auditFibAtlasDrift as _auditFibAtlasDrift, normalizeTradeHistoryForFibAtlasAudit as _normalizeTradeHistoryForFibAtlasAudit } from './js/fibAtlasDriftAudit.js';
+import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit, countVoteAtlasCandidates as _countVoteAtlasCandidates } from './js/voteAtlasDriftAudit.js';
+import { auditFibAtlasDrift as _auditFibAtlasDrift, normalizeTradeHistoryForFibAtlasAudit as _normalizeTradeHistoryForFibAtlasAudit, countFibAtlasCandidates as _countFibAtlasCandidates } from './js/fibAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
 import { findImpulseRetracements } from './js/impulseRetracementGeometry.js';
@@ -18781,14 +18781,22 @@ const VOTE_DRIFT_MAX_HISTORY = 52; // ~1 year of weekly snapshots
 // _worker.js are separate runtimes sharing one KV store — no HTTP round
 // trip to its own public URL needed).
 const DAILY_RECON_BOTS = [
-  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA', engine: 'voteAtlas' },
-  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3', engine: 'voteAtlas' },
+  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA', engine: 'voteAtlas', configKey: 'volatility_bot_v2_config' },
+  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3', engine: 'voteAtlas', configKey: 'volatility_bot_v3_config' },
   // Fib Atlas: two walk engines (asia/monday) share one vote/pricing module;
   // auditFibAtlasDrift groups trades by pair+ladder internally, so one call
   // per bot (not per ladder) handles both.
-  { bot: 'fib_atlas', botKey: 'fib_atlas_bot_status', tag: 'FA', engine: 'fibAtlas' },
-  { bot: 'fib_atlas_v2', botKey: 'fib_atlas_bot_v2_status', tag: 'FA2', engine: 'fibAtlas' },
+  { bot: 'fib_atlas', botKey: 'fib_atlas_bot_status', tag: 'FA', engine: 'fibAtlas', configKey: 'fib_atlas_bot_config' },
+  { bot: 'fib_atlas_v2', botKey: 'fib_atlas_bot_v2_status', tag: 'FA2', engine: 'fibAtlas', configKey: 'fib_atlas_bot_v2_config' },
 ];
+
+async function _readBotConfig(configKey) {
+  try {
+    const raw = await kv.get(configKey);
+    if (!raw) return null;
+    return JSON.parse(raw).data ?? JSON.parse(raw);
+  } catch { return null; }
+}
 
 async function _readTradeHistFor(botKey, date) {
   try {
@@ -18838,9 +18846,32 @@ async function _computeMotifDailyReconciliation(date) {
 
 async function _computeDailyReconciliation(date) {
   const out = [];
-  for (const { bot, botKey, tag, engine } of DAILY_RECON_BOTS) {
+  for (const { bot, botKey, tag, engine, configKey } of DAILY_RECON_BOTS) {
     const raw = await _readTradeHistFor(botKey, date);
-    if (!raw.length) { out.push({ bot, date, tradeCount: 0, note: 'no closed trades this date' }); continue; }
+    const cfg = await _readBotConfig(configKey);
+    const enabledPairs = cfg?.enabled_pairs || [];
+
+    // Population, not just output — how many zones the honest as-of-that-day
+    // backtest would have voted on across the bot's OWN full pair universe
+    // that day, independent of whether the bot traded ANY of them. Computed
+    // even on a zero-real-trade day (a day with real candidates but zero
+    // real trades is a far more useful thing to surface than "no closed
+    // trades this date" silently reading as "nothing to check").
+    let backtestCandidateCount = null, candidatesByPair = null;
+    if (enabledPairs.length) {
+      try {
+        const c = engine === 'fibAtlas'
+          ? await _countFibAtlasCandidates(enabledPairs, date, loadM1ForPair, { minMargin: 1, ladders: Object.entries(cfg?.ladders || { asia: true, monday: true }).filter(([, on]) => on).map(([k]) => k) })
+          : await _countVoteAtlasCandidates(enabledPairs, date, loadM1ForPair, { minMargin: 3 });
+        backtestCandidateCount = c.total;
+        candidatesByPair = c.byPair;
+      } catch (e) { console.warn(`[daily-recon] ${bot} candidate count failed:`, e.message); }
+    }
+
+    if (!raw.length) {
+      out.push({ bot, date, tradeCount: 0, backtestCandidateCount, candidatesByPair, note: backtestCandidateCount ? `no closed trades this date, but the backtest found ${backtestCandidateCount} candidate(s) — worth checking why none were taken` : 'no closed trades this date' });
+      continue;
+    }
     const realPnl = raw.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
     let report;
     try {
@@ -18851,9 +18882,10 @@ async function _computeDailyReconciliation(date) {
         const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
         report = await _auditVoteAtlasDrift(normalized, loadM1ForPair);
       }
-    } catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), note: `audit failed: ${e.message}` }); continue; }
+    } catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), backtestCandidateCount, candidatesByPair, note: `audit failed: ${e.message}` }); continue; }
     out.push({
       bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2),
+      backtestCandidateCount, candidatesByPair,
       decisionMatchRate: report.matchRate, decisionMatches: report.directionMatches, decisionChecked: report.checkedWithVote,
       winLossMatchRate: report.winLossMatchRate, winLossMatches: report.winLossMatches, winLossChecked: report.winLossChecked,
       unresolvedInBacktest: report.unresolvedInBacktest, thinMarginOrNoVote: report.thinMarginOrNoVote,

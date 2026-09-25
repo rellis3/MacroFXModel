@@ -154,3 +154,35 @@ export async function auditVoteAtlasDrift(tradeLogEntries, loadM1ForPairFn, { mi
     results,
   };
 }
+
+// Population, not just output (2026-09-25) — auditVoteAtlasDrift above only
+// answers "of the trades the bot actually took, did they match the
+// backtest." It says nothing about trades the backtest would have taken
+// that the bot silently skipped (margin timing, a plan-refresh miss, spread
+// filters, risk_guard/stack_guard, or a genuine bug) — a 100% match rate on
+// a bot that's quietly skipping half its real signals is not the clean
+// result it looks like. This counts, across the bot's OWN enabled_pairs
+// universe for one date, how many zones the honest as-of-that-day backtest
+// would have voted margin >= minMargin on — the number to compare the
+// bot's real trade count against.
+export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 3 } = {}) {
+  let total = 0;
+  const byPair = {};
+  for (const pair of pairs) {
+    try {
+      const packed = await loadM1ForPairFn(pair);
+      if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; continue; }
+      const assetClass = assetClassFor(pair);
+      const { touches } = atlasWalk(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
+      const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM && t.rung !== 'p90');
+      const dayTouches = atRearm.filter(t => t.date === date);
+      const isOnly = atRearm.filter(t => t.date < date);
+      const book = isOnly.length ? buildAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) : null;
+      let n = 0;
+      if (book) for (const t of dayTouches) { const vd = voteDecision(book, t); if (vd && vd.margin >= minMargin) n++; }
+      byPair[pair] = { candidates: n };
+      total += n;
+    } catch (e) { byPair[pair] = { candidates: 0, note: e.message }; }
+  }
+  return { total, byPair };
+}
