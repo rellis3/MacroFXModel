@@ -18942,8 +18942,18 @@ async function _getOrComputeDailyRecon(date, force = false) {
   // below (never awaited inline) -- a full recompute is real multi-pair
   // loadM1ForPair work, the exact thing this file's own comment above
   // already found can outrun Railway's request timeout if awaited directly.
+  //
+  // `force` bypasses the CACHE (so a stale pre-fix result gets replaced) but
+  // must still respect the in-flight guard below -- confirmed live 2026-09-25
+  // that it didn't: repeated `force=true` polls for the same date while a
+  // prior forced compute was still running each started their OWN full
+  // multi-bot M1 walk with no dedup between them, stacking several of these
+  // on one Node process and hanging the whole server (not just this route)
+  // hard enough to stop accepting any HTTP connections for 10+ minutes. A
+  // second forced call while one's already in flight now just reports
+  // computing:true and waits, same as the passive path.
   if (force) _dailyReconCache.delete(date);
-  if (force || !_dailyReconInFlight.has(date)) {
+  if (!_dailyReconInFlight.has(date)) {
     _dailyReconInFlight.add(date);
     _computeDailyReconciliation(date)
       .then(async (result) => {
