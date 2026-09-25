@@ -18875,15 +18875,29 @@ async function _computeDailyReconciliation(date) {
 const _dailyReconCache = new Map(); // date -> result
 const _dailyReconInFlight = new Set(); // dates currently computing
 
-async function _getOrComputeDailyRecon(date) {
-  if (_dailyReconCache.has(date)) return _dailyReconCache.get(date);
-  const stored = await kv.get(`bot_daily_recon_${date}`).catch(() => null);
-  if (stored) {
-    const parsed = JSON.parse(stored).data ?? JSON.parse(stored);
-    _dailyReconCache.set(date, parsed);
-    return parsed;
+// `force` (2026-09-25, added alongside the broker-clock-offset fix in
+// js/fibAtlasDriftAudit.js): the in-memory/KV cache has no idea its own
+// content came from a since-fixed bug — a redeploy that corrects the audit
+// LOGIC does nothing to a date that was already computed and cached under
+// the old, wrong logic. Bypasses both cache layers and always recomputes +
+// overwrites the stored KV record; never set by the passive route path
+// (`?date=` alone), only by an explicit `?force=true` caller.
+async function _getOrComputeDailyRecon(date, force = false) {
+  if (!force && _dailyReconCache.has(date)) return _dailyReconCache.get(date);
+  if (!force) {
+    const stored = await kv.get(`bot_daily_recon_${date}`).catch(() => null);
+    if (stored) {
+      const parsed = JSON.parse(stored).data ?? JSON.parse(stored);
+      _dailyReconCache.set(date, parsed);
+      return parsed;
+    }
   }
-  if (!_dailyReconInFlight.has(date)) {
+  // Forced recompute uses the SAME fire-and-poll pattern as a cold miss
+  // below (never awaited inline) -- a full recompute is real multi-pair
+  // loadM1ForPair work, the exact thing this file's own comment above
+  // already found can outrun Railway's request timeout if awaited directly.
+  if (force) _dailyReconCache.delete(date);
+  if (force || !_dailyReconInFlight.has(date)) {
     _dailyReconInFlight.add(date);
     _computeDailyReconciliation(date)
       .then(async (result) => {
@@ -18923,8 +18937,9 @@ app.get('/api/bot-audit/daily-reconciliation', async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
   try {
-    const result = await _getOrComputeDailyRecon(date);
-    if (!result) return res.status(202).json({ ok: true, computing: true, date, reason: 'first request for this date — computing in the background, poll again shortly' });
+    const force = req.query.force === 'true';
+    const result = await _getOrComputeDailyRecon(date, force);
+    if (!result) return res.status(202).json({ ok: true, computing: true, date, reason: force ? 'forced recompute started — poll again shortly' : 'first request for this date — computing in the background, poll again shortly' });
     res.json({ ok: true, ...result });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });

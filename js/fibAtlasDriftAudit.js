@@ -59,11 +59,26 @@ export function normalizeTradeHistoryForFibAtlasAudit(rawTrades, commentPrefix) 
     let pair = _SYMBOL_OVERRIDE[sym];
     if (!pair) { try { pair = resolveKey(sym)?.toLowerCase(); } catch { /* fall through */ } }
     if (!pair) pair = sym.toLowerCase();
+    // MT5 stamps time_open on the BROKER's clock (commonly +2/+3h, see
+    // pylego/broker/clock.py's own convention and project_broker_clock_
+    // offset.md) -- the backtest touch times this gets matched against
+    // (asiaFibAtlasWalk/mondayFibAtlasWalk's own `.time`) are true UTC.
+    // Vote Atlas's own audit module never hit this: it matches trades to
+    // touches by an ORDINAL parsed out of the comment tag ("downp50_1"),
+    // never comparing raw timestamps at all. Fib Atlas's tag carries no
+    // ordinal (this file's own header doc), so matching falls back to
+    // "nearest touch by time_open" -- and un-corrected, that's nearest by a
+    // clock running ~3h ahead, which doesn't just mis-rank candidates, it
+    // reliably picks the WRONG touch outright on any day with more than one
+    // real touch a few hours apart (confirmed live 2026-09-25, cross-checked
+    // against a manual reconciliation done independently earlier the same
+    // session: this bug alone was 100% of that day's reported "mismatches").
     out.push({
       pair, ladder: ladderCode === 'a' ? 'asia' : 'monday',
       side: sideCode === 'a' ? 'above' : 'below',
       level: parseFloat(levelStr),
-      date: t.date, direction: t.direction, profit: t.profit, time_open: t.time_open,
+      date: t.date, direction: t.direction, profit: t.profit,
+      time_open: (t.time_open || 0) - (t.tz_offset_sec || 0),
     });
   }
   return out;
@@ -165,4 +180,34 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
     expectedPnlPctTotal: +expectedPnlPctSum.toFixed(3),
     results,
   };
+}
+
+// Population, not just output — same reasoning and same shape as Vote
+// Atlas's countVoteAtlasCandidates, ported here rather than shared, since
+// Fib Atlas's candidate count is per-pair-per-LADDER (a pair can generate
+// candidates on Asia AND Monday independently the same day).
+export async function countFibAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 1, ladders = ['asia', 'monday'] } = {}) {
+  let total = 0;
+  const byPair = {};
+  for (const pair of pairs) {
+    try {
+      const packed = await loadM1ForPairFn(pair);
+      if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; continue; }
+      const assetClass = assetClassFor(pair);
+      let n = 0;
+      for (const ladder of ladders) {
+        const walkFn = ladder === 'asia' ? asiaFibAtlasWalk : mondayFibAtlasWalk;
+        const { touches } = walkFn(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
+        const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+        const dayTouches = atRearm.filter(t => t.date === date);
+        const isOnly = atRearm.filter(t => t.date < date);
+        const book = isOnly.length ? buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) : null;
+        if (!book) continue;
+        for (const t of dayTouches) { const vd = voteDecision(book, t); if (vd && vd.margin >= minMargin) n++; }
+      }
+      byPair[pair] = { candidates: n };
+      total += n;
+    } catch (e) { byPair[pair] = { candidates: 0, note: e.message }; }
+  }
+  return { total, byPair };
 }
