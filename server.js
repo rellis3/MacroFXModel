@@ -192,7 +192,7 @@ import { bucketM1IntoSessions as _bucketM1IntoSessions } from './js/forecastAnal
 import { recordsForPair, touchesForPair, extractTouches, runPerLine, costForPair, runRigor, runSensitivity, deflatedSharpe, eRatioByCell, runExitAB, runHeldPosition, runBadLevelScan, runZoneWalk, runConfluenceFilter, runVolSizing } from './js/rangeLineAnalyser.js';
 import { runLiquidityAB, runLiquidityABSuite } from './js/liquidityBacktestEngine.js';
 import { pipSize as _pipSize, instrument, oandaSymbol, resolveKey } from './js/instrumentRegistry.js';
-import { buildLiveVsBacktestReport } from './js/motifLiveVsBacktest.js';
+import { buildLiveVsBacktestReport, countMotifCandidates as _countMotifCandidates, normPair as _normPair } from './js/motifLiveVsBacktest.js';
 import { refreshRangeLineBotPlan } from './js/rangeLineBotProducer.js';
 import { refreshRangeLineConfluence, packLiveM1 } from './js/rangeLineConfluenceProducer.js';
 import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oiWallStability, oiPriceConfirmation } from './js/oiConfluence.js';
@@ -18835,22 +18835,60 @@ async function _readTradeHistFor(botKey, date) {
 async function _computeMotifDailyReconciliation(date) {
   const raw = await kv.get(`trade_hist_motif_bot_status_${date}`).catch(() => null);
   const rawLiveTrades = raw ? JSON.parse(raw) : [];
-  if (!rawLiveTrades.length) return { bot: 'motif_touch', date, tradeCount: 0, note: 'no closed trades this date' };
-  const realPnl = rawLiveTrades.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
 
-  let enteredEvents = [];
+  let enteredEvents = [], dayEvents = [];
   try {
     const logRaw = await kv.get('motif_bot_decision_log');
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : {};
-    enteredEvents = (log.events || []).filter(e => e.status === 'entered');
+    const events = log.events || [];
+    enteredEvents = events.filter(e => e.status === 'entered');
+    const start = new Date(`${date}T00:00:00Z`).getTime() / 1000;
+    dayEvents = events.filter(e => e.t >= start && e.t < start + 86400);
   } catch { /* no decision log yet */ }
 
   const backtest = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
+  const motifCfg = await _readBotConfig('motif_bot_config');
+
+  // Population, not just output -- same principle as Vote Atlas. Computed
+  // even on a zero-real-trade day: a day with real candidates but zero real
+  // trades is exactly the case worth surfacing, not silently skipping.
+  let backtestCandidateCount = null, candidatesByPair = null, allCandidates = [];
+  try {
+    const c = _countMotifCandidates(backtest?.trades || [], date, { maxConcurrent: motifCfg?.max_concurrent_per_pair ?? 2 });
+    backtestCandidateCount = c.total;
+    candidatesByPair = c.byPair;
+    allCandidates = c.allCandidates || [];
+  } catch (e) { console.warn('[daily-recon] motif_touch candidate count failed:', e.message); }
+
+  if (!rawLiveTrades.length) {
+    const missedCandidates = _explainGapsFromDecisionLog(allCandidates.slice(0, 30), dayEvents);
+    return { bot: 'motif_touch', date, tradeCount: 0, backtestCandidateCount, candidatesByPair, missedCandidates,
+      note: backtestCandidateCount ? `no closed trades this date, but the backtest found ${backtestCandidateCount} candidate(s) — worth checking why none were taken` : 'no closed trades this date' };
+  }
+  const realPnl = rawLiveTrades.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
+
   const report = buildLiveVsBacktestReport(rawLiveTrades, enteredEvents, backtest?.trades || []);
   const s = report.summary;
   const checked = s.MATCH + s.DIVERGENCE; // UNRESOLVED/UNMATCHED excluded from the rate, same discipline as Vote Atlas's thin-margin exclusion
+
+  // Candidates a real trade actually consumed -- motif_key is already a
+  // stable identity (unlike Vote Atlas's pair+time), so this is a direct
+  // set match, no time-window heuristic needed.
+  const consumed = new Set(report.trades.map(t => t.motif_key).filter(Boolean));
+  const missedCandidatesRaw = allCandidates.filter(c => !consumed.has(c.motif_key)).slice(0, 30);
+  const missedCandidates = _explainGapsFromDecisionLog(missedCandidatesRaw, dayEvents);
+
+  // The other direction: a real fill with no decision-log "entered" event
+  // close enough to identify which motif it was (verdict UNMATCHED) --
+  // cross-referenced the same way, keyed by time_open.
+  const unmatchedRealTrades = _explainGapsFromDecisionLog(
+    report.trades.filter(t => t.verdict === 'UNMATCHED').map(t => ({ ...t, pair: _normPair(t.symbol) })).slice(0, 30),
+    dayEvents
+  );
+
   return {
     bot: 'motif_touch', date, tradeCount: rawLiveTrades.length, realPnl: +realPnl.toFixed(2),
+    backtestCandidateCount, candidatesByPair, missedCandidates, unmatchedRealTrades,
     decisionMatchRate: checked ? +(s.MATCH / checked * 100).toFixed(1) : null,
     decisionMatches: s.MATCH, decisionChecked: checked,
     winLossMatchRate: checked ? +(s.MATCH / checked * 100).toFixed(1) : null,

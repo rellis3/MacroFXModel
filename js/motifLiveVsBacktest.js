@@ -25,6 +25,7 @@
 //                  enough in pair/time to identify which motif it was.
 
 import { resolveKey } from './instrumentRegistry.js';
+import { applyConcurrencyCap } from './levelAtlasVoteReview.js';
 
 export const ENTRY_TOLERANCE_SEC = 600; // how close a decision-log "entered"
 // event must sit to a fill's open time to call it a match -- generous
@@ -107,4 +108,39 @@ export function buildLiveVsBacktestReport(rawLiveTrades, enteredEvents, backtest
   for (const t of trades) summary[t.verdict] = (summary[t.verdict] || 0) + 1;
 
   return { trades, summary, backtest_motifs: Object.keys(backtestByKey).length };
+}
+
+// Population, not just output -- same principle as Vote Atlas's own
+// countVoteAtlasCandidates (js/voteAtlasDriftAudit.js), ported here rather
+// than shared since Motif's backtest record has a different shape (ISO
+// entry_date/exit_date strings, a stable motif_key identity instead of a
+// (pair,side,rung,instance) tuple). `backtestTrades` is motif_trades.json's
+// own `trades` array; `maxConcurrent` matches the live bot's own
+// max_concurrent_per_pair (default 2, read from motif_bot_config by the
+// caller). Applies the SAME applyConcurrencyCap Vote Atlas/Fib Atlas use --
+// a raw count of every motif the scanner found that day isn't what a
+// capital-limited, one-slot-per-pair bot could actually have taken.
+export function countMotifCandidates(backtestTrades, date, { maxConcurrent = 2 } = {}) {
+  const withTimes = (backtestTrades || []).map(t => {
+    const time = Math.floor(Date.parse(t.entry_date) / 1000);
+    // A still-open backtest motif has no exit_date -- treat it as occupying
+    // its concurrency slot for a long time (30 days) rather than 0, which
+    // would let the cap silently ignore it.
+    const resolveTime = t.exit_date ? Math.floor(Date.parse(t.exit_date) / 1000) : time + 30 * 86400;
+    return { ...t, time, resolveTime };
+  });
+  const byPair = {};
+  for (const t of withTimes) (byPair[normPair(t.pair)] ??= []).push(t);
+
+  let total = 0;
+  const byPairOut = {};
+  const allCandidates = [];
+  for (const [pair, list] of Object.entries(byPair)) {
+    const capped = applyConcurrencyCap(list, { maxConcurrent });
+    const dayTrades = (capped?.kept ?? []).filter(t => t.entry_date?.slice(0, 10) === date);
+    byPairOut[pair] = { candidates: dayTrades.length };
+    total += dayTrades.length;
+    for (const t of dayTrades) allCandidates.push({ pair, motif_key: t.motif_key, direction: t.direction, status: t.status, time: t.time });
+  }
+  return { total, byPair: byPairOut, allCandidates };
 }

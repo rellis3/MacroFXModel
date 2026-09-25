@@ -1465,8 +1465,14 @@ function renderRec() {
       const whyOf = c => c.explainedBy
         ? `<span style="color:var(--good)">${esc(c.explainedBy.status)}: ${esc(c.explainedBy.reason || '')}</span>`
         : `<span style="color:var(--dim2)">${esc(c.explainReason || 'no explanation available')}</span>`;
-      const missedRows = missed.map(c => `<div>missed: <b>${esc((c.pair || '').toUpperCase())}</b> ${esc(c.side || '')} ${esc(String(c.rung ?? ''))}${c.ladder ? ' · ' + esc(c.ladder) : ''} · margin ${c.margin} · ${esc(c.decision || '')} · ${c.time ? new Date(c.time * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
-      const unmatchedRows = unmatched.map(c => `<div>extra (no backtest candidate): <b>${esc((c.pair || '').toUpperCase())}</b> ${esc(c.zone_id || '')} · ${esc(c.direction || '')} · ${c.time_open ? new Date(c.time_open * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
+      // Vote/Fib Atlas candidates carry side/rung/margin; Motif's carry a
+      // motif_key instead (a stable identity, no rung/margin concept) --
+      // render whichever fields are actually present.
+      const candLabel = c => c.motif_key
+        ? `${esc(c.motif_key)} · ${esc(c.direction || '')}${c.status ? ' · backtest ' + esc(c.status) : ''}`
+        : `${esc(c.side || '')} ${esc(String(c.rung ?? ''))}${c.ladder ? ' · ' + esc(c.ladder) : ''} · margin ${c.margin} · ${esc(c.decision || '')}`;
+      const missedRows = missed.map(c => `<div>missed: <b>${esc((c.pair || '').toUpperCase())}</b> ${candLabel(c)} · ${c.time ? new Date(c.time * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
+      const unmatchedRows = unmatched.map(c => `<div>extra (no backtest candidate): <b>${esc((c.pair || c.symbol || '').toUpperCase())}</b> ${esc(c.zone_id || c.motif_key || '')} · ${esc(c.direction || '')} · ${c.time_open ? new Date(c.time_open * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
       const mismRows = mism.map(m => `<div>mismatch: <b>${esc((m.pair || m.symbol || '').toUpperCase())}</b> live=${esc(m.direction || m.actualDir || '')} backtest=${esc(m.myDir || m.myDecision || '')} · ${m.winLossMatch === false ? 'win/loss also disagreed' : ''}${m.detail ? ' · ' + esc(m.detail) : ''}</div>`).join('');
       const detailRow = hasDetail
         ? `<tr id="${detailId}" style="display:none"><td colspan="9" style="background:var(--s2);font-size:10.5px;padding:8px 12px">${missedRows}${unmatchedRows}${mismRows}</td></tr>`
