@@ -28,7 +28,7 @@
  * thin-margin category the original version already established.
  */
 import { betDirection } from './levelAtlasVoteReview.js';
-import { applyConcurrencyCap, applyCurrencyLossGate, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
+import { applyConcurrencyCap, applyCurrencyLossGate, riskAdjustTrades, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { pickFresher, loadLocalVoteTrades, PREFIX as LEVEL_ATLAS_PREFIX } from './levelAtlasRoutes.js';
 import { getJSON } from './r2Store.js';
 import { resolveKey } from './instrumentRegistry.js';
@@ -169,7 +169,7 @@ export async function auditVoteAtlasDrift(tradeLogEntries, { minMargin = 3 } = {
 // portfolio would actually have taken.
 export async function countVoteAtlasCandidates(pairs, date, {
   minMargin = 3, maxConcurrent = 1, perDirection = false,
-  ccyLossGate = false, maxDailyLossPct = 1,
+  ccyLossGate = false, maxDailyLossPct = 1, riskPct = 1,
 } = {}) {
   const perPairKept = {};
   const missing = [];
@@ -178,15 +178,27 @@ export async function countVoteAtlasCandidates(pairs, date, {
     if (!stored) { missing.push({ pair, reason }); continue; }
     const filtered = stored.filter(t => t.margin >= minMargin);
     const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+    // riskAdjustTrades BEFORE the ccy gate -- confirmed live 2026-09-25 via a
+    // direct A/B against the real /vote-portfolio route (curl, no cache):
+    // the real gate skips 3279 of 26891 candidates; this function, before
+    // this fix, only skipped ~1127-1190. Root cause: applyCurrencyLossGate's
+    // tally sums `pnlPct` directly, and the STORED pnlPct is a raw,
+    // price-based percentage that varies wildly across asset classes (0.2%
+    // on one trade, 0.6% on another, tiny on indices) -- riskAdjustTrades
+    // rescales every trade to a CONSTANT per-trade risk (a full loss becomes
+    // exactly -riskPct), which is what the real route feeds the gate in
+    // fixed-risk mode (the live bots' own sizing). Skipping this step meant
+    // same-day same-currency losses almost never summed past -1%, so the
+    // gate barely ever fired -- not the pair-casing bug (real, but smaller),
+    // the actual dominant cause of the original 45/39-vs-17 mismatch.
+    const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct);
     // Tagged UPPERCASE (not the caller's lowercase `pair`) -- CCY_LEGS's keys
     // are uppercase ('EURUSD') and currencyLegs() does a direct, case-
     // sensitive lookup with no normalization. Tagging lowercase here silently
     // sent every pair through the `?? [pair]` single-currency fallback,
     // meaning the gate could never see two pairs sharing a real leg (e.g.
-    // EURUSD and EURAUD both carrying EUR exposure) -- confirmed live
-    // 2026-09-25 as a real bug: it was why the currency loss gate barely ever
-    // fired, leaving the candidate count far above the real backtest's own.
-    perPairKept[pair] = (capped?.kept ?? []).map(t => ({ ...t, pair: pair.toUpperCase() }));
+    // EURUSD and EURAUD both carrying EUR exposure).
+    perPairKept[pair] = adjusted.map(t => ({ ...t, pair: pair.toUpperCase() }));
   }
 
   let finalByPair = perPairKept;

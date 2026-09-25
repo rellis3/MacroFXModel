@@ -18884,6 +18884,7 @@ async function _computeDailyReconciliation(date) {
               maxConcurrent: cfg?.max_concurrent_per_pair ?? 1,
               ccyLossGate: cfg?.ccy_loss_gate === true,
               maxDailyLossPct: cfg?.max_daily_loss_pct ?? 1,
+              riskPct: cfg?.risk_pct ?? 1,
             });
         backtestCandidateCount = c.total;
         candidatesByPair = c.byPair;
