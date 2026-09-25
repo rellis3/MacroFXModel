@@ -33,6 +33,16 @@ import { resolveKey } from './instrumentRegistry.js';
 const _SYMBOL_OVERRIDE = { DE40: 'de30', US2000: 'us2000', US30: 'dow', US500: 'spx', US100: 'nq', UK100: 'uk100' };
 const DEFAULT_REARM = 0.3;
 
+// Same fix as js/voteAtlasDriftAudit.js's own _withTimeout, ported not
+// shared — a stuck (not merely slow) loadM1ForPairFn call on one pair must
+// not hang the whole sequential candidate count forever. Confirmed live
+// 2026-09-25 as a real production hang, not a guess.
+function _withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms: ${label}`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // Same continuation/reversal sign logic Vote Atlas's own betDirection uses,
 // re-derived rather than reused because betDirection's `side==='up'` check
 // would silently mis-map on Fib Atlas's 'above'/'below' vocabulary — better
@@ -94,7 +104,7 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
   for (const [key, trades] of Object.entries(byKey)) {
     const [pair, ladder] = key.split('|');
     let packed;
-    try { packed = await loadM1ForPairFn(pair); } catch (e) {
+    try { packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`); } catch (e) {
       for (const trade of trades) results.push({ ...trade, note: `M1 load failed: ${e.message}` });
       continue;
     }
@@ -191,7 +201,7 @@ export async function countFibAtlasCandidates(pairs, date, loadM1ForPairFn, { mi
   const byPair = {};
   for (const pair of pairs) {
     try {
-      const packed = await loadM1ForPairFn(pair);
+      const packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`);
       if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; continue; }
       const assetClass = assetClassFor(pair);
       let n = 0;

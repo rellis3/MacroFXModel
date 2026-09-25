@@ -26,6 +26,18 @@ import { resolveKey } from './instrumentRegistry.js';
 
 export const KEY_TO_PAIR = { rut: 'us2000', spx: 'spx', de40: 'de30', ftse: 'uk100', gold: 'gold', nq: 'nq', dow: 'dow' };
 
+// A stuck (not merely slow) loadM1ForPair call on ONE pair must not hang an
+// entire multi-pair candidate count forever — confirmed live 2026-09-25:
+// countVoteAtlasCandidates's per-pair try/catch only catches a REJECTION,
+// not a promise that simply never resolves, and a sequential for-loop means
+// one stuck pair blocks every pair after it too. 45s is generous next to
+// this repo's own measured cost for a single pair's full-history fetch.
+function _withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms: ${label}`)), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 // Adapts GET /api/trade-history's raw MT5 records into the {key, zone_id,
 // date, direction, profit} shape auditVoteAtlasDrift expects, by parsing the
 // zone tag each bot's own comment carries -- "VA[downp50_1]" (v2),
@@ -69,7 +81,7 @@ export async function auditVoteAtlasDrift(tradeLogEntries, loadM1ForPairFn, { mi
   const results = [];
   for (const [pair, pairTrades] of Object.entries(byPair)) {
     let packed;
-    try { packed = await loadM1ForPairFn(pair); } catch (e) {
+    try { packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`); } catch (e) {
       for (const trade of pairTrades) results.push({ ...trade, pair, note: `M1 load failed: ${e.message}` });
       continue;
     }
@@ -170,7 +182,7 @@ export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { m
   const byPair = {};
   for (const pair of pairs) {
     try {
-      const packed = await loadM1ForPairFn(pair);
+      const packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`);
       if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; continue; }
       const assetClass = assetClassFor(pair);
       const { touches } = atlasWalk(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
