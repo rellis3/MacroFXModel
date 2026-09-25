@@ -69,7 +69,17 @@ export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_M
     }
     const stopPips = (vd.decision === 'fade' && stopTightenFrac != null && stopTightenFrac < 1)
       ? +(sizingStopPips * stopTightenFrac).toFixed(1) : sizingStopPips;
-    const sgn = rung.side === 'above' ? 1 : -1;
+    // Direction bug, found+confirmed 2026-09-25/26 (analysis/fib_atlas_fade_
+    // direction_bug_impact.mjs): `sgn` used to come from `rung.side` alone,
+    // so a 'fade' zone got tp/sl placed on the SAME side of entry as a
+    // 'follow' zone at that side -- i.e. every live fade traded in the
+    // follow/continuation direction (with fade's own swapped, smaller-target/
+    // wider-stop magnitudes), never the reversal direction the backtest's own
+    // priceBarrierTrade (asiaFibAtlasVoteReview.js) validates a fade as. Same
+    // flip convention as js/fibAtlasDriftAudit.js's fibBetDirection, which
+    // already modeled fade correctly -- this pricer just never matched it.
+    const sideSgn = rung.side === 'above' ? 1 : -1;
+    const sgn = vd.decision === 'fade' ? -sideSgn : sideSgn;
     const sl = rung.price - sgn * stopPips * rung.pip;
     const sizingSl = rung.price - sgn * sizingStopPips * rung.pip;
     const tp = rung.price + sgn * targetPips * rung.pip;

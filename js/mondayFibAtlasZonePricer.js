@@ -57,7 +57,13 @@ export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_M
     }
     const stopPips = (vd.decision === 'fade' && stopTightenFrac != null && stopTightenFrac < 1)
       ? +(sizingStopPips * stopTightenFrac).toFixed(1) : sizingStopPips;
-    const sgn = rung.side === 'above' ? 1 : -1;
+    // Direction bug, found+confirmed 2026-09-25/26 -- see Asia's identical
+    // fix (asiaFibAtlasZonePricer.js) for the full writeup and
+    // analysis/fib_atlas_fade_direction_bug_impact.mjs for the measured
+    // impact. Same fix here: fade must flip the side-only sign, matching
+    // js/fibAtlasDriftAudit.js's fibBetDirection convention.
+    const sideSgn = rung.side === 'above' ? 1 : -1;
+    const sgn = vd.decision === 'fade' ? -sideSgn : sideSgn;
     const sl = rung.price - sgn * stopPips * rung.pip;
     const sizingSl = rung.price - sgn * sizingStopPips * rung.pip;
     const tp = rung.price + sgn * targetPips * rung.pip;
