@@ -39,6 +39,12 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ'],
   },
   {
+    id: 'rates-pivot-lead', domain: 'macro', verdict: 'null', date: '2026-09-25', doc: 'MD files/RATES_PIVOT_LEAD_PREREG.md',
+    claim: 'A confirmed turn in short-term rates leads the Nasdaq intraday -- you confirm the pivot, then pre-position before the index moves',
+    result: 'Null on every cell. 360 days of M15, 2,430 confirmed 2-year pivots (measured from the CONFIRMATION bar, never the pivot), 2,010 de-clustered events at 1h: signed Nasdaq return -0.005% vs control [-0.021,+0.012]. Null at 1h, 2h and 4h, in both directions and both halves. WELL POWERED: the interval is about +/-0.12 ATR, inside this desk own 0.15 execution gate, so anything tradeable would have shown. The telling number: a confirmed rates low is followed by an up-move 54.1% of the time and the BASE RATE is 54.1%.',
+    use: 'Do not pre-position in equities off a turn in short-term rates. Rates and equities move in the SAME bar (+0.23 at M15) and not in sequence -- now shown three ways: daily coupling, 15m return lags, and 15m pivots. And never quote a hit rate without its base rate: 54% looked like an edge and was exactly nothing.',
+  },
+  {
     id: 'dr-copper', domain: 'macro', verdict: 'null', date: '2026-09-25', doc: 'MD files/DR_COPPER_PREREG.md',
     claim: '"Dr Copper does not miss": copper falls three months before GDP turns negative, every single time',
     result: 'The universal claim is FALSIFIED and needs no statistics: 12 of the 14 negative US quarters since 1990 had no 15% copper fall in front of them. Copper was RISING (+5.5%) into 2020 Q1, and US GDP was already negative in 2008 Q1 -- two quarters BEFORE the July 2008 copper peak the story cites. Whether copper has any weaker lift is UNTESTABLE: only 5 signals at the pre-registered 15% gate, against a floor of 6. Descriptively, a 10% gate fires 22 times with an 82% false alarm rate and 1.77x lift.',

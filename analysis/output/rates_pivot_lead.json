@@ -1,0 +1,274 @@
+{
+  "at": "2026-09-25T20:27:32.945Z",
+  "days": 360,
+  "driver": "USB02Y_USD",
+  "target": "NAS100_USD",
+  "reach": 3,
+  "minEvents": 30,
+  "aligned": 22012,
+  "confirms": 2430,
+  "results": [
+    {
+      "H": 4,
+      "kept": 2010,
+      "nCtl": 3070,
+      "cells": [
+        {
+          "label": "both",
+          "verdict": "NULL",
+          "n": 2010,
+          "nCtl": 3070,
+          "signal": 0.0028,
+          "control": 0.0078,
+          "diff": -0.0049,
+          "ci": [
+            -0.0209,
+            0.012
+          ],
+          "hit": 50.1,
+          "baseHit": 54.1,
+          "atrFrac": -0.04
+        },
+        {
+          "label": "rates low (yields peaking)",
+          "verdict": "NULL",
+          "n": 980,
+          "nCtl": 3070,
+          "signal": 0.0048,
+          "control": 0.0078,
+          "diff": -0.003,
+          "ci": [
+            -0.0233,
+            0.0181
+          ],
+          "hit": 54.1,
+          "baseHit": 54.1,
+          "atrFrac": -0.02
+        },
+        {
+          "label": "rates high",
+          "verdict": "NULL",
+          "n": 1030,
+          "nCtl": 3070,
+          "signal": 0.001,
+          "control": 0.0078,
+          "diff": -0.0068,
+          "ci": [
+            -0.027,
+            0.0131
+          ],
+          "hit": 46.4,
+          "baseHit": 54.1,
+          "atrFrac": -0.05
+        },
+        {
+          "label": "first half",
+          "verdict": "NULL",
+          "n": 1006,
+          "nCtl": 3070,
+          "signal": 0.0044,
+          "control": 0.0078,
+          "diff": -0.0034,
+          "ci": [
+            -0.0238,
+            0.0167
+          ],
+          "hit": 50.4,
+          "baseHit": 54.1,
+          "atrFrac": -0.02
+        },
+        {
+          "label": "second half",
+          "verdict": "NULL",
+          "n": 1004,
+          "nCtl": 3070,
+          "signal": 0.0013,
+          "control": 0.0078,
+          "diff": -0.0065,
+          "ci": [
+            -0.0283,
+            0.0168
+          ],
+          "hit": 49.9,
+          "baseHit": 54.1,
+          "atrFrac": -0.05
+        }
+      ]
+    },
+    {
+      "H": 8,
+      "kept": 1440,
+      "nCtl": 1161,
+      "cells": [
+        {
+          "label": "both",
+          "verdict": "NULL",
+          "n": 1439,
+          "nCtl": 1161,
+          "signal": -0.002,
+          "control": 0.0161,
+          "diff": -0.0182,
+          "ci": [
+            -0.0486,
+            0.0103
+          ],
+          "hit": 50.2,
+          "baseHit": 54.1,
+          "atrFrac": -0.13
+        },
+        {
+          "label": "rates low (yields peaking)",
+          "verdict": "NULL",
+          "n": 699,
+          "nCtl": 1161,
+          "signal": -0.0004,
+          "control": 0.0161,
+          "diff": -0.0166,
+          "ci": [
+            -0.0514,
+            0.0205
+          ],
+          "hit": 52.8,
+          "baseHit": 54.1,
+          "atrFrac": -0.12
+        },
+        {
+          "label": "rates high",
+          "verdict": "NULL",
+          "n": 740,
+          "nCtl": 1161,
+          "signal": -0.0035,
+          "control": 0.0161,
+          "diff": -0.0197,
+          "ci": [
+            -0.0574,
+            0.0196
+          ],
+          "hit": 47.8,
+          "baseHit": 54.1,
+          "atrFrac": -0.14
+        },
+        {
+          "label": "first half",
+          "verdict": "NULL",
+          "n": 712,
+          "nCtl": 1161,
+          "signal": -0.0081,
+          "control": 0.0161,
+          "diff": -0.0242,
+          "ci": [
+            -0.0604,
+            0.0109
+          ],
+          "hit": 51,
+          "baseHit": 54.1,
+          "atrFrac": -0.18
+        },
+        {
+          "label": "second half",
+          "verdict": "NULL",
+          "n": 727,
+          "nCtl": 1161,
+          "signal": 0.0039,
+          "control": 0.0161,
+          "diff": -0.0123,
+          "ci": [
+            -0.0507,
+            0.0286
+          ],
+          "hit": 49.5,
+          "baseHit": 54.1,
+          "atrFrac": -0.09
+        }
+      ]
+    },
+    {
+      "H": 16,
+      "kept": 943,
+      "nCtl": 388,
+      "cells": [
+        {
+          "label": "both",
+          "verdict": "NULL",
+          "n": 942,
+          "nCtl": 388,
+          "signal": 0.0076,
+          "control": -0.0209,
+          "diff": 0.0285,
+          "ci": [
+            -0.0336,
+            0.0929
+          ],
+          "hit": 49.7,
+          "baseHit": 51,
+          "atrFrac": 0.21
+        },
+        {
+          "label": "rates low (yields peaking)",
+          "verdict": "NULL",
+          "n": 457,
+          "nCtl": 388,
+          "signal": 0.0134,
+          "control": -0.0209,
+          "diff": 0.0343,
+          "ci": [
+            -0.0443,
+            0.114
+          ],
+          "hit": 53,
+          "baseHit": 51,
+          "atrFrac": 0.25
+        },
+        {
+          "label": "rates high",
+          "verdict": "NULL",
+          "n": 485,
+          "nCtl": 388,
+          "signal": 0.0022,
+          "control": -0.0209,
+          "diff": 0.0231,
+          "ci": [
+            -0.0473,
+            0.1016
+          ],
+          "hit": 46.6,
+          "baseHit": 51,
+          "atrFrac": 0.17
+        },
+        {
+          "label": "first half",
+          "verdict": "NULL",
+          "n": 469,
+          "nCtl": 388,
+          "signal": -0.0034,
+          "control": -0.0209,
+          "diff": 0.0175,
+          "ci": [
+            -0.0579,
+            0.1001
+          ],
+          "hit": 48.8,
+          "baseHit": 51,
+          "atrFrac": 0.13
+        },
+        {
+          "label": "second half",
+          "verdict": "NULL",
+          "n": 473,
+          "nCtl": 388,
+          "signal": 0.0186,
+          "control": -0.0209,
+          "diff": 0.0394,
+          "ci": [
+            -0.0369,
+            0.1212
+          ],
+          "hit": 50.5,
+          "baseHit": 51,
+          "atrFrac": 0.29
+        }
+      ]
+    }
+  ],
+  "verdict": "NULL"
+}
