@@ -18792,6 +18792,44 @@ async function _readTradeHistFor(botKey, date) {
   } catch { return []; }
 }
 
+// Motif Touch's own reconciliation module (js/motifLiveVsBacktest.js) already
+// existed before this feature -- already wired to /api/motif-bot/live-vs-
+// backtest, no R2/M1 dependency (pure KV + a static backtest JSON file), so
+// this is genuinely cheap next to Vote Atlas's loadM1ForPair-per-pair cost.
+// Its MATCH/DIVERGENCE/UNRESOLVED/UNMATCHED verdict is coarser than Vote
+// Atlas's split (one verdict covers BOTH direction and outcome agreement at
+// once) -- mapped onto the same decisionMatchRate/winLossMatchRate field
+// names for a uniform table, both reading the same underlying MATCH count
+// since Motif's own report can't separate the two.
+async function _computeMotifDailyReconciliation(date) {
+  const raw = await kv.get(`trade_hist_motif_bot_status_${date}`).catch(() => null);
+  const rawLiveTrades = raw ? JSON.parse(raw) : [];
+  if (!rawLiveTrades.length) return { bot: 'motif_touch', date, tradeCount: 0, note: 'no closed trades this date' };
+  const realPnl = rawLiveTrades.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
+
+  let enteredEvents = [];
+  try {
+    const logRaw = await kv.get('motif_bot_decision_log');
+    const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : {};
+    enteredEvents = (log.events || []).filter(e => e.status === 'entered');
+  } catch { /* no decision log yet */ }
+
+  const backtest = await _loadAnalogMLJson(ANALOGML_MOTIF_TRADES_PATH, 'analogml/motif_trades.json');
+  const report = buildLiveVsBacktestReport(rawLiveTrades, enteredEvents, backtest?.trades || []);
+  const s = report.summary;
+  const checked = s.MATCH + s.DIVERGENCE; // UNRESOLVED/UNMATCHED excluded from the rate, same discipline as Vote Atlas's thin-margin exclusion
+  return {
+    bot: 'motif_touch', date, tradeCount: rawLiveTrades.length, realPnl: +realPnl.toFixed(2),
+    decisionMatchRate: checked ? +(s.MATCH / checked * 100).toFixed(1) : null,
+    decisionMatches: s.MATCH, decisionChecked: checked,
+    winLossMatchRate: checked ? +(s.MATCH / checked * 100).toFixed(1) : null,
+    winLossMatches: s.MATCH, winLossChecked: checked,
+    unresolvedInBacktest: s.UNRESOLVED, thinMarginOrNoVote: s.UNMATCHED,
+    expectedPnlPctTotal: null, // Motif's report doesn't compute a priceBarrierTrade-style expected-% -- not available from this source
+    mismatchDetail: report.trades.filter(t => t.verdict === 'DIVERGENCE').slice(0, 10),
+  };
+}
+
 async function _computeDailyReconciliation(date) {
   const out = [];
   for (const { bot, botKey, tag } of DAILY_RECON_BOTS) {
@@ -18811,6 +18849,8 @@ async function _computeDailyReconciliation(date) {
       mismatchDetail: report.mismatchDetail.slice(0, 10),
     });
   }
+  try { out.push(await _computeMotifDailyReconciliation(date)); }
+  catch (e) { out.push({ bot: 'motif_touch', date, note: `audit failed: ${e.message}` }); }
   return { date, generatedAt: new Date().toISOString(), bots: out };
 }
 
@@ -18846,6 +18886,28 @@ async function _getOrComputeDailyRecon(date) {
 }
 
 app.get('/api/bot-audit/daily-reconciliation', async (req, res) => {
+  // ?days=N — the trend view a per-date lookup alone can't give you: read
+  // whatever's ALREADY cached for the last N calendar days, newest first.
+  // Deliberately does not trigger compute for missing days here (N days of
+  // loadM1ForPair-per-pair work landing on one request would be the exact
+  // "upstream error" this whole file already learned to avoid) — a missing
+  // day just reports computed:false so the caller can request that one date
+  // directly (which DOES trigger the background fill) if they want it.
+  if (req.query.days) {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 90);
+    const dates = [];
+    for (let i = 0; i < days; i++) { const d = new Date(); d.setUTCDate(d.getUTCDate() - i); dates.push(d.toISOString().slice(0, 10)); }
+    const rows = await Promise.all(dates.map(async dt => {
+      if (_dailyReconCache.has(dt)) return _dailyReconCache.get(dt);
+      const stored = await kv.get(`bot_daily_recon_${dt}`).catch(() => null);
+      if (!stored) return { date: dt, computed: false };
+      const parsed = JSON.parse(stored).data ?? JSON.parse(stored);
+      _dailyReconCache.set(dt, parsed);
+      return parsed;
+    }));
+    return res.json({ ok: true, from: dates[dates.length - 1], to: dates[0], days: rows });
+  }
+
   const date = req.query.date || new Date().toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
   try {
