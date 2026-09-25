@@ -43,17 +43,12 @@ function _withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-// Same fix as js/voteAtlasDriftAudit.js's own _mapLimit, ported not shared.
-async function _mapLimit(items, limit, fn) {
+// REVERTED 2026-09-25: same incident as js/voteAtlasDriftAudit.js's own
+// _mapLimit -- see the comment there. Concurrency caused a real production
+// outage; this stays strictly sequential.
+async function _mapLimit(items, fn) {
   const results = new Array(items.length);
-  let i = 0;
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++;
-      results[idx] = await fn(items[idx], idx);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  for (let i = 0; i < items.length; i++) results[i] = await fn(items[i], i);
   return results;
 }
 
@@ -210,10 +205,10 @@ export async function auditFibAtlasDrift(tradeEntries, loadM1ForPairFn, { minMar
 // Atlas's countVoteAtlasCandidates, ported here rather than shared, since
 // Fib Atlas's candidate count is per-pair-per-LADDER (a pair can generate
 // candidates on Asia AND Monday independently the same day).
-export async function countFibAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 1, ladders = ['asia', 'monday'], concurrency = 6 } = {}) {
+export async function countFibAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 1, ladders = ['asia', 'monday'] } = {}) {
   let total = 0;
   const byPair = {};
-  await _mapLimit(pairs, concurrency, async (pair) => {
+  await _mapLimit(pairs, async (pair) => {
     try {
       const packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`);
       if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; return; }

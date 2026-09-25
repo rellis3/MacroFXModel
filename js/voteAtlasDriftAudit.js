@@ -38,21 +38,21 @@ function _withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-// A candidate count over a bot's full ~17-pair universe run one pair at a
-// time was the other half of the real slowness confirmed live 2026-09-25
-// (alongside the missing timeout above) — R2 fetches are I/O-bound, so a
-// small concurrency cap cuts wall-clock time roughly proportionally without
-// hammering R2 the way full parallelism (all pairs at once) would.
-async function _mapLimit(items, limit, fn) {
+// REVERTED 2026-09-25: a concurrency-limited _mapLimit briefly lived here.
+// It caused a real production outage (server-wide 502s for over an hour) --
+// loadM1ForPair's parquet decode is CPU-bound and js/volBacktestM1Engine.js
+// already documents that it degrades badly under concurrent load (a prior
+// incident: one decode sat for 20+ minutes competing with other bots' own
+// polling). Node is single-threaded, so running several pairs "concurrently"
+// doesn't parallelize that decode work -- it just piles up competing
+// synchronous blocks that each starve the event loop when they run, which
+// starved every other live bot's KV/R2 reads too. Do not reintroduce
+// concurrency here without first fixing the decode path itself (e.g. yielding
+// between chunks, or moving decode off the main thread) and load-testing in
+// isolation, not against production.
+async function _mapLimit(items, fn) {
   const results = new Array(items.length);
-  let i = 0;
-  async function worker() {
-    while (i < items.length) {
-      const idx = i++;
-      results[idx] = await fn(items[idx], idx);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  for (let i = 0; i < items.length; i++) results[i] = await fn(items[i], i);
   return results;
 }
 
@@ -195,10 +195,10 @@ export async function auditVoteAtlasDrift(tradeLogEntries, loadM1ForPairFn, { mi
 // universe for one date, how many zones the honest as-of-that-day backtest
 // would have voted margin >= minMargin on — the number to compare the
 // bot's real trade count against.
-export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 3, concurrency = 6 } = {}) {
+export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 3 } = {}) {
   let total = 0;
   const byPair = {};
-  await _mapLimit(pairs, concurrency, async (pair) => {
+  await _mapLimit(pairs, async (pair) => {
     try {
       const packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`);
       if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; return; }
