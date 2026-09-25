@@ -352,6 +352,11 @@ function isCfKey(key) {
   if (key.startsWith('fredhistory_')) return true;
   // trade_hist_* are the per-bot-per-day closed trade logs — must survive Railway redeploys
   if (key.startsWith('trade_hist_')) return true;
+  // bot_daily_recon_* are the per-day live-vs-backtest reconciliation results
+  // (decision/win-loss match, P&L vs expected) computed from trade_hist_* —
+  // expensive to recompute (full multi-year M1 per pair via loadM1ForPair),
+  // must survive Railway redeploys the same way its source data does.
+  if (key.startsWith('bot_daily_recon_')) return true;
   // tde_shadow_* is the TDE shadow book (what the model said per open trade, keyed
   // by position_id) — joined to trade outcomes in the audit, must survive redeploys
   if (key.startsWith('tde_shadow_')) return true;

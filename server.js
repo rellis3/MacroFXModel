@@ -18814,14 +18814,59 @@ async function _computeDailyReconciliation(date) {
   return { date, generatedAt: new Date().toISOString(), bots: out };
 }
 
+// _computeDailyReconciliation calls loadM1ForPair (full multi-year R2 fetch)
+// per distinct pair across both bots' trades that day — confirmed live
+// 2026-09-25 to run past Railway's own request timeout ("upstream error")
+// for a normal trading day's trade count. Same shape as _laGetFastLive's own
+// warming pattern elsewhere in this file: never compute inline on a GET,
+// always serve from cache and kick off a background fill on a miss.
+const _dailyReconCache = new Map(); // date -> result
+const _dailyReconInFlight = new Set(); // dates currently computing
+
+async function _getOrComputeDailyRecon(date) {
+  if (_dailyReconCache.has(date)) return _dailyReconCache.get(date);
+  const stored = await kv.get(`bot_daily_recon_${date}`).catch(() => null);
+  if (stored) {
+    const parsed = JSON.parse(stored).data ?? JSON.parse(stored);
+    _dailyReconCache.set(date, parsed);
+    return parsed;
+  }
+  if (!_dailyReconInFlight.has(date)) {
+    _dailyReconInFlight.add(date);
+    _computeDailyReconciliation(date)
+      .then(async (result) => {
+        _dailyReconCache.set(date, result);
+        await kv.put(`bot_daily_recon_${date}`, JSON.stringify({ data: result, timestamp: Date.now() }));
+        console.log(`[daily-recon] ${date} computed and cached`);
+      })
+      .catch(e => console.error(`[daily-recon] ${date} failed:`, e.message))
+      .finally(() => _dailyReconInFlight.delete(date));
+  }
+  return null;
+}
+
 app.get('/api/bot-audit/daily-reconciliation', async (req, res) => {
   const date = req.query.date || new Date().toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ ok: false, error: 'date must be YYYY-MM-DD' });
   try {
-    const result = await _computeDailyReconciliation(date);
+    const result = await _getOrComputeDailyRecon(date);
+    if (!result) return res.status(202).json({ ok: true, computing: true, date, reason: 'first request for this date — computing in the background, poll again shortly' });
     res.json({ ok: true, ...result });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
+
+// Proactive daily compute — by the time anyone opens the dashboard, the
+// PREVIOUS day's reconciliation is already cached (yesterday is stable: all
+// trades closed, risk_guard-style cutoffs already known) rather than every
+// bot's audit page having to trigger and wait on the slow path itself.
+if (process.env.OANDA_KEY) {
+  _scheduleDailyLondon(6, 30, () => {
+    const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString().slice(0, 10);
+    console.log(`[daily-recon] proactive compute for ${yesterday}`);
+    _getOrComputeDailyRecon(yesterday);
+  });
+  console.log('[daily-recon] proactive daily tick armed for 06:30 London');
+}
 
 async function _volatilityV2WeeklyDriftAudit() {
   try {
