@@ -18790,8 +18790,8 @@ const DAILY_RECON_BOTS = [
   // Fib Atlas: two walk engines (asia/monday) share one vote/pricing module;
   // auditFibAtlasDrift groups trades by pair+ladder internally, so one call
   // per bot (not per ladder) handles both.
-  { bot: 'fib_atlas', botKey: 'fib_atlas_bot_status', tag: 'FA', engine: 'fibAtlas', configKey: 'fib_atlas_bot_config' },
-  { bot: 'fib_atlas_v2', botKey: 'fib_atlas_bot_v2_status', tag: 'FA2', engine: 'fibAtlas', configKey: 'fib_atlas_bot_v2_config' },
+  { bot: 'fib_atlas', botKey: 'fib_atlas_bot_status', tag: 'FA', engine: 'fibAtlas', configKey: 'fib_atlas_bot_config', decisionLogKey: 'fib_atlas_bot_decision_log' },
+  { bot: 'fib_atlas_v2', botKey: 'fib_atlas_bot_v2_status', tag: 'FA2', engine: 'fibAtlas', configKey: 'fib_atlas_bot_v2_config', decisionLogKey: 'fib_atlas_bot_v2_decision_log' },
 ];
 
 async function _readDecisionLogForDate(decisionLogKey, date) {

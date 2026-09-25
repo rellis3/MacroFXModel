@@ -243,26 +243,37 @@ export async function countVoteAtlasCandidates(pairs, date, {
 // here would just be a second implementation of logic that already lives,
 // correctly, in the Python bot (js/serviceFlags.js's "one copy" principle).
 //
-// Matching rule: the MOST RECENT log event for this pair strictly before
-// the candidate/trade's own time. "entered"/"closed" don't count as a
-// blocking explanation (the pair was actively trading, not blocked). Where
-// the reason carries its own expiry ("Cooldown — 3.9m remaining"), that's
-// checked precisely; otherwise a bounded lookback window (default 4h) caps
-// how far back a plausible-but-unverifiable explanation can reach — beyond
-// that, honestly reported as "no log evidence" rather than guessed.
+// Matching rule: the MOST RECENT log event strictly before the candidate/
+// trade's own time, among events that actually APPLY to it: same pair (or
+// a wildcard "*" pair meaning "every pair on this ladder"), and — for
+// engines with a ladder dimension (Fib Atlas: a pair can fire on Asia AND
+// Monday independently the same day) — same ladder, or a wildcard "*"
+// ladder meaning "applies regardless of ladder". Vote Atlas/Motif items
+// carry no `.ladder` at all, so this degrades to pure pair matching for
+// them, unchanged from the original behaviour.
+//
+// "entered"/"closed" don't count as a blocking explanation (the pair was
+// actively trading, not blocked). Where the reason carries its own expiry
+// ("Cooldown — 3.9m remaining"), that's checked precisely; otherwise a
+// bounded lookback window (default 4h) caps how far back a plausible-but-
+// unverifiable explanation can reach — beyond that, honestly reported as
+// "no log evidence" rather than guessed.
 export function explainGapsFromDecisionLog(items, dayEvents, { maxLookbackSec = 4 * 3600 } = {}) {
-  const byPair = new Map();
-  for (const e of dayEvents || []) {
-    const key = String(e.pair || '').toLowerCase();
-    if (!byPair.has(key)) byPair.set(key, []);
-    byPair.get(key).push(e);
-  }
-  for (const list of byPair.values()) list.sort((a, b) => a.t - b.t);
+  const applies = (event, pair, ladder) => {
+    const ePair = String(event.pair || '').toLowerCase();
+    if (ePair !== pair && ePair !== '*') return false;
+    if (ladder == null) return true; // item has no ladder concept -- pair match is enough
+    const eLadder = event.ladder == null ? null : String(event.ladder).toLowerCase();
+    return eLadder === ladder || eLadder === '*' || eLadder == null;
+  };
+  const sorted = [...(dayEvents || [])].sort((a, b) => a.t - b.t);
 
   return items.map(item => {
     const itemTime = item.time ?? item.time_open;
     if (!itemTime) return { ...item, explainedBy: null, explainReason: 'no timestamp to cross-reference' };
-    const events = byPair.get(String(item.pair).toLowerCase()) || [];
+    const pair = String(item.pair || '').toLowerCase();
+    const ladder = item.ladder != null ? String(item.ladder).toLowerCase() : null;
+    const events = sorted.filter(e => applies(e, pair, ladder));
     let best = null;
     for (const e of events) {
       if (e.t > itemTime) break; // sorted ascending
