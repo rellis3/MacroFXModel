@@ -515,6 +515,14 @@ def run(base_url: str, force_live: bool) -> None:
     reject_until: dict[str, float] = {}
     stack_skips: dict[str, int] = {}
     budget_skips: dict[str, bool] = {}
+    # 2026-09-25: the per-pair concurrency cap (below) skipped the pair
+    # BEFORE sess.decide() ever ran, with no _record_decision call at all --
+    # a real live-vs-backtest reconciliation session found several missed
+    # candidates that day with ZERO trace in this log, tracing back to this
+    # exact silent gap. Deduped the same way ccy_blocks/guard_blocks already
+    # are (log a transition, not every tick) so this doesn't blow the
+    # decision log's event budget on a pair that's simply busy for a while.
+    pair_cap_blocked: dict[str, bool] = {}
     warned_missing: dict[str, bool] = {}
     missing_since: dict[str, float] = {}
     # A pair being absent from the FIRST plan snapshot(s) after a restart is
@@ -846,7 +854,14 @@ def run(base_url: str, force_live: bool) -> None:
                 # per-pair cap at all, only a global max_open).
                 pair_sym_set = {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}
                 open_for_pair = sum(1 for p in open_book if p.get("symbol") in pair_sym_set)
-                if open_for_pair >= cfg.get("max_concurrent_per_pair", 1):
+                cap_now = open_for_pair >= cfg.get("max_concurrent_per_pair", 1)
+                if cap_now and not pair_cap_blocked.get(instr):
+                    pair_cap_blocked[instr] = True
+                    _record_decision(instr, "pair_blocked",
+                                      reason=f"pair_concurrency_cap: {open_for_pair} open >= {cfg.get('max_concurrent_per_pair', 1)}")
+                elif not cap_now:
+                    pair_cap_blocked.pop(instr, None)
+                if cap_now:
                     continue
                 guard_why = guard.block_reason(guard_bal, instr)
                 was_blocked = guard_blocks.get(instr)
@@ -873,6 +888,13 @@ def run(base_url: str, force_live: bool) -> None:
 
                 for spec in sess.decide(px, tol=_tol(cfg, instr)):
                     if spec["sl"] is None or spec["tp"] is None:
+                        # Shouldn't happen (the plan producer always prices a
+                        # bracket) -- logged rather than silently dropped
+                        # because a fired zone with no sl/tp is a real data
+                        # problem worth seeing, not routine backoff.
+                        _record_decision(instr, "skipped", side=spec.get("side"), rung=spec.get("rung"),
+                                          zone_id=spec.get("zone_id"), decision=spec.get("decision"), margin=spec.get("margin"),
+                                          reason="missing sl/tp on fired spec")
                         continue
                     zid = spec["zone_id"]
                     if reject_until.get(zid, 0) > nowt:
