@@ -4,7 +4,7 @@
 // countVoteAtlasCandidates skips. Purpose: determine whether the 39-vs-17
 // gap for 2026-09-24 is a bug in the simplified reimplementation, or
 // something present in the real route too.
-import { applyConcurrencyCap, applyCurrencyLossGate, applyFadeStopTightening, priceAtTighterStop } from '../js/levelAtlasVoteReview.js';
+import { applyConcurrencyCap, applyCurrencyLossGate, applyFadeStopTightening, priceAtTighterStop, buildPortfolioDailySeries } from '../js/levelAtlasVoteReview.js';
 import { pickFresher, loadLocalVoteTrades, loadLocalP90VoteTrades, PREFIX } from '../js/levelAtlasRoutes.js';
 import { getJSON } from '../js/r2Store.js';
 import fs from 'node:fs';
@@ -61,3 +61,13 @@ if (ccyLossGate) {
 const day = finalTrades.filter(t => t.date === '2026-09-24').sort((a, b) => a.time - b.time);
 console.log(`\n${day.length} trades on 2026-09-24 (faithful route reproduction):`);
 for (const t of day) console.log(`${t.pair}\t${t.side}\t${t.rung}\t${t.session}\tmargin=${t.margin}\tdecision=${t.decision}\twin=${t.win}\ttime=${t.time}`);
+
+// Sanity cross-check against the page's own printed "1133 portfolio trading
+// days" -- if this doesn't match, the date RANGE/population differs, not
+// just this one day's filtering.
+const byPairFinal = {};
+for (const t of finalTrades) (byPairFinal[t.pair] ??= []).push(t);
+const combined = buildPortfolioDailySeries(byPairFinal);
+console.log(`\nTotal portfolio trading days: ${combined?.dates?.length ?? 'N/A'} (page shows 1133)`);
+console.log(`Total kept trades (all dates, all pairs): ${finalTrades.length}`);
+console.log(`Date range: ${combined?.dates?.[0]} to ${combined?.dates?.at(-1)}`);
