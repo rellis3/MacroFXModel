@@ -47,7 +47,7 @@ export const DESK_EVIDENCE = [
   {
     id: 'driver-roundtrip', domain: 'price', verdict: 'null', date: '2026-09-25', doc: 'MD files/ROUNDTRIP_PREREG.md',
     claim: 'When a driver spikes and fully retraces intraday, the markets it drives follow it back -- "crude moves back, stocks recover, but bonds never forget"',
-    result: 'Null on every testable leg. 400 days of M15, 35 crude round trips vs 81 held excursions: USD/CAD +0.33 [-0.22,+0.88], S&P +0.47 [-0.07,+1.01], Nasdaq -0.13 [-0.90,+0.50]. The direction split is incoherent (S&P gives back 0.19 of an up-spike and 1.00 of a down-spike), which argues the positive point estimates are noise. UNDERPOWERED: 26-30 events, intervals span +/-0.55 of a move, so only a large effect could have been found. BONDS WERE NOT TESTED -- no intraday rates data here.',
+    result: 'Null on every testable leg. 400 days of M15, 35 crude round trips vs 81 held excursions: USD/CAD +0.33 [-0.22,+0.88], S&P +0.47 [-0.07,+1.01], Nasdaq -0.13 [-0.90,+0.50]. The direction split is incoherent (S&P gives back 0.19 of an up-spike and 1.00 of a down-spike), which argues the positive point estimates are noise. UNDERPOWERED: 26-30 events, intervals span +/-0.55 of a move, so only a large effect could have been found. BONDS WERE NOT TESTED -- and the reason first given (no intraday rates data) was wrong: OANDA serves US 2Y/5Y/10Y/30Y, Bund and Gilt CFDs at M15 through the route this study already uses. The bond leg is unanswered and answerable.',
     use: 'Do not say a linked move "will come back" because the driver round-tripped. Round trips are also rarer than the story implies: 35 in 283 crude sessions, and 6 in 284 for EUR/USD.',
   },
   {

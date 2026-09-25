@@ -101,12 +101,21 @@ pre-registration said an effect on one side only is a period artefact rather tha
 mechanism — that is exactly the shape here, and it argues against the two positive point
 estimates meaning anything.
 
-**IT DOES NOT TEST BONDS, which is the actual claim.** "Bonds never forget" needs
-intraday yields, and this repo has no intraday rates data — FRED is daily and settles
-behind. What was tested is the analogous claim on the legs that ARE intraday-observable
-(the dollar leg, two equity legs), and those came back null. The bond claim is **not
-answered**, and calling this a refutation of it would be the same overreach the study
-was written to avoid.
+**IT DOES NOT TEST BONDS, which is the actual claim** — and the stated reason was
+WRONG. This section originally said "this repo has no intraday rates data". It does:
+OANDA serves `USB02Y_USD`, `USB05Y_USD`, `USB10Y_USD`, `USB30Y_USD`, `DE10YB_EUR` and
+`UK10YB_GBP` as CFDs, at M15, through `/api/ohlc-range` — the same route this study
+already uses. Verified 2026-09-25: 266 M15 bars on the 10-year over four days. Nothing
+in the repo was using them, and I concluded they were absent instead of checking.
+
+So the bond leg is **not answered and IS answerable**. What was tested is the analogous
+claim on the dollar and equity legs, which came back null. Calling that a refutation of
+the bond claim would be the overreach the study was written to avoid; calling it
+impossible was simply incorrect.
+
+Note for whoever runs it: those series are bond PRICES, so they move INVERSELY to yield
+— a falling CFD is a rising yield, and the sign has to be flipped before the result
+means what it appears to.
 
 **It is underpowered, and that is not the same as a confident null.** 26-30 events per
 leg, just over the floor. The intervals span about ±0.55 of a move, so an effect smaller
