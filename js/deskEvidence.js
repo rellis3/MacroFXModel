@@ -39,6 +39,12 @@ export const DESK_EVIDENCE = [
     instruments: ['NQ'],
   },
   {
+    id: 'driver-roundtrip', domain: 'price', verdict: 'null', date: '2026-09-25', doc: 'MD files/ROUNDTRIP_PREREG.md',
+    claim: 'When a driver spikes and fully retraces intraday, the markets it drives follow it back -- "crude moves back, stocks recover, but bonds never forget"',
+    result: 'Null on every testable leg. 400 days of M15, 35 crude round trips vs 81 held excursions: USD/CAD +0.33 [-0.22,+0.88], S&P +0.47 [-0.07,+1.01], Nasdaq -0.13 [-0.90,+0.50]. The direction split is incoherent (S&P gives back 0.19 of an up-spike and 1.00 of a down-spike), which argues the positive point estimates are noise. UNDERPOWERED: 26-30 events, intervals span +/-0.55 of a move, so only a large effect could have been found. BONDS WERE NOT TESTED -- no intraday rates data here.',
+    use: 'Do not say a linked move "will come back" because the driver round-tripped. Round trips are also rarer than the story implies: 35 in 283 crude sessions, and 6 in 284 for EUR/USD.',
+  },
+  {
     id: 'breadth-narrowing', domain: 'price', verdict: 'null', date: '2026-09-23', doc: 'MD files/BREADTH_NARROWING_PREREG.md',
     claim: 'Market narrowing -- equal-weight (RSP) lagging cap-weight (SPY) hard -- is a "textbook rotation" worth acting on',
     result: 'Null on all four pre-registered hypotheses. 23 years (RSP from 2003), 35 de-clustered NARROW events vs 267 controls. Direction -0.5% at 20d [-2.70, +1.57]; range +0.37 [-0.10, +0.85]; no reversion of the spread; no continuation of the rotation. The range near-miss dies on its mirror: extreme BROADENING raises forward range just as much (+0.28), so the effect belongs to the volatile period both readings sit inside, not to breadth. First half holds only 14 events, so the half-split could not be completed.',

@@ -1,0 +1,72 @@
+{
+  "at": "2026-09-25T05:55:17.053Z",
+  "days": 400,
+  "spikeAtr": 1,
+  "backFrac": 0.33,
+  "minEvents": 20,
+  "results": [
+    {
+      "driver": "crude",
+      "leg": "USD/CAD",
+      "verdict": "NULL",
+      "signal": 0.062,
+      "control": -0.264,
+      "diff": 0.326,
+      "ci": [
+        -0.217,
+        0.879
+      ],
+      "n": 26,
+      "nCtl": 67,
+      "up": -0.035,
+      "down": 0.326
+    },
+    {
+      "driver": "crude",
+      "leg": "the S&P",
+      "verdict": "NULL",
+      "signal": 0.409,
+      "control": -0.06,
+      "diff": 0.469,
+      "ci": [
+        -0.067,
+        1.014
+      ],
+      "n": 30,
+      "nCtl": 71,
+      "up": 0.194,
+      "down": 1.001
+    },
+    {
+      "driver": "crude",
+      "leg": "the Nasdaq",
+      "verdict": "NULL",
+      "signal": 0.058,
+      "control": 0.193,
+      "diff": -0.134,
+      "ci": [
+        -0.899,
+        0.504
+      ],
+      "n": 29,
+      "nCtl": 71,
+      "up": -0.154,
+      "down": 0.615
+    },
+    {
+      "driver": "the euro (dollar leg)",
+      "leg": "gold",
+      "verdict": "UNTESTABLE",
+      "n": 5,
+      "nCtl": 11
+    },
+    {
+      "driver": "the euro (dollar leg)",
+      "leg": "sterling",
+      "verdict": "UNTESTABLE",
+      "n": 6,
+      "nCtl": 77
+    }
+  ],
+  "verdict": "NULL"
+}
