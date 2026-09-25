@@ -26,17 +26,19 @@ import { resolveKey } from './instrumentRegistry.js';
 
 export const KEY_TO_PAIR = { rut: 'us2000', spx: 'spx', de40: 'de30', ftse: 'uk100', gold: 'gold', nq: 'nq', dow: 'dow' };
 
-// A stuck (not merely slow) loadM1ForPair call on ONE pair must not hang an
-// entire multi-pair candidate count forever — confirmed live 2026-09-25:
-// countVoteAtlasCandidates's per-pair try/catch only catches a REJECTION,
-// not a promise that simply never resolves, and a sequential for-loop means
-// one stuck pair blocks every pair after it too. 45s is generous next to
-// this repo's own measured cost for a single pair's full-history fetch.
-function _withTimeout(promise, ms, label) {
-  let timer;
-  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${ms}ms: ${label}`)), ms); });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-}
+// REMOVED 2026-09-25: a _withTimeout wrapper (Promise.race against a 45s
+// setTimeout) briefly lived here, meant to stop one stuck pair from hanging
+// the whole candidate count. It was part of the same incident as the
+// _mapLimit revert below and made things WORSE, not better: loadM1ForPair's
+// real cost here is a CPU-bound synchronous parquet decode, and a setTimeout
+// callback cannot fire while the event loop is blocked by synchronous work —
+// so the "timeout" never actually protected against the slow case that
+// matters, while still abandoning the real promise to keep running in the
+// background once it did fire (for the async-wait portion), competing for
+// resources with everything else on the box. The R2 client itself already
+// has requestTimeout: 120_000 + one retry (js/volBacktestM1Engine.js) for
+// genuine network-level hangs, which is the correct place for that bound —
+// don't re-add a second one here.
 
 // REVERTED 2026-09-25: a concurrency-limited _mapLimit briefly lived here.
 // It caused a real production outage (server-wide 502s for over an hour) --
@@ -99,7 +101,7 @@ export async function auditVoteAtlasDrift(tradeLogEntries, loadM1ForPairFn, { mi
   const results = [];
   for (const [pair, pairTrades] of Object.entries(byPair)) {
     let packed;
-    try { packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`); } catch (e) {
+    try { packed = await loadM1ForPairFn(pair); } catch (e) {
       for (const trade of pairTrades) results.push({ ...trade, pair, note: `M1 load failed: ${e.message}` });
       continue;
     }
@@ -200,7 +202,7 @@ export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { m
   const byPair = {};
   await _mapLimit(pairs, async (pair) => {
     try {
-      const packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`);
+      const packed = await loadM1ForPairFn(pair);
       if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; return; }
       const assetClass = assetClassFor(pair);
       const { touches } = atlasWalk(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
