@@ -38,6 +38,24 @@ function _withTimeout(promise, ms, label) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// A candidate count over a bot's full ~17-pair universe run one pair at a
+// time was the other half of the real slowness confirmed live 2026-09-25
+// (alongside the missing timeout above) — R2 fetches are I/O-bound, so a
+// small concurrency cap cuts wall-clock time roughly proportionally without
+// hammering R2 the way full parallelism (all pairs at once) would.
+async function _mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      results[idx] = await fn(items[idx], idx);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 // Adapts GET /api/trade-history's raw MT5 records into the {key, zone_id,
 // date, direction, profit} shape auditVoteAtlasDrift expects, by parsing the
 // zone tag each bot's own comment carries -- "VA[downp50_1]" (v2),
@@ -177,13 +195,13 @@ export async function auditVoteAtlasDrift(tradeLogEntries, loadM1ForPairFn, { mi
 // universe for one date, how many zones the honest as-of-that-day backtest
 // would have voted margin >= minMargin on — the number to compare the
 // bot's real trade count against.
-export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 3 } = {}) {
+export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { minMargin = 3, concurrency = 6 } = {}) {
   let total = 0;
   const byPair = {};
-  for (const pair of pairs) {
+  await _mapLimit(pairs, concurrency, async (pair) => {
     try {
       const packed = await _withTimeout(loadM1ForPairFn(pair), 45_000, `loadM1ForPair(${pair})`);
-      if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; continue; }
+      if (!packed?.n) { byPair[pair] = { candidates: 0, note: 'no M1 data' }; return; }
       const assetClass = assetClassFor(pair);
       const { touches } = atlasWalk(packed, { instrument: pair.toUpperCase(), assetClass, rearmFracs: [DEFAULT_REARM], pendingRearmFrac: DEFAULT_REARM });
       const atRearm = touches.filter(t => t.rearmFrac === DEFAULT_REARM && t.rung !== 'p90');
@@ -195,6 +213,6 @@ export async function countVoteAtlasCandidates(pairs, date, loadM1ForPairFn, { m
       byPair[pair] = { candidates: n };
       total += n;
     } catch (e) { byPair[pair] = { candidates: 0, note: e.message }; }
-  }
+  });
   return { total, byPair };
 }

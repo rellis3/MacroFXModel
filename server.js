@@ -18846,6 +18846,20 @@ async function _computeMotifDailyReconciliation(date) {
 
 async function _computeDailyReconciliation(date) {
   const out = [];
+  // Vote Atlas v2 and v3 share the identical 17-pair enabled_pairs list
+  // (confirmed directly, not assumed); Fib Atlas and Fib Atlas v2 mostly
+  // overlap too. Without sharing, each bot's candidate count independently
+  // re-fetched full multi-year M1 for the SAME pairs — confirmed live
+  // 2026-09-25 this was the real reason a compute never finished in
+  // reasonable time, not a hang. One memoizing cache, scoped to this single
+  // date's compute, shared by every bot below: a pair loaded once by v2
+  // costs nothing when v3 asks for the same pair moments later.
+  const _m1Cache = new Map(); // pair -> Promise<packed>
+  const sharedLoadM1 = (pair) => {
+    if (!_m1Cache.has(pair)) _m1Cache.set(pair, loadM1ForPair(pair));
+    return _m1Cache.get(pair);
+  };
+
   for (const { bot, botKey, tag, engine, configKey } of DAILY_RECON_BOTS) {
     const raw = await _readTradeHistFor(botKey, date);
     const cfg = await _readBotConfig(configKey);
@@ -18861,8 +18875,8 @@ async function _computeDailyReconciliation(date) {
     if (enabledPairs.length) {
       try {
         const c = engine === 'fibAtlas'
-          ? await _countFibAtlasCandidates(enabledPairs, date, loadM1ForPair, { minMargin: 1, ladders: Object.entries(cfg?.ladders || { asia: true, monday: true }).filter(([, on]) => on).map(([k]) => k) })
-          : await _countVoteAtlasCandidates(enabledPairs, date, loadM1ForPair, { minMargin: 3 });
+          ? await _countFibAtlasCandidates(enabledPairs, date, sharedLoadM1, { minMargin: 1, ladders: Object.entries(cfg?.ladders || { asia: true, monday: true }).filter(([, on]) => on).map(([k]) => k) })
+          : await _countVoteAtlasCandidates(enabledPairs, date, sharedLoadM1, { minMargin: 3 });
         backtestCandidateCount = c.total;
         candidatesByPair = c.byPair;
       } catch (e) { console.warn(`[daily-recon] ${bot} candidate count failed:`, e.message); }
@@ -18877,10 +18891,10 @@ async function _computeDailyReconciliation(date) {
     try {
       if (engine === 'fibAtlas') {
         const normalized = _normalizeTradeHistoryForFibAtlasAudit(raw, tag);
-        report = await _auditFibAtlasDrift(normalized, loadM1ForPair);
+        report = await _auditFibAtlasDrift(normalized, sharedLoadM1);
       } else {
         const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
-        report = await _auditVoteAtlasDrift(normalized, loadM1ForPair);
+        report = await _auditVoteAtlasDrift(normalized, sharedLoadM1);
       }
     } catch (e) { out.push({ bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2), backtestCandidateCount, candidatesByPair, note: `audit failed: ${e.message}` }); continue; }
     out.push({
