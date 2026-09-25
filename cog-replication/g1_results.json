@@ -1,0 +1,195 @@
+{
+  "generated": "2026-09-25T00:59:08.533321+00:00",
+  "prereg": "G1_PREREG.md",
+  "counts": {
+    "raw_rows": 3325,
+    "used": 3285,
+    "dropped": 40
+  },
+  "span": [
+    "2016-01-27",
+    "2026-08-18"
+  ],
+  "episodes_full_sample": 448,
+  "primary_tide": {
+    "IS": {
+      "1d": {
+        "n": 1971,
+        "hit_rate": 0.5175,
+        "boot_p": 0.1025,
+        "tide_ic": 0.0586,
+        "episodes": 239,
+        "mean_ret_long_pct": 0.0962,
+        "mean_ret_short_pct": 0.0249
+      },
+      "5d": {
+        "n": 1971,
+        "hit_rate": 0.5282,
+        "boot_p": 0.08,
+        "tide_ic": 0.123,
+        "episodes": 239,
+        "mean_ret_long_pct": 0.4122,
+        "mean_ret_short_pct": 0.1881
+      },
+      "20d": {
+        "n": 1971,
+        "hit_rate": 0.5358,
+        "boot_p": 0.2775,
+        "tide_ic": 0.194,
+        "episodes": 239,
+        "mean_ret_long_pct": 1.544,
+        "mean_ret_short_pct": 0.8087
+      }
+    },
+    "OOS": {
+      "1d": {
+        "n": 1314,
+        "hit_rate": 0.519,
+        "boot_p": 0.0845,
+        "tide_ic": 0.0073,
+        "episodes": 210,
+        "mean_ret_long_pct": 0.1328,
+        "mean_ret_short_pct": 0.0191
+      },
+      "5d": {
+        "n": 1314,
+        "hit_rate": 0.4954,
+        "boot_p": 0.843,
+        "tide_ic": -0.0207,
+        "episodes": 210,
+        "mean_ret_long_pct": 0.3735,
+        "mean_ret_short_pct": 0.3409
+      },
+      "20d": {
+        "n": 1314,
+        "hit_rate": 0.5152,
+        "boot_p": 0.5925,
+        "tide_ic": -0.0264,
+        "episodes": 210,
+        "mean_ret_long_pct": 1.5821,
+        "mean_ret_short_pct": 1.434
+      }
+    }
+  },
+  "secondary_credit_veto": {
+    "IS": {
+      "1d": {
+        "n": 1915,
+        "hit_rate": 0.5185,
+        "boot_p": 0.1005,
+        "tide_ic": 0.0442,
+        "episodes": 234,
+        "mean_ret_long_pct": 0.0986,
+        "mean_ret_short_pct": 0.042
+      },
+      "5d": {
+        "n": 1915,
+        "hit_rate": 0.5243,
+        "boot_p": 0.127,
+        "tide_ic": 0.0946,
+        "episodes": 234,
+        "mean_ret_long_pct": 0.425,
+        "mean_ret_short_pct": 0.2832
+      },
+      "20d": {
+        "n": 1915,
+        "hit_rate": 0.5295,
+        "boot_p": 0.3815,
+        "tide_ic": 0.1599,
+        "episodes": 234,
+        "mean_ret_long_pct": 1.5997,
+        "mean_ret_short_pct": 1.2402
+      }
+    },
+    "OOS": {
+      "1d": {
+        "n": 1277,
+        "hit_rate": 0.5145,
+        "boot_p": 0.1978,
+        "tide_ic": 0.0476,
+        "episodes": 203,
+        "mean_ret_long_pct": 0.1187,
+        "mean_ret_short_pct": -0.003
+      },
+      "5d": {
+        "n": 1277,
+        "hit_rate": 0.502,
+        "boot_p": 0.9363,
+        "tide_ic": 0.0699,
+        "episodes": 203,
+        "mean_ret_long_pct": 0.3595,
+        "mean_ret_short_pct": 0.1629
+      },
+      "20d": {
+        "n": 1277,
+        "hit_rate": 0.5255,
+        "boot_p": 0.4035,
+        "tide_ic": 0.0909,
+        "episodes": 203,
+        "mean_ret_long_pct": 1.377,
+        "mean_ret_short_pct": 0.7391
+      }
+    }
+  },
+  "secondary_flow": {
+    "IS": {
+      "1d": {
+        "n": 1111,
+        "hit_rate": 0.514,
+        "boot_p": 0.4062,
+        "tide_ic": 0.0398,
+        "episodes": 573,
+        "mean_ret_long_pct": 0.0277,
+        "mean_ret_short_pct": 0.0471
+      },
+      "5d": {
+        "n": 1111,
+        "hit_rate": 0.5095,
+        "boot_p": 0.3555,
+        "tide_ic": 0.1667,
+        "episodes": 573,
+        "mean_ret_long_pct": 0.4135,
+        "mean_ret_short_pct": 0.1685
+      },
+      "20d": {
+        "n": 1111,
+        "hit_rate": 0.5419,
+        "boot_p": 0.0008,
+        "tide_ic": 0.2227,
+        "episodes": 573,
+        "mean_ret_long_pct": 1.5285,
+        "mean_ret_short_pct": 0.8955
+      }
+    },
+    "OOS": {
+      "1d": {
+        "n": 742,
+        "hit_rate": 0.5377,
+        "boot_p": 0.0553,
+        "tide_ic": -0.0168,
+        "episodes": 401,
+        "mean_ret_long_pct": 0.1499,
+        "mean_ret_short_pct": -0.0161
+      },
+      "5d": {
+        "n": 742,
+        "hit_rate": 0.5162,
+        "boot_p": 0.2028,
+        "tide_ic": -0.0365,
+        "episodes": 401,
+        "mean_ret_long_pct": 0.5491,
+        "mean_ret_short_pct": 0.3918
+      },
+      "20d": {
+        "n": 742,
+        "hit_rate": 0.5054,
+        "boot_p": 0.6405,
+        "tide_ic": -0.0713,
+        "episodes": 401,
+        "mean_ret_long_pct": 1.67,
+        "mean_ret_short_pct": 1.6183
+      }
+    }
+  },
+  "verdict": "NULL"
+}

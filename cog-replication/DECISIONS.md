@@ -2,6 +2,47 @@
 
 Newest first. Every entry: what was decided, why, and what would reverse it.
 
+## 2026-09-25 — G1 is null. All three gates are tested; none carries direction.
+
+**Decided:** the COG shadow has **no validated directional layer**. It should no
+longer be described as a replication.
+**Why:** pre-registered in `ecf4519`, results in `G1_RESULTS.md`. 3,285 days,
+2016-2026, 448 independent bias episodes, publication lags applied (WALCL 8d, TGA
+2d, RRP 1d, HY 1d) so the backtest uses only what was released.
+
+OOS hit rates **51.9% / 49.5% / 51.5%** at 1/5/20 days — all inside the
+pre-registered null band. The 20-day IC **collapses from +0.194 in sample to
+−0.026 out of sample**: it does not weaken, it changes sign. Both bias buckets
+show POSITIVE forward returns at every horizon (20d: long +1.58%, short +1.43%),
+so the gate never justifies a short — acting on it would have meant shorting a
+rising market on a coin flip.
+
+The in-sample strength is explained: IS spans 2016–May 2022 and contains the 2020
+QE episode, where liquidity and the Nasdaq rose together in LEVELS. OOS is the QT
+era and the relationship is absent.
+
+Secondaries: the **credit veto adds nothing** (OOS 51.4/50.2/52.5%). **FLOW** —
+computed and emitted live but unused in the call — is an in-sample trap: 54.2%
+at p 0.001 IS, 50.5% at p 0.640 OOS.
+
+**The full picture now:**
+
+| Gate | Verdict |
+|---|---|
+| G1 net-liquidity tide | NULL (this entry) |
+| G2 GEX -> range | real on NQ, no directional content, does not generalise to FX |
+| G3 wall magnet | NULL (48.8% OOS, 615 days) |
+
+The rule is `G1.bias === G3.direction` and both inputs are measured nulls. G2, the
+only layer carrying real information, cannot move the decision and says nothing
+about direction.
+
+**What this does NOT decide:** whether to keep the shadow running as a logging
+instrument. That is the owner's call. What is removed is the excuse that any gate
+was untested.
+**Reverses if:** nothing foreseeable at this sample size. A new mechanism would
+need its own pre-registration; do not re-cut these three.
+
 ## 2026-09-24 — G3's wall-magnet direction is falsified; the range layer survives its confound
 
 **Decided:** Gate 3 does not carry direction. Gate 2's range finding stands.
