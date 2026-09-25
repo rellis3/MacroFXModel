@@ -58,7 +58,13 @@ export function normalizeTradeHistoryForVoteAtlasAudit(rawTrades, tagPrefix) {
     let pair = _SYMBOL_OVERRIDE[sym];
     if (!pair) { try { pair = resolveKey(sym)?.toLowerCase(); } catch { /* fall through */ } }
     if (!pair) pair = sym.toLowerCase();
-    out.push({ key: pair, zone_id: m[1], date: t.date, direction: t.direction, profit: t.profit });
+    // time_open corrected to true UTC (MT5 stamps on the broker's clock,
+    // commonly +2/+3h -- same fix js/fibAtlasDriftAudit.js's own normalizer
+    // already applies) -- carried through so a caller can cross-reference
+    // an unmatched real trade against the bot's own decision log by time,
+    // the same way missedCandidates already can.
+    out.push({ key: pair, zone_id: m[1], date: t.date, direction: t.direction, profit: t.profit,
+      time_open: (t.time_open || 0) - (t.tz_offset_sec || 0) });
   }
   return out;
 }
@@ -226,4 +232,55 @@ export async function countVoteAtlasCandidates(pairs, date, {
   }
   for (const { pair, reason } of missing) byPair[pair] = { candidates: 0, note: reason };
   return { total, byPair, allCandidates };
+}
+
+// The actual "why" step, 2026-09-25 — a missed candidate or an unmatched
+// real trade is only a SYMPTOM; the bot's own decision log (already built,
+// js/serviceFlags.js-adjacent Python bots write it directly) is the
+// authoritative record of what the live engine actually did at that moment.
+// This cross-references by pair + time rather than trying to re-derive
+// portfolio/risk state independently — re-simulating risk_guard/stack_guard
+// here would just be a second implementation of logic that already lives,
+// correctly, in the Python bot (js/serviceFlags.js's "one copy" principle).
+//
+// Matching rule: the MOST RECENT log event for this pair strictly before
+// the candidate/trade's own time. "entered"/"closed" don't count as a
+// blocking explanation (the pair was actively trading, not blocked). Where
+// the reason carries its own expiry ("Cooldown — 3.9m remaining"), that's
+// checked precisely; otherwise a bounded lookback window (default 4h) caps
+// how far back a plausible-but-unverifiable explanation can reach — beyond
+// that, honestly reported as "no log evidence" rather than guessed.
+export function explainGapsFromDecisionLog(items, dayEvents, { maxLookbackSec = 4 * 3600 } = {}) {
+  const byPair = new Map();
+  for (const e of dayEvents || []) {
+    const key = String(e.pair || '').toLowerCase();
+    if (!byPair.has(key)) byPair.set(key, []);
+    byPair.get(key).push(e);
+  }
+  for (const list of byPair.values()) list.sort((a, b) => a.t - b.t);
+
+  return items.map(item => {
+    const itemTime = item.time ?? item.time_open;
+    if (!itemTime) return { ...item, explainedBy: null, explainReason: 'no timestamp to cross-reference' };
+    const events = byPair.get(String(item.pair).toLowerCase()) || [];
+    let best = null;
+    for (const e of events) {
+      if (e.t > itemTime) break; // sorted ascending
+      best = e;
+    }
+    if (!best) return { ...item, explainedBy: null, explainReason: 'no log entry found for this pair before this time' };
+    if (best.status === 'entered' || best.status === 'closed') {
+      return { ...item, explainedBy: null, explainReason: `nearest log entry was "${best.status}", not a block — no blocking event found` };
+    }
+    const m = /—\s*([\d.]+)m remaining/.exec(best.reason || '');
+    if (m) {
+      const expiresAt = best.t + parseFloat(m[1]) * 60;
+      if (itemTime > expiresAt) {
+        return { ...item, explainedBy: null, explainReason: `nearest block ("${best.reason}") had already expired by this time` };
+      }
+    } else if (itemTime - best.t > maxLookbackSec) {
+      return { ...item, explainedBy: null, explainReason: `nearest log entry ("${best.reason || best.status}") is over ${(maxLookbackSec / 3600).toFixed(1)}h earlier — too old to attribute confidently` };
+    }
+    return { ...item, explainedBy: { t: best.t, status: best.status, reason: best.reason }, explainReason: null };
+  });
 }

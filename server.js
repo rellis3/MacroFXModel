@@ -174,7 +174,7 @@ import { analyzePair as _mcondAnalyzePair, summarizeRows as _mcondSummarize, ver
 import { creditGate as _creditGateBrick } from './js/creditCore.js';
 import { creditRegime as _creditRegime } from './js/creditHmm.js';
 import { runFullM1Backtest, runFullLevelAnalysis, aggregateLevelHits, loadM1ForPair, BT_M1_DIR, M1_DRIVE_IDS, loadRegimeHistoryFromR2, saveRegimeHistoryToR2, fetchFromR2 as gliFetchFromR2, M1_TAIL_PREFIX as _M1_TAIL_PREFIX } from './js/volBacktestM1Engine.js';
-import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit, countVoteAtlasCandidates as _countVoteAtlasCandidates } from './js/voteAtlasDriftAudit.js';
+import { auditVoteAtlasDrift as _auditVoteAtlasDrift, normalizeTradeHistoryForVoteAtlasAudit as _normalizeTradeHistoryForVoteAtlasAudit, countVoteAtlasCandidates as _countVoteAtlasCandidates, explainGapsFromDecisionLog as _explainGapsFromDecisionLog } from './js/voteAtlasDriftAudit.js';
 import { auditFibAtlasDrift as _auditFibAtlasDrift, normalizeTradeHistoryForFibAtlasAudit as _normalizeTradeHistoryForFibAtlasAudit, countFibAtlasCandidates as _countFibAtlasCandidates } from './js/fibAtlasDriftAudit.js';
 import { resampleBars as plResampleBars, runPatternScan, annotateHtfAlignment as plAnnotateHtfAlignment, confidenceBucketStats as plConfidenceBucketStats, classifySwingStructure as plClassifySwingStructure } from './js/patternEngine.js';
 import { loadTradeLabBars, loadFullArchivePacked } from './js/tradeLabDataSource.js';
@@ -18781,14 +18781,31 @@ const VOTE_DRIFT_MAX_HISTORY = 52; // ~1 year of weekly snapshots
 // _worker.js are separate runtimes sharing one KV store — no HTTP round
 // trip to its own public URL needed).
 const DAILY_RECON_BOTS = [
-  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA', engine: 'voteAtlas', configKey: 'volatility_bot_v2_config' },
-  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3', engine: 'voteAtlas', configKey: 'volatility_bot_v3_config' },
+  // decisionLogKey: only Vote Atlas bots write a decision log with a
+  // status/reason per event today (js/serviceFlags.js's own registry —
+  // Fib Atlas/Motif Touch are separate codebases with no equivalent yet,
+  // explicit scope decision 2026-09-25, not an oversight).
+  { bot: 'vote_atlas_v2', botKey: 'volatility_bot_v2_status', tag: 'VA', engine: 'voteAtlas', configKey: 'volatility_bot_v2_config', decisionLogKey: 'volatility_bot_v2_decision_log' },
+  { bot: 'vote_atlas_v3', botKey: 'volatility_bot_v3_status', tag: 'VA3', engine: 'voteAtlas', configKey: 'volatility_bot_v3_config', decisionLogKey: 'volatility_bot_v3_decision_log' },
   // Fib Atlas: two walk engines (asia/monday) share one vote/pricing module;
   // auditFibAtlasDrift groups trades by pair+ladder internally, so one call
   // per bot (not per ladder) handles both.
   { bot: 'fib_atlas', botKey: 'fib_atlas_bot_status', tag: 'FA', engine: 'fibAtlas', configKey: 'fib_atlas_bot_config' },
   { bot: 'fib_atlas_v2', botKey: 'fib_atlas_bot_v2_status', tag: 'FA2', engine: 'fibAtlas', configKey: 'fib_atlas_bot_v2_config' },
 ];
+
+async function _readDecisionLogForDate(decisionLogKey, date) {
+  if (!decisionLogKey) return [];
+  try {
+    const raw = await kv.get(decisionLogKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    const events = (parsed.data ?? parsed).events || [];
+    const start = new Date(`${date}T00:00:00Z`).getTime() / 1000;
+    const end = start + 86400;
+    return events.filter(e => e.t >= start && e.t < end);
+  } catch (e) { console.warn(`[daily-recon] decision log read failed (${decisionLogKey}):`, e.message); return []; }
+}
 
 async function _readBotConfig(configKey) {
   try {
@@ -18859,10 +18876,16 @@ async function _computeDailyReconciliation(date) {
   // count of 45 against a ground-truth backtest total of 17 for the same
   // day. Params below are read directly off each bot's live KV config, not
   // hardcoded, so this stays correct if a config changes.
-  for (const { bot, botKey, tag, engine, configKey } of DAILY_RECON_BOTS) {
+  for (const { bot, botKey, tag, engine, configKey, decisionLogKey } of DAILY_RECON_BOTS) {
     const raw = await _readTradeHistFor(botKey, date);
     const cfg = await _readBotConfig(configKey);
     const enabledPairs = cfg?.enabled_pairs || [];
+    // The actual "why" data -- the bot's own record of what it did at each
+    // moment (entered/rejected/skipped/blocked + reason). Only Vote Atlas
+    // bots write one today; other engines get an empty log and
+    // explainGapsFromDecisionLog degrades to "no log entry found" for all
+    // of them, same as a genuine gap would.
+    const dayEvents = await _readDecisionLogForDate(decisionLogKey, date);
 
     // Population, not just output — how many zones the honest as-of-that-day
     // backtest would have voted on across the bot's OWN full pair universe
@@ -18898,7 +18921,8 @@ async function _computeDailyReconciliation(date) {
     if (!raw.length) {
       // Every candidate is trivially "missed" on a zero-real-trade day --
       // exactly the case worth seeing in full, not just a count.
-      out.push({ bot, date, tradeCount: 0, backtestCandidateCount, candidatesByPair, missedCandidates: allCandidates.slice(0, 30), note: backtestCandidateCount ? `no closed trades this date, but the backtest found ${backtestCandidateCount} candidate(s) — worth checking why none were taken` : 'no closed trades this date' });
+      const missedCandidates = _explainGapsFromDecisionLog(allCandidates.slice(0, 30), dayEvents);
+      out.push({ bot, date, tradeCount: 0, backtestCandidateCount, candidatesByPair, missedCandidates, note: backtestCandidateCount ? `no closed trades this date, but the backtest found ${backtestCandidateCount} candidate(s) — worth checking why none were taken` : 'no closed trades this date' });
       continue;
     }
     const realPnl = raw.reduce((s, t) => s + (t.profit || 0) + (t.swap || 0) + (t.commission || 0), 0);
@@ -18922,11 +18946,22 @@ async function _computeDailyReconciliation(date) {
       report.results.filter(r => r.matchedTime != null)
         .map(r => engine === 'fibAtlas' ? `${r.pair}|${r.ladder}|${r.matchedTime}` : `${r.pair}|${r.matchedTime}`)
     );
-    const missedCandidates = allCandidates.filter(c => !consumed.has(candKey(c))).slice(0, 30);
+    const missedCandidatesRaw = allCandidates.filter(c => !consumed.has(candKey(c))).slice(0, 30);
+    const missedCandidates = _explainGapsFromDecisionLog(missedCandidatesRaw, dayEvents);
+
+    // The other direction of surprise: a real trade the backtest doesn't
+    // even recognize as a valid touch at all (not a margin/direction
+    // mismatch -- genuinely no stored candidate). Same decision-log
+    // cross-reference, keyed by time_open (real trade) instead of time
+    // (backtest candidate).
+    const unmatchedRealTrades = _explainGapsFromDecisionLog(
+      report.results.filter(r => r.note && r.note.startsWith('no matching stored trade')).slice(0, 30),
+      dayEvents
+    );
 
     out.push({
       bot, date, tradeCount: raw.length, realPnl: +realPnl.toFixed(2),
-      backtestCandidateCount, candidatesByPair, missedCandidates,
+      backtestCandidateCount, candidatesByPair, missedCandidates, unmatchedRealTrades,
       decisionMatchRate: report.matchRate, decisionMatches: report.directionMatches, decisionChecked: report.checkedWithVote,
       winLossMatchRate: report.winLossMatchRate, winLossMatches: report.winLossMatches, winLossChecked: report.winLossChecked,
       unresolvedInBacktest: report.unresolvedInBacktest, thinMarginOrNoVote: report.thinMarginOrNoVote,

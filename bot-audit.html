@@ -1452,16 +1452,24 @@ function renderRec() {
       const candCls = gapPct == null ? '' : gapPct >= 0.8 ? 'pos' : gapPct >= 0.4 ? '' : 'neg';
       const candCell = cand == null ? '<td style="color:var(--dim2)">—</td>' : `<td class="${candCls}" title="${r.tradeCount} traded of ${cand} candidate(s) found">${cand}</td>`;
       const missed = r.missedCandidates || [];
+      const unmatched = r.unmatchedRealTrades || [];
       const mism = r.mismatchDetail || [];
       const detailId = `recDetail${i}`;
-      const hasDetail = missed.length || mism.length;
+      const hasDetail = missed.length || unmatched.length || mism.length;
       const detailBtn = hasDetail
-        ? `<td><span class="chip" style="cursor:pointer" onclick="document.getElementById('${detailId}').style.display = document.getElementById('${detailId}').style.display === 'none' ? '' : 'none'">${missed.length ? missed.length + ' missed' : ''}${missed.length && mism.length ? ' · ' : ''}${mism.length ? mism.length + ' mismatch' : ''}</span></td>`
+        ? `<td><span class="chip" style="cursor:pointer" onclick="document.getElementById('${detailId}').style.display = document.getElementById('${detailId}').style.display === 'none' ? '' : 'none'">${missed.length ? missed.length + ' missed' : ''}${unmatched.length ? (missed.length ? ' · ' : '') + unmatched.length + ' extra' : ''}${(missed.length || unmatched.length) && mism.length ? ' · ' : ''}${mism.length ? mism.length + ' mismatch' : ''}</span></td>`
         : '<td style="color:var(--dim2)">—</td>';
-      const missedRows = missed.map(c => `<div>missed: <b>${esc((c.pair || '').toUpperCase())}</b> ${esc(c.side || '')} ${esc(String(c.rung ?? ''))}${c.ladder ? ' · ' + esc(c.ladder) : ''} · margin ${c.margin} · ${esc(c.decision || '')} · ${c.time ? new Date(c.time * 1000).toISOString().slice(11, 16) + ' UTC' : ''}</div>`).join('');
+      // explainedBy/explainReason come from js/voteAtlasDriftAudit.js's
+      // explainGapsFromDecisionLog -- the actual "why", cross-referenced
+      // against the bot's own decision log, not just the raw gap.
+      const whyOf = c => c.explainedBy
+        ? `<span style="color:var(--good)">${esc(c.explainedBy.status)}: ${esc(c.explainedBy.reason || '')}</span>`
+        : `<span style="color:var(--dim2)">${esc(c.explainReason || 'no explanation available')}</span>`;
+      const missedRows = missed.map(c => `<div>missed: <b>${esc((c.pair || '').toUpperCase())}</b> ${esc(c.side || '')} ${esc(String(c.rung ?? ''))}${c.ladder ? ' · ' + esc(c.ladder) : ''} · margin ${c.margin} · ${esc(c.decision || '')} · ${c.time ? new Date(c.time * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
+      const unmatchedRows = unmatched.map(c => `<div>extra (no backtest candidate): <b>${esc((c.pair || '').toUpperCase())}</b> ${esc(c.zone_id || '')} · ${esc(c.direction || '')} · ${c.time_open ? new Date(c.time_open * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
       const mismRows = mism.map(m => `<div>mismatch: <b>${esc((m.pair || m.symbol || '').toUpperCase())}</b> live=${esc(m.direction || m.actualDir || '')} backtest=${esc(m.myDir || m.myDecision || '')} · ${m.winLossMatch === false ? 'win/loss also disagreed' : ''}${m.detail ? ' · ' + esc(m.detail) : ''}</div>`).join('');
       const detailRow = hasDetail
-        ? `<tr id="${detailId}" style="display:none"><td colspan="9" style="background:var(--s2);font-size:10.5px;padding:8px 12px">${missedRows}${mismRows}</td></tr>`
+        ? `<tr id="${detailId}" style="display:none"><td colspan="9" style="background:var(--s2);font-size:10.5px;padding:8px 12px">${missedRows}${unmatchedRows}${mismRows}</td></tr>`
         : '';
       return `<tr>
         <td class="l mono">${r.date}</td>
