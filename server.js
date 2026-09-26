@@ -18601,7 +18601,18 @@ async function _refreshFibAtlasPlan() {
         }
         try {
           const gapFilterEnabled = cfg.gap_filter?.[ladder] !== false;
-          const plan = await planFn(pair, gapFilterEnabled ? {} : { maxGapMin: null });
+          // `minMargin` (2026-09-26) — genuinely wired, not a repeat of Vote
+          // Atlas's own removed "dead config field" (server.js's own
+          // VOLATILITY_V2_MIN_MARGIN history): `cfg.min_margin` here actually
+          // reaches zonesFromLiveAndBook's live minMargin gate, not a
+          // hardcoded constant the UI would silently ignore. `null`/absent
+          // (not 0 -- a real, if extreme, config choice) falls through to
+          // undefined so zonesFromLiveAndBook's own FIB_ATLAS_MIN_MARGIN
+          // default applies, same backward-compatible behavior every
+          // existing install already has.
+          const minMarginOverride = cfg.min_margin != null ? Number(cfg.min_margin) : undefined;
+          const planOpts = { ...(gapFilterEnabled ? {} : { maxGapMin: null }), ...(minMarginOverride !== undefined ? { minMargin: minMarginOverride } : {}) };
+          const plan = await planFn(pair, planOpts);
           if (plan.warming) { if (!instruments[key]) skipped[key] = 'warming (cold cache)'; continue; }
           if (plan.skipped) { if (!instruments[key]) skipped[key] = plan.skipped; continue; }
           instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount, updatedAt: new Date().toISOString(), source: 'live' };

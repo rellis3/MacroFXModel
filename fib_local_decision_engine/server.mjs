@@ -32,10 +32,22 @@ const app = express();
 const cache = new Map();   // "pair|ladder" -> { lastBarTime, bookSavedAt, result }
 const REFRESH_INTERVAL_MS = Number(process.env.REFRESH_INTERVAL_MS || 5000);
 
-function cacheKey(pair, ladder) { return `${pair}|${ladder}`; }
+// `minMargin` (2026-09-26) is folded into the cache key, not treated as a
+// throwaway per-request override -- this cache is keyed on the assumption
+// that a decision is a pure function of its inputs. Without it, a bot-config
+// change to min_margin would silently keep serving whatever margin the
+// PREVIOUS cache entry was computed under until the underlying book/M1 data
+// itself changed, which could be hours. `lastMinMargin` (module-level, one
+// value not per-pair) mirrors how this actually gets used in practice: one
+// bot process, one config, the same margin for every pair it asks about --
+// the background refresh loop below has no per-request context of its own,
+// so it warms the cache using whatever margin the most recent real request
+// carried.
+function cacheKey(pair, ladder, minMargin) { return `${pair}|${ladder}|${minMargin ?? 'd'}`; }
+let lastMinMargin;
 
-async function refreshOne(pair, ladder) {
-  const key = cacheKey(pair, ladder);
+async function refreshOne(pair, ladder, minMargin) {
+  const key = cacheKey(pair, ladder, minMargin);
   const [bAge, mAge] = await Promise.all([bookAge(pair, ladder), m1Age(pair)]);
   if (bAge > MAX_BOOK_AGE_HOURS || mAge > MAX_M1_AGE_HOURS) return;
   const [{ book, savedAt }, packed] = await Promise.all([loadBook(pair, ladder), loadM1(pair)]);
@@ -45,7 +57,8 @@ async function refreshOne(pair, ladder) {
   const hit = cache.get(key);
   if (hit && hit.lastBarTime === lastBarTime && hit.bookSavedAt === savedAt) return;
 
-  const result = computeZones(ladder, pair, { book, packed });
+  const opts = minMargin != null ? { minMargin } : {};
+  const result = computeZones(ladder, pair, { book, packed, opts });
   cache.set(key, { lastBarTime, bookSavedAt: savedAt, result });
 }
 
@@ -56,7 +69,7 @@ async function refreshAll() {
   try {
     for (const pair of WATCHED_PAIRS) {
       for (const ladder of LADDERS) {
-        try { await refreshOne(pair, ladder); }
+        try { await refreshOne(pair, ladder, lastMinMargin); }
         catch (e) { console.warn(`[fib-local-decision-engine] refresh failed for ${pair}|${ladder}: ${e.message}`); }
         // Yield between EVERY (pair,ladder), not just every pair — twice the
         // cache entries of Vote Atlas's single-strategy loop, same event-
@@ -67,16 +80,17 @@ async function refreshAll() {
   } finally { refreshing = false; }
 }
 
-async function pairLadderDecision(pair, ladder) {
+async function pairLadderDecision(pair, ladder, minMargin) {
   WATCHED_PAIRS.add(pair);
-  const key = cacheKey(pair, ladder);
+  if (minMargin != null) lastMinMargin = minMargin;
+  const key = cacheKey(pair, ladder, minMargin);
   const [bAge, mAge] = await Promise.all([bookAge(pair, ladder), m1Age(pair)]);
   if (bAge > MAX_BOOK_AGE_HOURS) return { stale: true, reason: `book is ${bAge.toFixed(1)}h old (max ${MAX_BOOK_AGE_HOURS}h) — run sync.mjs`, zones: [], zoneCount: 0 };
   if (mAge > MAX_M1_AGE_HOURS) return { stale: true, reason: `M1 tail is ${mAge.toFixed(1)}h old (max ${MAX_M1_AGE_HOURS}h) — run sync.mjs`, zones: [], zoneCount: 0 };
 
   const hit = cache.get(key);
   if (hit) return hit.result;
-  await refreshOne(pair, ladder);
+  await refreshOne(pair, ladder, minMargin);
   const fresh = cache.get(key);
   return fresh ? fresh.result : { stale: true, reason: 'no local book/M1 cached yet — run sync.mjs first', zones: [], zoneCount: 0 };
 }
@@ -89,8 +103,9 @@ app.get('/decide', async (req, res) => {
   const ladder = String(req.query.ladder || '').toLowerCase();
   if (!pair) return res.status(400).json({ ok: false, error: 'pair query param required' });
   if (ladder !== 'asia' && ladder !== 'monday') return res.status(400).json({ ok: false, error: "ladder query param must be 'asia' or 'monday'" });
+  const minMargin = req.query.minMargin != null ? Number(req.query.minMargin) : undefined;
   try {
-    const result = await pairLadderDecision(pair, ladder);
+    const result = await pairLadderDecision(pair, ladder, minMargin);
     res.json({ ok: true, pair, ladder, ...result });
   } catch (e) {
     res.status(500).json({ ok: false, pair, ladder, error: e.message });
@@ -108,6 +123,7 @@ app.get('/decide', async (req, res) => {
 app.get('/plan', async (req, res) => {
   const pairs = String(req.query.pairs || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   if (!pairs.length) return res.status(400).json({ ok: false, error: 'pairs query param required (comma-separated)' });
+  const minMargin = req.query.minMargin != null ? Number(req.query.minMargin) : undefined;
 
   const instruments = {};
   const skipped = {};
@@ -115,7 +131,7 @@ app.get('/plan', async (req, res) => {
     for (const ladder of LADDERS) {
       const key = `${pair}|${ladder}`;
       try {
-        const result = await pairLadderDecision(pair, ladder);
+        const result = await pairLadderDecision(pair, ladder, minMargin);
         if (result.stale || result.skipped) { skipped[key] = result.reason || result.skipped; continue; }
         instruments[key] = { spot: result.spot, date: result.date, boundary: result.boundary, zones: result.zones, zoneCount: result.zoneCount };
       } catch (e) {

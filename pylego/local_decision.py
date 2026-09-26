@@ -64,13 +64,24 @@ class LocalDecisionClient:
                     self._sleep(self.backoff * (2 ** attempt))
         raise last
 
-    def get_plan(self, pairs: list[str]) -> dict:
+    def get_plan(self, pairs: list[str], min_margin: float | None = None) -> dict:
         """GET /plan?pairs=… → {ok, data:{strategy, generatedAt, instruments, skipped}, timestamp}.
         Returns the `data` object directly — same shape a KvClient.get_json("..._plan")
         read used to hand back, so callers don't need to change how they
-        consume it, only where it comes from."""
+        consume it, only where it comes from.
+
+        `min_margin` (2026-09-26, Fib Atlas v2 only — Vote Atlas v3 never
+        passes this, so its own calls are unaffected): omitted entirely when
+        None, so the local engine's own frozen default still applies. Passed
+        through as a plain query param rather than baked into this client's
+        own defaults, since it's a live bot-config value the caller re-reads
+        every config cycle, not something this shared client should cache or
+        assume."""
         def _do():
-            r = self.http.get(f'{self.base}/plan', params={'pairs': ','.join(pairs)}, timeout=self.timeout)
+            params = {'pairs': ','.join(pairs)}
+            if min_margin is not None:
+                params['minMargin'] = min_margin
+            r = self.http.get(f'{self.base}/plan', params=params, timeout=self.timeout)
             r.raise_for_status()
             body = r.json()
             if not body.get('ok'):

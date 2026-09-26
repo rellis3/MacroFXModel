@@ -4954,6 +4954,11 @@ const FA_DEFAULTS = {
   // the OOS-validated config. Read by _refreshFibAtlasPlan in server.js, not
   // by the Python bot itself.
   gap_filter: { asia: true, monday: true },
+  // Frozen best-config value from the backtest (FIB_ATLAS_MIN_MARGIN in
+  // js/asiaFibAtlasZonePricer.js) -- genuinely wired as of 2026-09-26
+  // (server.js's _refreshFibAtlasPlan), not a display-only value. Re-validate
+  // against the honest (non-look-ahead) backtest before changing it live.
+  min_margin: 2,
   risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
   max_spread_pips: 2.0,
   enabled_pairs: [...FA_DEFAULT_CHECKED],
@@ -4998,6 +5003,7 @@ function renderFaForm() {
   chk('fa_ladder_monday', _faCfg.ladders?.monday ?? true);
   chk('fa_gap_filter_asia',   _faCfg.gap_filter?.asia ?? true);
   chk('fa_gap_filter_monday', _faCfg.gap_filter?.monday ?? true);
+  set('fa_min_margin',          _faCfg.min_margin          ?? FA_DEFAULTS.min_margin);
   set('fa_risk_pct',            _faCfg.risk_pct            ?? FA_DEFAULTS.risk_pct);
   set('fa_max_lot',             _faCfg.max_lot             ?? FA_DEFAULTS.max_lot);
   set('fa_max_open',            _faCfg.max_open            ?? FA_DEFAULTS.max_open);
@@ -5034,6 +5040,7 @@ function readFaForm() {
     asia:   !!document.getElementById('fa_gap_filter_asia')?.checked,
     monday: !!document.getElementById('fa_gap_filter_monday')?.checked,
   };
+  _faCfg.min_margin           = Math.round(num('fa_min_margin', FA_DEFAULTS.min_margin));
   _faCfg.risk_pct             = num('fa_risk_pct', FA_DEFAULTS.risk_pct);
   _faCfg.max_lot              = num('fa_max_lot', FA_DEFAULTS.max_lot);
   _faCfg.max_open             = Math.round(num('fa_max_open', FA_DEFAULTS.max_open));
@@ -5715,6 +5722,10 @@ loadFaLiveStatus();
 const FA2_DEFAULTS = {
   paper_mode: true, kill_switch: false,
   ladders: { asia: true, monday: true },
+  // Same frozen best-config default as FA_DEFAULTS.min_margin -- reaches the
+  // local decision engine's own live minMargin gate (2026-09-26), not a
+  // display-only value.
+  min_margin: 2,
   risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
   max_spread_pips: 2.0,
   enabled_pairs: [...FA_DEFAULT_CHECKED],
@@ -5756,6 +5767,7 @@ function renderFa2Form() {
   chk('fa2_kill_switch', _fa2Cfg.kill_switch);
   chk('fa2_ladder_asia',   _fa2Cfg.ladders?.asia ?? true);
   chk('fa2_ladder_monday', _fa2Cfg.ladders?.monday ?? true);
+  set('fa2_min_margin',          _fa2Cfg.min_margin          ?? FA2_DEFAULTS.min_margin);
   set('fa2_risk_pct',            _fa2Cfg.risk_pct            ?? FA2_DEFAULTS.risk_pct);
   set('fa2_max_lot',             _fa2Cfg.max_lot             ?? FA2_DEFAULTS.max_lot);
   set('fa2_max_open',            _fa2Cfg.max_open            ?? FA2_DEFAULTS.max_open);
@@ -5788,6 +5800,7 @@ function readFa2Form() {
     asia:   !!document.getElementById('fa2_ladder_asia')?.checked,
     monday: !!document.getElementById('fa2_ladder_monday')?.checked,
   };
+  _fa2Cfg.min_margin           = Math.round(num('fa2_min_margin', FA2_DEFAULTS.min_margin));
   _fa2Cfg.risk_pct             = num('fa2_risk_pct', FA2_DEFAULTS.risk_pct);
   _fa2Cfg.max_lot              = num('fa2_max_lot', FA2_DEFAULTS.max_lot);
   _fa2Cfg.max_open             = Math.round(num('fa2_max_open', FA2_DEFAULTS.max_open));

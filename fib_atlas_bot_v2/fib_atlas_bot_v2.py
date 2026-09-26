@@ -657,8 +657,15 @@ def run(base_url: str, force_live: bool) -> None:
         # ages correctly off the LAST successful fetch's own generatedAt.
         if nowt - last_plan >= cfg.get("plan_secs", 3) or last_plan == 0.0:
             enabled_for_plan = cfg.get("enabled_pairs") or DEFAULT_PAIRS
+            # min_margin (2026-09-26): read fresh from this SAME cfg re-read
+            # every plan_secs tick (below, the (b) config+status block), so a
+            # bot-config.html change reaches the local engine within one
+            # cycle, same responsiveness as every other live-tunable field
+            # here. None (not set) means "use the local engine's own frozen
+            # default" -- see LocalDecisionClient.get_plan's own doc.
+            min_margin = cfg.get("min_margin")
             try:
-                new_plan = ld.get_plan(enabled_for_plan)
+                new_plan = ld.get_plan(enabled_for_plan, min_margin=min_margin)
             except Exception as e:
                 log.warning(f"local decision engine fetch failed: {e} — keeping current plan")
                 new_plan = None
