@@ -161,6 +161,17 @@
   </div>
 </div>
 
+<div class="card callout" id="realAccountCard" style="border-color:#3a5a8a;background:linear-gradient(135deg,#131f2e,#0e121b)">
+  <h2 style="color:#7dd3fc">Real account simulation — one shared balance, real concurrency (2026-09-26)</h2>
+  <div class="muted" style="margin-bottom:10px"><strong>This is the number to trust.</strong> Every card in the "legacy stats" section below sizes each pair as if it had its OWN slice of pre-split capital, or lets every pair fire independently with no shared limit — neither is what the live bot actually does. This simulates ONE account: every pair's trades merged into a single chronological timeline, one real balance, and a signal genuinely SKIPPED if the account is already at its concurrency limit (same hedge-only rule — max 1 position per pair+ladder+direction — <code>fib_atlas_bot</code>'s own <code>occupied_directions()</code> enforces live). Position size is a fixed % of the STARTING balance, not the growing one — compounding a persistent edge across thousands of trades mechanically explodes into meaningless numbers, the same trap the legacy CAGR card below shows a real example of.</div>
+  <div class="kpi-grid" id="kpiRealAccount"></div>
+</div>
+
+<details style="margin:16px 0;border:1px solid #7c2d2d;border-radius:8px;background:#1a1414">
+  <summary style="cursor:pointer;padding:14px 16px;color:#f87171;font-weight:600">⚠ Legacy stats below — fictional capital-split assumption, NOT a real backtest (click to expand, reference only)</summary>
+  <div style="padding:0 16px 16px">
+  <div class="muted" style="margin:10px 0 16px">Everything in this section prices every pair as if it had its own separately-funded slice of capital, or lets unlimited pairs fire simultaneously with no shared account limit — neither is what the live, cross-pair bot actually does, and the Sharpe/CAGR figures below (routinely 15-20+, CAGR in the millions of percent) are not real, achievable numbers for any trading system. Kept for whoever built or validated levers against these specific figures historically — use the Real Account Simulation card above for anything you actually want to trust.</div>
+
 <div class="card callout">
   <h2>Diversification benefit</h2>
   <div style="display:flex; gap:40px; align-items:baseline; flex-wrap:wrap">
@@ -168,12 +179,6 @@
     <div style="font-size:22px;color:var(--text3)">→</div>
     <div><div class="muted">Combined portfolio Sharpe</div><div class="big green" id="combinedSharpe">—</div></div>
   </div>
-</div>
-
-<div class="card callout" id="realAccountCard" style="border-color:#3a5a8a;background:linear-gradient(135deg,#131f2e,#0e121b)">
-  <h2 style="color:#7dd3fc">Real account simulation — one shared balance, real concurrency (2026-09-26)</h2>
-  <div class="muted" style="margin-bottom:10px">Every other number on this page (above and below) sizes each pair as if it had its OWN slice of pre-split capital, or lets every pair fire independently with no shared limit — neither is what the live bot actually does. This simulates ONE account: every pair's trades merged into a single chronological timeline, one real balance, and a signal genuinely SKIPPED if the account is already at its concurrency limit (same hedge-only rule — max 1 position per pair+ladder+direction — <code>fib_atlas_bot</code>'s own <code>occupied_directions()</code> enforces live). Position size is a fixed % of the STARTING balance, not the growing one — compounding a persistent edge across thousands of trades mechanically explodes into meaningless numbers, the same trap this page's own CAGR card already warns about.</div>
-  <div class="kpi-grid" id="kpiRealAccount"></div>
 </div>
 
 <div class="card callout" id="heatCapCard" style="display:none">
@@ -280,6 +285,9 @@
   <div class="kpi-grid" id="evtKpi" style="margin-top:12px"></div>
   <div id="evtCompare" style="overflow-x:auto;margin-top:12px"></div>
 </div>
+
+  </div>
+</details>
 
 <div class="card">
   <h2>Per-pair breakdown — where the diversification is coming from</h2>
