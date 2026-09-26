@@ -56,6 +56,168 @@ export function withNonCompoundedDD(statsObj, dailyReturns) {
   return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
 }
 
+// Real vote atlas convention: fade flips direction relative to which side
+// of the range the rung sits on, follow keeps it -- same logic as
+// js/fibAtlasDriftAudit.js's fibBetDirection, re-derived here (not imported)
+// because that file pulls in R2/KV-touching modules this one must stay free
+// of (buildFibAtlasVotePortfolio is called from a route, but the trade rows
+// it receives are already plain data by that point).
+function tradeDirection(t) {
+  const contSign = t.side === 'above' ? 1 : -1;
+  const dirSign = t.decision === 'fade' ? -contSign : contSign;
+  return dirSign > 0 ? 'long' : 'short';
+}
+
+/**
+ * simulateSharedAccount(trades, opts) — ONE real account, chronologically
+ * simulated, instead of the fictional "every pair gets its own pre-split
+ * capital slice" (NAV split) or "every trade risks a % of a NEVER-updated
+ * original balance regardless of what else is open" (fixed-risk, this
+ * file's own default mode) assumptions every other stat on this page makes.
+ * Built 2026-09-26, direct owner ask: the live bot trades ALL these pairs
+ * out of ONE MT5 account balance, subject to real concurrency limits
+ * (max_open, and a hedge-only cap of 1 position per (pair,ladder,direction)
+ * — see fib_atlas_bot/engine.py's occupied_directions) — a portfolio
+ * "backtest" that never enforces either of those isn't simulating the same
+ * thing the live bot actually does, so it can't be used to sanity-check it.
+ *
+ * Event-driven: every trade contributes an OPEN event (checks real
+ * concurrency, reserves a slot, sizes its risk off the CURRENT balance at
+ * that instant) and a RESOLVE event (releases the slot, applies that
+ * reserved dollar risk × rMultiple to the balance) processed in true
+ * chronological order — not a daily-pooled approximation. A signal that
+ * arrives while the account is already at its concurrency limit is
+ * genuinely SKIPPED, exactly like the live bot would reject it, not
+ * silently given its own fictional capital anyway.
+ *
+ * `trades` must carry: time, resolveTime, pair, ladder, side, decision,
+ * rMultiple (risk-invariant — see riskAdjustTrades) — i.e. the SAME rows
+ * buildFibAtlasVotePortfolio already builds before any sizing scheme is
+ * applied.
+ *
+ * `compounding` (default false): position size is a fixed % of the STARTING
+ * capital, never the ever-growing current balance — the SAME "fixed-risk,
+ * non-reinvested" convention this page's own existing cards already settled
+ * on as the trustworthy one ("This matches how the engine actually sizes
+ * trades... the honest, decision-relevant numbers"). Confirmed live
+ * 2026-09-26 this matters here too, not just for the daily-pooled CAGR:
+ * compounding 0.5% of a GROWING balance across ~12,000 trades over 5 years
+ * turned $100k into $42 BILLION — the exact "mechanically explodes, not
+ * evidence of anything" trap this page already warns about elsewhere,
+ * reproduced by this simulation's first draft. `finalBalance`/`equityCurve`
+ * still track the REAL evolving balance either way (concurrency/hedge
+ * rejection always uses real, current state) — only whether NEW risk is
+ * sized off that growing number or held fixed is what this toggles.
+ *
+ *   simulateSharedAccount(trades, { startingCapital=100000, riskPct=0.5,
+ *     maxOpen=20, maxOpenRiskPct=0, compounding=false }) ->
+ *     { finalBalance, totalReturnPct, maxDDPct, trades: n, skippedForConcurrency,
+ *       equityCurve: [{time, balance}], sharpe, profitFactor, winRate, ... }
+ */
+export function simulateSharedAccount(trades, {
+  startingCapital = 100000, riskPct = 0.5, maxOpen = 20,
+  // Real risk-budget cap (mirrors fib_atlas_bot's own max_open_risk_pct) --
+  // 0 = off, matching that bot's own default. When set, an open ALSO gets
+  // rejected if the SUM of every currently-open position's reserved risk %
+  // would exceed this, regardless of position COUNT — the actual thing
+  // "out of a total combined pot" cares about, not just a headcount.
+  maxOpenRiskPct = 0,
+  compounding = false,
+} = {}) {
+  if (!trades?.length) return null;
+  const withDir = trades
+    .filter(t => t.time != null && t.resolveTime != null && Number.isFinite(t.rMultiple))
+    .map(t => ({ ...t, direction: tradeDirection(t) }));
+  if (!withDir.length) return null;
+
+  // Event queue: 'open' before 'resolve' on an exact time tie (a trade
+  // can't free its own slot before it's even reserved it).
+  const events = [];
+  for (const t of withDir) {
+    events.push({ type: 'open', time: t.time, t });
+    events.push({ type: 'resolve', time: t.resolveTime, t });
+  }
+  events.sort((a, b) => a.time - b.time || (a.type === 'open' ? -1 : 1));
+
+  let balance = startingCapital;
+  const open = new Map();      // trade -> { dirKey, dollarRisk }
+  const openDirKeys = new Set(); // "pair|ladder|direction" currently occupied (hedge-only, 1 each)
+  const closedPnls = [];       // realized $ pnl, in event order
+  const equityCurve = [{ time: events[0]?.time ?? 0, balance }];
+  let peak = balance, maxDD = 0, maxConcurrentOpen = 0;
+  let skippedConcurrency = 0, skippedHedge = 0, taken = 0;
+
+  // Sizing reference: the ever-growing real `balance` only when `compounding`
+  // is explicitly requested; otherwise the fixed starting capital, same
+  // basis for BOTH the per-trade risk size and the risk-budget check below
+  // (mixing a fixed numerator with a moving denominator would make
+  // `maxOpenRiskPct` mean something different tick to tick).
+  const sizingBasis = () => compounding ? balance : startingCapital;
+  const openRiskPct = () => {
+    let sum = 0;
+    for (const { dollarRisk } of open.values()) sum += dollarRisk;
+    const basis = sizingBasis();
+    return basis > 0 ? (sum / basis) * 100 : 0;
+  };
+
+  for (const ev of events) {
+    if (ev.type === 'open') {
+      const dirKey = `${ev.t.pair}|${ev.t.ladder ?? ''}|${ev.t.direction}`;
+      // Hedge-only cap: fib_atlas_bot's own occupied_directions() rule --
+      // max ONE open position per (pair, ladder, direction) at a time.
+      if (openDirKeys.has(dirKey)) { skippedHedge++; continue; }
+      if (open.size >= maxOpen) { skippedConcurrency++; continue; }
+      const basis = sizingBasis();
+      const dollarRisk = basis * (riskPct / 100);
+      if (maxOpenRiskPct > 0 && openRiskPct() + (basis > 0 ? (dollarRisk / basis) * 100 : 0) > maxOpenRiskPct + 1e-9) {
+        skippedConcurrency++; continue;
+      }
+      open.set(ev.t, { dirKey, dollarRisk });
+      openDirKeys.add(dirKey);
+      taken++;
+      if (open.size > maxConcurrentOpen) maxConcurrentOpen = open.size;
+    } else {
+      const reserved = open.get(ev.t);
+      if (!reserved) continue; // never actually opened (rejected above)
+      open.delete(ev.t);
+      openDirKeys.delete(reserved.dirKey);
+      const pnl = reserved.dollarRisk * ev.t.rMultiple;
+      balance += pnl;
+      closedPnls.push({ time: ev.time, pnl, pnlPct: (pnl / (balance - pnl)) * 100 });
+      equityCurve.push({ time: ev.time, balance: +balance.toFixed(2) });
+      if (balance > peak) peak = balance;
+      const dd = ((balance - peak) / peak) * 100;
+      if (dd < maxDD) maxDD = dd;
+    }
+  }
+
+  const wins = closedPnls.filter(c => c.pnl > 0), losses = closedPnls.filter(c => c.pnl <= 0);
+  const grossWin = wins.reduce((s, c) => s + c.pnl, 0), grossLoss = Math.abs(losses.reduce((s, c) => s + c.pnl, 0));
+  const pnlPcts = closedPnls.map(c => c.pnlPct);
+  const mean = pnlPcts.length ? pnlPcts.reduce((a, b) => a + b, 0) / pnlPcts.length : 0;
+  const sd = pnlPcts.length > 1 ? Math.sqrt(pnlPcts.reduce((a, b) => a + (b - mean) ** 2, 0) / pnlPcts.length) : 0;
+  const years = closedPnls.length ? (closedPnls.at(-1).time - closedPnls[0].time) / (365.25 * 86400) : 0;
+  const perTradeSharpe = sd > 1e-9 ? mean / sd : 0;
+  const tradesPerYr = years > 0 ? closedPnls.length / years : 0;
+
+  return {
+    startingCapital, finalBalance: +balance.toFixed(2),
+    totalReturnPct: +(((balance - startingCapital) / startingCapital) * 100).toFixed(2),
+    maxDDPct: +maxDD.toFixed(2),
+    tradesOffered: withDir.length, tradesTaken: taken,
+    skippedConcurrency, skippedHedge,
+    winRate: closedPnls.length ? +((wins.length / closedPnls.length) * 100).toFixed(1) : 0,
+    profitFactor: grossLoss > 1e-9 ? +(grossWin / grossLoss).toFixed(3) : (grossWin > 0 ? Infinity : 0),
+    // Real, annualized off actual trade FREQUENCY (not calendar days) --
+    // honest for a concurrency-capped, event-driven series where "days" and
+    // "trades" no longer line up the way a daily-pooled series assumes.
+    sharpe: +(perTradeSharpe * Math.sqrt(tradesPerYr)).toFixed(2),
+    tradesPerYr: +tradesPerYr.toFixed(1),
+    equityCurve,
+    maxConcurrentOpenSeen: maxConcurrentOpen,
+  };
+}
+
 /**
  * buildFibAtlasVotePortfolio(opts) -> the full /vote-portfolio response body,
  * or { error } if no pair had data.
@@ -123,6 +285,13 @@ export async function buildFibAtlasVotePortfolio({
   throttleOn = false, triggerDD = -5, restoreDD = 0, throttleMult = 0.5,
   stopTightenFrac = null, minCostRatio = null, maxGapMin = null, continuationExit = false,
   minClearancePips = null,
+  // Real shared-account simulation (2026-09-26) -- see simulateSharedAccount's
+  // own doc. Independent of every OTHER sizing/weighting toggle above (those
+  // stay exactly as they were, for anyone still comparing against prior
+  // numbers) -- this is an ADDITIONAL, separately-reported view answering
+  // "what would ONE real account, with real concurrency limits, actually
+  // have done," not a replacement for the existing stats.
+  startingCapital = 100000, realAccountRiskPct = 0.5, maxOpen = 20, maxOpenRiskPct = 0,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -315,6 +484,11 @@ export async function buildFibAtlasVotePortfolio({
     stats, statsUncapped, statsNoThrottle, naiveAvgSharpe, days: datesFinal.length,
     equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
     perPair, trades, walkForwardOOS,
+    // Real shared-account simulation -- uses the SAME final trade list every
+    // other stat on this page is built from (post margin/cost/gap/clearance/
+    // concurrency-cap/stop-tightening filters), so it's an honest alternate
+    // view of the identical population, not a different backtest.
+    realAccountSim: simulateSharedAccount(trades, { startingCapital, riskPct: realAccountRiskPct, maxOpen, maxOpenRiskPct }),
   };
 }
 

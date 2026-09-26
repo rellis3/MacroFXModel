@@ -907,6 +907,10 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         // own doc for the full reasoning; threaded straight through.
         minClearancePips: req.query.minClearancePips ? Number(req.query.minClearancePips) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
+        startingCapital: req.query.startingCapital ? Number(req.query.startingCapital) : 100000,
+        realAccountRiskPct: req.query.realAccountRiskPct ? Number(req.query.realAccountRiskPct) : 0.5,
+        maxOpen: req.query.maxOpen ? Number(req.query.maxOpen) : 20,
+        maxOpenRiskPct: req.query.maxOpenRiskPct ? Number(req.query.maxOpenRiskPct) : 0,
       };
       const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
@@ -989,6 +993,12 @@ export function mountAsiaFibAtlasRoutes(app, express) {
         // Asia's frozen choice reused" precedent as maxGapMin above.
         minClearancePips: req.query.minClearancePips ? Number(req.query.minClearancePips) : null,
         continuationExit: req.query.continuationExit, // 'true'|'giveback'|'chandelier'|undefined -- applyStoredContinuationExit interprets it
+        // Real shared-account simulation (2026-09-26) -- see
+        // simulateSharedAccount's own doc in fibAtlasVotePortfolio.js.
+        startingCapital: req.query.startingCapital ? Number(req.query.startingCapital) : 100000,
+        realAccountRiskPct: req.query.realAccountRiskPct ? Number(req.query.realAccountRiskPct) : 0.5,
+        maxOpen: req.query.maxOpen ? Number(req.query.maxOpen) : 20,
+        maxOpenRiskPct: req.query.maxOpenRiskPct ? Number(req.query.maxOpenRiskPct) : 0,
       };
       const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });
