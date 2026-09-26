@@ -27,13 +27,16 @@ for (const t of trades) {
   const stopDist = t.stopPips * t.pip;
   const targetDist = t.targetPips * t.pip;
   const startIdx = bsearch(times, t.time);
-  const endIdx = bsearch(times, t.resolveTime);
-  if (startIdx >= times.length || endIdx <= startIdx) continue;
+  // See vote_atlas_dynamic_stop_test.mjs -- resolveTime's bar is the
+  // resolution bar itself, must be included, not used as an exclusive bound.
+  let endIdx = bsearch(times, t.resolveTime);
+  if (endIdx >= times.length) endIdx = times.length - 1;
+  if (startIdx >= times.length || endIdx < startIdx) continue;
   const tp = isBuy ? t.entry + targetDist : t.entry - targetDist;
   const sl = isBuy ? t.entry - stopDist : t.entry + stopDist;
 
   let exitPrice = null, exitIdx = null, exitReason = null;
-  for (let i = startIdx; i < endIdx; i++) {
+  for (let i = startIdx; i <= endIdx; i++) {
     if (isBuy) {
       if (lows[i] <= sl) { exitPrice = sl; exitIdx = i; exitReason = 'sl'; break; }
       if (highs[i] >= tp) { exitPrice = tp; exitIdx = i; exitReason = 'tp'; break; }
@@ -42,7 +45,7 @@ for (const t of trades) {
       if (lows[i] <= tp) { exitPrice = tp; exitIdx = i; exitReason = 'tp'; break; }
     }
   }
-  if (exitPrice == null) { exitPrice = closes[endIdx - 1]; exitIdx = endIdx - 1; exitReason = 'eod-fallback'; }
+  if (exitPrice == null) { exitPrice = closes[endIdx]; exitIdx = endIdx; exitReason = 'eod-fallback'; }
   const grossPct = isBuy ? (exitPrice - t.entry) / t.entry * 100 : (t.entry - exitPrice) / t.entry * 100;
   const netPct = grossPct - (stored.cost || 0);
   const myWin = netPct > 0;

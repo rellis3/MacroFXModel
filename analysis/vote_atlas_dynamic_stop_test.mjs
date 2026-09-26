@@ -71,8 +71,14 @@ function simulateDynamicStop(packed, t, checkpointMin, triggerR, newStopR, cost)
   const targetDist = t.targetPips * t.pip;
   if (!(stopDist > 0) || !(targetDist > 0)) return null;
   const startIdx = bsearch(times, t.time);
-  const endIdx = bsearch(times, t.resolveTime);
-  if (startIdx >= times.length || endIdx <= startIdx) return null;
+  // bsearch returns the first bar at/after resolveTime -- that IS the
+  // resolution bar (found 2026-09-26: excluding it as an exclusive upper
+  // bound silently pushed every trade that resolves exactly on that bar
+  // into an eod-fallback exit that disagreed with the stored outcome).
+  // Include it: walk through endIdx inclusive.
+  let endIdx = bsearch(times, t.resolveTime);
+  if (endIdx >= times.length) endIdx = times.length - 1;
+  if (startIdx >= times.length || endIdx < startIdx) return null;
 
   const tp = isBuy ? t.entry + targetDist : t.entry - targetDist;
   const originalSl = isBuy ? t.entry - stopDist : t.entry + stopDist;
@@ -80,7 +86,7 @@ function simulateDynamicStop(packed, t, checkpointMin, triggerR, newStopR, cost)
   const triggerSec = checkpointMin * 60;
 
   let worst = 0, tightened = false, activeSl = originalSl;
-  for (let i = startIdx; i < endIdx; i++) {
+  for (let i = startIdx; i <= endIdx; i++) {
     const adverse = isBuy ? (t.entry - lows[i]) : (highs[i] - t.entry);
     if (adverse > worst) worst = adverse;
     if (!tightened && (times[i] - t.time) >= triggerSec && (worst / stopDist) >= triggerR) {
@@ -98,7 +104,7 @@ function simulateDynamicStop(packed, t, checkpointMin, triggerR, newStopR, cost)
   // Never resolved within the known window (shouldn't happen -- resolveTime
   // is the trade's own already-known resolution point) -- fall back to the
   // last bar's close, same discipline as the discrimination script's bound.
-  return finish(closes[endIdx - 1]);
+  return finish(closes[endIdx]);
 
   function finish(exitPrice) {
     const grossPct = isBuy ? (exitPrice - t.entry) / t.entry * 100 : (t.entry - exitPrice) / t.entry * 100;
