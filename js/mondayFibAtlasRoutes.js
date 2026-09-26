@@ -636,7 +636,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
       // call and the deflated-Sharpe trial sweep below off one shared
       // in-memory cache, zero extra R2 round-trips per trial.
       const rawCache = new Map();
-      await Promise.all(pairs.map(async pair => { rawCache.set(pair, await getJSON(`${PREFIX}/${pair}-votetrades.json`)); }));
+      await Promise.all(pairs.map(async pair => { rawCache.set(pair, await loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`)); }));
       const cachedLoader = async pair => {
         const stored = rawCache.get(pair);
         if (!stored) return null;

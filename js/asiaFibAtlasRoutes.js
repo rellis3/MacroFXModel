@@ -86,8 +86,27 @@ async function loadIvByDate(pair) {
 // back to `trades` when extTrades is absent (older stored data, a failed
 // extended build, or a ladder -- e.g. Monday -- that doesn't produce one
 // yet), so a caller can request letRide=true safely regardless.
+// In-memory cache (2026-09-26) -- confirmed live this session that fetching
+// all 21 pairs' vote-trades JSON from R2 fresh on every portfolio-page
+// request takes ~21 SECONDS on its own (some files, notably the indices'
+// own, run 35k-46k trades), independent of and much larger than any
+// computation the page then does on them (<1s). These files only change
+// when /run regenerates a pair (at most a few times a day) -- a short TTL
+// cache turns every request after the first, for the same pair, from a full
+// R2 round-trip into an in-memory read, without risking serving genuinely
+// stale data for more than a few minutes after a real regen.
+const _voteTradesCache = new Map(); // path -> { stored, fetchedAt }
+const VOTE_TRADES_CACHE_TTL_MS = 5 * 60_000;
+
 export async function loadVoteTrades(path, letRide) {
-  const stored = await getJSON(path);
+  const hit = _voteTradesCache.get(path);
+  let stored;
+  if (hit && Date.now() - hit.fetchedAt < VOTE_TRADES_CACHE_TTL_MS) {
+    stored = hit.stored;
+  } else {
+    stored = await getJSON(path);
+    _voteTradesCache.set(path, { stored, fetchedAt: Date.now() });
+  }
   if (!stored) return null;
   if (!letRide) return stored;
   return { ...stored, trades: stored.extTrades ?? stored.trades };
@@ -809,7 +828,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
   app.get('/api/asia-fib-atlas/vote-trades/:instrument', async (req, res) => {
     try {
       const pair = String(req.params.instrument).toLowerCase();
-      const stored = await getJSON(`${PREFIX}/${pair}-votetrades.json`);
+      const stored = await loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`);
       if (!stored) return res.status(404).json({ ok: false, error: `no vote-backtest data for ${req.params.instrument} yet` });
       const minMargin = req.query.minMargin ? Number(req.query.minMargin) : 2;
       const stopTightenFrac = req.query.stopTightenFrac ? Number(req.query.stopTightenFrac) : null;
@@ -877,7 +896,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       // only the main call used to fetch per-pair, this now backs both it
       // and every trial off one shared in-memory cache.
       const rawCache = new Map();
-      await Promise.all(pairs.map(async pair => { rawCache.set(pair, await getJSON(`${PREFIX}/${pair}-votetrades.json`)); }));
+      await Promise.all(pairs.map(async pair => { rawCache.set(pair, await loadVoteTrades(`${PREFIX}/${pair}-votetrades.json`)); }));
       const cachedLoader = async pair => {
         const stored = rawCache.get(pair);
         if (!stored) return null;
@@ -957,7 +976,7 @@ export function mountAsiaFibAtlasRoutes(app, express) {
       const rawCache = new Map();
       await Promise.all(constituentKeys.map(async key => {
         const [pair, ladder] = key.split('|');
-        rawCache.set(key, await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`));
+        rawCache.set(key, await loadVoteTrades(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`));
       }));
       const cachedLoader = async constituentKey => {
         const [pair, ladder] = constituentKey.split('|');
