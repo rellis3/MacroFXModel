@@ -163,8 +163,11 @@
 
 <div class="card callout" id="realAccountCard" style="border-color:#3a5a8a;background:linear-gradient(135deg,#131f2e,#0e121b)">
   <h2 style="color:#7dd3fc">Real account simulation — one shared balance, real concurrency (2026-09-26)</h2>
-  <div class="muted" style="margin-bottom:10px"><strong>This is the number to trust.</strong> Every card in the "legacy stats" section below sizes each pair as if it had its OWN slice of pre-split capital, or lets every pair fire independently with no shared limit — neither is what the live bot actually does. This simulates ONE account: every pair's trades merged into a single chronological timeline, one real balance, and a signal genuinely SKIPPED if the account is already at its concurrency limit (same hedge-only rule — max 1 position per pair+ladder+direction — <code>fib_atlas_bot</code>'s own <code>occupied_directions()</code> enforces live). Position size is a fixed % of the STARTING balance, not the growing one — compounding a persistent edge across thousands of trades mechanically explodes into meaningless numbers, the same trap the legacy CAGR card below shows a real example of.</div>
+  <div class="muted" style="margin-bottom:10px">Trust this card's <strong>mechanics</strong> — every card in the "legacy stats" section below sizes each pair as if it had its OWN slice of pre-split capital, or lets every pair fire independently with no shared limit, neither of which is what the live bot actually does. This simulates ONE account: every pair's trades merged into a single chronological timeline, one real balance, real margin capacity (from the same $-per-pip table live sizing uses), a real cap on net exposure to any one currency (EURUSD/EURGBP/EURJPY don't get to stack as if independent), and a signal genuinely SKIPPED if the account is already at its concurrency/margin/exposure limit — same hedge-only rule <code>fib_atlas_bot</code>'s own <code>occupied_directions()</code> enforces live. Position size is a fixed % of the STARTING balance, not the growing one. <strong>Do NOT trust the headline Sharpe below at face value</strong> — see the cost-stress table immediately underneath before drawing any conclusion from it.</div>
   <div class="kpi-grid" id="kpiRealAccount"></div>
+  <h3 style="margin:16px 0 6px;font-size:13px;color:#f87171">Cost-stress — this is the number that actually matters</h3>
+  <div class="muted" style="margin-bottom:8px">The headline above uses a FLAT round-trip cost assumption (0.012% for FX, ≈1.3 pips on EURUSD) applied identically all day regardless of session or volatility. Real execution around exactly the session-extension/volatility moments this strategy trades plausibly costs several times that — not an extreme stress scenario. Same trades, same population, only the cost charged per trade changes.</div>
+  <div id="costStressTable" style="overflow-x:auto"></div>
 </div>
 
 <details style="margin:16px 0;border:1px solid #7c2d2d;border-radius:8px;background:#1a1414">
@@ -1183,19 +1186,41 @@ function render(j) {
 
   const ra = j.realAccountSim;
   const raEl = document.getElementById('kpiRealAccount');
+  // Sharpe color bands (2026-09-26, corrected): a real trading system does
+  // NOT get "more trustworthy" as Sharpe climbs past ~3 -- the best
+  // documented systems in the world run low single digits. Above that is a
+  // sign something's still unrealistic, not a better result. Green/amber/red
+  // now reflect "plausible" / "borderline" / "needs explaining", not "good/bad".
+  const sharpeCls = s => (s >= 0.5 && s <= 3) ? 'green' : (s > 3 && s <= 5) ? 'amber' : 'red';
   if (ra) {
     raEl.innerHTML = [
       kpiCard('Starting capital', '$' + ra.startingCapital.toLocaleString(), '', ''),
       kpiCard('Final balance', '$' + ra.finalBalance.toLocaleString(), ra.finalBalance >= ra.startingCapital ? 'green' : 'red', `${ra.totalReturnPct >= 0 ? '+' : ''}${fmt1(ra.totalReturnPct)}% (fixed-risk, non-reinvested)`),
       kpiCard('Max drawdown', fmt1(ra.maxDDPct) + '%', 'red', 'on the real, single equity curve'),
-      kpiCard('Sharpe', fmt2(ra.sharpe), ra.sharpe >= 2 ? 'green' : ra.sharpe >= 1 ? 'blue' : 'amber', `annualized off real trade frequency (${fmt1(ra.tradesPerYr)}/yr)`),
+      kpiCard('Sharpe', fmt2(ra.sharpe), sharpeCls(ra.sharpe), `>3 is a red flag, not a good result -- see cost-stress below. Off real trade frequency (${fmt1(ra.tradesPerYr)}/yr)`),
       kpiCard('Profit factor', fmt2(ra.profitFactor), ra.profitFactor >= 1.5 ? 'green' : ra.profitFactor >= 1 ? 'blue' : 'red', 'real $ wins ÷ real $ losses, individual trades'),
       kpiCard('Win rate', fmt1(ra.winRate) + '%', '', 'individual trades, not daily-pooled'),
-      kpiCard('Trades taken', `${ra.tradesTaken} / ${ra.tradesOffered}`, '', `${ra.skippedHedge} skipped (hedge-only cap already occupied), ${ra.skippedConcurrency} skipped (account at concurrency limit)`),
-      kpiCard('Max concurrent open', ra.maxConcurrentOpenSeen, '', 'actual peak simultaneous positions this run ever held'),
+      kpiCard('Trades taken', `${ra.tradesTaken} / ${ra.tradesOffered}`, '', `${ra.skippedHedge} hedge-cap, ${ra.skippedMargin ?? 0} margin, ${ra.skippedExposure ?? 0} currency-exposure, ${ra.skippedConcurrency} position-count`),
+      kpiCard('Max concurrent open', ra.maxConcurrentOpenSeen, '', `peak simultaneous positions · margin used up to ${fmt1(ra.maxMarginUsedPctSeen ?? 0)}%`),
     ].join('');
   } else {
     raEl.innerHTML = '<div class="muted">not enough resolved trades to simulate</div>';
+  }
+
+  const costStressEl = document.getElementById('costStressTable');
+  if (j.realAccountCostStress?.length) {
+    const rows = j.realAccountCostStress.map(row => {
+      const s2 = row.sim;
+      if (!s2) return `<tr><td>${row.multiplier}×</td><td colspan="4" class="muted">not enough trades</td></tr>`;
+      return `<tr><td>${row.multiplier}× ${row.multiplier === 1 ? '(currently modeled)' : ''}</td>
+        <td class="num">$${s2.finalBalance.toLocaleString()}</td>
+        <td class="num" style="color:${s2.sharpe > 3 ? '#f87171' : s2.sharpe >= 0.5 ? '#4ade80' : '#f87171'}">${fmt2(s2.sharpe)}</td>
+        <td class="num" style="color:${s2.profitFactor >= 1 ? '#4ade80' : '#f87171'}">${fmt2(s2.profitFactor)}</td>
+        <td class="num">${fmt1(s2.winRate)}%</td></tr>`;
+    }).join('');
+    costStressEl.innerHTML = `<table><thead><tr><th>Cost multiplier</th><th class="num">Final balance</th><th class="num">Sharpe</th><th class="num">Profit Factor</th><th class="num">Win rate</th></tr></thead><tbody>${rows}</tbody></table>`;
+  } else {
+    costStressEl.innerHTML = '';
   }
 
   const heatCard = document.getElementById('heatCapCard');
