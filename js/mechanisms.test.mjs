@@ -58,10 +58,43 @@ t('the chart is a comparison, never a single line', () => {
   }
 });
 
+// The whole point of the OANDA swap is that these are TRADEABLE instruments, not FRED
+// statistics — but OANDA sells bond PRICES and no dollar index, so some charts run
+// backwards to the prose. An unflagged one is worse than no chart at all.
+t('every symbol that runs opposite to the wording is flagged', () => {
+  const PRICE_NOT_YIELD = /OANDA:USB\d\dYUSD/;      // bond CFDs are prices
+  const DOLLAR_UPSIDE_DOWN = /OANDA:EURUSD/;         // stands in for a dollar index
+  for (const [k, m] of Object.entries(MECHANISMS)) {
+    const inv = new Set(m.tv.invert ?? []);
+    for (const sym of [m.tv.main, ...m.tv.compare, m.tv.expr].filter(Boolean))
+      for (const leg of sym.split(/[-+*/]/).map(v => v.trim()))
+        if (PRICE_NOT_YIELD.test(leg) || DOLLAR_UPSIDE_DOWN.test(leg))
+          assert.ok(inv.has(leg), `${k}: ${leg} runs opposite to the steps and is not in invert`);
+    // and nothing is flagged that does not need it — a warning on everything warns about nothing
+    for (const leg of inv)
+      assert.ok(PRICE_NOT_YIELD.test(leg) || DOLLAR_UPSIDE_DOWN.test(leg), `${k}: ${leg} flagged but reads the right way up`);
+  }
+});
+
+t('where OANDA has the instrument, OANDA is what is offered', () => {
+  // Checked against the account's own instrument list on 2026-09-26, not assumed.
+  const HAS = ['XAUUSD', 'XCUUSD', 'WTICOUSD', 'SPX500USD', 'USB02YUSD', 'USB10YUSD', 'USB30YUSD'];
+  const all = Object.values(MECHANISMS).flatMap(m => [m.tv.main, ...m.tv.compare, m.tv.expr].filter(Boolean));
+  for (const h of HAS) assert.ok(all.some(x => x.includes(`OANDA:${h}`)), `OANDA:${h} exists but is unused`);
+  // the four with no OANDA equivalent must each SAY so rather than being quietly substituted
+  for (const [k, m] of Object.entries(MECHANISMS)) {
+    const nonOanda = [m.tv.main, ...m.tv.compare].filter(x => !x.startsWith('OANDA:'));
+    if (nonOanda.length) assert.match(m.tv.note, /no OANDA|OANDA carries nothing|OANDA has no|FRED[- ]only|FRED series|FRED breakeven|cannot be done OANDA/i,
+      `${k}: uses ${nonOanda.join(', ')} without saying why it is not OANDA`);
+  }
+});
+
 t('a spread or ratio expression is flagged as its own symbol, not a compare', () => {
   // TradingView takes these in the symbol box; putting them through Compare silently
   // does something else. Only the two mechanisms that are ABOUT a spread carry one.
-  assert.equal(MECHANISMS['curve-led'].tv.expr, 'TVC:US30Y-TVC:US02Y');
+  // 2y MINUS 30y, in that order: both legs are prices, so this is the order that still
+  // RISES when the yield curve steepens. Written the yield way round it would read backwards.
+  assert.equal(MECHANISMS['curve-led'].tv.expr, 'OANDA:USB02YUSD-OANDA:USB30YUSD');
   assert.match(MECHANISMS['regime-quad'].tv.expr, /XCUUSD\/OANDA:XAUUSD/);
   for (const [k, m] of Object.entries(MECHANISMS))
     if (m.tv.expr) assert.ok(/[-+*/]/.test(m.tv.expr), `${k}: expr with no operator is just a symbol`);
@@ -71,7 +104,6 @@ t('the symbols match what the see line actually asks for', () => {
   // The prose and the tickers drifting apart is the failure mode that makes this useless.
   assert.match(MECHANISMS['which-gold'].tv.main, /XAUUSD/);          // gold
   assert.ok(MECHANISMS['which-gold'].tv.compare.includes('FRED:DFII10'));  // the real yield
-  assert.ok(MECHANISMS['which-gold'].tv.compare.includes('TVC:DXY'));      // the dollar
   assert.ok(MECHANISMS['yield-split'].tv.compare.includes('FRED:T10YIE')); // the breakeven
   assert.equal(MECHANISMS['dollar-link'].tv.compare.length, 3);      // three dollar-priced things
 });
