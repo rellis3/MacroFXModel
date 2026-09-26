@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX Factor Book v2 — pre-registered A/B</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#233042; --txt:#e6edf3;
+          --dim:#8b98a9; --green:#10b981; --blue:#4f7df0; --red:#f97316; --amber:#eab308; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:16px 20px; border-bottom:1px solid var(--line); background:var(--panel); }
+  h1 { margin:0 0 2px; font-size:19px; } .sub { color:var(--dim); font-size:12.5px; }
+  .wrap { max-width:1150px; margin:0 auto; padding:18px 20px 60px; }
+  .controls { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px; }
+  .ctl { display:flex; flex-direction:column; gap:3px; }
+  .ctl label { font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; }
+  select, button { background:var(--panel2); color:var(--txt); border:1px solid var(--line); border-radius:7px; padding:7px 10px; font-size:13px; }
+  button { cursor:pointer; } button.go { background:var(--blue); border-color:var(--blue); color:#fff; font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:15px 16px; margin-bottom:16px; overflow-x:auto; }
+  h2 { margin:0 0 10px; font-size:14px; } h3 { margin:14px 0 6px; font-size:13px; color:var(--dim); }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--dim); font-weight:600; font-size:11px; text-transform:uppercase; }
+  td.num { font-variant-numeric:tabular-nums; font-family:ui-monospace,Menlo,monospace; text-align:right; }
+  td.lbl { white-space:normal; min-width:220px; }
+  canvas { width:100%; height:240px; display:block; border-radius:7px; background:var(--panel2); }
+  .status { color:var(--dim); } .err { color:#fca5a5; }
+  .chip { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; border:1px solid var(--line); }
+  .v-win { background:rgba(16,185,129,.16); border-color:rgba(16,185,129,.45); color:#6ee7b7; }
+  .v-null { color:var(--dim); } .v-bad { background:rgba(249,115,22,.14); border-color:rgba(249,115,22,.4); color:#fdba74; }
+  .v-cand { background:rgba(234,179,8,.14); border-color:rgba(234,179,8,.45); color:#fde68a; }
+  .note { color:var(--dim); font-size:12.5px; line-height:1.6; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:11px 13px; margin-bottom:16px; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; font-size:11.5px; color:var(--dim); }
+  .legend i { display:inline-block; width:10px; height:3px; margin-right:4px; vertical-align:middle; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+  .cap { color:var(--dim); font-size:11.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧪 FX Factor Book v2 <span class="sub">— pre-registered A/B of the QuantConnect-derived upgrades</span></h1>
+  <div class="sub">Research only · not wired to any bot · spec frozen in <code>MD files/FX_FACTOR_V2_TEST.md</code> before the first real run.</div>
+</header>
+<div class="wrap">
+  <div class="note">
+    <b>How to read this.</b> Every variant is a sizing rule plugged into the <i>existing</i> trend / carry engines, so costs, the carry accrual,
+    the no-lookahead rebalance and the 70/30 IS/OOS split are identical to the incumbent. Only <b>bold (pre-registered)</b> rows can "win",
+    and a win counts as evidence only if it also <b>survives Bonferroni</b> (ΔSharpe ≥ 2.54 × SE across the 9 primary tests).
+    <code>within-noise</code> means the difference is inside the error bar — it has shown nothing either way. Rates are lagged 60 days
+    (monthly FRED averages); interbank carry is an upper bound on retail swap. Built ≠ works ≠ has edge. Not financial advice.
+  </div>
+
+  <div class="controls">
+    <div class="ctl"><label>Factor book</label><button class="go" id="runFactor">Run factor book ▸</button></div>
+    <div class="ctl"><label>OU pairs β</label><select id="beta"><option value="fixed1">β = 1 (the cross — primary)</option><option value="loglik">Leung–Li max-likelihood β (diagnostic)</option></select></div>
+    <div class="ctl"><label>OU bands</label><button class="go" id="runOu">Run OU pairs ▸</button></div>
+    <div class="ctl"><label>Cache</label><select id="force"><option value="0">reuse ≤6h result</option><option value="1">force re-run</option></select></div>
+    <div class="ctl" style="flex:1"><label>&nbsp;</label><div class="status" id="status">Ready. Runs take ~1–3 min (data fetch + worker thread).</div></div>
+  </div>
+  <div id="factorOut"></div>
+  <div id="ouOut"></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const fmt = (x, d = 2) => (x == null || Number.isNaN(+x)) ? '–' : Number(x).toFixed(d);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const COLORS = ['#8b98a9', '#4f7df0', '#10b981', '#eab308', '#f97316', '#a78bfa', '#f472b6', '#22d3ee', '#84cc16'];
+
+function verdictChip(v) {
+  if (!v) return '<span class="chip v-null">incumbent</span>';
+  const cls = v.survivesBonferroni ? 'v-win' : v.verdict === 'wins-oos' ? 'v-cand' : v.verdict === 'no-improvement' ? 'v-bad' : 'v-null';
+  const label = v.survivesBonferroni ? 'wins (Bonferroni ✓)' : v.verdict === 'wins-oos' ? 'wins-oos (candidate only)' : v.verdict;
+  return `<span class="chip ${cls}">${esc(label)}</span>`;
+}
+
+async function runJob(kind) {
+  const force = $('force').value === '1' ? '?force=1' : '';
+  const url = kind === 'factor' ? `/api/fx-factor-v2/run${force}` : `/api/ou-pairs/run${force}`;
+  const body = kind === 'ou' ? JSON.stringify({ betaMode: $('beta').value }) : '{}';
+  $('runFactor').disabled = $('runOu').disabled = true;
+  $('status').textContent = 'Starting…'; $('status').className = 'status';
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    const statusUrl = (kind === 'factor' ? '/api/fx-factor-v2/status/' : '/api/ou-pairs/status/') + j.jobId;
+    const t0 = Date.now();
+    for (;;) {
+      const s = await (await fetch(statusUrl)).json();
+      if (s.status === 'done') { $('status').textContent = `Done${s.cached ? ' (cached)' : ''} · ran ${esc(s.result.ranAt || '')}`; kind === 'factor' ? renderFactor(s.result) : renderOu(s.result); break; }
+      if (s.status === 'error' || s.ok === false) throw new Error(s.error || 'job failed');
+      $('status').textContent = `Running… ${Math.round((Date.now() - t0) / 1000)}s`;
+      await new Promise(res => setTimeout(res, 3000));
+    }
+  } catch (e) { $('status').textContent = e.message; $('status').className = 'status err'; }
+  finally { $('runFactor').disabled = $('runOu').disabled = false; }
+}
+$('runFactor').onclick = () => runJob('factor');
+$('runOu').onclick = () => runJob('ou');
+
+function drawEquity(canvas, series) {
+  const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+  const pts = series.filter(s => s.equity && s.equity.length);
+  if (!pts.length) return;
+  const all = pts.flatMap(s => s.equity.map(p => Math.log(p.v)));
+  const lo = Math.min(...all), hi = Math.max(...all), pad = 24;
+  const tMin = Math.min(...pts.map(s => Date.parse(s.equity[0].t))), tMax = Math.max(...pts.map(s => Date.parse(s.equity.at(-1).t)));
+  const x = t => pad + (Date.parse(t) - tMin) / (tMax - tMin || 1) * (W - 2 * pad);
+  const y = v => H - pad - (Math.log(v) - lo) / (hi - lo || 1) * (H - 2 * pad);
+  ctx.strokeStyle = '#233042'; ctx.beginPath(); ctx.moveTo(pad, y(1)); ctx.lineTo(W - pad, y(1)); ctx.stroke();
+  pts.forEach((s, k) => {
+    ctx.strokeStyle = s.color; ctx.lineWidth = k === 0 ? 2 : 1.3; ctx.beginPath();
+    s.equity.forEach((p, i) => (i ? ctx.lineTo(x(p.t), y(p.v)) : ctx.moveTo(x(p.t), y(p.v))));
+    ctx.stroke();
+  });
+  ctx.fillStyle = '#8b98a9'; ctx.font = '11px sans-serif';
+  ctx.fillText(new Date(tMin).getUTCFullYear(), pad, H - 6); ctx.fillText(new Date(tMax).getUTCFullYear(), W - pad - 28, H - 6);
+}
+
+function toCsv(rows) { return rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(',')).join('\n'); }
+function download(name, text) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = name; a.click(); }
+
+let lastFactor = null;
+function renderFactor(res) {
+  lastFactor = res;
+  const fam = res.families || {};
+  let h = `<div class="panel"><h2>Factor book — verdicts vs incumbent (OOS from ${esc(Object.values(fam)[0]?.variants?.[0]?.splitDate || '–')})</h2>`;
+  if (res.notes?.length) h += `<div class="cap">${res.notes.map(esc).join('<br>')}</div>`;
+  for (const [name, f] of Object.entries(fam)) {
+    h += `<h3>${esc(name)}</h3><table><tr><th>Id</th><th>Variant</th><th>IS Sharpe</th><th>OOS Sharpe ± SE</th><th>OOS ann %</th><th>OOS vol %</th><th>OOS maxDD %</th><th>OOS rebal</th><th>ΔOOS</th><th>Verdict</th></tr>`;
+    for (const v of f.variants) {
+      if (v.error) { h += `<tr><td>${esc(v.id)}</td><td class="lbl">${esc(v.label)}</td><td colspan="8" class="err">${esc(v.error)}</td></tr>`; continue; }
+      const se = v.vsIncumbent ? v.vsIncumbent.seVariantOos : null;
+      const b = v.preRegistered && v.vsIncumbent ? 'font-weight:700' : '';
+      h += `<tr><td style="${b}">${esc(v.id)}</td><td class="lbl" style="${b}">${esc(v.label)}${v.preRegistered ? '' : ' <span class="cap">(diagnostic)</span>'}</td>
+        <td class="num">${fmt(v.is.sharpe)}</td><td class="num">${fmt(v.oos.sharpe)}${se != null ? ' ± ' + fmt(se) : ''}</td>
+        <td class="num">${fmt(v.oos.annRetPct)}</td><td class="num">${fmt(v.oos.volPct)}</td><td class="num">${fmt(v.oos.maxDDPct)}</td>
+        <td class="num">${v.oosRebalances}</td><td class="num">${v.vsIncumbent ? fmt(v.vsIncumbent.deltaOosSharpe) : '–'}</td><td>${verdictChip(v.vsIncumbent)}</td></tr>`;
+    }
+    h += `</table><canvas id="eq_${esc(name)}"></canvas><div class="legend" id="lg_${esc(name)}"></div>`;
+  }
+  if (res.multipleTesting) h += `<div class="cap" style="margin-top:10px">${esc(res.multipleTesting.note)} (${res.multipleTesting.primaryTests} factor-book primaries here + 1 OU pooled test.)</div>`;
+  h += `<div class="row"><button id="csvFactor">⬇ Verdict table CSV</button><span class="cap">These are portfolio baskets (continuous weights), not discrete trades — there is no per-trade log to export; the OU section below has the 3 trade-log CSVs.</span></div>`;
+  if (res.fred) h += `<div class="cap" style="margin-top:8px">FRED: ${res.fred.map(f => esc(f.label) + (f.error ? ' ✗' : ' ' + f.obs)).join(' · ')}</div>`;
+  h += `</div>`;
+  $('factorOut').innerHTML = h;
+  for (const [name, f] of Object.entries(fam)) {
+    const series = f.variants.filter(v => !v.error && v.equity).map((v, k) => ({ id: v.id, equity: v.equity, color: COLORS[k % COLORS.length] }));
+    drawEquity($(`eq_${name}`), series);
+    $(`lg_${name}`).innerHTML = series.map(s => `<span><i style="background:${s.color}"></i>${esc(s.id)}</span>`).join('') + '<span>(log equity; incumbent in grey)</span>';
+  }
+  $('csvFactor').onclick = () => {
+    const rows = [['family', 'id', 'label', 'preRegistered', 'isSharpe', 'oosSharpe', 'oosAnnRetPct', 'oosVolPct', 'oosMaxDDPct', 'oosRebalances', 'deltaOosSharpe', 'seIncumbentOos', 'verdict', 'survivesBonferroni']];
+    for (const [name, f] of Object.entries(fam)) for (const v of f.variants) if (!v.error)
+      rows.push([name, v.id, v.label, v.preRegistered, v.is.sharpe, v.oos.sharpe, v.oos.annRetPct, v.oos.volPct, v.oos.maxDDPct, v.oosRebalances,
+        v.vsIncumbent?.deltaOosSharpe ?? '', v.vsIncumbent?.seIncumbentOos ?? '', v.vsIncumbent?.verdict ?? 'incumbent', v.vsIncumbent?.survivesBonferroni ?? '']);
+    download('fx-factor-v2-verdicts.csv', toCsv(rows));
+  };
+}
+
+const ACCOUNT = 10000;   // $ account for the currency-P&L export, 1× gross per trade
+function renderOu(res) {
+  if (res.error) { $('ouOut').innerHTML = `<div class="panel err">${esc(res.error)}</div>`; return; }
+  const P = res.pooled, p = res.params;
+  let h = `<div class="panel"><h2>OU optimal bands vs ±${p.zEntry}σ benchmark — β mode: ${esc(p.betaMode)}</h2>
+    <table><tr><th>Book</th><th>IS Sharpe</th><th>OOS Sharpe</th><th>OOS ann %</th><th>OOS maxDD %</th><th>OOS trades</th><th>ΔOOS</th><th>Verdict</th></tr>
+    <tr><td>Pooled ±${p.zEntry}σ (benchmark)</td><td class="num">${fmt(P.zscore.is.sharpe)}</td><td class="num">${fmt(P.zscore.oos.sharpe)}</td><td class="num">${fmt(P.zscore.oos.annRetPct)}</td><td class="num">${fmt(P.zscore.oos.maxDDPct)}</td><td class="num">–</td><td class="num">–</td><td>${verdictChip(null)}</td></tr>
+    <tr><td><b>Pooled OU bands</b></td><td class="num">${fmt(P.ou.is.sharpe)}</td><td class="num">${fmt(P.ou.oos.sharpe)} ± ${fmt(P.vsZscore.seVariantOos)}</td><td class="num">${fmt(P.ou.oos.annRetPct)}</td><td class="num">${fmt(P.ou.oos.maxDDPct)}</td><td class="num">${P.oosTradesOu}</td><td class="num">${fmt(P.vsZscore.deltaOosSharpe)}</td><td>${verdictChip({ ...P.vsZscore, survivesBonferroni: P.vsZscore.verdict === 'wins-oos' && P.vsZscore.deltaOosSharpe >= 2.54 * P.vsZscore.seIncumbentOos })}</td></tr></table>
+    <h3>Per pair</h3><table><tr><th>Pair</th><th>Mode</th><th>Trades (OOS)</th><th>Win %</th><th>OOS Sharpe</th><th>Open at end</th><th>Half-life (d)</th><th>Now: long in / out</th><th>Now: short in / out</th></tr>`;
+  const allTrades = [];
+  for (const pr of res.pairs) {
+    if (pr.error) { h += `<tr><td>${esc(pr.name)}</td><td colspan="8" class="err">${esc(pr.error)}</td></tr>`; continue; }
+    for (const [mode, r] of [['OU', pr.ou], [`±${p.zEntry}σ`, pr.zscore]]) {
+      const m = r.currentModel;
+      h += `<tr><td>${esc(pr.name)}</td><td>${mode}</td><td class="num">${r.trades.length} (${r.oosTrades})</td><td class="num">${fmt(r.tradeStats.all.winRate, 1)}</td>
+        <td class="num">${fmt(r.oos.sharpe)}</td><td class="num">${r.openAtEnd}</td><td class="num">${m ? fmt(m.halfLifeDays, 1) : '–'}</td>
+        <td class="num">${m ? fmt(m.long.entry, 4) + ' / ' + fmt(m.long.exit, 4) : '–'}</td><td class="num">${m && m.short ? fmt(m.short.entry, 4) + ' / ' + fmt(m.short.exit, 4) : '–'}</td></tr>`;
+      if (mode === 'OU') for (const t of r.trades) allTrades.push({ pair: pr.name, ...t });
+    }
+  }
+  h += `</table><div class="row">
+    <button id="csvPct">⬇ % Returns</button><button id="csvR">⬇ R-Multiples</button><button id="csvUsd">⬇ Currency P&amp;L</button>
+    <span class="cap">OU-mode closed trades (open trades marked to the last bar and flagged). Account $${ACCOUNT.toLocaleString()} at 1× gross per trade.
+    1R = one stationary σ of the spread per unit gross at entry (varies per trade). MAE from the daily closing path of the spread.</span></div></div>`;
+  $('ouOut').innerHTML = h;
+  const sorted = allTrades.sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+  $('csvPct').onclick = () => download('ou-pairs-pct.csv', toCsv([['Date', 'Return %', 'MAE %'], ...sorted.map(t => [t.exitDate, t.pnlPct, t.maePct])]));
+  $('csvR').onclick = () => download('ou-pairs-r.csv', toCsv([['date', 'R', 'MAE (R)'], ...sorted.map(t => [t.exitDate, (t.pnlPct / t.riskPct).toFixed(3), (t.maePct / t.riskPct).toFixed(3)])]));
+  $('csvUsd').onclick = () => download('ou-pairs-usd.csv', toCsv([['Trade Date', 'PnL ($)', 'Risk ($)'], ...sorted.map(t => [t.exitDate, (t.pnlPct / 100 * ACCOUNT).toFixed(2), (t.riskPct / 100 * ACCOUNT).toFixed(2)])]));
+}
+</script>
+</body>
+</html>
