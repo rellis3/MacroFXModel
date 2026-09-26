@@ -190,13 +190,19 @@ DEFAULT_CFG = {
 }
 
 # Broker symbol routing — identity stays shared (pylego.instruments), routing
-# is local, same convention as volatility_bot_v2's own _BROKER_OVERRIDE. Fib
-# Atlas's universe is FX pairs + gold only (no indices), and the registry's
-# own `mt5` field already resolves every one of those correctly (gold ->
-# XAUUSD) -- this table exists for the one instrument that traditionally
-# needs a broker-specific spelling on SOME brokers, kept explicit rather than
-# silently relying on the registry default staying right forever.
-_BROKER_OVERRIDE = {"gold": "XAUUSD"}
+# is local, same convention as volatility_bot_v2's own _BROKER_OVERRIDE.
+# 2026-09-26: extended to the 6 indices (NQ/SPX/DE30/UK100/US2000/DOW) --
+# validated on the backtest side (analysis/fib_atlas_indices_threshold_
+# sweep.mjs, 5 of 6 clear the bar, US2000 doesn't), copied verbatim from
+# Vote Atlas's own working entries rather than guessed. This ONLY adds the
+# capability -- an index only actually trades once added to this bot's own
+# `enabled_pairs` in bot-config.html, same gate every other pair goes
+# through.
+_BROKER_OVERRIDE = {
+    "gold": "XAUUSD",
+    "de30": "GER40", "uk100": "UK100", "us2000": "US2000",
+    "spx": "SP500", "nq": "USTECH100", "dow": "US30",
+}
 
 
 def _parse_hhmm_secs(s: str) -> int:

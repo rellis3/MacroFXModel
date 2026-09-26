@@ -4940,10 +4940,21 @@ setInterval(() => {
 // asia-fib-atlas-vote-portfolio.html's own PAIRS/ASIA_RECOMMENDED_EXCLUDE
 // and server.js's FIB_ATLAS_ALL_PAIRS/FIB_ATLAS_RECOMMENDED_EXCLUDE
 // (hand-kept in sync — all three are small, frozen, OOS-validated lists).
+// Indices (2026-09-26): capability added to the live bot (fib_atlas_bot.py's
+// own _BROKER_OVERRIDE), gated behind this SAME enabled_pairs checklist --
+// none pre-checked by default (in FA_RECOMMENDED_EXCLUDE below), since
+// adding the capability isn't the same as deciding to trade them. Backtest
+// validation (analysis/fib_atlas_indices_threshold_sweep.mjs): NQ/SPX/DE30/
+// UK100/DOW clear the bar at the live min-margin/clearance settings; US2000
+// doesn't (edge collapses to near-breakeven under a realistic clearance
+// requirement) -- included in the picker so it CAN be checked, not silently
+// hidden, but explicitly not one to enable without re-validating it first.
 const FA_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'usdchf',
   'eurjpy', 'eurgbp', 'euraud', 'eurcad', 'eurchf', 'eurnzd', 'gbpjpy', 'gbpaud', 'gbpcad',
-  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold'];
-const FA_RECOMMENDED_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy']);
+  'gbpchf', 'gbpnzd', 'audjpy', 'audnzd', 'audcad', 'audchf', 'cadjpy', 'chfjpy', 'nzdjpy', 'gold',
+  'nq', 'spx', 'de30', 'uk100', 'us2000', 'dow'];
+const FA_RECOMMENDED_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy',
+  'nq', 'spx', 'de30', 'uk100', 'us2000', 'dow']);
 const FA_DEFAULT_CHECKED = new Set(FA_PAIRS.filter(p => !FA_RECOMMENDED_EXCLUDE.has(p)));
 
 const FA_DEFAULTS = {
