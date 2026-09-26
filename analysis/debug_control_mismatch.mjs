@@ -53,7 +53,8 @@ for (const t of trades) {
     console.error('pair:', pair, 'date:', t.date, 'decision:', t.decision, 'side:', t.side, 'isBuy:', isBuy);
     console.error('entry:', t.entry, 'pip:', t.pip, 'stopPips:', t.stopPips, 'targetPips:', t.targetPips);
     console.error('my sl:', sl, 'my tp:', tp);
-    console.error('stored: win=', t.win, 'pnlPct=', t.pnlPct, 'margin=', t.margin);
+    console.error('stored: win=', t.win, 'pnlPct=', t.pnlPct, 'margin=', t.margin, 'timedOut=', t.timedOut, typeof t.timedOut);
+    console.error('stored: mfePips=', t.mfePips, 'maePips=', t.maePips, 'targetPips=', t.targetPips, 'stopPips=', t.stopPips);
     console.error('mine:   win=', myWin, 'netPct=', netPct.toFixed(4), 'exitReason=', exitReason, 'exitPrice=', exitPrice);
     console.error('time (entry):', new Date(t.time * 1000).toISOString(), 'resolveTime:', new Date(t.resolveTime * 1000).toISOString());
     console.error('exit bar time:', new Date(times[exitIdx] * 1000).toISOString(), 'exit bar idx offset from start:', exitIdx - startIdx, 'of', endIdx - startIdx, 'bars in window');
