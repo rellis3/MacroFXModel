@@ -673,6 +673,7 @@ export function mountMondayFibAtlasRoutes(app, express) {
         leverage: req.query.leverage ? Number(req.query.leverage) : 30,
         maxMarginUsePct: req.query.maxMarginUsePct ? Number(req.query.maxMarginUsePct) : 50,
         maxNetExposurePct: req.query.maxNetExposurePct ? Number(req.query.maxNetExposurePct) : 30,
+        extraCostPct: req.query.extraCostPct ? Number(req.query.extraCostPct) : 0,
       };
       const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });

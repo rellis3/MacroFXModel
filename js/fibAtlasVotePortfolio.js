@@ -175,6 +175,18 @@ export function simulateSharedAccount(trades, {
   // function's own `marginFor` math), not tradeFactors' own riskPctUsed-based
   // weight, to stay on the same $ basis as the margin/risk checks above.
   maxNetExposurePct = 30,
+  // Cost stress (2026-09-26) -- the stored pnlPct/rMultiple already has
+  // costForPair's FLAT round-trip assumption baked in (0.012% for FX, same
+  // number all day regardless of session/volatility/news -- real spreads
+  // widen well beyond that around exactly the session-extension moments
+  // this strategy trades). `extraCostPct` layers an ADDITIONAL cost on top
+  // of whatever's already priced in, scaled by REAL notional (so a bigger
+  // position pays proportionally more, same as a real spread cost would) --
+  // an approximation (can't retroactively know what the true spread was at
+  // each historical touch without re-fetching bid/ask data), but a direct,
+  // honest way to see how sensitive this edge is to the flat-cost
+  // assumption being too generous. 0 = off, matching every existing call.
+  extraCostPct = 0,
 } = {}) {
   if (!trades?.length) return null;
   const withDir = trades
@@ -292,7 +304,8 @@ export function simulateSharedAccount(trades, {
       openDirKeys.delete(reserved.dirKey);
       openMarginTotal -= reserved.margin;
       for (const f of reserved.factors) netExposure.set(f.factor, (netExposure.get(f.factor) ?? 0) - (f.weight >= 0 ? 1 : -1) * reserved.margin);
-      const pnl = reserved.dollarRisk * ev.t.rMultiple;
+      const extraCost = extraCostPct > 0 ? reserved.notional * (extraCostPct / 100) : 0;
+      const pnl = reserved.dollarRisk * ev.t.rMultiple - extraCost;
       balance += pnl;
       closedPnls.push({ time: ev.time, pnl, pnlPct: (pnl / (balance - pnl)) * 100 });
       equityCurve.push({ time: ev.time, balance: +balance.toFixed(2) });
@@ -406,7 +419,7 @@ export async function buildFibAtlasVotePortfolio({
   // "what would ONE real account, with real concurrency limits, actually
   // have done," not a replacement for the existing stats.
   startingCapital = 100000, realAccountRiskPct = 0.5, maxOpen = 20, maxOpenRiskPct = 0,
-  leverage = 30, maxMarginUsePct = 50, maxNetExposurePct = 30,
+  leverage = 30, maxMarginUsePct = 50, maxNetExposurePct = 30, extraCostPct = 0,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -603,7 +616,23 @@ export async function buildFibAtlasVotePortfolio({
     // other stat on this page is built from (post margin/cost/gap/clearance/
     // concurrency-cap/stop-tightening filters), so it's an honest alternate
     // view of the identical population, not a different backtest.
-    realAccountSim: simulateSharedAccount(trades, { startingCapital, riskPct: realAccountRiskPct, maxOpen, maxOpenRiskPct, leverage, maxMarginUsePct, maxNetExposurePct }),
+    realAccountSim: simulateSharedAccount(trades, { startingCapital, riskPct: realAccountRiskPct, maxOpen, maxOpenRiskPct, leverage, maxMarginUsePct, maxNetExposurePct, extraCostPct }),
+    // Cost-stress table (2026-09-26) -- confirmed live this session this is
+    // THE lever the whole "why is Sharpe still ~10" question turns out to
+    // hinge on (margin/exposure caps barely moved it; this collapses it to
+    // ~2 at 3x and negative at 4x). costForPair's flat round-trip assumption
+    // (0.012% for FX, ~1.3 pips on EURUSD) is applied identically all day
+    // regardless of session/volatility -- real execution around exactly the
+    // session-extension moments this strategy trades plausibly costs several
+    // times that. Reuses the SAME already-built `trades` list, so this is
+    // near-free (four cheap event-loop passes, no new R2/M1 work) --
+    // computed unconditionally rather than gated behind extraCostPct so it's
+    // always visible, not something a caller has to know to ask for.
+    realAccountCostStress: [1, 2, 3, 4].map(mult => ({
+      multiplier: mult,
+      extraCostPct: +(0.012 * (mult - 1)).toFixed(4),
+      sim: simulateSharedAccount(trades, { startingCapital, riskPct: realAccountRiskPct, maxOpen, maxOpenRiskPct, leverage, maxMarginUsePct, maxNetExposurePct, extraCostPct: +(0.012 * (mult - 1)).toFixed(4) }),
+    })),
   };
 }
 
