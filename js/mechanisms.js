@@ -24,7 +24,9 @@
  *      measurement contradicts the textbook. A mechanism that sounds right and tested
  *      null here must say so, or the teaching layer quietly re-teaches things the
  *      evidence book spent months closing.
- *   3. `see` is what to put on a screen. A mechanism you cannot observe is a story.
+ *   3. `see` is what to put on a screen, and `tv` carries the paste-ready symbols for it.
+ *      A mechanism you cannot observe is a story, and one you cannot observe WITHOUT
+ *      first guessing ticker spellings is a chore nobody does twice.
  *
  * Pure data + two small helpers. No fetch, no DOM. Tested in js/mechanisms.test.mjs.
  */
@@ -44,6 +46,11 @@ export const MECHANISMS = {
     ],
     see: 'Put the 10-year, the 10-year TIPS and the breakeven on one screen. The middle one is the one that matters; the breakeven is just the gap.',
     tested: 'This is arithmetic, not a claim — the three numbers are defined to add up. What this desk has tested is what follows, and direction after a yield move is null here. Use the split to understand what happened, not to predict what is next.',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'TVC:US10Y', compare: ['FRED:DFII10', 'FRED:T10YIE'], expr: null,
+          note: 'The nominal on the chart, then Compare in the real yield and the breakeven. The three should visibly add up — when they stop looking like they do, one leg has repriced and that is the whole exercise.' },
   },
 
   'curve-led': {
@@ -60,6 +67,11 @@ export const MECHANISMS = {
     ],
     see: 'The 2-year and the 30-year on one chart, and the gap between them as its own line. Watch which one moves when the gap changes.',
     tested: 'The bank-margin mechanism is structural. The forward claim — that a curve move predicts the next equity move — is NOT tested here and should not be assumed.',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'TVC:US02Y', compare: ['TVC:US30Y'], expr: 'TVC:US30Y-TVC:US02Y',
+          note: 'Front and long end together, then paste the spread expression as its own symbol to watch the curve itself. Steepening means the long end is leading.' },
   },
 
   'oil-breakevens': {
@@ -75,6 +87,11 @@ export const MECHANISMS = {
     ],
     see: 'Crude and the 10-year breakeven over the same twenty sessions. You are looking for whether they moved together, not by how much.',
     tested: 'MEASURED HERE, and it corrects the textbook: there is NO lag. Oil and breakevens move in the same window or not at all — a 20-day oil move of ±10% is followed by no excess breakeven change at 5, 10 or 20 sessions. A quiet breakeven beside a big oil move is disagreement, not delay. Never write "not yet".',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'TVC:USOIL', compare: ['FRED:T10YIE'], expr: null,
+          note: 'Crude with the breakeven compared on top. You are looking at whether they turned together, not at the size of either move.' },
   },
 
   'which-gold': {
@@ -91,6 +108,11 @@ export const MECHANISMS = {
     ],
     see: 'Gold, the 10-year TIPS yield and the broad dollar on one screen. Two of them should explain most days; the days they do not are the interesting ones.',
     tested: 'The rates and dollar legs are measured on the board every day. The "fear gold" leg tested NULL here — gold does not reliably rise on fear — so treat the elimination case as "something not on this board", not as proof of a panic.',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'OANDA:XAUUSD', compare: ['FRED:DFII10', 'TVC:DXY'], expr: null,
+          note: 'Gold with the real yield and the dollar compared on top. Two of the three should explain most days; the days neither does are the ones worth a second look.' },
   },
 
   'credit-confirms': {
@@ -106,6 +128,11 @@ export const MECHANISMS = {
     ],
     see: 'High-yield spreads against the S&P. You are checking whether they are moving together or only one is.',
     tested: 'The lead-lag ordering is measured here and holds as a description. It is NOT a validated forward signal — credit widening does not reliably predict the next equity move.',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'FRED:BAMLH0A0HYM2', compare: ['SP:SPX'], expr: null,
+          note: 'High-yield spreads with the S&P on top. Remember the spread is inverted in meaning — it RISING is the bad news.' },
   },
 
   'dollar-link': {
@@ -121,6 +148,11 @@ export const MECHANISMS = {
     ],
     see: 'The broad dollar alongside gold, oil and copper. A day where all three move together against the dollar is a currency day, not a commodity day.',
     tested: 'The dollar leg of the chain is measured daily. Note the board’s dollar index is a FRED series and settles days behind, which is why the end-of-day read rebuilds the dollar from live FX pairs instead.',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'TVC:DXY', compare: ['OANDA:XAUUSD', 'TVC:USOIL', 'OANDA:XCUUSD'], expr: null,
+          note: 'The dollar with three dollar-priced things on top. If all three move together against it, the measuring stick moved rather than the assets.' },
   },
 
   'regime-quad': {
@@ -137,6 +169,11 @@ export const MECHANISMS = {
     ],
     see: 'Copper against gold for the growth read, and breakevens for the inflation read. Two lines, four boxes.',
     tested: 'This is a classification, not a signal. No forward test here supports trading the quadrant, and the board uses it to describe a backdrop.',
+    // Paste-ready. I cannot open TradingView from here, so these are the conventional
+    // symbol spellings rather than verified ones — if one 404s the prefix is the usual
+    // culprit (TVC / FRED / OANDA / SP).
+    tv: { main: 'OANDA:XCUUSD/OANDA:XAUUSD', compare: ['FRED:T10YIE'], expr: 'OANDA:XCUUSD/OANDA:XAUUSD',
+          note: 'Copper divided by gold is the growth axis on one line; the breakeven is the inflation axis. Two lines, four quadrants — read which box you are in, not where it goes next.' },
   },
 };
 

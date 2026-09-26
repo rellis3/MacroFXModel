@@ -34,6 +34,48 @@ t('every mechanism says what to put on a screen', () => {
   }
 });
 
+// "Put this on a screen" is a TradingView instruction, so it should arrive as something
+// pasteable rather than as a shopping list of series to go and find the tickers for.
+t('every mechanism carries paste-ready TradingView symbols', () => {
+  const PREFIX = /^(TVC|FRED|OANDA|SP|NASDAQ|AMEX|CBOE|COMEX|NYMEX|CME|ECONOMICS):[A-Z0-9_.]+$/;
+  const term = x => x.split(/[-+*/]/).map(v => v.trim()).filter(Boolean);
+  for (const [k, m] of Object.entries(MECHANISMS)) {
+    assert.ok(m.tv, `${k}: no tv block — the see line is an instruction with no symbols behind it`);
+    // every symbol, including both legs of a spread or ratio, must be exchange-qualified.
+    // A bare "US10Y" resolves to whatever TradingView feels like that day.
+    for (const sym of [m.tv.main, ...m.tv.compare, m.tv.expr].filter(Boolean))
+      for (const v of term(sym))
+        assert.match(v, PREFIX, `${k}: "${v}" is not exchange-qualified`);
+    assert.ok(m.tv.note && m.tv.note.length > 40, `${k}: no note saying how to set it up`);
+  }
+});
+
+t('the chart is a comparison, never a single line', () => {
+  // A mechanism is a relationship. One symbol on a screen cannot show one.
+  for (const [k, m] of Object.entries(MECHANISMS)) {
+    const legs = new Set([m.tv.main, ...m.tv.compare].flatMap(x => x.split(/[-+*/]/).map(v => v.trim())));
+    assert.ok(legs.size >= 2, `${k}: ${legs.size} series — that is a chart, not a comparison`);
+  }
+});
+
+t('a spread or ratio expression is flagged as its own symbol, not a compare', () => {
+  // TradingView takes these in the symbol box; putting them through Compare silently
+  // does something else. Only the two mechanisms that are ABOUT a spread carry one.
+  assert.equal(MECHANISMS['curve-led'].tv.expr, 'TVC:US30Y-TVC:US02Y');
+  assert.match(MECHANISMS['regime-quad'].tv.expr, /XCUUSD\/OANDA:XAUUSD/);
+  for (const [k, m] of Object.entries(MECHANISMS))
+    if (m.tv.expr) assert.ok(/[-+*/]/.test(m.tv.expr), `${k}: expr with no operator is just a symbol`);
+});
+
+t('the symbols match what the see line actually asks for', () => {
+  // The prose and the tickers drifting apart is the failure mode that makes this useless.
+  assert.match(MECHANISMS['which-gold'].tv.main, /XAUUSD/);          // gold
+  assert.ok(MECHANISMS['which-gold'].tv.compare.includes('FRED:DFII10'));  // the real yield
+  assert.ok(MECHANISMS['which-gold'].tv.compare.includes('TVC:DXY'));      // the dollar
+  assert.ok(MECHANISMS['yield-split'].tv.compare.includes('FRED:T10YIE')); // the breakeven
+  assert.equal(MECHANISMS['dollar-link'].tv.compare.length, 3);      // three dollar-priced things
+});
+
 // The teaching layer must not quietly re-teach what the evidence book closed.
 t('every mechanism states what this desk has measured about it', () => {
   for (const [k, m] of Object.entries(MECHANISMS)) {

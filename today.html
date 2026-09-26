@@ -630,6 +630,18 @@
                                font-weight:800;color:var(--text3);margin-bottom:2px}
   .dq-tested{border-left:3px solid var(--amber)}
 
+  /* TradingView symbols: the `see` line says what to look at, these are what you paste.
+     Click-to-copy, because retyping "FRED:BAMLH0A0HYM2" once is enough for anyone. */
+  .dq-tv{margin-top:7px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .dq-sym{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;font-weight:600;
+          background:var(--card);border:1px solid var(--border2);color:var(--text);border-radius:5px;
+          padding:3px 7px;cursor:pointer;transition:border-color .12s,color .12s}
+  .dq-sym:hover{border-color:var(--blue);color:var(--blue)}
+  .dq-sym.main{border-color:var(--blue);color:var(--blue)}
+  .dq-sym.expr{border-style:dashed}
+  .dq-sym.copied{border-color:var(--green);color:var(--green)}
+  .dq-tvn{font-size:10.5px;line-height:1.55;color:var(--text3);margin-top:5px;flex-basis:100%}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -8773,6 +8785,17 @@ let _drill = null, _drillPick = null, _drillAsked = null, _drillTeach = false;
 // "I don't know enough about the background" — the drill was testing recognition of
 // mechanisms it never taught. The derivation is available BEFORE you answer, because
 // being stuck is the moment it is worth reading, not after the answer is on screen.
+/** Copy a TradingView symbol. Confirms on the button itself — a toast for this would
+ *  be more machinery than the action deserves. navigator.clipboard needs a secure
+ *  context, so fall back rather than failing silently on a plain-http open. */
+window.copySym = async (btn) => {
+  const sym = btn.dataset.sym || '';
+  try { await navigator.clipboard.writeText(sym); }
+  catch { const t = document.createElement('textarea'); t.value = sym; t.style.position = 'fixed'; t.style.opacity = '0';
+          document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove(); }
+  const was = btn.textContent; btn.textContent = 'copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = was; btn.classList.remove('copied'); }, 1100);
+};
 window.toggleTeach = () => { _drillTeach = !_drillTeach; render(); };
 
 async function loadDrill() {
@@ -8832,7 +8855,19 @@ function renderDrill() {
       return `<div class="dq-mech">
         <div class="dq-mq">${esc0(M.question)}</div>
         <ol class="dq-steps">${M.steps.map(x => `<li>${esc0(x)}</li>`).join('')}</ol>
-        <div class="dq-see"><span>put this on a screen</span>${esc0(M.see)}</div>
+        <div class="dq-see"><span>put this on a screen</span>${esc0(M.see)}${(() => {
+          const tv = M.tv; if (!tv) return '';
+          // main first and marked, then the compares, then any spread/ratio expression.
+          // The expression is dashed because it goes in the symbol box as its own chart,
+          // not into Compare — TradingView treats the two differently.
+          const chip = (sym, cls) => `<button class="dq-sym ${cls}" onclick="copySym(this)" data-sym="${esc0(sym)}" title="Copy — ${cls === 'expr' ? 'paste as its own symbol' : cls === 'main' ? 'the chart itself' : 'add via Compare'}">${esc0(sym)}</button>`;
+          const all = [tv.main, ...(tv.compare ?? [])].concat(tv.expr && tv.expr !== tv.main ? [tv.expr] : []);
+          return `<div class="dq-tv">
+            ${chip(tv.main, 'main')}${(tv.compare ?? []).map(x => chip(x, '')).join('')}${tv.expr && tv.expr !== tv.main ? chip(tv.expr, 'expr') : ''}
+            <button class="dq-sym" onclick="copySym(this)" data-sym="${esc0(all.join(', '))}" title="Copy all of them as one line">⧉ all</button>
+            ${tv.note ? `<div class="dq-tvn">${esc0(tv.note)}</div>` : ''}
+          </div>`;
+        })()}</div>
         <div class="dq-tested"><span>what this desk has measured</span>${esc0(M.tested)}</div>
         <button class="dq-teach" onclick="toggleTeach()">hide \u2014 back to the question</button>
       </div>`;
