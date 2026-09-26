@@ -430,6 +430,56 @@ export function applyFadeStopFraction(trades, frac, cost = 0, { preserveSizing =
 }
 
 /**
+ * Conditional MAE-gated stop (2026-09-26) — the COG/Jordan MAE-conditioning
+ * method (see MAE_DYNAMIC_STOP.md's correction note): rather than ALWAYS
+ * tightening every trade's stop (`applyFadeStopFraction`) or exiting the
+ * instant one fixed threshold is crossed (the early-exit lever below),
+ * this only intervenes once a trade's OWN real adverse excursion has
+ * crossed `triggerR` (a fraction of its original stop distance) — below
+ * that, the trade is left completely untouched, win/loss/pnlPct unchanged.
+ * Once crossed, it exits at `newStopR` × the ORIGINAL stop distance.
+ *
+ * No M1 re-walk needed: `newStopR < triggerR` is required, so a trade
+ * whose worst excursion reached `triggerR` necessarily passed through the
+ * shallower `newStopR` level en route (adverse excursion only grows) — the
+ * exit is deterministic, at exactly that price, the instant the trigger
+ * would have fired. `stopPips` is left UNCHANGED (same reasoning as the
+ * early-exit lever's own doc, not `applyFadeStopFraction`'s default): a
+ * SHRUNK stopPips lets fixed-fractional sizing size up every trade
+ * (winners included), inflating both legs — see LEGO_MODULES.md's
+ * correction entry. Applies to ALL decisions (fade + follow), unlike the
+ * fade-only levers above — the research behind this
+ * (analysis/vote_atlas_mae_checkpoint_discrimination.mjs) tested both
+ * without a decision-type split. Deliberately has no time-since-entry
+ * floor — analysis/vote_atlas_dynamic_stop_test.mjs found it barely moved
+ * which grid cell won, and omitting it lets this run instantly off each
+ * trade's already-stored maePips with no M1 access needed.
+ *
+ * CAUTION, stated plainly: that same grid search found NO interior
+ * optimum — every pair's best cell sat at the most extreme setting tested
+ * on every axis, and pushing further only kept "improving" Sharpe (up to
+ * 10-14 at the more extreme edge tested). That is the signature of a
+ * metric being gamed — shrinking `newStopR` toward 0 has no floor on the
+ * reward side while the cost side (winners cut short) stays roughly
+ * fixed — not a real, validated risk/reward optimum. Unlike every other
+ * lever on this page, there is no persisted "recommended" setting here;
+ * treat any Sharpe shown as illustrative, not trustworthy.
+ *
+ *   applyMaeStopGate(trades, triggerR, newStopR, cost=0) -> trades (same shape, gated rows repriced)
+ */
+export function applyMaeStopGate(trades, triggerR, newStopR, cost = 0) {
+  if (!trades?.length || triggerR == null || newStopR == null) return trades ?? [];
+  if (!(triggerR > 0) || !(newStopR > 0) || !(newStopR < triggerR)) return trades ?? [];
+  return trades.map(t => {
+    if (t.maePips == null || !(t.entry > 0) || !(t.stopPips > 0)) return t;
+    if (t.maePips / t.stopPips < triggerR) return t; // never crossed the trigger -- untouched
+    const pnlPips = -newStopR * t.stopPips;
+    const pnlPct = +((pnlPips * t.pip / t.entry * 100) - cost).toFixed(4);
+    return { ...t, win: false, pnlPct };
+  });
+}
+
+/**
  * Cost-efficiency filter (2026-08-30) — OOS-validated on the Fib Atlas
  * engines (analysis/fib_atlas_cost_efficiency_filter.mjs; see
  * LEGO_MODULES.md) after the SAME `t.pnlPct`-includes-a-flat-`cost`

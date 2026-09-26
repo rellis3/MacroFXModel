@@ -11,7 +11,7 @@
 // buckets a real dose-response pattern the way the real-data check did.
 
 import assert from 'node:assert/strict';
-import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter } from './levelAtlasVoteReview.js';
+import { voteDecision, reorientExcursion, reviewVoteBacktest, priceBarrierTrade, buildBarrierTrades, runBarrierWalkForward, priceAtTighterStop, applyFadeStopFraction, applyMaeStopGate, runStopStudy, runExitVariantStudy, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, applyFadeStopTightening, currencyLegs, applyCurrencyLossGate, mergeMajorEventWindows, applyNewsProximityThrottle, betDirection, tradeFactors, applyExposureCap, applyTrailingContinuation, applyStoredContinuationExit, applyGapFilter } from './levelAtlasVoteReview.js';
 
 let failures = 0;
 const ok = (name, cond, extra = '') => { console.log(`  ${cond ? '✓' : '✗ FAIL'} ${name}${extra ? '  ' + extra : ''}`); if (!cond) failures++; };
@@ -907,6 +907,36 @@ function mkBook(dimSpecs) {
   ok('T25 drops gapMin > cutoff', !kept.includes(long));
   ok('T25 drops gapMin == null even when a cutoff is set', !kept.includes(none));
   ok('T25 kept count matches expectation', kept.length === 2, JSON.stringify(kept));
+}
+
+// ── applyMaeStopGate: conditional MAE-gated stop (2026-09-26) ──────────────
+// Only intervenes once maePips/stopPips crosses triggerR; below that,
+// untouched. Once crossed, exits at exactly newStopR x stopPips, a loss,
+// stopPips itself left unchanged (no implicit re-leverage).
+{
+  const entry = 1.1, pip = 0.0001, stopPips = 20, targetPips = 10;
+  const win = { entry, pip, stopPips, targetPips, win: true, pnlPct: +(10 * pip / entry * 100).toFixed(4), maePips: 10 };
+  const deepWin = { ...win, maePips: 15 }; // 15/20 = 0.75 >= triggerR 0.7
+  const loss = { entry, pip, stopPips, targetPips, win: false, pnlPct: -(20 * pip / entry * 100), maePips: 20 };
+
+  ok('T26 below trigger (10/20=0.5 < 0.7) -> completely untouched, including pnlPct', JSON.stringify(applyMaeStopGate([win], 0.7, 0.3)[0]) === JSON.stringify(win));
+
+  const gated = applyMaeStopGate([deepWin], 0.7, 0.3)[0];
+  ok('T26 above trigger (0.75 >= 0.7) -> flips to a loss', gated.win === false, JSON.stringify(gated));
+  const expectPct = +(-(0.3 * stopPips * pip / entry * 100)).toFixed(4);
+  ok('T26 gated loss sized at exactly newStopR x ORIGINAL stopPips', Math.abs(gated.pnlPct - expectPct) < 1e-6, JSON.stringify({ got: gated.pnlPct, expect: expectPct }));
+  ok('T26 stopPips itself is left UNCHANGED (no implicit re-leverage via risk sizing)', gated.stopPips === stopPips, JSON.stringify(gated));
+
+  const gatedLoss = applyMaeStopGate([loss], 0.7, 0.3)[0];
+  ok('T26 an already-losing trade above trigger still gets capped SMALLER, not left at its full loss', Math.abs(gatedLoss.pnlPct - expectPct) < 1e-6, JSON.stringify(gatedLoss));
+
+  ok('T26 newStopR >= triggerR is a no-op (nonsensical config, not applied)', applyMaeStopGate([deepWin], 0.5, 0.5)[0].win === true);
+  ok('T26 null triggerR/newStopR -> no-op passthrough', applyMaeStopGate([deepWin], null, 0.3)[0].win === true && applyMaeStopGate([deepWin], 0.7, null)[0].win === true);
+  ok('T26 no real maePips on the trade -> untouched, not a bad number', applyMaeStopGate([{ ...deepWin, maePips: null }], 0.7, 0.3)[0].win === true);
+  ok('T26 empty/null input -> empty array, not a throw', applyMaeStopGate([], 0.7, 0.3).length === 0 && applyMaeStopGate(null, 0.7, 0.3).length === 0);
+
+  const withCost = applyMaeStopGate([deepWin], 0.7, 0.3, 0.01)[0];
+  ok('T26 cost is subtracted on the gated loss', Math.abs(withCost.pnlPct - (expectPct - 0.01)) < 1e-6, JSON.stringify(withCost));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASSED' : failures + ' FAILURE(S)'}`);

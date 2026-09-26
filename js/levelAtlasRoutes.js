@@ -27,7 +27,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { atlasWalk } from './levelAtlasEngine.js';
 import { buildAtlasBook, buildAtlasCard, sessionTransitionTable, renderBookText, matchLiveContext, splitAt } from './levelAtlasReport.js';
-import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
+import { buildBarrierTrades, applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights, riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyGradedDrawdownThrottle, DEFAULT_GRADED_THROTTLE_TIERS, applyFadeStopTightening, applyCurrencyLossGate, computeIntradayMAE, priceAtTighterStop, applyMaeStopGate, voteDecision, VOTE_TRADES_SCHEMA } from './levelAtlasVoteReview.js';
 import { summarizeTrades, maxDrawdownFromPnls, sharpeStdError, minTrackRecordLength } from './metricsCore.js';
 import { portfolioStats } from './backtestStats.js';
 import { costForPair } from './perLineStrategy.js';
@@ -915,11 +915,31 @@ export function mountLevelAtlasRoutes(app, express) {
       // not a tunable grid, same discipline as p90.
       const earlyExit = req.query.earlyExit === 'true';
 
+      // MAE-gated conditional stop (2026-09-26) -- the COG/Jordan MAE-
+      // conditioning method: unlike every lever above, this doesn't tighten
+      // unconditionally or on a fixed threshold -- it only intervenes once a
+      // trade's OWN real adverse excursion crosses `maeTriggerR` (a fraction
+      // of its original stop distance), exiting at `maeNewStopR` x that same
+      // original distance. Applies to ALL decisions (fade + follow), not
+      // just fade. No M1 needed -- see applyMaeStopGate's own doc.
+      // CAUTION, disclosed here and on the page: the grid search behind this
+      // (analysis/vote_atlas_dynamic_stop_test.mjs, 2026-09-26) found NO
+      // interior optimum -- every pair's best cell sat at the most extreme
+      // setting tested on every axis, the classic signature of a metric
+      // being gamed, not a real risk/reward peak. Unlike every other lever
+      // here, there is deliberately no persisted "recommended" value -- both
+      // params are raw, caller-supplied numbers, off unless both are set.
+      const maeTriggerR = req.query.maeTriggerR ? Number(req.query.maeTriggerR) : null;
+      const maeNewStopR = req.query.maeNewStopR ? Number(req.query.maeNewStopR) : null;
+      const maeStopGate = maeTriggerR != null && maeNewStopR != null
+        && maeTriggerR > 0 && maeTriggerR <= 1 && maeNewStopR > 0 && maeNewStopR < maeTriggerR;
+
       const perPairTradesRaw = {}, perPair = {}, missing = [], staleSchema = [];
       const fadeStopInfo = {};
       const slInfo = {};
       const p90Info = {};
       const earlyExitInfo = {};
+      const maeStopInfo = {};
       const storedByPair = {};
       for (const pair of pairs) {
         const stored = pickFresher(await getJSON(`${votePrefix}/${pair}-votetrades.json`), loadLocalVoteTrades(pair, voteDir));
@@ -969,6 +989,12 @@ export function mountLevelAtlasRoutes(app, express) {
             return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * slFraction, t.stopPips) } : t;
           });
           slInfo[stored.instrument] = { fraction: slFraction };
+        }
+        if (maeStopGate) {
+          const before = filtered;
+          filtered = applyMaeStopGate(filtered, maeTriggerR, maeNewStopR, stored.cost);
+          const gated = filtered.filter((t, i) => t.pnlPct !== before[i].pnlPct).length;
+          maeStopInfo[stored.instrument] = { triggerR: maeTriggerR, newStopR: maeNewStopR, tradesGated: gated };
         }
         // Merged in AFTER fadeStopTighten/slFraction -- both are validated
         // for the p50/p75 vote-trade population specifically and were never
@@ -1321,6 +1347,54 @@ export function mountLevelAtlasRoutes(app, express) {
         statsNoSlFraction = withSharpeCI(statsNoSlFraction, finalNoSl);
       }
 
+      // When the MAE stop gate is on, also report the SAME pipeline
+      // (fadeStopTighten/slFraction/heat cap/throttle settings held
+      // CONSTANT) built WITHOUT the gate -- isolates its own marginal
+      // effect, same discipline as statsNoFadeTighten/statsNoSlFraction.
+      let statsNoMaeStopGate = null;
+      if (maeStopGate && Object.keys(maeStopInfo).length) {
+        const perPairNoMae = {};
+        for (const sym of Object.keys(storedByPair)) {
+          const stored = storedByPair[sym];
+          let filtered = stored.trades.filter(t => t.margin >= minMargin);
+          if (fadeStopTighten) {
+            const tightened = applyFadeStopTightening(filtered, { cost: stored.cost });
+            filtered = tightened.trades;
+          }
+          if (slFraction) {
+            filtered = filtered.map(t => {
+              if (t.decision !== 'fade') return t;
+              const priced = priceAtTighterStop(t, t.stopPips * slFraction, stored.cost);
+              return priced ? { ...t, ...priced, stopPips: Math.min(t.stopPips * slFraction, t.stopPips) } : t;
+            });
+          }
+          const capped = applyConcurrencyCap(filtered, { maxConcurrent, perDirection });
+          const adjusted = riskAdjustTrades(capped?.kept ?? [], riskPct);
+          const withPair = (sizing === 'fixed-risk' ? adjusted : (capped?.kept ?? []).map((t, i) => ({ ...t, rMultiple: adjusted[i].rMultiple })))
+            .map(t => ({ ...t, pair: sym }));
+          perPairNoMae[sym] = withPair;
+        }
+        let finalNoMae = perPairNoMae;
+        if (maxHeatPct) {
+          const heatResult = applyPortfolioHeatCap(perPairNoMae, { maxHeatPct });
+          if (heatResult) {
+            const byPair = {};
+            for (const t of heatResult.kept) (byPair[t.pair] ??= []).push(t);
+            finalNoMae = byPair;
+          }
+        }
+        const weightsNoMae = buildWeights(finalNoMae);
+        const combinedNoMae = buildPortfolioDailySeries(finalNoMae, weightsNoMae ? { weights: weightsNoMae } : {});
+        let noMaeReturns = combinedNoMae.dailyReturns;
+        if (throttleOn) {
+          const trN = runThrottle(noMaeReturns, combinedNoMae.dates);
+          if (trN) noMaeReturns = trN.dailyReturns;
+        }
+        statsNoMaeStopGate = withNonCompoundedDD(portfolioStats(noMaeReturns, { mc: false, targetVol }), noMaeReturns);
+        statsNoMaeStopGate.avgLossRiskAdjPct = avgLossPct(finalNoMae);
+        statsNoMaeStopGate = withSharpeCI(statsNoMaeStopGate, finalNoMae);
+      }
+
       // When p90 is included, also report the SAME pipeline (fadeStopTighten/
       // slFraction/heat cap/throttle settings held CONSTANT) built WITHOUT
       // the p90 trades merged in -- isolates p90's own marginal effect, same
@@ -1466,8 +1540,9 @@ export function mountLevelAtlasRoutes(app, express) {
         slFraction, slInfo,
         includeP90, p90Info,
         earlyExit, earlyExitInfo,
+        maeStopGate, maeStopInfo,
         ccyLossGate, ccyGateInfo,
-        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoP90, statsNoEarlyExit, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
+        stats, statsUncapped, statsNoThrottle, statsNoFadeTighten, statsNoSlFraction, statsNoMaeStopGate, statsNoP90, statsNoEarlyExit, statsNoCcyGate, naiveAvgSharpe, days: datesFinal.length,
         intradayMAE,
         equityCurve: datesFinal.map((d, i) => ({ date: d, dailyReturn: dailyReturnsFinal[i] })),
         perPair, trades,

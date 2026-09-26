@@ -95,6 +95,9 @@
       <input type="number" id="slFractionInput" value="0.5" step="0.05" min="0.1" max="0.95" style="width:55px" disabled></label>
     <label title="Adds the outermost ladder rung (p90), excluded everywhere else because it has no real stop in the 3-rung ladder and its vote-margin never clears the confidence bar (checked directly: 0 votes across hundreds of touches). Traded UNCONDITIONALLY instead, priced against each pair's own empirical 90th-percentile continuation distance. Modest, believable improvement on the full book (Sharpe 3.63→3.99) — not dramatic.">Include p90 rung <input type="checkbox" id="includeP90Chk"></label>
     <label title="The corrected version of 'Fixed SL fraction': position sizing stays anchored to each trade's ORIGINAL, unchanged stop (a winner's result is mathematically IDENTICAL on or off), and only the exit trigger changes — cuts a fade trade short if the real price path crosses 40% of its original stop distance before it would normally resolve. Avg win genuinely unaffected, avg loss and drawdown genuinely reduced. CAUTION: even so, this lever's own Sharpe still looks implausibly high (95% CI entirely above any believable range for a real strategy) — trust the shape of the improvement, not the Sharpe number.">Early exit (no re-leverage) <input type="checkbox" id="earlyExitChk"></label>
+    <label title="EXPERIMENTAL — the COG/Jordan MAE-conditioning method: only intervenes once a trade's OWN real adverse excursion crosses Trigger R (a fraction of its own stop distance); below that it's completely untouched. Once crossed, exits at New stop R × its ORIGINAL stop distance. Applies to fade AND follow, unlike the levers above. New stop R must be smaller than Trigger R. UNVALIDATED, no recommended value: the grid search behind this found no interior optimum — pushing Trigger R up and New stop R down kept 'improving' Sharpe without limit (10-14 at the most extreme setting tested), the signature of a gamed metric, not a real edge. Explore it, don't trust the Sharpe shown.">MAE stop gate <input type="checkbox" id="maeStopGateChk">
+      Trigger R <input type="number" id="maeTriggerRInput" value="0.7" step="0.05" min="0.05" max="1" style="width:55px" disabled>
+      New stop R <input type="number" id="maeNewStopRInput" value="0.3" step="0.05" min="0.05" max="0.95" style="width:55px" disabled></label>
     <label title="Not a trading rule — a DIAGNOSTIC. Reconstructs each day's running equity path (trades in entry order) and flags days where the account would have breached this % drawdown intraday at some point, even if the day closed fine. A day with 6 losses then 2 big wins can net positive while still blowing a hard prop-firm intraday limit before the wins arrive — this catches that, nothing else on this page does.">Prop daily DD limit <input type="checkbox" id="propDDLimitChk">
       <input type="number" id="propDDLimitInput" value="2" step="0.5" min="0.1" style="width:55px" disabled>%</label>
     <label title="Blocks a new trade if the currency it's exposed to (e.g. taking a 3rd JPY-leg trade after JPY has already lost this much today) has already realized this much loss today across the whole book. Built after finding no single PAIR ever drives more than ~30% of a bad day's loss, but a single CURRENCY (usually JPY or USD) often drives 40-80% of it — this catches concentration risk the per-pair/heat caps above can't see.">Currency daily loss gate <input type="checkbox" id="ccyGateChk"></label>
@@ -207,6 +210,23 @@
     <strong style="color:#f87171">That said: even correctly computed, this lever's own Sharpe 95% CI sits entirely above any believable range for a real strategy (~[5.8, 9.5] at a realistic 1% heat cap). Trust the shape of the result below — avg win unchanged, avg loss and drawdown genuinely reduced — not the Sharpe number itself.</strong>
   </div>
   <div id="earlyExitCompare" style="overflow-x:auto"></div>
+</div>
+
+<div class="card callout" id="maeStopGateCard" style="display:none;border-color:#7c6a2d">
+  <h2>MAE stop gate — same trades, with vs without the conditional trigger</h2>
+  <div class="muted" style="margin-bottom:8px">
+    <strong style="color:#facc15">EXPERIMENTAL, unlike every other lever on this page: no persisted "recommended" setting.</strong>
+    Only intervenes once a trade's own real adverse excursion crosses Trigger R (a fraction of ITS OWN stop distance) —
+    below that, completely untouched. Once crossed, exits at New stop R × its original stop distance (deterministic,
+    no re-walk needed — the excursion necessarily passed through the shallower level en route to the deeper one).
+    Applies to fade AND follow. The grid search behind this (<code>analysis/vote_atlas_dynamic_stop_test.mjs</code>,
+    2026-09-26) found NO interior optimum — every pair's best cell sat at the most extreme setting tested on every
+    axis, and pushing further (Trigger R toward 1, New stop R toward 0) just kept "improving" Sharpe (10-14 at the
+    most extreme setting tested), the signature of a metric being gamed (shrinking the loss cap toward zero has no
+    floor on the reward side while the cost side — winners cut short — stays roughly fixed), not a real risk/reward
+    optimum. Use the two inputs to explore the shape yourself; don't trust any single Sharpe number shown here.
+  </div>
+  <div id="maeStopGateCompare" style="overflow-x:auto"></div>
 </div>
 
 <div class="card callout" id="intradayMAECard" style="display:none">
@@ -429,6 +449,9 @@ const slFractionChk = document.getElementById('slFractionChk');
 const slFractionInput = document.getElementById('slFractionInput');
 const includeP90Chk = document.getElementById('includeP90Chk');
 const earlyExitChk = document.getElementById('earlyExitChk');
+const maeStopGateChk = document.getElementById('maeStopGateChk');
+const maeTriggerRInput = document.getElementById('maeTriggerRInput');
+const maeNewStopRInput = document.getElementById('maeNewStopRInput');
 const propDDLimitChk = document.getElementById('propDDLimitChk');
 const propDDLimitInput = document.getElementById('propDDLimitInput');
 const ccyGateChk = document.getElementById('ccyGateChk');
@@ -449,6 +472,8 @@ function syncSizingUI() {
   restoreDDInput.disabled = !throttleOn;
   throttleMultInput.disabled = !throttleOn || graded;
   slFractionInput.disabled = !slFractionChk.checked;
+  maeTriggerRInput.disabled = !maeStopGateChk.checked;
+  maeNewStopRInput.disabled = !maeStopGateChk.checked;
   propDDLimitInput.disabled = !propDDLimitChk.checked;
   maxDailyLossPctInput.disabled = !ccyGateChk.checked;
 }
@@ -975,6 +1000,10 @@ async function loadData() {
   if (slFractionChk.checked) params.set('slFraction', slFractionInput.value);
   if (includeP90Chk.checked) params.set('includeP90', 'true');
   if (earlyExitChk.checked) params.set('earlyExit', 'true');
+  if (maeStopGateChk.checked) {
+    params.set('maeTriggerR', maeTriggerRInput.value);
+    params.set('maeNewStopR', maeNewStopRInput.value);
+  }
   if (propDDLimitChk.checked) params.set('propDDLimit', propDDLimitInput.value);
   if (ccyGateChk.checked) {
     params.set('ccyLossGate', 'true');
@@ -1174,6 +1203,32 @@ function render(j) {
       <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Threshold</th><th class="num">Trades cut short</th></tr></thead><tbody>${infoRows}</tbody></table>`;
   } else {
     earlyExitCard.style.display = 'none';
+  }
+
+  const maeStopGateCard = document.getElementById('maeStopGateCard');
+  if (j.maeStopGate && j.statsNoMaeStopGate) {
+    maeStopGateCard.style.display = '';
+    const n = j.statsNoMaeStopGate;
+    const rows = [
+      ['Sharpe', fmt2(n.sharpe), fmt2(s.sharpe)],
+      ['Sharpe 95% CI', ciStr(n), ciStr(s)],
+      ['Sortino', fmt2(n.sortino), fmt2(s.sortino)],
+      ['CAGR (compounded)', fmt1(n.cagr) + '%', fmt1(s.cagr) + '%'],
+      ['Max DD (compounded)', fmt1(n.maxDD) + '%', fmt1(s.maxDD) + '%'],
+      ['Max DD (fixed risk)', fmt1(n.maxDDNonCompounded) + '%', fmt1(s.maxDDNonCompounded) + '%'],
+      ['Annualised Vol', fmt1(n.annVol) + '%', fmt1(s.annVol) + '%'],
+      ['Profit Factor', fmt2(n.profitFactor), fmt2(s.profitFactor)],
+      ['Avg loss / trade (risk-adj %)', fmtPct(n.avgLossRiskAdjPct), fmtPct(s.avgLossRiskAdjPct)],
+    ];
+    const info = j.maeStopInfo ?? {};
+    const infoRows = Object.entries(info).map(([pair, v]) => `<tr><td>${pair}</td><td class="num">≥${(v.triggerR * 100).toFixed(0)}%</td><td class="num">${(v.newStopR * 100).toFixed(0)}%</td><td class="num">${v.tradesGated}</td></tr>`).join('');
+    document.getElementById('maeStopGateCompare').innerHTML = `
+      <table><thead><tr><th></th><th class="num">Without gate</th><th class="num">With gate</th></tr></thead>
+      <tbody>${rows.map(([label, a, b]) => `<tr><td>${label}</td><td class="num">${a}</td><td class="num">${b}</td></tr>`).join('')}</tbody></table>
+      <div class="muted" style="margin-top:8px">Trigger R (own adverse excursion / own stop), new stop R (fraction of own original stop) and trades gated per pair:</div>
+      <table style="margin-top:4px"><thead><tr><th>Pair</th><th class="num">Trigger R</th><th class="num">New stop R</th><th class="num">Trades gated</th></tr></thead><tbody>${infoRows}</tbody></table>`;
+  } else {
+    maeStopGateCard.style.display = 'none';
   }
 
   const intradayMAECard = document.getElementById('intradayMAECard');
@@ -1659,6 +1714,9 @@ slFractionChk.addEventListener('change', loadData);
 slFractionInput.addEventListener('change', loadData);
 includeP90Chk.addEventListener('change', loadData);
 earlyExitChk.addEventListener('change', loadData);
+maeStopGateChk.addEventListener('change', loadData);
+maeTriggerRInput.addEventListener('change', loadData);
+maeNewStopRInput.addEventListener('change', loadData);
 propDDLimitChk.addEventListener('change', loadData);
 propDDLimitInput.addEventListener('change', loadData);
 ccyGateChk.addEventListener('change', loadData);
@@ -1695,6 +1753,7 @@ document.getElementById('loadBestConfigBtn').addEventListener('click', () => {
   slFractionInput.value = '0.5';
   includeP90Chk.checked = false;
   earlyExitChk.checked = true;
+  maeStopGateChk.checked = false; // unvalidated -- see the lever's own title/card caveat, never part of this preset
   propDDLimitChk.checked = false;
   ccyGateChk.checked = true;
   maxDailyLossPctInput.value = '1';
