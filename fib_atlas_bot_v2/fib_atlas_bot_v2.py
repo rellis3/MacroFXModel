@@ -203,6 +203,21 @@ _BROKER_OVERRIDE = {
     "de30": "GER40", "uk100": "UK100", "us2000": "US2000",
     "spx": "SP500", "nq": "USTECH100", "dow": "US30",
 }
+# Config can override per broker via `broker_symbols` (read live each config
+# refresh, bot-config.html's Broker Symbols card) -- this bot shares the
+# original Fib Atlas bot's own MT5 account (MetaQuotes-Demo), a DIFFERENT
+# broker than the one the _BROKER_OVERRIDE defaults above were copied from
+# (Vote Atlas's OANDA_UK-Demo-1, confirmed 2026-09-26), so those defaults are
+# an unverified guess here, not a fact. This override tier is how to correct
+# a wrong guess without a code deploy.
+_broker_overrides: dict = {}
+
+
+def _apply_broker_symbols(cfg: dict) -> None:
+    _broker_overrides.clear()
+    for k, v in (cfg.get("broker_symbols") or {}).items():
+        if v and str(v).strip():
+            _broker_overrides[str(k).lower()] = str(v).strip()
 
 
 def _parse_hhmm_secs(s: str) -> int:
@@ -253,6 +268,8 @@ def _london_time_as_utc_hhmm(now_epoch: float, london_hhmm: str) -> str:
 
 def _mt5_sym(pair: str) -> str:
     p = pair.lower()
+    if p in _broker_overrides:
+        return _broker_overrides[p]
     if p in _BROKER_OVERRIDE:
         return _BROKER_OVERRIDE[p]
     try:
@@ -458,6 +475,7 @@ def run(base_url: str, force_live: bool) -> None:
     except Exception as e:
         log.error(f"could not reach dashboard at {base_url} to read config: {e} — exiting")
         return
+    _apply_broker_symbols(cfg)
     if force_live:
         cfg["paper_mode"] = False
     broker, paper = make_broker(cfg)
@@ -687,6 +705,7 @@ def run(base_url: str, force_live: bool) -> None:
         if nowt - last_status >= cfg.get("status_secs", 30):
             try:
                 cfg = _deep_merge(DEFAULT_CFG, kv.get_json("fib_atlas_bot_v2_config") or cfg)
+                _apply_broker_symbols(cfg)
                 guard.sync_cfg(cfg)
                 throttle.sync_cfg(cfg)
             except Exception as e:

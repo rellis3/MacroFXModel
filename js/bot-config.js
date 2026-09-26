@@ -4956,6 +4956,13 @@ const FA_PAIRS = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'nzdusd', 'usdcad', 'u
 const FA_RECOMMENDED_EXCLUDE = new Set(['gbpcad', 'gbpchf', 'eurcad', 'gbpnzd', 'eurchf', 'audchf', 'chfjpy', 'eurnzd', 'gbpjpy', 'eurjpy',
   'nq', 'spx', 'de30', 'uk100', 'us2000', 'dow']);
 const FA_DEFAULT_CHECKED = new Set(FA_PAIRS.filter(p => !FA_RECOMMENDED_EXCLUDE.has(p)));
+// Shared by both fa (fib_atlas_bot) and fa2 (fib_atlas_bot_v2) tabs -- same
+// convention as Vote Atlas's VB_INDEX_KEYS. Fib Atlas runs on a DIFFERENT
+// MT5 account/broker than Vote Atlas (MetaQuotes-Demo vs OANDA_UK-Demo-1,
+// confirmed 2026-09-26), so the hardcoded _BROKER_OVERRIDE defaults copied
+// from Vote Atlas's own working values are a guess here, not a verified
+// fact -- this override card is how to correct them without a code deploy.
+const FA_INDEX_KEYS = ['nq', 'spx', 'de30', 'dow', 'us2000', 'uk100'];
 
 const FA_DEFAULTS = {
   paper_mode: true, kill_switch: false,
@@ -4973,6 +4980,7 @@ const FA_DEFAULTS = {
   risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
   max_spread_pips: 2.0,
   enabled_pairs: [...FA_DEFAULT_CHECKED],
+  broker_symbols: {},  // { nq:'USTECH100', spx:'SP500', de30:'GER40', dow:'US30', us2000:'US2000', uk100:'UK100' } -- blank = built-in default
   ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
   throttle_enabled: false, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
   max_open_risk_pct: 0,
@@ -5036,6 +5044,8 @@ function renderFaForm() {
   chk('fa_tg_enabled',          _faCfg.tg_enabled ?? FA_DEFAULTS.tg_enabled);
   set('fa_tg_token',            _faCfg.tg_token ?? FA_DEFAULTS.tg_token);
   set('fa_tg_chat_id',          _faCfg.tg_chat_id ?? FA_DEFAULTS.tg_chat_id);
+  const faSyms = _faCfg.broker_symbols || {};
+  FA_INDEX_KEYS.forEach(k => { const el = document.getElementById(`fa_sym_${k}`); if (el) el.value = faSyms[k] ?? ''; });
   _faRenderPairChecks();
 }
 
@@ -5074,6 +5084,9 @@ function readFaForm() {
   _faCfg.tg_token             = (document.getElementById('fa_tg_token')?.value || '').trim();
   _faCfg.tg_chat_id           = (document.getElementById('fa_tg_chat_id')?.value || '').trim();
   _faCfg.enabled_pairs        = _faReadPairChecks();
+  const faSyms = {};
+  FA_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`fa_sym_${k}`)?.value || '').trim(); if (v) faSyms[k] = v; });
+  _faCfg.broker_symbols = faSyms;
 }
 
 async function loadFaConfig() {
@@ -5740,6 +5753,7 @@ const FA2_DEFAULTS = {
   risk_pct: 0.5, max_lot: 5.0, max_open: 20, max_concurrent_per_pair: 4,
   max_spread_pips: 2.0,
   enabled_pairs: [...FA_DEFAULT_CHECKED],
+  broker_symbols: {},  // { nq:'USTECH100', spx:'SP500', de30:'GER40', dow:'US30', us2000:'US2000', uk100:'UK100' } -- blank = built-in default
   ddlimit: 3.0, monthlydd: 5.0, lockout: 3, cooldown: 60,
   throttle_enabled: false, throttle_trigger_dd: -8.0, throttle_restore_dd: -2.0, throttle_mult: 0.25,
   max_open_risk_pct: 0,
@@ -5800,6 +5814,8 @@ function renderFa2Form() {
   chk('fa2_tg_enabled',          _fa2Cfg.tg_enabled ?? FA2_DEFAULTS.tg_enabled);
   set('fa2_tg_token',            _fa2Cfg.tg_token ?? FA2_DEFAULTS.tg_token);
   set('fa2_tg_chat_id',          _fa2Cfg.tg_chat_id ?? FA2_DEFAULTS.tg_chat_id);
+  const fa2Syms = _fa2Cfg.broker_symbols || {};
+  FA_INDEX_KEYS.forEach(k => { const el = document.getElementById(`fa2_sym_${k}`); if (el) el.value = fa2Syms[k] ?? ''; });
   _fa2RenderPairChecks();
 }
 
@@ -5834,6 +5850,9 @@ function readFa2Form() {
   _fa2Cfg.tg_token             = (document.getElementById('fa2_tg_token')?.value || '').trim();
   _fa2Cfg.tg_chat_id           = (document.getElementById('fa2_tg_chat_id')?.value || '').trim();
   _fa2Cfg.enabled_pairs        = _fa2ReadPairChecks();
+  const fa2Syms = {};
+  FA_INDEX_KEYS.forEach(k => { const v = (document.getElementById(`fa2_sym_${k}`)?.value || '').trim(); if (v) fa2Syms[k] = v; });
+  _fa2Cfg.broker_symbols = fa2Syms;
 }
 
 async function loadFa2Config() {

@@ -4845,6 +4845,24 @@ python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
         </div>
       </div>
 
+      <!-- ── Broker index symbols (override per broker) ─────────────────────── -->
+      <div class="card">
+        <div class="card-title">Broker Symbols — indices</div>
+        <div class="bot-banner-sub" style="margin-bottom:10px">Brokers name the index CFDs differently. This bot's built-in defaults were copied from Vote Atlas's own values, which run on a DIFFERENT MT5 account/broker (OANDA vs this bot's own account) — they are NOT verified for this account. Set what YOUR MT5 broker actually calls each one; the bot logs a BROKER SYMBOL MISMATCH warning at startup if a symbol doesn't resolve. Leave blank to use the built-in default in brackets. FX pairs and gold resolve automatically.</div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+          <div class="form-row"><span class="form-lbl">NASDAQ 100 <small>nq</small></span><input type="text" id="fa_sym_nq" placeholder="USTECH100" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">S&amp;P 500 <small>spx</small></span><input type="text" id="fa_sym_spx" placeholder="SP500" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">DAX 40 <small>de30</small></span><input type="text" id="fa_sym_de30" placeholder="GER40" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Dow 30 <small>dow</small></span><input type="text" id="fa_sym_dow" placeholder="US30" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Russell 2000 <small>us2000</small></span><input type="text" id="fa_sym_us2000" placeholder="US2000" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">UK 100 <small>uk100</small></span><input type="text" id="fa_sym_uk100" placeholder="UK100" style="width:140px;text-align:left"></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#a78bfa;color:#1a1033" onclick="saveFaConfig()">Save Symbols</button>
+          <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh (restart needed to re-run startup symbol verification)</span>
+        </div>
+      </div>
+
       <!-- ── MT5 Credentials ──────────────────────────────────────────────── -->
       <div class="card">
         <div class="card-title">MT5 Account</div>
@@ -5174,6 +5192,24 @@ python fib_atlas_bot_v2/fib_atlas_bot_v2.py --live --url &lt;dashboard-url&gt;</
           <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="resetFa2Defaults()">Reset Defaults</button>
           <button class="btn-save" style="background:transparent;border:1px solid #444;color:var(--text3)" onclick="testFa2Telegram()">Send test alert</button>
           <span id="fa2SaveStatus" style="font-size:12px;color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <!-- ── Broker index symbols (override per broker) ─────────────────────── -->
+      <div class="card">
+        <div class="card-title">Broker Symbols — indices</div>
+        <div class="bot-banner-sub" style="margin-bottom:10px">Same MT5 account as the original Fib Atlas bot, so this should normally match that tab's own Broker Symbols card — kept separate here only so it CAN diverge later. Leave blank to use the built-in default in brackets (copied from Vote Atlas, a DIFFERENT MT5 account/broker — not verified for this account).</div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+          <div class="form-row"><span class="form-lbl">NASDAQ 100 <small>nq</small></span><input type="text" id="fa2_sym_nq" placeholder="USTECH100" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">S&amp;P 500 <small>spx</small></span><input type="text" id="fa2_sym_spx" placeholder="SP500" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">DAX 40 <small>de30</small></span><input type="text" id="fa2_sym_de30" placeholder="GER40" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Dow 30 <small>dow</small></span><input type="text" id="fa2_sym_dow" placeholder="US30" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">Russell 2000 <small>us2000</small></span><input type="text" id="fa2_sym_us2000" placeholder="US2000" style="width:140px;text-align:left"></div>
+          <div class="form-row"><span class="form-lbl">UK 100 <small>uk100</small></span><input type="text" id="fa2_sym_uk100" placeholder="UK100" style="width:140px;text-align:left"></div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center">
+          <button class="btn-save" style="background:#f472b6;color:#2b0f21" onclick="saveFa2Config()">Save Symbols</button>
+          <span class="bot-banner-sub" style="margin:0">saved with the config — applies on the bot's next config refresh (restart needed to re-run startup symbol verification)</span>
         </div>
       </div>
 
