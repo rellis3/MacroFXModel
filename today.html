@@ -616,6 +616,20 @@
           border-radius:8px;padding:9px 11px;font-size:12px;line-height:1.55;color:var(--text);
           box-shadow:0 10px 30px rgba(0,0,0,.45)}
 
+  .dq-teach{background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:7px;
+            padding:6px 12px;font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:8px}
+  .dq-teach:hover{border-color:var(--blue);color:var(--blue)}
+  .dq-mech{background:var(--card2);border:1px solid var(--border2);border-radius:9px;padding:11px 13px;margin-bottom:9px}
+  .dq-mq{font-size:12.5px;font-weight:700;color:var(--text);margin-bottom:7px}
+  .dq-steps{margin:0 0 9px 0;padding-left:20px}
+  .dq-steps li{font-size:12px;line-height:1.65;color:var(--text2);margin-bottom:6px}
+  .dq-steps li::marker{color:var(--blue);font-weight:700}
+  .dq-see,.dq-tested{font-size:11.5px;line-height:1.6;color:var(--text2);padding:6px 9px;border-radius:6px;
+                     background:var(--bg3);margin-top:5px}
+  .dq-see span,.dq-tested span{display:block;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+                               font-weight:800;color:var(--text3);margin-bottom:2px}
+  .dq-tested{border-left:3px solid var(--amber)}
+
   /* ── Table view ─────────────────────────────────────────── */
   .tview{display:none;overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:6px}
   table{width:100%;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
@@ -8755,7 +8769,11 @@ function renderWiderMarket() {
 const DRILL_KEY = 'mv_learn_v1';
 let DRILL = {};
 try { DRILL = JSON.parse(localStorage.getItem(DRILL_KEY) ?? '{}') ?? {}; } catch { DRILL = {}; }
-let _drill = null, _drillPick = null, _drillAsked = null;
+let _drill = null, _drillPick = null, _drillAsked = null, _drillTeach = false;
+// "I don't know enough about the background" — the drill was testing recognition of
+// mechanisms it never taught. The derivation is available BEFORE you answer, because
+// being stuck is the moment it is worth reading, not after the answer is on screen.
+window.toggleTeach = () => { _drillTeach = !_drillTeach; render(); };
 
 async function loadDrill() {
   const L = window.learnStateBrick; if (!L) return;
@@ -8768,7 +8786,7 @@ async function loadDrill() {
     const j = await jget(`/api/drill-question?topic=${encodeURIComponent(topic)}`);
     _drillAsked = topic;
     _drill = j?.ok ? { topic, q: j.question, boardTo: j.boardTo } : { none: true, reason: j?.reason };
-    _drillPick = null; render();
+    _drillPick = null; _drillTeach = false; render();
   } catch { /* the block stays hidden */ }
 }
 
@@ -8779,7 +8797,7 @@ window.pickDrill = key => {
   try { localStorage.setItem(DRILL_KEY, JSON.stringify(DRILL)); } catch {}
   render();
 };
-window.nextDrill = () => { _drill = null; _drillAsked = null; _drillPick = null; loadDrill().catch(() => {}); };
+window.nextDrill = () => { _drill = null; _drillAsked = null; _drillPick = null; _drillTeach = false; loadDrill().catch(() => {}); };
 
 function renderDrill() {
   const el = $('drillPanel'); if (!el) return;
@@ -8807,6 +8825,18 @@ function renderDrill() {
     <div class="dq-stem">${esc0(q.stem ?? '')}</div>
     ${q.ask ? `<div class="dq-ask">${esc0(q.ask)}</div>` : ''}
     <div class="dq-opts">${opts}</div>
+    ${(() => {
+      const M = window.mechanismsBrick?.mechanismFor?.(_drill.topic);
+      if (!M) return '';
+      if (!_drillTeach) return `<button class="dq-teach" onclick="toggleTeach()">\u{1F9E9} I do not know the background \u2014 show me why this works</button>`;
+      return `<div class="dq-mech">
+        <div class="dq-mq">${esc0(M.question)}</div>
+        <ol class="dq-steps">${M.steps.map(x => `<li>${esc0(x)}</li>`).join('')}</ol>
+        <div class="dq-see"><span>put this on a screen</span>${esc0(M.see)}</div>
+        <div class="dq-tested"><span>what this desk has measured</span>${esc0(M.tested)}</div>
+        <button class="dq-teach" onclick="toggleTeach()">hide \u2014 back to the question</button>
+      </div>`;
+    })()}
     ${done ? `<div class="dq-rev ${_drillPick === q.answer ? 'ok' : 'no'}">
         <b>${_drillPick === q.answer ? 'Right.' : 'Not this time.'}</b> ${esc0(q.reveal ?? '')}
         ${q.why ? `<div class="dq-why">${esc0(q.why)}</div>` : ''}
@@ -12665,6 +12695,13 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
 <script type="module">
   import * as LearnState from './js/learnState.js';
   window.learnStateBrick = LearnState;
+  try { window.render?.(); } catch (e) {}
+</script>
+<!-- The wiring underneath the drill (js/mechanisms.js): why A moves B, derived rather
+     than asserted, and readable BEFORE you answer. -->
+<script type="module">
+  import * as Mechanisms from './js/mechanisms.js';
+  window.mechanismsBrick = Mechanisms;
   try { window.render?.(); } catch (e) {}
 </script>
 <script type="module">
