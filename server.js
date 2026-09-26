@@ -635,6 +635,33 @@ function stripMicroEducationUI(html, isHub) {
   return html;
 }
 
+// ── Theory Lab reading practice (market-reading.html) visibility ────────────
+// The practice page is the shareable half of the reading drill: the one-a-day on
+// today.html is private and stays put, this is the one other people get sent to.
+// Because it is the one Theory Lab page pointed at an audience, it needs a switch
+// that does not require a deploy to throw.
+//
+// DEFAULTS TO SHOWN, unlike its two siblings above — it was built to be shared, so
+// hiding is the exception. Set HIDE_DRILL_PRACTICE=1 on Railway to take it down.
+// DRILL_HIDE is accepted as an alias because that is the name it was asked for by,
+// and a kill switch that silently does nothing because of a spelling is worse than
+// no kill switch.
+//
+// The hide is REAL, not cosmetic: the page 404s and the hub section is stripped
+// between its sentinels, so there is nothing left to discover or to share a link
+// to. That is the HIDE_INSTITUTIONAL_METHODS pattern rather than the UI-only
+// HIDE_MICRO_EDUCATION one — a page whose whole purpose is being sent to other
+// people is not hidden if the URL still serves.
+//
+// An admin education session still sees it while hidden, so the page can be
+// checked and fixed without putting it back up for everyone first.
+//
+// Nothing here touches /api/drill-series or /api/drill-question: today.html's own
+// daily reading runs off those and must keep working when this page is down.
+const HIDE_DRILL_PRACTICE = (process.env.HIDE_DRILL_PRACTICE ?? process.env.DRILL_HIDE ?? '0') !== '0';
+const DRILL_PRACTICE_PAGE_RE = /^\/theory-lab\/market-reading\.html$/;
+const DRILL_HUB_BLOCK_RE = /<!-- DRILL:START -->[\s\S]*?<!-- DRILL:END -->\n?/g;
+
 // ── Institutional Methods (admin-only category set) ─────────────────────────
 // A separate, more advanced set of Theory Lab categories — estimators,
 // tests, factor models, microstructure/liquidity extensions, etc. — meant
@@ -33460,10 +33487,11 @@ app.use(requireAuth);
 const HUB_CRUMB_RE = /<div class="tl-crumb">Theory Lab<\/div>/;
 const HUB_CRUMB_WITH_LOGOUT = '<div class="tl-crumb" style="display:flex;justify-content:space-between;align-items:center">Theory Lab<a href="/logout?zone=education" style="color:var(--text3);text-decoration:none;border-bottom:1px dashed var(--border2)">Log out</a></div>';
 
-if (HIDE_MICRO_EDUCATION || AUTH_ENABLED) {
+if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
   app.get(MICRO_LESSON_PAGE_RE, (req, res, next) => {
     const isHub = req.path === '/theory-lab/hub.html';
-    // Nothing to transform on a lesson page unless the hide feature is on.
+    // Nothing to transform on a lesson page unless the hide feature is on. The drill
+    // strip only ever touches the hub, so it is not part of this test.
     if (!isHub && !HIDE_MICRO_EDUCATION) return next();
 
     fs.readFile(path.join(__dirname, req.path), 'utf8', (err, html) => {
@@ -33475,6 +33503,12 @@ if (HIDE_MICRO_EDUCATION || AUTH_ENABLED) {
 
       if (isHub && AUTH_ENABLED && HIDE_INSTITUTIONAL_METHODS && !isAdmin) {
         html = html.replace(INSTITUTIONAL_HUB_BLOCK_RE, '');
+      }
+
+      // Not gated on AUTH_ENABLED: with no passwords configured isEducationAdmin is
+      // false anyway, so the switch still works locally instead of silently no-opping.
+      if (isHub && HIDE_DRILL_PRACTICE && !isAdmin) {
+        html = html.replace(DRILL_HUB_BLOCK_RE, '');
       }
 
       if (isHub && AUTH_ENABLED) {
@@ -33494,6 +33528,15 @@ if (HIDE_MICRO_EDUCATION || AUTH_ENABLED) {
 // no-ops when auth itself is off.
 if (HIDE_INSTITUTIONAL_METHODS && AUTH_ENABLED) {
   app.get(INSTITUTIONAL_PAGE_RE, (req, res, next) => {
+    if (isEducationAdmin(req)) return next();
+    res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
+  });
+}
+
+// Blocks the practice page itself when HIDE_DRILL_PRACTICE is on — see above.
+// Stripping the hub card alone would leave a working, shareable URL behind.
+if (HIDE_DRILL_PRACTICE) {
+  app.get(DRILL_PRACTICE_PAGE_RE, (req, res, next) => {
     if (isEducationAdmin(req)) return next();
     res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
   });

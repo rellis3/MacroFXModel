@@ -23,8 +23,11 @@
     <div id="tl-progress-summary" class="tl-progress-summary" hidden></div>
   </div>
 
+  <!-- DRILL:START -->
   <!-- Practice, not a lesson. It sits above the curriculum because retrieval is what makes
-       any of the curriculum stick, and because it is the only thing here built on live data. -->
+       any of the curriculum stick, and because it is the only thing here built on live data.
+       The sentinels around this block are load-bearing: server.js strips between them when
+       HIDE_DRILL_PRACTICE is on, so the section leaves no trace to discover. -->
   <div class="tl-cat">
     <h2>Practice</h2>
     <div class="tl-cat-sub">The lessons below explain. This asks. Everything in it is built from six years of this desk's own board, so what you learn transfers to the live page rather than to a textbook.</div>
@@ -36,6 +39,7 @@
       </a>
     </div>
   </div>
+  <!-- DRILL:END -->
 
   <div class="tl-diff-filter" role="group" aria-label="Filter lessons by difficulty">
     <span class="tl-diff-filter-label">Filter by level</span>
