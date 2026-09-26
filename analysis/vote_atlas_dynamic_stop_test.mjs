@@ -47,9 +47,13 @@ const MIN_MARGIN = 3;
 
 // Informed by the discrimination results: AUC was weak at 5/15min, real and
 // strengthening from 30min on -- grid scoped to where signal actually is.
-const CHECKPOINTS_MIN = [30, 60, 120];
-const TRIGGER_R = [0.3, 0.5, 0.7];
-const NEW_STOP_R = [0.3, 0.5, 0.7]; // fraction of the ORIGINAL stop distance
+// 2026-09-26: the first grid's IS-chosen best cell sat at the AGGRESSIVE
+// EDGE of every axis (fastest checkpoint, highest trigger, lowest new-stop)
+// on all 4 pairs -- extended below/above that edge to find where it actually
+// plateaus or reverses, rather than trusting an edge-of-grid pick.
+const CHECKPOINTS_MIN = [15, 30, 60, 120];
+const TRIGGER_R = [0.5, 0.7, 0.9];
+const NEW_STOP_R = [0.1, 0.2, 0.3]; // fraction of the ORIGINAL stop distance
 
 function bsearch(times, t) {
   let lo = 0, hi = times.length;
@@ -178,9 +182,9 @@ for (const pair of pairs) {
     if (!best || cell.sharpe > best.sharpe) best = { checkpointMin: cp, triggerR: tr, newStopR: ns, ...cell };
   }
   isGrid.sort((a, b) => b.sharpe - a.sharpe);
-  console.error(`\nIS grid top 5 (chosen by Sharpe, ${isGrid.length} cells tested):`);
+  console.error(`\nIS grid top 10 (chosen by Sharpe, ${isGrid.length} cells tested):`);
   console.error('checkpoint  triggerR  newStopR  sharpe   winRate  PF     totalR   cutShort  saved');
-  for (const g of isGrid.slice(0, 5)) {
+  for (const g of isGrid.slice(0, 10)) {
     console.error(`${String(g.checkpointMin).padEnd(10)}  ${String(g.triggerR).padEnd(8)}  ${String(g.newStopR).padEnd(8)}  ${String(g.sharpe).padEnd(7)}  ${String(g.winRate).padEnd(7)}  ${String(g.profitFactor).padEnd(5)}  ${String(g.totalR).padEnd(7)}  ${String(g.winnersCutShort).padEnd(8)}  ${g.losersSaved}`);
   }
 
@@ -191,7 +195,7 @@ for (const pair of pairs) {
   console.error(`  OOS control:      sharpe=${oosControl?.sharpe} winRate=${oosControl?.winRate}% PF=${oosControl?.profitFactor} totalR=${oosControl?.totalR}`);
   console.error(`  Verdict: ${oosResult && oosControl && oosResult.sharpe > oosControl.sharpe ? 'IMPROVED on OOS' : 'did NOT improve on OOS (or worse)'}`);
 
-  allResults[pair] = { isControl, oosControl, isGridTop5: isGrid.slice(0, 5), isChosen: best, oosResult };
+  allResults[pair] = { isControl, oosControl, isGridTop10: isGrid.slice(0, 10), isChosen: best, oosResult };
 }
 
 fs.mkdirSync('analysis/output', { recursive: true });
