@@ -670,6 +670,9 @@ export function mountMondayFibAtlasRoutes(app, express) {
         realAccountRiskPct: req.query.realAccountRiskPct ? Number(req.query.realAccountRiskPct) : 0.5,
         maxOpen: req.query.maxOpen ? Number(req.query.maxOpen) : 20,
         maxOpenRiskPct: req.query.maxOpenRiskPct ? Number(req.query.maxOpenRiskPct) : 0,
+        leverage: req.query.leverage ? Number(req.query.leverage) : 30,
+        maxMarginUsePct: req.query.maxMarginUsePct ? Number(req.query.maxMarginUsePct) : 50,
+        maxNetExposurePct: req.query.maxNetExposurePct ? Number(req.query.maxNetExposurePct) : 30,
       };
       const result = await buildFibAtlasVotePortfolio({ ...opts, loadPairVoteTrades: cachedLoader });
       if (result.error) return res.status(404).json({ ok: false, error: result.error, missing: result.missing });

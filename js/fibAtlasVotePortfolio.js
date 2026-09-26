@@ -29,10 +29,18 @@
  * (Asia's `asia-fib-atlas/{pair}-votetrades.json` vs Monday's
  * `monday-fib-atlas/{pair}-votetrades.json` — same R2 shape, different prefix).
  */
+// tradeFactors (2026-09-26 addition to this file's own usage, not to
+// levelAtlasVoteReview.js itself): verified its internal betDirection
+// ALREADY handles Fib Atlas's 'above'/'below' vocabulary correctly
+// (`isUp = side==='up' || side==='above'`), matching this file's own
+// tradeDirection() on all 4 side/decision combinations -- confirmed by hand
+// before reusing it, given this exact "reused a Level-Atlas direction
+// helper that silently mismapped Fib Atlas's vocabulary" is the precise bug
+// this session already found and fixed once (fibAtlasZonePricer.js).
 import {
   applyConcurrencyCap, buildPortfolioDailySeries, inverseVolWeights,
   riskAdjustTrades, applyPortfolioHeatCap, applyDrawdownThrottle, applyFadeStopFraction,
-  applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit,
+  applyCostEfficiencyFilter, applyGapFilter, applyStoredContinuationExit, tradeFactors,
 } from './levelAtlasVoteReview.js';
 // applyClearanceFilter is Fib-Atlas-owned (asiaFibAtlasVoteReview.js), NOT
 // the shared levelAtlasVoteReview.js above — see that function's own doc
@@ -41,6 +49,24 @@ import {
 import { applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 import { maxDrawdownFromPnls, neweyWestSharpe, summarizeTrades } from './metricsCore.js';
 import { portfolioStats, deflatedSharpe } from './backtestStats.js';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+// Real $-per-pip-per-standard-lot table (pylego/point_values.json -- the
+// SAME data the live Python bots' own position sizing reads, "Canonical
+// set = regime_bot == RegimeV2"), read directly rather than duplicated, so
+// this can never silently drift from what live sizing actually uses.
+const _POINT_VALUES = (() => {
+  try {
+    const p = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'pylego', 'point_values.json');
+    return JSON.parse(readFileSync(p, 'utf8'));
+  } catch { return { default: 10, values: {} }; }
+})();
+function pipValuePerLot(pair) {
+  const key = String(pair || '').toLowerCase().replace(/\s*\(.*\)$/, ''); // strip " (Asia)"/" (Monday)" groupKey suffix
+  return _POINT_VALUES.values[key] ?? _POINT_VALUES.default;
+}
 
 // portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
 // riskAdjustTrades never actually compounds — every trade risks a CONSTANT
@@ -123,6 +149,32 @@ export function simulateSharedAccount(trades, {
   // "out of a total combined pot" cares about, not just a headcount.
   maxOpenRiskPct = 0,
   compounding = false,
+  // Real margin capacity (2026-09-26, direct owner ask -- confirmed live
+  // that maxOpenRiskPct barely binds: risk-at-stop is small per trade even
+  // with several open, but MARGIN is about NOTIONAL exposure, not risk, and
+  // a tight-stop trade can need a large position size -- hence large margin
+  // -- to hit even a small dollar risk. This is the constraint that was
+  // actually missing. `leverage` (default 30, the UK/EU retail cap for
+  // major FX -- indices/gold often get LESS in practice, so this is a
+  // generous, not conservative, assumption) and `maxMarginUsePct` (default
+  // 50% of the sizing basis, leaving headroom before a real margin call)
+  // together cap total notional exposure across every open position.
+  // pip-value-per-lot comes straight from pylego/point_values.json -- the
+  // SAME table the live Python bots' own sizing reads.
+  leverage = 30, maxMarginUsePct = 50,
+  // Real currency-correlation cap (2026-09-26) -- the page's own text has
+  // always warned that EURUSD/EURGBP/EURJPY aren't independent bets (they
+  // all carry EUR), but nothing in this simulation enforced it: the hedge
+  // cap only stops the SAME pair+direction stacking, margin only caps total
+  // notional regardless of WHICH currencies it's in. Five different EUR-long
+  // crosses open at once pass every check so far but are one real EUR move
+  // away from behaving like a single, much bigger position. Reuses
+  // levelAtlasVoteReview.js's own tradeFactors (FX -> signed base/quote
+  // legs, gold -> XAU, the 6 indices -> one shared EQUITY_RISK factor) for
+  // the factor decomposition, but weights each leg by REAL notional (this
+  // function's own `marginFor` math), not tradeFactors' own riskPctUsed-based
+  // weight, to stay on the same $ basis as the margin/risk checks above.
+  maxNetExposurePct = 30,
 } = {}) {
   if (!trades?.length) return null;
   const withDir = trades
@@ -159,6 +211,36 @@ export function simulateSharedAccount(trades, {
     const basis = sizingBasis();
     return basis > 0 ? (sum / basis) * 100 : 0;
   };
+  let openMarginTotal = 0;
+  let skippedMargin = 0, maxMarginUsedSeen = 0, skippedExposure = 0;
+
+  // Real position size in lots, from the SAME dollar risk every other check
+  // here uses -- a tighter stop needs MORE lots to hit the same dollar risk,
+  // which is exactly why a risk-% cap alone (openRiskPct above) can pass
+  // while the real margin required cannot: risk-at-stop and notional
+  // exposure are different things, and only the second one is what a
+  // broker's margin call actually watches.
+  function notionalFor(t, dollarRisk) {
+    const stopPipsForSizing = t.sizingStopPips ?? t.stopPips;
+    const pip = t.pip, entry = t.entry;
+    if (!(stopPipsForSizing > 0) || !(pip > 0) || !(entry > 0)) return 0;
+    const pipVal = pipValuePerLot(t.pair);
+    const lots = dollarRisk / (stopPipsForSizing * pipVal);
+    const lotSize = pipVal / pip; // recovers ~100,000 base-currency units/lot for a typical FX pair
+    return lots * lotSize * entry;
+  }
+
+  const netExposure = new Map(); // factor (e.g. 'EUR', 'XAU', 'EQUITY_RISK') -> signed $ notional from OPEN positions
+  // tradeFactors needs `pair` unsuffixed/uppercased (it does its own
+  // .toUpperCase(), but the " (Asia)"/" (Monday)" combined-mode groupKey
+  // suffix would become part of the "pair" string and never match
+  // CCY_LEGS/EQUITY_RISK_SET, silently falling through to a useless
+  // synthetic per-(pair+ladder) factor instead of the real currency) --
+  // stripped the same way pipValuePerLot already does.
+  function factorsFor(t) {
+    const cleanPair = String(t.pair || '').replace(/\s*\(.*\)$/, '');
+    return tradeFactors({ ...t, pair: cleanPair });
+  }
 
   for (const ev of events) {
     if (ev.type === 'open') {
@@ -172,8 +254,35 @@ export function simulateSharedAccount(trades, {
       if (maxOpenRiskPct > 0 && openRiskPct() + (basis > 0 ? (dollarRisk / basis) * 100 : 0) > maxOpenRiskPct + 1e-9) {
         skippedConcurrency++; continue;
       }
-      open.set(ev.t, { dirKey, dollarRisk });
+      const notional = notionalFor(ev.t, dollarRisk);
+      const margin = notional / leverage;
+      if (maxMarginUsePct > 0 && basis > 0 && ((openMarginTotal + margin) / basis) * 100 > maxMarginUsePct + 1e-9) {
+        skippedMargin++; continue;
+      }
+      // Currency-correlation cap: reject only if THIS trade's own factor(s)
+      // would breach the limit -- an offsetting trade (opposite sign on that
+      // factor, e.g. long EURUSD after already being short EURGBP) is free
+      // to add even while the account is heavily exposed elsewhere; a
+      // same-sign stack (5 different EUR-long crosses) is what this targets.
+      // Tracked in MARGIN-equivalent terms (notional/leverage), the SAME
+      // units as maxMarginUsePct above -- raw notional is always several
+      // multiples of equity under any real leverage, so comparing it
+      // directly against a 30%-of-equity cap would reject nearly every
+      // single trade outright (confirmed live: first draft did exactly
+      // this, 11,685 of 12,488 trades rejected on their very first check).
+      const factors = factorsFor(ev.t);
+      if (maxNetExposurePct > 0 && basis > 0 && factors.some(f => {
+        const sign = f.weight >= 0 ? 1 : -1;
+        const current = netExposure.get(f.factor) ?? 0;
+        return Math.abs(current + sign * margin) / basis * 100 > maxNetExposurePct + 1e-9;
+      })) {
+        skippedExposure++; continue;
+      }
+      open.set(ev.t, { dirKey, dollarRisk, margin, notional, factors });
       openDirKeys.add(dirKey);
+      openMarginTotal += margin;
+      if (openMarginTotal > maxMarginUsedSeen) maxMarginUsedSeen = openMarginTotal;
+      for (const f of factors) netExposure.set(f.factor, (netExposure.get(f.factor) ?? 0) + (f.weight >= 0 ? 1 : -1) * margin);
       taken++;
       if (open.size > maxConcurrentOpen) maxConcurrentOpen = open.size;
     } else {
@@ -181,6 +290,8 @@ export function simulateSharedAccount(trades, {
       if (!reserved) continue; // never actually opened (rejected above)
       open.delete(ev.t);
       openDirKeys.delete(reserved.dirKey);
+      openMarginTotal -= reserved.margin;
+      for (const f of reserved.factors) netExposure.set(f.factor, (netExposure.get(f.factor) ?? 0) - (f.weight >= 0 ? 1 : -1) * reserved.margin);
       const pnl = reserved.dollarRisk * ev.t.rMultiple;
       balance += pnl;
       closedPnls.push({ time: ev.time, pnl, pnlPct: (pnl / (balance - pnl)) * 100 });
@@ -205,7 +316,7 @@ export function simulateSharedAccount(trades, {
     totalReturnPct: +(((balance - startingCapital) / startingCapital) * 100).toFixed(2),
     maxDDPct: +maxDD.toFixed(2),
     tradesOffered: withDir.length, tradesTaken: taken,
-    skippedConcurrency, skippedHedge,
+    skippedConcurrency, skippedHedge, skippedMargin, skippedExposure,
     winRate: closedPnls.length ? +((wins.length / closedPnls.length) * 100).toFixed(1) : 0,
     profitFactor: grossLoss > 1e-9 ? +(grossWin / grossLoss).toFixed(3) : (grossWin > 0 ? Infinity : 0),
     // Real, annualized off actual trade FREQUENCY (not calendar days) --
@@ -215,6 +326,9 @@ export function simulateSharedAccount(trades, {
     tradesPerYr: +tradesPerYr.toFixed(1),
     equityCurve,
     maxConcurrentOpenSeen: maxConcurrentOpen,
+    leverage, maxMarginUsePct,
+    maxMarginUsedPctSeen: startingCapital > 0 ? +((maxMarginUsedSeen / startingCapital) * 100).toFixed(1) : 0,
+    maxNetExposurePct,
   };
 }
 
@@ -292,6 +406,7 @@ export async function buildFibAtlasVotePortfolio({
   // "what would ONE real account, with real concurrency limits, actually
   // have done," not a replacement for the existing stats.
   startingCapital = 100000, realAccountRiskPct = 0.5, maxOpen = 20, maxOpenRiskPct = 0,
+  leverage = 30, maxMarginUsePct = 50, maxNetExposurePct = 30,
   loadPairVoteTrades,
 }) {
   // Each iteration is one "constituent" of the combined portfolio — normally
@@ -488,7 +603,7 @@ export async function buildFibAtlasVotePortfolio({
     // other stat on this page is built from (post margin/cost/gap/clearance/
     // concurrency-cap/stop-tightening filters), so it's an honest alternate
     // view of the identical population, not a different backtest.
-    realAccountSim: simulateSharedAccount(trades, { startingCapital, riskPct: realAccountRiskPct, maxOpen, maxOpenRiskPct }),
+    realAccountSim: simulateSharedAccount(trades, { startingCapital, riskPct: realAccountRiskPct, maxOpen, maxOpenRiskPct, leverage, maxMarginUsePct, maxNetExposurePct }),
   };
 }
 
