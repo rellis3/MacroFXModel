@@ -24,7 +24,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { asiaFibAtlasWalk, asiaFibAtlasLiveLadder } from './asiaFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, renderAsiaFibBookText, DIMENSIONS } from './asiaFibAtlasReport.js';
-import { matchLiveContext } from './levelAtlasReport.js';
+import { matchLiveContext, splitAt } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision, applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyGapFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import {
@@ -171,6 +171,23 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const book = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
   if (!book) throw new Error(`${sym}: too few touches to build a book`);
 
+  // HONEST book (2026-09-26 fix, porting Vote Atlas's own 2026-09-11 fix --
+  // see js/asiaFibAtlasVoteReview.js's buildBarrierTrades `oosStartDate` doc
+  // for the full account): `book` above is built from ALL touches, which is
+  // correct for the LIVE bot (zonesFromLiveAndBook below, and every route
+  // that persists/reads this same `book` for today's plan) since by trade
+  // time everything in it is genuinely past data -- but wrong for SCORING
+  // OOS performance, since its own splitDate/holdsOOS gate was allowed to
+  // see the exact period this backtest then reports on. Build a SEPARATE
+  // book from in-sample touches only, and score the REAL OOS window (this
+  // pair's actual splitDate, not the honest book's own earlier inner split)
+  // against it -- used ONLY by the runBarrierWalkForward calls below, never
+  // in place of `book` itself.
+  const atRearmForSplit = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+  const { split: realSplit } = splitAt(atRearmForSplit);
+  const isOnly = atRearmForSplit.filter(t => t.date < realSplit);
+  const honestBook = buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) ?? book;
+
   // "Let-ride" extended-resolution walk (2026-08-31) — direct owner request
   // after asking what happens to touches unresolved by midnight (currently
   // DROPPED entirely, never counted win or loss — js/asiaFibAtlasVoteReview.js's
@@ -192,6 +209,14 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     extendResolutionDays: EXTEND_RESOLUTION_DAYS, nextSessionBuildHrs: NEXT_SESSION_BUILD_HRS,
   });
   const extBook = buildAsiaFibAtlasBook(extTouches, { rearmFrac: DEFAULT_REARM });
+  // Same honest-book substitution as above, for the extended-resolution
+  // pool -- it has its own touch population (extension can resolve a touch
+  // that the baseline walk left 'neither'), so its own honest split/book
+  // must be built separately, not reused from the baseline's.
+  const extAtRearmForSplit = extTouches.filter(t => t.rearmFrac === DEFAULT_REARM);
+  const { split: extRealSplit } = splitAt(extAtRearmForSplit);
+  const extIsOnly = extAtRearmForSplit.filter(t => t.date < extRealSplit);
+  const extHonestBook = buildAsiaFibAtlasBook(extIsOnly, { rearmFrac: DEFAULT_REARM }) ?? extBook;
 
   // Vote-margin trade list (2026-08-27) — the fade/follow-decided,
   // barrier-priced backtest for the trade-review page (asia-fib-atlas-vote-
@@ -203,8 +228,8 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   let voteSummaryByMargin = null;
   try {
     const cost = costForPair(pair, assetClass);
-    const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
-    const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+    const wf1 = runBarrierWalkForward(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1, oosStartDate: realSplit });
+    const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2, oosStartDate: realSplit })?.overall ?? null };
     voteSummaryByMargin = summaryByMargin;
     // Trailing/continuation exit (2026-08-30, validated for follow, then
     // extended to fade the same day — see LEGO_MODULES.md's
@@ -241,8 +266,8 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
     // changes WHICH touches exist, not just how an existing one exits.
     let extSummaryByMargin = null, extTradesOut = null;
     try {
-      const extWf1 = runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
-      extSummaryByMargin = { 1: extWf1?.overall ?? null, 2: runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+      const extWf1 = runBarrierWalkForward(extTouches, extHonestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1, oosStartDate: extRealSplit });
+      extSummaryByMargin = { 1: extWf1?.overall ?? null, 2: runBarrierWalkForward(extTouches, extHonestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2, oosStartDate: extRealSplit })?.overall ?? null };
       const extTrailed = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
       const extChand = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'], trailMode: 'chandelier', chandelierMult: ASIA_CHANDELIER_MULT, chandelierPeriod: CHANDELIER_PERIOD });
       extTradesOut = extTrailed.map((t, i) => ({
@@ -258,7 +283,7 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
       await putJSON(voteKey, {
         instrument: sym, generatedAt: new Date().toISOString(), dataAsOf,
         gapFillIncomplete: gapFillChunkFailures > 0, gapFillChunkFailures,
-        cost, splitDate: book.splitDate,
+        cost, splitDate: realSplit,
         trades: trailedTrades,   // margin>=1 superset — the page filters down to margin=2 client-side
         summaryByMargin,
         // "Let-ride" extended-resolution variant (2026-08-31, see the walk

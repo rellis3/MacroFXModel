@@ -10,7 +10,7 @@
 import { loadM1ForPair } from './volBacktestM1Engine.js';
 import { mondayFibAtlasWalk, mondayFibAtlasLiveLadder } from './mondayFibAtlasEngine.js';
 import { buildAsiaFibAtlasBook, DIMENSIONS } from './asiaFibAtlasReport.js';
-import { matchLiveContext } from './levelAtlasReport.js';
+import { matchLiveContext, splitAt } from './levelAtlasReport.js';
 import { runBarrierWalkForward, voteDecision, applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
 import { loadVoteTrades, mergeIntoFibAtlasPlan } from './asiaFibAtlasRoutes.js';
 import { applyFadeStopFraction, applyCostEfficiencyFilter, applyGapFilter, applyTrailingContinuation, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
@@ -114,6 +114,16 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const book = buildAsiaFibAtlasBook(touches, { rearmFrac: DEFAULT_REARM });
   if (!book) throw new Error(`${sym}: too few touches to build a book`);
 
+  // HONEST book (2026-09-26 fix) -- Monday's own sibling of Asia's identical
+  // fix (asiaFibAtlasRoutes.js's runOne, see its comment for the full
+  // writeup). `book` above stays as-is for the live bot (zonesFromLiveAndBook
+  // below and every route reading this persisted book for today's plan) --
+  // only the runBarrierWalkForward calls below use `honestBook`.
+  const atRearmForSplit = touches.filter(t => t.rearmFrac === DEFAULT_REARM);
+  const { split: realSplit } = splitAt(atRearmForSplit);
+  const isOnly = atRearmForSplit.filter(t => t.date < realSplit);
+  const honestBook = buildAsiaFibAtlasBook(isOnly, { rearmFrac: DEFAULT_REARM }) ?? book;
+
   // "Let-ride" extended-resolution walk (2026-08-31) — Monday's own sibling
   // of Asia's (js/asiaFibAtlasRoutes.js's runOne, see its own comment for
   // the full mechanism/reasoning): even Monday's existing ~8-day window
@@ -128,10 +138,14 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const EXTEND_RESOLUTION_DAYS = 21;
   const { touches: extTouches } = mondayFibAtlasWalk(packed, { instrument: sym, assetClass, rearmFracs: [DEFAULT_REARM], extendResolutionDays: EXTEND_RESOLUTION_DAYS });
   const extBook = buildAsiaFibAtlasBook(extTouches, { rearmFrac: DEFAULT_REARM });
+  const extAtRearmForSplit = extTouches.filter(t => t.rearmFrac === DEFAULT_REARM);
+  const { split: extRealSplit } = splitAt(extAtRearmForSplit);
+  const extIsOnly = extAtRearmForSplit.filter(t => t.date < extRealSplit);
+  const extHonestBook = buildAsiaFibAtlasBook(extIsOnly, { rearmFrac: DEFAULT_REARM }) ?? extBook;
 
   const cost = costForPair(pair, assetClass);
-  const wf1 = runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
-  const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, book, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+  const wf1 = runBarrierWalkForward(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1, oosStartDate: realSplit });
+  const summaryByMargin = { 1: wf1?.overall ?? null, 2: runBarrierWalkForward(touches, honestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2, oosStartDate: realSplit })?.overall ?? null };
 
   // Trailing/continuation exit (2026-08-30; genuinely LADDER=monday
   // validated the same day, after an earlier version of this comment
@@ -162,8 +176,8 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   // Asia's own runOne.
   let extSummaryByMargin = null, extTradesOut = null;
   try {
-    const extWf1 = runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1 });
-    extSummaryByMargin = { 1: extWf1?.overall ?? null, 2: runBarrierWalkForward(extTouches, extBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2 })?.overall ?? null };
+    const extWf1 = runBarrierWalkForward(extTouches, extHonestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 1, oosStartDate: extRealSplit });
+    extSummaryByMargin = { 1: extWf1?.overall ?? null, 2: runBarrierWalkForward(extTouches, extHonestBook, { rearmFrac: DEFAULT_REARM, cost, minMargin: 2, oosStartDate: extRealSplit })?.overall ?? null };
     const extTrailed = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'] });
     const extChand = applyTrailingContinuation(extWf1?.trades ?? [], packed, { cost, decisions: ['fade', 'follow'], trailMode: 'chandelier', chandelierMult: MONDAY_CHANDELIER_MULT, chandelierPeriod: CHANDELIER_PERIOD });
     extTradesOut = extTrailed.map((t, i) => ({
@@ -177,7 +191,7 @@ export async function runOne(instrument, { onLog = () => {} } = {}) {
   const voteResult = {
     instrument: sym, assetClass, coverage, generatedAt: new Date().toISOString(), dataAsOf,
     gapFillIncomplete: gapFillChunkFailures > 0, gapFillChunkFailures,
-    cost, splitDate: book.splitDate,
+    cost, splitDate: realSplit,
     trades: trailedTrades,
     summaryByMargin,
     extTrades: extTradesOut, extSummaryByMargin, extendResolutionDays: EXTEND_RESOLUTION_DAYS,

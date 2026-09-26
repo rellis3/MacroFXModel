@@ -156,11 +156,32 @@ function cachedVote(book, t, voteCache) {
  *   buildBarrierTrades(touches, book, opts) -> [{ instrument, date, time, resolveTime,
  *     realResolveTime, side, rung, entry, pip, decision, margin, targetPips, stopPips, win, pnlPct }]
  */
-export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, minMargin = 1, confluenceOnly = false, confluencePipMax = 2, voteCache = null } = {}) {
+export function buildBarrierTrades(touches, book, { rearmFrac = 0.3, cost = 0, minMargin = 1, confluenceOnly = false, confluencePipMax = 2, voteCache = null, oosStartDate = null } = {}) {
   if (!book) return null;
-  // outcome:'neither' KEPT, not filtered out — 2026-09-11 fix (see
+  // outcome:'neither' KEPT, not filtered out — 2026-09-09 fix (see
   // priceBarrierTrade's own header above for the full reasoning).
-  let oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= book.splitDate);
+  //
+  // `oosStartDate` (2026-09-26, porting Vote Atlas's own 2026-09-11 fix --
+  // js/levelAtlasVoteReview.js's identical option): `book` here was, until
+  // now, ALWAYS built from the full touches pool (every caller in
+  // asiaFibAtlasRoutes.js/mondayFibAtlasRoutes.js) -- meaning annotateHolds'
+  // holdsOOS gate (which dimension-bucket combos "count" toward a vote)
+  // checked whether a finding held in the SAME oos half of the pool that
+  // then got scored as this backtest's trade list. Features selected because
+  // they worked in the test period, then graded on that test period --
+  // confirmed live 2026-09-26 (analysis/fib_atlas_lookahead_bias_check.mjs)
+  // this is the identical mechanism Vote Atlas's own leak was, at ~73% of its
+  // margin>=3 edge. The fix isn't changing how a book is built (legitimate
+  // for the LIVE bot, which only ever sees genuinely past data) -- it's that
+  // a BACKTEST must never score a period its own book was allowed to see.
+  // `oosStartDate` lets a caller pass an HONEST book (built from in-sample
+  // touches only, so its own `splitDate` is an earlier, inner split) while
+  // still scoring the REAL out-of-sample window, instead of the book's own
+  // (wrong, too-early) splitDate silently narrowing what counts as "OOS".
+  // Defaults to `book.splitDate` -- unchanged behavior for any caller that
+  // doesn't pass it (there should be none left after this fix lands).
+  const splitDate = oosStartDate ?? book.splitDate;
+  let oos = touches.filter(t => t.rearmFrac === rearmFrac && t.date >= splitDate);
   if (confluenceOnly) oos = oos.filter(t => t.asiaConfPips != null && t.asiaConfPips <= confluencePipMax);
 
   const trades = [];
