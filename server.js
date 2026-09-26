@@ -18950,6 +18950,13 @@ async function _computeDailyReconciliation(date) {
               ladders: Object.entries(cfg?.ladders || { asia: true, monday: true }).filter(([, on]) => on).map(([k]) => k),
               maxConcurrent: cfg?.max_concurrent_per_pair ?? 1,
               gapFilterOn: cfg?.gap_filter || { asia: true, monday: true },
+              // cfg.min_margin is a single scalar (bot-config.html's Min
+              // Margin field, same value both ladders read) -- fall back to
+              // the zone pricer's own FIB_ATLAS_MIN_MARGIN default (2) when
+              // unset, same semantics as _refreshFibAtlasPlan's own
+              // minMarginOverride so this stays correct if the field is ever
+              // actually saved to something other than the current default.
+              ...(cfg?.min_margin != null ? { minMargin: { asia: Number(cfg.min_margin), monday: Number(cfg.min_margin) } } : {}),
             })
           : await _countVoteAtlasCandidates(enabledPairs, date, {
               minMargin: 3,
@@ -18979,7 +18986,7 @@ async function _computeDailyReconciliation(date) {
     try {
       if (engine === 'fibAtlas') {
         const normalized = _normalizeTradeHistoryForFibAtlasAudit(raw, tag);
-        report = await _auditFibAtlasDrift(normalized);
+        report = await _auditFibAtlasDrift(normalized, cfg?.min_margin != null ? { minMargin: Number(cfg.min_margin) } : {});
       } else {
         const normalized = _normalizeTradeHistoryForVoteAtlasAudit(raw, tag);
         report = await _auditVoteAtlasDrift(normalized);

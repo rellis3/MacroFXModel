@@ -1376,7 +1376,23 @@ function renderSys(C, G) {
 // selector (that's for trade P&L history; this is a fixed-length trend so a
 // slipping match-rate is visible without having to go looking for it).
 const REC_BOT_KEY = { vote_atlas_v2: 'volatility_bot_v2_status', vote_atlas_v3: 'volatility_bot_v3_status', fib_atlas: 'fib_atlas_bot_status', fib_atlas_v2: 'fib_atlas_bot_v2_status', motif_touch: 'motif_bot_status' };
-const REC_UNVERIFIED = new Set(['fib_atlas', 'fib_atlas_v2']); // 2026-09-25: audit logic built, numbers not yet cross-checked against a known-good reference the way Vote Atlas/Motif were -- flagged, not hidden, until confirmed
+// 2026-09-26: cross-checked by hand against 2026-09-24/25's real stored
+// data (analysis/_scratch_verify_fa_recon.mjs, analysis/_scratch_verify_
+// audjpy_manual.mjs, not committed -- scratch only) -- manually re-derived
+// audjpy/asia's candidate count from the raw votetrades.json through each
+// filter stage (margin>=2 -> cost-efficiency -> gap -> concurrency cap) and
+// got the same 6 the endpoint reports; confirmed a real trade's matched
+// candidate is genuinely inside that kept set; confirmed the fibBetDirection
+// sign logic against a KNOWN pre-fix trade (2026-09-24, before the a6b0305
+// fade-direction fix landed 2026-09-26) correctly flags it as a direction
+// mismatch, and a post-fix trade correctly matches. Also surfaced a real,
+// still-open finding worth tracking: 4 live trades on 2026-09-24 (audnzd/
+// monday, usdchf/asia) executed against what the backtest reconstructs as
+// margin 1.00, below the pricer's own minMargin=2 default -- mechanism not
+// yet identified (possibly the same hairline-clearance/timing-drift class as
+// project_fib_atlas_live_backtest_gaps.md's other 3 causes), not something
+// this cross-check itself is wrong about. Un-flagging on that basis.
+const REC_UNVERIFIED = new Set([]);
 let REC_DATA = null, REC_LOADING = false, REC_DAYS = 30;
 
 async function loadRecData(days = REC_DAYS) {
@@ -1432,7 +1448,7 @@ function renderRec() {
     return `<td class="${cls}" title="${matches}/${checked} checked">${rate.toFixed(0)}%</td>`;
   };
 
-  el.innerHTML = `<div class="note">Per-day, per-bot: does the live decision (fade/follow), the live win/loss, and the live $ P&amp;L match what the honest as-of-that-day backtest says they should have been — AND, separately, how many zones the backtest found across the bot's own full pair universe that day vs how many it actually traded. A bot that matches 100% on the trades it took but traded far fewer than "Backtest candidates" is silently skipping real signals — that gap is the number to watch, not just the match rate. Computed automatically once a day (06:30 London) for the PREVIOUS day. <b>Fib Atlas / Fib Atlas v2 are flagged unverified</b> — the audit logic is built but its numbers haven't been cross-checked against a known-good reference yet, unlike Vote Atlas and Motif Touch.</div>
+  el.innerHTML = `<div class="note">Per-day, per-bot: does the live decision (fade/follow), the live win/loss, and the live $ P&amp;L match what the honest as-of-that-day backtest says they should have been — AND, separately, how many zones the backtest found across the bot's own full pair universe that day vs how many it actually traded. A bot that matches 100% on the trades it took but traded far fewer than "Backtest candidates" is silently skipping real signals — that gap is the number to watch, not just the match rate. Computed automatically once a day (06:30 London) for the PREVIOUS day.</div>
   <div class="panel"><div class="ph"><span class="badge">REC</span>Daily reconciliation<span class="rt">${rows.length} bot-days · ${daysBtns}</span></div>
   <div class="scroll"><table><thead><tr>
     <th class="l">Date</th><th class="l">Bot</th>
