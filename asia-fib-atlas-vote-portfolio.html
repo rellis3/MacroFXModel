@@ -170,6 +170,12 @@
   </div>
 </div>
 
+<div class="card callout" id="realAccountCard" style="border-color:#3a5a8a;background:linear-gradient(135deg,#131f2e,#0e121b)">
+  <h2 style="color:#7dd3fc">Real account simulation — one shared balance, real concurrency (2026-09-26)</h2>
+  <div class="muted" style="margin-bottom:10px">Every other number on this page (above and below) sizes each pair as if it had its OWN slice of pre-split capital, or lets every pair fire independently with no shared limit — neither is what the live bot actually does. This simulates ONE account: every pair's trades merged into a single chronological timeline, one real balance, and a signal genuinely SKIPPED if the account is already at its concurrency limit (same hedge-only rule — max 1 position per pair+ladder+direction — <code>fib_atlas_bot</code>'s own <code>occupied_directions()</code> enforces live). Position size is a fixed % of the STARTING balance, not the growing one — compounding a persistent edge across thousands of trades mechanically explodes into meaningless numbers, the same trap this page's own CAGR card already warns about.</div>
+  <div class="kpi-grid" id="kpiRealAccount"></div>
+</div>
+
 <div class="card callout" id="heatCapCard" style="display:none">
   <h2>Portfolio heat cap impact — same trades, with vs without the cross-pair budget</h2>
   <div class="muted" style="margin-bottom:8px">Each pair already caps ITS OWN concurrent positions; this catches what that leaves open — several different pairs firing at once, each independently risking the same %, silently stacking simultaneous exposure. Real before/after, not an assumption.</div>
@@ -1166,6 +1172,23 @@ function render(j) {
   const s = j.stats;
   document.getElementById('naiveSharpe').textContent = fmt2(j.naiveAvgSharpe);
   document.getElementById('combinedSharpe').textContent = fmt2(s.sharpe);
+
+  const ra = j.realAccountSim;
+  const raEl = document.getElementById('kpiRealAccount');
+  if (ra) {
+    raEl.innerHTML = [
+      kpiCard('Starting capital', '$' + ra.startingCapital.toLocaleString(), '', ''),
+      kpiCard('Final balance', '$' + ra.finalBalance.toLocaleString(), ra.finalBalance >= ra.startingCapital ? 'green' : 'red', `${ra.totalReturnPct >= 0 ? '+' : ''}${fmt1(ra.totalReturnPct)}% (fixed-risk, non-reinvested)`),
+      kpiCard('Max drawdown', fmt1(ra.maxDDPct) + '%', 'red', 'on the real, single equity curve'),
+      kpiCard('Sharpe', fmt2(ra.sharpe), ra.sharpe >= 2 ? 'green' : ra.sharpe >= 1 ? 'blue' : 'amber', `annualized off real trade frequency (${fmt1(ra.tradesPerYr)}/yr)`),
+      kpiCard('Profit factor', fmt2(ra.profitFactor), ra.profitFactor >= 1.5 ? 'green' : ra.profitFactor >= 1 ? 'blue' : 'red', 'real $ wins ÷ real $ losses, individual trades'),
+      kpiCard('Win rate', fmt1(ra.winRate) + '%', '', 'individual trades, not daily-pooled'),
+      kpiCard('Trades taken', `${ra.tradesTaken} / ${ra.tradesOffered}`, '', `${ra.skippedHedge} skipped (hedge-only cap already occupied), ${ra.skippedConcurrency} skipped (account at concurrency limit)`),
+      kpiCard('Max concurrent open', ra.maxConcurrentOpenSeen, '', 'actual peak simultaneous positions this run ever held'),
+    ].join('');
+  } else {
+    raEl.innerHTML = '<div class="muted">not enough resolved trades to simulate</div>';
+  }
 
   const heatCard = document.getElementById('heatCapCard');
   if (j.heatCap && j.statsUncapped) {
