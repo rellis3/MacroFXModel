@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading the Tape</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<style>
+  /* Practice-specific. Everything else comes from theory.css so this page does not
+     become a second design system. */
+  .mr-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0 6px}
+  .mr-bar-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:4px}
+  .mr-chip{background:var(--s1);border:1px solid var(--border);color:var(--text2);border-radius:999px;
+           padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.12s}
+  .mr-chip:hover{border-color:var(--blue);color:var(--text)}
+  .mr-chip.on{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--text)}
+  .mr-chip .mr-acc{font-family:'DM Mono',monospace;font-size:10.5px;opacity:.75;margin-left:5px}
+
+  .mr-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin-top:10px}
+  .mr-when{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+  .mr-date{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text3);
+           background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:3px 8px}
+  .mr-tag{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+          color:var(--blue);background:var(--blue-bg);border:1px solid var(--blue-bd);border-radius:5px;padding:3px 8px}
+  .mr-stem{font-size:16.5px;line-height:1.5;color:var(--text);font-weight:500}
+  .mr-ask{font-size:14px;line-height:1.5;color:var(--text2);margin-top:8px;font-weight:600}
+  .mr-opts{display:flex;flex-direction:column;gap:7px;margin-top:14px}
+  .mr-opt{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;
+          background:var(--s2);border:1px solid var(--border);border-radius:var(--r);color:var(--text);
+          padding:11px 13px;font-size:13.5px;line-height:1.45;cursor:pointer;font-family:inherit;transition:.12s}
+  .mr-opt:hover:not(:disabled){border-color:var(--blue);background:var(--s3)}
+  .mr-opt:disabled{cursor:default}
+  .mr-opt-k{flex:0 0 auto;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;color:var(--text3);
+            border:1px solid var(--border2);border-radius:4px;padding:1px 6px;margin-top:1px}
+  .mr-opt.right{border-color:var(--green-bd);background:var(--green-bg)}
+  .mr-opt.right .mr-opt-k{color:var(--green);border-color:var(--green-bd)}
+  .mr-opt.wrong{border-color:var(--red-bd);background:var(--red-bg)}
+  .mr-opt.wrong .mr-opt-k{color:var(--red);border-color:var(--red-bd)}
+  .mr-opt.dim{opacity:.5}
+
+  .mr-rev{margin-top:14px;border-left:3px solid var(--border2);padding:2px 0 2px 13px}
+  .mr-rev.ok{border-left-color:var(--green)} .mr-rev.no{border-left-color:var(--red)}
+  .mr-verdict{font-size:13px;font-weight:700;margin-bottom:5px}
+  .mr-rev.ok .mr-verdict{color:var(--green)} .mr-rev.no .mr-verdict{color:var(--red)}
+  .mr-p{font-size:13px;line-height:1.65;color:var(--text2);margin:0 0 7px}
+  .mr-pr{font-size:13px;line-height:1.6;color:var(--text);background:var(--s2);border:1px solid var(--border);
+         border-radius:var(--r);padding:9px 12px;margin-top:9px}
+  .mr-pr b{color:var(--amber);font-weight:700}
+
+  /* The background derivation — the reason this page is worth having over a flashcard app.
+     Readable BEFORE you answer, because not knowing the mechanism is the actual problem. */
+  .mr-teach{background:none;border:1px dashed var(--border2);color:var(--text2);border-radius:var(--r);
+            padding:7px 13px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:12px}
+  .mr-teach:hover{border-color:var(--blue);color:var(--blue)}
+  .mr-mech{background:var(--s2);border:1px solid var(--border);border-radius:var(--rl);padding:15px 17px;margin-top:12px}
+  .mr-mq{font-size:14px;font-weight:700;color:var(--text);margin-bottom:9px}
+  .mr-steps{margin:0 0 11px;padding-left:22px}
+  .mr-steps li{font-size:13px;line-height:1.7;color:var(--text2);margin-bottom:7px}
+  .mr-steps li::marker{color:var(--blue);font-weight:700}
+  .mr-see,.mr-tested{font-size:12.5px;line-height:1.6;color:var(--text2);background:var(--s1);
+                     border-radius:var(--r);padding:9px 12px;margin-top:7px}
+  .mr-see>span,.mr-tested>span{display:block;font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;
+                               font-weight:800;color:var(--text3);margin-bottom:3px}
+  .mr-tested{border-left:3px solid var(--amber)}
+  .mr-tv{margin-top:9px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  .mr-sym{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;background:var(--s2);
+          border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:4px 8px;
+          cursor:pointer;transition:.12s}
+  .mr-sym:hover{border-color:var(--blue);color:var(--blue)}
+  .mr-sym.main{border-color:var(--blue-bd);color:var(--blue)}
+  .mr-sym.expr{border-style:dashed}
+  .mr-sym.inv{border-color:var(--amber-bd);color:var(--amber)}
+  .mr-sym.copied{border-color:var(--green-bd);color:var(--green)}
+  .mr-tvw{flex-basis:100%;font-size:11.5px;line-height:1.55;color:var(--amber);font-weight:600;margin-top:4px}
+  .mr-tvn{flex-basis:100%;font-size:11.5px;line-height:1.6;color:var(--text2);margin-top:4px}
+
+  .mr-foot{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:16px}
+  .mr-next{background:var(--blue);border:1px solid var(--blue2);color:#fff;border-radius:var(--r);
+           padding:10px 20px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .mr-next:hover{background:var(--blue2)}
+  .mr-kbd{font-size:11.5px;color:var(--text3)}
+  .mr-kbd kbd{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(--border2);
+              border-radius:4px;padding:1px 5px;font-size:10.5px;color:var(--text2)}
+
+  .mr-score{display:flex;flex-wrap:wrap;gap:16px;align-items:baseline;background:var(--s1);
+            border:1px solid var(--border);border-radius:var(--rl);padding:12px 16px;margin-top:14px}
+  .mr-sc{display:flex;flex-direction:column;gap:1px}
+  .mr-sc-n{font-family:'DM Mono',monospace;font-size:19px;font-weight:500;color:var(--text);font-variant-numeric:tabular-nums}
+  .mr-sc-l{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;color:var(--text3)}
+  .mr-sc.weak .mr-sc-n{font-size:13px;color:var(--amber);font-family:inherit;font-weight:600}
+  .mr-reset{margin-left:auto;background:none;border:1px solid var(--border);color:var(--text3);
+            border-radius:var(--r);padding:6px 12px;font-size:11.5px;cursor:pointer;font-family:inherit}
+  .mr-reset:hover{border-color:var(--red-bd);color:var(--red)}
+  .mr-note{font-size:12px;line-height:1.6;color:var(--text3);margin-top:12px}
+  @media (max-width:560px){
+    .mr-card{padding:15px 15px} .mr-stem{font-size:15px}
+    .mr-score{gap:12px} .mr-reset{margin-left:0;flex-basis:100%}
+  }
+</style>
+</head>
+<body>
+<div id="page">
+
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · Reading the Tape</div>
+
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Practice · Retrieval</div>
+    <h1>Reading the Tape</h1>
+    <p>Seven readings, asked over and over from six years of this desk's own board. Every question is a real day: real yields, real gold, real spreads. You commit to an answer before anything is revealed, and if you don't know <em>why</em> the relationship holds, the derivation is one click away — before you answer, not just after.</p>
+    <div class="tl-callout">
+      <strong>Not one of these questions asks which way price went.</strong> That would be training you to see signal in noise, which is the one thing this desk exists to avoid. Every answer follows from the numbers on the card: which leg of a yield move did it, which gold was trading, what the bond market concluded about an oil move, which link broke. Structure and mechanism, never direction.
+    </div>
+    <p class="mr-note">This is separate from the one-a-day reading on <a href="../today.html">today.html</a>, and deliberately so. That one is spaced repetition — it asks when you're about to forget, which is what makes getting it right mean something. Practising here never touches that schedule.</p>
+  </div>
+
+  <div id="mr-modes" class="mr-bar"></div>
+  <div id="mr-body"></div>
+  <div id="mr-score"></div>
+
+</div>
+
+<script type="module">
+import * as Drill from '../js/marketDrill.js';
+import * as P from '../js/drillPractice.js';
+import { CONCEPTS } from '../js/learnState.js';
+import { mechanismFor } from '../js/mechanisms.js';
+
+const IDS = Drill.GENERATORS.map(g => g.id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+
+let BUNDLE = null, SESSION = load(), FOCUS = null, Q = null, PICK = null, TEACH = false, EXHAUSTED = null;
+
+function load() {
+  try { const r = JSON.parse(localStorage.getItem(P.PRACTICE_KEY) || 'null'); if (r && Array.isArray(r.history)) return r; }
+  catch { /* a corrupt or blocked store starts clean rather than throwing */ }
+  return P.blankSession(Date.now());
+}
+function save() { try { localStorage.setItem(P.PRACTICE_KEY, JSON.stringify(SESSION)); } catch { /* private window */ } }
+
+async function boot() {
+  $('mr-body').innerHTML = `<div class="mr-card"><div class="mr-p">Loading six years of board history…</div></div>`;
+  try {
+    const r = await fetch('/api/drill-series');
+    const j = await r.json();
+    if (!j?.ok || !j.dates?.length) throw new Error(j?.error || 'the bundle is empty');
+    BUNDLE = j;
+  } catch (e) {
+    // Say what failed. A blank card teaches nothing and looks like a bug in the questions.
+    $('mr-body').innerHTML = `<div class="mr-card"><div class="mr-verdict" style="color:var(--red)">Could not load the board history</div>
+      <div class="mr-p">${esc(e.message)}. The questions are built from real days, so there is nothing to ask without it. This page needs the MacroFX server — opening the file directly will not work.</div></div>`;
+    return;
+  }
+  nextQ();
+}
+
+function nextQ() {
+  PICK = null; TEACH = false; EXHAUSTED = null;
+  const r = P.nextQuestion(BUNDLE, SESSION, { build: Drill.buildQuestion, concept: FOCUS, concepts: IDS });
+  SESSION = r.session; Q = r.q; EXHAUSTED = r.q ? null : (r.exhausted ?? 'all');
+  save(); render();
+}
+
+function pick(key) {
+  if (!Q || PICK) return;
+  PICK = key;
+  SESSION = P.fold(SESSION, Q, key, Date.now());
+  save(); render();
+}
+
+window.mrPick = pick;
+window.mrNext = () => nextQ();
+window.mrTeach = () => { TEACH = !TEACH; render(); };
+window.mrFocus = id => { FOCUS = FOCUS === id ? null : (id || null); nextQ(); };
+window.mrReset = () => {
+  if (!confirm('Clear this practice record? The one-a-day reading on today.html is not affected.')) return;
+  SESSION = P.blankSession(Date.now()); FOCUS = null; save(); nextQ();
+};
+window.mrCopy = async btn => {
+  const sym = btn.dataset.sym || '';
+  try { await navigator.clipboard.writeText(sym); }
+  catch {
+    const t = document.createElement('textarea'); t.value = sym; t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove();
+  }
+  const was = btn.textContent; btn.textContent = 'copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = was; btn.classList.remove('copied'); }, 1100);
+};
+
+// Volume needs to be cheap: number keys answer, Enter or N moves on.
+addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea')) return;
+  if (!PICK && Q && /^[1-9]$/.test(e.key)) { const o = Q.options[+e.key - 1]; if (o) { e.preventDefault(); pick(o.key); } return; }
+  if ((PICK || EXHAUSTED) && (e.key === 'Enter' || e.key.toLowerCase() === 'n')) { e.preventDefault(); nextQ(); }
+  if (e.key === '?' || (e.key.toLowerCase() === 'b' && !PICK)) { e.preventDefault(); window.mrTeach(); }
+});
+
+function renderModes() {
+  const st = P.stats(SESSION);
+  const chip = (id, label) => {
+    const r = SESSION.byConcept?.[id];
+    const acc = r?.n ? `<span class="mr-acc">${r.right}/${r.n}</span>` : '';
+    return `<button class="mr-chip${FOCUS === id ? ' on' : ''}" onclick="mrFocus('${id}')"
+      title="${esc(CONCEPTS[id]?.why ?? '')}">${esc(label)}${acc}</button>`;
+  };
+  $('mr-modes').innerHTML = `<span class="mr-bar-label">Ask me about</span>
+    <button class="mr-chip${!FOCUS ? ' on' : ''}" onclick="mrFocus(null)"
+      title="Rotates through all seven, least-seen first — raw random would serve the rates readings eight times as often as credit.">\u{1F500} Mixed${st.covered ? `<span class="mr-acc">${st.covered}/7</span>` : ''}</button>
+    ${IDS.map(id => chip(id, CONCEPTS[id]?.label ?? id)).join('')}`;
+}
+
+function renderMech(id) {
+  const M = mechanismFor(id);
+  if (!M) return '';
+  if (!TEACH) return `<button class="mr-teach" onclick="mrTeach()">\u{1F9E9} I don't know the background — show me why this works</button>`;
+  const tv = M.tv;
+  const inv = new Set(tv?.invert ?? []);
+  const flipped = sym => sym.split(/[-+*/]/).some(v => inv.has(v.trim()));
+  const sym = (s, cls) => {
+    const f = flipped(s);
+    return `<button class="mr-sym ${cls}${f ? ' inv' : ''}" data-sym="${esc(s)}" onclick="mrCopy(this)"
+      title="Copy${f ? ' — runs UPSIDE DOWN to the wording above' : ''}">${esc(s)}${f ? ' ⇵' : ''}</button>`;
+  };
+  const all = tv ? [tv.main, ...(tv.compare ?? []), ...(tv.expr && tv.expr !== tv.main ? [tv.expr] : [])] : [];
+  return `<div class="mr-mech">
+    <div class="mr-mq">${esc(M.question)}</div>
+    <ol class="mr-steps">${M.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    <div class="mr-see"><span>put this on a screen</span>${esc(M.see)}
+      ${tv ? `<div class="mr-tv">
+        ${sym(tv.main, 'main')}${(tv.compare ?? []).map(x => sym(x, '')).join('')}${tv.expr && tv.expr !== tv.main ? sym(tv.expr, 'expr') : ''}
+        <button class="mr-sym" data-sym="${esc(all.join(', '))}" onclick="mrCopy(this)" title="Copy all of them as one line">⧉ all</button>
+        ${inv.size ? `<div class="mr-tvw">⇵ ${inv.size === 1 ? 'One of these runs' : `${inv.size} of these run`} upside down to the steps above — read ${inv.size === 1 ? 'it' : 'them'} the other way round.</div>` : ''}
+        ${tv.note ? `<div class="mr-tvn">${esc(tv.note)}</div>` : ''}
+      </div>` : ''}</div>
+    <div class="mr-tested"><span>what this desk has measured</span>${esc(M.tested)}</div>
+    <button class="mr-teach" onclick="mrTeach()">hide — back to the question</button>
+  </div>`;
+}
+
+function render() {
+  renderModes();
+  renderScore();
+  const el = $('mr-body');
+
+  if (!Q) {
+    const name = EXHAUSTED && CONCEPTS[EXHAUSTED]?.label;
+    el.innerHTML = `<div class="mr-card">
+      <div class="mr-verdict">${name ? `No new ${esc(name)} question left` : 'Nothing new left to ask'}</div>
+      <div class="mr-p">${name
+        ? `You have seen every ${esc(name)} day this history can build. Switch to Mixed or another reading, or reset the record below to go round again.`
+        : `You have worked through everything the six-year board can build. Reset the record below to start over.`}</div>
+      <div class="mr-foot">${name ? `<button class="mr-next" onclick="mrFocus(null)">\u{1F500} Back to Mixed</button>` : ''}</div>
+    </div>`;
+    return;
+  }
+
+  const done = PICK != null;
+  const right = done && PICK === Q.answer;
+  const label = CONCEPTS[Q.gen]?.label ?? Q.gen;
+
+  el.innerHTML = `<div class="mr-card">
+    <div class="mr-when">
+      <span class="mr-tag">${esc(label)}</span>
+      <span class="mr-date">${esc(Q.date)}</span>
+      <span class="mr-date" title="A real day from this desk's own board — the same numbers the live page uses.">real day</span>
+    </div>
+    <div class="mr-stem">${esc(Q.stem)}</div>
+    <div class="mr-ask">${esc(Q.ask)}</div>
+    <div class="mr-opts">${Q.options.map((o, i) => {
+      let cls = '';
+      if (done) cls = o.key === Q.answer ? ' right' : (o.key === PICK ? ' wrong' : ' dim');
+      return `<button class="mr-opt${cls}" ${done ? 'disabled' : ''} onclick="mrPick('${esc(o.key)}')">
+        <span class="mr-opt-k">${i + 1}</span><span>${esc(o.label)}</span></button>`;
+    }).join('')}</div>
+
+    ${done ? `<div class="mr-rev ${right ? 'ok' : 'no'}">
+      <div class="mr-verdict">${right ? '✓ Right' : '✗ Not this time'}</div>
+      <p class="mr-p">${esc(Q.reveal)}</p>
+      <p class="mr-p">${esc(Q.why)}</p>
+      <div class="mr-pr"><b>The principle.</b> ${esc(Q.principle)}</div>
+    </div>` : ''}
+
+    ${renderMech(Q.gen)}
+
+    <div class="mr-foot">
+      ${done ? `<button class="mr-next" onclick="mrNext()">Next question →</button>` : ''}
+      <span class="mr-kbd">${done ? '<kbd>Enter</kbd> next' : `<kbd>1</kbd>–<kbd>${Q.options.length}</kbd> to answer`} · <kbd>b</kbd> background</span>
+    </div>
+  </div>`;
+}
+
+function renderScore() {
+  const st = P.stats(SESSION);
+  const cell = (n, l, cls = '') => `<div class="mr-sc ${cls}"><div class="mr-sc-n">${n}</div><div class="mr-sc-l">${l}</div></div>`;
+  $('mr-score').innerHTML = `<div class="mr-score">
+    ${cell(st.n, 'answered')}
+    ${cell(st.pct == null ? '—' : Math.round(st.pct * 100) + '%', 'correct')}
+    ${cell(st.streak, 'streak')}
+    ${cell(st.best, 'best run')}
+    ${cell(st.covered + '/7', 'readings seen')}
+    ${st.weakest ? cell(esc(CONCEPTS[st.weakest.concept]?.label ?? st.weakest.concept)
+        + ` (${st.weakest.right}/${st.weakest.n})`, 'weakest — comes back sooner', 'weak') : ''}
+    <button class="mr-reset" onclick="mrReset()">Reset record</button>
+  </div>
+  ${st.n >= 8 && st.pct != null && st.pct > 0.9 ? `<div class="mr-note">Getting nearly all of them right means the readings are becoming automatic — which is the whole point, and also the ceiling. None of this is a claim that it predicts anything; it makes the interpretation fast, nothing more.</div>` : ''}`;
+}
+
+boot();
+</script>
+</body>
+</html>
