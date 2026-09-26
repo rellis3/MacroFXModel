@@ -522,6 +522,24 @@ def run(base_url: str, force_live: bool) -> None:
                       f"those pairs will fail every live order until fixed in bot-config.html's Broker Symbols card.")
         else:
             log.info(f"symbol check OK — all {len(verify_pairs)} enabled pair(s) resolve to a real symbol on this account")
+        # Same startup discipline for the OTHER hardcoded assumption a bad
+        # broker override can get wrong -- see volatility_bot_v2.py's own
+        # comment on this same check for the full reasoning. This bot trades
+        # all 6 indices live too.
+        try:
+            pv_problems = broker.verify_point_values(verify_pairs)
+        except Exception as e:
+            pv_problems = []
+            log.warning(f"point-value verification failed to run: {e}")
+        if pv_problems:
+            for p in pv_problems:
+                log.error(f"POINT VALUE MISMATCH: {p['pair']} ({p['symbol']}) assumed ${p['assumed']}/pip/lot "
+                          f"but this account's real contract implies ${p['real']}/pip/lot "
+                          f"({p['ratio']}x off) — position sizing for this pair is wrong until fixed.")
+            log.error(f"{len(pv_problems)} pair(s) have a point-value assumption that doesn't match this "
+                      f"account's real contract spec — those pairs are sized wrong until fixed.")
+        else:
+            log.info(f"point-value check OK — all checkable pair(s) match this account's real contract spec")
 
     guard = RiskGuard(log=log)
     guard.sync_cfg(cfg)

@@ -181,6 +181,53 @@ class Mt5Broker:
             problems.append({'pair': pair, 'configured': configured, 'suggestions': suggestions[:5]})
         return problems
 
+    def verify_point_values(self, pairs: list[str], tolerance: float = 2.0) -> list[dict]:
+        """Cross-check pylego.point_values' assumed $-per-pip-per-lot against
+        THIS account's real contract spec (symbol_info's trade_tick_value /
+        trade_tick_size) -- same "verify before trusting a number that sizes
+        every live order" discipline as verify_symbols, for the OTHER
+        assumption a wrong broker override can silently get wrong. That
+        module's own docstring already says point value is "an
+        approximation" depending on the broker's contract size -- this is
+        what actually checks it instead of trusting it forever. Most
+        relevant for indices/gold, where a broker's own "1.0 lot" contract
+        size convention varies far more than FX's ~$10/pip. `tolerance` is a
+        ratio band (default 2x either way) wide enough to not flag normal
+        FX cross-rate drift (a non-USD-quoted pair's real $/pip moves with
+        that cross's own live rate) while still catching a genuinely wrong
+        order-of-magnitude assumption. Returns one dict per pair whose real
+        value falls outside the band; empty list means every pair checked
+        out (a pair with no live tick_value/tick_size data available is
+        skipped, not flagged -- same fail-quiet-not-fail-wrong stance as
+        verify_symbols on a lookup it can't perform)."""
+        if not self.available or not self.mt5:
+            return []
+        from pylego.instruments import pip_size
+        from pylego.point_values import point_value
+        problems = []
+        for pair in pairs:
+            try:
+                sym = self.resolve(pair)
+                info = self.mt5.symbol_info(sym)
+                if not info:
+                    continue
+                tick_value = float(getattr(info, 'trade_tick_value', 0) or 0)
+                tick_size = float(getattr(info, 'trade_tick_size', 0) or 0)
+                if tick_value <= 0 or tick_size <= 0:
+                    continue
+                pip = pip_size(pair)
+                real_per_pip_per_lot = tick_value * (pip / tick_size)
+                assumed = point_value(pair, default=None)
+                if not assumed or assumed <= 0:
+                    continue
+                ratio = real_per_pip_per_lot / assumed
+                if ratio < (1 / tolerance) or ratio > tolerance:
+                    problems.append({'pair': pair, 'symbol': sym, 'assumed': assumed,
+                                      'real': round(real_per_pip_per_lot, 4), 'ratio': round(ratio, 2)})
+            except Exception:
+                continue
+        return problems
+
     def server_offset_sec(self) -> int | None:
         """Seconds the broker's wall clock runs AHEAD of UTC — the amount every
         `time_open` / `time_close` this brick emits is shifted by. None when it
