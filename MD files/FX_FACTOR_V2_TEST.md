@@ -1,6 +1,6 @@
 # FX Factor Book v2 — Pre-registered test
 
-> **Status: RUN 2026-09-27 — factor book NULL (see §6); OU pending.** Frozen 2026-09-26, before
+> **Status: RUN 2026-09-27 — factor book NULL (§6.1); OU `too-few-oos-trades`, invalid as a test (§6.4); OU v2.1 pre-registered (§7), not yet run.** Frozen 2026-09-26, before
 > any OANDA/FRED run. Written before the result exists so a null can't be
 > re-narrated into a maybe (working agreement). Research only — nothing here is
 > imported by a live bot, and the incumbent engines' defaults are unchanged
@@ -154,7 +154,7 @@ What the numbers also say (context, not verdicts):
   month is largely blind to the fast crashes it exists for. C3 as run therefore
   tested "monthly gate", not the idea. This did not affect the trend (weekly) or
   K1/K2 (daily) overlays.
-- **OU pooled test (§5):** results not yet recorded.
+- **OU pooled test (§5):** see §6.4.
 
 ### 6.3 Next steps (not pre-registered yet — the OOS window has been seen)
 
@@ -172,3 +172,76 @@ such and should be forward-tested before being believed.
    vol-regime multiplier are portfolio-construction tools. 7 USD crosses give
    them little to work with. The multi-asset `trendFollowEngine` is the engine
    with an existing trend result.
+
+
+### 6.4 OU bands — run 2026-09-27 18:16 UTC on Railway (β = 1, 4 core crosses)
+
+| Book | IS Sh | OOS Sh | OOS ann % | OOS maxDD % | OOS trades | ΔOOS | Verdict |
+|---|---|---|---|---|---|---|---|
+| Pooled ±2σ (benchmark) | −0.04 | −0.18 | −0.24 | −2.87 | – | – | benchmark |
+| **Pooled OU bands** | 0.05 | 0.03 ± 0.42 | 0.03 | −2.82 | 1 | +0.20 | `too-few-oos-trades` |
+
+| Pair | Mode | Trades (OOS) | Win % | OOS Sh | Open at end | Half-life (d) |
+|---|---|---|---|---|---|---|
+| AUD/NZD | OU | 2 (0) | 100 | 0.56 | 1 | 141.3 |
+| AUD/NZD | ±2σ | 5 (0) | 100 | 0.56 | 1 | 141.3 |
+| EUR/CHF | OU | 1 (0) | 0 | −0.47 | 1 | 36.8 |
+| EUR/CHF | ±2σ | 1 (0) | 0 | −0.47 | 1 | 36.8 |
+| EUR/GBP | OU | 1 (0) | 100 | −0.03 | 1 | 9.7 |
+| EUR/GBP | ±2σ | 3 (0) | 100 | −0.06 | 1 | 9.7 |
+| AUD/CAD | OU | 4 (1) | 100 | 0.23 | 1 | 77.3 |
+| AUD/CAD | ±2σ | 3 (0) | 66.7 | −0.08 | 1 | 77.3 |
+
+OU trades (all 8, % of gross, from the CSV export): +4.91, +6.93, +6.16, +6.40
+closed at target; open trades marked to 2026-09-25: −25.25 (EUR/CHF, MAE
+−29.1), +0.58, +2.32, +4.07.
+
+**Pre-registered verdict: `too-few-oos-trades` (1 of ≥30).** No reading is
+possible either way.
+
+**Audit — this is a design flaw, not a finding about OU bands.** Every one of
+the 8 books (OU *and* benchmark) ends with a position open, and there are 20
+trades in ~19 years across all of them. Cause, in `runOuPairs`:
+an open trade keeps the model it was entered on (θ, a₀/b₀ normalisation) and
+can only leave at that model's exit level. There was no stop and no time exit.
+When a cross breaks to a new level (EUR/CHF after 2015, AUD/NZD's slow
+half-life), the old θ is never revisited, so one trade stays open for years and
+the book stops trading. The benchmark shares the same exit logic, so the A/B
+compared two frozen books. This is the failure §5 anticipated; its
+pre-committed response is a structural exit change, not re-tuning r or c (§7).
+
+## 7. OU v2.1 — pre-registered 2026-09-27, before any v2.1 run
+
+**Caveat stated up front:** the 2021–26 OOS window has now been seen once
+(through a broken test that traded once). The v2.1 change was chosen from the
+failure mechanism (positions never exit), not from any return number. It is
+still weaker evidence than a clean first run. A v2.1 pass is a candidate for
+forward testing only.
+
+**Change (the only one):** two exits added to *both* books, identically.
+`OU_EXITS_V21` in `js/ouPairsEngine.js`:
+- **Stop:** exit if the spread moves a further **2 stationary sd** against the
+  entry level (entry model's sd).
+- **Time stop:** exit after **3 × the entry model's half-life** (by 3 half-lives,
+  ~87% of the expected reversion should have happened).
+- **Re-arm:** after a stop or time exit, that side re-enters only once the
+  spread has come back inside its entry level. This prevents stopping out and
+  re-entering the same move on the next bar.
+
+Everything else is §5 unchanged: β = 1, 252d fit, 63d refit adopted while flat,
+r = 5%, 2 bp per side, 70/30 split, same pooled verdict rules, ≥30 OOS trades.
+With the exits off (`exits: 'v2'`) the engine is byte-identical to the §5 run
+(tested).
+
+**Primary:** pooled OU vs pooled ±2σ on the **4 core crosses**, v2.1 exits.
+**Diagnostic (cannot win):** the same on **all 21 G10 crosses** (breadth /
+trade-count check). Also report each book's exit mix (target / stop / time).
+
+**What "it worked" looks like:** pooled OU `wins-oos` with ΔSharpe ≥ 2.54 × SE
+and ≥30 OOS trades. **What "it didn't" looks like:** `within-noise`,
+`no-improvement`, or `too-few-oos-trades` again. A second `too-few-oos-trades`
+on the core 4 means that universe cannot test this idea at daily frequency.
+Stops dominating the exit mix (> 50%) is read as "these crosses were not mean
+reverting over 2008–26", whichever book wins.
+
+Run: `fx-factor-v2.html` → OU exits = v2.1, universe = 4 core (then all 21).

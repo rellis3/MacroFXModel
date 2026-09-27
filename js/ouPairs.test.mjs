@@ -4,7 +4,7 @@
  * (Numerics cross-checked once against scipy quad/brentq: levels agree to ~1e-9.)
  */
 import { ouMle, bestBeta, spreadSeries, ouIntegral, ouOptimalLevels } from './ouOptimal.js';
-import { runOuPairs, compareOuVsZscore, poolDaily, runOuBook } from './ouPairsEngine.js';
+import { runOuPairs, compareOuVsZscore, poolDaily, runOuBook, OU_EXITS_V21 } from './ouPairsEngine.js';
 import { mulberry32 } from './statsCore.js';
 import { ouFit } from './ouCore.js';
 
@@ -90,6 +90,37 @@ function pair(n = 1600, speed = 0.93, sd = 0.004) {
   const book = runOuBook([{ name: 'X/Y', a: A, b: B }, { name: 'bad', a: A.slice(0, 50), b: B.slice(0, 50) }], { costBps: 1 });
   ok('book pooled verdict', typeof book.pooled.vsZscore.verdict === 'string' && book.pairs.length === 2);
   ok('book keeps per-pair error, drops daily arrays', book.pairs[1].error && !('daily' in book.pairs[0].ou));
+}
+
+// ── v2.1 exits (§7): default off ⇒ v2 byte-identical; on ⇒ no trade stuck for years ─
+{
+  const { A, B } = pair();
+  const v2 = runOuPairs(A, B, { costBps: 1 });
+  const v2x = runOuPairs(A, B, { costBps: 1, timeStopHL: null, stopSd: null });
+  ok('exits off ⇒ identical to v2', v2.daily.every((x, i) => x === v2x.daily[i]) && v2.trades.length === v2x.trades.length);
+  // A cross that mean-reverts for 3 years then breaks to a new level and trends:
+  // the frozen entry model's θ is never revisited, so v2 holds one trade to the end.
+  const n = 1600, A3 = [], B3 = []; let a = 1, ou = 0;
+  for (let i = 0; i < n; i++) {
+    a *= Math.exp(0.006 * g());
+    ou = i < 800 ? ou * 0.93 + 0.004 * g() : ou + 0.0015 + 0.002 * g();
+    A3.push({ t: day(i), v: a }); B3.push({ t: day(i), v: a * Math.exp(ou) });
+  }
+  for (const mode of ['ou', 'zscore']) {
+    const stuck = runOuPairs(A3, B3, { costBps: 1, mode });
+    const fixed = runOuPairs(A3, B3, { costBps: 1, mode, ...OU_EXITS_V21 });
+    const longest = r => Math.max(...r.trades.map(t => t.bars));
+    ok(`${mode}: v2 reproduces the stuck trade (open at end)`, stuck.openAtEnd === 1);
+    ok(`${mode}: v2.1 stops/time-exits the break`, (fixed.exitReasons.stop || 0) + (fixed.exitReasons.time || 0) >= 1);
+    ok(`${mode}: v2.1 caps holding time`, longest(fixed) < longest(stuck));
+    ok(`${mode}: v2.1 no lookahead`, (() => { const p = runOuPairs(A3.slice(0, 1200), B3.slice(0, 1200), { costBps: 1, mode, ...OU_EXITS_V21 });
+      return p.daily.slice(0, -1).every((x, i) => x === fixed.daily[i]); })());
+    // no immediate re-entry into the same move after a stop: every stop is followed
+    // by a gap (the side re-arms only once the spread is back inside its entry level)
+    ok(`${mode}: re-arm prevents same-bar churn`, fixed.trades.every((t, k) => k === 0 || t.entryDate > fixed.trades[k - 1].exitDate || fixed.trades[k - 1].reason === 'target'));
+  }
+  const book = runOuBook([{ name: 'X/Y', a: A3, b: B3 }], { costBps: 1, ...OU_EXITS_V21 });
+  ok('book runs with v2.1 exits', typeof book.pooled.vsZscore.verdict === 'string' && book.params.stopSd === 2);
 }
 
 console.log(`ouPairs: ${pass} passed, ${fail} failed`);

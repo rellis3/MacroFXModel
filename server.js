@@ -12654,22 +12654,33 @@ app.post('/api/fx-factor-v2/run', (req, res) => {
 app.get('/api/fx-factor-v2/status/:jobId', _fxv2Status);
 
 const OU_PAIRS_UNIVERSE = [['AUD', 'NZD'], ['EUR', 'CHF'], ['EUR', 'GBP'], ['AUD', 'CAD']];
+// Diagnostic breadth universe: every cross of the 7 G10 ccys (21). Not the frozen primary.
+const OU_PAIRS_ALL21 = (() => { const c = ['EUR', 'GBP', 'AUD', 'NZD', 'CAD', 'CHF', 'JPY'], out = [];
+  for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) out.push([c[i], c[j]]); return out; })();
+const _ouCache = new Map();                              // key `${betaMode}|${exits}|${universe}` → { data, ts }
 app.post('/api/ou-pairs/run', express.json({ limit: '16kb' }), (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured (runs on Railway)' });
   const betaMode = req.body?.betaMode === 'loglik' ? 'loglik' : 'fixed1';
+  const exits = req.body?.exits === 'v21' ? 'v21' : 'v2';
+  const universe = req.body?.universe === 'all21' ? 'all21' : 'core4';
+  const key = `${betaMode}|${exits}|${universe}`;
   const force = req.query.force === '1';
-  if (!force && betaMode === 'fixed1' && _fxv2Last.ou && Date.now() - _fxv2Last.ou.ts < 6 * 3600_000) {
-    const jobId = `fxv2_ou_cached_${_fxv2Last.ou.ts}`;
-    _fxv2Jobs.set(jobId, { status: 'done', kind: 'ou', result: _fxv2Last.ou.data, cached: true });
+  const hit = _ouCache.get(key);
+  if (!force && hit && Date.now() - hit.ts < 6 * 3600_000) {
+    const jobId = `fxv2_ou_cached_${hit.ts}_${key.replace(/\|/g, '-')}`;
+    _fxv2Jobs.set(jobId, { status: 'done', kind: 'ou', result: hit.data, cached: true });
+    capMap(_fxv2Jobs, 50);
     return res.json({ ok: true, jobId, cached: true });
   }
   _fxv2Start('ou', res, async () => {
     const { priceByCcy, availability } = await _fxv2LoadOhlc();
-    const pairs = OU_PAIRS_UNIVERSE.filter(([a, b]) => priceByCcy[a] && priceByCcy[b])
+    const pairs = (universe === 'all21' ? OU_PAIRS_ALL21 : OU_PAIRS_UNIVERSE).filter(([a, b]) => priceByCcy[a] && priceByCcy[b])
       .map(([a, b]) => ({ name: `${a}/${b}`, a: priceByCcy[a], b: priceByCcy[b] }));
-    const result = await _fxv2Worker('ou', { pairs }, { betaMode });
-    return { ...result, availability, spec: 'MD files/FX_FACTOR_V2_TEST.md §5', ranAt: new Date().toISOString() };
-  }, { cache: betaMode === 'fixed1' });   // the loglik-β diagnostic never overwrites the primary cache
+    const result = await _fxv2Worker('ou', { pairs }, { betaMode, exits });
+    const out = { ...result, exits, universe, availability, spec: `MD files/FX_FACTOR_V2_TEST.md ${exits === 'v21' ? '§7' : '§5'}`, ranAt: new Date().toISOString() };
+    _ouCache.set(key, { data: out, ts: Date.now() });
+    return out;
+  }, { cache: false });                                   // cached per-key above, not in _fxv2Last
 });
 app.get('/api/ou-pairs/status/:jobId', _fxv2Status);
 
