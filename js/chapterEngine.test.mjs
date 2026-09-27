@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mad, receipt, receiptSentence, curveFactors, curveSentence } from './chapterEngine.js';
+import { mad, cadenceDays, receipt, receiptSentence, curveFactors, curveSentence } from './chapterEngine.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
 const S = vals => vals.map((v, i) => ({ date: `2020-01-${String((i % 28) + 1).padStart(2, '0')}`, value: v }));
@@ -35,10 +35,30 @@ t('a receipt places the latest value inside its own window', () => {
   assert.equal(r.n, 100);
 });
 
-t('the window counts PRINTS, not days', () => {
+t('an explicit print window is still honoured, and takes the TAIL', () => {
   const r = receipt(S(Array.from({ length: 500 }, (_, i) => i)), { window: 240 });
-  assert.equal(r.n, 240, 'must measure against the last 240 prints');
-  assert.equal(r.lo, 260, 'and the window must be the TAIL, not the head');
+  assert.equal(r.n, 240);
+  assert.equal(r.lo, 260, 'the window must be the tail, not the head');
+});
+
+// THE FLAW THIS CLOSES, found by looking at the rendered page: a fixed print count gives
+// a DAILY series about a year and a MONTHLY series twenty. Two percentiles computed over
+// wildly different spans, sitting in one gauge, looking perfectly consistent.
+t('the window is a span of TIME, so series of different cadence stay comparable', () => {
+  const daily = [], monthly = [];
+  for (let i = 0; i < 2000; i++) daily.push({ date: new Date(Date.UTC(2015, 0, 1 + i)).toISOString().slice(0, 10), value: i });
+  for (let i = 0; i < 300; i++) monthly.push({ date: new Date(Date.UTC(2000, i, 1)).toISOString().slice(0, 10), value: i });
+  const d = receipt(daily, { years: 5 }), m = receipt(monthly, { years: 5 });
+  assert.ok(Math.abs(d.years - 5) < 0.6, `daily window came out at ${d.years} years`);
+  assert.ok(Math.abs(m.years - 5) < 0.6, `monthly window came out at ${m.years} years`);
+  assert.ok(d.n > m.n * 10, 'the daily series must use far more prints to cover the same span');
+  assert.equal(cadenceDays(monthly) > 27 && cadenceDays(monthly) < 32, true);
+});
+
+t('the sentence states the span in years, which is what makes two receipts comparable', () => {
+  const daily = [];
+  for (let i = 0; i < 2000; i++) daily.push({ date: new Date(Date.UTC(2015, 0, 1 + i)).toISOString().slice(0, 10), value: i });
+  assert.match(receiptSentence(receipt(daily), 'The 10-year'), /5-year range/);
 });
 
 t('the change is reported alongside the level, because they disagree', () => {

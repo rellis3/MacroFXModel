@@ -48,16 +48,38 @@ export function mad(values) {
   return d == null ? null : d * 1.4826;
 }
 
+/** A series' own cadence, in days, taken from the median gap between its prints. */
+export function cadenceDays(series = []) {
+  const pts = (series ?? []).filter(p => p && p.date);
+  if (pts.length < 4) return null;
+  const gaps = [];
+  for (let i = 1; i < pts.length; i++) {
+    const d = (Date.parse(pts[i].date) - Date.parse(pts[i - 1].date)) / 864e5;
+    if (d > 0 && d < 400) gaps.push(d);
+  }
+  return gaps.length ? med(gaps) : null;
+}
+
 /**
  * Where the latest value sits inside its own trailing window.
  *
- * `window` is in observations, not days, because these series arrive weekly, monthly and
- * daily and a "240-week range" means 240 prints of whatever this series prints.
+ * THE WINDOW IS IN YEARS, NOT PRINTS, and this matters more than it looks. The source
+ * says "240-week range", and the obvious implementation — keep the last 240 observations
+ * — gives a DAILY series about one year and a MONTHLY series twenty. Putting a 1-year
+ * percentile and a 20-year percentile side by side in the same gauge compares unlike
+ * things while looking perfectly consistent, which is the worst kind of wrong. So the
+ * window is a span of time, and each series' print count is derived from its own cadence.
+ *
+ * `changeOver` is likewise in prints: one print back is the series' own last move,
+ * whatever its frequency.
  */
-export function receipt(series = [], { window = 240, changeOver = 1 } = {}) {
+export function receipt(series = [], { years = 5, changeOver = 1, window = null } = {}) {
   const pts = (series ?? []).filter(p => p && finite(p.value));
   if (pts.length < 8) return null;
-  const tail = pts.slice(-window);
+  const cad = cadenceDays(pts);
+  // an explicit `window` still wins, for callers that genuinely mean a print count
+  const take = window ?? (cad ? Math.max(12, Math.round((years * 365.25) / cad)) : 240);
+  const tail = pts.slice(-take);
   const vals = tail.map(p => p.value);
   const latest = pts.at(-1);
   const lo = Math.min(...vals), hi = Math.max(...vals);
@@ -74,6 +96,7 @@ export function receipt(series = [], { window = 240, changeOver = 1 } = {}) {
 
   return {
     value: latest.value, date: latest.date ?? null, n: vals.length,
+    years: cad ? +((vals.length * cad) / 365.25).toFixed(1) : null, cadenceDays: cad,
     pct: +(pct * 100).toFixed(0), median: m, lo, hi,
     // robust rather than mean/sd, so one 2022 print does not rescale the series forever
     z: s ? +((latest.value - m) / s).toFixed(2) : null,
@@ -87,7 +110,8 @@ export function receipt(series = [], { window = 240, changeOver = 1 } = {}) {
 export function receiptSentence(r, label, unit = '%') {
   if (!r) return null;
   const f = v => `${(+v).toFixed(2)}${unit}`;
-  let s = `${label} sits at the ${r.pct}${ord(r.pct)} percentile of its ${r.n}-print range, against a median of ${f(r.median)} and a span from ${f(r.lo)} to ${f(r.hi)}.`;
+  const win = r.years ? `${r.years}-year` : `${r.n}-print`;
+  let s = `${label} sits at the ${r.pct}${ord(r.pct)} percentile of its ${win} range, against a median of ${f(r.median)} and a span from ${f(r.lo)} to ${f(r.hi)}.`;
   // the level and the change disagreeing is the interesting case, so it is said out loud
   if (r.changePct != null && Math.abs(r.changePct - r.pct) >= 40) {
     s += ` Its latest change sits at the ${r.changePct}${ord(r.changePct)} percentile, so where it IS and where it is GOING disagree.`;

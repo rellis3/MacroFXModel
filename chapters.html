@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Chapters</title>
+<style>
+  :root{
+    --bg:#0e1016; --panel:#161a24; --panel2:#1d222e; --line:#2a3140;
+    --text:#e6e9ef; --text2:#aab2c0; --text3:#6f7889;
+    --accent:#5b9dff; --green:#3fb27f; --red:#e5604d; --amber:#e0a93b; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{padding:20px 24px;border-bottom:1px solid var(--line);background:var(--panel)}
+  h1{margin:0 0 4px;font-size:19px;font-weight:650}
+  .sub{color:var(--text2);font-size:13px;max-width:880px}
+  main{padding:20px 24px 80px;max-width:1120px}
+  a{color:var(--accent)}
+
+  .nav{display:flex;flex-wrap:wrap;gap:6px;margin:16px 0 4px}
+  .nav b{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--text3);
+         font-weight:700;align-self:center;margin-right:4px}
+  .nav a{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
+         color:var(--text2);border-radius:999px;padding:5px 12px;font-size:12.5px;text-decoration:none}
+  .nav a:hover{border-color:var(--accent);color:var(--text)}
+  .nav a .k{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:var(--accent);font-weight:600}
+  .nav a.soon{opacity:.45;pointer-events:none}
+
+  .ch{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-top:20px}
+  .ch-k{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);font-weight:700}
+  .ch h2{margin:2px 0 14px;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .read{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:14px 16px}
+  .read-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+          font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);
+          font-weight:700;margin-bottom:8px}
+  .read p{margin:0 0 9px;font-size:14.5px;line-height:1.75;color:var(--text)}
+  .read p:last-child{margin-bottom:0}
+  .read .q{color:var(--text2);font-size:13.5px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:12px 0 0}
+  th,td{padding:6px 9px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead th{color:var(--text3);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+  td.n{text-align:right;font-family:ui-monospace,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+  tr.loud td{background:rgba(91,157,255,.07)}
+  tr.dis td{background:rgba(229,96,77,.07)}
+  .pos{color:var(--green)} .neg{color:var(--red)} .zero{color:var(--text3)}
+  .tag{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+       padding:1px 6px;border-radius:4px;margin-left:6px}
+  .t-loud{background:rgba(91,157,255,.18);color:var(--accent)}
+  .t-dis{background:rgba(229,96,77,.18);color:var(--red)}
+
+  .lab{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);
+       font-weight:700;margin:18px 0 6px}
+  .bars{display:flex;gap:2px;align-items:flex-end;height:26px}
+  .split{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .split div{font-size:12.5px;color:var(--text2)}
+  .split b{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--text);font-weight:500}
+
+  /* the surface, as a heat map: rows are tenors, columns are weeks. A 3D render looks
+     more impressive and is harder to read a value off; this keeps the structure and
+     stays honest about the numbers. */
+  .surf{overflow-x:auto;margin-top:8px;padding-bottom:6px}
+  .surf table{font-size:10px;border-collapse:separate;border-spacing:1px;width:auto;min-width:100%}
+  .surf td,.surf th{border:0;padding:0;white-space:nowrap}
+  .surf th{color:var(--text3);font-size:9.5px;font-weight:600;padding-right:7px;text-align:right}
+  .surf td{width:9px;height:13px;border-radius:2px}
+  .surf .ax{color:var(--text3);font-size:9px;text-align:center;padding-top:3px}
+
+  .ev{margin-top:16px;border-left:3px solid var(--amber);background:var(--panel2);
+      border-radius:0 8px 8px 0;padding:10px 14px}
+  .ev b{display:block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+        color:var(--text3);font-weight:700;margin-bottom:4px}
+  .ev p{margin:0 0 6px;font-size:12.5px;line-height:1.65;color:var(--text2)}
+  .ev p:last-child{margin:0}
+  .v{font-weight:700} .v-null{color:var(--text3)} .v-val{color:var(--green)} .v-ctx{color:var(--amber)}
+
+  .src{margin-top:12px;font-size:11px;color:var(--text3);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .err{color:var(--red)}
+  @media(max-width:620px){
+    main{padding:16px 14px 60px} .ch{padding:16px 15px} .read p{font-size:13.5px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Chapters</h1>
+  <div class="sub">One market complex per chapter, read the same way every time: a composite gauge that names which member is carrying it, a percentile receipt behind every number, and — where this desk has tested the reading — the verdict alongside it. Descriptive. Nothing here is a forecast, and several of these gauges have been measured and came back null, which is said rather than hidden.</div>
+</header>
+<main>
+  <div class="nav" id="nav"></div>
+  <div id="out"><div class="ch"><div class="read"><p class="q">Loading six years of FRED…</p></div></div></div>
+</main>
+
+<script type="module">
+import { gauge, gaugeSentence } from './js/gaugeRead.js';
+import { receipt, receiptSentence, curveFactors, curveSentence } from './js/chapterEngine.js';
+import { DESK_EVIDENCE } from './js/deskEvidence.js';
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const $ = id => document.getElementById(id);
+const sgn = v => v == null ? '' : (v >= 0 ? '+' : '');
+const cls = v => v == null ? 'zero' : v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'zero';
+
+// Chapters that exist, and the ones that do not yet — listed rather than omitted so the
+// shape of the book is visible and nobody wonders whether B is broken or absent.
+const PLANNED = [
+  ['A', 'The curve', true], ['B', 'Policy path', false], ['C', 'Real yields', false],
+  ['D', 'Inflation', true], ['E', 'Growth', false], ['F', 'Labour', false],
+  ['G', 'Liquidity', false], ['H', 'Credit', false], ['I', 'FX & carry', false],
+  ['J', 'Commodities', false], ['K', 'Positioning', false], ['L', 'Volatility', false],
+];
+
+const VERDICT_CLASS = { validated: 'v-val', null: 'v-null', context: 'v-ctx' };
+
+/** The ledger's own verdicts, so a chapter cannot imply more than has been measured. */
+function evidenceBlock(ids) {
+  const rows = ids.map(id => DESK_EVIDENCE.find(e => e.id === id)).filter(Boolean);
+  if (!rows.length) return '';
+  return `<div class="ev"><b>What this desk has measured about these readings</b>
+    ${rows.map(e => `<p><span class="v ${VERDICT_CLASS[e.verdict] ?? ''}">${esc(String(e.verdict).toUpperCase())}</span> — ${esc(e.claim)}. <span style="color:var(--text3)">${esc(e.use ?? '')}</span></p>`).join('')}
+  </div>`;
+}
+
+function memberTable(g, unitOf = () => '') {
+  if (!g?.members?.length) return '';
+  const loud = g.loudest?.key, dis = new Set(g.dissent.map(d => d.key));
+  return `<table><thead><tr><th>member</th><th style="text-align:right">z</th><th style="text-align:right">carries</th></tr></thead><tbody>
+    ${g.members.map(m => `<tr class="${m.key === loud ? 'loud' : dis.has(m.key) ? 'dis' : ''}">
+      <td>${esc(m.label)}${m.key === loud ? '<span class="tag t-loud">loudest</span>' : ''}${dis.has(m.key) ? '<span class="tag t-dis">dissents</span>' : ''}</td>
+      <td class="n ${cls(m.z)}">${sgn(m.z)}${m.z}</td>
+      <td class="n ${cls(m.share)}">${sgn(m.share)}${m.share}</td></tr>`).join('')}
+    ${g.absent.length ? `<tr><td colspan="3" style="color:var(--text3)">${g.absent.length} member${g.absent.length === 1 ? '' : 's'} did not print and are excluded, not counted as zero</td></tr>` : ''}
+  </tbody></table>`;
+}
+
+/** Tenor x time heat map. Weekly columns so a year fits without scrolling on a phone. */
+function surface(series, tenors, weeks = 52) {
+  const rows = tenors.map(t => ({ ...t, pts: series[t.key] ?? [] })).filter(r => r.pts.length > 20);
+  if (rows.length < 3) return '';
+  // one column per week, taking the last print in each — a mean would invent values on
+  // holiday weeks where the series did not print at all
+  const byWeek = r => {
+    const out = new Map();
+    for (const p of r.pts) { const d = new Date(p.date); const k = `${d.getUTCFullYear()}-${String(Math.floor(d.getUTCDate() / 7) + (d.getUTCMonth() * 5)).padStart(2, '0')}`; out.set(k, p); }
+    return [...out.values()].slice(-weeks);
+  };
+  const grid = rows.map(r => ({ label: r.label, pts: byWeek(r) }));
+  const all = grid.flatMap(g => g.pts.map(p => p.value));
+  const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
+  const col = v => { const t = (v - lo) / span; // cool -> warm, same direction as a yield
+    const r = Math.round(30 + t * 195), g = Math.round(70 + t * 120), b = Math.round(160 - t * 110);
+    return `rgb(${r},${g},${b})`; };
+  const n = Math.max(...grid.map(g => g.pts.length));
+  return `<div class="surf"><table><tbody>
+    ${grid.map(g => `<tr><th>${esc(g.label)}</th>${g.pts.map(p => `<td style="background:${col(p.value)}" title="${esc(g.label)} ${esc(p.date)}: ${p.value}%"></td>`).join('')}</tr>`).join('')}
+    <tr><th></th><td class="ax" colspan="${n}">${esc(grid[0].pts[0]?.date ?? '')} &rarr; ${esc(grid[0].pts.at(-1)?.date ?? '')} &nbsp;·&nbsp; cool = low yield, warm = high</td></tr>
+  </tbody></table></div>`;
+}
+
+function chapterA(D) {
+  const tenors = D.tenors.map(t => {
+    const r = D.series[t.key];
+    return (r && r.length) ? { key: t.label, label: t.label, years: t.years, value: r.at(-1).value, prev: r.at(-6)?.value } : null;
+  }).filter(Boolean);
+  const cf = curveFactors(tenors);
+  if (!cf) return '';
+  const r10 = receipt(D.series.y10 ?? []), r2 = receipt(D.series.y2 ?? []);
+  return `<div class="ch" id="ch-A">
+    <div class="ch-k">Chapter A</div><h2>The curve</h2>
+    <div class="read">
+      <div class="read-h"><span>the read</span><span>${tenors.length} tenors · a receipt behind each</span></div>
+      <p>${esc(curveSentence(cf))}</p>
+      <p class="q">${esc(receiptSentence(r10, 'The 10-year') ?? '')} ${esc(receiptSentence(r2, 'The 2-year') ?? '')}</p>
+      ${cf.inverted ? `<p class="q">The curve is inverted: the short end pays more than the long end, which is the market saying policy is tight now relative to where it expects rates to settle.</p>` : ''}
+    </div>
+    <div class="lab">the move, split three ways</div>
+    <div class="split">
+      <div>level <b class="${cls(cf.move?.level)}">${sgn(cf.move?.level)}${cf.move?.level?.toFixed(3) ?? '—'}</b> ${cf.move?.share ? `(${Math.round(cf.move.share.level * 100)}%)` : ''}</div>
+      <div>slope <b class="${cls(cf.move?.slope)}">${sgn(cf.move?.slope)}${cf.move?.slope?.toFixed(3) ?? '—'}</b> ${cf.move?.share ? `(${Math.round(cf.move.share.slope * 100)}%)` : ''}</div>
+      <div>curvature <b class="${cls(cf.move?.curvature)}">${sgn(cf.move?.curvature)}${cf.move?.curvature?.toFixed(3) ?? '—'}</b> ${cf.move?.share ? `(${Math.round(cf.move.share.curvature * 100)}%)` : ''}</div>
+    </div>
+    <div class="lab">the surface — every tenor, weekly</div>
+    ${surface(D.series, D.tenors)}
+    ${evidenceBlock(['front-end-shock', 'rates-pivot-lead', 'yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve'])}
+    <div class="src">FRED ${esc(D.tenors.map(t => D.fred[t.key]).join(' '))}</div>
+  </div>`;
+}
+
+function chapterD(D) {
+  const MEM = [
+    ['bei5', '5Y breakeven'], ['bei10', '10Y breakeven'], ['bei5y5y', '5y5y forward breakeven'],
+    ['cpi', 'CPI'], ['coreCpi', 'Core CPI'], ['corePce', 'Core PCE'],
+    ['ppi', 'PPI final demand'], ['ahe', 'average hourly earnings'],
+  ];
+  const receipts = new Map(MEM.map(([k, l]) => [k, receipt(D.series[k] ?? [])]));
+  // the gauge runs on the CHANGE z, not the level z: a chapter about what is happening
+  // to inflation is not the same question as where the index happens to sit
+  const g = gauge(MEM.map(([k, label]) => ({ key: k, label, z: receipts.get(k)?.changeZ ?? null })));
+  const lines = ['bei5', 'bei10', 'bei5y5y'].map(k => receiptSentence(receipts.get(k), MEM.find(m => m[0] === k)[1])).filter(Boolean);
+  return `<div class="ch" id="ch-D">
+    <div class="ch-k">Chapter D</div><h2>Inflation complex</h2>
+    <div class="read">
+      <div class="read-h"><span>the read</span><span>${g.present} of ${g.n} members · a receipt behind each</span></div>
+      <p>${esc(gaugeSentence(g, 'The inflation gauge') ?? 'No members printed.')}</p>
+      ${lines.map(l => `<p class="q">${esc(l)}</p>`).join('')}
+      <p class="q">Nominal yield = real yield + breakeven, so these three are the half of a yield move that is about prices rather than the cost of money. A breakeven that moves while the real yield does not is the market changing its mind about inflation, not about policy.</p>
+    </div>
+    <div class="lab">who is carrying the gauge</div>
+    ${memberTable(g)}
+    ${evidenceBlock(['oil-to-breakevens', 'surprise-size', 'front-end-shock'])}
+    <div class="src">FRED ${esc(MEM.map(([k]) => D.fred[k]).filter(Boolean).join(' '))}</div>
+  </div>`;
+}
+
+(async () => {
+  let D;
+  try {
+    const r = await fetch('/api/chapters');
+    D = await r.json();
+    if (!D?.ok) throw new Error(D?.error || 'no chapter data');
+  } catch (e) {
+    $('out').innerHTML = `<div class="ch"><div class="read"><p class="err">Could not load the chapter data: ${esc(e.message)}.</p>
+      <p class="q">These chapters are built from live FRED series, so there is nothing to read without them. This page needs the MacroFX server.</p></div></div>`;
+    return;
+  }
+  $('nav').innerHTML = `<b>chapters</b>` + PLANNED.map(([k, name, live]) =>
+    `<a class="${live ? '' : 'soon'}" href="${live ? `#ch-${k}` : '#'}"><span class="k">${k}</span>${esc(name)}${live ? '' : ' · to come'}</a>`).join('');
+  $('out').innerHTML = chapterA(D) + chapterD(D)
+    + (D.missing?.length ? `<div class="ch"><div class="read"><p class="err">${D.missing.length} series did not arrive: ${esc(D.missing.join(', '))}.</p>
+        <p class="q">They are excluded from the gauges above rather than counted as zero, so the coverage figure already reflects this.</p></div></div>` : '');
+})();
+</script>
+</body>
+</html>
