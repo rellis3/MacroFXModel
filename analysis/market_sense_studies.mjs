@@ -754,6 +754,52 @@ if (want('S18')) {
   results.studies.S18 = out;
 }
 
+// ═══ S19 dispersion RESET (D2) ═══════════════════════════════════════════════
+// Pre-registered 2026-09-27 in MD files/DISPERSION.md (Crown clip): the claim is
+// that a crowded market NORMALIZING is the signal the theme is losing control --
+// the opposite condition to D1, which tested crowded and RISING.
+//
+// This EXECUTES analysis/dispersion_study.mjs rather than reimplementing it
+// (CLAUDE.md Lego Principle 1). That script owns the rolling percentile, the
+// de-clustering, the shared control and both arms; importing it runs it, prints
+// its own working, and writes analysis/output/dispersion.json, which is then read
+// back here for the catalog. A second copy of that logic living in this file is
+// exactly how two harnesses end up quietly disagreeing.
+if (want('S19')) {
+  log('\n═══ S19  dispersion RESET: is it the normalizing spread, or just a crowded market? ═══');
+  try {
+    await import('./dispersion_study.mjs');
+    const D = JSON.parse(fs.readFileSync(path.join(__dirname, 'output', 'dispersion.json'), 'utf8'));
+    const out = { ranAt: D.ranAt, setupsRising: D.setups, setupsFalling: D.setupsFalling, instruments: {} };
+    // The GATE is D2b: do the two arms actually separate? If they do not, the
+    // direction of travel carries nothing and D1 is "crowded periods are wide".
+    let gateCells = 0, gateClear = 0;
+    for (const [name, r] of Object.entries(D.instruments ?? {})) {
+      const d2 = r.d2; if (!d2) continue;
+      const clear = d => d && !d.untestable && d.lo != null && ((d.lo > 0 && d.hi > 0) || (d.lo < 0 && d.hi < 0));
+      for (const k of ['d2b_gate_5', 'd2b_gate_20']) { if (d2[k] && !d2[k].untestable) { gateCells++; if (clear(d2[k])) gateClear++; } }
+      out.instruments[name] = {
+        nFalling: d2.nFall,
+        fallingVsControl: { r5: d2.d2a_5, r20: d2.d2a_20 },
+        gateRisingMinusFalling: { r5: d2.d2b_gate_5, r20: d2.d2b_gate_20 },
+        direction20: { falling: d2.d2c_direction_20, rising: d2.d2c_direction_rising_20 },
+      };
+      const f = d => d?.untestable ? `UNTESTABLE (n ${d.n ?? '<25'})` : d ? `${d.diff >= 0 ? '+' : ''}${d.diff} [${d.lo}, ${d.hi}]` : 'n/a';
+      log(`  ${name}: falling arm n=${d2.nFall}`);
+      log(`    D2a falling vs control   5d ${f(d2.d2a_5)} | 20d ${f(d2.d2a_20)}`);
+      log(`    D2b GATE rising−falling  5d ${f(d2.d2b_gate_5)} | 20d ${f(d2.d2b_gate_20)}`);
+      log(`    D2c direction 20d        falling ${f(d2.d2c_direction_20)} | rising ${f(d2.d2c_direction_rising_20)}`);
+    }
+    out.gate = { cells: gateCells, clearOfZero: gateClear, pass: gateCells > 0 && gateClear === gateCells };
+    out.pass = out.gate.pass;
+    log(`  GATE: ${gateClear}/${gateCells} cells clear of zero -> the arms ${out.gate.pass ? 'DO separate: the direction of travel carries information' : 'do NOT separate: the reset framing adds nothing over "crowded"'}`);
+    results.studies.S19 = out;
+  } catch (e) {
+    log(`  could not run: ${e.message}`);
+    results.studies.S19 = { error: e.message, pass: null };
+  }
+}
+
 // merge into the existing output rather than overwrite it when only some studies ran
 const prev = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : { studies: {} };
 fs.writeFileSync(OUT, JSON.stringify({ ...prev, ranAt: results.ranAt, studies: { ...prev.studies, ...results.studies } }, null, 1));

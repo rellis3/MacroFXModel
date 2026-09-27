@@ -215,3 +215,68 @@ resetting; the AI complex was UP over the month (MU +15.3%, NVDA +7.3%, SMH
 +9.1%, only AVGO near the quoted drawdown at −26.7% and flat over the month); and
 QQQ was 0.4% off a high it set on 2026-09-22. That is a separate matter from
 whether the mechanism is real, and is recorded so the two do not get conflated.
+
+---
+
+## D2 RESULTS — run 2026-09-27
+
+DSPX 2014-06-19 → 2026-09-25 (3,086 sessions). **68 crowded-and-rising setups,
+31 crowded-and-falling** (26 after aligning to each index's bars), scored against
+the same 2,604 control sessions.
+
+### The pre-registered expectation was WRONG, and that is the result
+
+| Cell | SPX500 | NAS100 |
+|---|---|---|
+| **D2a** falling arm vs control, 5d | **−0.122 [−0.190, −0.005]** | **−0.083 [−0.151, −0.008]** |
+| **D2a** falling arm vs control, 20d | −0.094 [−0.177, +0.009] | −0.067 [−0.149, +0.039] |
+| **D2b GATE** rising − falling, 5d | **+0.186 [+0.017, +0.349]** | **+0.148 [+0.039, +0.254]** |
+| **D2b GATE** rising − falling, 20d | **+0.307 [+0.091, +0.584]** | **+0.262 [+0.091, +0.433]** |
+| **D2c** direction, 20d, falling | +0.006 [−0.005, +0.016] | +0.004 [−0.012, +0.015] |
+| **D2c** direction, 20d, rising | −0.005 [−0.014, +0.007] | −0.007 [−0.018, +0.008] |
+
+**D2b passes 4 of 4.** I pre-registered "the arms will overlap" and they do not:
+the direction of travel carries information on both instruments at both horizons.
+That is a finding made against a stated prior, which is the only kind worth much.
+
+### But the sign is the opposite of the claim
+
+The clip says a normalizing spread is the theme losing control — the beginning of
+the break. The measurement says a crowded market that is *coming undone* is
+followed by a **calmer** week, not a wilder one: −0.12 and −0.08 range ratio, both
+intervals clear of zero. At twenty sessions the falling arm is null.
+
+So the two arms do separate, and they separate the wrong way round for the
+argument being made. Crowded **and still rising** is the wide one (D1: +0.213 and
++0.195 at 20 sessions). Crowded **and resetting** is the quiet one.
+
+### Direction is null in both arms, again
+
++0.006 and −0.005 at twenty sessions, every interval straddling zero. The clip's
+entire point is a crash. Nothing here supports it, and nothing on this desk ever
+has: this is the ninth volatility study in a row that is real on range and null
+on direction.
+
+### What this does and does not upgrade
+
+It **does** strengthen D1's rising arm. D1's 20-day result sat on the books as
+unconfirmed context precisely because it had no mirror — the same weakness that
+killed `breadth-narrowing`, where extreme broadening raised range as much as
+extreme narrowing. Dispersion now has that mirror and passes it.
+
+It does **not** clear D1's other weakness. The rising arm's 20-day effect still
+lives mostly in the late half (+0.066 early on n=14, +0.27 late on n=46), and the
+falling arm is n=26 against a floor of 25 — one event either way would matter.
+Both arms are thin and this is not a trigger.
+
+**Verdict.** D2b **REAL** (4/4, against prior). D2a: the reset precedes a
+*calmer* week, real but small. D2c **NULL**. The claim as argued — normalization
+means it is breaking — is **falsified in sign**: it is the quiet arm.
+
+### What went on the page
+
+- `market-sense.html` **S19**, which executes the D1 harness with both arms
+  rather than reimplementing it.
+- Ledger: `dispersion-reset` as the D2b/D2a finding.
+- No Desk Watch trigger. Thin n, and the actionable half is "expect less", which
+  is not something to alert on.

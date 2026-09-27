@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * D1 -- does a crowded market (high CBOE dispersion) precede a wider week?
- * Design frozen in MD files/DISPERSION.md before this ran.
+ * D2 -- is it the RESET (crowded and FALLING) that matters, not the level?
+ * Both designs frozen in MD files/DISPERSION.md before they ran.
  *   python scratchpad/runstudy.py analysis/dispersion_study.mjs     (OANDA_KEY)
  */
 import fs from 'fs';
@@ -41,10 +42,19 @@ const setupAll = []; let last = -999;
 for (const r of rows) { if (r.pct >= 0.8 && r.d20 > 0 && r.i - last > 20) { setupAll.push(r); last = r.i; } }
 const setupCalm = setupAll.filter(r => r.vixBelowMed === true);
 console.log(`setups: ${setupAll.length} (of which ${setupCalm.length} with the VIX below its own median)`);
+
+// ── D2, pre-registered 2026-09-27 in MD files/DISPERSION.md ──────────────────
+// The MIRROR arm: crowded and FALLING -- the "normalizing" spread the Crown clip
+// says is the real signal. Identical in every respect except the sign of d20, so
+// any difference between the arms is the CONDITION and not the method.
+const setupFall = []; let lastF = -999;
+for (const r of rows) { if (r.pct >= 0.8 && r.d20 < 0 && r.i - lastF > 20) { setupFall.push(r); lastF = r.i; } }
+console.log(`D2 mirror setups (crowded and FALLING): ${setupFall.length}`);
+const MIN_EVENTS = 25;
 const both = rows.filter(r => r.vix != null);
 console.log(`corr(DSPX, VIX) = ${corr(both.map(r => r.value), both.map(r => r.vix))} on ${both.length} common days`);
 
-const result = { ranAt: new Date().toISOString(), dspx: { from: D[0].date, to: D.at(-1).date, n: D.length, latest: D.at(-1).value },
+const result = { ranAt: new Date().toISOString(), setupsFalling: setupFall.length, dspx: { from: D[0].date, to: D.at(-1).date, n: D.length, latest: D.at(-1).value },
   setups: setupAll.length, setupsCalmVix: setupCalm.length, corrDspxVix: corr(both.map(r => r.value), both.map(r => r.vix)), instruments: {} };
 
 for (const [name, sym] of [['SPX500', 'SPX500_USD'], ['NQ', 'NAS100_USD']]) {
@@ -53,8 +63,10 @@ for (const [name, sym] of [['SPX500', 'SPX500_USD'], ['NQ', 'NAS100_USD']]) {
   const trailMed = i => { const s = bars.slice(Math.max(0, i - 20), i).map(b => (b.high - b.low) / b.close); return s.length >= 10 ? median(s) : null; };
   const fwd = (i, n) => { const m = trailMed(i); if (!m || i + n >= bars.length) return null; return mean(bars.slice(i + 1, i + 1 + n).map(b => (b.high - b.low) / b.close)) / m; };
   const tail = (i, n) => { const m = trailMed(i); if (!m || i + n >= bars.length) return null; return bars.slice(i + 1, i + 1 + n).some(b => (b.high - b.low) / b.close >= 2 * m); };
+  // The control excludes days near a setup in EITHER arm, so both are scored
+  // against the same untouched population and the comparison is like-for-like.
   const near = new Set();
-  for (const r of setupAll) { const i = idx.get(r.date); if (i == null) continue; for (let k = i - 20; k <= i + 20; k++) near.add(k); }
+  for (const r of [...setupAll, ...setupFall]) { const i = idx.get(r.date); if (i == null) continue; for (let k = i - 20; k <= i + 20; k++) near.add(k); }
   const pick = set => { const a5 = [], a20 = [], tl = []; for (const r of set) { const i = idx.get(r.date); if (i == null) continue; const f5 = fwd(i, LOOK), f20 = fwd(i, LOOK20), t = tail(i, LOOK); if (f5 != null) a5.push(f5); if (f20 != null) a20.push(f20); if (t != null) tl.push(t ? 1 : 0); } return { a5, a20, tl }; };
   const ev = pick(setupAll), evCalm = pick(setupCalm);
   const c5 = [], c20 = [], ctl = [];
@@ -79,6 +91,28 @@ for (const [name, sym] of [['SPX500', 'SPX500_USD'], ['NQ', 'NAS100_USD']]) {
       return { splitAt: mid, early: bootDiff(early, cE), late: bootDiff(late, cL) };
     })(),
     meanSetup5: r3(mean(ev.a5)), meanControl5: r3(mean(c5)) };
+
+  // ── D2 ────────────────────────────────────────────────────────────────────
+  // D2a: does the falling arm raise forward range at all?
+  // D2b (THE GATE): does it DIFFER from the rising arm? Pre-registered expectation
+  //     is that it does not -- in which case the direction of travel carries
+  //     nothing and D1's result is "crowded periods are wide periods".
+  // D2c: direction, pre-registered as null. The clip's whole point is a crash.
+  const evFall = pick(setupFall);
+  const dirOf = (set, n) => { const o = []; for (const r of set) { const i = idx.get(r.date); if (i == null || i + n >= bars.length) continue; o.push(bars[i + n].close / bars[i].close - 1); } return o; };
+  const cDir = []; for (let i = 25; i < bars.length - LOOK20; i++) { if (near.has(i)) continue; cDir.push(bars[i + LOOK20].close / bars[i].close - 1); }
+  const enough = a => a.length >= MIN_EVENTS;
+  r.d2 = {
+    minEvents: MIN_EVENTS, nFall: evFall.a5.length,
+    d2a_5:  enough(evFall.a5)  ? bootDiff(evFall.a5,  c5)  : { untestable: true, n: evFall.a5.length },
+    d2a_20: enough(evFall.a20) ? bootDiff(evFall.a20, c20) : { untestable: true, n: evFall.a20.length },
+    // the arms measured against each other directly -- the falling arm IS the
+    // control here, so a CI clear of zero means the reset genuinely differs
+    d2b_gate_5:  (enough(evFall.a5)  && enough(ev.a5))  ? bootDiff(ev.a5,  evFall.a5)  : { untestable: true },
+    d2b_gate_20: (enough(evFall.a20) && enough(ev.a20)) ? bootDiff(ev.a20, evFall.a20) : { untestable: true },
+    d2c_direction_20: enough(dirOf(setupFall, LOOK20)) ? bootDiff(dirOf(setupFall, LOOK20), cDir) : { untestable: true, n: dirOf(setupFall, LOOK20).length },
+    d2c_direction_rising_20: enough(dirOf(setupAll, LOOK20)) ? bootDiff(dirOf(setupAll, LOOK20), cDir) : { untestable: true, n: dirOf(setupAll, LOOK20).length },
+  };
   result.instruments[name] = r;
   const f = d => d ? `${d.diff >= 0 ? '+' : ''}${d.diff} [${d.lo}, ${d.hi}] (n ${d.nA} vs ${d.nB})` : 'n/a';
   const w = s => s ? `${Math.round(s.share * 100)}% [${Math.round(s.lo * 100)}-${Math.round(s.hi * 100)}] n=${s.n}` : 'n/a';
@@ -87,5 +121,9 @@ for (const [name, sym] of [['SPX500', 'SPX500_USD'], ['NQ', 'NAS100_USD']]) {
   console.log(`    D1b  calm-VIX 5d ${f(r.d1b_calm_5)} | calm-VIX 20d (post-hoc) ${f(r.d1b_calm_20)}`);
   console.log(`    D1c  a 2x day within 5: setup ${w(r.d1c_tail.setup)} vs control ${w(r.d1c_tail.control)}`);
   console.log(`    halves (20d, split ${r.halves.splitAt}): early ${f(r.halves.early)} | late ${f(r.halves.late)}`);
+  const g = d => d?.untestable ? `UNTESTABLE (n ${d.n ?? '<' + MIN_EVENTS})` : f(d);
+  console.log(`    D2a  crowded+FALLING vs control:  5d ${g(r.d2.d2a_5)} | 20d ${g(r.d2.d2a_20)}`);
+  console.log(`    D2b  GATE rising MINUS falling:   5d ${g(r.d2.d2b_gate_5)} | 20d ${g(r.d2.d2b_gate_20)}`);
+  console.log(`    D2c  direction 20d (return):  falling ${g(r.d2.d2c_direction_20)} | rising ${g(r.d2.d2c_direction_rising_20)}`);
 }
 fs.writeFileSync(OUT, JSON.stringify(result, null, 1)); console.log('written', OUT);
