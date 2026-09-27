@@ -9,6 +9,9 @@
 <style>
   /* Practice-specific. Everything else comes from theory.css so this page does not
      become a second design system. */
+  /* Line colours for the chart. Named as tokens so the palette lives in one place and
+     is not scattered through template strings. */
+  :root{--accent-line-1:#5b9dff;--accent-line-2:#e0a93b;--accent-line-3:#a78bfa;--accent-line-4:#3fb27f}
   .mr-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0 6px}
   .mr-bar-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-right:4px}
   .mr-chip{background:var(--s1);border:1px solid var(--border);color:var(--text2);border-radius:999px;
@@ -64,9 +67,12 @@
                                font-weight:800;color:var(--text3);margin-bottom:3px}
   .mr-tested{border-left:3px solid var(--amber)}
   .mr-tv{margin-top:9px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+  /* max-width + overflow-wrap because a spread symbol like OANDA:USB02YUSD-OANDA:USB30YUSD
+     is 31 unbreakable monospace characters: without these it sets its own min-content
+     width, refuses to shrink, and pushes the whole page wider than a phone screen. */
   .mr-sym{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;background:var(--s2);
           border:1px solid var(--border2);color:var(--text);border-radius:5px;padding:4px 8px;
-          cursor:pointer;transition:.12s}
+          cursor:pointer;transition:.12s;max-width:100%;overflow-wrap:anywhere;text-align:left}
   .mr-sym:hover{border-color:var(--blue);color:var(--blue)}
   .mr-sym.main{border-color:var(--blue-bd);color:var(--blue)}
   .mr-sym.expr{border-style:dashed}
@@ -75,18 +81,22 @@
   .mr-tvw{flex-basis:100%;font-size:11.5px;line-height:1.55;color:var(--amber);font-weight:600;margin-top:4px}
   .mr-tvn{flex-basis:100%;font-size:11.5px;line-height:1.6;color:var(--text2);margin-top:4px}
 
-  /* Small multiples, one per series. Mixing basis points and percent on a shared axis
-     would misrepresent scale, so each gets its own box and its own end label. The data
-     is already in the browser - this costs a polyline, no fetch and no server work. */
-  .mr-charts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-  .mr-ch{flex:1 1 150px;min-width:140px;background:var(--s1);border:1px solid var(--border);
-         border-radius:var(--r);padding:8px 10px}
-  .mr-ch-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:4px}
-  .mr-ch-l{font-size:10.5px;font-weight:700;color:var(--text2);letter-spacing:.02em}
-  .mr-ch-v{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;font-variant-numeric:tabular-nums}
-  .mr-ch-v.up{color:var(--green)} .mr-ch-v.dn{color:var(--red)} .mr-ch-v.flat{color:var(--text3)}
-  .mr-ch svg{display:block;width:100%;height:38px;overflow:visible}
-  .mr-ch-cap{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:7px;flex-basis:100%}
+  /* ONE chart, both series on it. The question is always "did these move together?",
+     and separate boxes with independent scales is the single layout that makes
+     co-movement hardest to read -- which is what the help text was asking for.
+     Each line is its CHANGE from the start of the window, so everything begins at zero
+     and the story is the divergence. Where the series share a unit they also share a
+     real axis; where they do not, each is scaled to its own range and the caption says
+     so. The data is already in the browser: this is a polyline, no fetch. */
+  .mr-chart{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
+            padding:10px 12px;margin-top:12px}
+  .mr-cl{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
+  .mr-cli{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+  .mr-cld{width:9px;height:2.5px;border-radius:2px;flex:0 0 auto}
+  .mr-clv{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text);
+          font-variant-numeric:tabular-nums}
+  .mr-chart svg{display:block;width:100%;height:110px;overflow:visible}
+  .mr-cc{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:7px}
   .mr-foot{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:16px}
   .mr-next{background:var(--blue);border:1px solid var(--blue2);color:#fff;border-radius:var(--r);
            padding:10px 20px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -229,7 +239,7 @@ function renderModes() {
     ${IDS.map(id => chip(id, CONCEPTS[id]?.label ?? id)).join('')}`;
 }
 
-function renderMech(id) {
+function renderMech(id, Q) {
   const M = mechanismFor(id);
   if (!M) return '';
   if (!TEACH) return `<button class="mr-teach" onclick="mrTeach()">\u{1F9E9} I don't know the background — show me why this works</button>`;
@@ -246,6 +256,11 @@ function renderMech(id) {
     <div class="mr-mq">${esc(M.question)}</div>
     <ol class="mr-steps">${M.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
     <div class="mr-see"><span>put this on a screen</span>${esc(M.see)}
+      ${/* Only before the answer is in. After it, the reveal above already carries the
+           same chart, and printing it twice on one screen is just noise. Showing it
+           here pre-answer gives nothing away: it plots the numbers the stem already
+           states, and anyone who opened this panel has said they cannot reason it out. */
+        PICK == null ? renderChart(Q, { compact: true }) : ''}
       ${tv ? `<div class="mr-tv">
         ${sym(tv.main, 'main')}${(tv.compare ?? []).map(x => sym(x, '')).join('')}${tv.expr && tv.expr !== tv.main ? sym(tv.expr, 'expr') : ''}
         <button class="mr-sym" data-sym="${esc(all.join(', '))}" onclick="mrCopy(this)" title="Copy all of them as one line">⧉ all</button>
@@ -258,49 +273,94 @@ function renderMech(id) {
 }
 
 /**
- * The twenty sessions the question measures, drawn.
+ * The twenty sessions the question measures, all series on ONE chart.
  *
- * Shown only AFTER the answer is committed. Seeing the path first would turn a
- * numerical reading into a visual one and, for curve-led especially, hand over the
- * answer - commit-first is the whole mechanism the drill runs on.
+ * Every question in this drill is a comparison -- did the breakeven follow crude, which
+ * end of the curve led, which leg stopped tracking the dollar. Drawing each series in
+ * its own box (the first version of this) put them on independent scales and made
+ * co-movement the one thing you could not see, while the help text was literally saying
+ * "you are looking for whether they moved together".
  *
- * Costs nothing: the bundle is already loaded, so this is ~20 array reads and a
- * polyline string per series. No fetch, no server work.
+ * So: one chart, each line the CHANGE from the start of the window. Everything begins at
+ * zero and the divergence is the story.
+ *
+ * HONESTY ABOUT SCALE. When every series shares a unit -- yield-split and curve-led are
+ * all basis points, dollar-link is all percent -- they share a real axis and the heights
+ * mean something. When units are mixed, each line is scaled to its own range, which
+ * preserves shape and timing but NOT magnitude, and the caption says so rather than
+ * letting the picture imply a comparison it cannot support.
+ *
+ * Costs nothing: the bundle is already loaded, so this is ~20 array reads per series.
  */
-function renderCharts(q) {
-  const defs = GENERATOR_SERIES[q.gen]; if (!defs || !BUNDLE) return '';
-  const end = BUNDLE.dates.indexOf(q.date); if (end < DRILL_WINDOW) return '';
-  const boxes = [];
+const CHART_COLOURS = ['var(--accent-line-1)', 'var(--accent-line-2)', 'var(--accent-line-3)', 'var(--accent-line-4)'];
+
+function windowFor(q) {
+  const defs = GENERATOR_SERIES[q?.gen]; if (!defs || !BUNDLE) return null;
+  const end = BUNDLE.dates.indexOf(q.date); if (end < DRILL_WINDOW) return null;
+  const out = [];
   for (const d of defs) {
     const arr = BUNDLE.series?.[d.key]; if (!arr) continue;
-    const win = arr.slice(end - DRILL_WINDOW, end + 1).map(v => (v == null || !Number.isFinite(v)) ? null : v);
-    const real = win.filter(v => v != null);
-    if (real.length < 5 || win[0] == null || win.at(-1) == null) continue;   // too gappy to draw honestly
-    const lo = Math.min(...real), hi = Math.max(...real), span = (hi - lo) || 1;
-    const W = 100, H = 30;
-    // nulls BREAK the line rather than being interpolated across - a straight segment
-    // over missing days would be a drawing of data that does not exist
+    const raw = arr.slice(end - DRILL_WINDOW, end + 1).map(v => (v == null || !Number.isFinite(v)) ? null : v);
+    if (raw[0] == null || raw.filter(v => v != null).length < 5) continue;   // too gappy to draw honestly
+    const base = raw[0];
+    // change from the window start, in the series' own unit
+    const chg = raw.map(v => v == null ? null : (d.unit === 'bp' ? (v - base) * 100 : (base ? (v / base - 1) * 100 : 0)));
+    out.push({ ...d, chg, end: chg.at(-1) ?? 0 });
+  }
+  return out.length ? out : null;
+}
+
+const fmtChg = (v, unit) => unit === 'bp'
+  ? `${v >= 0 ? '+' : ''}${Math.round(v)}bp`
+  : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+
+function renderChart(q, { compact = false } = {}) {
+  const series = windowFor(q); if (!series) return '';
+  const units = new Set(series.map(s => s.unit));
+  const shared = units.size === 1;                    // one unit => one real axis
+  const W = 300, H = compact ? 64 : 86, PAD = 3;
+
+  let scale;
+  if (shared) {
+    const all = series.flatMap(s => s.chg).filter(v => v != null).concat([0]);
+    const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
+    scale = (v) => H - PAD - ((v - lo) / span) * (H - 2 * PAD);
+  } else {
+    scale = (v, s) => {
+      const own = s.chg.filter(x => x != null).concat([0]);
+      const lo = Math.min(...own), hi = Math.max(...own), span = (hi - lo) || 1;
+      return H - PAD - ((v - lo) / span) * (H - 2 * PAD);
+    };
+  }
+
+  const lines = series.map((s, k) => {
+    // nulls BREAK the line rather than being bridged -- a straight segment across
+    // missing days is a drawing of data that does not exist
     const segs = []; let cur = [];
-    win.forEach((v, i) => {
+    s.chg.forEach((v, idx) => {
       if (v == null) { if (cur.length > 1) segs.push(cur); cur = []; return; }
-      cur.push(`${(i / DRILL_WINDOW * W).toFixed(1)},${(H - (v - lo) / span * H).toFixed(1)}`);
+      cur.push(`${(idx / DRILL_WINDOW * W).toFixed(1)},${scale(v, s).toFixed(1)}`);
     });
     if (cur.length > 1) segs.push(cur);
-    const chg = d.unit === 'bp' ? (win.at(-1) - win[0]) * 100 : (win[0] ? (win.at(-1) / win[0] - 1) * 100 : 0);
-    const txt = d.unit === 'bp' ? `${chg >= 0 ? '+' : ''}${Math.round(chg)}bp` : `${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%`;
-    const cls = Math.abs(chg) < (d.unit === 'bp' ? 1 : 0.05) ? 'flat' : chg > 0 ? 'up' : 'dn';
-    const stroke = cls === 'up' ? 'var(--green)' : cls === 'dn' ? 'var(--red)' : 'var(--text3)';
-    const lastPt = segs.at(-1)?.at(-1);
-    boxes.push(`<div class="mr-ch">
-      <div class="mr-ch-h"><span class="mr-ch-l">${esc(d.label)}</span><span class="mr-ch-v ${cls}">${txt}</span></div>
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(d.label)} over the twenty sessions, ${txt}">
-        ${segs.map(p => `<polyline points="${p.join(' ')}" fill="none" stroke="${stroke}" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`).join('')}
-        ${lastPt ? `<circle cx="${lastPt.split(',')[0]}" cy="${lastPt.split(',')[1]}" r="1.8" fill="${stroke}" vector-effect="non-scaling-stroke"/>` : ''}
-      </svg></div>`);
-  }
-  if (!boxes.length) return '';
-  return `<div class="mr-charts">${boxes.join('')}
-    <div class="mr-ch-cap">The twenty sessions this question measures, ending ${esc(q.date)}. Each box has its own scale \u2014 basis points and percent do not share an axis \u2014 so read the shapes and the labelled change, not the heights against each other.</div>
+    const col = CHART_COLOURS[k % CHART_COLOURS.length];
+    const last = segs.at(-1)?.at(-1);
+    return `${segs.map(pts => `<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>`).join('')}
+      ${last ? `<circle cx="${last.split(',')[0]}" cy="${last.split(',')[1]}" r="2.2" fill="${col}" vector-effect="non-scaling-stroke"/>` : ''}`;
+  }).join('');
+
+  const zeroY = shared ? scale(0) : null;
+  const legend = series.map((s, k) => `<span class="mr-cli"><span class="mr-cld" style="background:${CHART_COLOURS[k % CHART_COLOURS.length]}"></span>${esc(s.label)} <span class="mr-clv">${fmtChg(s.end, s.unit)}</span></span>`).join('');
+
+  return `<div class="mr-chart">
+    <div class="mr-cl">${legend}</div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
+         aria-label="${esc(series.map(s => `${s.label} ${fmtChg(s.end, s.unit)}`).join(', '))} over the twenty sessions to ${esc(q.date)}">
+      ${zeroY != null ? `<line x1="0" y1="${zeroY.toFixed(1)}" x2="${W}" y2="${zeroY.toFixed(1)}" stroke="var(--border2)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : ''}
+      ${lines}
+    </svg>
+    <div class="mr-cc">Each line is its change from the start of the twenty sessions ending ${esc(q.date)}${
+      shared ? `, on a shared ${series[0].unit === 'bp' ? 'basis-point' : 'percent'} axis \u2014 so the heights are directly comparable.`
+             : `. The units differ, so each line is scaled to its own range: read the shapes and the timing, not the heights against each other.`}</div>
   </div>`;
 }
 
@@ -345,10 +405,10 @@ function render() {
       <p class="mr-p">${esc(Q.reveal)}</p>
       <p class="mr-p">${esc(Q.why)}</p>
       <div class="mr-pr"><b>The principle.</b> ${esc(Q.principle)}</div>
-      ${renderCharts(Q)}
+      ${renderChart(Q)}
     </div>` : ''}
 
-    ${renderMech(Q.gen)}
+    ${renderMech(Q.gen, Q)}
 
     <div class="mr-foot">
       ${done ? `<button class="mr-next" onclick="mrNext()">Next question →</button>` : ''}
