@@ -629,6 +629,20 @@
   .dq-see span,.dq-tested span{display:block;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
                                font-weight:800;color:var(--text3);margin-bottom:2px}
   .dq-tested{border-left:3px solid var(--amber)}
+  .dq-bound{font-size:11.5px;line-height:1.6;color:var(--text2);background:var(--bg3);
+            border-left:3px solid var(--border2);border-radius:0 6px 6px 0;padding:6px 10px;margin-top:6px}
+  .dq-bound span{display:block;font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+                 font-weight:800;color:var(--text3);margin-bottom:2px}
+  /* the drill chart (js/drillChart.js) -- classes named by the cls prefix it is given */
+  :root{--accent-line-1:#4f7df0;--accent-line-2:#fbbf24;--accent-line-3:#a78bfa;--accent-line-4:#10b981}
+  .dq-chart{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-top:8px}
+  .dq-l{display:flex;flex-wrap:wrap;gap:3px 11px;margin-bottom:6px}
+  .dq-li{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--text2)}
+  .dq-ld{width:9px;height:2.5px;border-radius:2px;flex:0 0 auto}
+  .dq-lv{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--text);
+         font-variant-numeric:tabular-nums}
+  .dq-chart svg{display:block;width:100%;height:82px;overflow:visible}
+  .dq-c{font-size:10px;line-height:1.5;color:var(--text3);margin-top:5px}
 
   /* TradingView symbols: the `see` line says what to look at, these are what you paste.
      Click-to-copy, because retyping "FRED:BAMLH0A0HYM2" once is enough for anyone. */
@@ -8818,6 +8832,13 @@ window.copySym = async (btn) => {
   const was = btn.textContent; btn.textContent = 'copied'; btn.classList.add('copied');
   setTimeout(() => { btn.textContent = was; btn.classList.remove('copied'); }, 1100);
 };
+/** The same chart the practice page draws, from the window /api/drill-question attaches.
+ *  Shared drawing (js/drillChart.js) so the two cannot drift apart again. */
+function drillChart(compact = false) {
+  const C = window.drillChartBrick; if (!C || !_drill?.window?.length) return '';
+  return C.chartHtml(C.prepare(_drill.window), { date: _drill.q?.date, compact, cls: 'dq', esc: esc0 });
+}
+
 window.toggleTeach = () => { _drillTeach = !_drillTeach; render(); };
 
 async function loadDrill() {
@@ -8830,7 +8851,7 @@ async function loadDrill() {
   try {
     const j = await jget(`/api/drill-question?topic=${encodeURIComponent(topic)}`);
     _drillAsked = topic;
-    _drill = j?.ok ? { topic, q: j.question, boardTo: j.boardTo } : { none: true, reason: j?.reason };
+    _drill = j?.ok ? { topic, q: j.question, window: j.window, boardTo: j.boardTo } : { none: true, reason: j?.reason };
     _drillPick = null; _drillTeach = false; render();
   } catch { /* the block stays hidden */ }
 }
@@ -8877,7 +8898,7 @@ function renderDrill() {
       return `<div class="dq-mech">
         <div class="dq-mq">${esc0(M.question)}</div>
         <ol class="dq-steps">${M.steps.map(x => `<li>${esc0(x)}</li>`).join('')}</ol>
-        <div class="dq-see"><span>put this on a screen</span>${esc0(M.see)}${(() => {
+        <div class="dq-see"><span>put this on a screen</span>${esc0(M.see)}${_drillPick == null ? drillChart(true) : ''}${(() => {
           const tv = M.tv; if (!tv) return '';
           // main first and marked, then the compares, then any spread/ratio expression.
           // The expression is dashed because it goes in the symbol box as its own chart,
@@ -8908,6 +8929,8 @@ function renderDrill() {
         <b>${_drillPick === q.answer ? 'Right.' : 'Not this time.'}</b> ${esc0(q.reveal ?? '')}
         ${q.why ? `<div class="dq-why">${esc0(q.why)}</div>` : ''}
         ${q.principle ? `<div class="dq-pr"><span>the principle</span>${esc0(q.principle)}</div>` : ''}
+        ${q.boundary ? `<div class="dq-bound"><span>what would have changed the answer</span>${esc0(q.boundary)}</div>` : ''}
+        ${drillChart()}
         <button class="eb-btn" style="margin-top:7px" onclick="nextDrill()">next reading →</button>
       </div>` : `<div class="dq-hint">Commit to one before you look. Being wrong is what makes it stick — reading the explanation first feels like learning and mostly is not.</div>`}
     <div class="dq-foot">${bar}<span class="dq-meta"> · board to ${esc0(_drill.boardTo ?? '—')} · asks what IS, never what will be</span></div>`;
@@ -12775,6 +12798,11 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
      a reading, which one dissents, and how much of the score rests on one leg. A
      composite at +0.6 from six legs leaning together is not the same animal as +0.6 from
      one leg at +3 z, and the panels printed both identically. -->
+<script type="module">
+  import * as DrillChart from './js/drillChart.js';
+  window.drillChartBrick = DrillChart;
+  try { window.render?.(); } catch (e) {}
+</script>
 <script type="module">
   import * as GaugeRead from './js/gaugeRead.js';
   window.gaugeReadBrick = GaugeRead;

@@ -157,7 +157,7 @@ import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INST
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
 import { scanBoard as _msScanBoard, scanLinks as _msScanLinks, boardFreshness as _msBoardFreshness, THRESHOLDS as _msTHRESHOLDS } from './js/marketScan.js';
 import { marketState as _mtMarketState, sectorBoard as _mtSectorBoard } from './js/marketState.js';
-import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES } from './js/marketDrill.js';
+import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES, GENERATOR_SERIES as _GEN_SERIES, DRILL_WINDOW as _DRILL_WINDOW } from './js/marketDrill.js';
 import { plannedInWindow } from './js/endOfDay.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -14861,7 +14861,19 @@ app.get('/api/drill-question', async (req, res) => {
     const q = _buildQuestion(B, { seed, only: topic ? [topic] : null });
     if (!q) return res.json({ ok: false, none: true, reason: "today's board does not carry the numbers for that reading" });
     res.set('Cache-Control', 'public, max-age=1800');
-    res.json({ ok: true, topic, question: q, boardTo: B.to });
+    // The twenty sessions the question measures, attached so today.html can draw the
+    // same chart the practice page draws. That page holds the bundle and slices its own
+    // window; today.html builds its question server-side and has no bundle, and shipping
+    // it 42KB so it can draw ~60 points would be absurd. This is a few hundred bytes.
+    //
+    // Without it the two pages show the same question with different amounts of help,
+    // which is the drift that made this necessary in the first place.
+    const end = B.dates.indexOf(q.date);
+    const window = end >= _DRILL_WINDOW ? (_GEN_SERIES[q.gen] ?? []).map(d => {
+      const arr = B.series?.[d.key];
+      return arr ? { key: d.key, label: d.label, unit: d.unit, values: arr.slice(end - _DRILL_WINDOW, end + 1) } : null;
+    }).filter(Boolean) : [];
+    res.json({ ok: true, topic, question: q, window, boardTo: B.to });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

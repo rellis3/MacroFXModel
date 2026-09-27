@@ -90,13 +90,13 @@
      so. The data is already in the browser: this is a polyline, no fetch. */
   .mr-chart{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
             padding:10px 12px;margin-top:12px}
-  .mr-cl{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
-  .mr-cli{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
-  .mr-cld{width:9px;height:2.5px;border-radius:2px;flex:0 0 auto}
-  .mr-clv{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text);
+  .mr-l{display:flex;flex-wrap:wrap;gap:4px 12px;margin-bottom:8px}
+  .mr-li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+  .mr-ld{width:9px;height:2.5px;border-radius:2px;flex:0 0 auto}
+  .mr-lv{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;color:var(--text);
           font-variant-numeric:tabular-nums}
   .mr-chart svg{display:block;width:100%;height:110px;overflow:visible}
-  .mr-cc{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:7px}
+  .mr-c{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:7px}
   .mr-foot{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:16px}
   .mr-next{background:var(--blue);border:1px solid var(--blue2);color:#fff;border-radius:var(--r);
            padding:10px 20px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -156,6 +156,7 @@
 <script type="module">
 import * as Drill from '../js/marketDrill.js';
 import { GENERATOR_SERIES, DRILL_WINDOW } from '../js/marketDrill.js';
+import { prepare, chartHtml } from '../js/drillChart.js';
 import * as P from '../js/drillPractice.js';
 import { CONCEPTS } from '../js/learnState.js';
 import { mechanismFor } from '../js/mechanisms.js';
@@ -351,76 +352,21 @@ function renderMech(id, Q) {
  *
  * Costs nothing: the bundle is already loaded, so this is ~20 array reads per series.
  */
-const CHART_COLOURS = ['var(--accent-line-1)', 'var(--accent-line-2)', 'var(--accent-line-3)', 'var(--accent-line-4)'];
-
+// The window comes from the bundle this page already holds; the DRAWING is shared with
+// today.html (js/drillChart.js) so the same question cannot render differently in the
+// two places it appears. That drift is exactly what this replaced.
 function windowFor(q) {
   const defs = GENERATOR_SERIES[q?.gen]; if (!defs || !BUNDLE) return null;
   const end = BUNDLE.dates.indexOf(q.date); if (end < DRILL_WINDOW) return null;
-  const out = [];
-  for (const d of defs) {
-    const arr = BUNDLE.series?.[d.key]; if (!arr) continue;
-    const raw = arr.slice(end - DRILL_WINDOW, end + 1).map(v => (v == null || !Number.isFinite(v)) ? null : v);
-    if (raw[0] == null || raw.filter(v => v != null).length < 5) continue;   // too gappy to draw honestly
-    const base = raw[0];
-    // change from the window start, in the series' own unit
-    const chg = raw.map(v => v == null ? null : (d.unit === 'bp' ? (v - base) * 100 : (base ? (v / base - 1) * 100 : 0)));
-    out.push({ ...d, chg, end: chg.at(-1) ?? 0 });
-  }
-  return out.length ? out : null;
+  return defs.map(d => {
+    const arr = BUNDLE.series?.[d.key];
+    return arr ? { key: d.key, label: d.label, unit: d.unit, values: arr.slice(end - DRILL_WINDOW, end + 1) } : null;
+  }).filter(Boolean);
 }
 
-const fmtChg = (v, unit) => unit === 'bp'
-  ? `${v >= 0 ? '+' : ''}${Math.round(v)}bp`
-  : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
-
 function renderChart(q, { compact = false } = {}) {
-  const series = windowFor(q); if (!series) return '';
-  const units = new Set(series.map(s => s.unit));
-  const shared = units.size === 1;                    // one unit => one real axis
-  const W = 300, H = compact ? 64 : 86, PAD = 3;
-
-  let scale;
-  if (shared) {
-    const all = series.flatMap(s => s.chg).filter(v => v != null).concat([0]);
-    const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
-    scale = (v) => H - PAD - ((v - lo) / span) * (H - 2 * PAD);
-  } else {
-    scale = (v, s) => {
-      const own = s.chg.filter(x => x != null).concat([0]);
-      const lo = Math.min(...own), hi = Math.max(...own), span = (hi - lo) || 1;
-      return H - PAD - ((v - lo) / span) * (H - 2 * PAD);
-    };
-  }
-
-  const lines = series.map((s, k) => {
-    // nulls BREAK the line rather than being bridged -- a straight segment across
-    // missing days is a drawing of data that does not exist
-    const segs = []; let cur = [];
-    s.chg.forEach((v, idx) => {
-      if (v == null) { if (cur.length > 1) segs.push(cur); cur = []; return; }
-      cur.push(`${(idx / DRILL_WINDOW * W).toFixed(1)},${scale(v, s).toFixed(1)}`);
-    });
-    if (cur.length > 1) segs.push(cur);
-    const col = CHART_COLOURS[k % CHART_COLOURS.length];
-    const last = segs.at(-1)?.at(-1);
-    return `${segs.map(pts => `<polyline points="${pts.join(' ')}" fill="none" stroke="${col}" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>`).join('')}
-      ${last ? `<circle cx="${last.split(',')[0]}" cy="${last.split(',')[1]}" r="2.2" fill="${col}" vector-effect="non-scaling-stroke"/>` : ''}`;
-  }).join('');
-
-  const zeroY = shared ? scale(0) : null;
-  const legend = series.map((s, k) => `<span class="mr-cli"><span class="mr-cld" style="background:${CHART_COLOURS[k % CHART_COLOURS.length]}"></span>${esc(s.label)} <span class="mr-clv">${fmtChg(s.end, s.unit)}</span></span>`).join('');
-
-  return `<div class="mr-chart">
-    <div class="mr-cl">${legend}</div>
-    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img"
-         aria-label="${esc(series.map(s => `${s.label} ${fmtChg(s.end, s.unit)}`).join(', '))} over the twenty sessions to ${esc(q.date)}">
-      ${zeroY != null ? `<line x1="0" y1="${zeroY.toFixed(1)}" x2="${W}" y2="${zeroY.toFixed(1)}" stroke="var(--border2)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>` : ''}
-      ${lines}
-    </svg>
-    <div class="mr-cc">Each line is its change from the start of the twenty sessions ending ${esc(q.date)}${
-      shared ? `, on a shared ${series[0].unit === 'bp' ? 'basis-point' : 'percent'} axis \u2014 so the heights are directly comparable.`
-             : `. The units differ, so each line is scaled to its own range: read the shapes and the timing, not the heights against each other.`}</div>
-  </div>`;
+  const w = windowFor(q); if (!w?.length) return '';
+  return chartHtml(prepare(w), { date: q.date, compact, cls: 'mr', esc });
 }
 
 function render() {
