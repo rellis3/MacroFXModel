@@ -36,11 +36,32 @@
  *    ladder, minCostRatio=3 (asia) / 4 (monday). No currency-loss-gate
  *    equivalent exists for Fib Atlas.
  */
-import { applyConcurrencyCap, applyCostEfficiencyFilter, applyGapFilter } from './levelAtlasVoteReview.js';
+import { applyConcurrencyCap, applyCostEfficiencyFilter, applyGapFilter, applyFadeStopFraction, applyStoredContinuationExit } from './levelAtlasVoteReview.js';
 import { getJSON } from './r2Store.js';
 import { resolveKey } from './instrumentRegistry.js';
 
 const LADDER_PREFIX = { asia: 'asia-fib-atlas', monday: 'monday-fib-atlas' };
+
+// Same frozen value both js/asiaFibAtlasZonePricer.js's FIB_ATLAS_STOP_
+// TIGHTEN_FRAC and js/mondayFibAtlasZonePricer.js's FIB_ATLAS_MONDAY_STOP_
+// TIGHTEN_FRAC use -- both currently 0.9, no config path to change either,
+// applied unconditionally by the live zone pricer on every fade trade's
+// entry/stop. 'chandelier' matches fib_atlas_bot.py's own trailing stop,
+// which also runs unconditionally, every tick, on every open position (see
+// this bot's own "runs EVERY tick, UNCONDITIONALLY" comment). Found
+// 2026-09-27: the RAW stored trade (from priceBarrierTrade at generation
+// time) has NEITHER applied -- both are opt-in parameters only the
+// interactive portfolio page (buildFibAtlasVotePortfolio) turns on. Without
+// this, the reconciliation was comparing real live trades (tightened stop,
+// trailed exit) against a backtest baseline that used neither -- a genuine
+// engine mismatch, not a live bug, for any fade trade or any trade that
+// would have been trailed further.
+const FIB_ATLAS_STOP_TIGHTEN_FRAC = 0.9;
+
+function applyLiveExecutionMechanics(trades) {
+  const trailed = applyStoredContinuationExit(trades, 'chandelier');
+  return applyFadeStopFraction(trailed, FIB_ATLAS_STOP_TIGHTEN_FRAC, 0, { preserveSizing: true });
+}
 
 const _SYMBOL_OVERRIDE = { DE40: 'de30', US2000: 'us2000', US30: 'dow', US500: 'spx', US100: 'nq', UK100: 'uk100' };
 
@@ -92,7 +113,7 @@ export function normalizeTradeHistoryForFibAtlasAudit(rawTrades, commentPrefix) 
 async function loadStoredFibTrades(pair, ladder) {
   const stored = await getJSON(`${LADDER_PREFIX[ladder]}/${pair}-votetrades.json`);
   if (!stored?.trades) return { trades: null, cost: null, reason: 'no vote-backtest data for this pair/ladder' };
-  return { trades: stored.trades, cost: stored.cost, reason: null };
+  return { trades: applyLiveExecutionMechanics(stored.trades), cost: stored.cost, reason: null };
 }
 
 export async function auditFibAtlasDrift(tradeEntries, { minMargin = 2 } = {}) {
