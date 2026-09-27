@@ -67,6 +67,20 @@ function mergePacked(existing, fresh, windowDays) {
   };
 }
 
+// Deliberately conservative/UTC-rough (not DST-precise) -- the only cost of
+// being a little wide is one extra harmless warning near the boundary, vs
+// the real risk of a false "market's closed" call masking a genuine
+// trading-day sync failure. FX closes ~Fri 22:00 UTC, reopens ~Sun 22:00 UTC.
+function isLikelyFxWeekendClosed(nowMs) {
+  const d = new Date(nowMs);
+  const day = d.getUTCDay();   // 0=Sun … 6=Sat
+  const hour = d.getUTCHours();
+  if (day === 6) return true;                 // all Saturday
+  if (day === 0 && hour < 21) return true;     // Sunday before ~21:00 UTC
+  if (day === 5 && hour >= 21) return true;    // Friday from ~21:00 UTC
+  return false;
+}
+
 // Shared across both ladders for one pair — see localStore.mjs's own doc.
 async function syncM1(pair) {
   const existing = await loadM1(pair);
@@ -80,19 +94,28 @@ async function syncM1(pair) {
   if (!j.ok) throw new Error(`m1-tail fetch failed for ${pair}: ${j.error || 'unknown'}`);
   if (!j.n) {
     // "Nothing new since last time" is the NORMAL case over a weekend (FX
-    // closed Fri ~22:00 UTC to Sun ~22:00 UTC) -- found 2026-09-19, owner
-    // question: a plain `return existing.n` here (the original design) never
-    // touches the local file, so its mtime freezes at Friday's last real bar.
-    // server.mjs's m1Age() reads that mtime, and once it exceeds
-    // MAX_M1_AGE_HOURS (2h default) every pair reports {stale:true} and
-    // /plan skips the whole universe -- NOT because the data is actually
-    // stale (it's exactly as current as the market allows), but because
-    // "no new bars" was being conflated with "sync isn't working." Re-saving
-    // the SAME data confirms "we checked, and the market genuinely has
-    // nothing new" as a fresh fact, which is what the staleness gate should
-    // actually be measuring -- a real sync failure (server down, network
-    // gone) still correctly ages out, since THEN this line is never reached.
-    if (since != null) { if (existing?.n) await saveM1(pair, existing); return existing.n; }
+    // closed Fri ~22:00 UTC to Sun ~22:00 UTC) -- found 2026-09-19: a plain
+    // `return existing.n` here never touches the local file, so its mtime
+    // freezes and server.mjs's m1Age() (file mtime, NOT the last bar's own
+    // timestamp) ages the pair out for the whole weekend even though the
+    // data is exactly as current as the closed market allows.
+    //
+    // 2026-09-27 CORRECTION (same fix as local_decision_engine/sync.mjs,
+    // this file's own twin): the original fix over-corrected by re-saving
+    // on EVERY empty response, unconditionally -- so a genuine sync failure
+    // DURING ACTIVE TRADING HOURS gets the same treatment as a legitimate
+    // weekend closure, and the staleness gate meant to catch it is silently
+    // defeated. Only treat empty-and-touch as safe when it's ACTUALLY the
+    // weekend; otherwise warn loudly and leave the mtime alone so the
+    // existing fail-closed gate can do its job.
+    if (since != null) {
+      if (isLikelyFxWeekendClosed(Date.now())) {
+        if (existing?.n) await saveM1(pair, existing);
+        return existing.n;
+      }
+      console.error(`[sync] ${pair}: WARNING -- empty M1 response during what should be active trading hours (no new bars in a ${M1_SYNC_INTERVAL_MINUTES}min window). NOT touching the local file -- if this repeats, server.mjs's MAX_M1_AGE_HOURS gate (default 2h) should correctly flag it as stale.`);
+      return existing?.n ?? null;
+    }
     throw new Error(`m1-tail fetch failed for ${pair}: empty response`);
   }
   const fetched = { n: j.n, times: j.times, opens: j.opens, highs: j.highs, lows: j.lows, closes: j.closes, volumes: j.volumes };
