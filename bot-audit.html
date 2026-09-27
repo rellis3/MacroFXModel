@@ -91,6 +91,17 @@
   tbody tr:hover { background:var(--panel2); }
   .scroll { max-height:520px; overflow:auto; }
 
+  /* REC tab felt cramped on a phone (fixed 520px scroll box wasting most of
+     the screen below it, 12px/10.5px text hard to read) — scoped overrides
+     rather than touching the global table/th/td rules every other tab
+     shares. max-height is viewport-relative so it actually fills the
+     available space instead of a fixed cap, but still leaves room for the
+     note/header above it and doesn't run off-screen on a short viewport. */
+  .rec-panel .scroll { max-height:calc(100vh - 260px); }
+  .rec-panel table { font-size:13.5px; }
+  .rec-panel th, .rec-panel td { padding:7px 10px; }
+  .rec-panel th { font-size:11px; }
+
   .chip { display:inline-block; border-radius:3px; padding:1px 6px; font-size:10.5px;
           font-weight:600; font-family:var(--mono); }
 
@@ -1438,7 +1449,7 @@ function renderRec() {
 
   if (!rows.length) {
     el.innerHTML = `<div class="note">Per-day, per-bot: does the live decision (fade/follow), the live win/loss, and the live $ P&amp;L match what the honest as-of-that-day backtest says they should have been. Computed automatically once a day (06:30 London) for the PREVIOUS day — today won't have a row yet.</div>
-    <div class="panel"><div class="ph"><span class="badge">REC</span>Daily reconciliation<span class="rt">${daysBtns}</span></div><div class="empty">No computed days in this window yet.</div></div>`;
+    <div class="panel rec-panel"><div class="ph"><span class="badge">REC</span>Daily reconciliation<span class="rt">${daysBtns}</span></div><div class="empty">No computed days in this window yet.</div></div>`;
     return;
   }
 
@@ -1449,7 +1460,7 @@ function renderRec() {
   };
 
   el.innerHTML = `<div class="note">Per-day, per-bot: does the live decision (fade/follow), the live win/loss, and the live $ P&amp;L match what the honest as-of-that-day backtest says they should have been — AND, separately, how many zones the backtest found across the bot's own full pair universe that day vs how many it actually traded. A bot that matches 100% on the trades it took but traded far fewer than "Backtest candidates" is silently skipping real signals — that gap is the number to watch, not just the match rate. Computed automatically once a day (06:30 London) for the PREVIOUS day.</div>
-  <div class="panel"><div class="ph"><span class="badge">REC</span>Daily reconciliation<span class="rt">${rows.length} bot-days · ${daysBtns}</span></div>
+  <div class="panel rec-panel"><div class="ph"><span class="badge">REC</span>Daily reconciliation<span class="rt">${rows.length} bot-days · ${daysBtns}</span></div>
   <div class="scroll"><table><thead><tr>
     <th class="l">Date</th><th class="l">Bot</th>
     <th title="Real closed trades">Trades</th>
@@ -1491,7 +1502,7 @@ function renderRec() {
       const unmatchedRows = unmatched.map(c => `<div>extra (no backtest candidate): <b>${esc((c.pair || c.symbol || '').toUpperCase())}</b> ${esc(c.zone_id || c.motif_key || '')} · ${esc(c.direction || '')} · ${c.time_open ? new Date(c.time_open * 1000).toISOString().slice(11, 16) + ' UTC' : ''} — ${whyOf(c)}</div>`).join('');
       const mismRows = mism.map(m => `<div>mismatch: <b>${esc((m.pair || m.symbol || '').toUpperCase())}</b> live=${esc(m.direction || m.actualDir || '')} backtest=${esc(m.myDir || m.myDecision || '')} · ${m.winLossMatch === false ? 'win/loss also disagreed' : ''}${m.detail ? ' · ' + esc(m.detail) : ''}</div>`).join('');
       const detailRow = hasDetail
-        ? `<tr id="${detailId}" style="display:none"><td colspan="9" style="background:var(--s2);font-size:10.5px;padding:8px 12px">${missedRows}${unmatchedRows}${mismRows}</td></tr>`
+        ? `<tr id="${detailId}" style="display:none"><td colspan="9" style="background:var(--s2);font-size:12.5px;line-height:1.6;padding:10px 14px">${missedRows}${unmatchedRows}${mismRows}</td></tr>`
         : '';
       return `<tr>
         <td class="l mono">${r.date}</td>
