@@ -34481,7 +34481,7 @@ if (process.env.OANDA_KEY) {
 }
 
 if (process.env.OANDA_KEY) {
-  _scheduleDailyLondon(0, 30, async () => {
+  const _referenceEngineRebuildTick = async () => {
     let enabled = process.env.REFERENCE_ENGINE_REBUILD !== '0';   // env opt-OUT, defaults on
     try {
       const raw = await kv.get('caps');
@@ -34626,8 +34626,63 @@ if (process.env.OANDA_KEY) {
     }
 
     console.log('[reference-engine-rebuild] nightly tick complete');
+  };
+
+  // Catch-up (2026-09-27): a deploy landing 18min after the 00:30 London
+  // slot on 2026-09-26 caused this WHOLE night's rebuild to be skipped --
+  // _scheduleDailyLondon has no memory across restarts, so a boot just
+  // after the target time waits a full extra day for the next one.
+  // votetrades.json then silently served stale data to the daily-recon
+  // feature, which cached a wrong "0 candidates" result for ~18 hours
+  // before anyone noticed.
+  //
+  // Deliberately conservative: only catches up if the CURRENT boot is
+  // still within this job's own quiet overnight window (00:00-08:00
+  // London, computed via the same DST-safe _btLondonMidnightSec every
+  // other schedule here uses, NOT Date/toLocaleString's hour extraction --
+  // that has a known midnight="24" quirk on some Node/ICU builds). A
+  // stray DAYTIME deploy (this repo redeploys many times a day) must
+  // NEVER be able to trigger this heavy, historically crash-prone job
+  // during trading hours -- see this job's own "never actually
+  // root-caused... dies at a SHIFTING point" note above; that is exactly
+  // the kind of load a past outage this session was caused by. Persists
+  // a KV date-stamp (sched_lastrun_reference_engine_rebuild) so it only
+  // ever attempts once per London calendar day even across several
+  // same-morning redeploys, rather than retrying on every boot.
+  const _REF_ENGINE_SCHED_KEY = 'sched_lastrun_reference_engine_rebuild';
+  function _refEngineDueLondonDate(nowMs) {
+    const delta = 30 * 60_000; // 00:30
+    let dueAt = _btLondonMidnightSec(new Date(nowMs)) * 1000 + delta;
+    if (dueAt > nowMs) dueAt -= 24 * 3600_000; // most recently due slot, even if that's yesterday's
+    return new Date(dueAt).toISOString().slice(0, 10);
+  }
+  (async () => {
+    try {
+      const nowMs = Date.now();
+      const hoursSinceLondonMidnight = (nowMs - _btLondonMidnightSec(new Date(nowMs)) * 1000) / 3600_000;
+      if (hoursSinceLondonMidnight >= 8) {
+        console.log(`[reference-engine-rebuild] boot outside the 00:00-08:00 London catch-up window (${hoursSinceLondonMidnight.toFixed(1)}h past midnight) -- skipping catch-up check, next attempt is tonight's normal 00:30 slot`);
+        return;
+      }
+      const dueDate = _refEngineDueLondonDate(nowMs);
+      const lastRun = await kv.get(_REF_ENGINE_SCHED_KEY).catch(() => null);
+      if (lastRun === dueDate) {
+        console.log(`[reference-engine-rebuild] catch-up check: already ran for ${dueDate}, nothing to do`);
+        return;
+      }
+      console.log(`[reference-engine-rebuild] catch-up: last successful run was ${lastRun ?? 'never'}, due slot ${dueDate} missing -- running now (boot within the safe overnight window)`);
+      await _referenceEngineRebuildTick();
+      await kv.put(_REF_ENGINE_SCHED_KEY, dueDate).catch(e => console.error('[reference-engine-rebuild] catch-up stamp write failed:', e.message));
+    } catch (e) {
+      console.error('[reference-engine-rebuild] catch-up check failed:', e.message);
+    }
+  })();
+
+  _scheduleDailyLondon(0, 30, async () => {
+    await _referenceEngineRebuildTick();
+    await kv.put(_REF_ENGINE_SCHED_KEY, _refEngineDueLondonDate(Date.now())).catch(e => console.error('[reference-engine-rebuild] stamp write failed:', e.message));
   });
-  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Asia/Monday Fib Atlas + Session Path + Session Handoff, then a follow-on healing pass that solo-retries any Fib Atlas (pair,ladder) the run itself missed, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable)');
+  console.log('[reference-engine-rebuild] nightly tick armed at 00:30 London (Level Atlas + Asia/Monday Fib Atlas + Session Path + Session Handoff, then a follow-on healing pass that solo-retries any Fib Atlas (pair,ladder) the run itself missed, gated by Caps.referenceEngineRebuild or REFERENCE_ENGINE_REBUILD=0 to disable) -- plus a boot-time catch-up check for the 00:00-08:00 London window, see the catch-up block above for details');
 }
 
 // Session stats KV restore — if the local file was lost on container restart, reload from KV.

@@ -396,6 +396,15 @@ function isCfKey(key) {
   // later — same "point-in-time record, not a rebuildable cache" reasoning
   // as fomc_/vmlog_ above.
   if (key.startsWith('gold_etf_flow_')) return true;
+  // sched_lastrun_* — date-stamps for _scheduleDailyLondon catch-up checks
+  // (2026-09-27, after a deploy landing 18min past the reference-engine
+  // rebuild's 00:30 London slot caused that whole night's rebuild to be
+  // silently skipped): must survive Railway redeploys, since the entire
+  // point is detecting "did today's scheduled job actually complete" across
+  // a restart. A default 48h TTL (not added to _worker.js's PERMANENT_KEYS)
+  // is fine here — an expired stamp just looks like "never run", which is
+  // the same safe fallback as a genuine miss.
+  if (key.startsWith('sched_lastrun_')) return true;
   // equity_<bot>_<YYYY-MM> — one row per bot per UTC day of balance/equity/
   // allocation, written by the worker's /api/kv/set status branch. The ONLY
   // balance history that exists: <bot>_status is overwritten every push and
