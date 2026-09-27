@@ -212,12 +212,35 @@ _BROKER_OVERRIDE = {
 # a wrong guess without a code deploy.
 _broker_overrides: dict = {}
 
+# Same override tier for the OTHER hardcoded assumption a broker mismatch
+# can get wrong -- pylego.point_values' own $-per-pip-per-lot table is
+# "an approximation" per its own docstring, verified WRONG for this
+# account's gold contract at startup 2026-09-27 (assumed $100/pip/lot,
+# real $10/pip/lot -- verify_point_values' own POINT VALUE MISMATCH).
+# Shares the same MT5 account as fib_atlas_bot.py, so shares the same fix.
+_point_value_overrides: dict = {}
+
+
+def _pv(pair: str) -> float:
+    p = pair.lower()
+    if p in _point_value_overrides:
+        return _point_value_overrides[p]
+    return PV.point_value(pair)
+
 
 def _apply_broker_symbols(cfg: dict) -> None:
     _broker_overrides.clear()
     for k, v in (cfg.get("broker_symbols") or {}).items():
         if v and str(v).strip():
             _broker_overrides[str(k).lower()] = str(v).strip()
+    _point_value_overrides.clear()
+    for k, v in (cfg.get("point_values") or {}).items():
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            continue
+        if fv > 0:
+            _point_value_overrides[str(k).lower()] = fv
 
 
 def _parse_hhmm_secs(s: str) -> int:
@@ -298,7 +321,7 @@ def make_broker(cfg: dict):
 
 def size_for(pair: str, balance: float, risk_pct: float, sl_dist: float, max_lot: float) -> float:
     try:
-        pip = I.pip_size(pair); pv = PV.point_value(pair)
+        pip = I.pip_size(pair); pv = _pv(pair)
     except Exception:
         pip, pv = 0.0001, 10.0
     lots = position_size(balance, risk_pct, abs(sl_dist), pip=pip, pip_value=pv, max_lot=max_lot)
@@ -326,7 +349,7 @@ def _position_risk_pct(pair: str, lots: float, entry: float, sl: float, balance:
     if not balance or sl is None or entry is None:
         return 0.0
     try:
-        pip = I.pip_size(pair); pv = PV.point_value(pair)
+        pip = I.pip_size(pair); pv = _pv(pair)
     except Exception:
         pip, pv = 0.0001, 10.0
     sl_pips = abs(float(entry) - float(sl)) / pip
