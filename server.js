@@ -34652,9 +34652,14 @@ if (process.env.OANDA_KEY) {
   const _REF_ENGINE_SCHED_KEY = 'sched_lastrun_reference_engine_rebuild';
   function _refEngineDueLondonDate(nowMs) {
     const delta = 30 * 60_000; // 00:30
-    let dueAt = _btLondonMidnightSec(new Date(nowMs)) * 1000 + delta;
-    if (dueAt > nowMs) dueAt -= 24 * 3600_000; // most recently due slot, even if that's yesterday's
-    return new Date(dueAt).toISOString().slice(0, 10);
+    let londonMidnightMs = _btLondonMidnightSec(new Date(nowMs)) * 1000;
+    if (londonMidnightMs + delta > nowMs) londonMidnightMs -= 24 * 3600_000; // most recently due slot, even if that's yesterday's
+    // Label from midnight+12h, not midnight+30min -- during BST, London
+    // midnight is 23:00 UTC the PREVIOUS calendar day, so a naive
+    // .toISOString() on midnight+30min would read back the WRONG (UTC)
+    // date. +12h always lands safely inside the same London calendar day
+    // in UTC terms too, regardless of the BST/GMT offset.
+    return new Date(londonMidnightMs + 12 * 3600_000).toISOString().slice(0, 10);
   }
   (async () => {
     try {
