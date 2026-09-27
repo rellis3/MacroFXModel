@@ -185,7 +185,12 @@ app.get('/plan', async (req, res) => {
     try {
       const result = await pairDecision(pair, { earlyExit, earlyExitThreshold });
       if (result.stale || result.skipped) { skipped[pair] = result.reason || result.skipped; continue; }
-      instruments[pair] = { spot: result.spot, zones: result.zones, zoneCount: result.zoneCount };
+      // `filtered` (2026-09-27): pending touches zonePricer.mjs looked at but
+      // didn't publish -- below the margin floor, structurally unpriceable,
+      // etc. -- carried through so the bot can log WHY a candidate the
+      // backtest saw never became a zone, instead of it vanishing with zero
+      // trace (see zonePricer.mjs's own doc on this).
+      instruments[pair] = { spot: result.spot, zones: result.zones, zoneCount: result.zoneCount, filtered: result.filtered ?? [] };
     } catch (e) {
       skipped[pair] = `error: ${e.message}`;
     }

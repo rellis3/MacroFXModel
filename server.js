@@ -18296,13 +18296,21 @@ function _volatilityV2PriceP90Zone(rec, ladderBySide, stopPips) {
 // before this date they ALWAYS lacked them, which was the actual bug: two
 // independent computations of the same formula, free to drift. Do not
 // "fix" this comment back to describing the fallback as the normal path.
+// 2026-09-27: every drop path here now carries a `reason` instead of a bare
+// null, mirroring the identical fix in local_decision_engine/lib/zonePricer.mjs
+// (v3's copy of this same function) -- a pending touch that never clears
+// VOLATILITY_V2_MIN_MARGIN (or is structurally unpriceable) was silently
+// discarded with zero trace anywhere, found via a real live-vs-backtest
+// reconciliation session. Purely additive: every threshold/condition below
+// is UNCHANGED, only the return shape grew a `reason` (and `margin`/
+// `decision` where available) alongside the zone itself.
 function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold) {
   let withDist = rec;
   if (rec.innerDistPips == null) {
     const lv = ladderBySide[rec.side];
-    if (!lv) return null;
+    if (!lv) return { zone: null, reason: 'no ladder computed for this side (forecastSigma/buildLadder unavailable)' };
     const ri = _LA_RUNGS.indexOf(rec.rung);
-    if (ri < 0) return null;
+    if (ri < 0) return { zone: null, reason: `rung "${rec.rung}" not recognized` };
     const here = lv[ri + 1], inner = lv[ri], outer = lv[ri + 2] ?? null;
     const rungSpan = Math.abs(here - inner);
     withDist = { ...rec,
@@ -18311,9 +18319,10 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
     };
   }
   const vd = _laVoteDecision(book, withDist);
-  if (!vd || vd.margin < VOLATILITY_V2_MIN_MARGIN) return null;
+  if (!vd) return { zone: null, reason: 'voteDecision returned nothing for this touch' };
+  if (vd.margin < VOLATILITY_V2_MIN_MARGIN) return { zone: null, reason: `margin ${vd.margin} below the floor (${VOLATILITY_V2_MIN_MARGIN})`, margin: vd.margin, decision: vd.decision };
   const priced = _laPriceBarrierTrade(withDist, vd.decision, cost);
-  if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
+  if (!priced) return { zone: null, reason: 'structurally unpriceable (priceBarrierTrade)', margin: vd.margin, decision: vd.decision };   // structurally unpriceable (e.g. a 'follow' with no outer rung)
 
   // 2026-09-18: live-vs-backtest divergence audit (owner-flagged, #1 priority
   // — live's realized win rate has been running ~20-30pp below the honest
@@ -18347,7 +18356,7 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
     outerDistPips = Math.min(fadeStopInfo.stopPips, outerDistPips);
   }
   const outer = outerDistPips != null ? withDist.level + sgn * outerDistPips * withDist.pip : null;
-  if (outer == null) return null;   // a follow at the outermost rung — no real stop, don't publish it
+  if (outer == null) return { zone: null, reason: 'follow at the outermost rung — no real stop, not published', margin: vd.margin, decision: vd.decision };   // a follow at the outermost rung — no real stop, don't publish it
   const tp = vd.decision === 'fade' ? inner : outer;
   // `sizingSl` ALWAYS carries the full, untightened stop distance — position
   // sizing must be computed off this, never off a tightened bracket, or
@@ -18364,10 +18373,13 @@ function _volatilityV2PriceZone(rec, book, ladderBySide, cost, fadeStopInfo, fad
   }
 
   return {
-    side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
-    entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
-    rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
-    voteDims,
+    zone: {
+      side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
+      entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
+      rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+      voteDims,
+    },
+    reason: null,
   };
 }
 
@@ -18440,8 +18452,9 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
   // rearm bookkeeping already decides what's currently armed, which is
   // exactly what `pending` represents.
   const zones = [];
+  const filtered = [];
   for (const p of (live.pending ?? [])) {
-    let zone;
+    let zone, reason, margin, decision;
     if (p.rung === 'p90') {
       // p90 never goes through the standard vote/margin path (see
       // `_volatilityV2PriceP90Zone`'s doc) — only priced when the operator
@@ -18450,9 +18463,12 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
       if (!p90Enabled) continue;
       zone = _volatilityV2PriceP90Zone(p, ladderBySide, p90StopInfo?.stopPips);
     } else {
-      zone = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold);
+      ({ zone, reason, margin, decision } = _volatilityV2PriceZone(p, book, ladderBySide, cost, fadeStopInfo, fadeStopTighten, earlyExit, earlyExitThreshold));
     }
-    if (!zone) continue;
+    if (!zone) {
+      if (reason) filtered.push({ side: p.side, rung: p.rung, reason, margin: margin ?? null, decision: decision ?? null });
+      continue;
+    }
     // instanceNum: how many times THIS (side,rung) has already resolved
     // today — makes the zone_id stable across polls for the CURRENT armed
     // instance, but distinct from an earlier-today occurrence of the same
@@ -18461,7 +18477,7 @@ async function _volatilityV2InstrumentPreview(pair, { fadeStopTighten = false, e
     const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
     zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
   }
-  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo, p90StopInfo };
+  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, fadeStopInfo, p90StopInfo, filtered };
 }
 
 async function _refreshVolatilityV2Plan() {
@@ -18499,7 +18515,7 @@ async function _refreshVolatilityV2Plan() {
           p90Enabled: !!cfg.p90_enabled,
         });
         if (preview.skipped) { skipped[pair] = preview.skipped; continue; }
-        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo, p90StopInfo: preview.p90StopInfo };
+        instruments[pair] = { spot: preview.spot, zones: preview.zones, zoneCount: preview.zoneCount, fadeStopInfo: preview.fadeStopInfo, p90StopInfo: preview.p90StopInfo, filtered: preview.filtered ?? [] };
       } catch (e) {
         skipped[pair] = `error: ${e.message}`;
         console.error(`[volatility-v2] ${pair} failed:`, e.message);

@@ -42,15 +42,24 @@ export function computeLiveContext(pair, packed) {
   return { date: liveDate, touches: liveTouches, pending: pending ?? [], assetClass };
 }
 
-// Mirrors server.js's _volatilityV2PriceZone (server.js:16551-16601) exactly.
-// `rec` is a pending-shaped live record (from computeLiveContext's `pending`).
+// Mirrors server.js's _volatilityV2PriceZone (server.js:16551-16601) exactly,
+// PLUS (2026-09-27) a reason on every drop path instead of a bare null.
+// Found via a real live-vs-backtest reconciliation session: a pending touch
+// that never clears MIN_MARGIN (or is structurally unpriceable) was silently
+// discarded here with zero trace anywhere -- a backtest candidate the bot
+// never even had a CHANCE to see, indistinguishable from every other kind
+// of gap until this was traced. This is pure additive bookkeeping: every
+// existing drop condition and threshold is UNCHANGED, only the return shape
+// grew a `reason` (and `margin`/`decision` where available) alongside the
+// zone itself. `rec` is a pending-shaped live record (from
+// computeLiveContext's `pending`).
 function priceZone(rec, book, ladderBySide, cost, { earlyExit = false, earlyExitThreshold = 0.4 } = {}) {
   let withDist = rec;
   if (rec.innerDistPips == null) {
     const lv = ladderBySide[rec.side];
-    if (!lv) return null;
+    if (!lv) return { zone: null, reason: 'no ladder computed for this side (forecastSigma/buildLadder unavailable)' };
     const ri = RUNGS.indexOf(rec.rung);
-    if (ri < 0) return null;
+    if (ri < 0) return { zone: null, reason: `rung "${rec.rung}" not recognized` };
     const here = lv[ri + 1], inner = lv[ri], outer = lv[ri + 2] ?? null;
     const rungSpan = Math.abs(here - inner);
     withDist = {
@@ -60,15 +69,16 @@ function priceZone(rec, book, ladderBySide, cost, { earlyExit = false, earlyExit
     };
   }
   const vd = voteDecision(book, withDist);
-  if (!vd || vd.margin < MIN_MARGIN) return null;
+  if (!vd) return { zone: null, reason: 'voteDecision returned nothing for this touch' };
+  if (vd.margin < MIN_MARGIN) return { zone: null, reason: `margin ${vd.margin} below the floor (${MIN_MARGIN})`, margin: vd.margin, decision: vd.decision };
   const priced = priceBarrierTrade(withDist, vd.decision, cost);
-  if (!priced) return null;   // structurally unpriceable (e.g. a 'follow' with no outer rung)
+  if (!priced) return { zone: null, reason: 'structurally unpriceable (priceBarrierTrade)', margin: vd.margin, decision: vd.decision };
 
   const sgn = withDist.side === 'up' ? 1 : -1;
   const inner = withDist.level - sgn * withDist.innerDistPips * withDist.pip;
   const outerDistPips = withDist.outerDistPips;
   const outer = outerDistPips != null ? withDist.level + sgn * outerDistPips * withDist.pip : null;
-  if (outer == null) return null;   // a follow at the outermost rung — no real stop, don't publish it
+  if (outer == null) return { zone: null, reason: 'follow at the outermost rung — no real stop, not published', margin: vd.margin, decision: vd.decision };   // a follow at the outermost rung — no real stop, don't publish it
   const tp = vd.decision === 'fade' ? inner : outer;
   const sizingSl = vd.decision === 'fade' ? outer : inner;
   let sl = sizingSl;
@@ -88,10 +98,13 @@ function priceZone(rec, book, ladderBySide, cost, { earlyExit = false, earlyExit
     : null;
 
   return {
-    side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
-    entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
-    rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
-    voteDims,
+    zone: {
+      side: withDist.side, rung: withDist.rung, decision: vd.decision, margin: vd.margin,
+      entry: +withDist.level.toFixed(6), sl: +sl.toFixed(6), sizingSl: +sizingSl.toFixed(6), tp: +tp.toFixed(6),
+      rationale: `${vd.decision} · margin ${vd.margin} (${vd.outVotes} out / ${vd.backVotes} back)`,
+      voteDims,
+    },
+    reason: null,
   };
 }
 
@@ -137,12 +150,16 @@ export function computeZones(pair, { book, packed, earlyExit = false, earlyExitT
   }
 
   const zones = [];
+  const filtered = [];
   for (const p of (live.pending ?? [])) {
     if (p.rung === 'p90') continue;
-    const zone = priceZone(p, book, ladderBySide, cost, { earlyExit, earlyExitThreshold });
-    if (!zone) continue;
+    const { zone, reason, margin, decision } = priceZone(p, book, ladderBySide, cost, { earlyExit, earlyExitThreshold });
+    if (!zone) {
+      filtered.push({ side: p.side, rung: p.rung, reason, margin: margin ?? null, decision: decision ?? null });
+      continue;
+    }
     const instanceNum = 1 + (live.touches ?? []).filter(t => t.side === p.side && t.rung === p.rung).length;
     zones.push({ ...zone, zone_id: `${pair}_${live.date}_${p.side}_${p.rung}_${instanceNum}` });
   }
-  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length };
+  return { spot: live.pending?.[0]?.currentPrice ?? null, date: live.date, zones, zoneCount: zones.length, filtered };
 }

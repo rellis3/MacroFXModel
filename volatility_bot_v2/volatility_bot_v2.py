@@ -559,6 +559,14 @@ def run(base_url: str, force_live: bool) -> None:
     quote_missing_blocked: dict[str, bool] = {}
     untradable_blocked: dict[str, bool] = {}
     max_open_blocked = False
+    # 2026-09-27: server.js's _volatilityV2PriceZone silently dropped any
+    # pending touch that never cleared VOLATILITY_V2_MIN_MARGIN (or was
+    # structurally unpriceable) with ZERO trace anywhere -- a backtest
+    # candidate the bot never even had a CHANCE to see. It now carries a
+    # `filtered` reason through the plan; this tracks what's already been
+    # logged per (pair, side, rung) so a near-miss that just sits there
+    # doesn't re-log every plan refresh, only on a genuine change.
+    near_miss_logged: dict[str, dict[str, str]] = {}
     # A pair being absent from the FIRST plan snapshot(s) after a restart is
     # normal, not a typo -- the plan producer cold-start-throttles to only 3
     # pairs warming concurrently (server.js _refreshVolatilityV2Plan's own
@@ -695,6 +703,19 @@ def run(base_url: str, force_live: bool) -> None:
                 if restore.get(instr):
                     log.info(f"restored {len(restore[instr])} entered zone(s) for {instr} "
                              f"from persisted state (restart protection)")
+            seen_near_miss = {}
+            for f in slice_.get("filtered", []) or []:
+                fkey = f"{f.get('side')}|{f.get('rung')}"
+                reason = f.get("reason") or "unknown"
+                seen_near_miss[fkey] = reason
+                if near_miss_logged.get(instr, {}).get(fkey) != reason:
+                    near_miss_logged.setdefault(instr, {})[fkey] = reason
+                    _record_decision(instr, "skipped", side=f.get("side"), rung=f.get("rung"),
+                                      decision=f.get("decision"), margin=f.get("margin"),
+                                      reason=f"below_margin_or_unpriceable: {reason}")
+            for fkey in list(near_miss_logged.get(instr, {})):
+                if fkey not in seen_near_miss:
+                    near_miss_logged[instr].pop(fkey, None)
             for s in {instr, instr.upper(), _broker_sym(instr), _broker_sym(instr).upper()}:
                 sym_key[s] = instr
             try:
