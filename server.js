@@ -14771,6 +14771,63 @@ async function _computeWider() {
       .slice(0, 4).map(l => ({ id: l.id, labelA: l.labelA, labelB: l.labelB, normally: l.normally })),
   };
 }
+// ── Chapters: one complex, read the same way every time ─────────────────────
+// A separate source from _DRILL_FRED on purpose. The drill's slim payload is sized to
+// what its seven generators actually read; bolting eleven curve tenors onto it would
+// grow every practice-page load for data no question uses. Two caches, two jobs.
+//
+// The four series added here are the ones the curve and inflation chapters need and
+// nothing else in the repo had: the three short/long tenors that complete the curve, and
+// the 5y5y forward breakeven the inflation read leads on.
+const _CHAPTER_FRED = {
+  // Chapter A — the curve. Eleven constant-maturity tenors; DGS1MO, DGS3MO and DGS20
+  // were the gaps.
+  m1: 'DGS1MO', m3: 'DGS3MO', m6: 'DGS6MO', y1: 'DGS1', y2: 'DGS2', y3: 'DGS3',
+  y5: 'DGS5', y7: 'DGS7', y10: 'DGS10', y20: 'DGS20', y30: 'DGS30',
+  // Chapter D — inflation. T5YIFR is the 5y5y forward: what the market expects inflation
+  // to average over five years starting five years out, which is the leg least anchored
+  // to what has already printed.
+  bei5: 'T5YIE', bei10: 'T10YIE', bei5y5y: 'T5YIFR',
+  cpi: 'CPIAUCSL', coreCpi: 'CPILFESL', corePce: 'PCEPILFE', ppi: 'PPIFIS', ahe: 'CES0500000003',
+  real5: 'DFII5', real10: 'DFII10',
+};
+const _CHAPTER_TENORS = [
+  { key: 'm1', label: '1M', years: 1 / 12 }, { key: 'm3', label: '3M', years: 0.25 },
+  { key: 'm6', label: '6M', years: 0.5 }, { key: 'y1', label: '1Y', years: 1 },
+  { key: 'y2', label: '2Y', years: 2 }, { key: 'y3', label: '3Y', years: 3 },
+  { key: 'y5', label: '5Y', years: 5 }, { key: 'y7', label: '7Y', years: 7 },
+  { key: 'y10', label: '10Y', years: 10 }, { key: 'y20', label: '20Y', years: 20 },
+  { key: 'y30', label: '30Y', years: 30 },
+];
+let _chapters = { at: 0, data: null, error: null };
+
+async function _refreshChapters() {
+  try {
+    const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
+    const series = {}, missing = [];
+    for (const [k, id] of Object.entries(_CHAPTER_FRED)) {
+      try {
+        const rows = (await _fredCsv(id)).filter(o => o.date >= since);
+        if (rows.length) series[k] = rows; else missing.push(k);
+      } catch (e) { missing.push(k); console.warn('[chapters]', k, e.message); }
+    }
+    // A chapter whose members did not arrive is reported as such rather than rendered
+    // thin and silent -- the failure this repo keeps re-learning.
+    _chapters = { at: Date.now(), error: null, data: { series, missing, tenors: _CHAPTER_TENORS,
+      fred: _CHAPTER_FRED, from: since, to: new Date().toISOString().slice(0, 10) } };
+  } catch (e) { _chapters.error = e.message; console.warn('[chapters]', e.message); }
+  return _chapters;
+}
+
+app.get('/api/chapters', async (_req, res) => {
+  try {
+    if (Date.now() - _chapters.at > 12 * 3600_000 || !_chapters.data) await _refreshChapters();
+    if (!_chapters.data) return res.status(503).json({ ok: false, error: _chapters.error ?? 'no chapter data yet' });
+    res.set('Cache-Control', 'public, max-age=1800');
+    res.json({ ok: true, ..._chapters.data, at: new Date(_chapters.at).toISOString() });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 // ── /api/drill-question — one reading question, from today's real board ─────
 // The drill exists and is the right shape: seven RECOGNITION skills, each generated
 // from actual numbers, each with a knowable answer, and not one of them asking which
