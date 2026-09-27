@@ -103,6 +103,11 @@ export function runCarryBasket(priceByCcy, rateByCcy, {
   fundingCcy = 'USD', volWindow = 60, targetVol = 0.10, rebalDays = 21,
   costBps = 2, isFrac = 0.7, signalMode = 'sign',   // 'sign' | 'diff' (magnitude-weighted)
   returnDaily = false,   // when true, attach the full daily SIMPLE-return series (for the multi-factor combiner)
+  // Optional sizing hook (2026-09-26, fxFactorV2): weightsAt(i, ctx) → { ccy: weight }
+  // replaces the default sign(diff)×inverse-vol target weights at a rebalance, using
+  // data ≤ i only. Accrual, costs, IS/OOS and stats stay this engine's.
+  // null (default) ⇒ behaviour is unchanged.
+  weightsAt = null,
 } = {}) {
   const { dates, cols, ccys } = alignSeries(priceByCcy);
   const n = dates.length;
@@ -132,7 +137,16 @@ export function runCarryBasket(priceByCcy, rateByCcy, {
   const costComp = new Array(n).fill(0);   // −turnover·cost
 
   for (let i = 1; i < n; i++) {
-    if ((i - 1) % rebalDays === 0 && i - 1 >= volWindow) {   // rebalance on data ≤ i-1 (no lookahead)
+    if ((i - 1) % rebalDays === 0 && i - 1 >= volWindow && weightsAt) {
+      const target = weightsAt(i - 1, { dates, cols, ccys: active, spotRet, rCol, fundingCcy, weights, perCcyRisk, targetVol, volWindow }) || {};
+      const newW = {}; let turnover = 0;
+      for (const c of active) {
+        const w = Number.isFinite(target[c]) ? target[c] : 0;
+        newW[c] = w; turnover += Math.abs(w - (weights[c] || 0));
+      }
+      costComp[i] -= turnover * (costBps / 10000);
+      weights = newW;
+    } else if ((i - 1) % rebalDays === 0 && i - 1 >= volWindow) {   // rebalance on data ≤ i-1 (no lookahead)
       const newW = {}; let turnover = 0;
       for (const c of active) {
         const diff = rCol[c][i - 1] - rCol[fundingCcy][i - 1];     // rate differential, % (annual)
@@ -183,6 +197,7 @@ export function runCarryBasket(priceByCcy, rateByCcy, {
     equity: sampleEquity(dates, eq, 400),
     perYear: perYearReturns(dates, total),
     current,
+    ...(weightsAt ? { currentWeights: { ...weights } } : {}),
     // Optional full daily series for the multi-factor combiner. `total` is a daily
     // LOG return (equity = exp(cumsum)); expose SIMPLE returns so it composes with
     // engines that use (1+r) compounding. No downsampling — the combiner needs every day.

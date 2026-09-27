@@ -8156,3 +8156,23 @@ other OANDA-backed live path here: `fetchIntraday`/`loadM1ForPair` need
 Validated here via `node --check` on every touched file and full synthetic
 test suites (`vwapStretchCore.test.mjs`, updated `deskWatch.test.mjs`) — the
 live fetch path itself can only be confirmed on Railway.
+
+### 1bg. FX Factor Book v2 + OU optimal bands (2026-09-26) — QuantConnect-derived upgrades, pre-registered
+
+**Spec (frozen before any real run):** `MD files/FX_FACTOR_V2_TEST.md`. Source ideas:
+`education/quantconnect_strategies.md` / `quantconnect_blogs.md`. **Research only —
+no bot imports any of this.**
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Engine sizing hook** | `js/trendBasketEngine.js`, `js/carryEngine.js` | new opt-in `weightsAt(i, ctx) → {ccy: w}` on `runTrendBasket` / `runCarryBasket`: replaces only the target weights at a rebalance (data ≤ i); loop, costs, carry accrual, IS/OOS and stats stay the engine's. `null` default ⇒ **byte-identical output** (verified against a pre-change JSON snapshot of both engines; all existing trend/carry/econ-trend/trend-quality tests unchanged). Adds `currentWeights` to the result only when a hook is passed. | `js/fxFactorV2.js` | ✅ built |
+| **FX factor signals** | `js/fxFactorSignals.js` | Tier-1 pure math: `tstatTrendAt` (Baltas–Kosowski clipped t-stat), `yzAnnualVolByDate` (**imports `volBacktestEngine.yzVolSeries`** — no second YZ), `ewmaVolSeries`, `ewmacForecastSeries` (Carver EWMAC(n,4n) + scalars), `rescaleForecastSeries`/`combineForecasts` (expanding mean\|F\|=10 instead of a hand-set FDM), `carryForecastSeries`, `multiHorizonScoreAt`, `residualReturnsAt` (ex-dollar OLS residuals), `correlationFactorAt` (B–K CF ≡ Carver IDM for equal weights), `volRegimeMultiplierSeries` (Carver M = EWMA₁₀(2 − 1.5Q)), `bufferedWeight`, `doubleSortSelect`, `riskGateSeries` (VIX/VIX3M, VIX pctl, 10y shock). Tested `js/fxFactorSignals.test.mjs` (41). | `js/fxFactorV2.js` | ✅ built |
+| **FX factor book v2** | `js/fxFactorV2.js` | variant **selectors** (`makeTsmomWeights`, `withVolRegime`, `withRiskGate`, `makeResidualXsWeights`, `makeCarryMomentumFilterWeights`, `makeCarryDoubleSortWeights`, `makeCarverWeights`) + `runFxFactorV2` orchestrator (T0/T1/T1a-c/T2/T5, C0/C1/C1b/C2/C3, KB/K1/K2), `summarizeDaily` (one Sharpe/DD definition via `metricsCore`), `verdictVs` (Lo-2002 SE, same rules as `/api/trend-basket` qualityAB, + `too-few-oos-rebalances`), Bonferroni flag over the 9 primaries, `lagDateMap` (+60d publication lag on monthly FRED rates for every carry run in this test). A selector with every switch off reproduces the incumbent **exactly** (asserted). Prefix-vs-full no-lookahead assertions for every variant. Tested `js/fxFactorV2.test.mjs` (31). | `server.js` `POST /api/fx-factor-v2/run` + `/status/:jobId`; `fx-factor-v2.html` | 🟡 built, **not yet run on real data** |
+| **OU optimal bands** | `js/ouOptimal.js` | Leung–Li (2015): `ouMle` (exact-discretisation MLE + average log-likelihood), `bestBeta`, `spreadSeries`, `ouIntegral` (singularity-safe adaptive Simpson), `ouOptimalLevels` (entry d*, exit b*; analytic F′/G′). **Cross-checked vs scipy quad/brentq to ~1e-9.** Deliberately *not* `ouCore.ouFit`: that is the Euler/OLS half-life read (keep using it for half-lives — a test asserts the two half-lives agree within 3%); Leung–Li needs the exact MLE and its likelihood. | `js/ouPairsEngine.js` | ✅ built |
+| **OU pairs engine** | `js/ouPairsEngine.js` | `runOuPairs` (rolling 252d fit, 63d refit adopted only while flat, costs per side, open trades **marked to last bar, never dropped**, per-trade `riskPct` for honest R-multiples), `compareOuVsZscore` (same fit, ±2σ/exit-at-mean benchmark), `poolDaily`, `runOuBook` (frozen §5 book + pooled verdict). **β = 1 (the listed cross) is primary**: testing showed the Leung–Li likelihood β rewards low increment variance (β≈0.7 on a synthetic 1:1 cross), so it is diagnostic only. Tested `js/ouPairs.test.mjs` (32). | `server.js` `POST /api/ou-pairs/run` + `/status/:jobId`; `fx-factor-v2.html` | 🟡 built, not yet run |
+| **Worker entry** | `js/fxFactorV2Worker.js` | `node:worker_threads` entry — the routes fetch data on the main thread, the CPU-heavy runs execute here so they never block the event loop the live bots/schedulers share. One run per kind at a time; 6h result reuse (`?force=1` to re-run). | `server.js` | ✅ built |
+
+Honest status: infrastructure is built and unit-tested on synthetic data only. No
+verdict exists until the routes are run on Railway (OANDA + FRED); record results in
+`FX_FACTOR_V2_TEST.md` §6. Known limits stated in the spec: 7-currency cross-section,
+interbank carry = upper bound, incumbent SE used for Δ (conservative).

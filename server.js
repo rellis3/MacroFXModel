@@ -310,6 +310,7 @@ import { MODEL_V0 as TDE_MODEL } from './Trade_Decision_Engine/modelV0.js';
 import { getState as tdeGetState, refreshPair as tdeRefreshPair, syntheticSnapshot as tdeSyntheticSnapshot, stateSummary as tdeStateSummary, TDE_DEFAULT_PAIRS } from './Trade_Decision_Engine/featureState.js';
 import { appendDecision as tdeAppendDecision, readRecent as tdeReadRecent } from './Trade_Decision_Engine/decisionLog.js';
 import { runBackfill as tdeRunBackfill, readBackfillReport as tdeReadBackfillReport, readEvents as tdeReadEvents, macroBucketReport as tdeMacroBucketReport, fitLogistic as tdeFitLogistic, resetBackfillStore as tdeResetBackfillStore, TDE_BACKFILL_PAIRS } from './Trade_Decision_Engine/backfill.js';
+import { Worker as _NodeWorker } from 'node:worker_threads';   // fx-factor-v2 / ou-pairs research runs (off the main loop)
 
 const __dirname         = path.dirname(fileURLToPath(import.meta.url));
 const PORT              = parseInt(process.env.PORT              || '3000');
@@ -12504,6 +12505,110 @@ app.get('/api/fx-carry', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── /api/fx-factor-v2 + /api/ou-pairs — RESEARCH ONLY ──────────────────────────
+// Pre-registered A/Bs of the QuantConnect-derived upgrades (TSMOM-CF, vol-regime,
+// residual XS momentum, carry×momentum, risk-off gate, Carver trend+carry) and
+// Leung–Li OU bands vs ±2σ — frozen spec in `MD files/FX_FACTOR_V2_TEST.md`.
+// On-demand only (no scheduler, no bot reads these). Data is fetched here; the
+// CPU-heavy backtests run in a worker thread (js/fxFactorV2Worker.js) so a run
+// never blocks the event loop the live bots/schedulers share. One run at a time.
+const _fxv2Jobs = new Map();
+const _fxv2Last = { factor: null, ou: null };           // { data, ts } — 6h reuse
+const _fxv2Busy = { factor: null, ou: null };           // running jobId per kind
+function _fxv2Worker(kind, data, opts) {
+  return new Promise((resolve, reject) => {
+    const w = new _NodeWorker(new URL('./js/fxFactorV2Worker.js', import.meta.url), { workerData: { kind, data, opts } });
+    let settled = false;
+    w.once('message', m => { settled = true; m.ok ? resolve(m.result) : reject(new Error(m.error)); });
+    w.once('error', e => { if (!settled) { settled = true; reject(e); } });
+    w.once('exit', code => { if (!settled) reject(new Error(`worker exited with code ${code}`)); });
+  });
+}
+// OANDA D1 OHLC (≈20y) for the 7 G10 ccys, oriented as 1 unit ccy in USD.
+async function _fxv2LoadOhlc() {
+  const ohlcByCcy = {}, priceByCcy = {}, availability = [];
+  await Promise.all(TREND_UNIVERSE.map(async u => {
+    try {
+      let bars = (await _btFetchD1(u.inst, 5000)).filter(b => [b.open, b.high, b.low, b.close].every(x => Number.isFinite(x) && x > 0));
+      if (u.invert) bars = bars.map(b => ({ date: b.date, open: 1 / b.open, high: 1 / b.low, low: 1 / b.high, close: 1 / b.close }));
+      ohlcByCcy[u.ccy] = bars;
+      priceByCcy[u.ccy] = bars.map(b => ({ t: b.date, v: b.close }));
+      availability.push({ ccy: u.ccy, inst: u.inst, bars: bars.length, first: bars[0]?.date ?? null, last: bars.at(-1)?.date ?? null });
+    } catch (e) { availability.push({ ccy: u.ccy, inst: u.inst, error: e.message }); }
+  }));
+  return { ohlcByCcy, priceByCcy, availability };
+}
+function _fxv2Start(kind, res, work, { cache = true } = {}) {
+  if (_fxv2Busy[kind]) return res.status(409).json({ ok: false, error: 'a run is already in progress', jobId: _fxv2Busy[kind] });
+  const jobId = `fxv2_${kind}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  _fxv2Jobs.set(jobId, { status: 'running', kind, startedAt: Date.now() });
+  capMap(_fxv2Jobs, 50);
+  _fxv2Busy[kind] = jobId;
+  (async () => {
+    try {
+      const result = await work();
+      _fxv2Jobs.set(jobId, { status: 'done', kind, result, finishedAt: Date.now() });
+      if (cache) _fxv2Last[kind] = { data: result, ts: Date.now() };
+    } catch (e) {
+      console.error(`[fx-factor-v2/${kind}]`, e?.message);
+      _fxv2Jobs.set(jobId, { status: 'error', kind, error: e?.message || String(e) });
+    } finally { _fxv2Busy[kind] = null; }
+  })();
+  res.json({ ok: true, jobId });
+}
+function _fxv2Status(req, res) {
+  const j = _fxv2Jobs.get(req.params.jobId);
+  if (!j) return res.status(404).json({ ok: false, error: 'unknown jobId' });
+  res.json(j);
+}
+app.post('/api/fx-factor-v2/run', (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured (runs on Railway)' });
+  if (!process.env.FRED_KEY)  return res.status(503).json({ ok: false, error: 'FRED_KEY not configured (rates + VIX)' });
+  const force = req.query.force === '1';
+  if (!force && _fxv2Last.factor && Date.now() - _fxv2Last.factor.ts < 6 * 3600_000) {
+    const jobId = `fxv2_factor_cached_${_fxv2Last.factor.ts}`;
+    _fxv2Jobs.set(jobId, { status: 'done', kind: 'factor', result: _fxv2Last.factor.data, cached: true });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  _fxv2Start('factor', res, async () => {
+    const from = '2004-01-01', key = process.env.FRED_KEY;
+    const { ohlcByCcy, priceByCcy, availability } = await _fxv2LoadOhlc();
+    const rateByCcy = {}, fred = [];
+    const grab = async (id, label) => {
+      try { const m = await fetchFredSeries(id, from, key); fred.push({ id, label, obs: m.size }); return m.size ? m : null; }
+      catch (e) { fred.push({ id, label, error: e.message }); return null; }
+    };
+    rateByCcy.USD = await grab(CARRY_FUNDING_FRED, 'USD');
+    await Promise.all(CARRY_UNIVERSE.map(async u => { const m = await grab(u.fred, u.ccy); if (m) rateByCcy[u.ccy] = m; }));
+    const [vix, vix3m, ust10] = await Promise.all([grab('VIXCLS', 'VIX'), grab('VXVCLS', 'VIX3M'), grab('DGS10', 'UST10Y')]);
+    const data = { priceByCcy, ohlcByCcy, rateByCcy: rateByCcy.USD ? rateByCcy : null,
+      gateInputs: vix && vix3m && ust10 ? { vix, vix3m, ust10 } : null };
+    const result = await _fxv2Worker('factor', data, {});
+    return { ...result, availability, fred, spec: 'MD files/FX_FACTOR_V2_TEST.md', ranAt: new Date().toISOString() };
+  });
+});
+app.get('/api/fx-factor-v2/status/:jobId', _fxv2Status);
+
+const OU_PAIRS_UNIVERSE = [['AUD', 'NZD'], ['EUR', 'CHF'], ['EUR', 'GBP'], ['AUD', 'CAD']];
+app.post('/api/ou-pairs/run', express.json({ limit: '16kb' }), (req, res) => {
+  if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not configured (runs on Railway)' });
+  const betaMode = req.body?.betaMode === 'loglik' ? 'loglik' : 'fixed1';
+  const force = req.query.force === '1';
+  if (!force && betaMode === 'fixed1' && _fxv2Last.ou && Date.now() - _fxv2Last.ou.ts < 6 * 3600_000) {
+    const jobId = `fxv2_ou_cached_${_fxv2Last.ou.ts}`;
+    _fxv2Jobs.set(jobId, { status: 'done', kind: 'ou', result: _fxv2Last.ou.data, cached: true });
+    return res.json({ ok: true, jobId, cached: true });
+  }
+  _fxv2Start('ou', res, async () => {
+    const { priceByCcy, availability } = await _fxv2LoadOhlc();
+    const pairs = OU_PAIRS_UNIVERSE.filter(([a, b]) => priceByCcy[a] && priceByCcy[b])
+      .map(([a, b]) => ({ name: `${a}/${b}`, a: priceByCcy[a], b: priceByCcy[b] }));
+    const result = await _fxv2Worker('ou', { pairs }, { betaMode });
+    return { ...result, availability, spec: 'MD files/FX_FACTOR_V2_TEST.md §5', ranAt: new Date().toISOString() };
+  }, { cache: betaMode === 'fixed1' });   // the loglik-β diagnostic never overwrites the primary cache
+});
+app.get('/api/ou-pairs/status/:jobId', _fxv2Status);
 
 // ── NQ-QMR M5 candles for trade viewer ───────────────────────────────────────
 // One UTC day of NAS100 M5 bars. Shared by the QMR trade viewer and the COG
