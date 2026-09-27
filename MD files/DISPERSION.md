@@ -131,3 +131,87 @@ live as this was written.
   null, with the month result stated as unconfirmed.
 - Ledger: `dispersion-crowded-week` as null.
 - No Desk Watch trigger.
+
+---
+
+# D2 — is it the RESET that matters, not the level?
+
+**Pre-registered 2026-09-27, before the harness arm was written or run.**
+
+## The claim
+
+From a Nicholas Crown clip. The 1999 analogy: single-name vol rich, index vol
+cheap, correlation at the lows, "there really was no *the market*" — then the
+macro turned, stocks started moving together again on the way down, and the
+Nasdaq lost 78%. Mapped onto today with fibre swapped for GPUs:
+
+> "Over the past month, this signature has started to reset... so this volatility
+> spread is **normalizing** while rates stay high and capex keeps rising... This
+> is what a market looks like when the main theme starts to lose control."
+
+The operative word is *normalizing*. **D1 tested high and RISING.** The claim
+here is the opposite condition: dispersion high and now **FALLING**. Nobody has
+tested that, and it is the more interesting half — a crowded market coming
+*undone* is a different event from a crowded market getting more crowded.
+
+## Why this is the decisive test, not a repeat
+
+`breadth-narrowing` (2026-09-23) died on exactly this: its forward-range effect
+looked real until the mirror was run, and extreme BROADENING raised range just as
+much (+0.28 vs +0.37). The effect belonged to the volatile period both readings
+sat inside, not to breadth.
+
+Dispersion is in the same position now. D1's 20-session result (+0.23 [+0.04,
++0.51]) is on the books as unconfirmed context. If high-and-falling raises
+forward range by about the same amount as high-and-rising, then the direction of
+travel carries nothing and what D1 found is simply "crowded periods are wide
+periods" — and the reset framing is decoration. If only one arm works, that is a
+real asymmetry and worth having.
+
+Either answer is worth the run. That is what makes it worth running.
+
+## Definitions, fixed in advance
+
+Identical to D1 in every respect except the sign of the change, so the two arms
+are directly comparable and any difference is the condition rather than the
+method:
+
+- **Crowded**: DSPX at or above its own 80th percentile of the trailing 3 years
+  (756 sessions), computed on a ROLLING basis so there is no look-ahead.
+- **Rising (D1 arm)**: 20-session change in DSPX positive.
+- **Falling (D2 arm)**: 20-session change in DSPX negative.
+- **De-clustering**: 20 sessions minimum between setups, within each arm.
+- **Control**: every session at least 20 sessions away from ANY setup in EITHER
+  arm, so the two arms are scored against the same untouched population.
+- **Outcome**: mean forward range ratio (bar range ÷ close, over the trailing
+  20-session median) at 5 and 20 sessions, on SPX500 and NAS100.
+- **Uncertainty**: block bootstrap, 1,000 resamples, 95% interval on the
+  difference from control.
+- **MIN_EVENTS = 25** per arm per instrument. Below that the cell is
+  **UNTESTABLE** and gets no verdict — not a null.
+
+## Hypotheses, expectation first
+
+| # | Question | Pre-registered expectation |
+|---|---|---|
+| D2a | Does high-and-FALLING dispersion precede a wider 5 / 20 sessions? | **Positive at 20 sessions, null at 5** — i.e. the same shape D1 found on the rising arm. |
+| D2b | **THE GATE.** Is the falling arm DIFFERENT from the rising arm? | **No.** I expect the two to overlap, which would mean the direction of travel carries nothing and "normalizing" is decoration on "crowded". |
+| D2c | Is there a DIRECTION effect — does the reset precede a fall? | **Null.** Every volatility result on this desk is range-only and direction has never survived. The clip's whole point is a crash; this is the cell that speaks to it. |
+
+Stating D2b's expectation as "no difference" in advance is the point. If the arms
+*do* separate, that is a result found against a prior rather than a story fitted
+to a chart.
+
+## What this does NOT test
+
+The 1999 analogy itself is n=1 and untestable — one episode cannot support a
+rate. Nothing here speaks to whether an AI-capex cycle funded with debt behaves
+like a fibre cycle funded with debt. What is testable is the signature the clip
+says to watch, and that is all this measures.
+
+The clip's own live setup was checked separately on 2026-09-26 and did not hold:
+DSPX was RISING (+4.91 over 10 sessions, +1.97 over 20, 94th percentile), not
+resetting; the AI complex was UP over the month (MU +15.3%, NVDA +7.3%, SMH
++9.1%, only AVGO near the quoted drawdown at −26.7% and flat over the month); and
+QQQ was 0.4% off a high it set on 2026-09-22. That is a separate matter from
+whether the mechanism is real, and is recorded so the two do not get conflated.
