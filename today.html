@@ -8417,6 +8417,10 @@ function booksCardHtml() {
   // evidence
   const ev = window.deskEvidenceBrick?.DESK_EVIDENCE ?? []; const firing = (deskWatch?.states ?? []).filter(t => t.firing && t.kind === 'tested');
   row('evidence.html', '📗', 'Evidence Book', ev.length ? `<b>${ev.length}</b> tested · ${ev.filter(e => e.verdict === 'validated').length} validated · <b>${firing.length}</b> firing now${firing.length ? `: ${esc0(firing.slice(0, 2).map(t => t.label).join(', '))}` : ''}` : 'every relationship this desk has tested', 'claim, verdict, the number, the write-up');
+  // chapters: the same evidence, but sitting under the reading it judges rather than
+  // in a list of its own -- a verdict next to the number is what stops you re-believing
+  // something you already closed.
+  row('chapters.html', '📖', 'Chapters', ev.length ? `one complex at a time — gauge, receipts, and the <b>${ev.filter(e => e.verdict === 'null').length}</b> nulls that apply to it` : 'one market complex at a time, read the same way every time', 'the curve and inflation built; ten more planned');
   // event book: the next high-impact print and its measured size
   const nowMs = Date.now(); const nxt = (events ?? []).filter(e => e.ms > nowMs && (e.impact ?? '').toLowerCase() === 'high').sort((a, b) => a.ms - b.ms)[0];
   let evLive = 'what each release does to each pair, measured';
@@ -8776,7 +8780,8 @@ function renderWiderMarket() {
     <div class="wm-state"><b>${esc0(w.state.name)}</b>${w.state.met ? ` <span class="muted">(${w.state.met.met} of ${w.state.met.total} conditions)</span>` : ''} — ${esc0(w.state.line)}</div>
     ${sect}${conc}${rare}${broke}
     <div class="wm-foot">Daily closes to ${esc0(w.to ?? '—')}${stale} — this is the slow half of the picture and it changes about twice a week, which is why it is a block here rather than a page you have to remember to open.
-      <a href="market-view.html" target="_blank">the full 63-market board ↗</a></div>`;
+      <a href="market-view.html" target="_blank">the full 63-market board ↗</a>
+      <a href="chapters.html" target="_blank" style="margin-left:10px">the chapters — one complex at a time, with its verdicts ↗</a></div>`;
 }
 
 // ── One reading a day ───────────────────────────────────────────────────────
