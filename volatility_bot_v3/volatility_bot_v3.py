@@ -906,8 +906,18 @@ def run(base_url: str, force_live: bool) -> None:
                         first_seen = missing_since.setdefault(instr, nowt)
                         if not sess_missing_blocked.get(instr):
                             sess_missing_blocked[instr] = True
+                            # The local decision engine's /plan puts a pair it
+                            # left out of `instruments` into its OWN `skipped`
+                            # map with the actual reason (stale book, stale M1
+                            # tail, still warming up, or a compute error) --
+                            # surface that instead of a generic placeholder,
+                            # since "no session" alone doesn't say whether
+                            # this is expected (cold start) or a real problem
+                            # (sync.mjs not keeping that pair fresh).
+                            skip_reason = (plan or {}).get("skipped", {}).get(instr)
                             _record_decision(instr, "pair_blocked",
-                                              reason="not_in_plan: pair has no session yet (plan producer hasn't warmed it, or a typo in enabled_pairs)")
+                                              reason=f"not_in_plan: {skip_reason}" if skip_reason
+                                              else "not_in_plan: pair has no session yet, and the local engine's own plan doesn't say why (not in its skipped map either -- check the local engine's own logs)")
                         if nowt - first_seen > MISSING_GRACE_SECS and not warned_missing.get(instr):
                             warned_missing[instr] = True
                             log.warning(f"enabled pair {instr!r} still not in the plan after "
