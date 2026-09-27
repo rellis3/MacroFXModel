@@ -11,6 +11,12 @@ Each entry has:
 The longer course material lives in `micro learning bank.md`. This file is for the
 one-off messages.
 
+Longer C.OG videos have their own notes files:
+- `progression-path-breakdown-notes.md`: variance vs drift, the benchmark, paper
+  trading, and prop-firm challenges net of costs
+- `macro-variable-context-relevance-notes.md`: a macro series leading NQ, and the
+  confirmation lag
+
 ---
 
 ## 1. Stop placement from an MAE table: "none of the above" (#Vip-Discussion, 2026-09-26)
