@@ -161,6 +161,10 @@ async function boot() {
     const j = await r.json();
     if (!j?.ok || !j.dates?.length) throw new Error(j?.error || 'the bundle is empty');
     BUNDLE = j;
+    // The slim payload names any series it could not supply. Say so in the console
+    // rather than letting a whole concept quietly stop producing questions.
+    if (j.missing?.length) console.warn('[drill] series missing from the bundle:', j.missing.join(', '),
+      '— concepts that read them will not generate questions');
   } catch (e) {
     // Say what failed. A blank card teaches nothing and looks like a bug in the questions.
     $('mr-body').innerHTML = `<div class="mr-card"><div class="mr-verdict" style="color:var(--red)">Could not load the board history</div>

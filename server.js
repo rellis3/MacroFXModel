@@ -14761,13 +14761,18 @@ app.get('/api/drill-series', async (req, res) => {
     res.set('Cache-Control', 'public, max-age=3600');
     const d = _drillBundle.data;
     if (req.query.slim === '1') {
-      const series = {};
+      const series = {}, missing = [];
       for (const k of _DRILL_SERIES) {
         const a = d.series?.[k];
         if (a) series[k] = a.map(v => (v == null || !Number.isFinite(v)) ? null : +v.toFixed(3));
+        else missing.push(k);
       }
+      // A declared series the bundle does not carry silently kills every generator that
+      // reads it -- the concept just stops producing questions, with no error anywhere.
+      // This repo has been bitten by exactly that shape before (see the silent-empty-feed
+      // fixes of 2026-09-14), so the gap is REPORTED rather than skipped quietly.
       return res.json({ ok: true, slim: true, dates: d.dates, series, from: d.from, to: d.to, n: d.n,
-        at: new Date(_drillBundle.at).toISOString() });
+        missing, at: new Date(_drillBundle.at).toISOString() });
     }
     res.json({ ok: true, ...d, at: new Date(_drillBundle.at).toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
