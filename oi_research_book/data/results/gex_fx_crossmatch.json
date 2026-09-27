@@ -1,0 +1,132 @@
+{
+  "generated": "2026-09-24T19:58:09.407950+00:00",
+  "prereg": "GEX_FX_CROSSMATCH_PREREG.md",
+  "primary": [
+    {
+      "pair": "EUR_USD",
+      "flipped_convention": false,
+      "n": 1507,
+      "dropped": 1,
+      "n_short": 1106,
+      "n_long": 401,
+      "deltaDR_raw": 0.0464,
+      "p_raw": 0.2372,
+      "deltaDR_vol_matched": 0.037,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "GBP_USD",
+      "flipped_convention": false,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 842,
+      "n_long": 677,
+      "deltaDR_raw": 0.0492,
+      "p_raw": 0.16,
+      "deltaDR_vol_matched": 0.0394,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "AUD_USD",
+      "flipped_convention": false,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 653,
+      "n_long": 866,
+      "deltaDR_raw": 0.0086,
+      "p_raw": 0.785,
+      "deltaDR_vol_matched": 0.0425,
+      "counts_toward_verdict": true
+    }
+  ],
+  "secondary_both_conventions": [
+    {
+      "pair": "USD_JPY",
+      "flipped_convention": false,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 1051,
+      "n_long": 468,
+      "deltaDR_raw": 0.0042,
+      "p_raw": 0.9305,
+      "deltaDR_vol_matched": -0.0031,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "USD_JPY",
+      "flipped_convention": true,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 468,
+      "n_long": 1051,
+      "deltaDR_raw": -0.0042,
+      "p_raw": 0.9223,
+      "deltaDR_vol_matched": 0.0031,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "USD_CAD",
+      "flipped_convention": false,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 816,
+      "n_long": 703,
+      "deltaDR_raw": 0.0873,
+      "p_raw": 0.0057,
+      "deltaDR_vol_matched": 0.057,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "USD_CAD",
+      "flipped_convention": true,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 703,
+      "n_long": 816,
+      "deltaDR_raw": -0.0873,
+      "p_raw": 0.0047,
+      "deltaDR_vol_matched": -0.057,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "USD_CHF",
+      "flipped_convention": false,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 933,
+      "n_long": 586,
+      "deltaDR_raw": 0.0292,
+      "p_raw": 0.4258,
+      "deltaDR_vol_matched": 0.0082,
+      "counts_toward_verdict": true
+    },
+    {
+      "pair": "USD_CHF",
+      "flipped_convention": true,
+      "n": 1519,
+      "dropped": 0,
+      "n_short": 586,
+      "n_long": 933,
+      "deltaDR_raw": -0.0292,
+      "p_raw": 0.4555,
+      "deltaDR_vol_matched": -0.0082,
+      "counts_toward_verdict": true
+    }
+  ],
+  "pooled": {
+    "n_common_dates": 1507,
+    "pooled_deltaDR": 0.0377,
+    "p": 0.1553,
+    "boot_sd": 0.0268,
+    "ci95": [
+      -0.0149,
+      0.0902
+    ],
+    "n_paths": 3000
+  },
+  "nq_reference": {
+    "raw": 0.1762,
+    "vol_matched": 0.3154
+  },
+  "verdict": "MIXED"
+}

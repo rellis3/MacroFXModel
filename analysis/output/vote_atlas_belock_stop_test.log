@@ -1,0 +1,35 @@
+Processing 17 pairs one at a time (trades + sanity check + all variants per pair, M1 released before the next pair loads)...
+
+EURUSD: 1595 trades
+GBPUSD: 1840 trades
+USDJPY: 1575 trades
+AUDUSD: 1823 trades
+USDCHF: 2009 trades
+EURAUD: 2013 trades
+EURCHF: 2148 trades
+AUDJPY: 1843 trades
+CADJPY: 1911 trades
+CHFJPY: 1744 trades
+GOLD: 1810 trades
+NQ: 1518 trades
+SPX: 563 trades
+DOW: 418 trades
+US2000: 1399 trades
+DE30: 1725 trades
+UK100: 1559 trades
+
+======================================================================
+SANITY CHECK: simulator with an unreachable trigger must reproduce
+the ORIGINAL priceBarrierTrade win/pnlPct.
+======================================================================
+27046/27493 trades match the original outcome with the lock disabled (98.37%)
+
+======================================================================
+IMPACT: baseline (original fixed target/stop) vs be-lock variants
+======================================================================
+Baseline (fixed target/stop)n=12290  win%=56.5  Sharpe=1.86  CAGR=63%   maxDD(c)=-20.4%maxDD(nc)=-21.4%
+Breakeven only (0% lock) @50%n=12290  win%=41.2  Sharpe=1.05  CAGR=24%   maxDD(c)=-23.1%maxDD(nc)=-25.5%
+10% lock @50% progress      n=12290  win%=68.3  Sharpe=1.05  CAGR=24%   maxDD(c)=-23.7%maxDD(nc)=-26.5%
+25% lock @50% progress      n=12290  win%=68.3  Sharpe=0.87  CAGR=18%   maxDD(c)=-23.3%maxDD(nc)=-24.5%
+10% lock @33% progress      n=12290  win%=75.9  Sharpe=0.36  CAGR=5%    maxDD(c)=-24.9%maxDD(nc)=-25.5%
+10% lock @66% progress      n=12290  win%=63.3  Sharpe=1.47  CAGR=40%   maxDD(c)=-23.9%maxDD(nc)=-26.4%

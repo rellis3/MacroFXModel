@@ -1,0 +1,29 @@
+Auditing 49 real live trades from 2026-09-14/15...
+
+  audjpy: local ends 2026-08-20, fetched 27074 gap-fill bars
+  gbpusd: local ends 2026-08-20, fetched 24169 gap-fill bars
+  uk100: local ends 2026-08-20, fetched 19214 gap-fill bars
+  eurchf: local ends 2026-08-20, fetched 26672 gap-fill bars
+  nq: local ends 2026-08-20, fetched 20000 gap-fill bars
+  spx: local ends 2026-06-05, fetched 20000 gap-fill bars
+  de30: local ends 2026-08-20, fetched 20007 gap-fill bars
+  gold: local ends 2026-08-20, fetched 23124 gap-fill bars
+  us2000: local ends 2026-08-20, fetched 23608 gap-fill bars
+  usdchf: local ends 2026-08-20, fetched 24496 gap-fill bars
+  cadjpy: local ends 2026-08-20, fetched 26880 gap-fill bars
+  chfjpy: local ends 2026-08-20, fetched 27007 gap-fill bars
+  usdjpy: local ends 2026-08-20, fetched 24718 gap-fill bars
+  euraud: local ends 2026-08-20, fetched 27098 gap-fill bars
+  dow: local ends 2026-06-05, fetched 876 gap-fill bars
+  audusd: local ends 2026-08-20, fetched 23899 gap-fill bars
+
+======================================================================
+totalTrades: 49
+checkedWithVote: 10
+directionMatches: 10
+directionMismatches: 0
+matchRate: 100
+thinMarginOrNoVote: 39
+
+Mismatch detail:
+[]

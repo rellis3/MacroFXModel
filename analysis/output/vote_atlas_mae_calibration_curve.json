@@ -1,0 +1,945 @@
+{
+  "eurusd": {
+    "30": {
+      "all": {
+        "baseRate": 0.309,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 190,
+            "pLoss": 0.137,
+            "ci": [
+              0.089,
+              0.189
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 234,
+            "pLoss": 0.226,
+            "ci": [
+              0.171,
+              0.286
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 196,
+            "pLoss": 0.311,
+            "ci": [
+              0.245,
+              0.372
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 123,
+            "pLoss": 0.333,
+            "ci": [
+              0.252,
+              0.415
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 85,
+            "pLoss": 0.424,
+            "ci": [
+              0.306,
+              0.529
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 46,
+            "pLoss": 0.478,
+            "ci": [
+              0.326,
+              0.63
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "n": 43,
+            "pLoss": 0.558,
+            "ci": [
+              0.419,
+              0.698
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.7,
+            "hi": 0.8,
+            "n": 34,
+            "pLoss": 0.529,
+            "ci": [
+              0.353,
+              0.676
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.5,
+        "majorityTrigger": null
+      },
+      "fade": {
+        "baseRate": 0.289,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 68,
+            "pLoss": 0.103,
+            "ci": [
+              0.029,
+              0.176
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 54,
+            "pLoss": 0.074,
+            "ci": [
+              0.019,
+              0.148
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 51,
+            "pLoss": 0.275,
+            "ci": [
+              0.157,
+              0.392
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 31,
+            "pLoss": 0.258,
+            "ci": [
+              0.129,
+              0.419
+            ],
+            "aboveBase": false
+          }
+        ],
+        "noiseFloorTrigger": null,
+        "majorityTrigger": null
+      },
+      "follow": {
+        "baseRate": 0.317,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 122,
+            "pLoss": 0.156,
+            "ci": [
+              0.09,
+              0.23
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 180,
+            "pLoss": 0.272,
+            "ci": [
+              0.206,
+              0.333
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 145,
+            "pLoss": 0.324,
+            "ci": [
+              0.248,
+              0.4
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 92,
+            "pLoss": 0.359,
+            "ci": [
+              0.261,
+              0.467
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 57,
+            "pLoss": 0.386,
+            "ci": [
+              0.263,
+              0.526
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 30,
+            "pLoss": 0.467,
+            "ci": [
+              0.267,
+              0.633
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "n": 30,
+            "pLoss": 0.567,
+            "ci": [
+              0.4,
+              0.733
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.6,
+        "majorityTrigger": null
+      }
+    },
+    "60": {
+      "all": {
+        "baseRate": 0.315,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 102,
+            "pLoss": 0.108,
+            "ci": [
+              0.049,
+              0.167
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 154,
+            "pLoss": 0.201,
+            "ci": [
+              0.143,
+              0.26
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 145,
+            "pLoss": 0.255,
+            "ci": [
+              0.193,
+              0.331
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 118,
+            "pLoss": 0.297,
+            "ci": [
+              0.212,
+              0.381
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 100,
+            "pLoss": 0.34,
+            "ci": [
+              0.24,
+              0.44
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 62,
+            "pLoss": 0.516,
+            "ci": [
+              0.387,
+              0.645
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "n": 41,
+            "pLoss": 0.512,
+            "ci": [
+              0.366,
+              0.659
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.7,
+            "hi": 0.8,
+            "n": 40,
+            "pLoss": 0.55,
+            "ci": [
+              0.4,
+              0.7
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.5,
+        "majorityTrigger": null
+      },
+      "fade": {
+        "baseRate": 0.278,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 33,
+            "pLoss": 0.091,
+            "ci": [
+              0,
+              0.182
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 36,
+            "pLoss": 0.083,
+            "ci": [
+              0,
+              0.194
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 32,
+            "pLoss": 0.219,
+            "ci": [
+              0.094,
+              0.344
+            ],
+            "aboveBase": false
+          }
+        ],
+        "noiseFloorTrigger": null,
+        "majorityTrigger": null
+      },
+      "follow": {
+        "baseRate": 0.328,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 69,
+            "pLoss": 0.116,
+            "ci": [
+              0.043,
+              0.188
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 118,
+            "pLoss": 0.237,
+            "ci": [
+              0.161,
+              0.322
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 121,
+            "pLoss": 0.298,
+            "ci": [
+              0.223,
+              0.38
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 86,
+            "pLoss": 0.326,
+            "ci": [
+              0.233,
+              0.419
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 72,
+            "pLoss": 0.375,
+            "ci": [
+              0.25,
+              0.486
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 49,
+            "pLoss": 0.49,
+            "ci": [
+              0.347,
+              0.633
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.5,
+        "majorityTrigger": null
+      }
+    }
+  },
+  "gold": {
+    "30": {
+      "all": {
+        "baseRate": 0.371,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 200,
+            "pLoss": 0.175,
+            "ci": [
+              0.125,
+              0.225
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 239,
+            "pLoss": 0.264,
+            "ci": [
+              0.209,
+              0.318
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 183,
+            "pLoss": 0.333,
+            "ci": [
+              0.273,
+              0.404
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 135,
+            "pLoss": 0.474,
+            "ci": [
+              0.393,
+              0.556
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 84,
+            "pLoss": 0.393,
+            "ci": [
+              0.286,
+              0.5
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 83,
+            "pLoss": 0.506,
+            "ci": [
+              0.398,
+              0.602
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "n": 46,
+            "pLoss": 0.652,
+            "ci": [
+              0.522,
+              0.783
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.7,
+            "hi": 0.8,
+            "n": 47,
+            "pLoss": 0.702,
+            "ci": [
+              0.574,
+              0.83
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.9,
+            "hi": 1.01,
+            "n": 30,
+            "pLoss": 0.667,
+            "ci": [
+              0.5,
+              0.833
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.3,
+        "majorityTrigger": 0.6
+      },
+      "fade": {
+        "baseRate": 0.427,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 79,
+            "pLoss": 0.177,
+            "ci": [
+              0.101,
+              0.266
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 64,
+            "pLoss": 0.234,
+            "ci": [
+              0.141,
+              0.344
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 53,
+            "pLoss": 0.34,
+            "ci": [
+              0.226,
+              0.472
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 52,
+            "pLoss": 0.673,
+            "ci": [
+              0.538,
+              0.788
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 35,
+            "pLoss": 0.571,
+            "ci": [
+              0.4,
+              0.743
+            ],
+            "aboveBase": false
+          }
+        ],
+        "noiseFloorTrigger": 0.3,
+        "majorityTrigger": 0.3
+      },
+      "follow": {
+        "baseRate": 0.339,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 121,
+            "pLoss": 0.174,
+            "ci": [
+              0.107,
+              0.248
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 175,
+            "pLoss": 0.274,
+            "ci": [
+              0.217,
+              0.343
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 130,
+            "pLoss": 0.331,
+            "ci": [
+              0.254,
+              0.415
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 83,
+            "pLoss": 0.349,
+            "ci": [
+              0.241,
+              0.446
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 56,
+            "pLoss": 0.393,
+            "ci": [
+              0.25,
+              0.536
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 48,
+            "pLoss": 0.458,
+            "ci": [
+              0.333,
+              0.583
+            ],
+            "aboveBase": false
+          }
+        ],
+        "noiseFloorTrigger": null,
+        "majorityTrigger": null
+      }
+    },
+    "60": {
+      "all": {
+        "baseRate": 0.373,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 113,
+            "pLoss": 0.115,
+            "ci": [
+              0.053,
+              0.177
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 163,
+            "pLoss": 0.209,
+            "ci": [
+              0.153,
+              0.27
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 163,
+            "pLoss": 0.276,
+            "ci": [
+              0.202,
+              0.35
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 83,
+            "pLoss": 0.422,
+            "ci": [
+              0.325,
+              0.53
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 88,
+            "pLoss": 0.42,
+            "ci": [
+              0.318,
+              0.523
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 82,
+            "pLoss": 0.549,
+            "ci": [
+              0.439,
+              0.646
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "n": 69,
+            "pLoss": 0.507,
+            "ci": [
+              0.391,
+              0.623
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.7,
+            "hi": 0.8,
+            "n": 41,
+            "pLoss": 0.707,
+            "ci": [
+              0.561,
+              0.854
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.8,
+            "hi": 0.9,
+            "n": 31,
+            "pLoss": 0.613,
+            "ci": [
+              0.452,
+              0.774
+            ],
+            "aboveBase": true
+          },
+          {
+            "lo": 0.9,
+            "hi": 1.01,
+            "n": 52,
+            "pLoss": 0.731,
+            "ci": [
+              0.596,
+              0.865
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.5,
+        "majorityTrigger": 0.7
+      },
+      "fade": {
+        "baseRate": 0.432,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 46,
+            "pLoss": 0.087,
+            "ci": [
+              0.022,
+              0.174
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 39,
+            "pLoss": 0.128,
+            "ci": [
+              0.026,
+              0.256
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 39,
+            "pLoss": 0.205,
+            "ci": [
+              0.103,
+              0.333
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 31,
+            "pLoss": 0.71,
+            "ci": [
+              0.516,
+              0.871
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.5,
+        "majorityTrigger": 0.5
+      },
+      "follow": {
+        "baseRate": 0.343,
+        "buckets": [
+          {
+            "lo": 0,
+            "hi": 0.1,
+            "n": 67,
+            "pLoss": 0.134,
+            "ci": [
+              0.06,
+              0.224
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.1,
+            "hi": 0.2,
+            "n": 124,
+            "pLoss": 0.234,
+            "ci": [
+              0.161,
+              0.306
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.2,
+            "hi": 0.3,
+            "n": 124,
+            "pLoss": 0.298,
+            "ci": [
+              0.218,
+              0.379
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.3,
+            "hi": 0.4,
+            "n": 59,
+            "pLoss": 0.322,
+            "ci": [
+              0.203,
+              0.458
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.4,
+            "hi": 0.5,
+            "n": 60,
+            "pLoss": 0.4,
+            "ci": [
+              0.283,
+              0.517
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.5,
+            "hi": 0.6,
+            "n": 51,
+            "pLoss": 0.451,
+            "ci": [
+              0.314,
+              0.608
+            ],
+            "aboveBase": false
+          },
+          {
+            "lo": 0.6,
+            "hi": 0.7,
+            "n": 40,
+            "pLoss": 0.525,
+            "ci": [
+              0.375,
+              0.7
+            ],
+            "aboveBase": true
+          }
+        ],
+        "noiseFloorTrigger": 0.6,
+        "majorityTrigger": null
+      }
+    }
+  }
+}

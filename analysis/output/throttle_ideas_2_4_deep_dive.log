@@ -1,0 +1,70 @@
+EURUSD: loading M1...
+  1566 trades
+GBPUSD: loading M1...
+  1801 trades
+USDJPY: loading M1...
+  1544 trades
+AUDUSD: loading M1...
+  1766 trades
+USDCHF: loading M1...
+  1957 trades
+EURAUD: loading M1...
+  1965 trades
+EURCHF: loading M1...
+  2064 trades
+AUDJPY: loading M1...
+  1797 trades
+CADJPY: loading M1...
+  1881 trades
+CHFJPY: loading M1...
+  1704 trades
+GOLD: loading M1...
+  1787 trades
+NQ: loading M1...
+  1490 trades
+SPX: loading M1...
+  552 trades
+DOW: loading M1...
+  412 trades
+US2000: loading M1...
+  1381 trades
+DE30: loading M1...
+  1677 trades
+UK100: loading M1...
+  1522 trades
+
+1134 trading days (2022-03-15 -> 2026-08-20). IS/OOS split at 2025-04-29 (day 793).
+
+====================================================================================================
+PART A: IS/OOS HONESTY CHECK (same pre-specified design run continuously, scored per segment)
+====================================================================================================
+No throttle               FULL: Sh3.97 CAGR542% DD-21.4%  IS: Sh3.75 CAGR499% DD-21.4%  OOS: Sh4.55 CAGR653% DD-13.0%
+Current (cliff)           FULL: Sh3.30 CAGR190% DD-12.2%  IS: Sh3.34 CAGR206% DD-12.2%  OOS: Sh3.22 CAGR156% DD-10.7%
+#2 Graded                 FULL: Sh3.65 CAGR251% DD-12.3%  IS: Sh3.65 CAGR258% DD-12.3%  OOS: Sh3.65 CAGR235% DD-10.7%
+#4 Asset-aware            FULL: Sh3.92 CAGR384% DD-15.9%  IS: Sh3.80 CAGR373% DD-15.9%  OOS: Sh4.22 CAGR412% DD-12.7%
+
+====================================================================================================
+PART B: SENSITIVITY — is #2 robust to the exact tier choice? (all use the SAME -8/0.25 floor)
+====================================================================================================
+  Original (-4/-6/-8, .65/.40/.25)           Sharpe 3.65  CAGR 251%  DD -12.3%
+  Gentler start (-3/-5.5/-8, .70/.45/.25)    Sharpe 3.60  CAGR 240%  DD -12.5%
+  Coarser 2-tier (-5/-8, .50/.25)            Sharpe 3.49  CAGR 229%  DD -13.2%
+  Steeper (-5/-6.5/-8, .55/.35/.25)          Sharpe 3.54  CAGR 233%  DD -12.0%
+
+====================================================================================================
+PART B: SENSITIVITY — is #4 robust to the mild-side threshold choice?
+====================================================================================================
+  Original (mild -12/.5, strict -8/.25)      Sharpe 3.92  CAGR 384%  DD -15.9%  throttled 30%
+  Less aggressive mild (-10/.5)              Sharpe 3.79  CAGR 343%  DD -15.9%  throttled 36%
+  More aggressive mild (-14/.6)              Sharpe 3.83  CAGR 391%  DD -16.6%  throttled 23%
+  Tighter mild mult (-12/.35)                Sharpe 3.79  CAGR 340%  DD -14.9%  throttled 33%
+
+====================================================================================================
+PART C: THE WORST DRAWDOWN EPISODE, TRACED THROUGH EACH POLICY
+====================================================================================================
+Worst un-throttled episode: 2023-10-03 -> 2023-10-30 (19 trading days), reached -21.4%
+During that episode: index-cluster contributed -15.20pp of losses, FX/gold contributed -26.86pp -- FX/gold-driven
+  No throttle          actual DD reached during this episode: -21.4%
+  Current (cliff)      actual DD reached during this episode: -12.2%
+  #2 Graded            actual DD reached during this episode: -11.4%
+  #4 Asset-aware       actual DD reached during this episode: -15.9%

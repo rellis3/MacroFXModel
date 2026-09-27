@@ -1,0 +1,39 @@
+Building full per-pair trade lists with clearance data (17 pairs)...
+
+EURUSD: 1566 trades built
+GBPUSD: 1801 trades built
+USDJPY: 1544 trades built
+AUDUSD: 1766 trades built
+USDCHF: 1957 trades built
+EURAUD: 1965 trades built
+EURCHF: 2064 trades built
+AUDJPY: 1797 trades built
+CADJPY: 1881 trades built
+CHFJPY: 1704 trades built
+GOLD: 1787 trades built
+NQ: 1490 trades built
+SPX: 552 trades built
+DOW: 412 trades built
+US2000: 1381 trades built
+DE30: 1677 trades built
+UK100: 1522 trades built
+
+Total trades: 26866 (26866 with resolvable clearance, 0 bar-index lookup misses)
+
+Clearance distribution (pips beyond the rung):
+  p1: 0.01p
+  p5: 0.06p
+  p10: 0.13p
+  p25: 0.36p
+  p50: 0.97p
+  p75: 2.47p
+  p90: 5.93p
+  p99: 31.76p
+
+threshold(p)	n	dropped	winRate%	Sharpe	PF	CAGR%	maxDD%
+0p	26840	26	57.5	3.96	2	537.18	-21.45
+0.2p	22805	4061	57.3	3.74	1.93	375.21	-20.08
+0.5p	18158	8708	57	3.35	1.8	234.48	-18.71
+1p	13146	13720	56.9	3.3	1.79	171.78	-15.53
+2p	8095	18771	56.3	2.43	1.56	76.95	-16.57
+3p	5621	21245	56.6	2.4	1.53	57.7	-12.73
