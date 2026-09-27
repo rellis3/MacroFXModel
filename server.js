@@ -156,7 +156,7 @@ import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INST
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
 import { scanBoard as _msScanBoard, scanLinks as _msScanLinks, boardFreshness as _msBoardFreshness, THRESHOLDS as _msTHRESHOLDS } from './js/marketScan.js';
 import { marketState as _mtMarketState, sectorBoard as _mtSectorBoard } from './js/marketState.js';
-import { buildQuestion as _buildQuestion } from './js/marketDrill.js';
+import { buildQuestion as _buildQuestion, DRILL_SERIES as _DRILL_SERIES } from './js/marketDrill.js';
 import { plannedInWindow } from './js/endOfDay.js';
 import { evaluateTriggers as _evaluateTriggers, diffStates as _diffStates, formatTelegram as _formatWatchTelegram } from './js/deskWatch.js';
 import { computeFrozenSigma as _vwapFrozenSigmaCore, computeStretchSnapshot as _vwapStretchSnapshot } from './js/vwapStretchCore.js';
@@ -14743,12 +14743,33 @@ app.get('/api/wider-market', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-app.get('/api/drill-series', async (_req, res) => {
+// `?slim=1` serves only the 13 series the drill generators actually read, rounded to
+// 3dp. The full bundle carries 71 because market-view.html and terminal.html need the
+// board; a page that only asks questions was shipping 58 series it never opens.
+//
+// Measured 2026-09-27: 236KB gzipped down to 42KB, an 82% cut on the wire. That is the
+// number that matters here -- this repo's Railway bill is EGRESS, not compute, and the
+// practice page is the one being handed to other people.
+//
+// OPT-IN, so the three existing consumers are untouched. The series list is derived
+// from the generators themselves (DRILL_SERIES), so adding a generator that reads a new
+// series cannot silently ship a bundle missing it.
+app.get('/api/drill-series', async (req, res) => {
   try {
     if (Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle();
     if (!_drillBundle.data) return res.status(503).json({ ok: false, error: _drillBundle.error ?? 'no bundle yet' });
     res.set('Cache-Control', 'public, max-age=3600');
-    res.json({ ok: true, ..._drillBundle.data, at: new Date(_drillBundle.at).toISOString() });
+    const d = _drillBundle.data;
+    if (req.query.slim === '1') {
+      const series = {};
+      for (const k of _DRILL_SERIES) {
+        const a = d.series?.[k];
+        if (a) series[k] = a.map(v => (v == null || !Number.isFinite(v)) ? null : +v.toFixed(3));
+      }
+      return res.json({ ok: true, slim: true, dates: d.dates, series, from: d.from, to: d.to, n: d.n,
+        at: new Date(_drillBundle.at).toISOString() });
+    }
+    res.json({ ok: true, ...d, at: new Date(_drillBundle.at).toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('drill', () => _refreshDrillBundle().catch(e => console.error('[drill]', e.message)), 24 * 3600_000);

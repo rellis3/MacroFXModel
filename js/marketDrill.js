@@ -63,6 +63,35 @@ const shuffle = (arr, rand) => { const a = arr.slice(); for (let i = a.length - 
  * question or null when that day cannot teach its idea. `topic` groups them so
  * the page can report where a reader is weak.
  */
+/**
+ * The series each generator reasons about, declared rather than inferred.
+ *
+ * Two jobs, and they are why this is declared once instead of twice:
+ *   1. The PICTURE. The practice page draws the window these numbers came from. The
+ *      bundle is already in the browser, so a chart of 20 points costs nothing beyond
+ *      the drawing -- no fetch, no server work.
+ *   2. The PAYLOAD. /api/drill-series?slim=1 serves only these, because the drill reads
+ *      13 of the bundle's 71 series and shipping the other 58 is pure egress.
+ *
+ * `unit` matters: mixing basis points and percent on one axis is a lie about scale, so
+ * each series is drawn as its own small multiple with its own label.
+ */
+export const GENERATOR_SERIES = {
+  'yield-split':    [{ key: 'us10y', label: 'US 10-year', unit: 'bp' }, { key: 'tips', label: 'Real yield (TIPS)', unit: 'bp' }, { key: 'bei', label: 'Inflation pricing', unit: 'bp' }],
+  'curve-led':      [{ key: 'us2y', label: '2-year', unit: 'bp' }, { key: 'us30y', label: '30-year', unit: 'bp' }],
+  'oil-breakevens': [{ key: 'oil', label: 'Crude', unit: 'pct' }, { key: 'bei', label: '10-year breakeven', unit: 'bp' }],
+  'which-gold':     [{ key: 'gold', label: 'Gold', unit: 'pct' }, { key: 'tips', label: 'Real yield', unit: 'bp' }, { key: 'dxy', label: 'Broad dollar', unit: 'pct' }],
+  'credit-confirms':[{ key: 'vix', label: 'VIX', unit: 'pct' }, { key: 'hy', label: 'High-yield spreads', unit: 'bp' }],
+  'dollar-link':    [{ key: 'dxy', label: 'Broad dollar', unit: 'pct' }, { key: 'gold', label: 'Gold', unit: 'pct' }, { key: 'audusd', label: 'AUD/USD', unit: 'pct' }, { key: 'usdjpy', label: 'USD/JPY', unit: 'pct' }],
+  'regime-quad':    [{ key: 'copper', label: 'Copper', unit: 'pct' }, { key: 'gold', label: 'Gold', unit: 'pct' }, { key: 'bei', label: 'Breakeven', unit: 'bp' }],
+};
+
+/** Every series any generator needs - the slim payload, derived so it cannot drift. */
+export const DRILL_SERIES = [...new Set(Object.values(GENERATOR_SERIES).flat().map(s => s.key))].sort();
+
+/** The window each question measures, exported so a chart can draw exactly it. */
+export const DRILL_WINDOW = 20;
+
 export const GENERATORS = [
   {
     id: 'yield-split', topic: 'rates',

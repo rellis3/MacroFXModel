@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { GENERATORS, buildQuestion, score, rng, assertDerivable } from './marketDrill.js';
+import { GENERATORS, GENERATOR_SERIES, DRILL_SERIES, DRILL_WINDOW, buildQuestion, score, rng, assertDerivable } from './marketDrill.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -51,6 +51,28 @@ t('every generator returns the full shape, and cites real ledger entries', () =>
 // stem printed `Math.round(dB)`. 4.6bp printed "+5bp" and scored `ignored`; 5.2bp
 // printed "+5bp" and scored `followed`. which-gold (8bp / 0.5%) and credit-confirms
 // (15bp) had the same shape. All three now judge on the printed value.
+t('GENERATOR_SERIES matches what each generator really reads', () => {
+  // A declared set that drifts from what the code reads means ?slim=1 ships a bundle
+  // missing a series, and questions silently stop generating for that concept.
+  for (const g of GENERATORS) {
+    const declared = new Set((GENERATOR_SERIES[g.id] ?? []).map(x => x.key));
+    assert.ok(declared.size, `${g.id}: no series declared`);
+    const reads = new Set([...String(g.make).matchAll(/delta\(b,\s*'([a-z0-9]+)'/g)].map(m => m[1]));
+    for (const k of reads) assert.ok(declared.has(k), `${g.id} reads '${k}' but does not declare it`);
+    for (const k of declared) assert.ok(reads.has(k), `${g.id} declares '${k}' but never reads it`);
+  }
+  assert.deepEqual(DRILL_SERIES, [...new Set(Object.values(GENERATOR_SERIES).flat().map(x => x.key))].sort());
+  for (const x of Object.values(GENERATOR_SERIES).flat())
+    assert.ok(x.unit === 'bp' || x.unit === 'pct', `${x.key}: unit must be bp or pct - a chart cannot mix them on one axis`);
+});
+
+t('the exported window equals the one questions are measured over', () => {
+  // A chart drawn over a different window than the stem describes is worse than none.
+  const q = GENERATORS.find(g => g.id === 'curve-led').make(bundle(), 100, rng(1));
+  assert.ok(q && /twenty sessions/.test(q.stem));
+  assert.equal(DRILL_WINDOW, 20);
+});
+
 t('a stem determines its answer — no two identical stems disagree', () => {
   const b = bundle();
   const seen = new Map();

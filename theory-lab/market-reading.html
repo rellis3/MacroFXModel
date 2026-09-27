@@ -75,6 +75,18 @@
   .mr-tvw{flex-basis:100%;font-size:11.5px;line-height:1.55;color:var(--amber);font-weight:600;margin-top:4px}
   .mr-tvn{flex-basis:100%;font-size:11.5px;line-height:1.6;color:var(--text2);margin-top:4px}
 
+  /* Small multiples, one per series. Mixing basis points and percent on a shared axis
+     would misrepresent scale, so each gets its own box and its own end label. The data
+     is already in the browser - this costs a polyline, no fetch and no server work. */
+  .mr-charts{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+  .mr-ch{flex:1 1 150px;min-width:140px;background:var(--s1);border:1px solid var(--border);
+         border-radius:var(--r);padding:8px 10px}
+  .mr-ch-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:4px}
+  .mr-ch-l{font-size:10.5px;font-weight:700;color:var(--text2);letter-spacing:.02em}
+  .mr-ch-v{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;font-variant-numeric:tabular-nums}
+  .mr-ch-v.up{color:var(--green)} .mr-ch-v.dn{color:var(--red)} .mr-ch-v.flat{color:var(--text3)}
+  .mr-ch svg{display:block;width:100%;height:38px;overflow:visible}
+  .mr-ch-cap{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:7px;flex-basis:100%}
   .mr-foot{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:16px}
   .mr-next{background:var(--blue);border:1px solid var(--blue2);color:#fff;border-radius:var(--r);
            padding:10px 20px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -122,6 +134,7 @@
 
 <script type="module">
 import * as Drill from '../js/marketDrill.js';
+import { GENERATOR_SERIES, DRILL_WINDOW } from '../js/marketDrill.js';
 import * as P from '../js/drillPractice.js';
 import { CONCEPTS } from '../js/learnState.js';
 import { mechanismFor } from '../js/mechanisms.js';
@@ -142,7 +155,9 @@ function save() { try { localStorage.setItem(P.PRACTICE_KEY, JSON.stringify(SESS
 async function boot() {
   $('mr-body').innerHTML = `<div class="mr-card"><div class="mr-p">Loading six years of board history…</div></div>`;
   try {
-    const r = await fetch('/api/drill-series');
+    // slim=1: the 13 series the generators read, not all 71. 42KB gzipped instead
+    // of 236KB - this page is the one handed to other people, and the bill is egress.
+    const r = await fetch('/api/drill-series?slim=1');
     const j = await r.json();
     if (!j?.ok || !j.dates?.length) throw new Error(j?.error || 'the bundle is empty');
     BUNDLE = j;
@@ -238,6 +253,53 @@ function renderMech(id) {
   </div>`;
 }
 
+/**
+ * The twenty sessions the question measures, drawn.
+ *
+ * Shown only AFTER the answer is committed. Seeing the path first would turn a
+ * numerical reading into a visual one and, for curve-led especially, hand over the
+ * answer - commit-first is the whole mechanism the drill runs on.
+ *
+ * Costs nothing: the bundle is already loaded, so this is ~20 array reads and a
+ * polyline string per series. No fetch, no server work.
+ */
+function renderCharts(q) {
+  const defs = GENERATOR_SERIES[q.gen]; if (!defs || !BUNDLE) return '';
+  const end = BUNDLE.dates.indexOf(q.date); if (end < DRILL_WINDOW) return '';
+  const boxes = [];
+  for (const d of defs) {
+    const arr = BUNDLE.series?.[d.key]; if (!arr) continue;
+    const win = arr.slice(end - DRILL_WINDOW, end + 1).map(v => (v == null || !Number.isFinite(v)) ? null : v);
+    const real = win.filter(v => v != null);
+    if (real.length < 5 || win[0] == null || win.at(-1) == null) continue;   // too gappy to draw honestly
+    const lo = Math.min(...real), hi = Math.max(...real), span = (hi - lo) || 1;
+    const W = 100, H = 30;
+    // nulls BREAK the line rather than being interpolated across - a straight segment
+    // over missing days would be a drawing of data that does not exist
+    const segs = []; let cur = [];
+    win.forEach((v, i) => {
+      if (v == null) { if (cur.length > 1) segs.push(cur); cur = []; return; }
+      cur.push(`${(i / DRILL_WINDOW * W).toFixed(1)},${(H - (v - lo) / span * H).toFixed(1)}`);
+    });
+    if (cur.length > 1) segs.push(cur);
+    const chg = d.unit === 'bp' ? (win.at(-1) - win[0]) * 100 : (win[0] ? (win.at(-1) / win[0] - 1) * 100 : 0);
+    const txt = d.unit === 'bp' ? `${chg >= 0 ? '+' : ''}${Math.round(chg)}bp` : `${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%`;
+    const cls = Math.abs(chg) < (d.unit === 'bp' ? 1 : 0.05) ? 'flat' : chg > 0 ? 'up' : 'dn';
+    const stroke = cls === 'up' ? 'var(--green)' : cls === 'dn' ? 'var(--red)' : 'var(--text3)';
+    const lastPt = segs.at(-1)?.at(-1);
+    boxes.push(`<div class="mr-ch">
+      <div class="mr-ch-h"><span class="mr-ch-l">${esc(d.label)}</span><span class="mr-ch-v ${cls}">${txt}</span></div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(d.label)} over the twenty sessions, ${txt}">
+        ${segs.map(p => `<polyline points="${p.join(' ')}" fill="none" stroke="${stroke}" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`).join('')}
+        ${lastPt ? `<circle cx="${lastPt.split(',')[0]}" cy="${lastPt.split(',')[1]}" r="1.8" fill="${stroke}" vector-effect="non-scaling-stroke"/>` : ''}
+      </svg></div>`);
+  }
+  if (!boxes.length) return '';
+  return `<div class="mr-charts">${boxes.join('')}
+    <div class="mr-ch-cap">The twenty sessions this question measures, ending ${esc(q.date)}. Each box has its own scale \u2014 basis points and percent do not share an axis \u2014 so read the shapes and the labelled change, not the heights against each other.</div>
+  </div>`;
+}
+
 function render() {
   renderModes();
   renderScore();
@@ -279,6 +341,7 @@ function render() {
       <p class="mr-p">${esc(Q.reveal)}</p>
       <p class="mr-p">${esc(Q.why)}</p>
       <div class="mr-pr"><b>The principle.</b> ${esc(Q.principle)}</div>
+      ${renderCharts(Q)}
     </div>` : ''}
 
     ${renderMech(Q.gen)}
