@@ -1,0 +1,273 @@
+{
+ "id": "yield-move-fx-range",
+ "ranAt": "2026-09-27T17:31:31.310Z",
+ "pctile": 0.9,
+ "trail": 504,
+ "minEvents": 30,
+ "bigDays": 1915,
+ "instruments": {
+  "EURUSD": {
+   "n": 260,
+   "from": "2010-11-25",
+   "to": "2026-09-24",
+   "h1": {
+    "nA": 259,
+    "nB": 2641,
+    "diff": 0.101,
+    "lo": 0.013,
+    "hi": 0.196,
+    "real": true
+   },
+   "h1_up": {
+    "nA": 131,
+    "nB": 2641,
+    "diff": 0.057,
+    "lo": -0.056,
+    "hi": 0.171,
+    "real": false
+   },
+   "h1_down": {
+    "nA": 128,
+    "nB": 2641,
+    "diff": 0.146,
+    "lo": 0.024,
+    "hi": 0.268,
+    "real": true
+   },
+   "h1_early": {
+    "nA": 111,
+    "nB": 2641,
+    "diff": 0.11,
+    "lo": -0.032,
+    "hi": 0.267,
+    "real": false
+   },
+   "h1_late": {
+    "nA": 148,
+    "nB": 2641,
+    "diff": 0.094,
+    "lo": -0.03,
+    "hi": 0.238,
+    "real": false
+   },
+   "h5": {
+    "nA": 258,
+    "nB": 2641,
+    "diff": 0.053,
+    "lo": 0.007,
+    "hi": 0.105,
+    "real": true
+   },
+   "h5_up": {
+    "nA": 130,
+    "nB": 2641,
+    "diff": -0.002,
+    "lo": -0.05,
+    "hi": 0.045,
+    "real": false
+   },
+   "h5_down": {
+    "nA": 128,
+    "nB": 2641,
+    "diff": 0.109,
+    "lo": 0.031,
+    "hi": 0.194,
+    "real": true
+   },
+   "h5_early": {
+    "nA": 111,
+    "nB": 2641,
+    "diff": 0.045,
+    "lo": -0.016,
+    "hi": 0.112,
+    "real": false
+   },
+   "h5_late": {
+    "nA": 147,
+    "nB": 2641,
+    "diff": 0.059,
+    "lo": -0.006,
+    "hi": 0.131,
+    "real": false
+   },
+   "splitAt": "2018-09-22"
+  },
+  "USDJPY": {
+   "n": 260,
+   "from": "2010-11-18",
+   "to": "2026-09-24",
+   "h1": {
+    "nA": 259,
+    "nB": 2647,
+    "diff": 0.086,
+    "lo": -0.014,
+    "hi": 0.202,
+    "real": false
+   },
+   "h1_up": {
+    "nA": 132,
+    "nB": 2647,
+    "diff": 0.041,
+    "lo": -0.086,
+    "hi": 0.189,
+    "real": false
+   },
+   "h1_down": {
+    "nA": 127,
+    "nB": 2647,
+    "diff": 0.133,
+    "lo": 0.004,
+    "hi": 0.269,
+    "real": true
+   },
+   "h1_early": {
+    "nA": 111,
+    "nB": 2647,
+    "diff": 0.111,
+    "lo": -0.042,
+    "hi": 0.278,
+    "real": false
+   },
+   "h1_late": {
+    "nA": 148,
+    "nB": 2647,
+    "diff": 0.067,
+    "lo": -0.066,
+    "hi": 0.233,
+    "real": false
+   },
+   "h5": {
+    "nA": 258,
+    "nB": 2647,
+    "diff": 0.07,
+    "lo": -0.011,
+    "hi": 0.154,
+    "real": false
+   },
+   "h5_up": {
+    "nA": 131,
+    "nB": 2647,
+    "diff": -0.063,
+    "lo": -0.125,
+    "hi": 0.006,
+    "real": false
+   },
+   "h5_down": {
+    "nA": 127,
+    "nB": 2647,
+    "diff": 0.208,
+    "lo": 0.093,
+    "hi": 0.343,
+    "real": true
+   },
+   "h5_early": {
+    "nA": 111,
+    "nB": 2647,
+    "diff": 0.057,
+    "lo": -0.053,
+    "hi": 0.182,
+    "real": false
+   },
+   "h5_late": {
+    "nA": 147,
+    "nB": 2647,
+    "diff": 0.081,
+    "lo": -0.019,
+    "hi": 0.189,
+    "real": false
+   },
+   "splitAt": "2018-09-22"
+  },
+  "GBPUSD": {
+   "n": 260,
+   "from": "2010-11-17",
+   "to": "2026-09-24",
+   "h1": {
+    "nA": 259,
+    "nB": 2647,
+    "diff": 0.078,
+    "lo": -0.023,
+    "hi": 0.185,
+    "real": false
+   },
+   "h1_up": {
+    "nA": 132,
+    "nB": 2647,
+    "diff": 0.021,
+    "lo": -0.089,
+    "hi": 0.136,
+    "real": false
+   },
+   "h1_down": {
+    "nA": 127,
+    "nB": 2647,
+    "diff": 0.138,
+    "lo": -0.004,
+    "hi": 0.302,
+    "real": false
+   },
+   "h1_early": {
+    "nA": 111,
+    "nB": 2647,
+    "diff": 0.094,
+    "lo": -0.017,
+    "hi": 0.218,
+    "real": false
+   },
+   "h1_late": {
+    "nA": 148,
+    "nB": 2647,
+    "diff": 0.066,
+    "lo": -0.084,
+    "hi": 0.226,
+    "real": false
+   },
+   "h5": {
+    "nA": 258,
+    "nB": 2647,
+    "diff": 0.033,
+    "lo": -0.016,
+    "hi": 0.087,
+    "real": false
+   },
+   "h5_up": {
+    "nA": 131,
+    "nB": 2647,
+    "diff": -0.022,
+    "lo": -0.087,
+    "hi": 0.043,
+    "real": false
+   },
+   "h5_down": {
+    "nA": 127,
+    "nB": 2647,
+    "diff": 0.09,
+    "lo": 0.015,
+    "hi": 0.178,
+    "real": true
+   },
+   "h5_early": {
+    "nA": 111,
+    "nB": 2647,
+    "diff": 0.017,
+    "lo": -0.04,
+    "hi": 0.077,
+    "real": false
+   },
+   "h5_late": {
+    "nA": 147,
+    "nB": 2647,
+    "diff": 0.046,
+    "lo": -0.032,
+    "hi": 0.128,
+    "real": false
+   },
+   "splitAt": "2018-09-22"
+  }
+ },
+ "verdict": "NULL",
+ "gate": {
+  "description": "all three instruments real AND both halves agreeing in sign",
+  "passedAt": []
+ }
+}

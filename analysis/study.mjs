@@ -228,7 +228,15 @@ function state(id) {
   const ranFrom = res?.ranAt ? 'ranAt' : res?.at ? 'at' : rExists ? 'file mtime' : null;
   return {
     id, prereg: fs.existsSync(p), preregCommitted: !!pAt, preregAt: pAt,
-    harness: fs.existsSync(h), result: rExists, ranAt, ranFrom, verdict: res?.verdict ?? null,
+    harness: fs.existsSync(h), result: rExists, ranAt, ranFrom,
+    // A harness may pass its GATE and still fail the claim -- spread-divergence-range
+    // cleared its hour-matched control in both halves, then its mirror came back larger,
+    // which the pre-registration said in advance meant the effect was not the one being
+    // tested. Bank what the CLAIM did. Banking a gate pass as a validated finding is
+    // precisely the mistake the mirror exists to prevent.
+    verdict: res?.claimVerdict ?? res?.verdict ?? null,
+    gateVerdict: res?.verdict ?? null,
+    claimNote: res?.claimNote ?? null,
     // the check that matters: was the expectation on the record before the answer existed?
     ordered: !!(pAt && ranAt && pAt < ranAt),
   };
@@ -244,7 +252,9 @@ function cmdCheck(id, quiet = false) {
   ok = say(s.harness, 'a harness exists') && ok;
   ok = say(s.result, 'it has been run and wrote a result') && ok;
   ok = say(s.ordered, `the pre-registration was committed BEFORE the run${s.ranFrom === 'file mtime' ? ' (run time taken from the file mtime — the harness wrote no timestamp)' : ''}`) && ok;
-  ok = say(!!s.verdict, `the harness computed a verdict${s.verdict ? ` (${s.verdict})` : ''}`) && ok;
+  ok = say(!!s.verdict, `the harness computed a verdict${s.verdict ? ` (${s.verdict})` : ''}`
+    + (s.gateVerdict && s.gateVerdict !== s.verdict ? ` — its GATE said ${s.gateVerdict}, overridden by the claim check` : '')) && ok;
+  if (!quiet && s.claimNote) console.log(`      ${s.claimNote}`);
   if (!quiet) console.log(ok ? '  → ready to bank' : '  → not bankable yet');
   return ok;
 }

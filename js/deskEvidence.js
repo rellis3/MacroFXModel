@@ -373,6 +373,18 @@ export const DESK_EVIDENCE = [
     use: 'Do not write that a crowded market means a wild week: tested here, null at five sessions and null on the tail. Dispersion is a structural read -- the index hedge protects least when the risk is concentration rather than the market falling as a whole. The month result was unconfirmed; D2 (dispersion-reset, 2026-09-27) supplied the mirror it was missing and it PASSED, which raises confidence in the rising arm without making it a trigger -- it still lives mostly in the late half of the sample.',
   },
   {
+    id: 'yield-move-fx-range', domain: 'volatility', verdict: 'null', date: '2026-09-27', doc: 'MD files/YIELD_MOVE_FX_RANGE_PREREG.md',
+    claim: 'A large move in the US 10-year precedes a WIDER FX session -- the range question, after the direction question was closed null',
+    result: 'Pre-registered with a POSITIVE expectation (+0.15 to +0.30 ATR). 1,915 top-decile DGS10 days on a rolling 504-day threshold, de-clustered to 260 setups per pair, 2010-2026. Gate was all three pairs AND both halves: EUR/USD clears alone (+0.101 [0.013, 0.196] next session, +0.053 [0.007, 0.105] at five) and USD/JPY and GBP/USD do not, with no half-split clearing anywhere. The MIRROR is the interesting part and is pre-registered as a warning rather than a finding: at five sessions a yield FALL widens range on 3 of 3 pairs (+0.109, +0.208, +0.090, all clear of zero) while a yield RISE does so on 0 of 3.',
+    use: 'Do not write that a big rates day means a wild FX session -- tested here against a positive prior and null on the gate. The down-side asymmetry is almost certainly the risk-off episode the yield fall sits inside, not the yield fall; nothing here separates them. It is consistent with front-end-shock, which found a hawkish 2-year repricing followed by a CALMER week, so two independent studies now say rates up -> quieter FX. Worth a properly conditioned risk-off test one day; not a claim today.',
+  },
+  {
+    id: 'spread-divergence-range', domain: 'volatility', verdict: 'null', date: '2026-09-27', doc: 'MD files/SPREAD_DIVERGENCE_RANGE_PREREG.md',
+    claim: 'When the DE-US 10-year spread moves and EUR/USD does not, the next hours run WIDER -- the range question, after spread-leads-fx-hours closed the direction one',
+    result: 'Pre-registered NULL and the gate came back REAL, then the mirror killed it. 60,613 aligned hours 2012-2026, 693 divergence setups (the direction study had 727). Against an hour-of-day-matched control the next 2h run +0.132 [0.071, 0.198] and the next 6h +0.076 [0.032, 0.116], real in BOTH halves; 24h is null. But the pre-registered mirror -- spot moves, spread does not -- is LARGER at every horizon (+0.164 and +0.087 on the same hour-matched footing). The prereg said in advance that if both widen, the effect is a big move in either leg rather than the disagreement.',
+    use: 'Never write that a spread/spot divergence means a volatile few hours: what widens the tape is a big move in EITHER leg, which is volatility clustering and already known. The hour-of-day-matched control is the reusable part -- it halved the raw effect (+0.220 to +0.132), because divergences cluster into the London-New York overlap. Any future hourly study here should carry it.',
+  },
+  {
     id: 'dispersion-reset', domain: 'volatility', verdict: 'validated', date: '2026-09-27', doc: 'MD files/DISPERSION.md#D2',
     instruments: ['SPX500', 'NQ'],
     claim: 'A crowded market that is NORMALIZING -- dispersion high but now falling -- is the signal the dominant theme is losing control, and the break is starting',

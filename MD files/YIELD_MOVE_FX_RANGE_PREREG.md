@@ -75,3 +75,56 @@ properly rather than leaving it feeling untried.
 - **Cause.** If range widens after a yield move, this cannot say the yield move caused
   it. Both may sit inside the same macro episode, which is precisely what the mirror in
   (d) is there to probe.
+
+---
+
+## RESULTS — run 2026-09-27
+
+DGS10 daily, 1,915 top-decile days on a rolling 504-day threshold (1,014 up, 901 down),
+de-clustered to 260 setups per pair. EUR/USD, USD/JPY and GBP/USD, 2010-11 → 2026-09.
+
+**Verdict on the pre-registered gate: NULL.**
+
+| | EUR/USD | USD/JPY | GBP/USD |
+|---|---|---|---|
+| next 1 session | **+0.101 [0.013, 0.196]** | +0.086 [−0.014, 0.202] | +0.078 [−0.023, 0.185] |
+| next 5 sessions | **+0.053 [0.007, 0.105]** | +0.070 [−0.011, 0.154] | +0.033 [−0.016, 0.087] |
+
+The gate was all three instruments **and** both halves. EUR/USD clears on its own at both
+horizons; the other two do not, and no half-split clears anywhere. One instrument out of
+three is the shape of a period artefact, which is exactly what the gate exists to catch.
+
+### My expectation was wrong in the useful direction
+
+I pre-registered **+0.15 to +0.30 ATR** and a positive result. What came back is roughly a
+third of that on one pair and nothing on the other two. Writing the expectation high made
+this a real test rather than a formality: a null against a stated positive prior closes
+the question, where a null against "probably nothing" would have left it feeling untried.
+
+### The asymmetry, and why it is NOT a finding
+
+The mirror is stark and it is the interesting part of the run:
+
+| at 5 sessions | EUR/USD | USD/JPY | GBP/USD |
+|---|---|---|---|
+| yields **UP** | −0.002 | −0.063 | −0.022 |
+| yields **DOWN** | **+0.109 [0.031, 0.194]** | **+0.208 [0.093, 0.343]** | **+0.090 [0.015, 0.178]** |
+
+Down-moves widen FX range on **3 of 3** pairs; up-moves on **0 of 3**. That looks like a
+result, and the pre-registration says in advance how to read it: *"if only one side works,
+the effect probably belongs to the episodes those moves sat inside rather than to the size
+of the move."*
+
+Which is almost certainly what this is. A large fall in the 10-year is a flight-to-quality
+tape — the yield fall and the FX volatility are both symptoms of a risk-off episode, and
+nothing here separates the two. Reported as an observation, banked as **null**, and
+explicitly not promoted to a finding on the strength of a split that was pre-registered as
+a warning sign rather than as evidence.
+
+It does, however, sit consistently beside `front-end-shock`, which found the same sign on
+the other leg: a hawkish 2-year repricing was followed by a **calmer** week. Two
+independent studies now say rates up → quieter FX, rates down → noisier FX. Worth a
+properly conditioned test on risk-off episodes some day; not worth a claim today.
+
+Harness: `analysis/yield_move_fx_range_study.mjs`.
+Output: `analysis/output/yield_move_fx_range.json`.

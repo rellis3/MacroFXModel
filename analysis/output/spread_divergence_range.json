@@ -1,0 +1,193 @@
+{
+ "id": "spread-divergence-range",
+ "ranAt": "2026-09-27T17:35:41.606Z",
+ "aligned": 60613,
+ "diverge": 693,
+ "mirror": 787,
+ "minEvents": 30,
+ "cells": {
+  "h2": {
+   "raw": {
+    "nA": 693,
+    "nB": 19294,
+    "diff": 0.22,
+    "lo": 0.161,
+    "hi": 0.287,
+    "real": true
+   },
+   "hourMatched": {
+    "nA": 693,
+    "nB": 13860,
+    "diff": 0.132,
+    "lo": 0.073,
+    "hi": 0.199,
+    "real": true
+   },
+   "mirror": {
+    "nA": 787,
+    "nB": 19294,
+    "diff": 0.181,
+    "lo": 0.131,
+    "hi": 0.233,
+    "real": true
+   },
+   "mirrorHourMatched": {
+    "nA": 787,
+    "nB": 15740,
+    "diff": 0.164,
+    "lo": 0.118,
+    "hi": 0.214,
+    "real": true
+   },
+   "early": {
+    "nA": 255,
+    "nB": 5100,
+    "diff": 0.147,
+    "lo": 0.03,
+    "hi": 0.265,
+    "real": true
+   },
+   "late": {
+    "nA": 438,
+    "nB": 8760,
+    "diff": 0.106,
+    "lo": 0.039,
+    "hi": 0.179,
+    "real": true
+   }
+  },
+  "h6": {
+   "raw": {
+    "nA": 693,
+    "nB": 19290,
+    "diff": 0.143,
+    "lo": 0.101,
+    "hi": 0.19,
+    "real": true
+   },
+   "hourMatched": {
+    "nA": 693,
+    "nB": 13860,
+    "diff": 0.076,
+    "lo": 0.038,
+    "hi": 0.116,
+    "real": true
+   },
+   "mirror": {
+    "nA": 787,
+    "nB": 19290,
+    "diff": 0.076,
+    "lo": 0.039,
+    "hi": 0.113,
+    "real": true
+   },
+   "mirrorHourMatched": {
+    "nA": 787,
+    "nB": 15740,
+    "diff": 0.087,
+    "lo": 0.051,
+    "hi": 0.125,
+    "real": true
+   },
+   "early": {
+    "nA": 255,
+    "nB": 5100,
+    "diff": 0.097,
+    "lo": 0.028,
+    "hi": 0.166,
+    "real": true
+   },
+   "late": {
+    "nA": 438,
+    "nB": 8760,
+    "diff": 0.079,
+    "lo": 0.026,
+    "hi": 0.132,
+    "real": true
+   }
+  },
+  "h24": {
+   "raw": {
+    "nA": 693,
+    "nB": 19279,
+    "diff": 0.027,
+    "lo": 0.004,
+    "hi": 0.051,
+    "real": true
+   },
+   "hourMatched": {
+    "nA": 693,
+    "nB": 13860,
+    "diff": 0.014,
+    "lo": -0.008,
+    "hi": 0.036,
+    "real": false
+   },
+   "mirror": {
+    "nA": 787,
+    "nB": 19279,
+    "diff": 0.03,
+    "lo": 0.009,
+    "hi": 0.049,
+    "real": true
+   },
+   "mirrorHourMatched": {
+    "nA": 787,
+    "nB": 15740,
+    "diff": 0.033,
+    "lo": 0.012,
+    "hi": 0.052,
+    "real": true
+   },
+   "early": {
+    "nA": 255,
+    "nB": 5100,
+    "diff": 0.019,
+    "lo": -0.022,
+    "hi": 0.057,
+    "real": false
+   },
+   "late": {
+    "nA": 438,
+    "nB": 8760,
+    "diff": 0.009,
+    "lo": -0.018,
+    "hi": 0.036,
+    "real": false
+   }
+  }
+ },
+ "verdict": "REAL",
+ "gate": {
+  "description": "real against an hour-of-day-matched control, in BOTH halves, same sign throughout",
+  "passedAt": [
+   "h2",
+   "h6"
+  ]
+ },
+ "mirrorVerdict": [
+  {
+   "at": "h2",
+   "setup": 0.132,
+   "mirror": 0.164,
+   "bothWiden": true,
+   "setupBigger": false
+  },
+  {
+   "at": "h6",
+   "setup": 0.076,
+   "mirror": 0.087,
+   "bothWiden": true,
+   "setupBigger": false
+  },
+  {
+   "at": "h24",
+   "setup": 0.014,
+   "mirror": 0.033,
+   "bothWiden": false,
+   "setupBigger": false
+  }
+ ],
+ "claimVerdict": "NULL",
+ "claimNote": "The gate passed but the mirror is at least as large, so the widening belongs to a big move in EITHER leg, not to the divergence between them. The claim as framed is not supported."
+}
