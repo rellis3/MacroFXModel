@@ -14816,6 +14816,17 @@ app.get('/api/wider-market', async (_req, res) => {
 // OPT-IN, so the three existing consumers are untouched. The series list is derived
 // from the generators themselves (DRILL_SERIES), so adding a generator that reads a new
 // series cannot silently ship a bundle missing it.
+// A few bytes saying which day the bundle is built to, so a client holding a cached
+// copy can ask "is mine still current?" without pulling 42KB to find out it was.
+app.get('/api/drill-series/stamp', async (_req, res) => {
+  try {
+    if (Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle();
+    if (!_drillBundle.data) return res.status(503).json({ ok: false });
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ok: true, to: _drillBundle.data.to, n: _drillBundle.data.n });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 app.get('/api/drill-series', async (req, res) => {
   try {
     if (Date.now() - _drillBundle.at > 24 * 3600_000) await _refreshDrillBundle();

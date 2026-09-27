@@ -115,6 +115,10 @@ export const GENERATORS = [
         ],
         answer,
         reveal: `The real leg was ${Math.round(realShare * 100)}% of the move.`,
+        // Where the line sits, and how far this day was from it. Knowing a threshold
+        // exists is most of what separates reading a number from pattern-matching one,
+        // and every one of these was invisible until now.
+        boundary: `The split has to clear 60/40 either way or the question is not asked at all. This one was ${Math.round(realShare * 100)}/${100 - Math.round(realShare * 100)}.`,
         why: answer === 'real'
           ? 'The move was the real yield, so this is a genuine tightening of financial conditions: it discounts future earnings harder, raises the bar for holding an asset that pays nothing, and usually supports the currency. Gold’s headwind.'
           : 'The move was inflation pricing, not the real yield. Money did not get more expensive — the bond market simply expects it to be worth less. That is gold’s FRIEND, and it is why "yields up, gold down" is wrong about half the time.',
@@ -140,6 +144,7 @@ export const GENERATORS = [
         ],
         answer,
         reveal: `The ${answer === 'front' ? 'front end' : 'long end'} led by ${Math.abs(Math.abs(d2) - Math.abs(d30)).toFixed(0)}bp.`,
+        boundary: `The two ends have to be at least 8bp apart to call a leader. They were ${Math.abs(Math.abs(d2) - Math.abs(d30)).toFixed(0)}bp apart — closer than 8 and this is a parallel shift, not a story about one end.`,
         why: answer === 'front'
           ? 'The front end is a vote on what policy does over the next year or two. When it leads, the market is re-pricing the central bank — a meeting, a speech, a jobs number.'
           : 'The long end barely cares what happens at the next meeting. When it leads, the argument is about inflation over decades, or about how much the government needs to borrow. Different story, different trades, different worry.',
@@ -166,6 +171,7 @@ export const GENERATORS = [
         ],
         answer: followed ? 'followed' : 'ignored',
         reveal: followed ? `Breakevens moved the same way and past the 5bp floor.` : `Breakevens stayed inside the noise, or moved the other way.`,
+        boundary: `The floor is 5bp in the SAME direction as crude. This day printed ${fmt(dBs, 'bp')}${followed ? `; under 5bp, or the other way, and it flips to “declined to”.` : ` — 5bp the same way and it flips to “took it”.`}`,
         why: followed
           ? 'Energy fed through: the bond market took this oil move as a real change in the inflation outlook, and the first domino in the chain did its job.'
           : 'The bond market declined to take it. That is a verdict, not a delay — this desk tested it directly: only 43% of ±10% oil moves get 5bp of breakeven within twenty sessions, and the cross-correlation is highest at lag ZERO. If breakevens did not move with oil, do not write "not yet".',
@@ -195,6 +201,7 @@ export const GENERATORS = [
         ],
         answer,
         reveal: answer === 'rates' ? 'The real-yield link explains it.' : answer === 'dollar' ? 'The dollar link explains it; the real-yield one does not.' : 'Neither link explains it — the residual case.',
+        boundary: `Rates count at 8bp or more moving AGAINST gold, the dollar at 0.5% or more against it. Here real yields were ${fmt(dRs, 'bp')} and the dollar ${fmt(dDs, 'pct')}. Rates are checked first, so a day where both qualify is called rates.`,
         why: answer === 'neither'
           ? 'When neither driver explains gold, the buying is coming from somebody who cares about neither — the central-bank case. It is a residual, which means a question rather than an answer: there is no free, timely feed to confirm it. This is also the most common state, roughly 45% of history.'
           : answer === 'rates'
@@ -222,6 +229,7 @@ export const GENERATORS = [
         ],
         answer: confirmed ? 'yes' : 'no',
         reveal: confirmed ? 'Credit widened past the floor that counts as a move — it agreed.' : 'Credit stayed inside its noise — it did not.',
+        boundary: `Credit has to widen 15bp or more to count as agreeing. It moved ${fmt(dHs, 'bp')}${confirmed ? `; under 15 and this becomes an equity-only scare.` : `, short of 15 — 15 or more and it becomes an economic one.`}`,
         why: confirmed
           ? 'Both markets repriced risk together. Credit is where lenders vote, and lenders moving with equity holders is what a genuine risk-off looks like — it is much harder to dismiss as positioning or an options event.'
           : 'Equity fear rose and lenders did not blink. That pattern usually means the equity move is about equity — positioning, an options expiry, a crowded trade unwinding — rather than about the economy. Credit is the slower, meaner judge.',
@@ -249,6 +257,9 @@ export const GENERATORS = [
         options: shuffle(legs.map(l => ({ key: l.key, label: l.label })), rand),
         answer: bad[0].key,
         reveal: `${bad[0].label} went the wrong way for a ${dD > 0 ? 'stronger' : 'weaker'} dollar.`,
+        // Sign-based, so the boundary is about which legs are ASKED rather than a
+        // magnitude to clear: the question needs exactly one break to have one answer.
+        boundary: `A leg only appears once it has moved enough to mean anything — gold 2%, the FX pairs 1% — and the dollar itself 0.5%. Exactly one of them has to be going the wrong way: if two had broken, this would not be asked, because there would be no single answer.`,
         why: `Every one of these is half a dollar trade, so when the dollar moves they should all respond. ${bad[0].label} did not, which means something else was driving it — and that is the thing worth going to look for. A broken link is where the story is. What it is NOT is a prediction: this desk tested whether a broken link resolves one way, and there is no tendency for either leg to be the one that corrects.`,
         principle: 'When one leg of a driver stops responding, the driver is not the story for that leg. Go and find what is.',
         evidence: ['broken-link-resolution'],
@@ -276,6 +287,7 @@ export const GENERATORS = [
         ],
         answer,
         reveal: `Growth ${g}, inflation ${inf}.`,
+        boundary: `The quadrant is read off the two SIGNS, so there is no magnitude to clear — but each axis needs a real move before the question is asked at all: copper against gold by at least 4%, the breakeven by at least 5bp. Nearer zero than that on either axis and the day is skipped rather than guessed.`,
         why: `Nearly all macro reduces to those two questions, and the answer sets what NORMAL looks like this quarter. ${answer === 'stagflation' ? 'Stagflation is the one where every market’s range widens and nothing is comfortable.' : answer === 'goldilocks' ? 'Goldilocks is kind to equities — a quiet grind is the base case and a vol spike is the surprise.' : answer === 'reflation' ? 'Reflation carries equities too, with the inflation hedge working alongside.' : 'Deflation is the quadrant gold has historically carried, and risk assets have not.'} What it does NOT do is tilt FX: all four currency cells tested flat here.`,
         principle: 'Growth and inflation, each up or down. Four boxes. It is a backdrop, not a trade.',
         evidence: ['regime-divergence-fx'],

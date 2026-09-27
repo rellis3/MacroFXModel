@@ -105,6 +105,17 @@
   .mr-kbd kbd{font-family:'DM Mono',monospace;background:var(--s2);border:1px solid var(--border2);
               border-radius:4px;padding:1px 5px;font-size:10.5px;color:var(--text2)}
 
+  /* Where the threshold sat, and how far this day was from it. */
+  .mr-bound{font-size:12px;line-height:1.6;color:var(--text2);background:var(--s1);
+            border-left:3px solid var(--border2);border-radius:0 var(--r) var(--r) 0;
+            padding:8px 12px;margin-top:10px}
+  .mr-bound b{color:var(--text3);font-weight:700;text-transform:uppercase;font-size:9.5px;
+              letter-spacing:.07em;display:block;margin-bottom:3px}
+  .mr-share{background:none;border:1px solid var(--border);color:var(--text3);border-radius:var(--r);
+            padding:7px 13px;font-size:12px;cursor:pointer;font-family:inherit}
+  .mr-share:hover{border-color:var(--blue);color:var(--blue)}
+  .mr-share.copied{border-color:var(--green);color:var(--green)}
+
   .mr-score{display:flex;flex-wrap:wrap;gap:16px;align-items:baseline;background:var(--s1);
             border:1px solid var(--border);border-radius:var(--rl);padding:12px 16px;margin-top:14px}
   .mr-sc{display:flex;flex-direction:column;gap:1px}
@@ -153,7 +164,7 @@ const IDS = Drill.GENERATORS.map(g => g.id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = id => document.getElementById(id);
 
-let BUNDLE = null, SESSION = load(), FOCUS = null, Q = null, PICK = null, TEACH = false, EXHAUSTED = null;
+let BUNDLE = null, SESSION = load(), FOCUS = null, Q = null, PICK = null, TEACH = false, EXHAUSTED = null, SHARED = false;
 
 function load() {
   try { const r = JSON.parse(localStorage.getItem(P.PRACTICE_KEY) || 'null'); if (r && Array.isArray(r.history)) return r; }
@@ -167,8 +178,27 @@ async function boot() {
   try {
     // slim=1: the 13 series the generators read, not all 71. 42KB gzipped instead
     // of 236KB - this page is the one handed to other people, and the bill is egress.
-    const r = await fetch('/api/drill-series?slim=1');
-    const j = await r.json();
+    //
+    // Cached by the bundle's OWN last date, not a clock: it rebuilds once a day, so a
+    // revisit on the same data costs nothing. The tiny stamp request goes first, because
+    // spending 42KB to discover the cache was already current defeats the point.
+    const CACHE_KEY = 'drill_bundle_v1';
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch { /* blocked or corrupt */ }
+    let j = null;
+    if (cached?.to && cached?.dates?.length) {
+      const stamp = await fetch('/api/drill-series/stamp').then(x => x.ok ? x.json() : null).catch(() => null);
+      if (stamp?.to && stamp.to === cached.to) j = cached;
+    }
+    if (!j) {
+      const r = await fetch('/api/drill-series?slim=1');
+      j = await r.json();
+      // Store only a payload that parsed AND is complete. Caching a broken one would
+      // persist the breakage long past whatever caused it.
+      if (j?.ok && j.dates?.length && !(j.missing?.length)) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(j)); } catch { /* quota or private mode */ }
+      }
+    }
     if (!j?.ok || !j.dates?.length) throw new Error(j?.error || 'the bundle is empty');
     BUNDLE = j;
     // The slim payload names any series it could not supply. Say so in the console
@@ -181,11 +211,20 @@ async function boot() {
       <div class="mr-p">${esc(e.message)}. The questions are built from real days, so there is nothing to ask without it. This page needs the MacroFX server — opening the file directly will not work.</div></div>`;
     return;
   }
+  // A shared link opens that exact question instead of the next one in the rotation.
+  const qs = new URLSearchParams(location.search);
+  const seed = parseInt(qs.get('q') ?? '', 10);
+  if (Number.isFinite(seed)) {
+    const q = Drill.buildQuestion(BUNDLE, { seed, only: qs.get('c') ? [qs.get('c')] : null });
+    if (q) { Q = q; PICK = null; TEACH = false; SHARED = true; render(); return; }
+  }
   nextQ();
 }
 
 function nextQ() {
-  PICK = null; TEACH = false; EXHAUSTED = null;
+  PICK = null; TEACH = false; EXHAUSTED = null; SHARED = false;
+  // drop ?q= so the shared question is not re-served on the next reload
+  if (location.search) history.replaceState(null, '', location.pathname);
   const r = P.nextQuestion(BUNDLE, SESSION, { build: Drill.buildQuestion, concept: FOCUS, concepts: IDS });
   SESSION = r.session; Q = r.q; EXHAUSTED = r.q ? null : (r.exhausted ?? 'all');
   save(); render();
@@ -194,9 +233,29 @@ function nextQ() {
 function pick(key) {
   if (!Q || PICK) return;
   PICK = key;
-  SESSION = P.fold(SESSION, Q, key, Date.now());
-  save(); render();
+  // A question someone sent you is not your practice: score it on screen and leave the
+  // record alone, or a shared link quietly edits the recipient's history.
+  if (!SHARED) { SESSION = P.fold(SESSION, Q, key, Date.now()); save(); }
+  render();
 }
+
+// A question is reproducible from its seed — js/marketDrill.js says so in its own header
+// ("deterministic given a seed, so a question can be linked to, replayed and argued
+// with") and it was never wired up. It is the cheapest way to hand someone one specific
+// question instead of describing it.
+window.mrShare = async btn => {
+  if (!Q) return;
+  const u = new URL(location.href);
+  u.search = `?q=${Q.seed}&c=${encodeURIComponent(Q.gen)}`;
+  try { await navigator.clipboard.writeText(u.toString()); }
+  catch {
+    const t = document.createElement('textarea'); t.value = u.toString();
+    t.style.position = 'fixed'; t.style.opacity = '0';
+    document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove();
+  }
+  const was = btn.textContent; btn.textContent = 'link copied'; btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = was; btn.classList.remove('copied'); }, 1400);
+};
 
 window.mrPick = pick;
 window.mrNext = () => nextQ();
@@ -405,6 +464,7 @@ function render() {
       <p class="mr-p">${esc(Q.reveal)}</p>
       <p class="mr-p">${esc(Q.why)}</p>
       <div class="mr-pr"><b>The principle.</b> ${esc(Q.principle)}</div>
+      ${Q.boundary ? `<div class="mr-bound"><b>What would have changed the answer</b>${esc(Q.boundary)}</div>` : ''}
       ${renderChart(Q)}
     </div>` : ''}
 
@@ -412,6 +472,7 @@ function render() {
 
     <div class="mr-foot">
       ${done ? `<button class="mr-next" onclick="mrNext()">Next question →</button>` : ''}
+      <button class="mr-share" onclick="mrShare(this)" title="Copy a link that opens this exact question for someone else">🔗 copy link</button>
       <span class="mr-kbd">${done ? '<kbd>Enter</kbd> next' : `<kbd>1</kbd>–<kbd>${Q.options.length}</kbd> to answer`} · <kbd>b</kbd> background</span>
     </div>
   </div>`;

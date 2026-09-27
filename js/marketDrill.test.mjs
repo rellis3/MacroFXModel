@@ -51,6 +51,27 @@ t('every generator returns the full shape, and cites real ledger entries', () =>
 // stem printed `Math.round(dB)`. 4.6bp printed "+5bp" and scored `ignored`; 5.2bp
 // printed "+5bp" and scored `followed`. which-gold (8bp / 0.5%) and credit-confirms
 // (15bp) had the same shape. All three now judge on the printed value.
+// Every question is decided by a threshold, and until 2026-09-27 none of them said so.
+// A reader who does not know a line exists cannot tell a clear day from a marginal one,
+// which is the difference between reading a number and pattern-matching it.
+t('every generator says what would have changed the answer', () => {
+  const b = bundle();
+  const seen = new Set();
+  for (const g of GENERATORS) {
+    for (let i = 30; i < 380; i++) {
+      let q = null; try { q = g.make(b, i, rng(i)); } catch { q = null; }
+      if (!q) continue;
+      seen.add(g.id);
+      assert.ok(q.boundary && q.boundary.length > 60, `${g.id}: no boundary line`);
+      // it must name a number the reader can check, not just gesture at "a threshold"
+      assert.match(q.boundary, /\d/, `${g.id}: boundary states no figure`);
+      assert.doesNotMatch(q.boundary, /undefined|NaN|\[object/, `${g.id}: boundary has a template hole`);
+      break;
+    }
+  }
+  assert.ok(seen.size >= 5, `only ${seen.size} generators produced anything from the fixture`);
+});
+
 t('GENERATOR_SERIES matches what each generator really reads', () => {
   // A declared set that drifts from what the code reads means ?slim=1 ships a bundle
   // missing a series, and questions silently stop generating for that concept.
