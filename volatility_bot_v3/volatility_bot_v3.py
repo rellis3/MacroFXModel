@@ -577,6 +577,19 @@ def run(base_url: str, force_live: bool) -> None:
     pair_cap_blocked: dict[str, bool] = {}
     warned_missing: dict[str, bool] = {}
     missing_since: dict[str, float] = {}
+    # 2026-09-27: a live-vs-backtest reconciliation session found MORE silent
+    # gaps of the exact same shape as pair_cap_blocked above -- sess is None
+    # (pair not yet in the plan), no live quote, broker reports the symbol
+    # untradable, and the global max_open cap all `continue`d with zero
+    # _record_decision call. Every one of these produced "no log entry found"
+    # or (worse) a stale, already-expired risk_guard cooldown being the
+    # nearest thing the audit could find, wrongly implying risk_guard was
+    # still the active blocker. Deduped the same way (log a transition, not
+    # every tick).
+    sess_missing_blocked: dict[str, bool] = {}
+    quote_missing_blocked: dict[str, bool] = {}
+    untradable_blocked: dict[str, bool] = {}
+    max_open_blocked = False
     # A pair being absent from the FIRST plan snapshot(s) after a restart is
     # normal, not a typo -- the plan producer cold-start-throttles to only 3
     # pairs warming concurrently (server.js _refreshVolatilityV2Plan's own
@@ -888,8 +901,13 @@ def run(base_url: str, force_live: bool) -> None:
                 if sess is None:
                     if instr in _plan_instruments(plan):
                         missing_since.pop(instr, None)
+                        sess_missing_blocked.pop(instr, None)
                     else:
                         first_seen = missing_since.setdefault(instr, nowt)
+                        if not sess_missing_blocked.get(instr):
+                            sess_missing_blocked[instr] = True
+                            _record_decision(instr, "pair_blocked",
+                                              reason="not_in_plan: pair has no session yet (plan producer hasn't warmed it, or a typo in enabled_pairs)")
                         if nowt - first_seen > MISSING_GRACE_SECS and not warned_missing.get(instr):
                             warned_missing[instr] = True
                             log.warning(f"enabled pair {instr!r} still not in the plan after "
@@ -899,15 +917,28 @@ def run(base_url: str, force_live: bool) -> None:
                     continue
                 px = quotes.price(instr) if quotes is not None else broker.price(instr)
                 if px is None:
+                    if not quote_missing_blocked.get(instr):
+                        quote_missing_blocked[instr] = True
+                        _record_decision(instr, "pair_blocked", reason="no_quote: price feed returned nothing this tick")
                     continue
+                quote_missing_blocked.pop(instr, None)
                 if plan_age_blocked:
                     continue
                 if eod_close_blocked:
                     continue
                 if not broker.tradable(instr):
+                    if not untradable_blocked.get(instr):
+                        untradable_blocked[instr] = True
+                        _record_decision(instr, "pair_blocked", reason="not_tradable: broker reports this symbol untradable right now")
                     continue
+                untradable_blocked.pop(instr, None)
                 open_book = broker.serialize_open_positions()
-                if len(open_book) >= cfg.get("max_open", 12):
+                max_open_now = len(open_book) >= cfg.get("max_open", 12)
+                if max_open_now != max_open_blocked:
+                    max_open_blocked = max_open_now
+                    if max_open_now:
+                        _record_decision("*", "pair_blocked", reason=f"max_open: {len(open_book)} open >= {cfg.get('max_open', 12)}, all pairs")
+                if max_open_now:
                     continue
                 open_tickets = {p.get("ticket") for p in open_book}
                 for t in [t for t in risk_ledger if t not in open_tickets]:
