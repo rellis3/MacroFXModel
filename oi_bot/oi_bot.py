@@ -580,6 +580,7 @@ def run(base_url: str, force_live: bool) -> None:
     stack_skips: dict[str, int] = {}             # zone_id → conflicting ticket (once-per-change logging)
     budget_skips: dict[str, bool] = {}           # zone_id → deferred-by-risk-budget (once-per-change logging)
     anchor_warned: set[str] = set()              # zone_id → already warned that its stop is plan-anchored
+    rr_warned: set[str] = set()                  # zone_id → already logged a fire-time reward:risk skip
     group_skips: dict[str, bool] = {}            # zone_id → deferred-by-group-cap (once-per-change logging)
     drift_skips: dict[str, bool] = {}            # zone_id → deferred-by-day-drift-gate (once-per-change logging)
     warned_missing: dict[str, bool] = {}         # enabled_pairs entries absent from the plan (warn once)
@@ -981,6 +982,17 @@ def run(base_url: str, force_live: bool) -> None:
                     if spec["sl"] is None:
                         continue
                     zid = spec["zone_id"]
+                    # Fire-time reward:risk (engine.make_spec): the live stop and the target
+                    # capped at the implied move can leave less than the plan's minRR. Not an
+                    # entry — the zone stays armed, so it can still fire if price comes back
+                    # to where the trade is worth taking. Logged once per zone.
+                    if spec.get("rr_skip") is not None:
+                        if zid not in rr_warned:
+                            rr_warned.add(zid)
+                            log.info(f"RR GATE [{instr}] {zid}: {spec['rr_skip']}R at px {px} "
+                                     f"(SL {spec['sl']}, TP {spec['tp']}{' capped at implied move' if spec.get('tp_capped') else ''}) "
+                                     f"— below the plan's minRR, not entered")
+                        continue
                     # A max-pain stop is re-anchored to live price by the engine (its
                     # planned one is derived from the OI capture's spot and goes stale
                     # over the session). The fallback to the plan's absolute is silent by

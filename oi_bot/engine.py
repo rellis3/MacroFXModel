@@ -119,13 +119,21 @@ def maxpain_stop(z: dict, px: float) -> float | None:
         level = float(z["level"])
         floor = float(z.get("slFloor") or 0)
         frac = float(z.get("slFrac") or 0)
-        wall = z.get("slGuardWall")
-        wall = float(wall) if wall is not None else None
+        # The protective-side LADDER when the plan ships one (slGuardWalls), else the single
+        # legacy wall. One wall was not enough: 2026-09-25 NQ fired 0.85pt past its guard,
+        # the wall was dropped, and the stop fell to the full pin distance (615pt vs ~120
+        # to the next wall). Take the nearest wall still on the protective side of px.
+        walls = z.get("slGuardWalls")
+        if not walls:
+            walls = [z.get("slGuardWall")] if z.get("slGuardWall") is not None else []
+        walls = [float(w) for w in walls if w is not None]
     except (KeyError, TypeError, ValueError):
         return None
     up = z.get("side") == "buy"
     cands = []
-    if wall is not None and ((wall < px) if up else (wall > px)):
+    protective = [w for w in walls if ((w < px) if up else (w > px))]
+    if protective:
+        wall = min(protective, key=lambda w: abs(px - w))
         cands.append(abs(px - wall) + floor)
     if frac > 0:
         cands.append(frac * abs(level - px))
@@ -158,6 +166,30 @@ def make_spec(instrument: str, z: dict, px: float | None = None) -> dict:
         live_sl = maxpain_stop(z, px)
         if live_sl is not None:
             entry, sl, anchor = float(px), live_sl, "live"
+    tp, tp2, tp_capped = _tp(z), (float(z["tp2"]) if z.get("tp2") is not None else None), False
+    # Implied-move TP cap against the entry actually traded (live px for max pain; the
+    # strike for every other mode, where the planner already capped and this is a no-op).
+    cap = z.get("tpCapDist")
+    if cap:
+        cap = float(cap)
+        d = 1.0 if z.get("side") == "buy" else -1.0
+
+        def _clamp(t):
+            return round(entry + d * cap, 6) if t and (t - entry) * d > cap else t
+        tp_new = _clamp(tp)
+        tp_capped = tp_new != tp
+        tp = tp_new
+        tp2 = _clamp(tp2)
+        if tp2 is not None and abs(tp2 - tp) < 1e-9:
+            tp2 = None
+    # Reward:risk re-checked at fire time: the live stop and the capped target can both
+    # differ from what the planner's minRR saw. The executor skips a spec that fails.
+    rr_skip = None
+    min_rr = float(z.get("minRR") or 0)
+    if min_rr > 0 and tp and sl is not None and abs(entry - sl) > 0:
+        rr = abs(tp - entry) / abs(entry - sl)
+        if rr < min_rr:
+            rr_skip = round(rr, 3)
     return {
         "instrument": instrument,
         "zone_id": zone_id(z),
@@ -168,8 +200,10 @@ def make_spec(instrument: str, z: dict, px: float | None = None) -> dict:
         "level": z.get("level"),
         "sl": sl,
         "sl_anchor": anchor,
-        "tp": _tp(z),
-        "tp2": float(z["tp2"]) if z.get("tp2") is not None else None,   # runner target (scale-out)
+        "tp": tp,
+        "tp2": tp2,                                                     # runner target (scale-out)
+        "tp_capped": tp_capped,
+        "rr_skip": rr_skip,                                             # None, or the failing R
         "size_factor": float(z.get("sizeFactor", 1.0) or 1.0),
         "regime": z.get("regime"),
         "rationale": z.get("rationale", ""),

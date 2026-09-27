@@ -291,6 +291,16 @@ export function buildOIZones(inst, price, cfg = {}) {
     // ── minimum reward:risk ─────────────────────────────────────────────────
     minRR = 0.8,                   // drop (or ladder-promote past) a TP1 closer than this × the stop
                                    // distance — a 0.2R fade was previously planned at full size. 0 = off.
+    // ── take-profit cap at the implied move (2026-09-27) ────────────────────
+    // A target no further from the entry than tpCapRefMult × refMove (the day-scaled
+    // option-implied move). Seen live 2026-09-25: an NQ max-pain sell targeted the pin
+    // 600pt away on a day the 1-DTE straddle priced ±233 — 2.6× the move the market
+    // expected, with nothing in between counting. Walls and max pain were both tested
+    // as having no pull (oi_research_book/WALL_PLACEBO_PREREG.md; max-pain null), so a
+    // far structural target has no evidence behind it; the implied move does. Applied
+    // BEFORE the minRR gate, so a trade that cannot reach minRR inside the implied move
+    // is dropped (or, for max pain, skipped by the engine at fire time). 0 = off.
+    tpCapRefMult = 1.0,
     // ── smaller trade levels (sub-tier walls, graded in — not gated out) ────
     subTierTrade = false,          // walls BELOW minTier become fade zones at subTierSize — but only
                                    // WITH CONFLUENCE (a volume magnet / flip / multi-expiry persistence
@@ -537,6 +547,20 @@ export function buildOIZones(inst, price, cfg = {}) {
         rationale = `${rationale} · TP ${fallbackTpR}R measured move (no wall ahead)`;
       }
     }
+    // Implied-move TP cap (see tpCapRefMult). Strike-anchored modes cap HERE, against a
+    // fixed entry, so the zones page shows the real target and minRR below judges it.
+    // Max pain does NOT: its entry is re-anchored to live price by the engine, so capping
+    // against the plan-time spot would double-shrink — it ships tpCapDist and the engine
+    // caps at fire time (oi_bot/engine.py make_spec).
+    const tpCapDist = (tpCapRefMult > 0 && refMove > 0) ? tpCapRefMult * refMove : null;
+    if (tpCapDist != null && z.mode !== 'maxpain') {
+      const dir = z.side === 'buy' ? 1 : -1;
+      const clamp = tp => (tp != null && (tp - z.entry) * dir > tpCapDist) ? z.entry + dir * tpCapDist : tp;
+      const c1 = clamp(tp1), c2 = clamp(tp2);
+      if (c1 !== tp1) rationale = `${rationale} · TP ${+(+tp1).toFixed(6)} capped at ${tpCapRefMult}× implied move → ${+c1.toFixed(6)}`;
+      tp1 = c1;
+      tp2 = (c2 != null && tp1 != null && Math.abs(c2 - tp1) < 1e-9) ? null : c2;   // both capped → one target
+    }
     // Minimum reward:risk. TP1 to max pain (or the nearest ladder node) can sit a
     // handful of pips from the entry while the SL sits a full buffer behind the wall
     // — a 0.2R trade was previously planned, alerted, and traded at full size. With
@@ -651,6 +675,9 @@ export function buildOIZones(inst, price, cfg = {}) {
     }
     zones.push({ ...z, sizeFactor, entry: +z.entry.toFixed(6), sl: +z.sl.toFixed(6),
       tp1: tp1 != null ? +tp1.toFixed(6) : null, tp2: tp2 != null ? +tp2.toFixed(6) : null,
+      // fire-time ingredients for the engine: re-cap against the LIVE entry and re-check
+      // reward:risk (max pain's entry and stop move with price; no-ops for strike modes)
+      tpCapDist: tpCapDist != null ? +tpCapDist.toFixed(6) : null, minRR,
       hold: z.hold?.score ?? null, holdParts: z.hold?.parts ?? null, conviction, rationale, regime,
       sizeBreakdown: breakdown });
   };
@@ -831,9 +858,19 @@ export function buildOIZones(inst, price, cfg = {}) {
     // and let the executor re-anchor them to live price at fire time, which is the same
     // immunity every strike-anchored mode already gets for free. `sl` stays as the
     // plan-time absolute: the zones page renders it, and an older executor still reads it.
+    // The whole protective-side ladder, not just the nearest wall. The engine used ONE guard
+    // wall and dropped it the moment price traded through it — 2026-09-25 NQ fired 0.85pt
+    // past the 30690.85 wall, so the stop fell back to the full pin distance: 615pt instead
+    // of the next wall's ~120. Every strike on the extended side of the pin, nearest first;
+    // the engine picks the nearest one still on the protective side of the LIVE price.
+    const guardWalls = (side === 'sell'
+      ? calls.filter(c => c.strike > maxPain).map(c => c.strike).sort((a, b) => a - b)
+      : puts.filter(p => p.strike < maxPain).map(p => p.strike).sort((a, b) => b - a))
+      .map(s => +s.toFixed(6));
     add({ mode: 'maxpain', side, level: maxPain, entry: price, minDist: +ext.toFixed(6),
       sl: side === 'sell' ? price + mpSlDist : price - mpSlDist,
       slGuardWall: guardWall != null ? +guardWall.toFixed(6) : null,   // a STRIKE (day-static), not the distance to it
+      slGuardWalls: guardWalls,
       slFrac: maxpainSlFrac,                                           // re-cap against the LIVE distance to the pin
       slFloor: +buf.toFixed(6),                                        // noise-band floor
       slDist: +mpSlDist.toFixed(6),                                    // plan-time resolution (last-resort fallback)

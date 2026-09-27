@@ -203,6 +203,40 @@ ok("matches the VENUE symbol spelling too (MT5 book)",
                   0.0010) is not None)
 ok("negative min_dist disables the guard",
    stack_conflict(SYMS, True, 1.34525, OPEN, -1) is None)
+print("[2026-09-25 NQ replay — guard-wall ladder + implied-move TP cap]")
+# The real trade: max-pain sell, pin 30090.85, fired at px 30691.7 — 0.85 past the 30690.85
+# guard wall. Old engine: guard dropped → stop = full pin distance → 31292.55 (live SL was
+# 31292.5). Implied move that day (1-DTE straddle) 232.75; slFloor 23.275 (0.10 × refMove).
+NQ_MP = {"mode": "maxpain", "side": "sell", "level": 30090.85, "entry": 30530.35, "sl": 30714.0,
+         "tp1": 30090.85, "tp2": None, "minDist": 58.19, "sizeFactor": 1.0,
+         "slGuardWall": 30690.85, "slFrac": 1.0, "slFloor": 23.275, "slDist": 183.8,
+         "regime": "PIN", "rationale": "max-pain reversion 1DTE"}
+old = make_spec("nq", NQ_MP, 30691.7)
+ok("REPRODUCES the live bug: single guard wall behind px → 601pt stop at 31292.55",
+   abs(old["sl"] - 31292.55) < 1e-6, str(old["sl"]))
+LADDER = {**NQ_MP, "slGuardWalls": [30490.85 + 200, 30790.85, 31290.85]}
+new = make_spec("nq", LADDER, 30691.7)
+ok("ladder → the NEXT wall up (30790.85) guards: stop 30790.85 + 23.275",
+   abs(new["sl"] - (30790.85 + 23.275)) < 1e-6, str(new["sl"]))
+ok("ladder ignores walls already behind live price",
+   maxpain_stop({**LADDER, "slGuardWalls": [30690.85]}, 30691.7) == round(30691.7 + 600.85, 6))
+CAPPED = {**LADDER, "tpCapDist": 232.75, "minRR": 0.8}
+c = make_spec("nq", CAPPED, 30691.7)
+ok("TP capped at 1× implied move from the LIVE entry (30691.7 − 232.75)",
+   abs(c["tp"] - (30691.7 - 232.75)) < 1e-6 and c["tp_capped"], str(c["tp"]))
+ok("capped trade still clears minRR with the ladder stop (≈1.9R) → not skipped",
+   c["rr_skip"] is None)
+c_old = make_spec("nq", {**NQ_MP, "tpCapDist": 232.75, "minRR": 0.8}, 30691.7)
+ok("capped target against the OLD 601pt stop → 0.39R → rr_skip (never entered)",
+   c_old["rr_skip"] is not None and c_old["rr_skip"] < 0.8, str(c_old["rr_skip"]))
+ok("a target already inside the cap is untouched",
+   make_spec("gold", {**SELL_FADE, "tpCapDist": 500}, None)["tp"] == 4200)
+ok("no tpCapDist (older plan) → TP unchanged, no skip",
+   make_spec("nq", LADDER, 30691.7)["tp"] == 30090.85)
+bf = make_spec("gold", {**BUY_FADE, "tpCapDist": 50, "tp2": 4300}, None)
+ok("buy side caps upward, and tp1/tp2 both capped collapse to one target",
+   bf["tp"] == 4150 and bf["tp2"] is None, f"{bf['tp']} {bf['tp2']}")
+
 ok("empty book → nothing to conflict with",
    stack_conflict(SYMS, True, 1.34526, [], 0.0010) is None)
 ok("missing open_price is skipped, not crashed",

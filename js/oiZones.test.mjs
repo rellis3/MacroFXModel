@@ -854,5 +854,36 @@ console.log('[oiSizeCalibrationStats — outcome tracking for the review-1 sizeB
       catch { return false; } })());
 }
 
+console.log('[Implied-move TP cap + max-pain guard-wall ladder (2026-09-27)]');
+{
+  // PIN fade at the 4300 call wall, pin 4200 (100 away). refMove 60 → cap 60 → TP 4240.
+  const pin = { ...base, exposures: { gex: 5000 } };
+  const capped = buildOIZones(pin, 4200, { ...cfg, refMove: 60, slBufferRefFrac: 0 });
+  const sell = capped.find(x => x.mode === 'fade' && x.side === 'sell');
+  ok('wall fade TP capped at 1× implied move from the entry (4300 − 60)', sell && sell.tp1 === 4240, JSON.stringify(sell?.tp1));
+  ok('rationale says it was capped', sell && /capped at 1× implied move/.test(sell.rationale), sell?.rationale);
+  ok('cap distance ships for the engine', sell && sell.tpCapDist === 60 && sell.minRR === 0.8);
+  const off = buildOIZones(pin, 4200, { ...cfg, refMove: 60, slBufferRefFrac: 0, tpCapRefMult: 0 }).find(x => x.mode === 'fade' && x.side === 'sell');
+  ok('tpCapRefMult:0 → old behaviour (TP at max pain)', off && off.tp1 === 4200 && off.tpCapDist === null);
+  const wide = buildOIZones(pin, 4200, { ...cfg, refMove: 500, slBufferRefFrac: 0 }).find(x => x.mode === 'fade' && x.side === 'sell');
+  ok('a target already inside the implied move is untouched', wide && wide.tp1 === 4200);
+  // A cap tight enough to breach minRR drops the zone legibly: stop 5 → 0.8R needs 4; cap 3.
+  const drops = [];
+  const tight = buildOIZones(pin, 4200, { ...cfg, refMove: 3, slBufferRefFrac: 0, collectDrops: drops });
+  ok('cap below minRR → zone dropped, with the reason recorded',
+     !tight.some(x => x.mode === 'fade' && x.side === 'sell') && drops.some(d => /minRR/.test(d.reason ?? d.why ?? JSON.stringify(d))), JSON.stringify(drops[0]));
+
+  // Max pain: tp1 stays the pin (engine caps against LIVE price) and the whole guard ladder ships.
+  const mpInst = { ...base, exposures: { gex: 5000 }, expiries: { OG3: { dte: 1, maxPain: 4200 } },
+    callWalls: [{ strike: 4300, oi: 9000, tier: 'strong', mult: 3.2 }, { strike: 4270, oi: 8500, tier: 'strong', mult: 3.1 },
+                { strike: 4350, oi: 8000, tier: 'strong', mult: 3.0 }] };
+  const mp = buildOIZones(mpInst, 4260, { ...cfg, refMove: 40, slBufferRefFrac: 0 }).find(x => x.mode === 'maxpain');
+  ok('max pain tp1 NOT capped at plan time (engine re-caps from the live entry)', mp && mp.tp1 === 4200, JSON.stringify(mp?.tp1));
+  ok('max pain ships tpCapDist for the engine', mp && mp.tpCapDist === 40);
+  ok('max pain ships the protective-side ladder, nearest first', mp && JSON.stringify(mp.slGuardWalls) === JSON.stringify([4270, 4300, 4350]),
+     JSON.stringify(mp?.slGuardWalls));
+  ok('legacy single slGuardWall still shipped for older executors', mp && mp.slGuardWall === 4270);
+}
+
 console.log(`\n${failures === 0 ? 'ALL PASSED ✓' : failures + ' FAILED ✗'}`);
 process.exit(failures === 0 ? 0 : 1);
