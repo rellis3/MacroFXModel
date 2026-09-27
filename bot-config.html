@@ -4036,7 +4036,22 @@ python volatility_bot/volatility_bot.py --live --url &lt;dashboard-url&gt;</pre>
     <div class="card">
       <div class="card-title">How to run</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below — this strategy has NO live track record yet, backtest + OOS only.</div>
-      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Paper trade (default) — point --url at this dashboard:
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># Recommended: volatility_bot_v2\start.bat pins THIS project's own
+# .venv\Scripts\python.exe, so it can't silently pick up a different
+# python.exe on PATH that's missing the MetaTrader5 package (root cause
+# of a bot logging "MetaTrader5 missing" and falling back to PAPER even
+# with valid --live credentials saved below — fixed 2026-09-27).
+#
+# Trading all 4 bots (fib v1, fib v2, Vote Atlas v2, Vote Atlas v3)
+# together? Repo-root start_live_all.bat starts the 2 local decision
+# engines fib v2/Vote Atlas v3 need, then all 4 bots, in one shot.
+volatility_bot_v2\start.bat                    # paper mode (default)
+volatility_bot_v2\start.bat --live             # live MT5
+volatility_bot_v2\start.bat --live --url &lt;dashboard-url&gt;
+
+# Equivalent, if calling python.exe directly — make sure it resolves to
+# THIS project's .venv (activate it first, or use its full path):
+# 1) Paper trade (default) — point --url at this dashboard:
 python volatility_bot_v2/volatility_bot_v2.py --url &lt;dashboard-url&gt;
 #    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python volatility_bot_v2/volatility_bot_v2.py)
 
@@ -4371,15 +4386,32 @@ python volatility_bot_v2/volatility_bot_v2.py --live --url &lt;dashboard-url&gt;
     <div class="card">
       <div class="card-title">How to run</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">Needs the local decision engine running first (its own README: <code>local_decision_engine/README.md</code>). Paper mode is the default. Uses its own magic number (20260918) and Telegram — safe to run alongside Vote Atlas v2 on the same MT5 account.</div>
-      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Start the local decision engine (once, leave running — NOT tied to this
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># Recommended: volatility_bot_v3\start.bat pins THIS project's own
+# .venv\Scripts\python.exe, so it can't silently pick up a different
+# python.exe on PATH that's missing the MetaTrader5 package (root cause
+# of a bot logging "MetaTrader5 missing" and falling back to PAPER even
+# with valid --live credentials saved below — fixed 2026-09-27). It still
+# needs the local decision engine started separately first (below).
+#
+# Trading all 4 bots (fib v1, fib v2, Vote Atlas v2, Vote Atlas v3)
+# together? Repo-root start_live_all.bat starts BOTH local decision
+# engines (waits for /health) then all 4 bots in one shot — see its own
+# header comment for the paper/live details.
+
+# 1) Start the local decision engine (once, leave running — NOT tied to this
 #    bot's own start/stop, one shared engine could later serve Fib Atlas too):
 local_decision_engine\start.bat
 
 # 2) Paper trade this bot (default) — point --url at this dashboard:
-python volatility_bot_v3/volatility_bot_v3.py --url &lt;dashboard-url&gt;
-#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python volatility_bot_v3/volatility_bot_v3.py)
+volatility_bot_v3\start.bat --url &lt;dashboard-url&gt;
 
 # 3) Go live on MT5 (after saving credentials below + a clean paper run):
+volatility_bot_v3\start.bat --live --url &lt;dashboard-url&gt;
+
+# Equivalent, if calling python.exe directly — make sure it resolves to
+# THIS project's .venv (activate it first, or use its full path):
+python volatility_bot_v3/volatility_bot_v3.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python volatility_bot_v3/volatility_bot_v3.py)
 python volatility_bot_v3/volatility_bot_v3.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="bot-banner-sub" style="margin-top:8px">The local engine recomputes continuously from local M1 data — the pair list below controls which pairs BOTH the local engine watches and this bot trades. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and Node (for the local engine) on the same machine as MT5.</div>
     </div>
@@ -4758,7 +4790,22 @@ python volatility_bot_v3/volatility_bot_v3.py --live --url &lt;dashboard-url&gt;
     <div class="card">
       <div class="card-title">How to run</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root. Paper mode is the default; go live only after a clean paper run + credentials below — this strategy has NO live track record yet, backtest + OOS only.</div>
-      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 1) Paper trade (default) — point --url at this dashboard:
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># Recommended: fib_atlas_bot\start.bat pins THIS project's own
+# .venv\Scripts\python.exe, so it can't silently pick up a different
+# python.exe on PATH that's missing the MetaTrader5 package (root cause
+# of a bot logging "MetaTrader5 missing" and falling back to PAPER even
+# with valid --live credentials saved below — fixed 2026-09-27).
+#
+# Trading all 4 bots (fib v1, fib v2, Vote Atlas v2, Vote Atlas v3)
+# together? Repo-root start_live_all.bat starts the 2 local decision
+# engines fib v2/Vote Atlas v3 need, then all 4 bots, in one shot.
+fib_atlas_bot\start.bat                    # paper mode (default)
+fib_atlas_bot\start.bat --live             # live MT5
+fib_atlas_bot\start.bat --live --url &lt;dashboard-url&gt;
+
+# Equivalent, if calling python.exe directly — make sure it resolves to
+# THIS project's .venv (activate it first, or use its full path):
+# 1) Paper trade (default) — point --url at this dashboard:
 python fib_atlas_bot/fib_atlas_bot.py --url &lt;dashboard-url&gt;
 #    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python fib_atlas_bot/fib_atlas_bot.py)
 
@@ -5126,15 +5173,32 @@ python fib_atlas_bot/fib_atlas_bot.py --live --url &lt;dashboard-url&gt;</pre>
     <div class="card">
       <div class="card-title">How to run</div>
       <div class="bot-banner-sub" style="margin-bottom:8px">Run from the repo root, on the SAME machine as <code>fib_local_decision_engine</code> (start that first — see its own README). Paper mode is the default; go live only after a clean paper run + credentials below.</div>
-      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># 0) Start the local decision engine first (once, leave it running):
+      <pre style="background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;font-family:'DM Mono',monospace;overflow-x:auto;white-space:pre;color:var(--text)"># Recommended: fib_atlas_bot_v2\start.bat pins THIS project's own
+# .venv\Scripts\python.exe, so it can't silently pick up a different
+# python.exe on PATH that's missing the MetaTrader5 package (root cause
+# of a bot logging "MetaTrader5 missing" and falling back to PAPER even
+# with valid --live credentials saved below — fixed 2026-09-27). It still
+# needs the local decision engine started separately first (below).
+#
+# Trading all 4 bots (fib v1, fib v2, Vote Atlas v2, Vote Atlas v3)
+# together? Repo-root start_live_all.bat starts BOTH local decision
+# engines (waits for /health) then all 4 bots in one shot — see its own
+# header comment for the paper/live details.
+
+# 0) Start the local decision engine first (once, leave it running):
 fib_local_decision_engine\start.bat
 
 # 1) Paper trade (default) — point --url at this dashboard:
-python fib_atlas_bot_v2/fib_atlas_bot_v2.py --url &lt;dashboard-url&gt;
-#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python fib_atlas_bot_v2/fib_atlas_bot_v2.py)
+fib_atlas_bot_v2\start.bat --url &lt;dashboard-url&gt;
 #    Local engine defaults to http://127.0.0.1:4501 — override with --local-url
 
 # 2) Go live on MT5 (after saving credentials below + a clean paper run):
+fib_atlas_bot_v2\start.bat --live --url &lt;dashboard-url&gt;
+
+# Equivalent, if calling python.exe directly — make sure it resolves to
+# THIS project's .venv (activate it first, or use its full path):
+python fib_atlas_bot_v2/fib_atlas_bot_v2.py --url &lt;dashboard-url&gt;
+#    (or: DASHBOARD_URL=&lt;dashboard-url&gt; python fib_atlas_bot_v2/fib_atlas_bot_v2.py)
 python fib_atlas_bot_v2/fib_atlas_bot_v2.py --live --url &lt;dashboard-url&gt;</pre>
       <div class="bot-banner-sub" style="margin-top:8px">The pair list below controls which pairs THIS bot asks the local engine about — the local engine itself computes for whatever `fib_local_decision_engine/config.json` lists, which should already cover this bot's universe. <b>Needs:</b> Python <code>requests</code> (+ <code>MetaTrader5</code> for <code>--live</code>) and network to both the dashboard and the local engine; MT5 has no Linux wheel, so live trading runs on a Windows box with an MT5 terminal, not on Railway.</div>
     </div>
