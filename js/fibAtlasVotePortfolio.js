@@ -47,8 +47,8 @@ import {
 // for why (a pure, generic gate duplicated here rather than added to the
 // Vote-Atlas-shared file, which this workstream never edits).
 import { applyClearanceFilter } from './asiaFibAtlasVoteReview.js';
-import { maxDrawdownFromPnls, neweyWestSharpe, summarizeTrades } from './metricsCore.js';
-import { portfolioStats, deflatedSharpe } from './backtestStats.js';
+import { neweyWestSharpe, summarizeTrades } from './metricsCore.js';
+import { portfolioStats, deflatedSharpe, withNonCompoundedDD } from './backtestStats.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import path from 'path';
@@ -68,19 +68,12 @@ function pipValuePerLot(pair) {
   return _POINT_VALUES.values[key] ?? _POINT_VALUES.default;
 }
 
-// portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
-// riskAdjustTrades never actually compounds — every trade risks a CONSTANT
-// riskPct of the ORIGINAL notional — so the honest complement is an ADDITIVE
-// (non-reinvested) drawdown/return on the same series. Same reasoning and
-// same two Tier-1 bricks (`maxDrawdownFromPnls`, arithmetic-mean annualising)
-// levelAtlasRoutes.js's own `/vote-portfolio` route already uses.
-export function withNonCompoundedDD(statsObj, dailyReturns) {
-  const maxDDNonCompounded = +maxDrawdownFromPnls(dailyReturns).toFixed(2);
-  const years = dailyReturns.length / 252;
-  const cagrNonCompounded = years > 0 ? +(dailyReturns.reduce((s, r) => s + r, 0) / years).toFixed(2) : 0;
-  const calmarNonCompounded = maxDDNonCompounded < 0 ? +(cagrNonCompounded / Math.abs(maxDDNonCompounded)).toFixed(2) : 0;
-  return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
-}
+// withNonCompoundedDD lives in backtestStats.js (browser-safe, next to
+// portfolioStats) and is re-exported here for existing importers. It moved
+// because this module reads pylego/point_values.json via fs/url/path, and a
+// page importing it for that one pure helper (motif-alert-backtest.html) had
+// its whole module script discarded by the browser (bare "fs" specifier).
+export { withNonCompoundedDD };
 
 // Real vote atlas convention: fade flips direction relative to which side
 // of the range the rung sits on, follow keeps it -- same logic as

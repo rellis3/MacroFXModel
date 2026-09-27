@@ -274,3 +274,17 @@ export function portfolioStats(daily, { targetVol = 10, periodsPerYear = 252, mc
                  ...(mcMaxDD ? { mcMaxDD } : {}), ...(mcMaxDDBlock ? { mcMaxDDBlock } : {}) },
   };
 }
+
+// portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
+// riskAdjustTrades never actually compounds — every trade risks a CONSTANT
+// riskPct of the ORIGINAL notional — so the honest complement is an ADDITIVE
+// (non-reinvested) drawdown/return on the same series. Same reasoning and
+// same two Tier-1 bricks (`maxDrawdownFromPnls`, arithmetic-mean annualising)
+// levelAtlasRoutes.js's own `/vote-portfolio` route already uses.
+export function withNonCompoundedDD(statsObj, dailyReturns) {
+  const maxDDNonCompounded = +maxDrawdownFromPnls(dailyReturns).toFixed(2);
+  const years = dailyReturns.length / 252;
+  const cagrNonCompounded = years > 0 ? +(dailyReturns.reduce((s, r) => s + r, 0) / years).toFixed(2) : 0;
+  const calmarNonCompounded = maxDDNonCompounded < 0 ? +(cagrNonCompounded / Math.abs(maxDDNonCompounded)).toFixed(2) : 0;
+  return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
+}

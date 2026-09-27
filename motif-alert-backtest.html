@@ -327,8 +327,7 @@
 // per-day return construction and `computeIntradayMAE` a read-only excursion
 // diagnostic; neither removes a trade.
 import { buildPortfolioDailySeries, computeIntradayMAE } from './js/levelAtlasVoteReview.js';
-import { portfolioStats } from './js/backtestStats.js';
-import { withNonCompoundedDD } from './js/fibAtlasVotePortfolio.js';
+import { portfolioStats, withNonCompoundedDD } from './js/backtestStats.js';
 import { summarizeTrades, sharpeStdError, minTrackRecordLength, maxDrawdownDurationFromPnls } from './js/metricsCore.js';
 import { shuffle } from './js/backtestStats.js';
 import { mulberry32 } from './js/statsCore.js';

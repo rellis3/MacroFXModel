@@ -1,6 +1,6 @@
 # FX Factor Book v2 — Pre-registered test
 
-> **Status: RUN 2026-09-27 — factor book NULL (§6.1); OU `too-few-oos-trades`, invalid as a test (§6.4); OU v2.1 pre-registered (§7), not yet run.** Frozen 2026-09-26, before
+> **Status: RUN 2026-09-27 — factor book NULL (§6.1); OU `too-few-oos-trades`, invalid as a test (§6.4); OU v2.1 run: `too-few-oos-trades` again, IS/OOS inconsistent (§7.1).** Frozen 2026-09-26, before
 > any OANDA/FRED run. Written before the result exists so a null can't be
 > re-narrated into a maybe (working agreement). Research only — nothing here is
 > imported by a live bot, and the incumbent engines' defaults are unchanged
@@ -245,3 +245,44 @@ Stops dominating the exit mix (> 50%) is read as "these crosses were not mean
 reverting over 2008–26", whichever book wins.
 
 Run: `fx-factor-v2.html` → OU exits = v2.1, universe = 4 core (then all 21).
+
+### 7.1 Result — run 2026-09-27 21:20 UTC on Railway (β = 1, v2.1 exits, 4 core crosses)
+
+| Book | IS Sh | OOS Sh | OOS ann % | OOS maxDD % | OOS trades | ΔOOS | Verdict |
+|---|---|---|---|---|---|---|---|
+| Pooled ±2σ (benchmark) | 0.46 | −0.07 | −0.07 | −2.08 | – | – | benchmark |
+| **Pooled OU bands** | 0.07 | 0.67 ± 0.42 | 0.64 | −1.55 | 22 | +0.74 | `too-few-oos-trades` |
+
+| Pair | Mode | Trades (OOS) | Win % | OOS Sh | Open at end | Exits target/stop/time | Half-life (d) |
+|---|---|---|---|---|---|---|---|
+| AUD/NZD | OU | 24 (8) | 58.3 | −0.09 | 0 | 1/5/18 | 121.6 |
+| AUD/NZD | ±2σ | 21 (11) | 71.4 | 0.37 | 1 | 7/4/9 | 121.6 |
+| EUR/CHF | OU | 18 (5) | 38.9 | 0.63 | 1 | 1/6/10 | 27.3 |
+| EUR/CHF | ±2σ | 16 (0) | 56.3 | −0.52 | 1 | 3/3/9 | 27.3 |
+| EUR/GBP | OU | 6 (0) | 16.7 | −0.04 | 1 | 0/3/2 | 10.6 |
+| EUR/GBP | ±2σ | 7 (0) | 14.3 | −0.04 | 1 | 0/3/3 | 10.6 |
+| AUD/CAD | OU | 23 (9) | 69.6 | 0.71 | 1 | 2/4/16 | 69.7 |
+| AUD/CAD | ±2σ | 35 (9) | 62.9 | 0.38 | 1 | 13/5/16 | 69.7 |
+
+The exits did their job: 71 OU and 79 benchmark trades, against 8 and 12 in v2,
+with no multi-year holds. The OU trade CSV has 71 rows, which matches.
+
+**Pre-registered verdict: `too-few-oos-trades` (22 of ≥30), for the second
+time.** By the rule written in §7, this means the 4 core crosses cannot test OU
+bands at daily frequency.
+
+What the numbers say beyond the verdict (context, not evidence):
+- **The +0.74 OOS gap would not have passed anyway.** The Bonferroni bar is
+  2.54 × 0.42 ≈ 1.07.
+- **It is IS/OOS inconsistent.** In-sample the OU book was *worse* than the
+  benchmark (0.07 vs 0.46). It then beat it out of sample. A difference that
+  flips sign between the two periods on 22 trades is the pattern noise
+  produces. It is not a candidate for forward testing.
+- **v2.1's OU book is mostly a time-exit strategy.** Only 4 of 68 closed OU
+  trades reached the Leung–Li exit. 46 left on the 3-half-life clock and 18 on
+  the stop (26%, under the §7 "stops dominate" line of 50%). This is the §5
+  model property: the optimal exit sits 2–3 sd past the mean, so it is rarely
+  reached. What was tested was "enter at the Leung–Li level, hold for 3
+  half-lives", not the full optimal-stopping rule.
+- **Remaining pre-registered item:** the all-21-crosses diagnostic, which checks
+  whether breadth gives ≥30 OOS trades. It cannot produce a win.
