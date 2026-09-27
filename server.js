@@ -50,6 +50,7 @@ import { stressReplay, allocationCompare, STRESS_WINDOWS }           from './js/
 import { forecastFields, buildAllExports }                           from './js/forecastExport.js';
 import { buildLadderExportText, buildSessionAddendum }               from './js/ladderExport.js';
 import { buildIvLadderExportText }                                    from './js/ivLadderExport.js';
+import { impliedDayMove }                                             from './js/ivMetrics.js';
 import { parseForexFactory as _calParseFF, parseNasdaq as _calParseNasdaq, upcoming as _calUpcoming, printed as _calPrinted, calendarHealth as _calHealth } from './js/calendarFeed.js';
 import { ladderPathChain, describeSide }                            from './js/ladderPathStats.js';   // "at the p50 line, what happens next?" — the conditional rung chain
 import { rawDayDecision, mergeRawDay, oiContentFingerprint, oiFreshnessStreak,
@@ -20660,13 +20661,20 @@ app.get('/api/oi-levels', async (_req, res) => {
     const raw = await kv.get('oi_store').catch(() => null);
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
     const byInstrument = {};
+    // Today's options-implied move per instrument (js/ivMetrics.js impliedDayMove) — a few
+    // numbers each, so vol-forecast-v3's cards can show it beside the O-C row without
+    // pulling the ~1MB oi_store. From the term structure, NOT expectedMove (that runs to
+    // the primary expiry, 5-69 DTE, so it is not a one-day number).
+    const implied = {};
     for (const [pair, inst] of Object.entries(store || {})) {
       const key = (() => { try { return resolveKey(pair); } catch { return null; } })()
                   || String(pair).toLowerCase().replace(/[/_]/g, '');
       const levels = oiStoreToLevels(inst);
       if (levels.length) byInstrument[key] = levels;
+      const im = impliedDayMove(inst?.ivTermStructure?.points);
+      if (im) implied[key] = { ...im, savedAtMs: inst.ivSavedAtMs ?? inst.savedAtMs ?? null };
     }
-    res.json({ ok: true, byInstrument, instruments: Object.keys(byInstrument) });
+    res.json({ ok: true, byInstrument, instruments: Object.keys(byInstrument), implied });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 

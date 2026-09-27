@@ -118,6 +118,42 @@ export function constantMaturityIV(points, { days = 30, minDte = 5 } = {}) {
   return Math.sqrt(tv / t);
 }
 
+// Today's options-implied move, from the term-structure points (`[{dte, iv(%)}]`): a
+// one-trading-day σ from the 30-day constant-maturity IV (iv30/√252 — the SAME basis the
+// IV Forecast export uses and the one validated against realized range), plus the ATM-
+// straddle equivalent — the expected ABSOLUTE move, E|x| = σ·√(2/π) ≈ 0.80σ — which is the
+// "±233"-style number a desk quotes and the one comparable to the forecast's O-C row.
+// Not the front expiry's IV: IV is quoted per CALENDAR day, so a 1-3 DTE expiry spanning a
+// weekend reads artificially low (2026-09-27: EUR front 4.1% vs iv30 ~5.4%), and the stored
+// points carry no trading-day count to correct it. The front is still returned for context.
+// Not expectedMove either: that runs to the PRIMARY expiry (5-69 DTE on 2026-09-27).
+// Percent in, percent out. Null when no expiry qualifies.
+// Median next-day |close move| in units of iv30/√252, measured 2020-2026 on all 7 CME-IV
+// instruments (oi_research_book/IV_FORECAST_PREREG.md, post-hoc description): 0.43-0.47,
+// pooled ≈ 0.46. In-sample and close-to-close, so an approximation of the session O-C
+// median — close enough to put the two side by side, not a fitted rung.
+export const IMPLIED_OC_MEDIAN_SIGMA = 0.46;
+
+export function impliedDayMove(points, { minDte = 1 } = {}) {
+  const r = (Array.isArray(points) ? points : [])
+    .filter(x => Number.isFinite(x?.dte) && x.dte >= minDte && Number.isFinite(x?.iv) && x.iv > 0)
+    .sort((a, b) => a.dte - b.dte);
+  if (!r.length) return null;
+  const front = r[0];
+  const iv30 = constantMaturityIV(points);
+  const sigmaDayPct = (iv30 != null ? iv30 * 100 : front.iv) / Math.sqrt(252);
+  return {
+    frontIv: +front.iv.toFixed(2), frontDte: front.dte,
+    sigmaDayPct: +sigmaDayPct.toFixed(3),
+    expMovePct: +(sigmaDayPct * Math.sqrt(2 / Math.PI)).toFixed(3),
+    // Like-for-like with the forecast's O-C MEDIAN. The straddle number above is a MEAN
+    // |move|; fat tails put the median well below it, so comparing the straddle to an O-C
+    // median would read "options rich" on every instrument every day.
+    ocMedPct: +(sigmaDayPct * IMPLIED_OC_MEDIAN_SIGMA).toFixed(3),
+    iv30Pct: iv30 != null ? +(iv30 * 100).toFixed(2) : null,
+  };
+}
+
 // Per-strike IV change → ATM direction + skew steepening. `wingPct` = how far OTM a
 // strike must be to count as a "wing". skewSteepening > 0 ⇒ wings' IV rising faster
 // than ATM (tail-hedging demand up).

@@ -1,6 +1,7 @@
 // Synthetic tests for the IV-surface metrics. No network.
 //   node js/ivMetrics.test.mjs
-import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState } from './ivMetrics.js';
+import { expectedMove, expectedMoveFromStraddle, ivTermStructure, ivDynamics, riskReversal, vannaState,
+         impliedDayMove, constantMaturityIV } from './ivMetrics.js';
 
 let fails = 0;
 const ok = (n, c, e = '') => { console.log(`  ${c ? '✓' : '✗ FAIL'} ${n}${e ? '  ' + e : ''}`); if (!c) fails++; };
@@ -75,6 +76,23 @@ console.log('[vannaState — VEX × IV direction]');
   ok('−VEX & IV rising → tailwind', vannaState(-5e6, 1.2).state === 'tailwind');
   ok('tiny IV move → not firing', vannaState(5e6, -0.1).firing === false);
   ok('zero VEX → neutral', vannaState(0, -1).state === 'neutral');
+}
+
+{
+  console.log("[impliedDayMove — today's options-implied move]");
+  const pts = [{ dte: 1, iv: 16.69 }, { dte: 2, iv: 16.13 }, { dte: 30, iv: 18 }, { dte: 60, iv: 19 }];
+  const m = impliedDayMove(pts);
+  ok('front = nearest expiry >= 1 DTE', m.frontDte === 1 && m.frontIv === 16.69);
+  const s30 = constantMaturityIV(pts) * 100 / Math.sqrt(252);
+  ok('1-day σ from iv30 (the validated basis), not the front', near(m.sigmaDayPct, +s30.toFixed(3), 1e-9), `${m.sigmaDayPct}`);
+  ok('straddle-equivalent = σ·√(2/π) ≈ 0.80σ', near(m.expMovePct, +(s30 * Math.sqrt(2 / Math.PI)).toFixed(3), 1e-9), `${m.expMovePct}`);
+  ok('front-only term structure (no expiry >= 5 DTE) falls back to the front IV',
+     near(impliedDayMove([{ dte: 2, iv: 12 }]).sigmaDayPct, +(12 / Math.sqrt(252)).toFixed(3), 1e-9));
+  ok('iv30 carried alongside', m.iv30Pct === +(constantMaturityIV(pts) * 100).toFixed(2));
+  ok('O-C median equivalent = 0.46σ (like-for-like with the forecast row, not the straddle)',
+     near(m.ocMedPct, +(s30 * 0.46).toFixed(3), 1e-9) && m.ocMedPct < m.expMovePct, `${m.ocMedPct}`);
+  ok('0-DTE rows skipped (expiring today is not tomorrow)', impliedDayMove([{ dte: 0, iv: 40 }, { dte: 3, iv: 8 }]).frontIv === 8);
+  ok('null when nothing qualifies', impliedDayMove([{ dte: 0.5, iv: 20 }]) === null && impliedDayMove(null) === null);
 }
 
 console.log(`\n${fails === 0 ? 'ALL PASSED ✓' : fails + ' FAILED ✗'}`);

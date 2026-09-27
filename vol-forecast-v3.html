@@ -2041,6 +2041,7 @@ function renderV2Grid(data, isHistorical = false) {
   if (!isHistorical) loadAllM5Charts(data.instruments);
   if (!isHistorical) loadVb2BotBadges(entries.map(([name]) => name));
   if (!isHistorical) refreshCardVotes();
+  if (!isHistorical) loadImpliedChips();
   applyCardFilter();
 
   if (levelsViewActive) renderLevelsTable();
@@ -2098,6 +2099,7 @@ function buildV2Card(name, f, meta, isHistorical = false) {
       <div id="v2-level-hits-${name}" class="v2-level-hits"></div>
       ${isHistorical ? '' : `<div id="vf-sess-${name}" class="v2-sess-section" style="display:none"></div>`}
       <span id="v3jump-${name}" style="display:contents"></span>
+      ${isHistorical ? '' : `<span id="v3iv-${name}" style="display:contents"></span>`}
       ${newsChip}
     </div>
     <div id="vf-pos-${name}" class="vf-pos-result" style="display:none"></div>
@@ -5212,6 +5214,41 @@ function renderMarketStrip(d) {
 // untouched rung (the one to watch) with its live decision. Polled once a minute
 // while the Today tab is showing — the decision only moves on an M1 close.
 let _voteCache = null;
+// ── Options-implied move chip ─────────────────────────────────────────────────
+// What the options market implies for the day, like-for-like with the forecast's O-C
+// median: 0.46 × the 30-day-IV daily σ (js/ivMetrics.js impliedDayMove — iv30 is the basis
+// the IV export was validated on). The tooltip adds the desk's ±straddle number (a MEAN
+// |move|, 0.80σ, so always bigger than any median) and 1σ. Via /api/oi-levels `implied`
+// (a small payload, not the ~1MB oi_store). Amber when options imply clearly more than the
+// forecast (>1.25×); greyed when the capture is over 72h old. Display only.
+const IMPLIED_KEY = { NQ: 'nq', GOLD: 'gold', SPX500: 'spx', US30: 'dow', US2000: 'rut' };
+let _impliedCache = null;
+async function loadImpliedChips() {
+  try {
+    if (!_impliedCache) {
+      const r = await fetch('/api/oi-levels');
+      if (!r.ok) return;
+      _impliedCache = (await r.json())?.implied ?? {};
+    }
+    for (const [name, f] of Object.entries(currentForecast?.instruments ?? {})) {
+      const el = document.getElementById(`v3iv-${name}`);
+      const im = _impliedCache[IMPLIED_KEY[name] ?? name.toLowerCase()];
+      if (!el || !im || im.ocMedPct == null) continue;
+      const ocMed = f?.ladder?.oc?.p50 ?? f?.oc_median ?? null;
+      const ratio = ocMed > 0 ? im.ocMedPct / ocMed : null;
+      const ageH = im.savedAtMs ? (Date.now() - im.savedAtMs) / 3600_000 : null;
+      const stale = ageH != null && ageH > 72;
+      const cls = !stale && ratio != null && ratio > 1.25 ? 'warn' : '';
+      const when = im.savedAtMs ? new Date(im.savedAtMs).toISOString().slice(0, 16).replace('T', ' ') + ' UTC' : 'unknown time';
+      const title = `Options-implied O-C median: ${im.ocMedPct.toFixed(2)}% (0.46σ of 30-day IV ${im.iv30Pct}%)`
+        + (ocMed != null ? ` vs the forecast's ${(+ocMed).toFixed(2)}%${ratio != null ? ` — options ${ratio.toFixed(2)}×` : ''}` : '')
+        + ` · desk straddle-equivalent ±${im.expMovePct.toFixed(2)}% (a mean move, 0.80σ) · 1σ ±${im.sigmaDayPct.toFixed(2)}%`
+        + ` · front expiry ${im.frontDte}d at ${im.frontIv}% · captured ${when}${stale ? ' — STALE, over 72h old' : ''}. Display only.`;
+      el.innerHTML = `<span class="v3-chip ${cls}" style="${stale ? 'opacity:.5' : ''}" title="${title}">opt O-C <b>${im.ocMedPct.toFixed(2)}%</b></span>`;
+    }
+  } catch { /* context chip — never break the cards for it */ }
+}
+
 async function refreshCardVotes() {
   const names = Object.keys(currentForecast?.instruments || {});
   if (!names.length || _activeTab !== 'today') return;
