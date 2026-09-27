@@ -88,7 +88,10 @@ async function runJob(kind) {
     const statusUrl = (kind === 'factor' ? '/api/fx-factor-v2/status/' : '/api/ou-pairs/status/') + j.jobId;
     const t0 = Date.now();
     for (;;) {
-      const s = await (await fetch(statusUrl)).json();
+      const sr = await fetch(statusUrl);
+      // Jobs live in server memory: a 404 mid-run means the process restarted (usually a redeploy).
+      if (sr.status === 404) throw new Error('Server restarted during the run (usually a Railway redeploy), so the job was lost. Click Run again.');
+      const s = await sr.json();
       if (s.status === 'done') { $('status').textContent = `Done${s.cached ? ' (cached)' : ''} · ran ${esc(s.result.ranAt || '')}`; kind === 'factor' ? renderFactor(s.result) : renderOu(s.result); break; }
       if (s.status === 'error' || s.ok === false) throw new Error(s.error || 'job failed');
       $('status').textContent = `Running… ${Math.round((Date.now() - t0) / 1000)}s`;
