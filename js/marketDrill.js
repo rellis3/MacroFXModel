@@ -106,8 +106,12 @@ export const GENERATORS = [
         stem: `Over twenty sessions the US 10-year moved ${fmt(d10, 'bp')} — of which the real yield ${fmt(dR, 'bp')} and inflation pricing ${fmt(dB, 'bp')}.`,
         ask: 'So what actually happened to the cost of money, and what does that mean for gold?',
         options: [
-          { key: 'real', label: `Money genuinely got ${d10 > 0 ? 'dearer' : 'cheaper'} — a real-yield move, and gold’s ${d10 > 0 ? 'headwind' : 'tailwind'}` },
-          { key: 'inflation', label: `The cost of money barely changed — an inflation-pricing move, which is gold’s ${d10 > 0 ? 'friend' : 'enemy'}` },
+          // "mostly", not "barely": the generator fires down to a 60/40 split, where BOTH
+          // legs moved meaningfully. The old wording ("the cost of money barely changed")
+          // was stronger than the data on ~9% of these, even though the answer was always
+          // determinate. An option label that overstates teaches the wrong threshold.
+          { key: 'real', label: `Mostly the real yield — money genuinely got ${d10 > 0 ? 'dearer' : 'cheaper'}, and gold’s ${d10 > 0 ? 'headwind' : 'tailwind'}` },
+          { key: 'inflation', label: `Mostly inflation pricing — the real cost of money moved less, which is gold’s ${d10 > 0 ? 'friend' : 'enemy'}` },
         ],
         answer,
         reveal: `The real leg was ${Math.round(realShare * 100)}% of the move.`,

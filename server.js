@@ -4897,8 +4897,7 @@ function _newsKindServer(name) {
   return 'generic';
 }
 
-async function _computeNewsOutcomes() {
-  const day = new Date().toISOString().slice(0, 10);
+async function _computeNewsOutcomes(day = new Date().toISOString().slice(0, 10)) {
   const d0 = Date.parse(day + 'T00:00:00Z'), now = Date.now();
   const r = await _fetchWeekEvents({ finnhubKey: process.env.FINNHUB_KEY });
   // A release is only measurable once the full thirty-minute window has closed; asking
@@ -4940,9 +4939,59 @@ async function _computeNewsOutcomes() {
   return rows;
 }
 
-app.get('/api/news-outcome', async (_req, res) => {
+// ── Backfill: score the days nobody was here for ────────────────────────────
+// THE BUG THIS CLOSES. The route only ever computed TODAY, so a release was scored
+// only if somebody opened the page after its 30-minute window closed and before the
+// UTC day rolled. Miss the day and it was gone -- there was no path that recomputed a
+// past one. Thursday 2026-09-24 carried five high-impact releases, the richest day of
+// that week, and whether any of them were scored came down to whether a browser
+// happened to be open that evening. A self-filling record that only fills when you are
+// watching is not self-filling, and it biases the tally toward days spent at the desk.
+//
+// HOW FAR BACK IT CAN ACTUALLY REACH, measured rather than assumed. The feed is the
+// CURRENT week and it ROLLS: checked on Sunday 2026-09-27 it covered 09-27 to 10-03, so
+// Thursday 09-24's five high-impact releases were already unreachable. This does NOT
+// recover history -- those are gone. What it fixes is the hole going forward: within the
+// week the feed covers, a release no longer depends on somebody being at the desk the
+// evening it printed. Open the page once inside that window and nothing is lost.
+//
+// No new svcInterval: an unregistered id throws at boot and fails deploys silently
+// (2026-09-19, six of them). This rides on a request instead.
+const _NEWS_BACKFILL_DAYS = 7;
+let _newsBackfillAt = 0;
+
+async function _backfillNewsOutcomes() {
+  const today = new Date().toISOString().slice(0, 10);
+  const filled = [];
+  for (let k = 1; k <= _NEWS_BACKFILL_DAYS; k++) {
+    const day = new Date(Date.now() - k * 864e5).toISOString().slice(0, 10);
+    if (day === today) continue;
+    try {
+      // already scored? leave it -- re-measuring costs OANDA calls and changes nothing
+      const store = await _loadSnapStore().catch(() => null);
+      if (store?.days?.find(d => d.day === day)?.newsOutcomes?.length) continue;
+      const rows = await _computeNewsOutcomes(day);
+      if (!rows.length) continue;
+      await _snapUpdateDay(day, async r => { r.newsOutcomes = rows; });
+      filled.push({ day, n: rows.length });
+    } catch (e) { console.warn('[news-backfill]', day, e.message); }
+  }
+  return filled;
+}
+
+app.get('/api/news-outcome', async (req, res) => {
   try {
-    const day = new Date().toISOString().slice(0, 10);
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.day ?? '')) ? String(req.query.day)
+              : new Date().toISOString().slice(0, 10);
+    // A past day is served from its snapshot, computed once if it was never scored.
+    if (day !== new Date().toISOString().slice(0, 10)) {
+      const store = await _loadSnapStore().catch(() => null);
+      const row = store?.days?.find(d => d.day === day);
+      if (row?.newsOutcomes) return res.json({ ok: true, day, rows: row.newsOutcomes, from: 'snapshot' });
+      const rows = await _computeNewsOutcomes(day);
+      if (rows.length) await _snapUpdateDay(day, async r => { r.newsOutcomes = rows; }).catch(() => {});
+      return res.json({ ok: true, day, rows, from: 'computed' });
+    }
     if (_newsOut.day !== day || Date.now() - _newsOut.at > _NEWS_OUT_TTL_MS) {
       _newsOut = { at: Date.now(), day, rows: await _computeNewsOutcomes() };
       // kept on the day's row so the tally can be counted across days for free
@@ -4951,9 +5000,22 @@ app.get('/api/news-outcome', async (_req, res) => {
           .catch(e => console.warn('[news-outcome] persist failed:', e.message));
       }
     }
+    // opportunistic catch-up, at most hourly, never blocking this response
+    if (Date.now() - _newsBackfillAt > 3600_000) {
+      _newsBackfillAt = Date.now();
+      _backfillNewsOutcomes()
+        .then(f => { if (f.length) console.log('[news-backfill] filled', f.map(x => `${x.day}:${x.n}`).join(' ')); })
+        .catch(e => console.warn('[news-backfill]', e.message));
+    }
     res.set('Cache-Control', 'public, max-age=300');
     res.json({ ok: true, day, rows: _newsOut.rows, at: new Date(_newsOut.at).toISOString() });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// Manual trigger, so the week can be filled without waiting for the hourly kick.
+app.get('/api/news-outcome/backfill', async (_req, res) => {
+  try { res.json({ ok: true, filled: await _backfillNewsOutcomes() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
 app.get('/api/events', async (_req, res) => {
