@@ -31,7 +31,17 @@ export const OU_PAIRS_DEFAULTS = {
   // it picks a minimum-noise hedge (β < 1 when the legs carry independent
   // noise), leaving a directional leg in the "spread". See FX_FACTOR_V2_TEST.md §5.
   betaMode: 'fixed1',
+  // v2.1 exits (2026-09-27, pre-registered in FX_FACTOR_V2_TEST.md §7 after the
+  // v2 run left every book stuck in one trade for years). null = off = the frozen
+  // v2 behaviour. timeStopHL: exit after k × the entry model's half-life.
+  // stopSd: exit if the spread moves a further k stationary sd against entry.
+  // After a stop/time exit a side re-arms only once the spread is back inside
+  // its entry level (no immediate re-entry into the same move).
+  timeStopHL: null, stopSd: null,
 };
+
+// The v2.1 exit set — applied identically to the OU book and the ±2σ benchmark.
+export const OU_EXITS_V21 = { timeStopHL: 3, stopSd: 2 };
 
 function align(a, b) {
   const mb = new Map(b.map(p => [p.t, p.v]));
@@ -84,6 +94,7 @@ export function runOuPairs(priceA, priceB, opts = {}) {
   const daily = new Array(n).fill(0);
   const trades = [];
   let model = null, pos = 0, posModel = null, entry = null;
+  const armed = { long: true, short: true };
   let refits = 0, skippedFits = 0;
 
   const close = (i, reason) => {
@@ -91,6 +102,7 @@ export function runOuPairs(priceA, priceB, opts = {}) {
     const pnl = entry.cum - 2 * o.costBps / 1e4;
     trades.push({ side: pos > 0 ? 'long' : 'short', entryDate: dates[entry.i], exitDate: dates[i], bars: i - entry.i,
       pnlPct: +(pnl * 100).toFixed(4), maePct: +(entry.mae * 100).toFixed(4), riskPct: riskPct(posModel), beta: posModel.beta, reason });
+    if (reason !== 'target') armed[pos > 0 ? 'long' : 'short'] = false;
     pos = 0; posModel = null; entry = null;
   };
 
@@ -110,12 +122,18 @@ export function runOuPairs(priceA, priceB, opts = {}) {
     // 3) Decide at the close of day i.
     if (pos !== 0) {
       const x = X(posModel, A, B, i), lv = pos > 0 ? posModel.long : posModel.short;
+      const adverse = pos * (entry.x - x);                       // > 0 when the spread moved against us
+      const hlDays = Math.log(2) / posModel.mu * 252;
       if ((pos > 0 && x >= lv.exit) || (pos < 0 && x <= lv.exit)) close(i, 'target');
+      else if (o.stopSd != null && adverse >= o.stopSd * posModel.sd) close(i, 'stop');
+      else if (o.timeStopHL != null && i - entry.i >= o.timeStopHL * hlDays) close(i, 'time');
     }
     if (pos === 0 && model) {
       const x = X(model, A, B, i);
-      if (x <= model.long.entry) { pos = 1; posModel = model; entry = { i, cum: 0, mae: 0 }; daily[i] -= o.costBps / 1e4; }
-      else if (o.allowShort && model.short && x >= model.short.entry) { pos = -1; posModel = model; entry = { i, cum: 0, mae: 0 }; daily[i] -= o.costBps / 1e4; }
+      if (!armed.long && x > model.long.entry) armed.long = true;
+      if (!armed.short && model.short && x < model.short.entry) armed.short = true;
+      if (armed.long && x <= model.long.entry) { pos = 1; posModel = model; entry = { i, x, cum: 0, mae: 0 }; daily[i] -= o.costBps / 1e4; }
+      else if (o.allowShort && armed.short && model.short && x >= model.short.entry) { pos = -1; posModel = model; entry = { i, x, cum: 0, mae: 0 }; daily[i] -= o.costBps / 1e4; }
     }
   }
   if (pos !== 0) {                                   // mark to the last bar, never drop
@@ -136,6 +154,7 @@ export function runOuPairs(priceA, priceB, opts = {}) {
     all: summarizeDaily(live), is: summarizeDaily(live.slice(0, split)), oos: summarizeDaily(live.slice(split)),
     tradeStats: { all: ts(trades), oos: ts(oosTrades) },
     oosTrades: oosTrades.length, openAtEnd: trades.filter(t => t.open).length,
+    exitReasons: trades.reduce((m, t) => ((m[t.reason] = (m[t.reason] || 0) + 1), m), {}),
     trades, refits, skippedFits,
     currentModel: model ? { beta: model.beta, theta: +model.theta.toFixed(5), sd: +model.sd.toFixed(5), halfLifeDays: +(Math.log(2) / model.mu * 252).toFixed(1),
       long: model.long, short: model.short } : null,
