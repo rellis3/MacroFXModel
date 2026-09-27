@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { GENERATORS, buildQuestion, score, rng, assertDerivable } from './marketDrill.js';
 import { DESK_EVIDENCE } from './deskEvidence.js';
 
@@ -39,6 +40,45 @@ t('every generator returns the full shape, and cites real ledger entries', () =>
     }
   }
   assert.ok(made >= 4, `only ${made} generators could make a question from the fixture`);
+});
+
+// THE STRONGEST FAIRNESS CHECK THERE IS, and it caught a real bug on 2026-09-27.
+// If two questions print the same stem and expect different answers, the reader is
+// being asked to guess, not to reason. That is worse than a hard question: it teaches
+// that the drill is arbitrary.
+//
+// The bug: oil-breakevens decided on `Math.abs(dB) >= 5` using the RAW value while the
+// stem printed `Math.round(dB)`. 4.6bp printed "+5bp" and scored `ignored`; 5.2bp
+// printed "+5bp" and scored `followed`. which-gold (8bp / 0.5%) and credit-confirms
+// (15bp) had the same shape. All three now judge on the printed value.
+t('a stem determines its answer — no two identical stems disagree', () => {
+  const b = bundle();
+  const seen = new Map();
+  for (const g of GENERATORS) {
+    for (let i = 30; i < 380; i++) {
+      let q = null; try { q = g.make(b, i, rng(i)); } catch { q = null; }
+      if (!q) continue;
+      const key = `${g.id}||${q.stem}`;
+      const prev = seen.get(key);
+      assert.ok(prev === undefined || prev === q.answer,
+        `${g.id}: same stem, two answers (${prev} vs ${q.answer}) — "${q.stem}"`);
+      seen.set(key, q.answer);
+    }
+  }
+  assert.ok(seen.size > 50, `only ${seen.size} stems generated — the fixture is too thin to test this`);
+});
+
+// The general form: a threshold must be applied to the number the reader was shown.
+t('no generator compares a raw value against a threshold it prints rounded', () => {
+  const src = fs.readFileSync(new URL('./marketDrill.js', import.meta.url), 'utf8');
+  const body = src.slice(src.indexOf('export const GENERATORS'), src.indexOf('export function assertDerivable'));
+  // every bp/pct threshold inside a generator should be reading a `shown(...)` value.
+  // This is a guard against reintroduction, so it only looks at the known shapes.
+  for (const m of body.matchAll(/Math\.abs\((d[A-Za-z0-9]+)\)\s*>=\s*[\d.]+/g)) {
+    const v = m[1];
+    assert.ok(/s$/.test(v) || v === 'dG',
+      `threshold on raw \`${v}\` — compare the printed value (see \`shown\`), or two identical stems can disagree`);
+  }
 });
 
 t('NO generator asks which way price went — that is the one forbidden question', () => {

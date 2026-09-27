@@ -41,6 +41,21 @@ function delta(b, key, i, kind) {
   return kind === 'bp' ? (now - then) * 100 : (then !== 0 ? (now / then - 1) * 100 : null);
 }
 const fmt = (v, kind, dp = 1) => v == null ? '—' : `${v > 0 ? '+' : ''}${kind === 'bp' ? Math.round(v) : v.toFixed(dp)}${kind === 'bp' ? 'bp' : '%'}`;
+/**
+ * The number the READER sees, after fmt's rounding — and therefore the only number a
+ * threshold may be judged on.
+ *
+ * THE BUG THIS EXISTS TO PREVENT, found 2026-09-27 by auditing the questions rather
+ * than the code: oil-breakevens decided `followed` on `Math.abs(dB) >= 5` using the RAW
+ * value while the stem printed `Math.round(dB)`. A 4.6bp move prints as "+5bp" and was
+ * scored `ignored`; a 5.2bp move prints as "+5bp" and was scored `followed`. Two
+ * questions, identical on screen, opposite answers — unanswerable rather than hard, and
+ * the fastest way to teach someone that the drill is arbitrary.
+ *
+ * assertDerivable did not catch it: it checks that the REVEAL introduces no fresh
+ * number, not that the ANSWER follows from the printed ones. Both checks are needed.
+ */
+const shown = (v, kind, dp = 1) => kind === 'bp' ? Math.round(v) : +v.toFixed(dp);
 const shuffle = (arr, rand) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 /**
@@ -106,7 +121,9 @@ export const GENERATORS = [
       const dOil = delta(b, 'oil', i, 'pct'), dB = delta(b, 'bei', i, 'bp');
       if (dOil == null || dB == null) return null;
       if (Math.abs(dOil) < 8) return null;
-      const followed = Math.sign(dOil) === Math.sign(dB) && Math.abs(dB) >= 5;
+      // judged on the printed value, not the raw one -- see `shown` above
+      const dBs = shown(dB, 'bp');
+      const followed = Math.sign(dOil) === Math.sign(dBs) && Math.abs(dBs) >= 5;
       return {
         stem: `Over twenty sessions crude ${dOil > 0 ? 'rose' : 'fell'} ${Math.abs(dOil).toFixed(1)}% and the 10-year breakeven moved ${fmt(dB, 'bp')}.`,
         ask: 'What is the bond market telling you here?',
@@ -130,8 +147,10 @@ export const GENERATORS = [
       const dG = delta(b, 'gold', i, 'pct'), dR = delta(b, 'tips', i, 'bp'), dD = delta(b, 'dxy', i, 'pct');
       if (dG == null || dR == null || dD == null) return null;
       if (Math.abs(dG) < 2) return null;
-      const ratesOk = Math.abs(dR) >= 8 && Math.sign(dR) !== Math.sign(dG);
-      const dollarOk = Math.abs(dD) >= 0.5 && Math.sign(dD) !== Math.sign(dG);
+      // every test on the printed values, so the stem fully determines the answer
+      const dGs = shown(dG, 'pct'), dRs = shown(dR, 'bp'), dDs = shown(dD, 'pct');
+      const ratesOk = Math.abs(dRs) >= 8 && Math.sign(dRs) !== Math.sign(dGs);
+      const dollarOk = Math.abs(dDs) >= 0.5 && Math.sign(dDs) !== Math.sign(dGs);
       const answer = ratesOk ? 'rates' : dollarOk ? 'dollar' : 'neither';
       return {
         stem: `Gold moved ${fmt(dG, 'pct')} over twenty sessions. Real yields ${fmt(dR, 'bp')}, the broad dollar ${fmt(dD, 'pct')}.`,
@@ -158,8 +177,9 @@ export const GENERATORS = [
     make(b, i) {
       const dV = delta(b, 'vix', i, 'pct'), dH = delta(b, 'hy', i, 'bp');
       if (dV == null || dH == null) return null;
-      if (dV < 15) return null;                                             // only ask when fear actually rose
-      const confirmed = dH >= 15;
+      const dVs = shown(dV, 'pct'), dHs = shown(dH, 'bp');
+      if (dVs < 15) return null;                                            // only ask when fear actually rose
+      const confirmed = dHs >= 15;                                          // printed value, see `shown`
       return {
         stem: `Over twenty sessions the VIX ${fmt(dV, 'pct')} while high-yield credit spreads moved ${fmt(dH, 'bp')}.`,
         ask: 'What kind of scare is that?',
