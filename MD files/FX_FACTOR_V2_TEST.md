@@ -1,7 +1,7 @@
 # FX Factor Book v2 — Pre-registered test
 
-> **Status: PRE-REGISTERED, NOT YET RUN on real data** (frozen 2026-09-26, before
-> any OANDA/FRED run). Written before the result exists so a null can't be
+> **Status: RUN 2026-09-27 — factor book NULL (see §6); OU pending.** Frozen 2026-09-26, before
+> any OANDA/FRED run. Written before the result exists so a null can't be
 > re-narrated into a maybe (working agreement). Research only — nothing here is
 > imported by a live bot, and the incumbent engines' defaults are unchanged
 > (byte-identical output, regression-checked).
@@ -101,5 +101,74 @@ names); interbank carry is an upper bound on retail swap (see `carryEngine.js`).
 
 ## 6. Results
 
-_Not yet run. Paste the route output summary here (date, commit, verdict table)
-when it has been run on Railway._
+### 6.1 Factor book — run 2026-09-27 on Railway (`main` @ 84d67c82)
+
+OOS from 2021-01-14 (≈5.7 y). SE of the incumbent's OOS Sharpe = 0.413 for
+every family, so the Bonferroni bar is Δ ≥ 1.05 Sharpe. FRED coverage: USD 271,
+CHF 272, NZD 272, GBP 265, EUR 265, AUD 272, JPY 271, CAD 272 monthly obs;
+VIX3M 4729, UST10Y 5687, VIX 5750 daily.
+
+| Id | IS Sh | OOS Sh | OOS ann % | OOS vol % | OOS maxDD % | OOS rebal | ΔOOS | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| T0 | −0.16 | −0.03 | −0.52 | 17.05 | −34.76 | 296 | – | incumbent |
+| **T1** | −0.08 | −0.08 | −0.62 | 7.84 | −17.07 | 296 | −0.05 | within-noise |
+| T1a | −0.04 | −0.09 | −1.12 | 12.91 | −29.50 | 296 | −0.06 | within-noise (diag) |
+| T1b | −0.20 | −0.05 | −0.80 | 16.24 | −32.55 | 296 | −0.02 | within-noise (diag) |
+| T1c | −0.18 | 0.05 | 0.53 | 10.30 | −18.40 | 296 | +0.08 | within-noise (diag) |
+| **T2** | −0.20 | −0.07 | −1.31 | 20.04 | −34.66 | 296 | −0.04 | within-noise |
+| **T5** | −0.77 | −0.03 | −0.45 | 13.35 | −32.89 | 70 | −0.00 | within-noise |
+| C0 | −0.11 | 0.57 | 9.34 | 15.69 | −23.64 | 70 | – | incumbent |
+| **C1** | −0.06 | 0.11 | 1.30 | 11.36 | −25.90 | 70 | −0.46 | no-improvement |
+| C1b | −0.07 | 0.71 | 2.99 | 4.13 | −7.68 | 70 | +0.14 | within-noise (diag) |
+| **C2** | −0.09 | 0.47 | 10.27 | 21.05 | −36.80 | 70 | −0.10 | within-noise |
+| **C3** | −0.20 | 0.61 | 9.56 | 14.97 | −22.45 | 70 | +0.04 | within-noise |
+| KB | −0.18 | 0.35 | 4.29 | 12.02 | −22.47 | 70 | – | incumbent |
+| **K1** | 0.03 | 0.00 | 0.01 | 12.07 | −27.25 | 296 | −0.35 | within-noise |
+| **K2** | −0.01 | −0.10 | −1.62 | 15.83 | −36.01 | 296 | −0.45 | no-improvement |
+
+**Pre-registered reading: "it didn't."** All 8 factor-book primaries are
+`within-noise` or `no-improvement`; none survives Bonferroni. The largest
+positive primary Δ is C3's +0.04. Reported as-is.
+
+What the numbers also say (context, not verdicts):
+
+- **The incumbents themselves have no demonstrated edge.** The G10-vs-USD trend
+  basket is negative in-sample (2008–2021) and flat out of sample. Carry is
+  negative in-sample and +0.57 out of sample, which is 1.4 SE, over a
+  rate-divergence era (2021–26). That is regime dependence, not evidence.
+- **T5's IS Sharpe of −0.77 is not a sign bug.** On audit, the selector goes
+  long the top residual-momentum scores, as specified. Flipping the sign
+  post hoc would not help: OOS it is −0.03, so reversal is ≈0 too.
+- **Power.** With 5.7 y OOS, one SE is 0.41 Sharpe, and Bonferroni needs +1.05.
+  The literature sizes these overlays at +0.1–0.3. This design could not have
+  confirmed a realistic improvement; it could only have caught a large one.
+  Every observed Δ is also ≤ +0.14, so none of the overlays is large.
+
+### 6.2 Audit notes (bug review before accepting the null)
+
+- **No-lookahead:** prefix-vs-full tests pass for every variant (§ tests). The
+  rebalance uses data ≤ i−1.
+- **Design flaw found in C2/C3.** The overlays multiply the incumbent's *target*
+  weights, and the carry book only re-targets every 21 days. So the risk gate
+  and the vol regime were read once a month. A risk-off gate that looks once a
+  month is largely blind to the fast crashes it exists for. C3 as run therefore
+  tested "monthly gate", not the idea. This did not affect the trend (weekly) or
+  K1/K2 (daily) overlays.
+- **OU pooled test (§5):** results not yet recorded.
+
+### 6.3 Next steps (not pre-registered yet — the OOS window has been seen)
+
+Any follow-up is now contaminated by having seen 2021–26. It is labelled as
+such and should be forward-tested before being believed.
+
+1. **C3 re-specified as a daily overlay.** Hold the monthly carry targets, but
+   scale the live book daily by the gate multiplier. Cost is charged on the
+   turnover this causes.
+2. **Paired-difference SE as a diagnostic column.** Use the SE of (variant −
+   incumbent) daily returns, not the incumbent's own SE. It is the fair test for
+   an overlay that shares most of its noise with the incumbent. Verdicts stay on
+   the frozen rule.
+3. **Move the sizing bricks to where breadth exists.** CF sizing and the
+   vol-regime multiplier are portfolio-construction tools. 7 USD crosses give
+   them little to work with. The multi-asset `trendFollowEngine` is the engine
+   with an existing trend result.
