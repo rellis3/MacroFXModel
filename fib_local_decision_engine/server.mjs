@@ -133,7 +133,11 @@ app.get('/plan', async (req, res) => {
       try {
         const result = await pairLadderDecision(pair, ladder, minMargin);
         if (result.stale || result.skipped) { skipped[key] = result.reason || result.skipped; continue; }
-        instruments[key] = { spot: result.spot, date: result.date, boundary: result.boundary, zones: result.zones, zoneCount: result.zoneCount };
+        // `filtered` (2026-09-27): pending rungs zonesFromLiveAndBook looked
+        // at but didn't publish -- carried through so the bot can log WHY,
+        // instead of a candidate the backtest saw vanishing with zero
+        // trace. Mirrors Vote Atlas's identical local-engine fix.
+        instruments[key] = { spot: result.spot, date: result.date, boundary: result.boundary, zones: result.zones, zoneCount: result.zoneCount, filtered: result.filtered ?? [] };
       } catch (e) {
         skipped[key] = `error: ${e.message}`;
       }

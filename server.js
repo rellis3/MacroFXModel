@@ -18859,11 +18859,18 @@ async function _refreshFibAtlasPlan() {
           // default applies, same backward-compatible behavior every
           // existing install already has.
           const minMarginOverride = cfg.min_margin != null ? Number(cfg.min_margin) : undefined;
-          const planOpts = { ...(gapFilterEnabled ? {} : { maxGapMin: null }), ...(minMarginOverride !== undefined ? { minMargin: minMarginOverride } : {}) };
+          // `filteredArr` (2026-09-27): zonesFromLiveAndBook's own opt-in
+          // `filteredOut` array (see that function's doc) -- a plain JS
+          // array passed by reference, so pushes inside it are visible here
+          // even though asiaLivePlanZones/mondayLivePlanZones don't
+          // themselves return it. Mirrors Vote Atlas v2's identical fix
+          // (_refreshVolatilityV2Plan's own `filtered`).
+          const filteredArr = [];
+          const planOpts = { ...(gapFilterEnabled ? {} : { maxGapMin: null }), ...(minMarginOverride !== undefined ? { minMargin: minMarginOverride } : {}), filteredOut: filteredArr };
           const plan = await planFn(pair, planOpts);
           if (plan.warming) { if (!instruments[key]) skipped[key] = 'warming (cold cache)'; continue; }
           if (plan.skipped) { if (!instruments[key]) skipped[key] = plan.skipped; continue; }
-          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount, updatedAt: new Date().toISOString(), source: 'live' };
+          instruments[key] = { pair, ladder, spot: plan.spot, date: plan.date, zones: plan.zones, zoneCount: plan.zoneCount, updatedAt: new Date().toISOString(), source: 'live', filtered: filteredArr };
           delete skipped[key];
         } catch (e) {
           if (!instruments[key]) skipped[key] = `error: ${e.message}`;

@@ -43,12 +43,24 @@ export const FIB_ATLAS_MAX_GAP_MIN = 30;
 // uses, never a second implementation to drift out of sync. A THIRD caller
 // (2026-09-18) is `fib_local_decision_engine/lib/zonePricer.mjs`, for the
 // same reason.
-export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MAX_GAP_MIN } = {}) {
+// `filteredOut` (2026-09-27, purely additive -- default null, every existing
+// caller unaffected): an optional array the caller can pass to collect WHY
+// each dropped rung was dropped. Same reasoning as the identical fix already
+// built for Vote Atlas (local_decision_engine/lib/zonePricer.mjs) -- a
+// pending touch silently discarded here (below margin, gap filter, no real
+// stop, cost-inefficient) had zero trace anywhere, found via a real live-vs-
+// backtest reconciliation session (4 Fib Atlas trades that executed at what
+// the backtest reconstructs as margin 1.00, below this function's own
+// minMargin=2 -- see this file's own known-CVOL-gap doc above for the
+// mechanism). No existing threshold or drop condition changes; callers that
+// don't pass `filteredOut` see byte-identical behavior.
+export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_MIN_MARGIN, minCostRatio = FIB_ATLAS_MIN_COST_RATIO, stopTightenFrac = FIB_ATLAS_STOP_TIGHTEN_FRAC, maxGapMin = FIB_ATLAS_MAX_GAP_MIN, filteredOut = null } = {}) {
   const nowSec = Date.now() / 1000;
   const zones = [];
   for (const rung of live.ladder) {
     const vd = voteDecision(book, rung);
-    if (!vd || vd.margin < minMargin) continue;
+    if (!vd) { filteredOut?.push({ side: rung.side, rung: rung.level, reason: 'voteDecision returned nothing for this touch' }); continue; }
+    if (vd.margin < minMargin) { filteredOut?.push({ side: rung.side, rung: rung.level, reason: `margin ${vd.margin} below the floor (${minMargin})`, margin: vd.margin, decision: vd.decision }); continue; }
     // `lastTouchTime` is null exactly when prevOutcomeSameDay is null (same
     // lookup, asiaFibAtlasEngine.js's own asiaFibAtlasLiveLadder) — and
     // margin>=2 structurally requires prevOutcomeSameDay to hold (it's one
@@ -57,15 +69,15 @@ export function zonesFromLiveAndBook(live, book, cost, { minMargin = FIB_ATLAS_M
     // same defensive style as every other field read off `rung` here.
     if (maxGapMin != null && rung.lastTouchTime != null) {
       const gapMin = (nowSec - rung.lastTouchTime) / 60;
-      if (gapMin > maxGapMin) continue;
+      if (gapMin > maxGapMin) { filteredOut?.push({ side: rung.side, rung: rung.level, reason: `gap ${gapMin.toFixed(1)}min since last touch > max ${maxGapMin}min`, margin: vd.margin, decision: vd.decision }); continue; }
     }
     const { innerDistPips, outerDistPips } = asiaRungBarrierPips(rung.side, rung.level, live.boundary, rung.pip);
     const targetPips = vd.decision === 'fade' ? innerDistPips : outerDistPips;
     const sizingStopPips = vd.decision === 'fade' ? outerDistPips : innerDistPips;
-    if (targetPips == null || sizingStopPips == null) continue;   // 'follow' at the outermost rung -- no real stop, don't publish it
+    if (targetPips == null || sizingStopPips == null) { filteredOut?.push({ side: rung.side, rung: rung.level, reason: 'follow at the outermost rung -- no real stop, not published', margin: vd.margin, decision: vd.decision }); continue; }   // 'follow' at the outermost rung -- no real stop, don't publish it
     if (cost > 0 && minCostRatio > 1) {
       const targetPnlPct = targetPips * rung.pip / rung.price * 100;
-      if (targetPnlPct / cost < minCostRatio) continue;
+      if (targetPnlPct / cost < minCostRatio) { filteredOut?.push({ side: rung.side, rung: rung.level, reason: `cost ratio ${(targetPnlPct / cost).toFixed(2)} below min ${minCostRatio}`, margin: vd.margin, decision: vd.decision }); continue; }
     }
     const stopPips = (vd.decision === 'fade' && stopTightenFrac != null && stopTightenFrac < 1)
       ? +(sizingStopPips * stopTightenFrac).toFixed(1) : sizingStopPips;

@@ -68,6 +68,12 @@ export function computeZones(ladder, pair, { book, packed, opts = {} } = {}) {
   const assetCls = (() => { try { return assetClassOf(pair); } catch { return 'fx'; } })();
   const cost = (() => { try { return costForPair(pair, assetCls); } catch { return 0; } })();
   const zonesFromLiveAndBook = ladder === 'asia' ? asiaZonesFromLiveAndBook : mondayZonesFromLiveAndBook;
-  const zones = zonesFromLiveAndBook(live, book, cost, opts);
-  return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length };
+  // `filtered` (2026-09-27): collects WHY each dropped rung was dropped
+  // (below margin, gap filter, no real stop, cost-inefficient), passed
+  // through zonesFromLiveAndBook's own opt-in `filteredOut` array -- see
+  // that function's doc. Mirrors the identical fix already shipped for
+  // Vote Atlas's local engine (local_decision_engine/lib/zonePricer.mjs).
+  const filtered = [];
+  const zones = zonesFromLiveAndBook(live, book, cost, { ...opts, filteredOut: filtered });
+  return { spot: live.currentPrice, date: live.date, boundary: live.boundary, zones, zoneCount: zones.length, filtered };
 }

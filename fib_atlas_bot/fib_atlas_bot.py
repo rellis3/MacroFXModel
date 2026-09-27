@@ -536,6 +536,12 @@ def run(base_url: str, force_live: bool) -> None:
     reject_until: dict[str, float] = {}
     budget_skips: dict[str, bool] = {}
     hedge_skip_alerted: dict[str, bool] = {}   # separate from budget_skips -- own dedup, own reset point
+    # 2026-09-27: zonesFromLiveAndBook now carries a `filtered` reason for
+    # every pending rung it looked at but didn't publish (below margin, gap
+    # filter, no real stop, cost-inefficient) -- see js/asiaFibAtlasZonePricer.js's
+    # doc. Tracks what's already been logged per (pair,ladder,side,rung) so
+    # a near-miss that just sits there doesn't re-log every plan refresh.
+    near_miss_logged: dict[str, dict[str, str]] = {}
     risk_ledger: dict[int, float] = {}
     ticket_ladder: dict[int, str] = {}     # ticket -> 'asia'/'monday', for picking the right chandelier_mult
     ticket_pair: dict[int, str] = {}       # ticket -> canonical pair key, for session_bars()
@@ -920,6 +926,19 @@ def run(base_url: str, force_live: bool) -> None:
                     continue
                 slice_ = _plan_instruments(plan).get(key) or {}
                 zones = slice_.get("zones") or []
+                seen_near_miss = {}
+                for f in slice_.get("filtered", []) or []:
+                    fkey = f"{f.get('side')}|{f.get('rung')}"
+                    reason = f.get("reason") or "unknown"
+                    seen_near_miss[fkey] = reason
+                    if near_miss_logged.get(key, {}).get(fkey) != reason:
+                        near_miss_logged.setdefault(key, {})[fkey] = reason
+                        _record_decision(pair, ladder, "skipped", side=f.get("side"), rung=f.get("rung"),
+                                          decision=f.get("decision"), margin=f.get("margin"),
+                                          reason=f"below_margin_or_unpriceable: {reason}")
+                for fkey in list(near_miss_logged.get(key, {})):
+                    if fkey not in seen_near_miss:
+                        near_miss_logged[key].pop(fkey, None)
                 if not zones:
                     continue
                 px = quotes.price(pair) if quotes is not None else broker.price(pair)
