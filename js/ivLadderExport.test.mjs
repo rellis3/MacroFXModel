@@ -74,5 +74,26 @@ console.log('[export text is Pine-safe]');
   ok('footer carries no ticker or row token', bad.length === 0, bad.join(','));
 }
 
+console.log('[GOLD via CBOE GVZ]');
+{
+  const fresh = { gvz: { date: '2026-09-22', value: 22.44 } };   // now = 2026-09-23 07:00Z
+  const r = buildIvInstruments(latest, oi, registry, now, fresh);
+  ok('GOLD swapped when GVZ is fresh', r.swapped.some(s => s.name === 'GOLD' && s.source === 'gvz')
+     && r.instruments.GOLD.ladder.estimator === 'gvz', JSON.stringify(r.instruments.GOLD.ladder.estimator));
+  ok('GOLD σ = GVZ/√252', near(r.instruments.GOLD.ladder.sigma_daily_pct, Math.round(22.44 / Math.sqrt(252) * 100) / 100, 1e-9),
+     `${r.instruments.GOLD.ladder.sigma_daily_pct}`);
+  const stale = buildIvInstruments(latest, oi, registry, now, { gvz: { date: '2026-09-15', value: 22.44 } });
+  ok('stale GVZ → GOLD falls back to production', stale.instruments.GOLD === latest.instruments.GOLD
+     && stale.skipped.some(s => s.name === 'GOLD' && /stale/.test(s.reason)));
+  const none = buildIvInstruments(latest, oi, registry, now);
+  ok('no GVZ passed → GOLD untouched', none.instruments.GOLD === latest.instruments.GOLD);
+  const { text } = buildIvLadderExportText(latest, oi, registry, now, fresh);
+  const footer = text.trim().split('\n').at(-1);
+  const bad = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'RANGE', 'MOVE', 'OPEN HIGH', 'OPEN LOW', 'DRIFT']
+    .filter(t => footer.toUpperCase().includes(t));
+  ok('footer with the GVZ clause still carries no ticker or row token', bad.length === 0, bad.join(',') || footer);
+  ok('footer says the metal used GVZ and which close', /1 of 1 metal uses CBOE GVZ \(close of 2026-09-22\)/.test(footer), footer);
+}
+
 console.log(`\n${fails === 0 ? 'ALL PASSED ✓' : fails + ' FAILED ✗'}`);
 process.exit(fails === 0 ? 0 : 1);

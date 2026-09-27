@@ -1,7 +1,7 @@
 /**
  * Forecast ladder parameters — GENERATED, do not hand-edit.
  *
- *   python -m forge.export_ladder_params --report forge/out_vol_iv/vol_report.json
+ *   python -m forge.export_ladder_params --report forge/out_vol_iv/vol_report_with_gold.json
  *
  * Each instrument carries a frozen (estimator, widths, event multipliers) spec from
  * the LAST walk-forward fold of `forge/vol.py`, i.e. trained on the most history and
@@ -21,8 +21,8 @@
  * implements exactly these estimators and is cross-checked against the Python.
  */
 export const LADDER_PARAMS = {
-  "generated": "2026-09-23",
-  "source": "forge/vol.py walk-forward -> forge/out_vol_iv/vol_report.json",
+  "generated": "2026-09-27",
+  "source": "forge/vol.py walk-forward -> forge/out_vol_iv/vol_report_with_gold.json",
   "pairs": {
     "AUDUSD": {
       "estimator": "iv30",
@@ -420,6 +420,139 @@ export const LADDER_PARAMS = {
         "ol_p50": 0.456,
         "ol_p75": 0.222,
         "ol_p90": 0.089
+      },
+      "n_folds": 6
+    },
+    "GOLD": {
+      "estimator": "gvz",
+      "width": {
+        "hl": [
+          1.1583,
+          1.5399,
+          1.9999
+        ],
+        "oc": [
+          0.4873,
+          0.9016,
+          1.3699
+        ],
+        "oh": [
+          0.5123,
+          0.8963,
+          1.3785
+        ],
+        "ol": [
+          0.4846,
+          0.8795,
+          1.3809
+        ]
+      },
+      "event": {
+        "FOMC": 1.207,
+        "NFP": 1.038,
+        "CPI": 1.061,
+        "high": 1.034,
+        "holiday": 0.953,
+        "none": 0.936
+      },
+      "horizons": {
+        "weekly": {
+          "width": {
+            "hl": [
+              1.2404,
+              1.5986,
+              1.9331
+            ],
+            "oc": [
+              0.5726,
+              0.9601,
+              1.4593
+            ],
+            "oh": [
+              0.5802,
+              1.0212,
+              1.5242
+            ],
+            "ol": [
+              0.528,
+              0.867,
+              1.246
+            ]
+          },
+          "n_train": 465,
+          "n_effective": 465,
+          "overlapping": false,
+          "oos_exceed": {
+            "hl_p50": 0.667,
+            "hl_p75": 0.353,
+            "hl_p90": 0.196,
+            "oc_p50": 0.608,
+            "oc_p75": 0.392,
+            "oc_p90": 0.157,
+            "oh_p50": 0.569,
+            "oh_p75": 0.333,
+            "oh_p90": 0.098,
+            "ol_p50": 0.51,
+            "ol_p75": 0.275,
+            "ol_p90": 0.137
+          }
+        },
+        "monthly": {
+          "width": {
+            "hl": [
+              1.3129,
+              1.667,
+              2.1966
+            ],
+            "oc": [
+              0.5653,
+              1.035,
+              1.5164
+            ],
+            "oh": [
+              0.6625,
+              1.1484,
+              1.8319
+            ],
+            "ol": [
+              0.4675,
+              0.8324,
+              1.3109
+            ]
+          },
+          "n_train": 2322,
+          "n_effective": 116,
+          "overlapping": true,
+          "oos_exceed": {
+            "hl_p50": 0.675,
+            "hl_p75": 0.454,
+            "hl_p90": 0.263,
+            "oc_p50": 0.592,
+            "oc_p75": 0.392,
+            "oc_p90": 0.179,
+            "oh_p50": 0.562,
+            "oh_p75": 0.421,
+            "oh_p90": 0.196,
+            "ol_p50": 0.483,
+            "ol_p75": 0.279,
+            "ol_p90": 0.183
+          }
+        }
+      },
+      "trained_through": "2025-08-19",
+      "oos_exceed": {
+        "hl_p50": 0.578,
+        "hl_p75": 0.291,
+        "hl_p90": 0.136,
+        "oc_p50": 0.55,
+        "oc_p75": 0.283,
+        "oc_p90": 0.12,
+        "oh_p50": 0.574,
+        "oh_p75": 0.295,
+        "oh_p90": 0.116,
+        "ol_p50": 0.492,
+        "ol_p75": 0.283,
+        "ol_p90": 0.136
       },
       "n_folds": 6
     },
@@ -1041,6 +1174,90 @@ export const LADDER_PARAMS = {
       },
       "n_members": 6
     },
+    "commodity": {
+      "estimator": "gvz",
+      "width": {
+        "hl": [
+          1.1583,
+          1.5399,
+          1.9999
+        ],
+        "oc": [
+          0.4873,
+          0.9016,
+          1.3699
+        ],
+        "oh": [
+          0.5123,
+          0.8963,
+          1.3785
+        ],
+        "ol": [
+          0.4846,
+          0.8795,
+          1.3809
+        ]
+      },
+      "event": {
+        "FOMC": 1.207,
+        "NFP": 1.038,
+        "CPI": 1.061,
+        "high": 1.034,
+        "holiday": 0.953,
+        "none": 0.936
+      },
+      "horizons": {
+        "weekly": {
+          "width": {
+            "hl": [
+              1.2404,
+              1.5986,
+              1.9331
+            ],
+            "oc": [
+              0.5726,
+              0.9601,
+              1.4593
+            ],
+            "oh": [
+              0.5802,
+              1.0212,
+              1.5242
+            ],
+            "ol": [
+              0.528,
+              0.867,
+              1.246
+            ]
+          }
+        },
+        "monthly": {
+          "width": {
+            "hl": [
+              1.3129,
+              1.667,
+              2.1966
+            ],
+            "oc": [
+              0.5653,
+              1.035,
+              1.5164
+            ],
+            "oh": [
+              0.6625,
+              1.1484,
+              1.8319
+            ],
+            "ol": [
+              0.4675,
+              0.8324,
+              1.3109
+            ]
+          }
+        }
+      },
+      "n_members": 1
+    },
     "index": {
       "estimator": "iv30",
       "width": {
@@ -1131,12 +1348,13 @@ export const LADDER_PARAMS = {
       "AUDUSD",
       "EURUSD",
       "GBPUSD",
+      "GOLD",
       "NQ",
       "USDCAD",
       "USDCHF",
       "USDJPY"
     ],
     "skipped": [],
-    "mean_last_fold_oos_exceed_p50": 0.4725
+    "mean_last_fold_oos_exceed_p50": 0.482
   }
 };

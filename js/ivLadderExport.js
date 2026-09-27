@@ -11,6 +11,10 @@
  * byte-for-byte. Weekly/monthly IV rungs were badly calibrated OOS, so this is
  * daily-only.
  *
+ * GOLD (added 2026-09-27, forge/IV_LADDER_GOLD_PREREG.md): σ = CBOE GVZ, not the
+ * QuikStrike gold curve — the widths were fit on GVZ's own scale (it runs above CME ATM IV).
+ * H-L pinball −2.6% vs the realized ladder over 2016-2026, 5 of 6 folds. Daily only.
+ *
  * Output goes through the SAME `buildLadderExportText` as the production export, so
  * every Pine indicator that parses that paste parses this one unchanged.
  *
@@ -29,6 +33,11 @@ export const IV_LADDER_INSTRUMENTS = ['EURUSD', 'GBPUSD', 'AUDUSD', 'USDCAD', 'U
 // week-old IV as if it were today's.
 export const IV_MAX_AGE_H = 72;
 
+// Instruments whose σ is a CBOE index close rather than the QuikStrike term structure.
+// GVZ is dated by CBOE trading day; 4 calendar days covers a weekend plus one missed print.
+export const IV_GVZ_INSTRUMENTS = ['GOLD'];
+export const GVZ_MAX_AGE_D = 4;
+
 const _norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
 
 /**
@@ -36,9 +45,10 @@ const _norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
  * @param {object} oiStore  parsed oi_store `data` (keyed 'EUR/USD', 'NAS100_USD', …)
  * @param {Array}  registry VOL_INSTRUMENTS ({ name, oandaInstrument, assetClass })
  * @param {number} now      ms epoch
- * @returns {{ instruments, swapped: [{name, iv30, savedAtMs}], skipped: [{name, reason}] }}
+ * @param {object} opts     { gvz: { date: 'YYYY-MM-DD', value: 22.44 } } — latest GVZ close
+ * @returns {{ instruments, swapped: [{name, iv30, savedAtMs, source}], skipped: [{name, reason}] }}
  */
-export function buildIvInstruments(latest, oiStore, registry, now) {
+export function buildIvInstruments(latest, oiStore, registry, now, opts = {}) {
   const src = latest?.instruments ?? {};
   const instruments = {};
   const swapped = [], skipped = [];
@@ -47,6 +57,20 @@ export function buildIvInstruments(latest, oiStore, registry, now) {
 
   for (const [name, fc] of Object.entries(src)) {
     instruments[name] = fc;
+    if (IV_GVZ_INSTRUMENTS.includes(name)) {
+      const g = opts.gvz;
+      const gAt = g?.date ? Date.parse(`${g.date}T21:15:00Z`) : NaN;   // GVZ settles ~16:15 ET
+      if (!(g?.value > 0) || !Number.isFinite(gAt)) { skipped.push({ name, reason: 'no GVZ' }); continue; }
+      if (now - gAt > GVZ_MAX_AGE_D * 86400_000) { skipped.push({ name, reason: 'GVZ stale' }); continue; }
+      const base = fc?.ladder;
+      const lad = buildLadder(g.value / 100 / Math.sqrt(252), {
+        instrument: name, assetClass: byName[name]?.assetClass ?? 'commodity',
+        eventTag: base ? base.event_tag : 'none', horizon: 'daily', ladderParams: IV_LADDER_PARAMS,
+      });
+      instruments[name] = { ...fc, ladder: lad };
+      swapped.push({ name, iv30: +(+g.value).toFixed(2), savedAtMs: gAt, source: 'gvz' });
+      continue;
+    }
     if (!IV_LADDER_INSTRUMENTS.includes(name)) continue;
     const cfg = byName[name];
     const key = cfg && keys.find(k => _norm(k) === _norm(cfg.oandaInstrument));
@@ -67,7 +91,7 @@ export function buildIvInstruments(latest, oiStore, registry, now) {
       eventTag: base ? base.event_tag : 'none', horizon: 'daily', ladderParams: IV_LADDER_PARAMS,
     });
     instruments[name] = { ...fc, ladder: lad };
-    swapped.push({ name, iv30: +(iv30 * 100).toFixed(2), savedAtMs: savedAt });
+    swapped.push({ name, iv30: +(iv30 * 100).toFixed(2), savedAtMs: savedAt, source: 'cme' });
   }
   return { instruments, swapped, skipped };
 }
@@ -76,14 +100,18 @@ export function buildIvInstruments(latest, oiStore, registry, now) {
  *  row tokens (RANGE / MOVE / OPEN HIGH / OPEN LOW / DRIFT): the Pine parser switches
  *  blocks on any line containing a ticker, so a footer that listed them would be read
  *  as a section header. */
-export function buildIvLadderExportText(latest, oiStore, registry, now) {
-  const { instruments, swapped, skipped } = buildIvInstruments(latest, oiStore, registry, now);
+export function buildIvLadderExportText(latest, oiStore, registry, now, opts = {}) {
+  const { instruments, swapped, skipped } = buildIvInstruments(latest, oiStore, registry, now, opts);
   let text = buildLadderExportText({ session_label: latest?.session_label, instruments }, 'daily');
-  const at = swapped.length
-    ? new Date(Math.max(...swapped.map(s => s.savedAtMs))).toISOString().slice(0, 16).replace('T', ' ')
+  const cme = swapped.filter(s => s.source === 'cme'), gvz = swapped.filter(s => s.source === 'gvz');
+  const at = cme.length
+    ? new Date(Math.max(...cme.map(s => s.savedAtMs))).toISOString().slice(0, 16).replace('T', ' ')
     : null;
-  text += `\n[IV forecast: ${swapped.length} of ${IV_LADDER_INSTRUMENTS.length} USD majors use CME 30-day ATM implied vol`
+  // Never the word for the metal: the parser uppercases every line and matches its ticker.
+  text += `\n[IV forecast: ${cme.length} of ${IV_LADDER_INSTRUMENTS.length} USD majors use CME 30-day ATM implied vol`
         + (at ? ` (captured ${at} UTC)` : '')
+        + ` · ${gvz.length} of ${IV_GVZ_INSTRUMENTS.length} metal uses CBOE GVZ`
+        + (gvz.length ? ` (close of ${opts.gvz.date})` : '')
         + ` · every other block is the standard realized-vol ladder]`;
   return { text, swapped, skipped };
 }

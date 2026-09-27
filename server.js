@@ -20989,6 +20989,18 @@ app.get('/api/vol-forecast/ladder/export', async (req, res) => {
 // as-is. IV is read from oi_store's nightly QuikStrike capture; a missing or stale
 // capture falls back to the realized block for that instrument, never to old IV.
 // Response headers say which instruments were swapped, for the page's status line.
+// Latest CBOE GVZ close for the IV export's gold block (forge/IV_LADDER_GOLD_PREREG.md).
+// GVZ is a daily index, so a 6h cache is plenty; a failed refresh keeps the last good value
+// and the export module's own staleness gate (GVZ_MAX_AGE_D) decides whether it is usable.
+let _ivGvz = { at: 0, v: null };
+async function _ivGvzLatest() {
+  if (_ivGvz.v && Date.now() - _ivGvz.at < 6 * 3600_000) return _ivGvz.v;
+  try {
+    const last = (await _cboeCsv('GVZ')).at(-1);
+    if (last) _ivGvz = { at: Date.now(), v: { date: last.date, value: last.value } };
+  } catch (e) { console.warn('[iv-ladder] GVZ fetch failed:', e.message); }
+  return _ivGvz.v;
+}
 app.get('/api/vol-forecast/iv-ladder/export', async (_req, res) => {
   if (!forecastState.latest) {
     return res.status(202).type('text/plain').send('Forecast not yet available — check back in 60s.');
@@ -20999,7 +21011,8 @@ app.get('/api/vol-forecast/iv-ladder/export', async (_req, res) => {
       const raw = await kv.get('oi_store');
       if (raw) { const p = JSON.parse(raw); oiStore = p.data ?? p; }
     } catch { /* no OI -> every block falls back to realized */ }
-    const { text, swapped, skipped } = buildIvLadderExportText(forecastState.latest, oiStore, VOL_INSTRUMENTS, Date.now());
+    const gvz = await _ivGvzLatest();
+    const { text, swapped, skipped } = buildIvLadderExportText(forecastState.latest, oiStore, VOL_INSTRUMENTS, Date.now(), { gvz });
     res.set('X-IV-Swapped', swapped.map(s => `${s.name}:${s.iv30}`).join(',') || 'none');
     res.set('X-IV-Skipped', skipped.map(s => `${s.name}:${s.reason}`).join(',') || 'none');
     res.type('text/plain').send(text);

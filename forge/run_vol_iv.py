@@ -53,12 +53,15 @@ def _mean_calib_gap(oos: dict) -> float:
     return float(np.mean(gaps)) if gaps else float("nan")
 
 
-def run_pair(pair: str, root: str, ff_df, covered) -> tuple[dict, dict]:
+def run_pair(pair: str, root: str, ff_df, covered, attach=None, est: str = "iv30") -> tuple[dict, dict]:
+    """`attach(frame, pair)` adds a `sigma_<est>` column (annualized %); defaults to the
+    CME-settlement iv30 used for the majors. forge/run_vol_gvz.py passes CBOE GVZ for gold."""
+    attach = attach or attach_iv
     daily = V.load_daily(pair, root, years=10, session="london22")
     inst = V.NAME_FOR_PAIR.get(pair, pair.upper())
     tags = {"tags": FF.event_tags(ff_df, FF.instrument_currencies(inst)), "covered": covered}
-    frame = attach_iv(V.build_forecast_frame(daily, event_tags=tags), pair)
-    frame = frame[frame["sigma_iv30"].notna()].reset_index(drop=True)   # same rows for both
+    frame = attach(V.build_forecast_frame(daily, event_tags=tags), pair)
+    frame = frame[frame[f"sigma_{est}"].notna()].reset_index(drop=True)   # same rows for both
 
     iv_specs, iv_folds, cmp_rows = [], [], []
     for i, (tr0, split, te1) in enumerate(V.fold_bounds(frame["date"], N_FOLDS)):
@@ -67,14 +70,14 @@ def run_pair(pair: str, root: str, ff_df, covered) -> tuple[dict, dict]:
         if len(train) < 200 or len(test) < 30:
             continue
         rv = V.design_vol(train)
-        iv = V.design_vol(train, estimators=("iv30",))
+        iv = V.design_vol(train, estimators=(est,))
         iv.fold = i
         o_rv, o_iv = V.apply_vol_spec(rv, test), V.apply_vol_spec(iv, test)
         if not o_rv or not o_iv:
             continue
         iv_specs.append(iv)
         iv_folds.append(dict(fold=i, train_end=str(split), test_end=str(te1),
-                             estimator="iv30", width_source=iv.width_source, oos=o_iv))
+                             estimator=est, width_source=iv.width_source, oos=o_iv))
         cmp_rows.append({"fold": i, "n": o_iv["n"], "rv_estimator": rv.estimator,
                          "rv_pinball": o_rv["combined_hl_pinball"], "iv_pinball": o_iv["combined_hl_pinball"],
                          "rv_calib_gap": _mean_calib_gap(o_rv), "iv_calib_gap": _mean_calib_gap(o_iv),
@@ -86,10 +89,10 @@ def run_pair(pair: str, root: str, ff_df, covered) -> tuple[dict, dict]:
         split = pd.Timestamp(iv_folds[-1]["train_end"])
         horizons = {}
         for hz in HORIZONS:
-            width = V.fit_horizon_widths(daily, frame, "iv30", hz, train_end=split)
+            width = V.fit_horizon_widths(daily, frame, est, hz, train_end=split)
             if not width:
                 continue
-            oos = V.score_horizon(daily, frame, "iv30", hz, width, test_start=split)
+            oos = V.score_horizon(daily, frame, est, hz, width, test_start=split)
             meta = {k: width.pop(k) for k in ("_n", "_n_effective", "_overlapping") if k in width}
             horizons[hz] = {"width_mult": width, "n_train": meta.get("_n"),
                             "n_effective": meta.get("_n_effective"),
