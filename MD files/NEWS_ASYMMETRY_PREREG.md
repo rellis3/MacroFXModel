@@ -121,6 +121,54 @@ already committed.
 
 ---
 
-## RESULTS — run <YYYY-MM-DD>
+## RESULTS — run 2026-09-28
 
-*Appended below this line. Nothing above it changes after the run.*
+Harness `analysis/news_asymmetry_study.py`, output `analysis/output/news_asymmetry.json`.
+656 releases: 293 good, 270 bad, 93 in line.
+
+**Verdict: NULL. The ABDV asymmetry does not appear here, and a meaningful one is
+ruled out.**
+
+| | n | β_good (per σ) | β_bad (per σ) | **Δ = bad − good** | 95% CI | t |
+|---|---|---|---|---|---|---|
+| **Pooled, family FE** | 656 | +0.157 (0.071) | +0.062 (0.058) | **−0.095** | [−0.232, +0.041] | −1.37 |
+| 2016–2020 | 293 | +0.059 | +0.078 | +0.020 | [−0.156, +0.195] | +0.22 |
+| 2021–2026 | 363 | +0.255 | +0.103 | −0.152 | [−0.340, +0.037] | −1.58 |
+
+Gate: halves disagree in sign (fails); 4 of 6 families share the pooled sign.
+
+**This is a real null, not an underpowered one.** The pooled interval's upper end is
++0.04, well below the +0.25 pass bar. §5 said the design could find 0.19. So a bad-news
+premium of the size that would change how wide the desk sits through a release is ruled
+out. The point estimate even leans the other way (good news moving slightly more), but
+not significantly, and it is not stable across halves. `REVERSED` needed Δ ≤ −0.25.
+
+Per family (description only, underpowered by §5, none survives BH at q = 0.10):
+
+| Family | n | Δ | 95% CI | p |
+|---|---|---|---|---|
+| US core CPI m/m | 124 | −0.02 | [−0.83, +0.79] | 0.96 |
+| US payrolls | 101 | −0.27 | [−0.64, +0.10] | 0.15 |
+| US unemployment rate | 102 | +0.03 | [−0.29, +0.35] | 0.85 |
+| US annual wage growth | 106 | −0.33 | [−0.65, +0.00] | 0.05 |
+| CA unemployment rate | 112 | −0.08 | [−0.32, +0.17] | 0.55 |
+| AU employment change | 111 | +0.16 | [−0.05, +0.38] | 0.14 |
+
+**My expectation was wrong on (a), and (b)'s guess was wrong about where.** I expected
+a modest bad-news premium. None appeared. I guessed that the inflation era might flip
+CPI. CPI shows nothing either way (Δ −0.02). The only lean towards "good news moves
+more" sits in the 2021–26 half and the US labour families (payrolls, wages), where a
+strong print meant a hawkish Fed. That is an observation from a failed gate, not a
+finding. If it is ever tested, it gets its own pre-registration with the regime
+defined in advance.
+
+**Also noted (not scored).** Within single families, several slopes are near zero or
+negative (US unemployment, AU employment). Once |z| is capped at 3, the 30-minute
+size of those releases barely scales with the surprise. That fits `surprise-size`,
+which found the effect concentrated in the *biggest* surprises: a linear per-σ slope
+is the wrong shape for them. That matters for Tier 1 #2. The vol forecast should use
+the `surprise-size` terciles, not a linear β per σ.
+
+**What changes.** Ledger entry `news-asymmetry` (null). The event-aware vol forecast
+uses one symmetric jump size per family. No page says "the market fears a miss more
+than it cheers a beat".

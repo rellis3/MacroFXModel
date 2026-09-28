@@ -498,6 +498,12 @@ export const DESK_EVIDENCE = [
     use: 'Never write that a yield move implies where a pair goes next.',
   },
   {
+    id: 'news-asymmetry', domain: 'events', verdict: 'null', date: '2026-09-28', doc: 'MD files/NEWS_ASYMMETRY_PREREG.md',
+    claim: 'A bad data surprise moves FX more in the first 30 minutes than an equally large good one (Andersen-Bollerslev-Diebold-Vega 2003)',
+    result: 'Null, and well powered. 656 releases 2016-26 (US core CPI, payrolls, unemployment, wage growth; CA unemployment; AU employment), polarity-signed surprise capped at 3 sigma, 30-minute move scaled per instrument, family fixed effects: bad-minus-good slope -0.10 per sigma [-0.23, +0.04] against a pass bar of +0.25 and a detectable effect of 0.19. The halves disagree (2016-20 +0.02, 2021-26 -0.15); no single family survives Benjamini-Hochberg.',
+    use: 'Do not say the market fears a miss more than it cheers a beat: size the release-day move symmetrically. The size effect lives in the biggest surprises (surprise-size terciles), not in a linear per-sigma slope.',
+  },
+  {
     id: 'fx-factor-book-v2', domain: 'macro', verdict: 'underpowered', date: '2026-09-27', doc: 'MD files/FX_FACTOR_V2_TEST.md',
     claim: 'Quant-desk upgrades (TSMOM with a correlation factor, a volatility-regime multiplier, residual cross-sectional momentum, carry filtered by momentum, a risk-off gate on carry, a Carver trend+carry blend) improve this desk\'s G10 trend and carry baskets',
     result: 'Two runs of the frozen spec, both with 8 of 8 primaries within noise; the largest improvement was T5 +0.26 Sharpe against a Bonferroni bar of +1.04. UNDERPOWERED: 5.7 years out of sample on 7 USD crosses gives a Sharpe SE of 0.41 and a minimum detectable improvement of about +1.4, while the literature sizes these overlays at +0.1 to +0.3. The incumbents themselves: trend -0.16 out of sample; carry +0.61, which is 1.5 SE and sits in the 2021-26 rate-divergence era (in-sample -0.12). The risk-off gate (C3) ran as a monthly gate by a design flaw, so the idea was not tested as meant.',

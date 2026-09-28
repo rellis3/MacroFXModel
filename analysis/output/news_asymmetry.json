@@ -1,0 +1,202 @@
+{
+  "spec": "MD files/NEWS_ASYMMETRY_PREREG.md",
+  "zCap": 3.0,
+  "bar": 0.25,
+  "pooled": {
+    "n": 656,
+    "nGood": 293,
+    "nBad": 270,
+    "nInline": 93,
+    "betaGood": 0.1574,
+    "seGood": 0.0709,
+    "betaBad": 0.062,
+    "seBad": 0.0577,
+    "delta": -0.0954,
+    "seDelta": 0.0695,
+    "t": -1.37,
+    "ci95": [
+      -0.2316,
+      0.0409
+    ],
+    "p": 0.1701
+  },
+  "halves": {
+    "2016-2020": {
+      "n": 293,
+      "nGood": 118,
+      "nBad": 132,
+      "nInline": 43,
+      "betaGood": 0.0589,
+      "seGood": 0.0892,
+      "betaBad": 0.0784,
+      "seBad": 0.0649,
+      "delta": 0.0195,
+      "seDelta": 0.0895,
+      "t": 0.22,
+      "ci95": [
+        -0.1558,
+        0.1949
+      ],
+      "p": 0.8271
+    },
+    "2021-2026": {
+      "n": 363,
+      "nGood": 175,
+      "nBad": 138,
+      "nInline": 50,
+      "betaGood": 0.2551,
+      "seGood": 0.1018,
+      "betaBad": 0.1033,
+      "seBad": 0.082,
+      "delta": -0.1518,
+      "seDelta": 0.0962,
+      "t": -1.58,
+      "ci95": [
+        -0.3403,
+        0.0367
+      ],
+      "p": 0.1144
+    }
+  },
+  "perFamily": {
+    "us|core-inflation-rate-month-over-month": {
+      "n": 124,
+      "nGood": 34,
+      "nBad": 46,
+      "nInline": 44,
+      "betaGood": 0.5583,
+      "seGood": 0.3178,
+      "betaBad": 0.5361,
+      "seBad": 0.351,
+      "delta": -0.0222,
+      "seDelta": 0.4138,
+      "t": -0.05,
+      "ci95": [
+        -0.8332,
+        0.7889
+      ],
+      "p": 0.9573,
+      "bhReject_q10": false
+    },
+    "us|payroll-jobs-growth": {
+      "n": 101,
+      "nGood": 50,
+      "nBad": 50,
+      "nInline": 1,
+      "betaGood": 0.2482,
+      "seGood": 0.2028,
+      "betaBad": -0.0247,
+      "seBad": 0.1129,
+      "delta": -0.2729,
+      "seDelta": 0.189,
+      "t": -1.44,
+      "ci95": [
+        -0.6434,
+        0.0976
+      ],
+      "p": 0.1488,
+      "bhReject_q10": false
+    },
+    "us|headline-unemployment-rate": {
+      "n": 102,
+      "nGood": 46,
+      "nBad": 31,
+      "nInline": 25,
+      "betaGood": -0.0869,
+      "seGood": 0.1122,
+      "betaBad": -0.0554,
+      "seBad": 0.1768,
+      "delta": 0.0315,
+      "seDelta": 0.1636,
+      "t": 0.19,
+      "ci95": [
+        -0.2892,
+        0.3522
+      ],
+      "p": 0.8475,
+      "bhReject_q10": false
+    },
+    "us|annual-wage-growth": {
+      "n": 106,
+      "nGood": 45,
+      "nBad": 38,
+      "nInline": 23,
+      "betaGood": 0.2582,
+      "seGood": 0.1368,
+      "betaBad": -0.0664,
+      "seBad": 0.1629,
+      "delta": -0.3246,
+      "seDelta": 0.1673,
+      "t": -1.94,
+      "ci95": [
+        -0.6526,
+        0.0034
+      ],
+      "p": 0.0524,
+      "bhReject_q10": false
+    },
+    "ca|unemployment-rate": {
+      "n": 112,
+      "nGood": 61,
+      "nBad": 51,
+      "nInline": 0,
+      "betaGood": 0.2382,
+      "seGood": 0.173,
+      "betaBad": 0.1631,
+      "seBad": 0.1054,
+      "delta": -0.075,
+      "seDelta": 0.1269,
+      "t": -0.59,
+      "ci95": [
+        -0.3237,
+        0.1736
+      ],
+      "p": 0.5542,
+      "bhReject_q10": false
+    },
+    "au|employment-change": {
+      "n": 111,
+      "nGood": 57,
+      "nBad": 54,
+      "nInline": 0,
+      "betaGood": -0.2026,
+      "seGood": 0.0904,
+      "betaBad": -0.0386,
+      "seBad": 0.11,
+      "delta": 0.164,
+      "seDelta": 0.11,
+      "t": 1.49,
+      "ci95": [
+        -0.0517,
+        0.3796
+      ],
+      "p": 0.1362,
+      "bhReject_q10": false
+    }
+  },
+  "gate": {
+    "halvesSameSign": false,
+    "familiesSameSign": 4,
+    "holds": false
+  },
+  "verdict": "NULL",
+  "scale": {
+    "eurusd": 16.496,
+    "gbpusd": 16.324,
+    "audusd": 19.079,
+    "nzdusd": 19.302,
+    "usdjpy": 19.068,
+    "usdcad": 14.915,
+    "usdchf": 19.849,
+    "gold": 29.613,
+    "eurcad": 16.393,
+    "gbpcad": 16.751,
+    "audcad": 15.229,
+    "cadjpy": 17.446,
+    "euraud": 13.767,
+    "gbpaud": 14.559,
+    "audjpy": 17.206,
+    "audchf": 15.691,
+    "audnzd": 13.192
+  }
+}
