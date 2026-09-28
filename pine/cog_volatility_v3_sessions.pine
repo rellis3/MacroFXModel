@@ -12,6 +12,24 @@ de30Chart  = input.string("GER40",     "DE30 — chart ticker",   tooltip="e.g. 
 uk100Chart = input.string("UK100GBP",  "UK100 — chart ticker",  tooltip="e.g. UK100GBP, Z1!, FTSE100")
 us30Chart  = input.string("US30USD",   "US30 — chart ticker",   tooltip="e.g. US30USD, DJIA, YM1!")
 us2kChart  = input.string("US2000USD", "US2000 — chart ticker", tooltip="e.g. US2000USD, RTY1!, RUT")
+// 2026-09-28: 11 new commodities added to the forecast dashboard. Defaults
+// below mirror gold's OWN convention (its OANDA instrument code with the
+// underscore stripped, XAU_USD -> XAUUSD) since that is the one ticker
+// spelling guaranteed consistent with this indicator's export source --
+// NOT a guess at what your broker/TradingView feed actually shows. Check
+// your own chart's ticker for each and correct these if it differs (same
+// as you would for gold/NQ/the indices above).
+silverChart    = input.string("XAGUSD",    "Silver — chart ticker",    tooltip="e.g. XAGUSD, SI1!, SILVER")
+copperChart    = input.string("XCUUSD",    "Copper — chart ticker",    tooltip="e.g. XCUUSD, HG1!, COPPER")
+platinumChart  = input.string("XPTUSD",    "Platinum — chart ticker",  tooltip="e.g. XPTUSD, PL1!, PLATINUM")
+palladiumChart = input.string("XPDUSD",    "Palladium — chart ticker", tooltip="e.g. XPDUSD, PA1!, PALLADIUM")
+wtiChart       = input.string("WTICOUSD",  "WTI — chart ticker",       tooltip="e.g. WTICOUSD, USOIL, CL1!")
+brentChart     = input.string("BCOUSD",    "Brent — chart ticker",     tooltip="e.g. BCOUSD, UKOIL, BZ1!")
+natgasChart    = input.string("NATGASUSD", "Nat Gas — chart ticker",   tooltip="e.g. NATGASUSD, NG1!")
+soybeanChart   = input.string("SOYBNUSD",  "Soybean — chart ticker",   tooltip="e.g. SOYBNUSD, ZS1!")
+wheatChart     = input.string("WHEATUSD",  "Wheat — chart ticker",     tooltip="e.g. WHEATUSD, ZW1!")
+cornChart      = input.string("CORNUSD",   "Corn — chart ticker",      tooltip="e.g. CORNUSD, ZC1!")
+sugarChart     = input.string("SUGARUSD",  "Sugar — chart ticker",     tooltip="e.g. SUGARUSD, SB1!")
 
 // =====================================================
 // INPUT — PASTE VOLATILITY BLOCK (v3 — includes SESSION STATS)
@@ -96,7 +114,7 @@ col_ol_med = input.color(color.new(color.fuchsia, 60), "OL Median Colour", group
 // HELPERS (unchanged from v1)
 // =====================================================
 
-f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
+f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT, silverT, copperT, platinumT, palladiumT, wtiT, brentT, natgasT, soybeanT, wheatT, cornT, sugarT) =>
     r = t
     if t == str.upper(goldT) or t == "XAUUSD" or t == "GOLD"
         r := "GOLD"
@@ -115,6 +133,29 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
     // BTC feeds vary by exchange — normalise the common tickers to the export's BTCUSD
     else if t == "BTCUSDT" or t == "XBTUSD" or t == "BTCUSD.P" or t == "BTCUSDT.P" or t == "BTC1!"
         r := "BTCUSD"
+    // 2026-09-28 — 11 new commodities, same alias-input pattern as gold/indices above.
+    else if t == str.upper(silverT) or t == "XAGUSD" or t == "SILVER"
+        r := "SILVER"
+    else if t == str.upper(copperT) or t == "XCUUSD" or t == "COPPER"
+        r := "COPPER"
+    else if t == str.upper(platinumT) or t == "XPTUSD" or t == "PLATINUM"
+        r := "PLATINUM"
+    else if t == str.upper(palladiumT) or t == "XPDUSD" or t == "PALLADIUM"
+        r := "PALLADIUM"
+    else if t == str.upper(wtiT) or t == "WTICOUSD" or t == "USOIL" or t == "WTI"
+        r := "WTI"
+    else if t == str.upper(brentT) or t == "BCOUSD" or t == "UKOIL" or t == "BRENT"
+        r := "BRENT"
+    else if t == str.upper(natgasT) or t == "NATGASUSD" or t == "NATGAS"
+        r := "NATGAS"
+    else if t == str.upper(soybeanT) or t == "SOYBNUSD" or t == "SOYBEAN"
+        r := "SOYBEAN"
+    else if t == str.upper(wheatT) or t == "WHEATUSD" or t == "WHEAT"
+        r := "WHEAT"
+    else if t == str.upper(cornT) or t == "CORNUSD" or t == "CORN"
+        r := "CORN"
+    else if t == str.upper(sugarT) or t == "SUGARUSD" or t == "SUGAR"
+        r := "SUGAR"
     r
 
 f_collapseSpaces(s) =>
@@ -204,7 +245,8 @@ var float london_oc_med_pct = na
 var float london_oc_75_pct  = na
 
 if barstate.isfirst
-    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart)
+    sym   = f_normaliseTicker(syminfo.ticker, goldChart, nqChart, spxChart, de30Chart, uk100Chart, us30Chart, us2kChart,
+         silverChart, copperChart, platinumChart, palladiumChart, wtiChart, brentChart, natgasChart, soybeanChart, wheatChart, cornChart, sugarChart)
     symUp = str.upper(sym)
     rows  = str.split(volText, "\n")
     n     = array.size(rows)
@@ -252,7 +294,14 @@ if barstate.isfirst
                      str.contains(rowUp, "BTCUSD") or
                      str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
-                     str.contains(rowUp, "US30")) and
+                     str.contains(rowUp, "US30")   or
+                     // 2026-09-28 — 11 new commodities
+                     str.contains(rowUp, "SILVER")   or str.contains(rowUp, "COPPER")  or
+                     str.contains(rowUp, "PLATINUM") or str.contains(rowUp, "PALLADIUM") or
+                     str.contains(rowUp, "WTI")      or str.contains(rowUp, "BRENT")   or
+                     str.contains(rowUp, "NATGAS")   or str.contains(rowUp, "SOYBEAN") or
+                     str.contains(rowUp, "WHEAT")    or str.contains(rowUp, "CORN")    or
+                     str.contains(rowUp, "SUGAR")) and
                      not isDataLine2
 
                 if isOtherTicker
@@ -307,7 +356,14 @@ if barstate.isfirst
                  str.contains(rowUp, "BTCUSD") or
                  str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
                  str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
-                 str.contains(rowUp, "US30")
+                 str.contains(rowUp, "US30")   or
+                 // 2026-09-28 — 11 new commodities
+                 str.contains(rowUp, "SILVER")   or str.contains(rowUp, "COPPER")  or
+                 str.contains(rowUp, "PLATINUM") or str.contains(rowUp, "PALLADIUM") or
+                 str.contains(rowUp, "WTI")      or str.contains(rowUp, "BRENT")   or
+                 str.contains(rowUp, "NATGAS")   or str.contains(rowUp, "SOYBEAN") or
+                 str.contains(rowUp, "WHEAT")    or str.contains(rowUp, "CORN")    or
+                 str.contains(rowUp, "SUGAR")
 
             if not isDataLine and isKnownTicker
                 insideVolBlock := str.contains(rowUp, symUp)
