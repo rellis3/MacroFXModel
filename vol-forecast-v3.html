@@ -4119,6 +4119,11 @@ const OANDA_SYM = {
   // Indices — OANDA instrument codes (underscore format, no slash)
   nq:'NAS100_USD', spx500:'SPX500_USD', us30:'US30_USD',
   us2000:'US2000_USD', uk100:'UK100_GBP', de30:'DE30_EUR',
+  // 2026-09-28 — 11 new commodities (metals, energy, agricultural), OANDA
+  // instrument codes matching js/volForecastScheduler.js's INSTRUMENTS entries
+  silver:'XAG_USD', copper:'XCU_USD', platinum:'XPT_USD', palladium:'XPD_USD',
+  wti:'WTICO_USD', brent:'BCO_USD', natgas:'NATGAS_USD',
+  soybean:'SOYBN_USD', wheat:'WHEAT_USD', corn:'CORN_USD', sugar:'SUGAR_USD',
 };
 
 // Per-instrument price precision for the chart y-axis + price-line labels.
@@ -4131,6 +4136,13 @@ function _priceFmt(name) {
   if (n === 'gold' || n.startsWith('xau')) return { type: 'price', precision: 2, minMove: 0.01 };
   if (n.startsWith('btc')) return { type: 'price', precision: 1, minMove: 0.1 };
   if (['nq','spx500','us30','us2000','uk100','de30'].includes(n)) return { type: 'price', precision: 1, minMove: 0.1 };
+  // 2026-09-28 — 11 new commodities: match typical quoting for each group
+  // (high-value metals/energy = 2dp; grains/nat gas = 3dp; sugar quoted in
+  // cents/lb, needs 5dp like FX to keep moves visible)
+  if (['platinum','palladium','wti','brent'].includes(n)) return { type: 'price', precision: 2, minMove: 0.01 };
+  if (n === 'copper') return { type: 'price', precision: 4, minMove: 0.0001 };
+  if (['silver','natgas','soybean','wheat','corn'].includes(n)) return { type: 'price', precision: 3, minMove: 0.001 };
+  if (n === 'sugar') return { type: 'price', precision: 5, minMove: 0.00001 };
   if (n.endsWith('jpy')) return { type: 'price', precision: 3, minMove: 0.001 };
   return { type: 'price', precision: 5, minMove: 0.00001 };
 }
