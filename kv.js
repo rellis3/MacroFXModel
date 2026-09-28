@@ -48,10 +48,6 @@ const KV_FILE   = path.join(DATA_DIR, 'kv.json');
 //    surprise_index, events_*  re-fetched from Finnhub on next page load
 const _CF_EXACT = new Set([
   'tg_config', 'ai_alert_cfg',
-  'hedge_summary_v1',        // last rolling correlations + factor betas. The 12MB history lives on
-                             // Railway's EPHEMERAL disk and dies with every deploy; this 26KB summary
-                             // is what every reader actually needs, so it is kept where a deploy
-                             // cannot reach it. Must also be in _worker.js PERMANENT_KEYS.
   'macro_regime_fx_v1',      // 8y regime-conditional FX study — ~11 sequential FRED calls to
                              // rebuild, and the answer only changes by one day at a time.
   'desk_watch_v1',           // the early-warning layer's state + fire log: which conditions are on, when each

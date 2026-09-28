@@ -1513,8 +1513,14 @@ async function buildCorrHistoryJS() {
         const n = cnts2[k], mu = sums2b[k] / n;
         corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
       }
+      // last_betas was missing: the pair drawer needs it and would have shown
+      // correlations with no beta whenever it read this cache rather than the file
+      // `.beta`, NOT `.betas` -- the record field is singular, as /api/hedge-alerts
+      // itself reads it at lastRec.beta. The plural spelling resolves to undefined and
+      // would have written an empty object with nothing to say it had.
+      const lastBetas2 = records.length ? (records[records.length - 1].beta ?? {}) : {};
       const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2,
+        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2, last_betas: lastBetas2,
         last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
       await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
@@ -32230,8 +32236,6 @@ app.get('/api/corr-history', (req, res) => {
 // Hedge alerts — compact summary for the dashboard beta panel.
 // Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
 // Much smaller than the full corr-history response.
-const HEDGE_SUMMARY_KV = 'hedge_summary_v1';
-
 app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
   // THE DISK COPY DIES WITH EVERY DEPLOY. corr_history.json is 12MB on Railway's
@@ -32239,12 +32243,14 @@ app.get('/api/hedge-alerts', async (req, res) => {
   // the drawer read "correlation history isn't built yet" until a 5-year H4 rebuild
   // finished. On a day with fifteen deploys that is most of the day.
   //
-  // The 26KB SUMMARY is what every reader actually wants, so it is mirrored to KV on each
-  // rebuild and served from there while the disk copy is missing. The full history stays
-  // on disk for the tools that walk the series.
+  // The builder ALREADY writes a 26KB summary to KV as `hedge_alerts_cache` at the end of
+  // every rebuild -- it was there the whole time and nothing read it back. Serving it here
+  // while the disk copy is missing is the entire fix. (My first attempt added a SECOND
+  // cache key without checking; two caches of the same thing is how they end up
+  // disagreeing, which is the bug this repo keeps finding.)
   if (!fs.existsSync(p)) {
     try {
-      const raw = await kv.get(HEDGE_SUMMARY_KV);
+      const raw = await kv.get('hedge_alerts_cache');
       if (raw) { const c = JSON.parse(raw); return res.json({ ...c, from: 'kv', rebuilding: true }); }
     } catch (e) { console.warn('[hedge-alerts] kv', e.message); }
     return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {}, rebuilding: true });
@@ -32278,8 +32284,6 @@ app.get('/api/hedge-alerts', async (req, res) => {
     };
     // Cache in KV so the Positions tab can read it from both Railway and CF Pages
     kv.put('hedge_alerts_cache', JSON.stringify(result), { expirationTtl: 86400 }).catch(() => {});
-    // mirror the summary so the next deploy does not take it with it
-    kv.put(HEDGE_SUMMARY_KV, JSON.stringify(result)).catch(e => console.warn('[hedge-alerts] kv put', e.message));
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });
