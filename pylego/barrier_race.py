@@ -232,6 +232,25 @@ def mae_from_path(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
     return mae_price / sl_price, mae_price / entry_price * 100.0
 
 
+def mfe_from_path(bars: pd.DataFrame, idx: int, exit_idx: int, direction: int,
+                  entry_price: float, sl_price: float, tp_dist: float) -> tuple[float, float]:
+    """MFE twin of `mae_from_path`: the most favourable excursion on the REAL
+    bar path between entry and exit (inclusive), high-vs-entry for longs,
+    low-vs-entry for shorts. Capped at `tp_dist` for the same reason MAE is
+    capped at the stop -- the fixed-barrier walker is flat the moment the
+    target prints, so anything past it never happened to the position.
+    A DIAGNOSTIC of the trade that was taken (how close did a loser get to
+    its target?), not a sizing input. Returns (mfe_r, mfe_pct), both >= 0."""
+    highs = bars["high"].to_numpy()[idx:exit_idx + 1]
+    lows = bars["low"].to_numpy()[idx:exit_idx + 1]
+    if direction > 0:
+        mfe_price = float(highs.max()) - entry_price
+    else:
+        mfe_price = entry_price - float(lows.min())
+    mfe_price = min(max(mfe_price, 0.0), tp_dist)
+    return mfe_price / sl_price, mfe_price / entry_price * 100.0
+
+
 def race_grid(bars: pd.DataFrame, entries: list[Entry], sl_grid: list[float],
               tp_r_grid: list[float], max_bars_ahead: int,
               cost_price: float = 0.0, min_bars_ahead: int = 10) -> list[BarrierResult]:

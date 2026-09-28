@@ -90,6 +90,7 @@ from motif_features import bucket_trade, compute_features  # noqa: E402
 from pylego.barrier_race import (  # noqa: E402
     Entry,
     mae_from_path,
+    mfe_from_path,
     race_trades_on_finer_path,
 )
 from pylego.costs import default_spread  # noqa: E402
@@ -375,6 +376,8 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
             t_sl = t["sl"]   # == sl_price unless this pair races a scaled stop
             mae_r, mae_pct = mae_from_path(m1, t["fine_entry_idx"], t["fine_exit_idx"],
                                            t["direction"], t["entry_price"], t_sl)
+            mfe_r, mfe_pct = mfe_from_path(m1, t["fine_entry_idx"], t["fine_exit_idx"],
+                                           t["direction"], t["entry_price"], t_sl, t_sl * args.tp_r)
             price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
             trade = {
                 "pair": pair,
@@ -398,6 +401,11 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 "mae_r": round(mae_r, 4),
                 "return_pct": round(price_return_pct, 4),
                 "mae_pct": round(mae_pct, 4),
+                # Diagnostic only (capped at the target): how far a trade got
+                # in its favour before it closed. On losers it answers "how
+                # many stop-outs were most of the way to the target first?"
+                "mfe_r": round(mfe_r, 4),
+                "mfe_pct": round(mfe_pct, 4),
                 "pnl_dollars": round(t["r"] * account_risk_dollars, 2),
                 "risk_dollars": round(account_risk_dollars, 2),
                 "is_oos": "OOS" if entry_date >= cutoff else "IS",

@@ -1218,13 +1218,21 @@ function renderTrades(trades) {
   // showed one pair's 2016-2023 run and looked like the data stopped in 2023.
   const shown = [...trades].sort((a, b) => b.entry_date.localeCompare(a.entry_date))
                            .slice(0, 500);
+  // MFE diagnostic over the WHOLE selection, not just the 500 shown: how
+  // many stop-outs had first got well toward the target. Descriptive only --
+  // an exit rule chosen from this would need its own out-of-sample test.
+  const losers = trades.filter(t => t.outcome === 'sl' && t.mfe_r != null);
+  const mfeNote = losers.length
+    ? ` · of ${losers.length.toLocaleString()} stop-outs, ${(100 * losers.filter(t => t.mfe_r >= 0.5).length / losers.length).toFixed(0)}% reached ≥0.5R MFE and ` +
+      `${(100 * losers.filter(t => t.mfe_r >= 1).length / losers.length).toFixed(0)}% ≥1R first`
+    : '';
   $('tradeCount').textContent =
     `${trades.length.toLocaleString()} trades${trades.length > 500
       ? ` — showing the 500 most recent (to ${shown[shown.length - 1].entry_date.slice(0, 10)}), CSV exports all`
-      : ''}`;
+      : ''}${mfeNote}`;
   $('tradeTable').innerHTML =
     `<thead><tr><th>Pair</th><th>Entry</th><th>Dir</th><th>Pattern</th><th>👀</th>
-     <th class="num">Shown PF</th><th>Outcome</th><th class="num">R</th><th class="num">MAE R</th>
+     <th class="num">Shown PF</th><th>Outcome</th><th class="num">R</th><th class="num">MAE R</th><th class="num">MFE R</th>
      <th>IS/OOS</th></tr></thead><tbody>` +
     shown.map((t, i) => `<tr data-i="${i}">
       <td>${t.pair}</td><td>${t.entry_date.slice(0, 16).replace('T', ' ')}</td>
@@ -1235,6 +1243,7 @@ function renderTrades(trades) {
       <td class="${t.outcome === 'tp' ? 'green' : t.outcome === 'sl' ? 'red' : 'amber'}">${t.outcome}</td>
       <td class="num ${cls(t.r)}">${fmt(t.r, 3)}</td>
       <td class="num">${fmt(t.mae_r, 3)}</td>
+      <td class="num">${fmt(t.mfe_r, 3)}</td>
       <td>${t.is_oos}</td></tr>`).join('') + '</tbody>';
   // Delegated so re-renders never leave stale per-row listeners behind.
   $('tradeTable').onclick = e => {
