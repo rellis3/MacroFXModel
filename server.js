@@ -32230,9 +32230,25 @@ app.get('/api/corr-history', (req, res) => {
 // Hedge alerts — compact summary for the dashboard beta panel.
 // Returns avg_corr, corr_std (computed from records), last rolling corr, and last betas.
 // Much smaller than the full corr-history response.
+const HEDGE_SUMMARY_KV = 'hedge_summary_v1';
+
 app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
-  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {} });
+  // THE DISK COPY DIES WITH EVERY DEPLOY. corr_history.json is 12MB on Railway's
+  // ephemeral filesystem and is neither tracked nor persisted, so each push wiped it and
+  // the drawer read "correlation history isn't built yet" until a 5-year H4 rebuild
+  // finished. On a day with fifteen deploys that is most of the day.
+  //
+  // The 26KB SUMMARY is what every reader actually wants, so it is mirrored to KV on each
+  // rebuild and served from there while the disk copy is missing. The full history stays
+  // on disk for the tools that walk the series.
+  if (!fs.existsSync(p)) {
+    try {
+      const raw = await kv.get(HEDGE_SUMMARY_KV);
+      if (raw) { const c = JSON.parse(raw); return res.json({ ...c, from: 'kv', rebuilding: true }); }
+    } catch (e) { console.warn('[hedge-alerts] kv', e.message); }
+    return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {}, rebuilding: true });
+  }
   try {
     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
     const records = data.records || [];
@@ -32262,6 +32278,8 @@ app.get('/api/hedge-alerts', async (req, res) => {
     };
     // Cache in KV so the Positions tab can read it from both Railway and CF Pages
     kv.put('hedge_alerts_cache', JSON.stringify(result), { expirationTtl: 86400 }).catch(() => {});
+    // mirror the summary so the next deploy does not take it with it
+    kv.put(HEDGE_SUMMARY_KV, JSON.stringify(result)).catch(e => console.warn('[hedge-alerts] kv put', e.message));
     res.json(result);
   } catch (e) {
     res.status(500).json({ error: e.message });

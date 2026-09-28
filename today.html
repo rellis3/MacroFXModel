@@ -2349,6 +2349,8 @@ async function loadGate() {
   setTimeout(() => loadWiderMarket().catch(() => {}), 4000);
   setTimeout(() => loadDrill().catch(() => {}), 5000);                // one reading a day       // the equity half of the board
   setInterval(() => loadWiderMarket().catch(() => {}), 60 * 60_000);
+  setTimeout(() => loadCorrStatus().catch(() => {}), 2500);       // is the correlation history actually there?
+  setInterval(() => loadCorrStatus().catch(() => {}), 15 * 60_000);
   setTimeout(() => loadNewsOutcomes().catch(() => {}), 6000);      // what the day's releases actually did
   setInterval(() => loadNewsOutcomes().catch(() => {}), 10 * 60_000);
   jget('/api/gpr').then(r => { if (r?.ok) { gpr = r; render(); } }).catch(() => {});   // geopolitical risk line
@@ -8456,6 +8458,65 @@ function driverBoardHtml() {
     + '</div></div>';
 }
 
+/**
+ * Correlations, hedges and beta — status, and a way to rebuild it from here.
+ *
+ * The 12MB corr_history.json lives on Railway's EPHEMERAL disk and is neither tracked
+ * nor persisted, so every deploy destroys it and the pair drawer reads "correlation
+ * history isn't built yet" until a five-year H4 rebuild finishes. On a day with fifteen
+ * deploys that is most of the day, and nothing on the page said so or offered to fix it.
+ *
+ * The 26KB summary now survives in KV, so the drawer keeps working; this card is what
+ * tells you the FULL history is missing and lets you start the rebuild without going to
+ * another page.
+ */
+function corrCardHtml() {
+  const c = _corrStatus;
+  if (!c) return '';
+  const f = c.file ?? {};
+  const state = c.running ? 'rebuilding'
+    : !f.exists ? 'missing'
+    : f.stale ? 'stale'
+    : 'ready';
+  const tone = { ready: 'on', rebuilding: 'mix', stale: 'mix', missing: 'off' }[state];
+  const detail = c.running ? esc0(c.msg ?? 'working…')
+    : !f.exists ? 'the full history is gone — a deploy wipes it. The drawer still reads the saved summary.'
+    : f.stale ? `${f.ageDays}d old, past its 6-hour refresh`
+    : `${f.sizeKb ? Math.round(f.sizeKb / 1024) + 'MB' : ''} · rebuilt ${f.ageDays === 0 ? 'today' : `${f.ageDays}d ago`}`;
+  return `<div class="side-card"><h3>Correlations, hedges &amp; beta</h3>
+    <div class="db-align"><b class="tone ${tone}">${state}</b><span class="muted">${detail}</span></div>
+    ${c.running ? `<div class="muted" style="font-size:10.5px;margin-top:4px">${c.pct ?? 0}% done</div>` : ''}
+    <div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap">
+      <button class="eb-btn" onclick="rebuildCorr(this)" ${c.running ? 'disabled' : ''}>${c.running ? 'rebuilding…' : '↻ rebuild'}</button>
+      <a class="eb-btn" href="correlations.html" target="_blank" style="text-decoration:none">open the tool ↗</a>
+    </div>
+    <div class="muted" style="font-size:10px;line-height:1.5;margin-top:6px">Five years of H4, 26 pairs. Backward-looking and regime-dependent — a historical hedge fails in a real risk-off, when correlations snap toward one. Context, never a signal.</div>
+  </div>`;
+}
+let _corrStatus = null;
+
+async function loadCorrStatus() {
+  try { _corrStatus = await jget('/api/corr-history/status'); }
+  catch { _corrStatus = null; }
+  // while a rebuild runs, the progress endpoint carries the live percentage
+  if (_corrStatus?.running) {
+    try { const p = await jget('/api/corr-history/progress'); if (p) Object.assign(_corrStatus, { pct: p.pct, msg: p.msg }); } catch {}
+  }
+  try { renderSidebar(); } catch (e) {}
+}
+
+window.rebuildCorr = async btn => {
+  if (btn) { btn.disabled = true; btn.textContent = 'starting…'; }
+  try { await fetch('/api/corr-history/rebuild', { method: 'POST' }); } catch {}
+  // poll while it runs — it is a five-year fetch and takes minutes, and a button that
+  // goes quiet for that long reads as broken
+  const tick = async () => {
+    await loadCorrStatus();
+    if (_corrStatus?.running) setTimeout(tick, 5000);
+  };
+  setTimeout(tick, 1200);
+};
+
 function renderSidebar() {
   const el = $('sidebarCol');
   if (!el) return;
@@ -8522,6 +8583,7 @@ function renderSidebar() {
     </div>
 
     ${booksCardHtml()}
+    ${corrCardHtml()}
     <div class="side-card"><h3>Tools</h3>
       <div class="qtile-grid">
         <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>

@@ -1048,6 +1048,10 @@ export default {
           // Includes all user config, credentials, journals, and trained ML params.
           // Market-data keys get a 48h KV TTL as a hard safety net.
           const PERMANENT_KEYS = new Set([
+            // the correlation/beta summary: rebuilt from 5 years of H4 and destroyed by
+            // every deploy if it is only on disk. Missing it is the drawer saying
+            // "correlation history isn't built yet" for hours after each push.
+            'hedge_summary_v1',
             // oi_expect_log accumulates the forward record of what each level's
             // expectation claimed - it must survive, unlike oi_store_py which is a
             // deliberately expiring shadow.
