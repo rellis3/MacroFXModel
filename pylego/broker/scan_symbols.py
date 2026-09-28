@@ -15,6 +15,15 @@ Usage (run on the trading PC, in this repo's own venv):
     python -m pylego.broker.scan_symbols --bot fib_atlas_bot --pairs nq,spx,de30,uk100,us2000,dow
     python -m pylego.broker.scan_symbols --bot volatility_bot_v2 --url http://localhost:3000
 
+    # Got a specific guess (from a screenshot, a forum post, a broker's own
+    # docs) and want a direct yes/no instead of the fuzzy-suggestion list?
+    # verify_symbols' own suggestions only search for substrings of the
+    # WRONG guess or the raw pair key -- a genuinely different but correct
+    # name (US500 for spx, US30 for dow) won't share a substring with
+    # either, so it would never surface as a "suggestion". --try checks
+    # each candidate for real, exact (case-insensitive) existence instead.
+    python -m pylego.broker.scan_symbols --bot fib_atlas_bot --try spx=US500,de30=GER30,nq=US100,dow=US30,us2000=US2000,uk100=UK100
+
 `--bot` picks which {bot}_credentials KV key to connect with (bots on the
 same MT5 account, like fib_atlas_bot and fib_atlas_bot_v2, will always
 agree -- only need to run it once per distinct account, not once per bot).
@@ -42,8 +51,19 @@ def main() -> None:
                      help="which bot's own {bot}_credentials to connect with")
     ap.add_argument("--url", default=os.environ.get("DASHBOARD_URL", "http://localhost:3000"), help="dashboard base URL")
     ap.add_argument("--pairs", default=",".join(DEFAULT_PAIRS), help="comma-separated pairs to check (default: indices + gold)")
+    ap.add_argument("--try", dest="try_candidates", default=None,
+                     help="pair=CANDIDATE,pair=CANDIDATE,... -- check each candidate for real, exact existence "
+                          "on this account instead of relying on verify_symbols' own fuzzy suggestions")
     args = ap.parse_args()
     pairs = [p.strip().lower() for p in args.pairs.split(",") if p.strip()]
+    try_map = {}
+    if args.try_candidates:
+        for item in args.try_candidates.split(","):
+            if "=" not in item:
+                print(f"--try: skipping {item!r} -- expected pair=CANDIDATE", file=sys.stderr)
+                continue
+            k, v = item.split("=", 1)
+            try_map[k.strip().lower()] = v.strip()
 
     kv = KvClient(args.url)
     creds = kv.get_json(f"{args.bot}_credentials") or {}
@@ -78,6 +98,19 @@ def main() -> None:
             print(f"  OK — all checkable pair(s) match pylego/point_values.json's assumption")
         for p in pv_problems:
             print(f"  {p['pair']} ({p['symbol']}): assumed ${p['assumed']}/pip/lot, real ${p['real']}/pip/lot ({p['ratio']}x off)")
+
+        if try_map:
+            print("\n── Trying your own candidates ───────────────────────────")
+            all_syms = [s.name for s in (broker.mt5.symbols_get() or [])]
+            by_upper = {s.upper(): s for s in all_syms}
+            for pair, candidate in try_map.items():
+                real = by_upper.get(candidate.upper())
+                if real:
+                    print(f"  {pair}: {candidate!r} -> EXISTS on this account as {real!r} — real, exact match")
+                else:
+                    core = "".join(ch for ch in candidate.upper() if ch.isalnum())
+                    near = sorted(s for s in all_syms if core and core in "".join(ch for ch in s.upper() if ch.isalnum()))
+                    print(f"  {pair}: {candidate!r} -> not found" + (f" — closest: {', '.join(near[:5])}" if near else " — no close match either"))
 
         if sym_problems or pv_problems:
             print(f"\nNothing written automatically. To fix a symbol name, add it to {args.bot}'s own\n"
