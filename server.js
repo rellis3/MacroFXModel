@@ -12512,8 +12512,13 @@ async function _captureFinancingSnapshot(reason = 'schedule') {
   const names = Object.keys(rates);
   if (!names.length) return { ok: false, error: 'no instruments returned' };
 
-  let hist = [];
-  try { const raw = await kv.get(_FINANCING_KV); if (raw) hist = JSON.parse(raw)?.days ?? []; } catch {}
+  // getStrict, not get: this is a read-MODIFY-write over an unrebuildable series
+  // ("no vendor to buy it from" per the comment above). A swallowed backend
+  // failure reading back as "no history" would overwrite the whole series with
+  // just today's row — throw instead, and let the two callers' own try/catch
+  // handle it (same bug class as oi_history/oi_bot_trade_log).
+  const raw = await kv.getStrict(_FINANCING_KV);
+  let hist = raw ? (JSON.parse(raw)?.days ?? []) : [];
   // De-dupe by date: a re-run on the same day REPLACES that day rather than
   // appending a second row, so a manual trigger can never corrupt the series.
   hist = hist.filter(d => d.date !== today);
@@ -12797,13 +12802,15 @@ const COG_SHADOW_KV = 'cog_shadow_log';
 const COG_SHADOW_INST = 'NAS100_USD';
 const _cogShadowSent = { date: null, g1: false, g2: false, g3: false };
 
+// getStrict: _cogShadowWrite below is a read-MODIFY-write (load, upsert one
+// day's patch, write the whole log back) over an unrepeatable forward record.
+// A swallowed backend failure reading back as "empty" would let a write wipe
+// the whole history — see the identical fix on _cogLoadLog above.
 async function _cogShadowLoad() {
-  try {
-    const raw = await kv.get(COG_SHADOW_KV);
-    if (!raw) return [];
-    const p = JSON.parse(raw);
-    return Array.isArray(p) ? p : (Array.isArray(p?.data) ? p.data : []);
-  } catch { return []; }
+  const raw = await kv.getStrict(COG_SHADOW_KV);
+  if (!raw) return [];
+  const p = JSON.parse(raw);
+  return Array.isArray(p) ? p : (Array.isArray(p?.data) ? p.data : []);
 }
 async function _cogShadowWrite(date, patch) {
   const log = await _cogShadowLoad();
@@ -12966,7 +12973,8 @@ svcInterval('cogShadow', () => {
 }, 60_000);
 
 app.get('/api/cog-rep/shadow', async (_req, res) => {
-  res.json({ ok: true, entries: await _cogShadowLoad() });
+  try { res.json({ ok: true, entries: await _cogShadowLoad() }); }
+  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 // Manual fire, for testing and for a missed schedule window.
 app.post('/api/cog-rep/shadow/run/:stage', async (req, res) => {
@@ -12974,7 +12982,8 @@ app.post('/api/cog-rep/shadow/run/:stage', async (req, res) => {
   if (!['g1', 'g2', 'g3'].includes(st)) return res.status(400).json({ ok: false, error: 'stage must be g1|g2|g3' });
   _cogShadowSent[st] = false;
   await cogShadowRun(st, true);
-  res.json({ ok: true, stage: st, entries: (await _cogShadowLoad()).slice(0, 3) });
+  try { res.json({ ok: true, stage: st, entries: (await _cogShadowLoad()).slice(0, 3) }); }
+  catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // ── COG replication: STEP 1 — does the OI archive carry the signal? ─────────
@@ -13812,20 +13821,26 @@ async function _cogResolveDay(e) {
   };
 }
 
+// getStrict, not get: every write path below is a read-MODIFY-write (load the
+// log, upsert/delete one entry, write the whole log back). This is hand-typed,
+// irreplaceable data — a swallowed backend failure reading back as "log is
+// empty" would let a write silently nuke the entire history, the same bug
+// that wiped oi_history (2026-08-26) and oi_bot_trade_log (2026-09-28). So
+// this throws on a real failure instead of returning []; every caller below
+// catches it and 500s rather than proceeding on a lie.
 async function _cogLoadLog() {
-  try {
-    const raw = await kv.get(COG_LOG_KV);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    const arr = Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
-    return arr;
-  } catch { return []; }
+  const raw = await kv.getStrict(COG_LOG_KV);
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.data) ? parsed.data : []);
 }
 const _cogSaveLog = log => kv.put(COG_LOG_KV, JSON.stringify({ data: log, timestamp: Date.now() }));
 
 app.get('/api/cog-signals', async (_req, res) => {
-  const log = await _cogLoadLog();
-  res.json({ ok: true, n: log.length, entries: log });
+  try {
+    const log = await _cogLoadLog();
+    res.json({ ok: true, n: log.length, entries: log });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // Upsert one day. Body is the entry shape in COG_OBSERVED_SYSTEM.md §5.
@@ -13834,41 +13849,47 @@ app.post('/api/cog-signals', async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(e.date ?? '')) {
     return res.status(400).json({ ok: false, error: 'date (YYYY-MM-DD) required' });
   }
-  const log = await _cogLoadLog();
-  const i = log.findIndex(x => x.date === e.date);
-  // Merge rather than replace: the four messages arrive hours apart, so a
-  // later POST must not wipe the stages already logged that morning.
-  if (i === -1) log.unshift({ ...e, logged_at: new Date().toISOString() });
-  else log[i] = { ...log[i], ...e, outcome: e.outcome ?? log[i].outcome };
-  log.sort((a, b) => b.date.localeCompare(a.date));
-  await _cogSaveLog(log);
-  res.json({ ok: true, n: log.length });
+  try {
+    const log = await _cogLoadLog();
+    const i = log.findIndex(x => x.date === e.date);
+    // Merge rather than replace: the four messages arrive hours apart, so a
+    // later POST must not wipe the stages already logged that morning.
+    if (i === -1) log.unshift({ ...e, logged_at: new Date().toISOString() });
+    else log[i] = { ...log[i], ...e, outcome: e.outcome ?? log[i].outcome };
+    log.sort((a, b) => b.date.localeCompare(a.date));
+    await _cogSaveLog(log);
+    res.json({ ok: true, n: log.length });
+  } catch (err) { res.status(500).json({ ok: false, error: err?.message || String(err) }); }
 });
 
 app.delete('/api/cog-signals/:date', async (req, res) => {
-  const log = (await _cogLoadLog()).filter(x => x.date !== req.params.date);
-  await _cogSaveLog(log);
-  res.json({ ok: true, n: log.length });
+  try {
+    const log = (await _cogLoadLog()).filter(x => x.date !== req.params.date);
+    await _cogSaveLog(log);
+    res.json({ ok: true, n: log.length });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // Resolve every unresolved TRADE day against real bars. Idempotent; `force`
 // re-resolves days that already have an outcome (after a correction).
 app.post('/api/cog-signals/resolve', async (req, res) => {
   if (!process.env.OANDA_KEY) return res.status(503).json({ ok: false, error: 'OANDA_KEY not set' });
-  const force = req.query.force === 'true';
-  const log = await _cogLoadLog();
-  const today = new Date().toISOString().substring(0, 10);
-  let resolved = 0, skipped = 0;
-  for (const e of log) {
-    if (e.date >= today) { skipped++; continue; }          // day not closed yet
-    if (e.outcome && !force) continue;
-    try {
-      const o = await _cogResolveDay(e);
-      if (o) { e.outcome = o; resolved++; } else skipped++;
-    } catch (err) { e.resolve_error = err.message; skipped++; }
-  }
-  await _cogSaveLog(log);
-  res.json({ ok: true, resolved, skipped, ...(_cogSummary(log)) });
+  try {
+    const force = req.query.force === 'true';
+    const log = await _cogLoadLog();
+    const today = new Date().toISOString().substring(0, 10);
+    let resolved = 0, skipped = 0;
+    for (const e of log) {
+      if (e.date >= today) { skipped++; continue; }          // day not closed yet
+      if (e.outcome && !force) continue;
+      try {
+        const o = await _cogResolveDay(e);
+        if (o) { e.outcome = o; resolved++; } else skipped++;
+      } catch (err) { e.resolve_error = err.message; skipped++; }
+    }
+    await _cogSaveLog(log);
+    res.json({ ok: true, resolved, skipped, ...(_cogSummary(log)) });
+  } catch (e) { res.status(500).json({ ok: false, error: e?.message || String(e) }); }
 });
 
 // Forward record of HIS calls — after costs, on the account basis his own
@@ -15579,7 +15600,11 @@ async function _goldEtfFlowSeries() {
   const age = Date.now() - _goldEtfFlowCache.fetchedAt;
   if (_goldEtfFlowCache.data && age < GOLD_ETF_FLOW_TTL_MS) return _goldEtfFlowCache.data;
 
-  const raw = await kv.get(GOLD_ETF_FLOW_KV).catch(() => null);
+  // getStrict, not get: read-MODIFY-write over a point-in-time series that
+  // cannot be recovered once overwritten ("a missed day cannot be recovered
+  // later" per kv.js). A swallowed backend failure reading back as "no
+  // history" would truncate the whole series to today's single point.
+  const raw = await kv.getStrict(GOLD_ETF_FLOW_KV);
   let series = raw ? JSON.parse(raw) : [];         // [{date, value}] ascending, value = combined AUM USD
   const today = new Date().toISOString().slice(0, 10);
 
@@ -17509,7 +17534,10 @@ app.post('/api/range-line-bot/oi', express.json({ limit: '256kb' }), async (req,
     if (!key) return res.status(400).json({ ok: false, error: 'instrument required' });
     const levels = parseOILevels(text || '');
     const day = date || _rlSessionDate(null);
-    const raw = await kv.get('range_line_oi').catch(() => null);
+    // getStrict: read-MODIFY-write over a key that "accumulates by date — never
+    // wipes prior days" (see the comment above). A swallowed backend failure
+    // reading back as "empty" would do exactly that on the very next paste.
+    const raw = await kv.getStrict('range_line_oi');
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
     store[day] = store[day] || {};
     if (levels.length) store[day][key] = levels;
@@ -17685,7 +17713,10 @@ async function _rlSnapshotOIFromStore() {
     const oiStore = JSON.parse(raw).data ?? JSON.parse(raw);
     if (!oiStore || typeof oiStore !== 'object') return 0;
     const day = _rlSessionDate(null);
-    const storeRaw = await kv.get('range_line_oi').catch(() => null);
+    // getStrict — same reasoning as the manual-paste route above: this key
+    // accumulates forward and a swallowed read failure would overwrite the
+    // whole history with just today's snapshot.
+    const storeRaw = await kv.getStrict('range_line_oi');
     const store = storeRaw ? (JSON.parse(storeRaw).data ?? JSON.parse(storeRaw)) : {};
     store[day] = store[day] || {};
     const before = JSON.stringify(store[day]);          // change-guard, see the put below
@@ -19148,7 +19179,10 @@ async function _volatilityV2AccumulateTradeLog() {
     const status = JSON.parse(raw).data ?? JSON.parse(raw);
     const closed = status?.today_closed_trades || [];
     if (!closed.length) return;
-    const logRaw = await kv.get('volatility_bot_v2_trade_log').catch(() => null);
+    // getStrict — same read-modify-write bug already fixed on oi_bot_trade_log /
+    // range_line_trade_log / confluence_trade_log (2026-09-28): a swallowed CF
+    // read failure here would silently truncate this log to empty too.
+    const logRaw = await kv.getStrict('volatility_bot_v2_trade_log');
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
     let added = 0;
@@ -19562,7 +19596,9 @@ async function _volatilityV2WeeklyDriftAudit() {
       matchRate: report.matchRate, thinMarginOrNoVote: report.thinMarginOrNoVote,
       mismatchDetail: report.mismatchDetail.slice(0, 20), // cap stored detail -- not the full trade dump every week
     };
-    const histRaw = await kv.get(VOTE_DRIFT_HISTORY_KEY).catch(() => null);
+    // getStrict — read-MODIFY-write over an accumulating weekly audit history;
+    // a swallowed failure would truncate it back to just this week's entry.
+    const histRaw = await kv.getStrict(VOTE_DRIFT_HISTORY_KEY);
     const history = histRaw ? (JSON.parse(histRaw).data ?? JSON.parse(histRaw)) : [];
     history.push(entry);
     if (history.length > VOTE_DRIFT_MAX_HISTORY) history.splice(0, history.length - VOTE_DRIFT_MAX_HISTORY);
@@ -20353,7 +20389,11 @@ app.get('/api/oi-bot/hold-calibration', async (req, res) => {
 let _basisZeroQuoteStreak = 0;
 async function _refreshOIBasis() {
   try {
-    const raw = await kv.get('oi_store').catch(() => null);
+    // getStrict: a swallowed backend failure would read as "no pairs stored",
+    // which happens to no-op safely here (nothing to loop over -> changed stays
+    // 0 -> the put below is skipped) rather than overwrite oi_store — but throw
+    // anyway so the failure is visible instead of silently doing nothing.
+    const raw = await kv.getStrict('oi_store');
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
     let changed = 0, quoted = 0, n = 0;
     for (const [pair, inst] of Object.entries(store || {})) {
@@ -20424,7 +20464,9 @@ app.post('/api/oi/reanalyse', async (req, res) => {
   try {
     const live = String(req.query.live || '') === '1';
     const only = req.query.pair ? new Set(String(req.query.pair).split(',').map(s => s.trim()).filter(Boolean)) : null;
-    const raw = await kv.get('oi_store').catch(() => null);
+    // getStrict: same reasoning as _refreshOIBasis above — a swallowed failure
+    // would read as "nothing stored" (no-op here, but throw so it's visible).
+    const raw = await kv.getStrict('oi_store');
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
     const pairs = Object.keys(store || {}).filter(p => !only || only.has(p));
     const reanalysed = [], skipped = [], errors = [], fresh = {};
@@ -27888,7 +27930,12 @@ app.get('/api/vol-horse-race/status/:jobId', (req, res) => {
 // KV log (persists in CF KV). `read` returns pooled forward stats split at the
 // tracking-start date vs the pre-tracking backtest baseline — the overfit tell.
 const ftJobs = new Map();
-const _ftLoad = async (key, dflt) => { try { const raw = await kv.get(key); return raw ? JSON.parse(raw) : dflt; } catch { return dflt; } };
+// getStrict, not get: every caller below does a read-MODIFY-write (merge new
+// signals/claims into the existing log, write the merge back). A swallowed
+// backend failure here would read back as "log is empty" and the write-back
+// would destroy the whole accumulated forward-track history — the same bug
+// that wiped oi_history (2026-08-26) and oi_bot_trade_log (2026-09-28).
+const _ftLoad = async (key, dflt) => { const raw = await kv.getStrict(key); return raw ? JSON.parse(raw) : dflt; };
 app.post('/api/forward-track/refresh', express.json({ limit: '8kb' }), (req, res) => {
   if (!process.env.OANDA_KEY && !fs.existsSync(BT_M1_DIR)) return res.status(500).json({ ok: false, error: 'No M1 source (OANDA_KEY / R2 / local parquet)' });
   const { pair = '' } = req.body || {};
@@ -32239,7 +32286,9 @@ app.post('/api/hedge-audit/entries', async (req, res) => {
   try {
     const newEntries = req.body;
     if (!Array.isArray(newEntries) || !newEntries.length) return res.json({ ok: true, added: 0 });
-    const raw = await kv.get('hedge_audit_log');
+    // getStrict — read-MODIFY-write over the forward-test audit log; a
+    // swallowed backend failure would drop every entry logged before this call.
+    const raw = await kv.getStrict('hedge_audit_log');
     const existing = raw ? JSON.parse(raw) : [];
     const existingTickets = new Set(existing.map(e => e.ticket));
     const ts = new Date().toISOString();
@@ -32261,7 +32310,8 @@ app.patch('/api/hedge-audit/entries/:ticket', async (req, res) => {
   try {
     const ticket = String(req.params.ticket);
     const updates = req.body || {};
-    const raw = await kv.get('hedge_audit_log');
+    // getStrict — same reasoning as the POST entries route above.
+    const raw = await kv.getStrict('hedge_audit_log');
     const entries = raw ? JSON.parse(raw) : [];
     const idx = entries.findIndex(e => String(e.ticket) === ticket);
     if (idx === -1) return res.json({ ok: true, updated: 0 });
@@ -35345,7 +35395,9 @@ async function nqPushKv() {
 async function nqAuditUpdate(fields) {
   try {
     const today = nqMon.date || new Date().toISOString().substring(0, 10);
-    const raw   = await kv.get(NQ_AUDIT_KV).catch(() => null);
+    // getStrict — read-MODIFY-write over the 90-day gate audit log; a swallowed
+    // backend failure would truncate it to just today's entry.
+    const raw   = await kv.getStrict(NQ_AUDIT_KV);
     let log = [];
     try {
       const parsed = raw ? JSON.parse(raw) : [];
@@ -35380,7 +35432,11 @@ async function _qmrResolveForward(spec) {
   const out = { resolved: [], open: [], unresolved: [] };
   if (!process.env.OANDA_KEY) return out;
 
-  const raw = await kv.get(spec.kvAudit).catch(() => null);
+  // getStrict: a swallowed read failure would read back as "no open entries",
+  // which happens to no-op safely here (nothing to resolve -> changed stays
+  // false -> the put below is skipped) — but throw so the failed resolve pass
+  // is visible instead of silently skipping the day.
+  const raw = await kv.getStrict(spec.kvAudit);
   let log = [];
   try {
     const parsed = raw ? JSON.parse(raw) : [];
@@ -35972,7 +36028,9 @@ async function _iqrPushKv(mon) {
 async function _iqrAuditUpdate(mon, fields) {
   try {
     const today = mon.date || new Date().toISOString().substring(0, 10);
-    const raw   = await kv.get(mon.kvAudit).catch(() => null);
+    // getStrict — same reasoning as nqAuditUpdate above: read-MODIFY-write over
+    // a 90-day audit log, and a swallowed failure would truncate it.
+    const raw   = await kv.getStrict(mon.kvAudit);
     let log = [];
     try {
       const parsed = raw ? JSON.parse(raw) : [];
