@@ -432,6 +432,10 @@ conversations real:
   buy-and-hold. Always show the floor and the naive benchmark.
 - **Pre-register both outcomes before running a test.** Say what "it worked" and
   "it didn't" each look like, so a null can't be re-narrated into a maybe.
+  Use `MD files/PREREG_TEMPLATE.md`: it also requires the minimum detectable
+  effect (a cell that can't reach its own pass bar is UNDERPOWERED, not null)
+  and the multiplicity correction, both written before the run
+  (`js/preregStats.js`).
 - **Pooled nulls hide subset edges — disaggregate before declaring null.** But
   count the cells and state the chance-baseline (multiple testing): finding a
   few "winners" among 70 slices is what noise does. Survivors must beat chance

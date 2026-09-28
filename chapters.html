@@ -112,7 +112,7 @@ const PLANNED = [
   ['J', 'Commodities', false], ['K', 'Positioning', false], ['L', 'Volatility', false],
 ];
 
-const VERDICT_CLASS = { validated: 'v-val', null: 'v-null', context: 'v-ctx' };
+const VERDICT_CLASS = { validated: 'v-val', null: 'v-null', context: 'v-ctx', underpowered: 'v-null' };
 
 /** The ledger's own verdicts, so a chapter cannot imply more than has been measured. */
 function evidenceBlock(ids) {
