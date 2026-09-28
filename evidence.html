@@ -22,10 +22,10 @@
   .tally span{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text2)}
   .tally b{color:var(--text)}
   .card{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px}
-  .card.validated{border-left-color:var(--bull)} .card.null{border-left-color:var(--text3)} .card.context{border-left-color:var(--amber)}
+  .card.validated{border-left-color:var(--bull)} .card.null{border-left-color:var(--text3)} .card.context{border-left-color:var(--amber)} .card.underpowered{border-left-color:var(--text3);border-left-style:dashed}
   .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px}
   .v{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:800;padding:2px 7px;border-radius:4px}
-  .v.validated{background:var(--bull-bg);color:var(--bull)} .v.null{background:var(--card2);color:var(--text3)} .v.context{background:var(--amber-bg);color:var(--amber)}
+  .v.validated{background:var(--bull-bg);color:var(--bull)} .v.null{background:var(--card2);color:var(--text3)} .v.context{background:var(--amber-bg);color:var(--amber)} .v.underpowered{background:var(--card2);color:var(--text3);outline:1px dashed var(--text3)}
   .claim{font-size:14px;font-weight:700;line-height:1.4}
   .meta{font-size:10.5px;color:var(--text3)}
   .r{font-size:12.5px;line-height:1.6;color:var(--text2);margin-top:4px}
@@ -50,6 +50,7 @@
   <button class="hbtn" data-f="validated" onclick="setFilter('validated')">✓ validated</button>
   <button class="hbtn" data-f="null" onclick="setFilter('null')">∅ null</button>
   <button class="hbtn" data-f="context" onclick="setFilter('context')">~ base rate</button>
+  <button class="hbtn" data-f="underpowered" onclick="setFilter('underpowered')">◌ underpowered</button>
   <button class="hbtn" data-f="firing" onclick="setFilter('firing')">firing now</button>
   <span class="stamp">·</span>
   <button class="hbtn" data-d="all" onclick="setDomain('all')">all domains</button>
@@ -62,7 +63,7 @@
   <a class="hbtn" href="today.html">☀️ Daily Brief</a>
 </div>
 <div class="wrap">
-  <div class="intro">Every line here was written down as a claim, <b>pre-registered</b>, then run against this desk's own data with paired controls — the same method whether the idea came from an educator, a newsletter, or the page itself. A <b>✓ validated</b> finding is about <b>range</b>, never direction. A <b>∅ null</b> is a relationship that was tested and did nothing — the brief is told to say so when it touches one. A <b>~ base rate</b> is a description with its odds. Each finding accumulates a <b>forward record</b> from the Desk Watch: every time it fired, and what the next five sessions actually did.</div>
+  <div class="intro">Every line here was written down as a claim, <b>pre-registered</b>, then run against this desk's own data with paired controls — the same method whether the idea came from an educator, a newsletter, or the page itself. A <b>✓ validated</b> finding is about <b>range</b>, never direction. A <b>∅ null</b> is a relationship that was tested and did nothing — the brief is told to say so when it touches one. A <b>~ base rate</b> is a description with its odds. A <b>◌ underpowered</b> test could only have found an effect far larger than a realistic one: it rules out a big effect and says nothing about a small one. Each finding accumulates a <b>forward record</b> from the Desk Watch: every time it fired, and what the next five sessions actually did.</div>
   <div class="tally" id="tally"></div>
   <div id="cards"><div class="note">Loading…</div></div>
   <div class="note">Method, numbers and write-ups: <code>MD files/MARKET_SENSE_TESTS.md</code>, <code>GROWTH_VS_YIELDS_TEST.md</code>, <code>SQUEEZE_VOL_TEST.md</code>, <code>APPROACH_SPEED_CONTROL_TEST.md</code>. The ledger itself is <code>js/deskEvidence.js</code>; the watch is <code>js/deskWatch.js</code>. Nothing enters this book by reputation.</div>
@@ -70,8 +71,8 @@
 <script type="module">
   import { DESK_EVIDENCE } from './js/deskEvidence.js';
   const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const GL = { validated: '✓', null: '∅', context: '~' };
-  const WORD = { validated: 'validated', null: 'tested null', context: 'base rate' };
+  const GL = { validated: '✓', null: '∅', context: '~', underpowered: '◌' };
+  const WORD = { validated: 'validated', null: 'tested null', context: 'base rate', underpowered: 'underpowered' };
   let watch = null, filter = 'all', domain = 'all';
   window.setDomain = d => { domain = d; document.querySelectorAll('.hbtn[data-d]').forEach(b => b.classList.toggle('on', b.dataset.d === d)); render(); };
   window.setFilter = f => { filter = f; document.querySelectorAll('.hbtn[data-f]').forEach(b => b.classList.toggle('on', b.dataset.f === f)); render(); };
@@ -83,7 +84,7 @@
     const list = DESK_EVIDENCE.filter(e => (domain === 'all' || e.domain === domain) && (filter === 'all' ? true : filter === 'firing' ? firingFor(e.id).length : e.verdict === filter));
     const n = v => DESK_EVIDENCE.filter(e => e.verdict === v).length;
     const nd = d => DESK_EVIDENCE.filter(e => e.domain === d).length;
-    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span>`;
+    document.getElementById('tally').innerHTML = `<span><b>${DESK_EVIDENCE.length}</b> tested</span><span>macro <b>${nd('macro')}</b> · events <b>${nd('events')}</b> · price <b>${nd('price')}</b> · vol <b>${nd('volatility')}</b> · positioning <b>${nd('positioning')}</b> · execution <b>${nd('execution')}</b></span><span>✓ <b>${n('validated')}</b> validated</span><span>∅ <b>${n('null')}</b> null</span><span>~ <b>${n('context')}</b> base rates</span><span>◌ <b>${n('underpowered')}</b> underpowered</span><span>firing now <b>${states.filter(t => t.firing && t.evidenceId).length}</b></span>`;
     document.getElementById('cards').innerHTML = list.map(e => {
       const fire = firingFor(e.id), rec = logFor(e.id);
       const live = fire.length

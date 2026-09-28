@@ -1,6 +1,6 @@
 # FX Factor Book v2 — Pre-registered test
 
-> **Status: RUN 2026-09-27 — factor book NULL (§6.1); OU `too-few-oos-trades`, invalid as a test (§6.4); OU v2.1 pre-registered (§7), not yet run.** Frozen 2026-09-26, before
+> **Status: RUN 2026-09-27 — factor book NULL, re-run with the same verdicts (§6.1, §8); OU v2 `too-few-oos-trades`, invalid as a test (§6.4); OU v2.1 `too-few-oos-trades` a second time on the core 4 (§9). Both are UNDERPOWERED in the sense of `PREREG_TEMPLATE.md` §5 (§10).** Frozen 2026-09-26, before
 > any OANDA/FRED run. Written before the result exists so a null can't be
 > re-narrated into a maybe (working agreement). Research only — nothing here is
 > imported by a live bot, and the incumbent engines' defaults are unchanged
@@ -245,3 +245,104 @@ Stops dominating the exit mix (> 50%) is read as "these crosses were not mean
 reverting over 2008–26", whichever book wins.
 
 Run: `fx-factor-v2.html` → OU exits = v2.1, universe = 4 core (then all 21).
+
+---
+
+## 8. Factor book — second run, 2026-09-27 (page run, OOS from 2021-01-15)
+
+Same frozen spec, rates lagged 60 days for every carry run, K1/K2 rebalances
+counted in 5-day units. Recorded from the page's verdict table (owner's screenshot).
+
+| Id | IS Sh | OOS Sh ± SE | OOS ann % | OOS vol % | OOS maxDD % | OOS rebal | ΔOOS | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| T0 | −0.16 | −0.16 | −2.68 | 17.07 | −41.07 | 295 | – | incumbent |
+| **T1** | −0.11 | −0.07 ± 0.41 | −0.57 | 7.91 | −16.49 | 295 | +0.09 | within-noise |
+| T1a | −0.08 | −0.14 ± 0.41 | −1.83 | 13.05 | −30.92 | 295 | +0.02 | within-noise (diag) |
+| T1b | −0.19 | −0.18 ± 0.41 | −2.87 | 16.23 | −38.48 | 295 | −0.02 | within-noise (diag) |
+| T1c | −0.18 | −0.12 ± 0.41 | −1.19 | 10.33 | −22.90 | 295 | +0.04 | within-noise (diag) |
+| **T2** | −0.16 | −0.19 ± 0.41 | −3.77 | 20.14 | −43.36 | 295 | −0.03 | within-noise |
+| **T5** | −0.74 | 0.10 ± 0.41 | 1.38 | 13.10 | −26.88 | 70 | +0.26 | within-noise |
+| C0 | −0.12 | 0.61 | 10.03 | 15.71 | −23.99 | 70 | – | incumbent |
+| **C1** | −0.14 | 0.31 ± 0.41 | 3.66 | 11.53 | −21.08 | 70 | −0.30 | within-noise |
+| C1b | −0.04 | 0.66 ± 0.41 | 2.75 | 4.09 | −7.73 | 70 | +0.06 | within-noise (diag) |
+| **C2** | −0.10 | 0.51 ± 0.41 | 11.43 | 21.08 | −37.22 | 70 | −0.10 | within-noise |
+| **C3** | −0.11 | 0.69 ± 0.41 | 10.93 | 15.01 | −22.67 | 70 | +0.08 | within-noise |
+| KB | −0.19 | 0.29 | 3.48 | 11.92 | −24.84 | 70 | – | incumbent |
+| **K1** | 0.03 | −0.01 ± 0.41 | −0.11 | 12.07 | −27.26 | 295 | −0.30 | within-noise |
+| **K2** | −0.00 | −0.11 ± 0.41 | −1.73 | 15.84 | −36.02 | 295 | −0.40 | within-noise |
+
+**Verdict unchanged: all 8 primaries `within-noise`, none near the Bonferroni
+bar (+1.04).** The largest primary Δ is T5's +0.26.
+
+**Reproducibility note (not a verdict).** The two runs are a day apart on the
+same spec, yet T0 moved −0.03 → −0.16 OOS, T5 −0.03 → +0.10, C1 −0.46
+(`no-improvement`) → −0.30 (`within-noise`). No engine file in the factor-book
+path changed between them, so the likely cause is the data window (a refreshed
+OANDA/FRED pull, one-day shift in the OOS start). Swings of 0.1–0.4 Sharpe from a
+data refresh are the same size as the effects the overlays were meant to add,
+which is the power problem in §10 seen from another side.
+
+## 9. OU v2.1 — result, run 2026-09-27 21:20 UTC (β = 1, v2.1 exits, core 4)
+
+Recorded from the page (owner's screenshot) and the OU %-returns CSV export.
+
+| Book | IS Sh | OOS Sh | OOS ann % | OOS maxDD % | OOS trades | ΔOOS | Verdict |
+|---|---|---|---|---|---|---|---|
+| Pooled ±2σ (benchmark) | 0.46 | −0.07 | −0.07 | −2.08 | – | – | benchmark |
+| **Pooled OU bands** | 0.07 | 0.67 ± 0.42 | 0.64 | −1.55 | 22 | +0.74 | `too-few-oos-trades` |
+
+| Pair | Mode | Trades (OOS) | Win % | OOS Sh | Open at end | Exits target / stop / time | Half-life (d) |
+|---|---|---|---|---|---|---|---|
+| AUD/NZD | OU | 24 (8) | 58.3 | −0.09 | 0 | 1 / 5 / 18 | 121.6 |
+| AUD/NZD | ±2σ | 21 (11) | 71.4 | 0.37 | 1 | 7 / 4 / 9 | 121.6 |
+| EUR/CHF | OU | 18 (5) | 38.9 | 0.63 | 1 | 1 / 6 / 10 | 27.3 |
+| EUR/CHF | ±2σ | 16 (0) | 56.3 | −0.52 | 1 | 3 / 3 / 9 | 27.3 |
+| EUR/GBP | OU | 6 (0) | 16.7 | −0.04 | 1 | 0 / 3 / 2 | 10.6 |
+| EUR/GBP | ±2σ | 7 (0) | 14.3 | −0.04 | 1 | 0 / 3 / 3 | 10.6 |
+| AUD/CAD | OU | 23 (9) | 69.6 | 0.71 | 1 | 2 / 4 / 16 | 69.7 |
+| AUD/CAD | ±2σ | 35 (9) | 62.9 | 0.38 | 1 | 13 / 5 / 16 | 69.7 |
+
+**Pre-registered verdict: `too-few-oos-trades` (22 of ≥30), the second time on
+the core 4.** §7 wrote down what that means: *this universe cannot test the idea
+at daily frequency.* The exits fixed the stuck-trade flaw (68 closed OU trades
+vs 20 across all books in v2), so this is a clean run that is simply too thin.
+
+What the run also says (context, not verdicts):
+
+- **Even with enough trades, the Δ would not have been evidence.** +0.74 against
+  a Bonferroni bar of 2.54 × 0.42 = +1.07. It would have been a plain `wins-oos`:
+  a forward-test candidate at best.
+- **Stops did not dominate (the §7 falsifier): 18 of 68 closed OU exits (26%).
+  Time stops did: 46 of 68 (68%). Only 4 (6%) reached the OU target.** The
+  crosses drift back part of the way within 3 half-lives and rarely finish the
+  reversion the model prices. Whatever the OU book earns, it earns from partial
+  reversion caught by the clock, not from the optimal exit level. The ±2σ book
+  reached its target 23 of 75 times (31%).
+- **Trade log (71 OU trades, 3 of them open and marked to 2026-09-25).**
+  In-sample (46, before 2021-01-15): mean +0.14% per trade, 46% winners, t = 0.4.
+  Out-of-sample (25, including the 3 open): mean +0.51%, 68% winners, t = 1.6.
+  The OOS lift comes with no in-sample support, the same era pattern as carry C0
+  (−0.12 IS, +0.61 OOS).
+- **Audit item.** One open trade dated 2026-09-25 shows an MAE of −10.54% while
+  marked at −0.80%, with a 2σ stop in place. Either the stop is checked on a
+  different path than the MAE (stop on the model's spread, MAE on the
+  capital-normalised % path) or it did not fire when it should have. Check
+  `runOuPairs` before any further OU run.
+- **All-21 diagnostic** (breadth check, cannot win): not yet recorded.
+
+## 10. Power, stated after the fact (`PREREG_TEMPLATE.md` §5)
+
+This test pre-dates the template. Its power, computed from the figures above:
+
+| Test | SE of Sharpe | Bar | MDE (80% power, one-sided α = 0.05/9) | Plausible effect | Reading |
+|---|---|---|---|---|---|
+| Factor book overlays | 0.41 | Δ ≥ +1.04 | **+1.39 Sharpe** | +0.1 to +0.3 (literature) | UNDERPOWERED |
+| OU bands, pooled | 0.42 | Δ ≥ +1.07 | **+1.42 Sharpe** | — | UNDERPOWERED |
+
+Both could only have found an improvement several times larger than a realistic
+one. The honest ledger reading is therefore two-sided: **no large improvement
+exists** (every observed Δ is far below the MDE and most are near zero), and
+**realistic improvements were never testable** on 7 USD crosses / 4 G10 crosses
+with 5.7 years out of sample. A future FX factor test should reach its MDE through
+breadth (more instruments, the multi-asset `trendFollowEngine`), not by re-running
+this universe.
