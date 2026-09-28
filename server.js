@@ -17541,7 +17541,12 @@ async function _rlAccumulateTradeLog() {
     const status = JSON.parse(raw).data ?? JSON.parse(raw);
     const closed = status?.today_closed_trades || [];
     if (!closed.length) return;
-    const logRaw = await kv.get('range_line_trade_log').catch(() => null);
+    // getStrict, not get: this is a read-MODIFY-write. get() collapses "key doesn't
+    // exist yet" and "CF read failed" into the same null, which here means a single
+    // transient KV hiccup truncates the whole durable log back to just this tick's
+    // closed trades — see kv.js's getStrict doc (oi_history was wiped this way
+    // 2026-08-26; oi_bot_trade_log confirmed hit 2026-09-28, twenties of rows -> 0).
+    const logRaw = await kv.getStrict('range_line_trade_log');
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
     let added = 0;
@@ -17580,7 +17585,13 @@ async function _oiAccumulateTradeLog() {
     const status = JSON.parse(raw).data ?? JSON.parse(raw);
     const closed = status?.today_closed_trades || [];
     if (!closed.length) return;
-    const logRaw = await kv.get('oi_bot_trade_log').catch(() => null);
+    // getStrict, not get: read-MODIFY-write. get() collapses "key doesn't exist
+    // yet" and "CF read failed" into the same null, which here truncates the whole
+    // durable log back to just this tick's closed trades on a single transient KV
+    // hiccup — see kv.js's getStrict doc (oi_history was wiped this way 2026-08-26;
+    // oi_bot_trade_log confirmed hit the same thing 2026-09-28, twenties of
+    // fade/react-qualifying rows -> 0, discovered via the hold-calibration banner).
+    const logRaw = await kv.getStrict('oi_bot_trade_log');
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
     // Zone features the bot stamped at entry (hold score + components, mode, regime,
@@ -17632,7 +17643,9 @@ async function _confluenceAccumulateTradeLog() {
     const status = JSON.parse(raw).data ?? JSON.parse(raw);
     const closed = status?.today_closed_trades || [];
     if (!closed.length) return;
-    const logRaw = await kv.get('confluence_trade_log').catch(() => null);
+    // getStrict, not get — see the range-line/OI accumulators above for why a plain
+    // get().catch(()=>null) here can silently truncate the whole durable log.
+    const logRaw = await kv.getStrict('confluence_trade_log');
     const log = logRaw ? (JSON.parse(logRaw).data ?? JSON.parse(logRaw)) : [];
     const seen = new Set(log.map(t => t.position_id ?? t.ticket));
     let added = 0;
