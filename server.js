@@ -19803,7 +19803,16 @@ app.get('/api/level-atlas/vote-state/:instrument', async (req, res) => {
     // whenever that touch happened).
     let liveContext = null;
     try {
-      const live = (await _laGetFastLive(key))?.live;
+      // `pair` (the route's own un-resolved input), not `key` -- the live
+      // cache and its R2 snapshots are keyed by the display/config
+      // convention (us2000/uk100/de30), not resolveKey()'s canonical form
+      // (rut/ftse/dax). Found 2026-09-28: this line used `key`, so every
+      // vote-state lookup for these 3 index pairs specifically 404'd on
+      // both the R2 snapshot AND the M1 load, cold-starting on every call
+      // and never finding data -- diagnostic-page-only bug, the actual
+      // live plan producer (_refreshVolatilityV2Plan) never made this
+      // mistake, it already uses enabled_pairs' own spelling directly.
+      const live = (await _laGetFastLive(pair))?.live;
       const ref = live?.pending?.[0]?.touch ?? live?.touches?.at(-1)?.touch ?? null;
       if (ref) liveContext = { dayVol: ref.dayVol ?? null, session: ref.session ?? null, gapBucket: ref.gapBucket ?? null };
     } catch { /* live context is optional too */ }
