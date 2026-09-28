@@ -269,15 +269,30 @@ t('no morning plan means no brief, with a reason rather than an empty page', () 
   assert.equal(endOfDayBrief({}).ok, false);
 });
 
-t('a plan captured outside the morning window produces no brief at all', () => {
+// The old version of this required NO brief at all off a late plan. That threw the day
+// away with the scorecard. The day is now described; what must never happen is the late
+// plan being narrated as though it were a morning call.
+t('a late plan is described as a day, never narrated as a morning call', () => {
   const late = endOfDay({
     morning: { plan: { at: '2026-09-23T20:43:02.205Z', pairs: { EURUSD: { price: 1.145, expRange: 44, lean: 'down' } } } },
     live: { EURUSD: { session_open: 1.1447, current_price: 1.1385, ac: 'fx', sym: 'EUR_USD' } },
   });
   const b = endOfDayBrief({ eod: late, moved: [], nowMs: NOW });
-  assert.equal(b.ok, false);
-  assert.match(b.reason, /outside the 06:00-11:00 window/);
-  assert.equal(b.headline, undefined, 'nothing is narrated off a record that is not a morning record');
+  assert.notEqual(b.ok, false, 'a brief is produced');
+  assert.match(b.headline, /No call was made this morning/);
+  const joined = b.paragraphs.join(' ');
+  assert.match(joined, /outside the 06:00-11:00 window/, 'and it says why nothing was marked');
+  assert.match(joined, /not a scorecard/);
+  // the guarantee: the late lean is not scored anywhere in the prose
+  assert.doesNotMatch(joined, /On direction the page committed/);
+  assert.doesNotMatch(joined, /the right way/);
+});
+
+t('a day with no plan at all still produces a brief', () => {
+  const r = endOfDay({ morning: null, live: { EURUSD: { session_open: 1.1447, current_price: 1.1385, ac: 'fx', sym: 'EUR_USD' } } });
+  const b = endOfDayBrief({ eod: r, moved: [], nowMs: NOW });
+  assert.ok(b.headline, 'the evening is not silent just because the morning was');
+  assert.match(b.paragraphs.join(' '), /no morning plan was captured/i);
 });
 
 // ── the spine: the markets described every day, whatever the board did ───────

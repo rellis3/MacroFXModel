@@ -146,34 +146,57 @@ export function plannedInWindow(at) {
   return h >= PLAN_WINDOW_UTC.from && h < PLAN_WINDOW_UTC.to;
 }
 
+/** A morning entry with nothing in it: enough for pairReview to describe the day, and
+ *  not enough for it to pretend the page called anything. */
+const NO_CALL = { price: null, lean: null, expRange: null };
+
 export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, chainPM = null } = {}) {
   const plan = morning?.plan?.pairs ?? null;
-  if (!plan) return { ok: false, reason: 'no morning snapshot for today yet' };
   // A plan captured at 20:43 is not a morning plan, whatever the row calls it. Scoring
   // one would read 20 leans right out of 20 for the obvious reason, and a look-back that
   // flatters itself that hard is worse than no look-back. Seen live: the first version
   // of this gated on "after 06:00 UTC" only, and a tab opened in the evening wrote the
   // day's record minutes before it was read back.
   const at = morning?.plan?.at ?? null;
-  if (!plannedInWindow(at)) return { ok: false, outOfWindow: true, plannedAt: at,
-    reason: at ? `the day's plan was captured at ${String(at).slice(11, 16)} UTC, outside the 06:00-11:00 window — that is a snapshot of the afternoon, not a morning call, so there is nothing here to mark`
-               : "the day's plan carries no timestamp, so it cannot be told apart from an afternoon snapshot" };
+
+  // THE DAY HAPPENED EITHER WAY. This used to return ok:false whenever there was no
+  // usable plan, which deleted the entire evening read — measured on the live store, 5 of
+  // the last 10 days had no plan inside the window and therefore no end-of-day anything.
+  // Marking needs a morning call to mark against; DESCRIBING the session does not, and
+  // conflating the two threw away half the evenings.
+  const marked = !!plan && plannedInWindow(at);
+  const notMarked = marked ? null
+    : plan ? (at ? `the day's plan was captured at ${String(at).slice(11, 16)} UTC, outside the 06:00-11:00 window — that is a snapshot of the afternoon, not a morning call, so there is nothing to mark`
+                 : "the day's plan carries no timestamp, so it cannot be told apart from an afternoon snapshot")
+           : 'no morning plan was captured today, so there is nothing to mark — the day itself is still described below';
 
   const rows = [];
-  for (const [name, m] of Object.entries(plan)) {
-    // the full per-pair review, not just the range score: the board's headline counts
-    // need the falsifiers and the aims, and a row the drawer opens needs them anyway
-    const r = pairReview(name, m, live[name], hl[name] ?? {});
-    if (r) rows.push(r);
+  if (marked) {
+    for (const [name, m] of Object.entries(plan)) {
+      // the full per-pair review, not just the range score: the board's headline counts
+      // need the falsifiers and the aims, and a row the drawer opens needs them anyway
+      const r = pairReview(name, m, live[name], hl[name] ?? {});
+      if (r) rows.push(r);
+    }
+  } else {
+    // Tape only. NO_CALL is enough for pairReview to measure the session and not enough
+    // for it to pretend the page said anything: no expected range, so no range verdict,
+    // and no lean, so leanRight stays null and the direction tally is empty rather than
+    // zero-of-zero.
+    for (const name of Object.keys(live)) {
+      const r = pairReview(name, NO_CALL, live[name], hl[name] ?? {});
+      if (r) rows.push(r);
+    }
   }
   // Rows with no session open are NOT silently dropped -- they are counted and named, so
   // a shrinking board shows up as a number instead of as instruments quietly going
   // missing from the debrief.
   const unpriced = rows.filter(r => r.noSessionOpen).map(r => r.name);
   const priced = rows.filter(r => !r.noSessionOpen);
-  if (!priced.length) return { ok: false, reason: unpriced.length
+  if (!priced.length) return { ok: false, marked, notMarked, plannedAt: at, reason: unpriced.length
     ? `no instrument has a session open yet, so there is no window to measure today against (${unpriced.length} waiting)`
-    : 'the morning plan carried no pair this page can price' };
+    : marked ? 'the morning plan carried no pair this page can price'
+             : 'nothing on the board priced today, so there is no session to describe' };
 
   const committed = priced.filter(r => r.leanRight !== null);
   const scored = priced.filter(r => r.used != null);
@@ -196,6 +219,9 @@ export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, c
 
   return {
     ok: true,
+    // `marked` is the difference between "how did the page's calls do" and "what did
+    // the day do". The brief reads it to decide which half it is allowed to write.
+    marked, notMarked, plannedAt: at,
     // only the priced rows are the debrief; the rest are reported as a count below
     rows: priced.sort((a, b) => (b.used ?? -1) - (a.used ?? -1)),
     unpriced,

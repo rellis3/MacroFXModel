@@ -9154,8 +9154,12 @@ const EOD_MIN_HOURS = 3;   // before this the day has barely started; the panel 
 const _eodFiring = row => Array.isArray(row?.plan?.firing) ? row.plan.firing : [];
 function eodInputs() {
   const day = new Date().toISOString().slice(0, 10);
-  const row = (_tl.snapshots ?? []).find(d => d.day === day);
-  if (!row?.plan?.pairs || !brief?.instruments || !window.endOfDayBrick) return null;
+  const row = (_tl.snapshots ?? []).find(d => d.day === day) ?? null;
+  // A MISSING PLAN NO LONGER KILLS THE EVENING. It used to: this returned null without
+  // `row.plan.pairs`, and both the free panel and the paid review died on it, so on the
+  // 5 of the last 10 days with no plan inside the window there was no end-of-day read at
+  // all. endOfDay() now describes the session either way and marks only when it can.
+  if (!brief?.instruments || !window.endOfDayBrick) return null;
   const live = {}, hl = {};
   for (const r of allRows()) {
     live[r.name] = r.d;
@@ -9180,10 +9184,15 @@ function renderEndOfDay() {
   const el = $('eodPanel'); if (!el) return;
   const inp = eodInputs();
   if (!inp) { el.style.display = 'none'; return; }
-  const plannedAt = Date.parse(inp.row.plan.at ?? '');
+  const plannedAt = Date.parse(inp.row?.plan?.at ?? '');
   const hrs = Number.isFinite(plannedAt) ? (Date.now() - plannedAt) / 3600000 : null;
   // Scoring a plan three hours old tells you nothing except that the day is young.
   if (hrs != null && hrs < EOD_MIN_HOURS) { el.style.display = 'none'; return; }
+  // With no plan there is nothing to count hours from, but "end of day" still has to mean
+  // something -- a session read written at 08:00 UTC describes an hour of tape. The
+  // threshold is DERIVED from the two constants already here (the plan window closes at
+  // 11:00, plus the same 3-hour wait) rather than invented, so the two paths agree.
+  if (hrs == null && new Date().getUTCHours() < PLAN_WINDOW_UTC.to + EOD_MIN_HOURS) { el.style.display = 'none'; return; }
   loadEodExtras();
 
   let r;

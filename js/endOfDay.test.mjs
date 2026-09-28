@@ -267,15 +267,39 @@ t('a plan captured outside the morning window is refused, not scored', () => {
     morning: { plan: { at: '2026-09-23T20:43:02.205Z', pairs: { GOLD: morning({ lean: 'down' }) } } },
     live: { GOLD: live() },
   });
-  assert.equal(late.ok, false);
-  assert.equal(late.outOfWindow, true);
-  assert.match(late.reason, /20:43 UTC, outside the 06:00-11:00 window/);
-  assert.match(late.reason, /nothing here to mark/);
-  assert.equal('leans' in late, false, 'a refused day publishes no tally at all');
+  // The day is still DESCRIBED -- it happened -- but the late plan is not scored, which
+  // is the guarantee that matters and is now asserted directly rather than via ok:false.
+  assert.equal(late.marked, false, 'an afternoon snapshot is not a morning call');
+  assert.match(late.notMarked, /20:43 UTC, outside the 06:00-11:00 window/);
+  assert.match(late.notMarked, /nothing to mark/);
+  assert.equal(late.leans.n, 0, 'a late plan contributes NO direction calls to the tally');
+  assert.ok(late.rows.every(r => r.leanRight === null), 'and no row may carry a scored lean');
+  assert.ok(late.rows.every(r => r.expected == null), 'nor an expected range to be judged on');
 
   const undated = endOfDay({ morning: { plan: { pairs: { GOLD: morning() } } }, live: { GOLD: live() } });
-  assert.equal(undated.ok, false);
-  assert.match(undated.reason, /no timestamp/);
+  assert.equal(undated.marked, false);
+  assert.match(undated.notMarked, /no timestamp/);
+  assert.equal(undated.leans.n, 0);
+});
+
+// Half the last ten days had no plan inside the window, and the whole evening read
+// vanished on each of them. The day happens whether or not a call was made about it.
+t('no plan at all still describes the day, it just marks nothing', () => {
+  const r = endOfDay({ morning: null, live: { GOLD: live(), NQ: live({ session_open: 30000, current_price: 30300 }) }, hl: {} });
+  assert.equal(r.ok, true, 'the session is still described');
+  assert.equal(r.marked, false);
+  assert.match(r.notMarked, /no morning plan was captured/);
+  assert.equal(r.rows.length, 2, 'every instrument that priced is described');
+  assert.ok(r.rows.every(x => Number.isFinite(x.move)), 'with a real move measured from the session open');
+  assert.equal(r.leans.n, 0, 'and nothing is scored');
+  assert.equal(r.range.n, 0);
+});
+
+t('a marked day still says so', () => {
+  const r = endOfDay({ morning: { plan: { at: AM, pairs: { GOLD: morning({ lean: 'down' }) } } }, live: { GOLD: live() } });
+  assert.equal(r.marked, true);
+  assert.equal(r.notMarked, null);
+  assert.equal(r.leans.n, 1, 'a real morning call is scored as before');
 });
 
 // The move is counted in pips, so its `dp` is 0 — using that for the PRICE rounded

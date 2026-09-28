@@ -251,7 +251,14 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
   // a reader wants first. Range beats direction: it is the measurement this desk has
   // actually validated, and the direction tally is a coin flip on a sample this size.
   const wide = med != null && med >= 130, quiet = med != null && med <= 70;
-  const headline = wide
+  // With no morning plan there is no forecast to beat, so the headline is the day itself
+  // rather than a range verdict against nothing. Silence here was the old behaviour and
+  // it removed the evening entirely on half the days.
+  const headline = !eod.marked
+    ? (usd.n && usd.word && usd.dir !== 'flat'
+        ? `No call was made this morning, so this is the day as it happened — the dollar ${usd.word} across ${usd.n} legs${risk.equity != null ? `, equities ${pct2(risk.equity)}` : ''}.`
+        : `No call was made this morning, so this is the day as it happened.`)
+    : wide
     ? `A wider day than the page forecast — the median instrument used ${med}% of its expected range, and ${eod.range.over} of ${eod.range.n} ran clean past it.`
     : quiet
     ? `A quiet day by the page's own numbers — the median instrument used only ${med}% of the range forecast for it.`
@@ -281,6 +288,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
 
   if (eod.leans.n) paragraphs.push(`On direction the page committed on ${eod.leans.n} ${eod.leans.n === 1 ? 'instrument' : 'instruments'} and ${eod.leans.right} ${eod.leans.right === 1 ? 'is' : 'are'} the right way${
     eod.commitments.nFalsifiers ? `; ${eod.commitments.falsified} of ${eod.commitments.nFalsifiers} named falsifiers traded` : ''}. ${recordLine(leanRecord)}`);
+  else if (!eod.marked) paragraphs.push(`${eod.notMarked.charAt(0).toUpperCase()}${eod.notMarked.slice(1)}. What follows is a read of the session, not a scorecard — the difference matters, because a day with no call cannot be evidence for or against the page.`);
   else paragraphs.push(`The page committed no direction on any instrument today. That is the absence of a call rather than a miss, and it is the honest outcome on a board where the read is mostly about size.`);
 
   // Regime is the page changing its mind about what KIND of market it is looking at,
