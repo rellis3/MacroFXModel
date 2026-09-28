@@ -2714,7 +2714,7 @@ async function _injectServerContext(pair, s) {
     try {
       const raw = await kv.get('oi_history').catch(() => null);
       const hist = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
-      const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+      const norm = x => String(x).toLowerCase().replace(/[\/_\s]/g, '');
       const pk = Object.keys(hist).find(k => norm(k) === norm(pair) || norm(k) === norm(_forecastKeyForPair(pair) || pair));
       const perPair = pk ? hist[pk] : null;
       if (perPair) {
@@ -4662,6 +4662,64 @@ async function _buildMorningBrief() {
     ivLine || null,
   ].filter(Boolean).join('\n');
   const heads = headlines.map(h => `• [${h.ticker}] ${_redactFedChairName(h.title)}`).join('\n') || '(no headlines fetched — read the macro data instead)';
+  // POSITIONING — where people already are, which the brief was completely blind to.
+  //
+  // This is the half of the picture the owner asked for and the prompt never carried: a
+  // grep of the whole builder found ZERO mentions of COT and one incidental "gamma". The
+  // brief is the only place on the site that reads across everything, and it could not
+  // see the two datasets that say where the crowd already sits. Both were already in KV.
+  //
+  // EACH ONE ARRIVES WITH ITS VERDICT ATTACHED, because this desk has tested them and
+  // most of what people say about them is not true here. Without the caveats the model
+  // will reach for the folk version -- walls as magnets, max pain as a target -- which
+  // are banked artefacts, and the brief would confidently print something the evidence
+  // book spent months closing.
+  let positioningLine = '';
+  try {
+    const cot = await _cotForExport();
+    const bits = [];
+    if (cot) {
+      // Only the ends of the distribution. A currency at the 50th percentile is not news,
+      // and listing eleven middling numbers is how a paragraph stops being read.
+      const ends = Object.entries(cot)
+        .filter(([, v]) => v.pct != null && (v.pct >= 80 || v.pct <= 20))
+        .sort((a, b) => Math.abs(b[1].pct - 50) - Math.abs(a[1].pct - 50));
+      const stale = Object.values(cot).some(v => v.ageDays != null && v.ageDays > 10);
+      if (ends.length) {
+        bits.push(`COT, speculative positioning as a percentile of its own history (report is ${Math.min(...Object.values(cot).map(v => v.ageDays ?? 99))}d old${stale ? ', and some of it is stale' : ''}): `
+          + ends.slice(0, 5).map(([k, v]) => `${k} ${v.pct}${v.pct >= 80 ? 'th \u2014 crowded long' : 'th \u2014 crowded short'}`).join(', ')
+          + '. A crowded book is FUEL, not a direction: it says which way a surprise would hurt more, never which way price goes next.');
+      } else {
+        bits.push('COT: nothing at an extreme \u2014 speculative positioning is mid-range across the board, so there is no crowded side to squeeze today.');
+      }
+    }
+    const oiRaw = await kv.get('oi_store').catch(() => null);
+    if (oiRaw) {
+      const od = JSON.parse(oiRaw); const data = od.data ?? od;
+      // Keys are NOT consistently spelled: the store holds EUR/USD and XAU/USD with a
+      // slash but NAS100_USD with an underscore. A hardcoded 'NAS100/USD' silently finds
+      // nothing and the brief just never mentions the index -- the exact silent-miss this
+      // repo keeps re-learning. Normalise, as the oi_store reader elsewhere already does.
+      const norm = x => String(x).toLowerCase().replace(/[\/_\s]/g, '');
+      const findPair = want => { const k = Object.keys(data || {}).find(x => norm(x) === norm(want)); return k ? data[k] : null; };
+      const rows = [];
+      for (const key of ['NAS100_USD', 'XAU/USD', 'EUR/USD']) {
+        const o = findPair(key); if (!o) continue;
+        const gex = o.exposures?.gex;
+        if (gex == null && o.callWall == null) continue;
+        rows.push(`${key} ${gex != null ? (gex > 0 ? 'positive gamma (dealers dampen moves, ranges compress)' : 'negative gamma (dealers amplify, ranges extend)') : ''}`
+          + (o.callWall != null ? `, call wall ${o.callWall}` : '') + (o.putWall != null ? `, put wall ${o.putWall}` : '')
+          + (o.dte != null ? `, ${o.dte}d to expiry` : ''));
+      }
+      if (rows.length) {
+        bits.push(`OPTIONS POSITIONING: ${rows.join('; ')}. TESTED HERE AND THIS MATTERS: the gamma SIGN is a range read and it holds \u2014 negative gamma means wider, positive means tighter. `
+          + `The walls are NOT magnets: a 2026-09-23 placebo found price rejects at a wall no more than at neighbouring strikes or at random prices, and max pain tested null. `
+          + `So use gamma to set how WIDE you expect today to be, and never write that price is being pulled toward a strike.`);
+      }
+    }
+    if (bits.length) positioningLine = `POSITIONING \u2014 where people already are:\n${bits.join('\n')}`;
+  } catch (e) { console.warn('[brief] positioning', e.message); }
+
   // Today's scheduled economic calendar (central-bank decisions, CPI/NFP, etc.).
   // Without this the brief cannot mention FOMC/ECB/BoE days — the prompt forbids
   // inventing events, so a tier-1 event that isn't fed here is silently omitted.
@@ -4782,7 +4840,7 @@ async function _buildMorningBrief() {
     const rows = raw ? (JSON.parse(raw)?.rows ?? JSON.parse(raw)) : null;
     if (Array.isArray(rows)) {
       const sm = _ledgerSummary(rows); const y = (sm.byDay ?? []).find(d => d.h1?.n > 0);
-      if (y) yesterdayLine = `YESTERDAY, SCORED: ${y.h1.hits} of ${y.h1.n} of this page's direction calls on ${y.day} were right at the next close${y.declined ? ` (${y.declined} declined as mixed)` : ''}; ${sm.overall.h1.n} scored overall, ${sm.overall.h1.n >= 30 ? Math.round(sm.overall.h1.hitRate * 100) + '% right' : 'too few for a rate'}. Open with this if the day allows; never hide a bad day.`;
+      if (y) yesterdayLine = `YESTERDAY, SCORED: ${y.h1.hits} of ${y.h1.n} of this page's direction calls on ${y.day} were right at the next close${y.declined ? ` (${y.declined} declined as mixed)` : ''}; ${sm.overall.h1.n} scored overall, ${sm.overall.h1.n >= 30 ? Math.round(sm.overall.h1.hitRate * 100) + '% right' : 'too few for a rate'}. CLOSE with this, never open with it — it is the paper's own record, not the day's news. A reader wants the market first; how well this page called last week belongs at the foot, and it is never omitted or softened.`;
     }
   } catch { /* the brief tolerates absence */ }
   const prompt = `You are writing the MORNING MARKET COLUMN for an FX/macro trading desk — the front page a trader reads before anything else. Work TOP-DOWN: macro & policy backdrop → risk regime → the US dollar → what it means for the FX complex and risk-sensitive instruments (indices, gold). Be specific and plain-spoken, like a sharp market columnist. Use ONLY the data, headlines and scheduled events below — do NOT invent events, numbers, or geopolitics you were not given. If headlines are thin, say the read is data-driven, not news-driven.
@@ -4797,6 +4855,8 @@ TIME NOW: ${nowUtc}. Every event below is marked RELEASED or UPCOMING against th
 ${yesterdayLine}
 ${fc?.meta?.news_flag ? `Scheduled risk event today: ${fc.meta.news_flag}${fomcBlock ? ' (see the FOMC block: already decided)' : ''}` : ''}${fomcBlock}
 ${macroChanges?.text ? `\n=== WHAT MOVED (change vs prior day / 1w / 1m — USE THIS to say what's shifting, not just the level) ===\n${macroChanges.text}` : ''}
+${positioningLine ? `
+=== ${positioningLine}` : ''}
 ${scorecardLines ? `\n=== MACRO SCORECARD -- this project's own cross-engine ranking, strongest to weakest ===\nEach currency is scored on real economic data, then the dimensions are GROUPED INTO SIX FACTORS -- rates & policy (rate differential, real yield, yield curve), inflation (CPI, PPI), growth (GDP, business activity), labour market, domestic demand (retail sales, consumer confidence), external balance (trade balance) -- and the factors are averaged with EQUAL WEIGHT. That grouping is the point: three dimensions measure rates and two measure inflation, so a flat average across dimensions would hand rates triple weight and inflation double, purely because more series happen to point at them. Every score is already on a -1..+1 scale; missing or stale dimensions are left out, never treated as neutral. Central-bank tone is shown per currency elsewhere but is deliberately in NO factor and scores nothing -- hawkish-score momentum was tested against forward price here and banked a clean null.\n${scorecardLines}\nHOW TO USE IT. Ground the dollar/FX-complex section in this project's own scoring rather than generic yield/DXY levels, and go one level deeper than the headline number: say WHICH FACTOR is carrying a currency's score, because "USD is strong on rates but weak on growth" is a teachable, falsifiable statement and "USD scores +0.4" is not. Lean hardest on the WHAT IS SEPARATING THE BOARD line -- that is the factor currencies are actually spread across today, and a currency being strong on a factor everyone agrees about tells you far less than one leading the factor in dispute. Name the disagreements too: a composite where every factor points the same way is a much stronger read than one where growth and inflation pull opposite ways and net out near zero, and those two look identical in the headline number. A curve reading near 0 or negative means that currency's curve is flat or inverted -- name it directly if rates is the factor driving the score. Do not give a thin read the confidence of a well-covered one: [n/6 factors] and the per-factor "(x/y series fresh)" counts say how much is actually behind each number, and any dimension listed as excluded-as-stale is genuinely absent, not neutral. Finally, this whole composite is CONTEXT, not a signal -- macro-as-signal has been tested and banked as null in this project five times over. Use it to explain why the FX board looks the way it does; never present it as a forecast.` : ''}
 
 === TODAY'S SCHEDULED ECONOMIC EVENTS ===
@@ -4824,6 +4884,8 @@ AND SAY WHAT YOU ARE DECLINING TO USE. Where a channel is unusable — a contrad
 
 STRUCTURE RULES — this is read every morning before the open, so length is a cost:
 - SAY EACH NUMBER ONCE. Pick the one place a figure actually decides something and put it there. A deployed brief repeated "USD +0.19 across 12 dimensions" four times and "JPY +0.4, curve +0.83" three times; roughly a third of its length was restatement. If a number has already appeared, refer to it in words ("the same scorecard gap") rather than reprinting it.
+- WRITE IT AS A MORNING PAPER, NOT A STATUS REPORT. Lead with the market. The order is: what the WEEK has been doing, what TODAY adds or fails to add to it, then where positioning sits. The "what moved" block carries 1-day, 1-week and 1-month change precisely so the read can be "the month has been a steady repricing and today has nothing scheduled to interrupt it" rather than "the 10-year added 7bp". A day figure on its own is a fact; the same figure against its week is a read.
+- POSITIONING IS CONTEXT, NEVER A DIRECTION. Where the crowd sits says which way a surprise would hurt more and how wide the day might run. It never says which way price goes, and this desk has tested the popular versions and closed them — walls do not pull price, max pain is null. Use the gamma sign for expected RANGE and stop there.
 - "verdict" IS THE WHOLE BRIEF IN THREE LINES and must stand alone: (1) the regime in plain words, (2) the ONE thing that changed since yesterday, (3) the ONE thing to watch. Someone who reads only those three lines should not be misled. No jargon, no numbers beyond one or two that carry real weight.
 - "pairsOutlook" notes are TABLE CELLS, not sentences — at most ~14 words, leading with the single number that drives the lean. They render as rows next to each other, so parallel phrasing matters more than prose.
 - Every section below "verdict" is OPTIONAL DEPTH. Do not restate the verdict in "theme"; extend it.
