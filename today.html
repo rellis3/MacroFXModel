@@ -8628,6 +8628,8 @@ function renderEodBrief(r, inp, amTxt) {
     b = B.endOfDayBrief({ morning: inp.row, eod: r, moved: (macroMoved ?? []),
                           ahead: eodAhead(), watchFired: fired, printed: _eodCal?.printed ?? null,
                           sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {},
+                          // the real running record, not a number typed into a sentence
+                          leanRecord: _ledgerSummary?.overall?.h1 ?? null,
                           nowMs: Date.now() });
   } catch (e) { console.error('[eod brief]', e); return ''; }
   if (!b?.ok) return '';
@@ -8749,7 +8751,8 @@ async function writeEodReview(force) {
   try {
     r = window.endOfDayBrick.endOfDay({ morning: inp.row, live: inp.live, hl: inp.hl, chainAM: inp.chainAM, chainPM: inp.chainPM });
     b = window.eodBriefBrick.endOfDayBrief({ morning: inp.row, eod: r, moved: (macroMoved ?? []), ahead: eodAhead(),
-          printed: _eodCal?.printed ?? null, sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {} });
+          printed: _eodCal?.printed ?? null, sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {},
+          leanRecord: _ledgerSummary?.overall?.h1 ?? null });
   } catch (e) { console.error('[eod review]', e); return; }
   const snapshot = R.eodSnapshot({ eod: r, brief: b, morning: inp.row, activity: _eodAct?.instruments ?? {} });
   if (!snapshot) return;

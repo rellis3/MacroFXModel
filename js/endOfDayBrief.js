@@ -19,9 +19,11 @@
  *
  * AND IT SAYS NOTHING ABOUT TOMORROW'S DIRECTION. This desk has tested that repeatedly:
  * the priced-in claim came back null, surprise size validated for RANGE only, and the
- * page's own lean record is 19 of 33. So the forward section names what is scheduled,
+ * page's own lean record has never cleared a coin flip. So the forward section names
+ * what is scheduled,
  * which tiles it transmits through, and which calls are still standing — never which
- * way anything goes.
+ * way anything goes. (The record is READ from the ledger at render time; a figure written
+ * into this comment would go stale the same way the prose once did.)
  *
  * Pure: no fetch, no DOM. Tested in js/endOfDayBrief.test.mjs.
  */
@@ -205,7 +207,32 @@ export function tomorrow({ ahead = [], rows = [], nowMs = Date.now() } = {}) {
  * structure, never HTML — the renderer decides how it looks, and the wording lives here
  * where it can be tested.
  */
-export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = [], printed = null, watchFired = [], sessions = {}, activity = {}, nowMs = Date.now() } = {}) {
+/**
+ * The running direction record, from the ledger rather than from a number typed into a
+ * string.
+ *
+ * THE BUG THIS REPLACES. This sentence read "the running record is 19 of 33" as literal
+ * text -- no interpolation, never updated. By the time the owner asked about it the real
+ * figure was 32 of 53, so a line whose entire job was honest self-scoring had been
+ * quietly wrong for weeks. A stale self-score is worse than none, because it reads as
+ * live.
+ *
+ * It now carries the INTERVAL and whether the record clears a coin flip, because 60% on
+ * 53 calls sounds like an edge and its interval runs from 47% to 74% -- which is to say
+ * it is not yet distinguishable from chance, and the sentence should say so.
+ */
+export function recordLine(rec) {
+  if (!rec || !rec.n) return 'That is a tally, not a verdict, and the running record is not loaded here to put it against.';
+  const pct = Math.round((rec.hitRate ?? rec.rate ?? 0) * 100);
+  const lo = rec.hitRateLo ?? rec.lo, hi = rec.hitRateHi ?? rec.hi;
+  const band = Number.isFinite(lo) && Number.isFinite(hi) ? ` (${pct}%, interval ${Math.round(lo * 100)}–${Math.round(hi * 100)}%)` : ` (${pct}%)`;
+  const clears = rec.clearsCoinFlip === 'yes' || rec.clears === true;
+  return `That is a tally, not a verdict — the running record is ${rec.hits} of ${rec.n}${band}, which ${
+    clears ? 'does clear a coin flip, and one day neither makes nor breaks it'
+           : 'does not clear a coin flip, and a single day cannot move it off one'}.`;
+}
+
+export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = [], printed = null, watchFired = [], sessions = {}, activity = {}, leanRecord = null, nowMs = Date.now() } = {}) {
   if (!eod?.ok) return { ok: false, reason: eod?.reason ?? 'nothing to compare against yet' };
   const rows = eod.rows ?? [];
   const fresh = macroFreshness(moved, nowMs);
@@ -253,7 +280,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     out.under.map(r => `<b>${r.name}</b> used ${r.used}%`).join(', ')} — days that never got going. A stop sized off the forecast had far more room than it needed.`);
 
   if (eod.leans.n) paragraphs.push(`On direction the page committed on ${eod.leans.n} ${eod.leans.n === 1 ? 'instrument' : 'instruments'} and ${eod.leans.right} ${eod.leans.right === 1 ? 'is' : 'are'} the right way${
-    eod.commitments.nFalsifiers ? `; ${eod.commitments.falsified} of ${eod.commitments.nFalsifiers} named falsifiers traded` : ''}. That is a tally, not a verdict — the running record is 19 of 33 and a single day cannot move it off a coin flip.`);
+    eod.commitments.nFalsifiers ? `; ${eod.commitments.falsified} of ${eod.commitments.nFalsifiers} named falsifiers traded` : ''}. ${recordLine(leanRecord)}`);
   else paragraphs.push(`The page committed no direction on any instrument today. That is the absence of a call rather than a miss, and it is the honest outcome on a board where the read is mostly about size.`);
 
   // Regime is the page changing its mind about what KIND of market it is looking at,

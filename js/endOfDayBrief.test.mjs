@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { macroFreshness, sessionsBetween, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
+import fs from 'node:fs';
+import { macroFreshness, sessionsBetween, recordLine, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
          SPINE, activityWord, pathWord, PATH_BANDS, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
 import { endOfDay } from './endOfDay.js';
 
@@ -176,6 +177,48 @@ t('the brief leads with range, because range is what this desk has validated', (
 
 // This test used to require the caveat FIRST, which is what made the debrief open by
 // explaining what it could not tell you. The caveat is not dropped -- it is demoted.
+// THE BUG THIS CLOSES. This sentence read "the running record is 19 of 33" as literal
+// text -- no interpolation, never updated. By the time it was questioned the real figure
+// was 32 of 53. A self-score that never moves is worse than none, because it reads live.
+t('the running record is computed, never a number typed into a sentence', () => {
+  // strip comments first: this test's own documentation quotes the bug, and a guard that
+  // trips on the explanation of itself is a guard nobody keeps
+  const src = fs.readFileSync(new URL('./endOfDayBrief.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(src, /record is \d+ of \d+/, 'a hardcoded tally must never come back');
+  assert.match(src, /\$\{rec\.hits\} of \$\{rec\.n\}/, 'the tally must be interpolated from the record');
+  const line = recordLine({ n: 53, hits: 32, hitRate: 0.604, hitRateLo: 0.472, hitRateHi: 0.735, clearsCoinFlip: 'no' });
+  assert.match(line, /32 of 53/);
+  assert.match(line, /60%/);
+});
+
+t('the record carries its interval and whether it clears a coin flip', () => {
+  // 60% on 53 calls SOUNDS like an edge; its interval runs 47-74%, which is to say it is
+  // not yet distinguishable from chance, and the sentence has to say so.
+  const weak = recordLine({ n: 53, hits: 32, hitRate: 0.604, hitRateLo: 0.472, hitRateHi: 0.735, clearsCoinFlip: 'no' });
+  assert.match(weak, /interval 47–74%/);
+  assert.match(weak, /does not clear a coin flip/);
+  const strong = recordLine({ n: 200, hits: 130, hitRate: 0.65, hitRateLo: 0.58, hitRateHi: 0.71, clearsCoinFlip: 'yes' });
+  assert.match(strong, /does clear a coin flip/);
+});
+
+t('an unloaded record says so rather than printing a figure', () => {
+  for (const bad of [null, undefined, {}, { n: 0 }]) {
+    const l = recordLine(bad);
+    assert.match(l, /not loaded/);
+    assert.doesNotMatch(l, /\d+ of \d+/, 'it must not invent a tally');
+  }
+});
+
+t('the brief threads the record through to the sentence', () => {
+  const b = endOfDayBrief({ eod: buildEod(), moved: [{ lastDate: '2026-09-25' }],
+    leanRecord: { n: 53, hits: 32, hitRate: 0.604, hitRateLo: 0.472, hitRateHi: 0.735, clearsCoinFlip: 'no' },
+    nowMs: Date.UTC(2026, 8, 28, 20, 30) });
+  const joined = b.paragraphs.join(' ');
+  assert.match(joined, /32 of 53/, 'the real record must reach the prose');
+  assert.doesNotMatch(joined, /19 of 33/);
+});
+
 t('a material macro lag is still stated, but the day is described first', () => {
   const b = endOfDayBrief({ eod: buildEod(), moved: [{ lastDate: '2026-09-21' }], nowMs: NOW });
   const p = b.paragraphs[0];
