@@ -8687,6 +8687,8 @@ function renderEodBrief(r, inp, amTxt) {
                           sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {},
                           // the real running record, not a number typed into a sentence
                           leanRecord: _ledgerSummary?.overall?.h1 ?? null,
+                          // where the crowd sits -- the state the next session inherits
+                          cot: eodCotPct(), oi: eodOiGamma(),
                           nowMs: Date.now() });
   } catch (e) { console.error('[eod brief]', e); return ''; }
   if (!b?.ok) return '';
@@ -8809,7 +8811,7 @@ async function writeEodReview(force) {
     r = window.endOfDayBrick.endOfDay({ morning: inp.row, live: inp.live, hl: inp.hl, chainAM: inp.chainAM, chainPM: inp.chainPM });
     b = window.eodBriefBrick.endOfDayBrief({ morning: inp.row, eod: r, moved: (macroMoved ?? []), ahead: eodAhead(),
           printed: _eodCal?.printed ?? null, sessions: session?.instruments ?? {}, activity: _eodAct?.instruments ?? {},
-          leanRecord: _ledgerSummary?.overall?.h1 ?? null });
+          leanRecord: _ledgerSummary?.overall?.h1 ?? null, cot: eodCotPct(), oi: eodOiGamma() });
   } catch (e) { console.error('[eod review]', e); return; }
   const snapshot = R.eodSnapshot({ eod: r, brief: b, morning: inp.row, activity: _eodAct?.instruments ?? {} });
   if (!snapshot) return;
@@ -9209,6 +9211,23 @@ function mountFocusButtons() {
 // No fetch is added here — the timeline strip already pulls 45 days of snapshots.
 const EOD_MIN_HOURS = 3;   // before this the day has barely started; the panel says nothing
 const _eodFiring = row => Array.isArray(row?.plan?.firing) ? row.plan.firing : [];
+/** COT percentiles for the evening read, from the board rows the page already holds. */
+function eodCotPct() {
+  const out = {};
+  for (const r of allRows()) {
+    const p = r.ct?.sharePct ?? r.ct?.pct;
+    if (Number.isFinite(p)) out[r.name] = { pct: Math.round(p), ageDays: r.ct?.ageDays ?? null };
+  }
+  return Object.keys(out).length ? out : null;
+}
+/** Dealer gamma sign per instrument, skipping anything stale — a stale chain is not a read. */
+function eodOiGamma() {
+  return allRows()
+    .filter(r => r.oi && !r.oi.stale && Number.isFinite(r.oi.gex))
+    .map(r => ({ key: r.name, gex: r.oi.gex, dte: r.oi.dte ?? null }))
+    .slice(0, 4);
+}
+
 function eodInputs() {
   const day = new Date().toISOString().slice(0, 10);
   const row = (_tl.snapshots ?? []).find(d => d.day === day) ?? null;

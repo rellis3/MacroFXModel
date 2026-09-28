@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { macroFreshness, sessionsBetween, recordLine, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
+import { macroFreshness, sessionsBetween, recordLine, weekFrame, weekFrameLine, positionRead, positionLine, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
          SPINE, activityWord, pathWord, PATH_BANDS, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
 import { endOfDay } from './endOfDay.js';
 
@@ -180,6 +180,79 @@ t('the brief leads with range, because range is what this desk has validated', (
 // THE BUG THIS CLOSES. This sentence read "the running record is 19 of 33" as literal
 // text -- no interpolation, never updated. By the time it was questioned the real figure
 // was 32 of 53. A self-score that never moves is worse than none, because it reads live.
+// THE WEEK FRAME. `moved` has carried 1/5/20-day deltas the whole time and the brief
+// spent only the freshness field off it. A day figure alone is a fact; the same figure
+// against its own week is a read.
+const MV = (key, unit, d1, d5, d20 = 0) => ({ key, label: key.toUpperCase(), unit, deltas: { 1: d1, 5: d5, 20: d20 }, lastDate: '2026-09-25' });
+
+t('a day that continues its week is told apart from one that reverses it', () => {
+  const ext = weekFrame([MV('us2y', 'bps', 2, 11), MV('us10y', 'bps', 7, 17), MV('dxy', '%', 0.2, 1.1)]);
+  assert.equal(ext.shape, 'extended');
+  assert.equal(ext.withWeek, 3);
+  assert.match(weekFrameLine(ext), /went with the week/);
+  assert.match(weekFrameLine(ext), /already partly priced/);
+
+  const agn = weekFrame([MV('us2y', 'bps', -4, 11), MV('us10y', 'bps', -6, 17), MV('dxy', '%', -0.3, 1.1)]);
+  assert.equal(agn.shape, 'against');
+  assert.match(weekFrameLine(agn), /argued with the week/);
+  assert.match(weekFrameLine(agn), /one session cannot tell you which/);
+});
+
+t('the week frame compares SIGNS, never averages across units', () => {
+  // basis points and percent are not commensurable; averaging them would invent a number
+  const w = weekFrame([MV('us2y', 'bps', 50, 90), MV('dxy', '%', 0.2, 0.4), MV('hy', 'bps', 3, 5)]);
+  assert.equal(w.withWeek, 3);
+  assert.ok(!('mean' in w) && !('avg' in w), 'no cross-unit average may exist');
+});
+
+t('a thin or flat set produces nothing rather than a confident line', () => {
+  assert.equal(weekFrame([MV('us2y', 'bps', 1, 2)]), null, 'one series is not a week read');
+  assert.equal(weekFrame([]), null);
+  assert.equal(weekFrame(null), null);
+  assert.equal(weekFrame([MV('a', 'bps', 0, 0), MV('b', 'bps', 0, 0), MV('c', 'bps', 0, 0)]), null, 'all quiet is no read');
+  assert.equal(weekFrameLine(null), null);
+});
+
+t('only series where today is a real fraction of the week get named', () => {
+  const w = weekFrame([MV('big', 'bps', 9, 10), MV('small', 'bps', 1, 40), MV('mid', 'bps', 3, 12)]);
+  const named = w.notable.map(x => x.key);
+  assert.ok(named.includes('big'), 'today was most of the week for this one');
+  assert.ok(!named.includes('small'), 'a 1-in-40 day is not what moved the week');
+});
+
+// POSITIONING — the state the next session inherits, which the evening never mentioned.
+t('only the ends of the positioning distribution are reported', () => {
+  const p = positionRead({ USDJPY: { pct: 88, ageDays: 6 }, EURUSD: { pct: 17, ageDays: 6 }, GBPUSD: { pct: 52, ageDays: 6 } });
+  assert.deepEqual(p.ends.map(e => e.pair), ['USDJPY', 'EURUSD'], 'mid-range is not news');
+  assert.equal(p.ends[0].side, 'long');
+  assert.equal(p.ends[1].side, 'short');
+  assert.equal(p.ageDays, 6);
+});
+
+t('positioning is never allowed to become a direction', () => {
+  const line = positionLine(positionRead({ USDJPY: { pct: 88, ageDays: 6 } }, [{ key: 'NQ', gex: -1e11, dte: 11 }]));
+  assert.match(line, /FUEL and not a direction/);
+  assert.match(line, /never which way price goes/);
+  // and the walls carry their own verdict rather than the folk version
+  assert.match(line, /walls are not magnets/);
+  assert.match(line, /max pain is null/);
+  assert.doesNotMatch(line, /\b(buy|sell|target|expect|will)\b/i);
+});
+
+t('the gamma SIGN is what is reported, never its size', () => {
+  const p = positionRead(null, [{ key: 'NQ', gex: -1.2e11 }, { key: 'GOLD', gex: 2.9e6 }]);
+  assert.deepEqual(p.gamma.map(g => g.sign), ['negative', 'positive']);
+  const line = positionLine(p);
+  // a raw GEX number means nothing to a reader and differs by five orders of magnitude
+  // between instruments, so it must never reach the prose
+  assert.doesNotMatch(line, /1\.2e|120000000000|2900000/);
+});
+
+t('nothing to say produces nothing', () => {
+  assert.equal(positionRead(null, []), null);
+  assert.equal(positionLine(null), null);
+});
+
 t('the running record is computed, never a number typed into a sentence', () => {
   // strip comments first: this test's own documentation quotes the bug, and a guard that
   // trips on the explanation of itself is a guard nobody keeps
