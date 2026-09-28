@@ -34863,14 +34863,18 @@ if (process.env.OANDA_KEY) {
     // they're standalone research/dashboard engines), so this reorder moves
     // the two trading-critical engines ahead of the two that aren't.
     //
-    // Asia/Monday Fib Atlas are FX/gold-only (Pine indicator's own scope) —
-    // filter the shared pair list rather than adding a second hand-maintained
-    // one. Exclusion list uses the SAME canonical 'SPX'/'DOW' spelling
-    // REFERENCE_ENGINE_PAIRS itself now uses (see that array's own comment,
-    // 2026-08-28) — not the stale 'SPX500'/'US30' broker-ticker spelling,
-    // which would silently stop excluding them here once the array's own
-    // entries were renamed.
-    const fibAtlasPairsBase = REFERENCE_ENGINE_PAIRS.filter(s => s !== 'NQ' && !['SPX', 'DE30', 'UK100', 'DOW', 'US2000', 'BTCUSD'].includes(s));
+    // Asia/Monday Fib Atlas were FX/gold-only when this filter was written
+    // (2026-08-28) -- NO LONGER TRUE as of 2026-09-26 (dc2fda5: live
+    // capability for the 6 index instruments), and both bots' own
+    // enabled_pairs have had all 6 checked and paper_mode=false since.
+    // Found 2026-09-28: this filter was never updated to match, so NQ/SPX/
+    // DE30/UK100/US2000/DOW's own votetrades.json/book never regenerated
+    // here -- DOW measured 27.1 days stale, meaning the live bot has been
+    // trading it off a book that predates it even having live capability.
+    // BTCUSD and NZDCAD stay excluded -- neither is one of Fib Atlas's
+    // supported instruments (js/bot-config.js's own FA_PAIRS, 32 pairs),
+    // unlike the 6 indices this filter used to also exclude.
+    const fibAtlasPairsBase = REFERENCE_ENGINE_PAIRS.filter(s => !['BTCUSD', 'NZDCAD'].includes(s));
     // Rotate the starting pair each night (2026-09-16) — found by comparing
     // every Fib Atlas pair's own `generatedAt` after this file's own
     // 2026-09-15 cross-engine concurrency fix above (a28ff41): GOLD (this
