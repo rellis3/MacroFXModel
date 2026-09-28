@@ -38,6 +38,24 @@ export function maxDrawdownFromEquity(equity) {
   return maxDD;
 }
 
+// portfolioStats' own maxDD/cagr/calmar assume reinvestment (compounding).
+// Fixed-fractional risk-per-trade schemes never actually compound -- every
+// trade risks a CONSTANT % of the ORIGINAL notional -- so the honest
+// complement is an ADDITIVE (non-reinvested) drawdown/return on the same
+// series. Lives here (not fibAtlasVotePortfolio.js, its original home) because
+// that file pulls in 'fs' for an unrelated point-value table and is Node-only;
+// this fn only ever needed maxDrawdownFromPnls, which is browser-safe, and
+// motif-alert-backtest.html is a browser caller (see
+// js/browserModuleGraph.contract.test.mjs). fibAtlasVotePortfolio.js re-exports
+// this for its existing Node callers.
+export function withNonCompoundedDD(statsObj, dailyReturns) {
+  const maxDDNonCompounded = +maxDrawdownFromPnls(dailyReturns).toFixed(2);
+  const years = dailyReturns.length / 252;
+  const cagrNonCompounded = years > 0 ? +(dailyReturns.reduce((s, r) => s + r, 0) / years).toFixed(2) : 0;
+  const calmarNonCompounded = maxDDNonCompounded < 0 ? +(cagrNonCompounded / Math.abs(maxDDNonCompounded)).toFixed(2) : 0;
+  return { ...statsObj, maxDDNonCompounded, cagrNonCompounded, calmarNonCompounded };
+}
+
 // Consecutive-observation count spent under the running peak of the CUMULATIVE
 // SUM -- the same additive (non-compounded) series maxDrawdownFromPnls measures.
 // A companion to it, not a replacement: "how deep" and "how long" are two
