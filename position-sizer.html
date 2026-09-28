@@ -44,7 +44,7 @@ const fmt = (v,d=2) => v==null?'—':(+v).toFixed(d);
 // Per-class calibration factor (× raw forecast median) from the Forecast-Accuracy exceed-neutral
 // finding: raw Feller/COG run ~15% wide. Approximate; the exact per-pair value is on that page.
 const CAL = { fx:0.86, commodity:0.88, index:0.87 };
-const clsOf = n => { n=n.toUpperCase(); if(/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT/.test(n)) return 'commodity'; if(/NAS100|NQ|SPX|US30|US500|DE30|DE40|UK100|DAX|FTSE|GER40|DOW/.test(n)) return 'index'; return 'fx'; };
+const clsOf = n => { n=n.toUpperCase(); if(/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT|COPPER|PLATINUM|PALLADIUM|NATGAS|SOYBEAN|WHEAT|CORN|SUGAR/.test(n)) return 'commodity'; if(/NAS100|NQ|SPX|US30|US500|DE30|DE40|UK100|DAX|FTSE|GER40|DOW/.test(n)) return 'index'; return 'fx'; };
 
 async function run(){
   el('status').textContent='Loading forecast…'; el('out').innerHTML='';

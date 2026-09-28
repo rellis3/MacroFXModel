@@ -1776,7 +1776,7 @@ function buildExportText(data) {
 const RECAL_FALLBACK = { fx: { hl50: 0.850, hl75: 0.896 }, commodity: { hl50: 0.878, hl75: 0.972 }, index: { hl50: 1, hl75: 1 } };
 function _assetClassOf(name) {
   const n = String(name).toUpperCase();
-  if (/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT/.test(n)) return 'commodity';
+  if (/GOLD|XAU|XAG|SILVER|OIL|WTI|BRENT|COPPER|PLATINUM|PALLADIUM|NATGAS|SOYBEAN|WHEAT|CORN|SUGAR/.test(n)) return 'commodity';
   if (/NAS100|NQ|SPX|US30|US500|US2000|DE30|DE40|UK100|DOW|DAX|FTSE|GER40/.test(n)) return 'index';
   return 'fx';
 }
