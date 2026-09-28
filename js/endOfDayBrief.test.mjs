@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { macroFreshness, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
+import { macroFreshness, sessionsBetween, dollarRead, riskRead, standouts, boardTradeVerdict, tomorrow, endOfDayBrief,
          SPINE, activityWord, pathWord, PATH_BANDS, describe, spineRead, regimeTurns, printedRead } from './endOfDayBrief.js';
 import { endOfDay } from './endOfDay.js';
 
@@ -19,6 +19,36 @@ t('a lagged macro set is measured and named, never presented as today', () => {
   assert.equal(f.sameDay, false);
   assert.match(f.note, /last printed on 2026-09-21, 2 sessions back/);
   assert.match(f.note, /nothing below claims a rates, credit or volatility move happened today/);
+});
+
+// THE BUG THIS CAUGHT, reported from the live page: every Monday the debrief opened
+// "the macro series last printed on 2026-09-25, 3 sessions back". Friday to Monday is
+// three CALENDAR days and ONE session. The lag was measured in days and reported in
+// sessions, so the data looked three times staler than it was, in the first sentence,
+// once a week.
+t('a weekend is not three sessions', () => {
+  assert.equal(sessionsBetween('2026-09-25', '2026-09-28'), 1, 'Friday to Monday is one session');
+  assert.equal(sessionsBetween('2026-09-21', '2026-09-23'), 2, 'Monday to Wednesday is two');
+  assert.equal(sessionsBetween('2026-09-25', '2026-09-26'), 0, 'Friday to Saturday is none');
+  assert.equal(sessionsBetween('2026-09-18', '2026-09-28'), 6, 'across two weekends');
+  const f = macroFreshness([{ lastDate: '2026-09-25' }], Date.UTC(2026, 8, 28, 20, 0));
+  assert.equal(f.staleSessions, 1);
+  assert.equal(f.staleDays, 3, 'the calendar figure is still available, just not what is said');
+  assert.match(f.note, /1 session back/);
+});
+
+t('a one-session lag does not lead the debrief; two does', () => {
+  // These series publish with a day's lag by design. Announcing the normal state of the
+  // world before describing the day is what made the debrief read as an excuse.
+  assert.equal(macroFreshness([{ lastDate: '2026-09-25' }], Date.UTC(2026, 8, 28, 20, 0)).material, false);
+  assert.equal(macroFreshness([{ lastDate: '2026-09-24' }], Date.UTC(2026, 8, 28, 20, 0)).material, true);
+  assert.equal(macroFreshness([], Date.UTC(2026, 8, 28, 20, 0)).material, true, 'a missing set always speaks up');
+});
+
+t('degenerate dates do not produce a negative or NaN session count', () => {
+  assert.equal(sessionsBetween('2026-09-28', '2026-09-25'), 0, 'backwards is zero, never negative');
+  assert.equal(sessionsBetween('nonsense', '2026-09-28'), 0);
+  assert.equal(sessionsBetween(null, undefined), 0);
 });
 
 t('a same-day macro set says so, and an absent one refuses to describe rates at all', () => {
@@ -144,11 +174,24 @@ t('the brief leads with range, because range is what this desk has validated', (
   assert.match(b.paragraphs.join(' '), /SHORT AUDUSD/);
 });
 
-t('the stale macro is stated before anything is claimed about the day', () => {
+// This test used to require the caveat FIRST, which is what made the debrief open by
+// explaining what it could not tell you. The caveat is not dropped -- it is demoted.
+t('a material macro lag is still stated, but the day is described first', () => {
   const b = endOfDayBrief({ eod: buildEod(), moved: [{ lastDate: '2026-09-21' }], nowMs: NOW });
-  assert.match(b.paragraphs[0], /last printed on 2026-09-21/);
-  assert.match(b.paragraphs[0], /What did move is the tape/);
+  const p = b.paragraphs[0];
+  assert.match(p, /^The tape:/, 'the debrief opens on the session that just finished');
+  assert.match(p, /last printed on 2026-09-21/, 'and the lag is never quietly dropped');
+  assert.ok(p.indexOf('The tape') < p.indexOf('last printed'), 'the day comes before the caveat');
   assert.equal(b.freshness.sameDay, false);
+  assert.equal(b.freshness.material, true, '2 sessions is material');
+});
+
+t('a one-session lag is not mentioned in the opening paragraph at all', () => {
+  // Friday's print read on Monday: the normal state of the world, not news.
+  const b = endOfDayBrief({ eod: buildEod(), moved: [{ lastDate: '2026-09-25' }], nowMs: Date.UTC(2026, 8, 28, 20, 30) });
+  assert.match(b.paragraphs[0], /^The tape:/);
+  assert.doesNotMatch(b.paragraphs[0], /last printed/, 'a routine lag must not crowd the day out');
+  assert.equal(b.freshness.staleSessions, 1);
 });
 
 t('nothing in the brief forecasts tomorrow', () => {

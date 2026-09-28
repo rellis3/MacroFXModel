@@ -44,17 +44,45 @@ const ord = n => {
  * Thursday. The brief needs the number to decide whether it is allowed to describe a
  * rates move as having happened "today" — usually it is not.
  */
+/**
+ * Trading sessions between two dates, which is NOT the number of calendar days.
+ *
+ * THE BUG THIS FIXES. The lag was measured in calendar days and reported as "sessions",
+ * so every Monday the debrief opened by announcing that Friday's macro print was "3
+ * sessions back". It is one. The data looked three times staler than it was, every week,
+ * in the first sentence.
+ *
+ * Weekends only. A market holiday will still read one session high occasionally, which is
+ * a far smaller error than counting Saturday and Sunday as trading days.
+ */
+export function sessionsBetween(fromISO, toISO) {
+  const a = Date.parse(fromISO), b = Date.parse(toISO);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= a) return 0;
+  let n = 0;
+  for (let t = a + 864e5; t <= b; t += 864e5) {
+    const d = new Date(t).getUTCDay();
+    if (d !== 0 && d !== 6) n++;
+  }
+  return n;
+}
+
 export function macroFreshness(moved = [], nowMs = Date.now()) {
   const dates = (Array.isArray(moved) ? moved : []).map(r => r.lastDate).filter(Boolean).sort();
-  if (!dates.length) return { lastDate: null, staleDays: null, sameDay: false, note: 'the macro series did not load, so nothing here describes rates or credit' };
+  if (!dates.length) return { lastDate: null, staleDays: null, staleSessions: null, sameDay: false, material: true, note: 'the macro series did not load, so nothing here describes rates or credit' };
   const lastDate = dates[dates.length - 1];
-  const staleDays = Math.round((Date.parse(nowMs ? new Date(nowMs).toISOString().slice(0, 10) : lastDate) - Date.parse(lastDate)) / 864e5);
-  const sameDay = staleDays <= 0;
+  const today = nowMs ? new Date(nowMs).toISOString().slice(0, 10) : lastDate;
+  const staleDays = Math.round((Date.parse(today) - Date.parse(lastDate)) / 864e5);
+  const staleSessions = sessionsBetween(lastDate, today);
+  const sameDay = staleSessions <= 0;
+  // Most of these series publish with a day's lag by design. One session back is the
+  // normal state of the world and is not worth the first sentence of a debrief; two or
+  // more means the read is genuinely describing a different week.
+  const material = staleSessions >= 2;
   return {
-    lastDate, staleDays, sameDay,
+    lastDate, staleDays, staleSessions, sameDay, material,
     note: sameDay
       ? 'the macro series are current to today'
-      : `the macro series last printed on ${lastDate}, ${staleDays} session${staleDays === 1 ? '' : 's'} back — so nothing below claims a rates, credit or volatility move happened today`,
+      : `the macro series last printed on ${lastDate}, ${staleSessions} session${staleSessions === 1 ? '' : 's'} back — so nothing below claims a rates, credit or volatility move happened today`,
   };
 }
 
@@ -205,11 +233,16 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     : `An ordinary day on both counts — the median instrument used ${med ?? '—'}% of the range forecast for it, and nothing in the tape stood out.`;
 
   const paragraphs = [];
-  paragraphs.push(`${fresh.note.charAt(0).toUpperCase()}${fresh.note.slice(1)}. What did move is the tape: ${
+  // THE DAY LEADS. This paragraph used to open with the macro-staleness caveat, so every
+  // debrief began by explaining what it could NOT tell you before saying anything about
+  // the session that had just finished. The caveat is still here and still never dropped
+  // -- it moved to the end of the sentence, and only speaks up when the lag is material.
+  paragraphs.push(`The tape: ${
     usd.n ? `the dollar ${usd.word} at ${pct2(usd.pct)} averaged across ${usd.n} pairs` : 'the FX block did not price'}${
     risk.equity != null ? `, equities ${pct2(risk.equity)} on average` : ''}${
     risk.haven != null ? `, the yen and franc ${risk.haven > 0 ? 'bid' : 'offered'} at ${pct2(risk.haven)} against the dollar` : ''}${
-    risk.gold != null ? `, gold ${pct2(risk.gold)}` : ''}. ${risk.shape.charAt(0).toUpperCase()}${risk.shape.slice(1)}.`);
+    risk.gold != null ? `, gold ${pct2(risk.gold)}` : ''}. ${risk.shape.charAt(0).toUpperCase()}${risk.shape.slice(1)}.${
+    fresh.material || fresh.lastDate == null ? ` Note that ${fresh.note}.` : ''}`);
 
   if (out.over.length) paragraphs.push(`The forecast was beaten hardest by ${
     out.over.map(r => `<b>${r.name}</b> at ${r.used}% (${(r.move > 0 ? '+' : '') + r.move.toFixed(r.dp)} ${r.unit} against ${r.expected} expected)`).join(', ')}. A range that far past its forecast is the page being wrong about SIZE, which is the one thing it measures well enough to be judged on.`);
