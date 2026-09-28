@@ -78,6 +78,26 @@
 </header>
 <main>
 
+<div class="card warn" id="fixCard" style="display:none">
+  <h2>⚠️ Detector lookahead fix (2026-09-28) — what the old backtest overstated</h2>
+  <div class="muted" style="margin-bottom:10px">
+    Until this fix, full-history detection let a touch that arrived <em>after</em> a 2-touch motif had
+    already confirmed rewrite it into a 3-touch run. Those were exactly the 2-touch trades where price
+    came back to the level — mostly stop-outs — and with 3-touch motifs skipped, they vanished from
+    every backtest. The live tracker only ever sees bars up to "now", so it logged and traded them.
+    A bar-by-bar replay of what live sees matches the fixed detector on 353 of 354 EURUSD motifs
+    (2024–26); the old detector matched 289. <strong>Everything else on this page now uses the fixed
+    detector.</strong> Below: the population the live bot actually trades (⭐ best config: 2-touch,
+    pair within its spread budget, live pairs only), at retail spreads, old vs fixed.
+  </div>
+  <div class="kpi-grid" id="fixKpis"></div>
+  <div style="margin-top:12px"><canvas id="fixChart"></canvas></div>
+  <details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Per pair — every 2-touch motif, retail spreads (old → fixed)</summary>
+    <div style="max-height:420px;overflow:auto;margin-top:8px"><table id="fixTable"></table></div>
+  </details>
+  <div class="muted" style="margin-top:8px" id="fixNote"></div>
+</div>
+
 <div class="card callout">
   <h2>What this is</h2>
   <div class="muted">
@@ -670,6 +690,75 @@ function renderChart(res) {
               title: { display: true, text: 'Non-compounded %', color: '#fbbf24', font: { size: 10 } },
               ticks: { color: '#fbbf24' }, grid: { drawOnChartArea: false } } } },
   });
+}
+
+// ── Detector lookahead fix: before vs after ───────────────────────────────
+// Read straight from the export's `detector_fix` block (motif_alert_backtest.py
+// races the SAME motifs through the pre-fix detector for this card only).
+// Independent of the pair/filter/cost controls on purpose: it always shows the
+// live bot's own population, so the size of the correction can't be tuned away.
+let fixChart = null;
+function renderDetectorFix() {
+  const F = DATA.detector_fix;
+  if (!F) return;
+  $('fixCard').style.display = '';
+  const L = F.legacy, X = F.fixed;
+  const pfTxt = v => v == null ? '—' : v.toFixed(2);
+  const kpi = (label, a, b, f, sub) => {
+    const worse = b != null && a != null && b < a;
+    return `<div class="kpi"><div class="label">${label}</div>
+      <div class="value"><span class="muted" style="font-size:15px;text-decoration:line-through">${f(a)}</span>
+      → <span class="${worse ? 'red' : 'green'}">${f(b)}</span></div><div class="sub">${sub}</div></div>`;
+  };
+  const r3 = v => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(3);
+  const r0 = v => v == null ? '—' : (v >= 0 ? '+' : '') + Math.round(v).toLocaleString();
+  $('fixKpis').innerHTML =
+    kpi('PF · 2023+ (OOS)', L.oos.profit_factor, X.oos.profit_factor, pfTxt, `n ${L.oos.n.toLocaleString()} → ${X.oos.n.toLocaleString()}`) +
+    kpi('Avg R · 2023+', L.oos.avg_r, X.oos.avg_r, r3, 'per trade, after retail spread') +
+    kpi('PF · pre-2023 (IS)', L.is.profit_factor, X.is.profit_factor, pfTxt, `n ${L.is.n.toLocaleString()} → ${X.is.n.toLocaleString()}`) +
+    kpi('Avg R · pre-2023', L.is.avg_r, X.is.avg_r, r3, 'per trade, after retail spread') +
+    kpi('Total R · full period', L.full.total_r, X.full.total_r, r0, `win rate ${(100 * L.full.win_rate).toFixed(1)}% → ${(100 * X.full.win_rate).toFixed(1)}%`);
+
+  if (typeof Chart !== 'undefined') {
+    const weeks = [...new Set([...L.curve, ...X.curve].map(p => p[0]))].sort();
+    const fill = c => { const m = new Map(c); let last = 0; return weeks.map(w => (last = m.has(w) ? m.get(w) : last)); };
+    if (fixChart) fixChart.destroy();
+    fixChart = new Chart($('fixChart'), {
+      type: 'line',
+      data: { labels: weeks, datasets: [
+        { label: 'Old detector (what this page showed)', data: fill(L.curve), borderColor: '#64748b',
+          borderDash: [5, 4], borderWidth: 1.4, pointRadius: 0, tension: 0 },
+        { label: 'Fixed detector (what live trades)', data: fill(X.curve), borderColor: '#f87171',
+          borderWidth: 1.8, pointRadius: 0, tension: 0 },
+      ] },
+      options: { responsive: true, interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 18, font: { size: 11 } } } },
+        scales: { x: CHART_X, y: { title: { display: true, text: 'Cumulative R (retail)', color: '#94a3b8', font: { size: 10 } },
+          ticks: { color: '#94a3b8' }, grid: { color: '#182030' } } } },
+    });
+  } else chartMissing('fixChart', 'Detector-fix chart');
+
+  const rows = [...F.per_pair_2touch].sort((a, b) =>
+    ((a.fixed.avg_r ?? 0) - (a.legacy.avg_r ?? 0)) - ((b.fixed.avg_r ?? 0) - (b.legacy.avg_r ?? 0)));
+  $('fixTable').innerHTML =
+    `<thead><tr><th>Pair</th><th>Traded live?</th><th class="num">n old → fixed</th>
+     <th class="num">Avg R old</th><th class="num">Avg R fixed</th><th class="num">Δ</th>
+     <th class="num">2023+ avg R old → fixed</th></tr></thead><tbody>` +
+    rows.map(p => {
+      const d = (p.fixed.avg_r ?? 0) - (p.legacy.avg_r ?? 0);
+      const live = p.backtest_only ? '<span class="amber">backtest only</span>' : p.in_best_config ? 'yes' : '<span class="muted">no (spread)</span>';
+      return `<tr><td>${p.pair}</td><td>${live}</td>
+        <td class="num">${p.legacy.n} → ${p.fixed.n}</td>
+        <td class="num ${cls(p.legacy.avg_r)}">${r3(p.legacy.avg_r)}</td>
+        <td class="num ${cls(p.fixed.avg_r)}">${r3(p.fixed.avg_r)}</td>
+        <td class="num ${cls(d)}">${r3(d)}</td>
+        <td class="num"><span class="${cls(p.legacy_oos.avg_r)}">${r3(p.legacy_oos.avg_r)}</span> → <span class="${cls(p.fixed_oos.avg_r)}">${r3(p.fixed_oos.avg_r)}</span></td></tr>`;
+    }).join('') + '</tbody>';
+  $('fixNote').innerHTML =
+    `Every signal (all touch counts, live pairs, retail): PF ${pfTxt(L.all_signals.full.profit_factor)} → ` +
+    `${pfTxt(X.all_signals.full.profit_factor)}. The per-pair spread budget (<code>pylego/motif_spread_budget.json</code>) ` +
+    `and the "skip 3-touch" rule were both chosen on the OLD numbers; neither has been re-derived here, so ` +
+    `the ⭐ best-config pair list above is still the one live uses, not a re-optimised one.`;
 }
 
 // ── Monte Carlo — same daily returns, reshuffled order ────────────────────
@@ -1504,6 +1593,7 @@ function render() {
     const ds = DATA.trades.map(t => t.date).filter(Boolean);
     $('dataSpan').textContent = `${ds[0].slice(0, 4)}–${ds[ds.length - 1].slice(0, 4)} (${ds[0]} → ${ds[ds.length - 1]})`;
   }
+  renderDetectorFix();
   render();
 })();
 </script>

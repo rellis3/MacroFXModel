@@ -26210,7 +26210,10 @@ async function _motifAlertBacktestTick() {
   const startedAt = Date.now();
   console.log(`[motif-alert-backtest] regen starting ${new Date().toISOString()}`);
   try {
-    await _execFileAsync(BT_PYTHON, [path.join(__dirname, 'AnalogML', 'motif_alert_backtest.py'), '--all-pairs'],
+    // --include-indices (2026-09-28): index CFDs, backtest-only (unticked by
+    // default in the viewer, never in ⭐ Best Config). Skipped with a log line
+    // -- not fatal -- until this host has their M1 in AnalogML/data/m1.
+    await _execFileAsync(BT_PYTHON, [path.join(__dirname, 'AnalogML', 'motif_alert_backtest.py'), '--all-pairs', '--include-indices'],
       { cwd: __dirname, timeout: 20 * 60_000, maxBuffer: 16 * 1024 * 1024 });
     console.log(`[motif-alert-backtest] regen done in ${((Date.now() - startedAt) / 60_000).toFixed(1)}min`);
   } catch (e) {

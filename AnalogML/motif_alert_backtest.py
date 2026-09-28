@@ -433,6 +433,38 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 nocost_r.append(nocost_r_by_idx[(entry_idx, m.direction)])
         alerts.append(alert)
 
+    # ---- the SAME race on the pre-fix (non-causal) detector ----
+    # Only for the "detector fix: before vs after" card. The legacy detector
+    # let a touch that arrived AFTER a 2-touch motif confirmed rewrite it into
+    # a 3-touch run (see pylego.motif_touch._touch_runs), so the backtest lost
+    # exactly the 2-touch trades where price came back to the level while the
+    # live tracker, which never sees the future, logged and traded them.
+    legacy_trades: list[dict] = []
+    if args.detector_fix_compare:
+        legacy = detect_touch_motifs(
+            bars, atr_arr, pivot_n=args.pivot_n, tol_atr_mult=args.tol_atr_mult,
+            min_retrace_atr_mult=args.min_retrace_atr_mult,
+            min_bars_between_touches=args.min_bars_between_touches,
+            breakout_max_bars=args.breakout_max_bars, causal=False,
+        )
+        lconf = [m for m in legacy if m.confirm_idx is not None and m.confirm_idx + 1 < n]
+        lraced = race_trades_on_finer_path(
+            bars, m1, [Entry(idx=m.confirm_idx + 1, direction=m.direction, sl=_entry_sl(m)) for m in lconf],
+            sl=sl_price, tp_r=args.tp_r, max_bars_ahead=args.max_bars_ahead,
+            cost_price=cost_price, min_bars_ahead=args.min_bars_ahead)
+        lby = {(t["idx"], t["direction"]): t for t in lraced}
+        for m in lconf:
+            t = lby.get((m.confirm_idx + 1, m.direction))
+            if t is None:
+                continue
+            ed = bars.index[m.confirm_idx + 1]
+            legacy_trades.append({
+                "pair": pair, "entry_date": ed.isoformat(), "n_touches": m.n_touches,
+                "r": round(t["r"], 4), "is_oos": "OOS" if ed >= cutoff else "IS",
+                "cost_r": round(cost_price / t["sl"], 5),
+                "retail_cost_r": round(retail_price / t["sl"], 5),
+            })
+
     # ---- link each 👀 to what it went on to do ----
     confirmed_keys = {_motif_key(pair, m) for m in confirmed}
     resolved_keys = {a["motif_key"] for a in alerts if a["resolved"]}
@@ -446,6 +478,7 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
     converted = sum(1 for a in nearing_by_key.values() if a["converted"])
     return {
         "pair": pair, "alerts": alerts, "trades": trades, "nocost_r": nocost_r,
+        "legacy_trades": legacy_trades,
         "funnel": {
             "bars": n,
             "first_bar": bars.index[0].isoformat(), "last_bar": bars.index[-1].isoformat(),
@@ -499,6 +532,64 @@ def _strip_curve(bench: dict) -> dict:
 def _median_trade_cost(trades: list[dict], pair: str, key: str) -> float | None:
     vals = [t[key] for t in trades if t["pair"] == pair and key in t]
     return round(float(np.median(vals)), 5) if vals else None
+
+
+def detector_fix_summary(fixed: list[dict], legacy: list[dict], pair_cost_r: dict,
+                         retail_cost_r: dict) -> dict:
+    """Before/after of the 2026-09-28 detector causality fix, on the population
+    the LIVE BOT trades: best-config (motif_policy.passes_best_config -- 2-touch
+    only, the pair's spread within its budget), priced at RETAIL spreads.
+    Backtest-only pairs (indices) are reported separately and kept out of the
+    headline, which must stay the live book. `legacy` is the same race on the
+    pre-fix detector; `fixed` is this export's own trades."""
+    def retail_r(t):
+        if "retail_cost_r" in t and "cost_r" in t:
+            return t["r"] + t["cost_r"] - t["retail_cost_r"]
+        return t["r"] + pair_cost_r.get(t["pair"], 0.0) - retail_cost_r.get(t["pair"], 0.0)
+
+    def best(t):
+        return motif_policy.passes_best_config(t["pair"], None, n_touches=t["n_touches"])
+
+    def block(rows):
+        rs = [(t, retail_r(t)) for t in rows]
+        return {
+            "is": summarize_r(r for t, r in rs if t["is_oos"] == "IS"),
+            "oos": summarize_r(r for t, r in rs if t["is_oos"] == "OOS"),
+            "full": summarize_r(r for _, r in rs),
+        }
+
+    def curve(rows):
+        # Cumulative retail R by ISO week -- small enough to ship, fine enough to see.
+        by_wk: dict = {}
+        for t in rows:
+            wk = pd.Timestamp(t["entry_date"]).strftime("%G-W%V")
+            by_wk[wk] = by_wk.get(wk, 0.0) + retail_r(t)
+        out, cum = [], 0.0
+        for wk in sorted(by_wk):
+            cum += by_wk[wk]
+            out.append([wk, round(cum, 2)])
+        return out
+
+    live_pairs = lambda t: t["pair"] not in INDEX_PAIRS
+    res = {"population": "best-config (2-touch, pair within its spread budget), retail spreads, live pairs only"}
+    for name, rows in (("legacy", legacy), ("fixed", fixed)):
+        b = [t for t in rows if best(t) and live_pairs(t)]
+        res[name] = {**block(b), "curve": curve(b),
+                     "all_signals": block([t for t in rows if live_pairs(t)])}
+    per_pair = []
+    for p_ in sorted({t["pair"] for t in fixed} | {t["pair"] for t in legacy}):
+        lb = [t for t in legacy if t["pair"] == p_ and t["n_touches"] == 2]
+        fb = [t for t in fixed if t["pair"] == p_ and t["n_touches"] == 2]
+        per_pair.append({
+            "pair": p_, "backtest_only": p_ in INDEX_PAIRS,
+            "in_best_config": bool(fb) and best(fb[0]),
+            "legacy": summarize_r(retail_r(t) for t in lb),
+            "fixed": summarize_r(retail_r(t) for t in fb),
+            "legacy_oos": summarize_r(retail_r(t) for t in lb if t["is_oos"] == "OOS"),
+            "fixed_oos": summarize_r(retail_r(t) for t in fb if t["is_oos"] == "OOS"),
+        })
+    res["per_pair_2touch"] = per_pair
+    return res
 
 
 def split_summary(trades: list[dict]) -> dict:
@@ -655,6 +746,9 @@ def main() -> None:
                         "of the fixed pip grid; see INDEX_PAIRS' own note. Indices with no local "
                         "M1 are skipped, not fatal.")
     p.add_argument("--index-sl-atr-mult", type=float, default=INDEX_SL_ATR_MULT)
+    p.add_argument("--no-detector-fix-compare", dest="detector_fix_compare", action="store_false",
+                   help="skip the before/after card's second race on the pre-fix detector "
+                        "(on by default; roughly doubles the race time).")
     p.add_argument("--out", default=str(DATA_DIR / "motif_alert_backtest.json"))
     args = p.parse_args()
 
@@ -662,6 +756,7 @@ def main() -> None:
     all_trades: list[dict] = []
     all_alerts: list[dict] = []
     all_nocost_r: list[float] = []
+    all_legacy: list[dict] = []
     per_pair = []
     if args.include_indices:
         pairs = pairs + [p_ for p_ in INDEX_PAIRS if p_ not in pairs]
@@ -681,6 +776,7 @@ def main() -> None:
         all_trades.extend(res["trades"])
         all_alerts.extend(res["alerts"])
         all_nocost_r.extend(res["nocost_r"])
+        all_legacy.extend(res["legacy_trades"])
         summary = split_summary(res["trades"])
         per_pair.append({"pair": pair, "funnel": res["funnel"], **summary})
         f = res["funnel"]
@@ -805,6 +901,13 @@ def main() -> None:
         "feature_legend": encode_features(all_trades),
         "trades": all_trades,
     }
+    if args.detector_fix_compare:
+        out["detector_fix"] = detector_fix_summary(all_trades, all_legacy,
+                                                   out["pair_cost_r"], out["retail_cost_r"])
+        d_ = out["detector_fix"]
+        print(f"[detector fix] best-config retail, live pairs: "
+              f"legacy OOS n={d_['legacy']['oos']['n']} PF={d_['legacy']['oos']['profit_factor']:.2f}  ->  "
+              f"fixed OOS n={d_['fixed']['oos']['n']} PF={d_['fixed']['oos']['profit_factor']:.2f}")
     if args.include_alerts:
         out["alerts"] = all_alerts
     if risk_guard_replay is not None:

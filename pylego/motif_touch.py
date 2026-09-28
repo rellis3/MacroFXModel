@@ -131,7 +131,7 @@ def _confirm(run: list[Pivot], level: float, close: np.ndarray, pivot_n: int,
 def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pivot_n: int,
                 tol_atr_mult: float, min_retrace_atr_mult: float,
                 min_bars_between_touches: int, is_top: bool,
-                breakout_max_bars: int = 40) -> list[tuple[list[Pivot], float]]:
+                breakout_max_bars: int = 40, causal: bool = True) -> list[tuple[list[Pivot], float]]:
     """Greedy left-to-right run builder: extend a run of up to 3 same-level
     pivots (each >= min_bars_between_touches from the last, within
     tol_atr_mult of the run's FIRST touch price), then validate every
@@ -150,7 +150,11 @@ def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pi
     detection dropped those 2-touch losers from every backtest while the live
     tracker (which only ever sees bars up to "now") logged and traded them.
     Emitting both is what the live tracker's own log accumulates: the
-    2-touch key when it confirms, the 3-touch key later if it confirms too."""
+    2-touch key when it confirms, the 3-touch key later if it confirms too.
+
+    `causal=False` reproduces the pre-fix behaviour EXACTLY. It exists only so
+    the alert backtest can show the before/after of this fix side by side --
+    nothing that trades or tracks should ever pass it."""
     runs = []
     close = bars["close"].to_numpy()
     i, n = 0, len(pivots)
@@ -168,7 +172,7 @@ def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pi
                 j += 1
                 continue
             if abs(pivots[j].price - run[0].price) <= tol_atr_mult * local_atr:
-                if len(run) == 2:
+                if causal and len(run) == 2:
                     lvl = _run_level(run, bars, local_atr, pivot_n, min_retrace_atr_mult, is_top)
                     if lvl is not None:
                         c_idx, _ = _confirm(run, lvl, close, pivot_n, breakout_max_bars, is_top)
@@ -195,7 +199,8 @@ def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pi
 
 def detect_touch_motifs(bars: pd.DataFrame, atr_arr: np.ndarray, *, pivot_n: int = 5,
                         tol_atr_mult: float = 1.2, min_retrace_atr_mult: float = 2.5,
-                        min_bars_between_touches: int = 10, breakout_max_bars: int = 40) -> list[TouchMotif]:
+                        min_bars_between_touches: int = 10, breakout_max_bars: int = 40,
+                        causal: bool = True) -> list[TouchMotif]:
     """Detects double/triple tops AND bottoms across `bars`, causally (each
     instance's confirm_idx only ever looks forward from its own touches, and
     a confirmed run is never rewritten by a touch that arrived after it
@@ -208,7 +213,7 @@ def detect_touch_motifs(bars: pd.DataFrame, atr_arr: np.ndarray, *, pivot_n: int
         pivots = pivot_highs(bars, pivot_n) if is_top else pivot_lows(bars, pivot_n)
         for run, level in _touch_runs(pivots, bars, atr_arr, pivot_n, tol_atr_mult,
                                        min_retrace_atr_mult, min_bars_between_touches, is_top,
-                                       breakout_max_bars):
+                                       breakout_max_bars, causal):
             touch_level = max(p.price for p in run) if is_top else min(p.price for p in run)
             confirm_idx, direction = _confirm(run, level, close, pivot_n, breakout_max_bars, is_top)
             expected = -1 if is_top else 1

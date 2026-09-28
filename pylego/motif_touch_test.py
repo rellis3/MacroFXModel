@@ -197,3 +197,15 @@ def test_confirmed_double_top_survives_a_later_third_touch():
     assert [(m.touch_idxs, m.confirm_idx, m.direction) for m in live] == [([3, 7], 9, -1)]
     # The later 3-touch run is still reported beside it, as live would log it too.
     assert (3, 7, 13) in tops and tops[(3, 7, 13)].n_touches == 3
+
+
+def test_causal_false_reproduces_the_legacy_rewrite():
+    """The before/after comparison's `causal=False` must be the OLD detector:
+    the confirmed double top is absorbed into the 3-touch run and vanishes."""
+    prices = _COMMON + [85, 80, 80, 100, 130, 110, 100, 100]
+    bars = _flat_bars(prices)
+    atr_arr = np.full(len(bars), 5.0)
+    motifs = detect_touch_motifs(bars, atr_arr, pivot_n=1, tol_atr_mult=1.2,
+                                 min_retrace_atr_mult=2.5, min_bars_between_touches=3,
+                                 breakout_max_bars=40, causal=False)
+    assert [m.touch_idxs for m in motifs if m.is_top] == [[3, 7, 13]]
