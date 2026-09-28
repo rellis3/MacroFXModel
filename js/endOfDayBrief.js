@@ -242,7 +242,10 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     risk.equity != null ? `, equities ${pct2(risk.equity)} on average` : ''}${
     risk.haven != null ? `, the yen and franc ${risk.haven > 0 ? 'bid' : 'offered'} at ${pct2(risk.haven)} against the dollar` : ''}${
     risk.gold != null ? `, gold ${pct2(risk.gold)}` : ''}. ${risk.shape.charAt(0).toUpperCase()}${risk.shape.slice(1)}.${
-    fresh.material || fresh.lastDate == null ? ` Note that ${fresh.note}.` : ''}`);
+    fresh.material || fresh.lastDate == null ? ` Note that ${fresh.note}.` : ''}${
+    // An instrument that could not be measured is named, not quietly absent. A board
+    // that shrank is a fact about the day's data, and silence reads as "nothing to say".
+    eod.unpriced?.length ? ` ${eod.unpriced.length === 1 ? `${eod.unpriced[0]} is` : `${eod.unpriced.join(', ')} are`} left out — no session open, so there is no honest window to measure ${eod.unpriced.length === 1 ? 'it' : 'them'} against today.` : ''}`);
 
   if (out.over.length) paragraphs.push(`The forecast was beaten hardest by ${
     out.over.map(r => `<b>${r.name}</b> at ${r.used}% (${(r.move > 0 ? '+' : '') + r.move.toFixed(r.dp)} ${r.unit} against ${r.expected} expected)`).join(', ')}. A range that far past its forecast is the page being wrong about SIZE, which is the one thing it measures well enough to be judged on.`);

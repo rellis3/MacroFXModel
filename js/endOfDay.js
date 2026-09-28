@@ -70,9 +70,16 @@ function unitOf(name, live) {
 export function scorePair(name, morning, live, { high = null, low = null, rangePct = null } = {}) {
   if (!morning || !live) return null;
   const [mult, unit, dp] = unitOf(name, live);
-  const open = live.session_open ?? morning.price ?? null;
+  // NO FALLBACK TO THE MORNING PRICE. This used to read `live.session_open ?? morning.price`,
+  // which is a different measurement wearing the same label: the morning price is whatever
+  // the plan was captured at, so a missing session open would silently turn "today's
+  // session" into "since roughly 09:00", reported identically and with nothing to show
+  // for it. It fires on 0 of 30 instruments today, which is exactly when a silent
+  // fallback is most dangerous -- it will fire on the day something upstream breaks.
+  const open = live.session_open ?? null;
   const now = live.current_price ?? null;
-  if (open == null || now == null) return null;
+  if (now == null) return null;
+  if (open == null) return { name, noSessionOpen: true, reason: 'no session open, so there is no honest window to measure today against' };
 
   const haveHL = Number.isFinite(high) && Number.isFinite(low) && high > low;
   const havePct = !haveHL && Number.isFinite(rangePct) && rangePct > 0;
@@ -159,10 +166,17 @@ export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, c
     const r = pairReview(name, m, live[name], hl[name] ?? {});
     if (r) rows.push(r);
   }
-  if (!rows.length) return { ok: false, reason: 'the morning plan carried no pair this page can price' };
+  // Rows with no session open are NOT silently dropped -- they are counted and named, so
+  // a shrinking board shows up as a number instead of as instruments quietly going
+  // missing from the debrief.
+  const unpriced = rows.filter(r => r.noSessionOpen).map(r => r.name);
+  const priced = rows.filter(r => !r.noSessionOpen);
+  if (!priced.length) return { ok: false, reason: unpriced.length
+    ? `no instrument has a session open yet, so there is no window to measure today against (${unpriced.length} waiting)`
+    : 'the morning plan carried no pair this page can price' };
 
-  const committed = rows.filter(r => r.leanRight !== null);
-  const scored = rows.filter(r => r.used != null);
+  const committed = priced.filter(r => r.leanRight !== null);
+  const scored = priced.filter(r => r.used != null);
 
   // Which chain links changed state between the morning read and now. This is the bit
   // a re-read cannot give you: it needs both ends.
@@ -182,7 +196,9 @@ export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, c
 
   return {
     ok: true,
-    rows: rows.sort((a, b) => (b.used ?? -1) - (a.used ?? -1)),
+    // only the priced rows are the debrief; the rest are reported as a count below
+    rows: priced.sort((a, b) => (b.used ?? -1) - (a.used ?? -1)),
+    unpriced,
     leans: { right: committed.filter(r => r.leanRight).length, n: committed.length },
     range: {
       n: scored.length,

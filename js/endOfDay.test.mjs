@@ -24,6 +24,41 @@ t('without a high and low it falls back to open-to-now AND says so', () => {
   assert.ok(r.used < 93, 'and open-to-now understates a day that travelled and came back');
 });
 
+// A missing session open used to fall back to the MORNING PRICE, which is a different
+// window wearing the same label: "today's session" quietly became "since the plan was
+// captured", reported identically. It fires on 0 of 30 instruments today, which is
+// precisely when a silent fallback is most dangerous.
+t('no session open means no score, never a different window measured silently', () => {
+  const r = scorePair('GOLD', morning(), live({ session_open: null }));
+  assert.equal(r.noSessionOpen, true);
+  assert.equal(r.used, undefined, 'it must not produce a range score from the wrong open');
+  assert.equal(r.move, undefined, 'nor a move');
+  assert.match(r.reason, /no honest window/);
+  // and the morning price must NOT have been used as a stand-in
+  const good = scorePair('GOLD', morning(), live());
+  assert.ok(good.used != null, 'the normal path still scores');
+});
+
+t('excluded rows are counted and named, not quietly dropped', () => {
+  const plan = { GOLD: morning(), NQ: morning(), SPX500: morning() };
+  const liveSet = { GOLD: live(), NQ: live({ session_open: null }), SPX500: live() };
+  const r = endOfDay({ morning: { plan: { at: AM, pairs: plan } }, live: liveSet, hl: {} });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.unpriced, ['NQ'], 'the board must say which instrument went missing');
+  assert.equal(r.rows.length, 2, 'and the debrief is built only from the ones it can measure');
+  assert.ok(r.rows.every(x => !x.noSessionOpen));
+  assert.equal(r.range.n, 2, 'the counts must not include the excluded row');
+});
+
+t('every instrument missing its open is a refusal, not an empty debrief', () => {
+  const plan = { GOLD: morning(), NQ: morning() };
+  const liveSet = { GOLD: live({ session_open: null }), NQ: live({ session_open: null }) };
+  const r = endOfDay({ morning: { plan: { at: AM, pairs: plan } }, live: liveSet, hl: {} });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /no window to measure today against/);
+  assert.match(r.reason, /2 waiting/);
+});
+
 t('pips are pips: FX scores in its own unit, not in price', () => {
   const r = scorePair('EURUSD', morning({ price: 1.1465, expRange: 47 }),
     { session_open: 1.1465, current_price: 1.1447, sym: 'EUR_USD', ac: 'fx' }, { high: 1.1478, low: 1.1440 });
