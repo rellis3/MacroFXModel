@@ -84,16 +84,75 @@ def _finer_pivots(bars: pd.DataFrame, seg_lo: int, seg_hi: int, pivot_n: int, wa
     return [Pivot(idx=seg_lo + p.idx, price=p.price, time=p.time, kind=p.kind) for p in local]
 
 
+def _run_level(run: list[Pivot], bars: pd.DataFrame, local_atr: float, pivot_n: int,
+               min_retrace_atr_mult: float, is_top: bool) -> float | None:
+    """Validate every consecutive pair of touches has a genuine intervening
+    opposite-side retracement; return the deepest/highest one (the
+    support/resistance), or None if any segment fails."""
+    level_pt = None
+    for k in range(len(run) - 1):
+        seg_opp = _finer_pivots(bars, run[k].idx, run[k + 1].idx, pivot_n, want_highs=not is_top)
+        if not seg_opp:
+            return None
+        seg_pt = min(seg_opp, key=lambda p: p.price) if is_top else max(seg_opp, key=lambda p: p.price)
+        if abs(run[k].price - seg_pt.price) < min_retrace_atr_mult * local_atr:
+            return None
+        if level_pt is None or (seg_pt.price < level_pt if is_top else seg_pt.price > level_pt):
+            level_pt = seg_pt.price
+    return level_pt
+
+
+def _confirm(run: list[Pivot], level: float, close: np.ndarray, pivot_n: int,
+             breakout_max_bars: int, is_top: bool) -> tuple[int | None, int]:
+    """First close through `level` (textbook) or the touch price (failure)
+    inside the breakout horizon -> (confirm_idx, direction), else (None, 0)."""
+    touch_level = max(p.price for p in run) if is_top else min(p.price for p in run)
+    last_touch = run[-1]
+    hi_end = min(last_touch.idx + breakout_max_bars, len(close) - 1)
+    # The last touch isn't actually KNOWABLE as a genuine pivot until
+    # pivot_n bars have passed after it (pivot_highs/pivot_lows need a
+    # centered window) -- scanning for a breakout starting any earlier
+    # credits a signal a live system couldn't have had yet. Confirmed
+    # empirically: ~15% of "confirmed" motifs were resolving before
+    # this lag had even elapsed, before this fix.
+    lo_start = max(last_touch.idx + 1, last_touch.idx + pivot_n)
+    for k in range(lo_start, hi_end + 1):
+        if is_top and close[k] < level:
+            return k, -1
+        if not is_top and close[k] > level:
+            return k, 1
+        if is_top and close[k] > touch_level:
+            return k, 1
+        if not is_top and close[k] < touch_level:
+            return k, -1
+    return None, 0
+
+
 def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pivot_n: int,
                 tol_atr_mult: float, min_retrace_atr_mult: float,
-                min_bars_between_touches: int, is_top: bool) -> list[tuple[list[Pivot], float]]:
+                min_bars_between_touches: int, is_top: bool,
+                breakout_max_bars: int = 40) -> list[tuple[list[Pivot], float]]:
     """Greedy left-to-right run builder: extend a run of up to 3 same-level
     pivots (each >= min_bars_between_touches from the last, within
     tol_atr_mult of the run's FIRST touch price), then validate every
     consecutive pair has a genuine intervening opposite-side retracement.
     Returns (run, level) pairs — level is the deepest/highest intervening
-    retracement across all validated segments (the support/resistance)."""
+    retracement across all validated segments (the support/resistance).
+
+    CAUSALITY (2026-09-28): a 2-touch run that has ALREADY CONFIRMED before a
+    later same-level pivot becomes knowable (that pivot's idx + pivot_n) is
+    emitted as its own run, and the extended 3-touch run is emitted beside
+    it. Before this, the greedy extension absorbed that later pivot and
+    silently replaced the confirmed 2-touch motif with a 3-touch one --
+    something a live scanner standing at the 2-touch's confirm bar cannot
+    know. The runs this rewrote were exactly the ones where price came BACK
+    to the touch level after the breakout (mostly stop-outs), so full-history
+    detection dropped those 2-touch losers from every backtest while the live
+    tracker (which only ever sees bars up to "now") logged and traded them.
+    Emitting both is what the live tracker's own log accumulates: the
+    2-touch key when it confirms, the 3-touch key later if it confirms too."""
     runs = []
+    close = bars["close"].to_numpy()
     i, n = 0, len(pivots)
     while i < n - 1:
         local_atr = atr_arr[pivots[i].idx] if pivots[i].idx < len(atr_arr) else atr_arr[-1]
@@ -101,6 +160,7 @@ def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pi
             i += 1
             continue
         run = [pivots[i]]
+        early = None   # a 2-touch run that confirmed before the pivot that extended it was knowable
         j = i + 1
         while j < n and len(run) < 3:
             last = run[-1]
@@ -108,29 +168,24 @@ def _touch_runs(pivots: list[Pivot], bars: pd.DataFrame, atr_arr: np.ndarray, pi
                 j += 1
                 continue
             if abs(pivots[j].price - run[0].price) <= tol_atr_mult * local_atr:
+                if len(run) == 2:
+                    lvl = _run_level(run, bars, local_atr, pivot_n, min_retrace_atr_mult, is_top)
+                    if lvl is not None:
+                        c_idx, _ = _confirm(run, lvl, close, pivot_n, breakout_max_bars, is_top)
+                        if c_idx is not None and c_idx < pivots[j].idx + pivot_n:
+                            early = (list(run), lvl)
                 run.append(pivots[j])
                 j += 1
             else:
                 break
+        if early is not None:
+            runs.append(early)
         if len(run) < 2:
             i += 1
             continue
 
-        level_pt = None
-        segments_ok = True
-        for k in range(len(run) - 1):
-            seg_opp = _finer_pivots(bars, run[k].idx, run[k + 1].idx, pivot_n, want_highs=not is_top)
-            if not seg_opp:
-                segments_ok = False
-                break
-            seg_pt = min(seg_opp, key=lambda p: p.price) if is_top else max(seg_opp, key=lambda p: p.price)
-            retrace = abs(run[k].price - seg_pt.price)
-            if retrace < min_retrace_atr_mult * local_atr:
-                segments_ok = False
-                break
-            if level_pt is None or (seg_pt.price < level_pt if is_top else seg_pt.price > level_pt):
-                level_pt = seg_pt.price
-        if segments_ok:
+        level_pt = _run_level(run, bars, local_atr, pivot_n, min_retrace_atr_mult, is_top)
+        if level_pt is not None:
             runs.append((run, level_pt))
             i += len(run)
         else:
@@ -142,40 +197,20 @@ def detect_touch_motifs(bars: pd.DataFrame, atr_arr: np.ndarray, *, pivot_n: int
                         tol_atr_mult: float = 1.2, min_retrace_atr_mult: float = 2.5,
                         min_bars_between_touches: int = 10, breakout_max_bars: int = 40) -> list[TouchMotif]:
     """Detects double/triple tops AND bottoms across `bars`, causally (each
-    instance's confirm_idx only ever looks forward from its own touches —
-    the caller is responsible for not passing bars beyond whatever "now" a
-    walk-forward evaluation is standing at, same convention as
-    pylego.shape_match)."""
+    instance's confirm_idx only ever looks forward from its own touches, and
+    a confirmed run is never rewritten by a touch that arrived after it
+    confirmed -- see `_touch_runs`). The caller is responsible for not
+    passing bars beyond whatever "now" a walk-forward evaluation is standing
+    at, same convention as pylego.shape_match."""
     out = []
+    close = bars["close"].to_numpy()
     for is_top in (True, False):
         pivots = pivot_highs(bars, pivot_n) if is_top else pivot_lows(bars, pivot_n)
         for run, level in _touch_runs(pivots, bars, atr_arr, pivot_n, tol_atr_mult,
-                                       min_retrace_atr_mult, min_bars_between_touches, is_top):
+                                       min_retrace_atr_mult, min_bars_between_touches, is_top,
+                                       breakout_max_bars):
             touch_level = max(p.price for p in run) if is_top else min(p.price for p in run)
-            last_touch = run[-1]
-            confirm_idx, direction = None, 0
-            hi_end = min(last_touch.idx + breakout_max_bars, len(bars) - 1)
-            # The last touch isn't actually KNOWABLE as a genuine pivot until
-            # pivot_n bars have passed after it (pivot_highs/pivot_lows need a
-            # centered window) -- scanning for a breakout starting any earlier
-            # credits a signal a live system couldn't have had yet. Confirmed
-            # empirically: ~15% of "confirmed" motifs were resolving before
-            # this lag had even elapsed, before this fix.
-            lo_start = max(last_touch.idx + 1, last_touch.idx + pivot_n)
-            close = bars["close"].to_numpy()
-            for k in range(lo_start, hi_end + 1):
-                if is_top and close[k] < level:
-                    confirm_idx, direction = k, -1
-                    break
-                if not is_top and close[k] > level:
-                    confirm_idx, direction = k, 1
-                    break
-                if is_top and close[k] > touch_level:
-                    confirm_idx, direction = k, 1
-                    break
-                if not is_top and close[k] < touch_level:
-                    confirm_idx, direction = k, -1
-                    break
+            confirm_idx, direction = _confirm(run, level, close, pivot_n, breakout_max_bars, is_top)
             expected = -1 if is_top else 1
             played_out = (direction == expected) if confirm_idx is not None else None
             out.append(TouchMotif(

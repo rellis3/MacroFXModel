@@ -419,6 +419,24 @@ def test_finer_path_overturns_an_unresolvable_htf_bar():
     assert fine[0]['outcome'] == 'sl' and fine[0]['r'] == -1.0  # what really happened
 
 
+def test_finer_path_per_entry_sl_overrides_the_scalar():
+    """An Entry carrying its own `sl` races against THAT stop (and prices cost
+    against it); one without keeps the call's scalar. Same path, two stops:
+    the 1.0 stop is hit at 99.0, the 2.0 stop survives and the 3.0 target
+    (2.0 x 1.5) is reached."""
+    h1 = _h1(3, highs=[100.0, 103.5, 100.0], lows=[100.0, 98.5, 100.0])
+    flat = [(100.0, 100.0, 100.0, 100.0)] * 3
+    hour1 = [(100.0, 100.0, 98.5, 99.0), (99.0, 103.5, 99.0, 103.2)]
+    m1 = _m1_from([flat, hour1, flat])
+    res = race_trades_on_finer_path(
+        h1, m1, [Entry(idx=0, direction=1), Entry(idx=0, direction=1, sl=2.0)],
+        sl=1.0, tp_r=1.5, max_bars_ahead=3, min_bars_ahead=1, cost_price=0.2)
+    assert res[0]['outcome'] == 'sl' and res[0]['sl'] == 1.0
+    assert abs(res[0]['r'] - (-1.0 - 0.2)) < 1e-12
+    assert res[1]['outcome'] == 'tp' and res[1]['sl'] == 2.0
+    assert abs(res[1]['r'] - (1.5 - 0.1)) < 1e-12
+
+
 def test_finer_path_returns_htf_indices():
     """`idx`/`exit_idx`/`bars_held` stay HTF positions so callers need no
     changes; the exact minute is available separately."""

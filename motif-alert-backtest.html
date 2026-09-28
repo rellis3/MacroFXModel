@@ -370,7 +370,11 @@ function costAdjusted() {
   if (mode === 'modelled' || !DATA.retail_cost_r) return DATA.trades;
   if (_costCache.key === mode) return _costCache.rows;
   const rows = DATA.trades.map(t => {
-    const d = (DATA.pair_cost_r?.[t.pair] ?? 0) - (DATA.retail_cost_r?.[t.pair] ?? 0);
+    // Index trades race a per-trade (ATR-scaled) stop, so their cost in R is
+    // per trade too and they carry it; FX keeps the per-pair constant.
+    const d = (t.cost_r != null && t.retail_cost_r != null)
+      ? t.cost_r - t.retail_cost_r
+      : (DATA.pair_cost_r?.[t.pair] ?? 0) - (DATA.retail_cost_r?.[t.pair] ?? 0);
     if (!d) return t;
     const r = t.r + d;
     // pnl_dollars is r x risk, so it has to move with r or the $ CSV and the
@@ -1407,9 +1411,15 @@ function render() {
   // Optional companion export — the page works fine without it.
   try { CONF = await (await fetch('./AnalogML/data/motif_confluence_study.json')).json(); } catch { CONF = null; }
   try { BUDGET = await (await fetch('./pylego/motif_spread_budget.json')).json(); } catch { BUDGET = null; }
-  SELECTED = new Set(DATA.pairs);
+  // Backtest-only pairs (index CFDs, --include-indices) are NOT traded live:
+  // unticked by default and never part of ⭐ Best Config, so the default view
+  // and the best-config view both stay the population the live bot trades.
+  // Tick them to see what adding them would do.
+  const BT_ONLY = new Set(DATA.backtest_only_pairs || []);
+  SELECTED = new Set(DATA.pairs.filter(p => !BT_ONLY.has(p)));
   $('pairChecks').innerHTML = DATA.pairs.map(p =>
-    `<label class="pair-check"><input type="checkbox" data-pair="${p}" checked>${p}</label>`).join('');
+    `<label class="pair-check"${BT_ONLY.has(p) ? ' title="index CFD: backtest only, not traded live; stop = ATR-scaled"' : ''}>` +
+    `<input type="checkbox" data-pair="${p}"${BT_ONLY.has(p) ? '' : ' checked'}>${p}${BT_ONLY.has(p) ? ' <span class="amber">(idx · bt only)</span>' : ''}</label>`).join('');
   $('pairChecks').addEventListener('change', e => {
     const p = e.target.dataset.pair;
     if (!p) return;
@@ -1438,7 +1448,7 @@ function render() {
     const budgetOf = p => BUDGET?.pairs?.[p]?.budget_pips ?? BEST_MAX_SPREAD_PIPS;
     const wide = new Set(DATA.pairs.filter(p =>
       (DATA.retail_spread_pips?.[p] ?? 0) > budgetOf(p)));
-    SELECTED = new Set(DATA.pairs.filter(p => !wide.has(p)));
+    SELECTED = new Set(DATA.pairs.filter(p => !wide.has(p) && !BT_ONLY.has(p)));
     $('pairChecks').querySelectorAll('input').forEach(i => {
       i.checked = SELECTED.has(i.dataset.pair);
     });
@@ -1477,7 +1487,8 @@ function render() {
   $('headerSub').textContent =
     `Export: ${DATA.pairs.length} pairs · ${f.confirmed_alerts.toLocaleString()} confirmed alerts → ` +
     `${f.trades_resolved.toLocaleString()} trades, none skipped · entry next H1 open · ` +
-    `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}`;
+    `sl ${pr.sl_pips}p / tp ${pr.tp_r}R · generated ${DATA.generated_at.slice(0, 10)}` +
+    (BT_ONLY.size ? ` · +${BT_ONLY.size} index pairs, backtest only (stop ${pr.index_sl_atr_mult}×ATR14, unticked by default)` : '');
   // The data window is whatever the export was built on -- Railway's parquet
   // is a 5-year window (2021->), the earlier export was 10 years; say which.
   if ($('dataSpan') && DATA.trades?.length) {

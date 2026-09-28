@@ -125,7 +125,7 @@ from motif_multi_tf import DETECT_KW, htf_lean_at  # noqa: E402
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-from pylego.barrier_race import Entry, race_trades  # noqa: E402
+from pylego.barrier_race import Entry, race_trades, race_trades_on_finer_path  # noqa: E402
 from pylego.costs import default_spread  # noqa: E402
 from pylego.instruments import pip_size  # noqa: E402
 from pylego.kv import KvClient  # noqa: E402
@@ -356,7 +356,8 @@ def split_complete_bars(m1: pd.DataFrame, bars: pd.DataFrame, timeframe: str,
     return bars.iloc[:-1], (last_open, float(bars["open"].iloc[-1]))
 
 
-def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) -> int:
+def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict,
+                        m1: pd.DataFrame | None = None) -> int:
     """Identical mechanism to paper_track.py's resolve_open_trades -- same
     shared barrier walker, same genuine-timeout-only convention.
 
@@ -395,9 +396,20 @@ def resolve_open_trades(pair: str, bars: pd.DataFrame, log: dict, params: dict) 
             continue
         direction = 1 if t["direction"] == "BUY" else -1
         entry = Entry(idx=entry_idx, direction=direction, entry_price=t["entry_price"])
-        result = race_trades(bars, [entry], sl=sl_price, tp_r=t["tp_r"],
-                             max_bars_ahead=params["max_bars_ahead"], cost_price=cost_price,
-                             min_bars_ahead=0)
+        # Resolved on the M1 path when the caller has it (2026-09-28): on H1 a
+        # 20-pip stop and 30-pip target often share one bar, and race_trades'
+        # default awards that tie to the TARGET -- measured ~+14% total R vs
+        # the real minutes. The backtest export (motif_alert_backtest.py) has
+        # resolved on M1 since PR #1462, so an H1-resolved paper log was
+        # systematically kinder than the backtest it is compared against.
+        if m1 is not None:
+            result = race_trades_on_finer_path(bars, m1, [entry], sl=sl_price, tp_r=t["tp_r"],
+                                               max_bars_ahead=params["max_bars_ahead"],
+                                               cost_price=cost_price, min_bars_ahead=0)
+        else:
+            result = race_trades(bars, [entry], sl=sl_price, tp_r=t["tp_r"],
+                                 max_bars_ahead=params["max_bars_ahead"], cost_price=cost_price,
+                                 min_bars_ahead=0)
         if not result:
             continue
         r = result[0]
@@ -802,8 +814,11 @@ def run(args: argparse.Namespace) -> None:
                 bars = bars[bars.index <= cutoff]     # replay: every bar is history, all complete
             else:
                 bars, pending = split_complete_bars(m1, bars, args.timeframe)
-            del m1
+            # Only the minutes inside COMPLETE bars: a forming bar's minutes
+            # would map an exit onto the last complete bar's timestamp.
+            m1 = m1[m1.index < bars.index[-1] + pd.Timedelta(args.timeframe)] if len(bars) else m1
             if len(bars) < 200:
+                del m1
                 continue
 
             atr_arr = compute_atr(bars, period=FROZEN["atr_period"])
@@ -814,7 +829,8 @@ def run(args: argparse.Namespace) -> None:
                 breakout_max_bars=FROZEN["breakout_max_bars"],
             )
 
-            resolved_total += resolve_open_trades(pair, bars, log, FROZEN)
+            resolved_total += resolve_open_trades(pair, bars, log, FROZEN, m1=m1)
+            del m1
             new = scan_pair_motif(pair, bars, log, motifs, FROZEN, pending=pending)
             pip = pip_size(pair)
             # Computed once per pair, only when there's an open/new trade to

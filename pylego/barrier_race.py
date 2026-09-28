@@ -35,10 +35,15 @@ class Entry:
       a bot's signal replay supplies exactly one — the bot's actual call.
     entry_price: explicit fill price (e.g. a limit/zone price). None uses the
       bar's open, matching a market-order-on-bar-open assumption.
+    sl: this entry's OWN price-distance stop. None (the default) uses the
+      caller's scalar `sl`. Only `race_trades_on_finer_path` reads it -- added
+      for instruments whose stop is volatility-scaled per trade (the motif
+      alert backtest's index book) rather than one fixed pip distance.
     """
     idx: int
     direction: int
     entry_price: float | None = None
+    sl: float | None = None
 
 
 @dataclass
@@ -164,12 +169,13 @@ def race_trades_on_finer_path(htf_bars: pd.DataFrame, fine_bars: pd.DataFrame,
     fhigh = fine_bars['high'].to_numpy(); flow = fine_bars['low'].to_numpy()
     fclose = fine_bars['close'].to_numpy()
     h_open = htf_bars['open'].to_numpy()
-    tp_dist = sl * tp_r
     out: list[dict] = []
     for e in entries:
         idx = e.idx
         if idx >= n_htf:
             continue
+        e_sl = e.sl if e.sl is not None else sl
+        tp_dist = e_sl * tp_r
         end_htf = min(idx + max_bars_ahead, n_htf)
         if end_htf - idx < min_bars_ahead:
             continue
@@ -186,7 +192,7 @@ def race_trades_on_finer_path(htf_bars: pd.DataFrame, fine_bars: pd.DataFrame,
         # an H1 race fill at a bit-identical price.
         entry_price = e.entry_price if e.entry_price is not None else float(h_open[idx])
         outcome, off, exit_price, r = _first_touch(
-            entry_price, e.direction, sl, tp_dist, cmax, cmin,
+            entry_price, e.direction, e_sl, tp_dist, cmax, cmin,
             float(fclose[f_end - 1]), tp_r, pessimistic_ties=False)
         f_exit = f_start + off
         # Map the exit minute back to the HTF bar CONTAINING it.
@@ -196,9 +202,10 @@ def race_trades_on_finer_path(htf_bars: pd.DataFrame, fine_bars: pd.DataFrame,
             'idx': idx, 'direction': e.direction, 'entry_price': entry_price,
             'exit_idx': exit_htf, 'exit_price': float(exit_price),
             'outcome': outcome,
-            'r': float(r - (cost_price / sl if sl > 0 else 0.0)),
+            'r': float(r - (cost_price / e_sl if e_sl > 0 else 0.0)),
             'bars_held': exit_htf - idx,
             'fine_entry_idx': f_start, 'fine_exit_idx': f_exit,
+            'sl': float(e_sl),
         })
     return out
 
