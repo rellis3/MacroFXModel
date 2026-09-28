@@ -29,7 +29,7 @@
   .lg{display:flex;gap:12px;flex-wrap:wrap;font-size:10.5px;color:var(--text3);margin-top:4px} .lg i{display:inline-block;width:14px;height:0;border-top:2px solid;vertical-align:middle;margin-right:4px}
   .ev{display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);line-height:1.5}
   .ev:last-child{border-bottom:none} .ev .v{flex-shrink:0;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;padding:2px 6px;border-radius:4px;height:fit-content}
-  .ev .v.validated{background:rgba(16,185,129,.12);color:var(--bull)} .ev .v.null{background:var(--card2);color:var(--text3)} .ev .v.context{background:rgba(210,153,34,.12);color:var(--amber)}
+  .ev .v.validated{background:rgba(16,185,129,.12);color:var(--bull)} .ev .v.null{background:var(--card2);color:var(--text3)} .ev .v.context{background:rgba(210,153,34,.12);color:var(--amber)} .ev .v.underpowered{background:var(--card2);color:var(--text3);border:1px dashed var(--text3)}
   .ev b{color:var(--text)}
   .note{color:var(--text3);font-size:11px;line-height:1.55;margin-top:14px;max-width:80ch}
   @media (max-width:560px){.wrap{padding:12px}}
@@ -144,7 +144,7 @@ async function main() {
   }).catch(() => { document.getElementById('intl').textContent = 'not loaded'; });
   const ids = ['yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve', 'priced-in-direction', 'fed-two-moves', 'front-end-shock', 'oil-breakevens-lag', 'real-yield-gold', 'crowded-bond-short-fomc', 'post-fomc-usd-drift', 'fomc-leadup-surprise-table'];
   const rows = DESK_EVIDENCE.filter(e => ids.includes(e.id) || (e.domain === 'macro' && /yield|curve|rate|fed|fomc|breakeven|real/i.test(e.claim)));
-  const seen = new Set(); document.getElementById('ev').innerHTML = rows.filter(e => !seen.has(e.id) && seen.add(e.id)).map(e => `<div class="ev"><span class="v ${e.verdict}">${e.verdict === 'validated' ? 'validated' : e.verdict === 'null' ? 'null' : 'base rate'}</span><span><b>${esc(e.claim)}.</b> ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)} <i style="color:var(--text3)">— ${esc(e.use.length > 160 ? e.use.slice(0, 157) + '…' : e.use)}</i></span></div>`).join('');
+  const seen = new Set(); document.getElementById('ev').innerHTML = rows.filter(e => !seen.has(e.id) && seen.add(e.id)).map(e => `<div class="ev"><span class="v ${e.verdict}">${e.verdict === 'validated' ? 'validated' : e.verdict === 'null' ? 'null' : e.verdict === 'underpowered' ? 'underpowered' : 'base rate'}</span><span><b>${esc(e.claim)}.</b> ${esc(e.result.length > 260 ? e.result.slice(0, 257) + '…' : e.result)} <i style="color:var(--text3)">— ${esc(e.use.length > 160 ? e.use.slice(0, 157) + '…' : e.use)}</i></span></div>`).join('');
   document.getElementById('note').innerHTML = `Sources: FRED DGS2/DGS10/DGS30 (constant-maturity Treasury yields), DFII10 (10-year TIPS real yield), T10YIE (10-year breakeven), DFEDTARU (target range, upper), THREEFYTP10 (Kim–Wright 10-year term premium, published with about a week's lag). Refreshed every six hours, no key. The "hikes priced" line is a proxy from the 2-year, labelled as one. Nothing on this page is a forecast; the verdicts above are what this desk has found when it tested the textbook.`;
 }
 main().catch(e => { document.getElementById('now').textContent = e.message; });

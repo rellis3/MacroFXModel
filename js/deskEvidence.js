@@ -11,7 +11,10 @@
  *
  * Verdicts: 'validated' (pre-registered, passed, CI clear of zero), 'null'
  * (tested, nothing found), 'context' (a base rate or description; no claim of
- * prediction). Range claims are about RANGE; nothing here predicts direction.
+ * prediction), 'underpowered' (tested, but the design could only have found an
+ * effect far larger than a realistic one -- MD files/PREREG_TEMPLATE.md §5; it
+ * rules out a LARGE effect and says nothing about a small one). Range claims are
+ * about RANGE; nothing here predicts direction.
  *
  * Pure data. Tested by js/deskEvidence.test.mjs (shape only).
  */
@@ -494,6 +497,24 @@ export const DESK_EVIDENCE = [
     result: 'Forward coupling null; the relationship is real only in the same bar.',
     use: 'Never write that a yield move implies where a pair goes next.',
   },
+  {
+    id: 'news-asymmetry', domain: 'events', verdict: 'null', date: '2026-09-28', doc: 'MD files/NEWS_ASYMMETRY_PREREG.md',
+    claim: 'A bad data surprise moves FX more in the first 30 minutes than an equally large good one (Andersen-Bollerslev-Diebold-Vega 2003)',
+    result: 'Null, and well powered. 656 releases 2016-26 (US core CPI, payrolls, unemployment, wage growth; CA unemployment; AU employment), polarity-signed surprise capped at 3 sigma, 30-minute move scaled per instrument, family fixed effects: bad-minus-good slope -0.10 per sigma [-0.23, +0.04] against a pass bar of +0.25 and a detectable effect of 0.19. The halves disagree (2016-20 +0.02, 2021-26 -0.15); no single family survives Benjamini-Hochberg.',
+    use: 'Do not say the market fears a miss more than it cheers a beat: size the release-day move symmetrically. The size effect lives in the biggest surprises (surprise-size terciles), not in a linear per-sigma slope.',
+  },
+  {
+    id: 'fx-factor-book-v2', domain: 'macro', verdict: 'underpowered', date: '2026-09-27', doc: 'MD files/FX_FACTOR_V2_TEST.md',
+    claim: 'Quant-desk upgrades (TSMOM with a correlation factor, a volatility-regime multiplier, residual cross-sectional momentum, carry filtered by momentum, a risk-off gate on carry, a Carver trend+carry blend) improve this desk\'s G10 trend and carry baskets',
+    result: 'Two runs of the frozen spec, both with 8 of 8 primaries within noise; the largest improvement was T5 +0.26 Sharpe against a Bonferroni bar of +1.04. UNDERPOWERED: 5.7 years out of sample on 7 USD crosses gives a Sharpe SE of 0.41 and a minimum detectable improvement of about +1.4, while the literature sizes these overlays at +0.1 to +0.3. The incumbents themselves: trend -0.16 out of sample; carry +0.61, which is 1.5 SE and sits in the 2021-26 rate-divergence era (in-sample -0.12). The risk-off gate (C3) ran as a monthly gate by a design flaw, so the idea was not tested as meant.',
+    use: 'No LARGE improvement from any of these overlays exists; realistic ones were never testable on this universe. Do not describe any variant as better or worse than the incumbent, and do not cite the carry basket\'s out-of-sample Sharpe as an edge.',
+  },
+  {
+    id: 'ou-bands-fx-crosses', domain: 'price', verdict: 'underpowered', date: '2026-09-27', doc: 'MD files/FX_FACTOR_V2_TEST.md#9',
+    claim: 'Ornstein-Uhlenbeck optimal entry/exit bands beat fixed +/-2 sigma bands on mean-reverting G10 crosses (AUD/NZD, EUR/CHF, EUR/GBP, AUD/CAD)',
+    result: 'Second too-few-trades on the core 4 (22 out-of-sample trades against a floor of 30), which the pre-registration said means this universe cannot test the idea at daily frequency. Pooled OU +0.67 vs +/-2 sigma -0.07 out of sample, but +0.07 vs +0.46 in sample, and the +0.74 gap is under the Bonferroni bar of +1.07 even had there been enough trades. Of 68 closed OU trades, 46 (68%) ended on the 3-half-life time stop, 18 on the stop, and only 4 (6%) reached the OU target.',
+    use: 'Not evidence that OU bands work, or that these crosses revert on a trading horizon: they mostly drift part of the way back and rarely finish the reversion. Never quote the out-of-sample Sharpe without its 22 trades and its in-sample.',
+  },
 ];
 
 /** The entries relevant to one instrument (validated ones with that instrument listed), plus every null. */
@@ -503,7 +524,7 @@ export function evidenceFor(instrument) {
 
 /** Compact text block for an AI prompt. */
 export function evidenceForPrompt(list = DESK_EVIDENCE) {
-  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE' };
+  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
   return list.map(e => `- [${tag[e.verdict] ?? e.verdict.toUpperCase()}, ${e.date}] ${e.claim}. ${e.result} USE: ${e.use}`).join('\n');
 }
 
@@ -521,6 +542,6 @@ export function evidenceForPrompt(list = DESK_EVIDENCE) {
  * one failure mode worse than a long prompt.
  */
 export function evidenceBrief(list = DESK_EVIDENCE) {
-  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE' };
+  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
   return list.map(e => `- [${tag[e.verdict] ?? e.verdict.toUpperCase()}] ${e.claim} -> ${e.use}`).join('\n');
 }
