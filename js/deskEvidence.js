@@ -518,8 +518,17 @@ export const DESK_EVIDENCE = [
 ];
 
 /** The entries relevant to one instrument (validated ones with that instrument listed), plus every null. */
+/**
+ * The same instrument under two names. The board calls gold GOLD; one entry scopes itself
+ * to XAUUSD, so that finding was invisible on the only page where it applies. Aliases
+ * rather than a rewrite of the entries, because both spellings are correct and which one
+ * a study used is part of its record.
+ */
+const INSTRUMENT_ALIAS = { GOLD: ['XAUUSD'], XAUUSD: ['GOLD'], NQ: ['NAS100'], NAS100: ['NQ'], SPX500: ['SPX', 'ES'] };
+
 export function evidenceFor(instrument) {
-  return DESK_EVIDENCE.filter(e => !e.instruments || e.instruments.includes(instrument));
+  const names = new Set([instrument, ...(INSTRUMENT_ALIAS[instrument] ?? [])]);
+  return DESK_EVIDENCE.filter(e => !e.instruments || e.instruments.some(i => names.has(i)));
 }
 
 /** Compact text block for an AI prompt. */

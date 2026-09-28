@@ -825,6 +825,17 @@
      the section when clicked. Collapsed state hides .dr-sec-body and is per
      section-key in localStorage, shared across every pair (not per-pair). */
   .dr-sec-h{cursor:pointer}
+  /* the drawer's evidence rows */
+  .dre{display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)}
+  .dre:last-child{border-bottom:0}
+  .dre-v{flex:0 0 auto;font-size:8.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+         padding:2px 6px;border-radius:4px;margin-top:1px;min-width:62px;text-align:center}
+  .dre-v.validated{background:rgba(63,178,127,.16);color:var(--green)}
+  .dre-v.null{background:rgba(111,120,137,.16);color:var(--text3)}
+  .dre-v.context{background:rgba(224,169,59,.16);color:var(--amber)}
+  .dre-b{min-width:0}
+  .dre-c{font-size:11.5px;line-height:1.5;color:var(--text)}
+  .dre-u{font-size:10.5px;line-height:1.5;color:var(--text3);margin-top:2px}
   .dr-sec-h:hover{color:var(--text2)}
   .dr-chevron{display:inline-block;width:11px;color:var(--text3)}
   .dr-sec.dr-collapsed h3{margin-bottom:0}
@@ -1532,6 +1543,16 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
       <span class="chip warn" style="font-size:9px">context composite</span>
     </h3>
     <div class="dr-sec-body"><div id="drOutlook"></div></div>
+  </div>
+  <!-- What this desk has actually MEASURED about this instrument. today.html fed the
+       ledger to the AI prompts and never showed you a verdict — the page opened every
+       morning was the only one that did not display its own evidence. -->
+  <div class="dr-sec" id="drEvidenceSec" data-seckey="evidence" style="display:none">
+    <h3 class="help" title="Every relationship this desk has tested that applies to this instrument, with the verdict. A null here is not a gap — it is a claim that was measured and did not hold, and it is the reason the page does not say it.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">&#9662;</span><i class="ev v" title="tested — each row carries its own verdict">&#10003;</i>&#128215; What has been tested here</span>
+      <span class="chip neu" style="font-size:9px" id="drEvidenceCount"></span>
+    </h3>
+    <div class="dr-sec-body"><div id="drEvidence"></div></div>
   </div>
 <div class="dr-sec" id="drCotSec" data-seckey="cotdetail" style="display:none">
       <h3 class="help" title="Weekly CFTC Commitments of Traders: how large speculators are positioned in this pair's futures, how stretched that is against its own history, and which way it moved this week. This is who is ALREADY positioned, not who is buying now — a crowded one-way bet raises the odds of a snap-back if it is wrong. Crosses have no single CFTC contract, so their read is derived from both legs.">
@@ -6989,6 +7010,38 @@ function pairOutlookBoth(r) {
 // instead of a tagged bullet list of raw drivers — same underlying numbers,
 // same CONTEXT-not-validated posture, laid out as icon-labelled sections with
 // real bullets per driver (not one flat paragraph — see col()'s own note).
+/**
+ * What this desk has measured that applies to this instrument.
+ *
+ * js/deskEvidence.js exports evidenceFor() and today.html had never called it — the
+ * ledger reached the AI prompts and never the reader. Validated first, then context,
+ * then the nulls: a null is not a gap, it is a claim that was tested and did not hold,
+ * and it is the reason the page stays quiet about it.
+ */
+function renderDrawerEvidence(r) {
+  const sec = $('drEvidenceSec'), el = $('drEvidence'), cnt = $('drEvidenceCount');
+  if (!sec || !el) return;
+  const E = window.deskEvidenceBrick;
+  const rows = E?.evidenceFor ? (E.evidenceFor(r.name) ?? []) : [];
+  if (!rows.length) { sec.style.display = 'none'; return; }
+  // 72 rows is a wall nobody reads, and 41 of them are board-wide nulls. So: everything
+  // that HELD, everything scoped to THIS instrument whatever its verdict, and the rest
+  // counted rather than dropped — the Evidence Book is one click away and carries them
+  // all. Hiding a null would be the one thing this section exists not to do.
+  const rank = { validated: 0, context: 1, null: 2 };
+  const held = rows.filter(e => e.verdict === 'validated');
+  const mine = rows.filter(e => e.instruments && e.verdict !== 'validated');
+  const restN = rows.length - held.length - mine.length;
+  const show = [...held, ...mine].sort((a, b) => (rank[a.verdict] ?? 3) - (rank[b.verdict] ?? 3) || String(b.date).localeCompare(String(a.date)));
+  if (cnt) cnt.textContent = `${rows.length} tested · ${held.length} held`;
+  sec.style.display = '';
+  el.innerHTML = show.map(e => `<div class="dre">
+    <span class="dre-v ${esc0(e.verdict)}">${esc0(e.verdict === 'null' ? 'tested null' : e.verdict)}</span>
+    <span class="dre-b"><span class="dre-c">${esc0(e.claim)}</span>${e.use ? `<span class="dre-u">${esc0(e.use)}</span>` : ''}</span>
+  </div>`).join('')
+    + (restN ? `<div class="dre-u" style="padding-top:7px">${restN} further findings apply board-wide rather than to this instrument — mostly claims tested and closed. <a href="evidence.html" target="_blank">the evidence book →</a></div>` : '');
+}
+
 function renderDrawerOutlook(r) {
   const el = $('drOutlook');
   if (!el) return;
@@ -9500,6 +9553,7 @@ async function openDrawer(name) {
   // The book loads lazily; once it is in, the Now paragraph can say who is underwater.
   loadCrowdFor(r.d.sym).then(() => { try { $('drSpine').innerHTML = drSpineHtml(r); $('drStatus').innerHTML = drStatusHtml(r); $('drByt').innerHTML = beforeYouTradeHtml(r); } catch {} }).catch(() => {});
   try { renderDrawerOutlook(r); } catch (e) { $('drOutlookSec').style.display = 'none'; }
+  try { renderDrawerEvidence(r); } catch (e) { const s = $('drEvidenceSec'); if (s) s.style.display = 'none'; }
   setDrTab(_drTab);
   // Sections hide themselves as their loaders resolve or fail, so tab states
   // can only be judged once those have had a chance to settle.
