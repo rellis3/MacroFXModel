@@ -171,6 +171,92 @@ unless that is explicitly the task.
 
 ---
 
+## Adding a new tradeable pair to Level Atlas / Vote Atlas — checklist
+
+Onboarding a new *instrument* into the existing volatility-ladder bot
+(volatility_bot_v2), not building a new strategy — see the checklist above
+for that. Verified against the live code 2026-09-28 (`js/instrumentRegistry.js`,
+`js/volBacktestM1Engine.js`, `js/forecastLadder(Params).js`,
+`js/perLineStrategy.js`, `server.js`, `js/levelAtlasRoutes.js`,
+`volatility_bot_v2/`, `pylego/`, `js/bot-config.js`) — re-verify file:line
+numbers before trusting them blind if this drifts from that date.
+
+**The one rule everything else hangs off:** a single lowercase *storage key*
+(e.g. `usdsek`) names the parquet (`m1/{key}_m1.parquet`), the tail file
+(`m1-tail/{key}.json`), the book (`level-atlas/{key}.json`), the votetrades
+file, and `enabled_pairs` everywhere. That key must resolve through
+`resolveKey()` — add an `EXTRA_ALIASES` entry in `instrumentRegistry.js` if
+the registry's canonical key differs (e.g. `us2000`→`rut`, `de30`→`dax`).
+
+1. **Instrument registry (HARD).** `js/instrumentRegistry.js`: add a `REG`
+   entry (`display, oanda, yahoo, mt5, assetClass, pip, digits`), plus
+   `EXTRA_ALIASES` if needed. Unregistered pip size silently walks in raw
+   price units (`pipSize(...) || 1` inside a swallowed catch in
+   `levelAtlasEngine.js`); unregistered `assetClass` falls back to `'fx'` in
+   the live plan. Then re-run `scripts/gen_instruments_json.mjs` so
+   `pylego/instruments.json` picks it up — the Python bot fails loud on an
+   unknown symbol otherwise.
+2. **M1 backfill (HARD, manual, nothing seeds this automatically).** A pair
+   with zero parquet never gets a nightly tail top-up and `runOne` throws
+   `no M1 data` — there's no auto-seed path. Add the key to
+   `scripts/fetch_m1_oanda.py`'s `INSTRUMENTS` and run
+   `python scripts/fetch_m1_oanda.py <key> --years N` (writes the parquet
+   and uploads to R2). **Use `--price M`, not the script's default `--price
+   BAM`** — BAM appends extra bid/ask columns and the loader reads the
+   timestamp as the *last* column, so a BAM file silently collapses every
+   row to a 1970 timestamp. `AnalogML/refresh_m1.py` is a separate store and
+   does NOT feed Level Atlas — don't confuse the two.
+3. **Register for nightly regeneration (HARD).** Add the key to
+   `REFERENCE_ENGINE_PAIRS` in `server.js` — this alone is enough to pick up
+   the 00:05 London M1 tail job, the 00:30 London Level Atlas `runOne`,
+   Session Path/Handoff, and Asia/Monday Fib Atlas (which auto-includes
+   anything not BTCUSD/NZDCAD). No other route keeps its own pair list.
+4. **Cost model + correlation factors (SOFT but do it anyway).** Add an
+   explicit entry to `PAIR_COST_PCT` (`js/perLineStrategy.js`) — a missing
+   one gets the asset-class default (fx/index/commodity), not zero, but
+   defaults flatter wide-spread exotics. Add the pair to `CCY_LEGS`
+   (`js/levelAtlasVoteReview.js` AND its Python port,
+   `volatility_bot_v2/currency_gate.py` — keep both in sync) or it becomes
+   its own synthetic currency and slips past the currency-loss gate; add to
+   `EQUITY_RISK_SET` if it's an index.
+5. **Ladder/volatility params (SOFT — falls back to class defaults, but
+   check the fitted key spelling).** `forge/vol.py` + `export_ladder_params.py`
+   regenerate `forecastLadderParams.js`; FX auto-discovers from local
+   parquet, indices need an `INDEX_PAIRS`/`CLASS_OF` entry. **The fitted key
+   must exactly match `REFERENCE_ENGINE_PAIRS`'s spelling** — SPX500/US30
+   vs SPX/DOW is a live, currently-unfixed mismatch that silently strands
+   those two pairs on class defaults instead of their own fitted params.
+6. **Position sizing (HARD — a silent, dangerous fallback).**
+   `pylego/point_values.json` needs an entry. `size_for`'s fallback on a
+   missing key is `pip=0.0001, pv=10` — it **replaces the real pip size
+   too**, so a missing JPY pair, index, or commodity can size a live trade
+   100x+ wrong with no error. Confirmed live gap right now: `chfjpy` and
+   `euraud` are in the bot's `DEFAULT_PAIRS` but absent from
+   `point_values.json`.
+7. **Wire it into the live bot + UI (HARD for actually trading it, SOFT for
+   backtest-only).** `server.js`'s `VOLATILITY_V2_ALL_PAIRS`/
+   `_CORRELATED_EXCLUDE`; `volatility_bot_v2.py`'s `DEFAULT_PAIRS` and
+   `_BROKER_OVERRIDE` (only if the broker ticker differs from the registry's
+   `mt5` value — the startup `verify_symbols` check will flag a wrong one);
+   `js/bot-config.js`'s `VB2_PAIRS`/`VB2_CORRELATED_RISK_EXCLUDE` (so it's
+   checkable) and `VB2_INDEX_KEYS` + a matching broker-symbol input in
+   `bot-config.html` for a new index/commodity. Backtest-only UI lists (not
+   required to trade, only to analyze): `level-atlas-vote-portfolio.html`'s
+   `PAIRS`/`CORRELATED_RISK_EXCLUDE`, the `-v2` sibling, and
+   `level-atlas-vote-backtest.html`'s dropdown.
+8. **Confirm, don't assume.** After the next 00:30 London run (or
+   `POST /api/level-atlas/run`), check the book actually exists for the new
+   key before enabling it live.
+
+Optional, script-only extras that the nightly job does NOT build
+automatically — only matters if you're turning that specific lever on for
+this pair: `scripts/build_p90_votetrades.mjs` (p90 rung),
+`scripts/build_early_exit_votetrades.mjs` (early-exit repricing),
+`scripts/build_hl_touches.mjs` (HL signal — note that whole signal is
+closed/null, see memory).
+
+---
+
 ## Backtest build discipline — approach, data modeling, output analysis
 
 Distilled from reviewing an external macro-signal build (`Dax Base IFO
