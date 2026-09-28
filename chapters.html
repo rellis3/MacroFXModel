@@ -97,6 +97,7 @@
 import { gauge, gaugeSentence } from './js/gaugeRead.js';
 import { receipt, receiptSentence, curveFactors, curveSentence } from './js/chapterEngine.js';
 import { DESK_EVIDENCE } from './js/deskEvidence.js';
+import { CHAPTERS, builtChapters } from './js/chapterSpec.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const $ = id => document.getElementById(id);
@@ -105,12 +106,8 @@ const cls = v => v == null ? 'zero' : v > 0.05 ? 'pos' : v < -0.05 ? 'neg' : 'ze
 
 // Chapters that exist, and the ones that do not yet — listed rather than omitted so the
 // shape of the book is visible and nobody wonders whether B is broken or absent.
-const PLANNED = [
-  ['A', 'The curve', true], ['B', 'Policy path', false], ['C', 'Real yields', false],
-  ['D', 'Inflation', true], ['E', 'Growth', false], ['F', 'Labour', false],
-  ['G', 'Liquidity', false], ['H', 'Credit', false], ['I', 'FX & carry', false],
-  ['J', 'Commodities', false], ['K', 'Positioning', false], ['L', 'Volatility', false],
-];
+// The chapter list lives in js/chapterSpec.js — one source, so the nav cannot list a
+// chapter the page does not render or vice versa.
 
 const VERDICT_CLASS = { validated: 'v-val', null: 'v-null', context: 'v-ctx', underpowered: 'v-null' };
 
@@ -159,59 +156,89 @@ function surface(series, tenors, weeks = 52) {
   </tbody></table></div>`;
 }
 
-function chapterA(D) {
+/**
+ * One renderer for every chapter (js/chapterSpec.js declares them).
+ *
+ * A and D were hand-written and had already drifted apart before a third existed —
+ * different member orders, different receipt wording, one nearly missing its evidence
+ * block. Twelve of those would be twelve chances to say the same thing differently, which
+ * a reader reads as carelessness. So the spec says WHAT a chapter is about and this
+ * decides HOW it looks; the only bespoke piece left is the curve surface.
+ */
+function chapterHtml(spec, D) {
+  const have = k => Array.isArray(D.series?.[k]) && D.series[k].length > 8;
+  const members = spec.members.filter(m => have(m.key));
+  const absent = spec.members.filter(m => !have(m.key)).map(m => m.label);
+
+  // A chapter whose members did not arrive says so rather than rendering a confident
+  // gauge off two of eight series.
+  if (!members.length) {
+    return `<div class="ch" id="ch-${spec.key}">
+      <div class="ch-k">Chapter ${spec.key}</div><h2>${esc(spec.name)}</h2>
+      <div class="read"><p class="q">None of this chapter's series arrived, so there is nothing to read.
+        ${absent.length ? `Waiting on: ${esc(absent.join(', '))}.` : ''}</p></div>
+    </div>`;
+  }
+
+  const receipts = new Map(spec.receipts.filter(have).map(k => [k, receipt(D.series[k])]));
+  // the gauge runs on the CHANGE z, not the level: a chapter about what is HAPPENING is a
+  // different question from where an index happens to sit
+  const g = gauge(members.map(m => {
+    const r = have(m.key) ? receipt(D.series[m.key]) : null;
+    return { key: m.key, label: m.label, z: r?.changeZ ?? null };
+  }));
+
+  const lines = [...receipts.entries()]
+    .map(([k, r]) => receiptSentence(r, spec.members.find(m => m.key === k)?.label ?? k, unitSuffix(spec, k)))
+    .filter(Boolean);
+
+  return `<div class="ch" id="ch-${spec.key}">
+    <div class="ch-k">Chapter ${spec.key}</div><h2>${esc(spec.name)}</h2>
+    <div class="read">
+      <div class="read-h"><span>the read</span><span>${g.present} of ${g.n} members · a receipt behind each</span></div>
+      <p>${esc(gaugeSentence(g, gaugeName(spec)) ?? 'No member printed.')}</p>
+      ${lines.map(l => `<p class="q">${esc(l)}</p>`).join('')}
+      <p class="q">${esc(spec.blurb)}</p>
+      ${spec.note ? `<p class="q"><b>${esc(spec.note)}</b></p>` : ''}
+      ${absent.length ? `<p class="q" style="color:var(--text3)">Not printing today: ${esc(absent.join(', '))} — excluded from the gauge rather than counted as zero.</p>` : ''}
+    </div>
+    <div class="lab">who is carrying the gauge</div>
+    ${memberTable(g)}
+    ${spec.surface === 'curve' ? `<div class="lab">the surface — every tenor, weekly</div>${surface(D.series, D.tenors)}${curveSplit(D)}` : ''}
+    ${evidenceBlock(spec.evidence)}
+    <div class="src">${esc(members.map(m => D.fred?.[m.key] ?? m.key).join(' '))}</div>
+  </div>`;
+}
+
+/** "The curve" already carries its article, so `The ${name} gauge` read "The the curve
+ *  gauge". Strip a leading article rather than renaming the chapter. */
+function gaugeName(spec) {
+  const n = spec.name.replace(/^the\s+/i, '').toLowerCase();
+  return `The ${n} gauge`;
+}
+
+/** Percent for anything price-like, per cent for rates — the receipt prints the unit. */
+function unitSuffix(spec, key) {
+  const m = spec.members.find(x => x.key === key);
+  return m?.unit === 'pct' ? '%' : m?.unit === 'idx' ? '' : '%';
+}
+
+/** The curve's level/slope/curvature split, only meaningful where there are tenors. */
+function curveSplit(D) {
   const tenors = D.tenors.map(t => {
     const r = D.series[t.key];
     return (r && r.length) ? { key: t.label, label: t.label, years: t.years, value: r.at(-1).value, prev: r.at(-6)?.value } : null;
   }).filter(Boolean);
   const cf = curveFactors(tenors);
   if (!cf) return '';
-  const r10 = receipt(D.series.y10 ?? []), r2 = receipt(D.series.y2 ?? []);
-  return `<div class="ch" id="ch-A">
-    <div class="ch-k">Chapter A</div><h2>The curve</h2>
-    <div class="read">
-      <div class="read-h"><span>the read</span><span>${tenors.length} tenors · a receipt behind each</span></div>
-      <p>${esc(curveSentence(cf))}</p>
-      <p class="q">${esc(receiptSentence(r10, 'The 10-year') ?? '')} ${esc(receiptSentence(r2, 'The 2-year') ?? '')}</p>
-      ${cf.inverted ? `<p class="q">The curve is inverted: the short end pays more than the long end, which is the market saying policy is tight now relative to where it expects rates to settle.</p>` : ''}
-    </div>
-    <div class="lab">the move, split three ways</div>
+  const cell = (n, l, share) => `<div>${l} <b class="${cls(n)}">${sgn(n)}${n?.toFixed(3) ?? '—'}</b>${share != null ? ` (${Math.round(share * 100)}%)` : ''}</div>`;
+  return `<div class="lab">the move, split three ways</div>
+    <p class="q" style="margin:0 0 6px">${esc(curveSentence(cf) ?? '')}</p>
     <div class="split">
-      <div>level <b class="${cls(cf.move?.level)}">${sgn(cf.move?.level)}${cf.move?.level?.toFixed(3) ?? '—'}</b> ${cf.move?.share ? `(${Math.round(cf.move.share.level * 100)}%)` : ''}</div>
-      <div>slope <b class="${cls(cf.move?.slope)}">${sgn(cf.move?.slope)}${cf.move?.slope?.toFixed(3) ?? '—'}</b> ${cf.move?.share ? `(${Math.round(cf.move.share.slope * 100)}%)` : ''}</div>
-      <div>curvature <b class="${cls(cf.move?.curvature)}">${sgn(cf.move?.curvature)}${cf.move?.curvature?.toFixed(3) ?? '—'}</b> ${cf.move?.share ? `(${Math.round(cf.move.share.curvature * 100)}%)` : ''}</div>
-    </div>
-    <div class="lab">the surface — every tenor, weekly</div>
-    ${surface(D.series, D.tenors)}
-    ${evidenceBlock(['front-end-shock', 'rates-pivot-lead', 'yields-to-fx-direction', 'spread-leads-fx-hours', 'yield-spread-sleeve'])}
-    <div class="src">FRED ${esc(D.tenors.map(t => D.fred[t.key]).join(' '))}</div>
-  </div>`;
-}
-
-function chapterD(D) {
-  const MEM = [
-    ['bei5', '5Y breakeven'], ['bei10', '10Y breakeven'], ['bei5y5y', '5y5y forward breakeven'],
-    ['cpi', 'CPI'], ['coreCpi', 'Core CPI'], ['corePce', 'Core PCE'],
-    ['ppi', 'PPI final demand'], ['ahe', 'average hourly earnings'],
-  ];
-  const receipts = new Map(MEM.map(([k, l]) => [k, receipt(D.series[k] ?? [])]));
-  // the gauge runs on the CHANGE z, not the level z: a chapter about what is happening
-  // to inflation is not the same question as where the index happens to sit
-  const g = gauge(MEM.map(([k, label]) => ({ key: k, label, z: receipts.get(k)?.changeZ ?? null })));
-  const lines = ['bei5', 'bei10', 'bei5y5y'].map(k => receiptSentence(receipts.get(k), MEM.find(m => m[0] === k)[1])).filter(Boolean);
-  return `<div class="ch" id="ch-D">
-    <div class="ch-k">Chapter D</div><h2>Inflation complex</h2>
-    <div class="read">
-      <div class="read-h"><span>the read</span><span>${g.present} of ${g.n} members · a receipt behind each</span></div>
-      <p>${esc(gaugeSentence(g, 'The inflation gauge') ?? 'No members printed.')}</p>
-      ${lines.map(l => `<p class="q">${esc(l)}</p>`).join('')}
-      <p class="q">Nominal yield = real yield + breakeven, so these three are the half of a yield move that is about prices rather than the cost of money. A breakeven that moves while the real yield does not is the market changing its mind about inflation, not about policy.</p>
-    </div>
-    <div class="lab">who is carrying the gauge</div>
-    ${memberTable(g)}
-    ${evidenceBlock(['oil-to-breakevens', 'surprise-size', 'front-end-shock'])}
-    <div class="src">FRED ${esc(MEM.map(([k]) => D.fred[k]).filter(Boolean).join(' '))}</div>
-  </div>`;
+      ${cell(cf.move?.level, 'level', cf.move?.share?.level)}
+      ${cell(cf.move?.slope, 'slope', cf.move?.share?.slope)}
+      ${cell(cf.move?.curvature, 'curvature', cf.move?.share?.curvature)}
+    </div>`;
 }
 
 (async () => {
@@ -225,9 +252,9 @@ function chapterD(D) {
       <p class="q">These chapters are built from live FRED series, so there is nothing to read without them. This page needs the MacroFX server.</p></div></div>`;
     return;
   }
-  $('nav').innerHTML = `<b>chapters</b>` + PLANNED.map(([k, name, live]) =>
+  $('nav').innerHTML = `<b>chapters</b>` + CHAPTERS.map(({ key: k, name, built: live }) =>
     `<a class="${live ? '' : 'soon'}" href="${live ? `#ch-${k}` : '#'}"><span class="k">${k}</span>${esc(name)}${live ? '' : ' · to come'}</a>`).join('');
-  $('out').innerHTML = chapterA(D) + chapterD(D)
+  $('out').innerHTML = builtChapters().map(c => chapterHtml(c, D)).join('')
     + (D.missing?.length ? `<div class="ch"><div class="read"><p class="err">${D.missing.length} series did not arrive: ${esc(D.missing.join(', '))}.</p>
         <p class="q">They are excluded from the gauges above rather than counted as zero, so the coverage figure already reflects this.</p></div></div>` : '');
 })();

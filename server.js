@@ -14897,6 +14897,8 @@ let _chapters = { at: 0, data: null, error: null };
 
 async function _refreshChapters() {
   try {
+    // the borrow below needs it; refreshing here rather than hoping someone else did
+    if (!_drillBundle.data) await _refreshDrillBundle().catch(() => {});
     const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
     const series = {}, missing = [];
     for (const [k, id] of Object.entries(_CHAPTER_FRED)) {
@@ -14907,7 +14909,22 @@ async function _refreshChapters() {
     }
     // A chapter whose members did not arrive is reported as such rather than rendered
     // thin and silent -- the failure this repo keeps re-learning.
-    _chapters = { at: Date.now(), error: null, data: { series, missing, tenors: _CHAPTER_TENORS,
+    // MERGE THE DRILL BUNDLE rather than fetching the same series twice. vix, hy, dxy,
+    // gold, oil, copper, ig, ccc and the CBOE vol set are already pulled once a day for
+    // the drill; re-fetching them here would double the load on the same feeds for
+    // identical numbers, and the two copies would drift apart on any day one fetch
+    // failed and the other did not.
+    const borrowed = [];
+    if (_drillBundle?.data?.series && Array.isArray(_drillBundle.data.dates)) {
+      const dd = _drillBundle.data.dates;
+      for (const [k, arr] of Object.entries(_drillBundle.data.series)) {
+        if (series[k] || !Array.isArray(arr)) continue;
+        const rows = [];
+        for (let i = 0; i < dd.length; i++) if (Number.isFinite(arr[i])) rows.push({ date: dd[i], value: arr[i] });
+        if (rows.length) { series[k] = rows; borrowed.push(k); }
+      }
+    }
+    _chapters = { at: Date.now(), error: null, data: { series, missing, borrowed, tenors: _CHAPTER_TENORS,
       fred: _CHAPTER_FRED, from: since, to: new Date().toISOString().slice(0, 10) } };
   } catch (e) { _chapters.error = e.message; console.warn('[chapters]', e.message); }
   return _chapters;
