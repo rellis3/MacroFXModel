@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { scorePair, endOfDay, pairReview, plannedInWindow, PLAN_WINDOW_UTC } from './endOfDay.js';
+import { scorePair, endOfDay, pairReview, plannedInWindow, isTradingDay, PLAN_WINDOW_UTC } from './endOfDay.js';
 
 const AM = '2026-09-23T07:30:00.000Z';   // inside the capture window
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -284,6 +284,35 @@ t('a plan captured outside the morning window is refused, not scored', () => {
 
 // Half the last ten days had no plan inside the window, and the whole evening read
 // vanished on each of them. The day happens whether or not a call was made about it.
+// Found in the live store: Saturday 2026-09-26 carries a full 30-pair plan captured at
+// 06:44 UTC, and Sunday 2026-09-20 another at 06:42. The capture guard checked the HOUR
+// and never the day. It mattered little while the evening read was gated on a plan; it
+// matters now that it is not, because a Saturday would otherwise produce a confident
+// description of a tape that never moved.
+t('a weekend is closed, not quiet', () => {
+  assert.equal(isTradingDay('2026-09-25'), true, 'Friday');
+  assert.equal(isTradingDay('2026-09-26'), false, 'Saturday');
+  assert.equal(isTradingDay('2026-09-27'), false, 'Sunday');
+  assert.equal(isTradingDay('2026-09-28'), true, 'Monday');
+  assert.equal(isTradingDay('not a date'), false);
+
+  const sat = endOfDay({ morning: null, live: { GOLD: live() }, nowMs: Date.UTC(2026, 8, 26, 20, 0) });
+  assert.equal(sat.ok, false);
+  assert.equal(sat.closed, true);
+  assert.match(sat.reason, /market was closed/);
+  assert.equal('rows' in sat, false, 'a closed day describes nothing at all');
+});
+
+t('a weekend plan is never scored, even if one was captured', () => {
+  // the Saturday 06:44 capture is inside the hour window and must still not be marked
+  const sat = endOfDay({
+    morning: { plan: { at: '2026-09-26T06:44:33.000Z', pairs: { GOLD: morning({ lean: 'down' }) } } },
+    live: { GOLD: live() }, nowMs: Date.UTC(2026, 8, 26, 20, 0),
+  });
+  assert.equal(sat.marked, false);
+  assert.equal(sat.closed, true);
+});
+
 t('no plan at all still describes the day, it just marks nothing', () => {
   const r = endOfDay({ morning: null, live: { GOLD: live(), NQ: live({ session_open: 30000, current_price: 30300 }) }, hl: {} });
   assert.equal(r.ok, true, 'the session is still described');

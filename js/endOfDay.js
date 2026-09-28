@@ -139,6 +139,25 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
 export const PLAN_WINDOW_UTC = { from: 6, to: 11 };   // 07:00-12:00 London in BST
 
 /** Was this plan captured in the morning window, or just labelled as if it were? */
+/**
+ * Is this a day the market traded?
+ *
+ * FX runs Sunday evening to Friday evening, so a Saturday and most of a Sunday are not
+ * sessions at all. Found in the live store: Saturday 2026-09-26 carries a full 30-pair
+ * plan captured at 06:44 UTC, and Sunday 2026-09-20 another at 06:42. The capture guard
+ * checked the HOUR and never asked what day it was.
+ *
+ * It mattered little while the evening read was gated on a plan. It matters now that the
+ * read no longer is: without this, a Saturday produces a confident description of a tape
+ * that never moved.
+ */
+export function isTradingDay(dateOrMs = Date.now()) {
+  const d = new Date(typeof dateOrMs === 'string' ? `${dateOrMs}T12:00:00Z` : dateOrMs);
+  if (Number.isNaN(d.getTime())) return false;
+  const dow = d.getUTCDay();
+  return dow >= 1 && dow <= 5;   // Mon-Fri. Sunday's late open is not a day to review.
+}
+
 export function plannedInWindow(at) {
   const ms = Date.parse(at ?? '');
   if (!Number.isFinite(ms)) return false;
@@ -150,7 +169,7 @@ export function plannedInWindow(at) {
  *  not enough for it to pretend the page called anything. */
 const NO_CALL = { price: null, lean: null, expRange: null };
 
-export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, chainPM = null } = {}) {
+export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, chainPM = null, nowMs = Date.now() } = {}) {
   const plan = morning?.plan?.pairs ?? null;
   // A plan captured at 20:43 is not a morning plan, whatever the row calls it. Scoring
   // one would read 20 leans right out of 20 for the obvious reason, and a look-back that
@@ -164,7 +183,12 @@ export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, c
   // the last 10 days had no plan inside the window and therefore no end-of-day anything.
   // Marking needs a morning call to mark against; DESCRIBING the session does not, and
   // conflating the two threw away half the evenings.
-  const marked = !!plan && plannedInWindow(at);
+  const traded = isTradingDay(nowMs);
+  const marked = !!plan && plannedInWindow(at) && traded;
+  // A weekend is not a quiet day, it is a closed one, and the difference has to be said
+  // rather than rendered as a tape that happened to go nowhere.
+  if (!traded) return { ok: false, marked: false, closed: true, plannedAt: at,
+    reason: 'the market was closed today, so there is no session to review' };
   const notMarked = marked ? null
     : plan ? (at ? `the day's plan was captured at ${String(at).slice(11, 16)} UTC, outside the 06:00-11:00 window — that is a snapshot of the afternoon, not a morning call, so there is nothing to mark`
                  : "the day's plan carries no timestamp, so it cannot be told apart from an afternoon snapshot")

@@ -5278,6 +5278,10 @@ async function postDailyPlan() {
   const day = new Date().toISOString().slice(0, 10); if (_planPosted === day) return;
   const h = new Date().getUTCHours();
   if (h < PLAN_WINDOW_UTC.from || h >= PLAN_WINDOW_UTC.to) return;   // retried in 3h
+  // A plan for a day the market does not trade is noise in the record. The store holds
+  // two of them -- Sat 2026-09-26 at 06:44 and Sun 2026-09-20 at 06:42, both full
+  // 30-pair captures -- because this guard checked the hour and never the day.
+  if (!window.endOfDayBrick?.isTradingDay?.()) return;
   const rs = allRows(); if (!rs.length || !window.outlookBrick) return;
   const pairs = {};
   for (const r of rs) {
