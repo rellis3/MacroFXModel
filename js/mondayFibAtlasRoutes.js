@@ -428,7 +428,32 @@ async function getFastLive(pair) {
       const before = entry.packed.n;
       entry.packed = await gapFillPacked(entry.packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 });
       if (entry.packed.n > before) entry.packed = boundPacked(entry.packed, LIVE_WINDOW_DAYS);
-    } catch (e) { /* stale-but-serving beats erroring a poll */ }
+      // Recovery log — see asiaFibAtlasRoutes.js's own identical fix
+      // (2026-09-28) for the full mechanism this catches.
+      if (entry.gapFillFailSince) {
+        const stuckMin = ((Date.now() - entry.gapFillFailSince) / 60000).toFixed(1);
+        console.warn(`[monday-fib-atlas-live] ${sym}: gap-fill recovered after ${stuckMin}min stuck — every rung's own lastTouchTime was frozen for that whole window`);
+        entry.gapFillFailSince = null;
+      }
+    } catch (e) {
+      // Was a TRUE silent catch ("stale-but-serving beats erroring a
+      // poll") -- found 2026-09-28 (same fix as asiaFibAtlasRoutes.js's
+      // own getFastLive, DOW/monday was the pair that actually surfaced
+      // this): a PERSISTENT failure here freezes every rung's
+      // lastTouchTime forever (newestBar never advances, so the ladder
+      // below never recomputes), and every candidate eventually fails the
+      // whiplash gap filter with zero trace anywhere. Still doesn't throw
+      // (one bad poll shouldn't error), but now logs loud enough to find:
+      // immediately on the first failure, then at most once every 5 min
+      // while it keeps failing.
+      const wasHealthy = !entry.gapFillFailSince;
+      if (wasHealthy) entry.gapFillFailSince = Date.now();
+      const stuckMin = (Date.now() - entry.gapFillFailSince) / 60000;
+      if (wasHealthy || !entry.gapFillLastLoggedAt || Date.now() - entry.gapFillLastLoggedAt > 300_000) {
+        console.error(`[monday-fib-atlas-live] ${sym}: gap-fill FAILED${wasHealthy ? '' : ` (stuck ${stuckMin.toFixed(1)}min)`} — ${e.message} — serving stale data, every rung's lastTouchTime is frozen until this recovers`);
+        entry.gapFillLastLoggedAt = Date.now();
+      }
+    }
   }
   const newestBar = entry.packed.times[entry.packed.n - 1];
   const assetClass = assetClassFor(pair);

@@ -491,7 +491,34 @@ async function getFastLive(pair) {
       const before = entry.packed.n;
       entry.packed = await gapFillPacked(entry.packed, oandaSymbol(pair), fetchM1Range, { nowSec: Math.floor(Date.now() / 1000), minGapSec: 55 });
       if (entry.packed.n > before) entry.packed = boundPacked(entry.packed, LIVE_WINDOW_DAYS);
-    } catch (e) { /* stale-but-serving beats erroring a poll */ }
+      // Recovery log — only fires if this pair had actually been stuck, so
+      // it's silent on the normal path (every poll, every pair).
+      if (entry.gapFillFailSince) {
+        const stuckMin = ((Date.now() - entry.gapFillFailSince) / 60000).toFixed(1);
+        console.warn(`[asia-fib-atlas-live] ${sym}: gap-fill recovered after ${stuckMin}min stuck — every rung's own lastTouchTime was frozen for that whole window (see this catch's own doc for the mechanism)`);
+        entry.gapFillFailSince = null;
+      }
+    } catch (e) {
+      // Found 2026-09-28: this used to be a TRUE silent catch ("stale-but-
+      // serving beats erroring a poll") -- reasonable for ONE bad poll, but
+      // a PERSISTENT failure here means `entry.packed`'s newest bar never
+      // advances, so line ~498 below never recomputes the ladder again --
+      // every rung's lastTouchTime freezes at whatever it was, ages
+      // forever, and every candidate eventually fails the 30min whiplash
+      // gap filter with zero trace anywhere. Cost ~15h of zero entries
+      // before anyone noticed. Still doesn't throw (stale-but-serving is
+      // still the right call for one bad poll), but now logs loud enough
+      // to actually be found: immediately on the FIRST failure after a
+      // healthy run, then at most once every 5 min while it keeps failing
+      // (this function is polled far too often to log every single miss).
+      const wasHealthy = !entry.gapFillFailSince;
+      if (wasHealthy) entry.gapFillFailSince = Date.now();
+      const stuckMin = (Date.now() - entry.gapFillFailSince) / 60000;
+      if (wasHealthy || !entry.gapFillLastLoggedAt || Date.now() - entry.gapFillLastLoggedAt > 300_000) {
+        console.error(`[asia-fib-atlas-live] ${sym}: gap-fill FAILED${wasHealthy ? '' : ` (stuck ${stuckMin.toFixed(1)}min)`} — ${e.message} — serving stale data, every rung's lastTouchTime is frozen until this recovers`);
+        entry.gapFillLastLoggedAt = Date.now();
+      }
+    }
   }
   const newestBar = entry.packed.times[entry.packed.n - 1];
   const assetClass = assetClassFor(pair);
