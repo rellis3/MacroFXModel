@@ -59,6 +59,28 @@
 
   /* ── Summary strip ──────────────────────────────────────── */
   .wrap{max-width:1500px;margin:0 auto;padding:14px 18px}
+
+  /* Jump rail. Hidden below 1200px entirely — the page already works without it and a
+     fixed rail on a laptop would eat width the panels need. Above that it is given its
+     own gutter rather than overlaying, so nothing is ever covered. */
+  .jump{display:none}
+  @media(min-width:1200px){
+    .wrap{padding-left:146px}
+    .jump{display:flex;flex-direction:column;gap:1px;position:fixed;left:10px;top:var(--jump-top,150px);width:126px;z-index:40}
+    .jump-h{font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text3);
+            font-weight:800;padding:0 8px 5px}
+    .jump a{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;
+            font-size:11.5px;line-height:1.3;color:var(--text3);text-decoration:none;
+            border-left:2px solid transparent;transition:background .1s,color .1s}
+    .jump a:hover{background:var(--card2);color:var(--text)}
+    .jump a.on{color:var(--text);border-left-color:var(--blue);background:var(--card2)}
+    .jump a .ji{flex:0 0 auto;font-size:12px;opacity:.85}
+    .jump a .jt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .jump a.shut .jt{opacity:.5}
+    .jump-top{margin-top:4px;border-top:1px solid var(--border);padding-top:5px}
+  }
+  /* A rail taller than the viewport scrolls with the page rather than clipping */
+  @media(min-width:1200px) and (max-height:820px){ .jump{max-height:calc(100vh - var(--jump-top,150px) - 16px);overflow-y:auto} }
   .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px}
   .stile{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
   .stile .k{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
@@ -1283,6 +1305,7 @@
 </div>
 
 <div class="wrap">
+<nav class="jump" id="jumpNav" aria-label="Jump to a section"></nav>
   <div class="statrow" id="statRow" style="display:none"></div>
 
   <div class="dashgrid">
@@ -4618,12 +4641,58 @@ try { collapsedSections = new Set(JSON.parse(localStorage.getItem('collapsedSect
 catch (e) { collapsedSections = new Set(); }
 function toggleSection(id) {
   if (collapsedSections.has(id)) collapsedSections.delete(id); else collapsedSections.add(id);
+  setTimeout(() => { try { renderJumpNav(); } catch (e) {} }, 0);   // the rail marks collapsed sections
   try { localStorage.setItem('collapsedSections', JSON.stringify([...collapsedSections])); } catch (e) {}
   const body = document.querySelector(`.sec-body[data-sec="${id}"]`);
   const chev = document.querySelector(`.sec-chev[data-sec="${id}"]`);
   if (body) body.classList.toggle('sec-hidden', collapsedSections.has(id));
   if (chev) chev.classList.toggle('sec-closed', collapsedSections.has(id));
 }
+/**
+ * The jump rail, rebuilt from whatever is currently on the page (js/jumpNav.js).
+ *
+ * Re-rendered on every render() because panels appear and disappear as their feeds
+ * arrive — a rail built once at boot would list sections that later hid themselves, and
+ * clicking one of those scrolls nowhere and reads as a bug rather than as missing data.
+ */
+window.renderJumpNav = renderJumpNav;
+function renderJumpNav() {
+  const el = $('jumpNav'), J = window.jumpNavBrick;
+  if (!el || !J) return;
+  // The header is sticky, so the rail has to start below whatever height it actually is.
+  // Measured rather than guessed: a hardcoded offset clipped the first item the moment
+  // the header gained a row.
+  try {
+    const h = document.querySelector('.hdr');
+    if (h) document.documentElement.style.setProperty('--jump-top', (h.getBoundingClientRect().height + 14) + 'px');
+  } catch (e) {}
+  const list = J.items(document, { getStyle: n => { try { return getComputedStyle(n); } catch { return null; } } });
+  if (list.length < 3) { el.innerHTML = ''; return; }   // not worth a rail for one or two
+  _jumpList = list;
+  el.innerHTML = `<div class="jump-h">on this page</div>` + list.map(i =>
+    `<a href="#${i.id}" data-j="${i.id}" onclick="jumpTo(event,'${i.id}')"${collapsedSections.has(i.id) ? ' class="shut" title="this section is collapsed — opens it"' : ''}>`
+    + `<span class="ji">${i.icon}</span><span class="jt">${esc0(i.label)}</span></a>`).join('')
+    + `<a class="jump-top" href="#" onclick="jumpTo(event,null)"><span class="ji">\u2191</span><span class="jt">Top</span></a>`;
+  markJumpActive();
+}
+let _jumpList = [];
+
+/** Clicking a collapsed section opens it first — scrolling to a closed panel shows nothing. */
+window.jumpTo = (ev, id) => {
+  ev?.preventDefault?.();
+  if (!id) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (collapsedSections.has(id)) toggleSection(id);
+  const el = document.getElementById(id);
+  if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 88, behavior: 'smooth' });
+};
+
+function markJumpActive() {
+  const J = window.jumpNavBrick; if (!J || !_jumpList.length) return;
+  const id = J.activeId(_jumpList, window.scrollY);
+  for (const a of document.querySelectorAll('.jump a[data-j]')) a.classList.toggle('on', a.dataset.j === id);
+}
+addEventListener('scroll', () => { clearTimeout(window._jumpT); window._jumpT = setTimeout(markJumpActive, 60); }, { passive: true });
+
 function secChev(id) {
   const closed = collapsedSections.has(id);
   return `<button class="sec-chevbtn" onclick="toggleSection('${id}')" title="Show/hide this section"><svg class="sec-chev${closed ? ' sec-closed' : ''}" data-sec="${id}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`;
@@ -9244,6 +9313,8 @@ function render() {
     $('grid').innerHTML = rs.map(cardHtml).join('') || '<div class="muted">No instruments match this filter.</div>';
   }
   try { reattachFocus(); mountFocusButtons(); } catch (e) {}
+  // last, so the rail is built from the panels this pass actually left on screen
+  try { renderJumpNav(); } catch (e) {}
   $('footNote').innerHTML = 'The morning funnel: <b>Market Read</b> up top synthesises the whole board in one sentence + a currency-strength meter (FX + haven) and an equities/risk strip (what is the market thinking?) → calendar + risk state (should I trade today?) → cards (which pairs deserve attention? ✓ aligned = HMM trend and session bias agree; ⚠ COT extreme = crowded positioning / squeeze risk; ◎ PIN/BREAKOUT = CME gamma regime) → click a card for the full story (Asia, recent days, rate driver, COT positioning, options walls, cached AI read), M5 chart and Decision Engine zones → a pulsing card means price is at a level now.<br>Range-used = today\'s H-L vs the median forecast H-L; ladder = open±median/75th levels with historical touch rates. COT is automatic (weekly CFTC); options/OI is manual CME paste (shown with age, only pairs with a CME chain); AI shows the last Analyse run, not a fresh call.';
 }
 
@@ -12798,6 +12869,11 @@ setInterval(() => { jget('/api/vol-forecast').then(f => { if (f?.instruments) { 
      a reading, which one dissents, and how much of the score rests on one leg. A
      composite at +0.6 from six legs leaning together is not the same animal as +0.6 from
      one leg at +3 z, and the panels printed both identically. -->
+<script type="module">
+  import * as JumpNav from './js/jumpNav.js';
+  window.jumpNavBrick = JumpNav;
+  try { window.renderJumpNav?.(); } catch (e) {}
+</script>
 <script type="module">
   import * as DrillChart from './js/drillChart.js';
   window.drillChartBrick = DrillChart;
