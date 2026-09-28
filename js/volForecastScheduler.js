@@ -100,6 +100,27 @@ export const INSTRUMENTS = [
   { name: 'UK100',  oandaInstrument: 'UK100_GBP',    ticker: '^FTSE',   assetClass: 'index', preferYahoo: true },
   { name: 'US30',   oandaInstrument: 'US30_USD',     ticker: '^DJI',    assetClass: 'index', preferYahoo: true },
   { name: 'US2000', oandaInstrument: 'US2000_USD',   ticker: '^RUT',    assetClass: 'index', preferYahoo: true },
+  // ── Commodities (2026-09-28) ─────────────────────────────────────────────────
+  // assetClass 'commodity' (same class GOLD already uses) picks the RS-EWMA σ
+  // estimator (ASSET_PARAMS.commodity in volForecast.js) -- appropriate for
+  // these trending, gappy markets, no new per-instrument config needed. Every
+  // oandaInstrument below confirmed live directly against OANDA's v3 candles
+  // API before adding (not assumed) -- see the trend-following universe
+  // (_TREND_UNIVERSE, server.js) for XAU/XAG/BCO/WTICO/NATGAS/XPT, already
+  // proven working elsewhere in this repo; XCU/XPD/SOYBN/WHEAT/CORN/SUGAR
+  // newly confirmed here. No preferYahoo -- OANDA is these instruments'
+  // primary source same as every FX pair, Yahoo only as fallback.
+  { name: 'SILVER',  oandaInstrument: 'XAG_USD',    ticker: 'SI=F', assetClass: 'commodity' },
+  { name: 'COPPER',  oandaInstrument: 'XCU_USD',    ticker: 'HG=F', assetClass: 'commodity' },
+  { name: 'PLATINUM', oandaInstrument: 'XPT_USD',   ticker: 'PL=F', assetClass: 'commodity' },
+  { name: 'PALLADIUM', oandaInstrument: 'XPD_USD',  ticker: 'PA=F', assetClass: 'commodity' },
+  { name: 'WTI',     oandaInstrument: 'WTICO_USD',  ticker: 'CL=F', assetClass: 'commodity' },
+  { name: 'BRENT',   oandaInstrument: 'BCO_USD',    ticker: 'BZ=F', assetClass: 'commodity' },
+  { name: 'NATGAS',  oandaInstrument: 'NATGAS_USD', ticker: 'NG=F', assetClass: 'commodity' },
+  { name: 'SOYBEAN', oandaInstrument: 'SOYBN_USD',  ticker: 'ZS=F', assetClass: 'commodity' },
+  { name: 'WHEAT',   oandaInstrument: 'WHEAT_USD',  ticker: 'ZW=F', assetClass: 'commodity' },
+  { name: 'CORN',    oandaInstrument: 'CORN_USD',   ticker: 'ZC=F', assetClass: 'commodity' },
+  { name: 'SUGAR',   oandaInstrument: 'SUGAR_USD',  ticker: 'SB=F', assetClass: 'commodity' },
 ];
 
 const YAHOO_BASE       = 'https://query1.finance.yahoo.com/v8/finance/chart';
