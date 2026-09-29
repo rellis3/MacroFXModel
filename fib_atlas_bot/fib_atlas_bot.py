@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -954,9 +955,23 @@ def run(base_url: str, force_live: bool) -> None:
                 for f in slice_.get("filtered", []) or []:
                     fkey = f"{f.get('side')}|{f.get('rung')}"
                     reason = f.get("reason") or "unknown"
-                    seen_near_miss[fkey] = reason
-                    if near_miss_logged.get(key, {}).get(fkey) != reason:
-                        near_miss_logged.setdefault(key, {})[fkey] = reason
+                    # Dedup on the CATEGORY (numbers stripped), not the exact
+                    # string -- found 2026-09-28 chasing why a reconciliation
+                    # couldn't explain 8 of 10 missed candidates: a "gap
+                    # Xmin" reason embeds a continuously-ticking-up minute
+                    # count, so the OLD exact-string compare below logged a
+                    # fresh line every single refresh for as long as a rung
+                    # stayed a near-miss -- one DE30 rung alone produced 110
+                    # log lines in under 2 hours once indices joined live
+                    # evaluation, flooding the fixed 5000-event buffer and
+                    # evicting real history within hours, not days. Still
+                    # logs the FULL, precise reason (exact minute count)
+                    # every time a genuinely NEW category is seen -- only the
+                    # dedup comparison ignores the fast-changing number.
+                    category = re.sub(r"[\d.]+", "#", reason)
+                    seen_near_miss[fkey] = category
+                    if near_miss_logged.get(key, {}).get(fkey) != category:
+                        near_miss_logged.setdefault(key, {})[fkey] = category
                         _record_decision(pair, ladder, "skipped", side=f.get("side"), rung=f.get("rung"),
                                           decision=f.get("decision"), margin=f.get("margin"),
                                           reason=f"below_margin_or_unpriceable: {reason}")
