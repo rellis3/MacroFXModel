@@ -62,7 +62,7 @@ function isAllowedKVKey(key) {
     'oi_bot_config', 'oi_bot_credentials', 'oi_bot_status', 'oi_bot_zones', 'oi_bot_trades', 'oi_force_unlock',
     'oi_bot_state', 'oi_hold_calibration', 'oi_capture_freshness',
     'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_status',
-    'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
+    'volatility_bot_v2_plan', 'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log', 'volatility_bot_v2_drift_history',
     'volatility_bot_v3_config', 'volatility_bot_v3_credentials', 'volatility_bot_v3_status',
     'volatility_bot_v3_state', 'volatility_bot_v3_trade_log', 'volatility_bot_v3_decision_log',
     'fib_atlas_bot_config', 'fib_atlas_bot_credentials', 'fib_atlas_bot_status',
@@ -1102,7 +1102,7 @@ export default {
             // to cross tolerance, silently delaying the alert it exists to give.
             'oi_capture_freshness',
             'volatility_bot_v2_config', 'volatility_bot_v2_credentials', 'volatility_bot_v2_plan',
-            'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log',
+            'volatility_bot_v2_state', 'volatility_bot_v2_trade_log', 'volatility_bot_v2_decision_log', 'volatility_bot_v2_drift_history',
             // No volatility_bot_v3_plan — v3 computes decisions locally, nothing
             // server-side to persist (MD files/LOCAL_DECISION_ENGINE_ARCHITECTURE.md).
             'volatility_bot_v3_config', 'volatility_bot_v3_credentials',
