@@ -84,6 +84,25 @@ t('every touch time falls within [Tuesday 00:00, +7 days) of its own governing M
   }
 });
 
+t('prevOutcomeSameDay is CAUSAL: it equals an earlier same-week touch of this rung that had already resolved', () => {
+  // 2026-09-28 (js/visitMemory.js). Was hist.at(-1)'s eventual outcome; a
+  // Monday-range touch can take days to resolve, so a later retest routinely
+  // read a result that did not exist yet.
+  const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const key = r => `${r.side}|${r.level}|${r.rearmFrac}`;
+  let checked = 0;
+  for (let i = 0; i < touches.length; i++) {
+    const r = touches[i];
+    if (r.prevOutcomeSameDay == null) continue;
+    const known = touches.slice(0, i).filter(q => key(q) === key(r) && q.mondayDate === r.mondayDate
+      && q.time < r.time && q.outcome !== 'neither' && q.resolveTime != null && q.resolveTime <= r.time);
+    assert.ok(known.length > 0, 'prevOutcomeSameDay with no already-resolved same-week prior touch');
+    assert.equal(r.prevOutcomeSameDay, known.at(-1).outcome);
+    checked++;
+  }
+  assert.ok(checked > 0, 'expected some causal same-week values');
+});
+
 t('prevOutcomeSameDay only carries forward within the SAME reference week, never across weeks', () => {
   const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   const byKey = new Map();   // `${side}|${level}` -> touches sorted by time
@@ -97,7 +116,10 @@ t('prevOutcomeSameDay only carries forward within the SAME reference week, never
       if (cur.mondayDate !== prev.mondayDate) {
         // Different reference week -> must NOT inherit the previous week's outcome.
         assert.equal(cur.prevOutcomeSameDay, null, `touch in week ${cur.mondayDate} leaked prevOutcomeSameDay from week ${prev.mondayDate}`);
-      } else if (prev.outcome !== 'neither') {
+      } else if (prev.outcome !== 'neither' && prev.resolveTime != null && prev.resolveTime <= cur.time) {
+        // Only an outcome that had ALREADY resolved by this touch carries
+        // forward (2026-09-28 causal gate -- an unresolved prior is 'neither'
+        // at this instant, exactly as live sees it).
         assert.equal(cur.prevOutcomeSameDay, prev.outcome, `same-week repeat should carry forward the prior resolved outcome`);
       }
     }

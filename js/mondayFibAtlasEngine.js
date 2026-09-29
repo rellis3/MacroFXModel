@@ -42,6 +42,7 @@
  * `extractBars` (barUtils.js).
  */
 import { pipSize } from './instrumentRegistry.js';
+import { prevOutcomeSameDayAt } from './visitMemory.js';
 import { extractBars } from './barUtils.js';
 import { buildMondayRanges } from './sessionRanges.js';
 import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionOf, sessionHandoffPhase, confluenceThresholdPips } from './asiaFibAtlasEngine.js';
@@ -216,7 +217,11 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
             // calendar date (a touch Wednesday and one the following
             // Monday can both belong to week `i`).
             const sameWeek = prev && prev.weekIdx === i;
-            const prevOutcomeSameDay = (sameWeek && prev.outcome !== 'neither') ? prev.outcome : null;
+            // CAUSALLY GATED (2026-09-28, js/visitMemory.js): the latest
+            // same-week touch that had ALREADY resolved by this bar. It was
+            // hist.at(-1)'s eventual outcome, and a Monday-range touch can take
+            // days to resolve -- a later retest routinely preceded it.
+            const prevOutcomeSameDay = prevOutcomeSameDayAt(hist, i, bar.time, 'weekIdx');
             // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
             // finding, analysis/fib_atlas_whiplash_analysis.mjs +
             // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
@@ -239,7 +244,7 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               prevOutcomeSameDay, gapMin, mondayConfluenceGrade,
               mondayHigh: mon.high, mondayLow: mon.low, mondayRange: mon.range,
             });
-            lastVisit[key] = [...hist, { outcome, weekIdx: i, time: bar.time }].slice(-3);
+            lastVisit[key] = [...hist, { outcome, resolveTime, weekIdx: i, time: bar.time }].slice(-3);
           }
         }
       }
