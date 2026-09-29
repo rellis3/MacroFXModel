@@ -101,8 +101,29 @@ export async function auditVoteAtlasDrift(tradeLogEntries, { minMargin = 3 } = {
       const [, side, rung, instanceStr] = m;
       const instance = +instanceStr;
       const sameDay = stored.filter(t => t.date === trade.date && t.side === side && t.rung === rung).sort((a, b) => a.time - b.time);
-      const matched = sameDay[instance - 1];
-      if (!matched) { results.push({ ...trade, pair, side, rung, instance, note: `no matching stored trade (${sameDay.length} on that day)` }); continue; }
+      // Match by NEAREST TIMESTAMP to the real trade's own open time, not by
+      // ordinal position (`sameDay[instance-1]`, `instance` from the bot's own
+      // zone_id tag). Position-matching silently assumes live's touch count
+      // for this (pair,side,rung,day) always equals the backtest re-walk's
+      // touch count, in the same order -- false whenever the two touch passes
+      // disagree on even one earlier touch that day. Found 2026-09-29: a real
+      // AUDUSD trade opened 04:08 UTC got matched to a stored candidate from
+      // 12:20 UTC (8h11m later) -- position 1 in each list was not the same
+      // real-world touch, and every later trade that day inherited the
+      // resulting offset. MAX_MATCH_GAP_SEC rejects a "nearest" match that
+      // isn't actually close -- every genuine same-touch pair checked so far
+      // (both bots, multiple pairs) landed within seconds to at most ~90s of
+      // its stored candidate.
+      let matched = null, matchGapSec = Infinity;
+      for (const cand of sameDay) {
+        const gap = Math.abs((cand.time ?? 0) - (trade.time_open ?? 0));
+        if (gap < matchGapSec) { matchGapSec = gap; matched = cand; }
+      }
+      const MAX_MATCH_GAP_SEC = 5 * 60;
+      if (!matched || matchGapSec > MAX_MATCH_GAP_SEC) {
+        results.push({ ...trade, pair, side, rung, instance, note: `no stored candidate within ${MAX_MATCH_GAP_SEC / 60}min of trade open (${sameDay.length} candidates that day, nearest ${matched ? Math.round(matchGapSec / 60) + 'min away' : 'n/a'})` });
+        continue;
+      }
 
       if (matched.margin < minMargin) {
         results.push({ ...trade, pair, side, rung, instance, note: `margin ${matched.margin} < ${minMargin}, should not have traded`, myDecision: matched.decision, myMargin: matched.margin });
