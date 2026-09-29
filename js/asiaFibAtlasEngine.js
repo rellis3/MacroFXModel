@@ -125,7 +125,7 @@ import { forecastSigma } from './forecastSigma.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
-import { knownOutcome, prevOutcomeSameDayAt, rollingRateAt } from './visitMemory.js';
+import { rollingRateAt } from './visitMemory.js';
 import { extractBars, resamplePacked, bisect } from './barUtils.js';
 import { buildAsiaSessions, buildMondayRanges, prevSession, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
 import { FIB_LEVELS, KEY_LEVELS, calcFibs } from './fibProjection.js';
@@ -703,6 +703,15 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
                 if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
               }
             }
+            // A 'neither' verdict is itself only KNOWN once the session
+            // closes (or, with extension enabled, once extBars also runs dry)
+            // -- but `resolveTime` correctly stays null for it (minsToResolve
+            // below must keep meaning "time to a REAL resolution"). `prevResolved`
+            // needs a separate "knowable as of" time -- left null (the old
+            // behaviour), a 'neither' prior is permanently invisible to that
+            // search, so a later same-day touch skips straight past a genuine
+            // 'neither' prior to whatever resolved touch came before it.
+            const knownByTime = outcome === 'neither' ? sessionCloseBar.time : resolveTime;
             const concurrencyResolveTime = resolveTime != null ? Math.min(resolveTime, concurrencyResolveCap) : null;
             const sgn = isAbove ? 1 : -1;
             const pullbackFrac = rungSpan > 0 ? Math.min(1, Math.abs(here - deepest) / rungSpan) : null;
@@ -795,10 +804,38 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             const hist = lastVisit[key] ?? [];
             const prev = hist.at(-1) ?? null;
             const daysSincePrevN = prev ? (i - prev.sessIdx) : null;
-            // Every prior-visit read is AS OF this bar (js/visitMemory.js). With
-            // extendResolutionDays > 0 a prior visit can resolve DAYS later, so
-            // this gates the cross-day read too, not only the same-day one.
-            const rollingRate = rollingRateAt(hist, bar.time);
+            // Look-ahead fix (2026-09-29, found chasing "why does live only
+            // take 1 of 10 backtest candidates"): `prev` (hist.at(-1)) is
+            // fine for anything only needing WHEN the prior touch occurred
+            // (gapMin, daysSincePrev) or what was true AT that touch's own
+            // moment (prevWtState) -- genuinely knowable in real time the
+            // instant the prior touch happens. But `prev.outcome` is NOT --
+            // resolving a touch needs forward-looking M1 data, and `hist`
+            // stores each touch's outcome EAGERLY, the moment THIS walk
+            // processes it (using that touch's own full forward look), not
+            // deferred until the bar where its resolution actually lands.
+            // Confirmed directly: a touch at 10:56 whose resolution only
+            // landed by ~12:00 was already being read as a KNOWN 'out'
+            // outcome by the 11:19 touch of the same rung -- 23 minutes
+            // later in the walk's own bar order, but nowhere near 23
+            // minutes later in when that information was actually knowable.
+            // `prevOutcomeSameDay` is one of only two VOTE_DIMS this
+            // engine's entire margin decision runs on (the other,
+            // sessionHandoff, has no such dependency) -- this directly
+            // explains backtest margin>=2 counts a live bot could not
+            // have reproduced in real time.
+            const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
+            const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.sessIdx) : null;
+            // `hist` itself is now uncapped (2026-09-29, needed so
+            // `prevResolved` above can reach back past several intervening
+            // unresolved touches) -- but rollingRate is deliberately a SHORT,
+            // recency-weighted base rate ("last <=5 visits"), not a full-
+            // history rate. Slice explicitly rather than relying on `hist`'s
+            // own length to stay bounded.
+            const rollWindow = hist.slice(-5);
+            // Each visit read AS OF this bar (js/visitMemory.js): a prior touch
+            // that hasn't resolved yet counts as 'neither', as live sees it.
+            const rollingRate = rollingRateAt(rollWindow, bar.time);
 
             const record = {
               instrument: sym, assetClass, date, side, level, rearmFrac, ordinal,
@@ -842,19 +879,28 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               htfTrend: feats.htfTrend?.bucket ?? null,
               volClimax: feats.volClimax?.bucket ?? null,
               roundNum: feats.roundNum?.bucket ?? null,
-              prevOutcome: knownOutcome(prev, bar.time),
+              // prevOutcome/outcomeRepeated/prevOutcomeSameDay/prevOutcomeCrossDay
+              // all read `.outcome` -- look-ahead-sensitive, so these use
+              // `prevResolved` (see its own doc above), not raw `prev`.
+              // prevWtState/wtStateRepeated only read a FEATURE true at
+              // prev's own touch moment, no outcome needed -- raw `prev`
+              // stays correct and unchanged for those.
+              prevOutcome: prevResolved?.outcome ?? null,
               prevWtState: prev?.wtState ?? null,
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
-              outcomeRepeated: (prev != null) ? (knownOutcome(prev, bar.time) === outcome) : null,
+              outcomeRepeated: (prevResolved?.outcome != null) ? (prevResolved.outcome === outcome) : null,
               daysSincePrev: daysSincePrevN,
+              // Companion to prevOutcomeSameDay/prevOutcomeCrossDay below --
+              // those read `prevResolved`, not `prev`. `daysSincePrev` above
+              // deliberately stays on `prev` for gapMin (needs WHEN the
+              // immediately-prior touch happened, any outcome, not just
+              // resolved ones).
+              daysSincePrevResolved: daysSincePrevResolvedN,
               // Same split as levelAtlasEngine's prevOutcomeSameDay/CrossDay,
               // for the same reason (§6.4 of the playbook — a same-day
               // 'neither' re-arm repeat is close to a tautology, not a finding).
-              // CAUSALLY GATED (2026-09-28, js/visitMemory.js) -- was
-              // hist.at(-1)'s eventual outcome, which a re-armed retest (or,
-              // with extendResolutionDays, the next session) can precede.
-              prevOutcomeSameDay: prevOutcomeSameDayAt(hist, i, bar.time, 'sessIdx'),
-              prevOutcomeCrossDay: (daysSincePrevN > 0) ? knownOutcome(prev, bar.time) : null,
+              prevOutcomeSameDay: (daysSincePrevResolvedN === 0 && prevResolved && prevResolved.outcome !== 'neither') ? prevResolved.outcome : null,
+              prevOutcomeCrossDay: (daysSincePrevResolvedN > 0) ? prevResolved.outcome : null,
               // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
               // finding, analysis/fib_atlas_whiplash_analysis.mjs +
               // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
@@ -869,7 +915,25 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, resolveTime, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time }].slice(-5);
+            // `resolveTime` carried here specifically so `prevResolved`
+            // (above) can tell whether THIS touch's own outcome had
+            // actually resolved by a LATER touch's own bar.time -- without
+            // it, prevResolved's filter would have nothing to compare against.
+            //
+            // NOT capped (was `.slice(-5)` until 2026-09-29): that cap
+            // predates `prevResolved`'s backward search and was only ever
+            // safe because the OLD code read just `hist.at(-1)` -- any cap
+            // >=1 was equivalent then. Found live in mondayFibAtlasEngine.js
+            // (same pattern, smaller cap, hit first) via a stale-test
+            // rewrite: a rung whiplashed unresolved more times than the cap
+            // allowed before its first touch resolved, silently evicting
+            // the one entry `prevResolved` needed and returning null
+            // instead of the correct outcome. Asia's shorter session makes
+            // this rarer but not impossible, so fixed here too rather than
+            // waiting for a live case. Per-rung history is naturally small
+            // (rearm mechanics bound retouch frequency), so uncapped costs
+            // nothing real.
+            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time, resolveTime: knownByTime }];
           }
         }
       }

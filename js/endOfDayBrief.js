@@ -232,7 +232,99 @@ export function recordLine(rec) {
            : 'does not clear a coin flip, and a single day cannot move it off one'}.`;
 }
 
-export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = [], printed = null, watchFired = [], sessions = {}, activity = {}, leanRecord = null, nowMs = Date.now() } = {}) {
+// ── The evening read, beyond the scorecard ──────────────────────────────────
+// The morning brief reads the data as it stands and looks forward. The evening should
+// read the same data and look BACK, and two things were missing from that: what the
+// WEEK has been doing (the deltas were already in `moved` and only the freshness field
+// was being spent), and where the crowd already sits.
+
+/** Did today extend the week, or argue with it? */
+export function weekFrame(moved = [], { minRows = 3 } = {}) {
+  const rows = (Array.isArray(moved) ? moved : []).filter(r => r && r.deltas
+    && Number.isFinite(r.deltas['1']) && Number.isFinite(r.deltas['5']));
+  if (rows.length < minRows) return null;
+
+  // A series is "with the week" when today's move shares the sign of the week's. Sign
+  // only: magnitudes across rates, credit and FX are not commensurable and averaging
+  // them would invent a number.
+  let withWeek = 0, againstWeek = 0, quiet = 0;
+  const notable = [];
+  for (const r of rows) {
+    const d1 = r.deltas['1'], d5 = r.deltas['5'];
+    if (d1 === 0 || d5 === 0) { quiet++; continue; }
+    const same = Math.sign(d1) === Math.sign(d5);
+    if (same) withWeek++; else againstWeek++;
+    // the ones where today is a real fraction of the whole week are the ones worth naming
+    if (Math.abs(d5) > 0 && Math.abs(d1) / Math.abs(d5) >= 0.5) notable.push({ ...r, share: Math.abs(d1) / Math.abs(d5), same });
+  }
+  const n = withWeek + againstWeek;
+  if (!n) return null;
+  notable.sort((a, b) => b.share - a.share);
+  const lean = withWeek / n;
+  return {
+    n, withWeek, againstWeek, quiet,
+    shape: lean >= 0.7 ? 'extended' : lean <= 0.3 ? 'against' : 'mixed',
+    notable: notable.slice(0, 3).map(r => ({ key: r.key, label: r.label, unit: r.unit, d1: r.deltas['1'], d5: r.deltas['5'], d20: r.deltas['20'] ?? null, same: r.same })),
+  };
+}
+
+export function weekFrameLine(w) {
+  if (!w) return null;
+  const d = (v, u) => `${v >= 0 ? '+' : ''}${v}${u === 'bps' ? 'bp' : u === '%' ? '%' : ''}`;
+  const head = w.shape === 'extended'
+    ? `Today went with the week: ${w.withWeek} of ${w.n} tracked series moved the way they have been moving`
+    : w.shape === 'against'
+    ? `Today argued with the week: ${w.againstWeek} of ${w.n} tracked series moved against their own five-day direction`
+    : `Today was split against the week — ${w.withWeek} of ${w.n} series extended it, ${w.againstWeek} went the other way`;
+  const named = w.notable.length
+    ? ' ' + w.notable.map(r => `${r.label} ${d(r.d1, r.unit)} today against ${d(r.d5, r.unit)} on the week`).join(', ') + '.'
+    : '';
+  const so = w.shape === 'extended'
+    ? ' A move that continues its own week is the easier one to believe; it is also the one already partly priced.'
+    : w.shape === 'against'
+    ? ' A day that reverses its own week is either the start of something or noise, and one session cannot tell you which.'
+    : '';
+  return `${head}.${named}${so}`;
+}
+
+/**
+ * Where the crowd sits, with what this desk has actually measured about it.
+ *
+ * `cot`: { EURUSD: { pct, ageDays }, ... } percentiles of speculative positioning.
+ * `oi`:  [{ key, gex, callWall, putWall, dte }]
+ */
+export function positionRead(cot = null, oi = []) {
+  const ends = cot ? Object.entries(cot)
+    .filter(([, v]) => v && Number.isFinite(v.pct) && (v.pct >= 80 || v.pct <= 20))
+    .sort((a, b) => Math.abs(b[1].pct - 50) - Math.abs(a[1].pct - 50))
+    .slice(0, 4).map(([k, v]) => ({ pair: k, pct: v.pct, side: v.pct >= 80 ? 'long' : 'short', ageDays: v.ageDays ?? null })) : [];
+  const gamma = (Array.isArray(oi) ? oi : []).filter(o => o && Number.isFinite(o.gex))
+    .map(o => ({ key: o.key, sign: o.gex > 0 ? 'positive' : 'negative', dte: o.dte ?? null }));
+  if (!ends.length && !gamma.length) return null;
+  const age = cot ? Math.min(...Object.values(cot).map(v => v?.ageDays ?? 99)) : null;
+  return { ends, gamma, ageDays: Number.isFinite(age) && age < 99 ? age : null };
+}
+
+export function positionLine(p) {
+  if (!p) return null;
+  const bits = [];
+  if (p.ends.length) {
+    bits.push(`Positioning is stretched in ${p.ends.map(e => `${e.pair} (${e.pct}th, crowded ${e.side})`).join(', ')}`
+      + `${p.ageDays != null ? `, on a COT report ${p.ageDays} days old` : ''}. `
+      + `A crowded book is FUEL and not a direction: it says which way a surprise would hurt more, never which way price goes next.`);
+  } else if (p.ends.length === 0 && p.gamma.length === 0) {
+    return null;
+  } else {
+    bits.push('Speculative positioning is mid-range across the board, so there is no crowded side to squeeze.');
+  }
+  if (p.gamma.length) {
+    bits.push(`Dealer gamma is ${p.gamma.map(g => `${g.sign} in ${g.key}`).join(', ')} — positive dampens ranges, negative extends them. `
+      + `That SIGN is the part this desk validated; the walls are not magnets (tested, and price rejects at one no more than at a neighbouring strike) and max pain is null.`);
+  }
+  return bits.join(' ');
+}
+
+export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = [], printed = null, watchFired = [], sessions = {}, activity = {}, leanRecord = null, cot = null, oi = [], nowMs = Date.now() } = {}) {
   if (!eod?.ok) return { ok: false, reason: eod?.reason ?? 'nothing to compare against yet' };
   const rows = eod.rows ?? [];
   const fresh = macroFreshness(moved, nowMs);
@@ -246,6 +338,8 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
   const named = spineRead({ rows, sessions, activity, plan });
   const turns = regimeTurns(rows, plan);
   const prints = printedRead(printed);
+  const week = weekFrame(moved);
+  const posn = positionRead(cot, oi);
 
   // The headline leads with whatever was most out of the ordinary, because that is what
   // a reader wants first. Range beats direction: it is the measurement this desk has
@@ -280,6 +374,11 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     // An instrument that could not be measured is named, not quietly absent. A board
     // that shrank is a fact about the day's data, and silence reads as "nothing to say".
     eod.unpriced?.length ? ` ${eod.unpriced.length === 1 ? `${eod.unpriced[0]} is` : `${eod.unpriced.join(', ')} are`} left out — no session open, so there is no honest window to measure ${eod.unpriced.length === 1 ? 'it' : 'them'} against today.` : ''}`);
+
+  // The week, before anything is said about forecasts or calls. A day figure alone is a
+  // fact; the same figure against its own week is a read, and that is the half an evening
+  // note exists to add.
+  { const l = weekFrameLine(week); if (l) paragraphs.push(l); }
 
   if (out.over.length) paragraphs.push(`The forecast was beaten hardest by ${
     out.over.map(r => `<b>${r.name}</b> at ${r.used}% (${(r.move > 0 ? '+' : '') + r.move.toFixed(r.dp)} ${r.unit} against ${r.expected} expected)`).join(', ')}. A range that far past its forecast is the page being wrong about SIZE, which is the one thing it measures well enough to be judged on.`);
@@ -317,8 +416,12 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
         : `No chain link changed state since this morning${watchFired.length ? `, though ${watchFired.length} desk-watch condition${watchFired.length === 1 ? '' : 's'} started today` : ''}. The chain runs on macro series that settle behind the tape, so on most days it cannot change intraday.` },
   ];
 
+  // What the day LEAVES BEHIND. Positioning is the state the next session inherits,
+  // which is why it belongs at the end of a look-back rather than the start.
+  { const l = positionLine(posn); if (l) paragraphs.push(l); }
+
   return {
-    ok: true,
+    ok: true, week, positioning: posn,
     at: new Date(nowMs).toISOString(),
     morningAt: morning?.brief?.generatedAt ?? eod.morningAt ?? null,
     regime: morning?.brief?.regime ?? null,

@@ -11,7 +11,9 @@
 //
 // The inputs available per card do not carry equal evidential weight:
 //
-//   HTF trend (HMM daily) ....... descriptive — what price HAS been doing
+//   HTF trend (HMM daily) ....... descriptive — but see below, it measures VARIANCE
+//   Structural travel ........... descriptive — where price sits in its own 3-month
+//                                 range, and how directly it got there
 //   Today's tape (session bias) . descriptive — what price IS doing
 //   Range position .............. descriptive — how much room is left
 //   COT positioning ............. real data; directional factor test NEVER RUN
@@ -25,6 +27,30 @@
 // MODIFIERS (may only downgrade)  = COT, macro, carry, OI.
 // The cone is deliberately absent: it forecasts RANGE honestly and direction
 // not at all, so it has no business in a direction tag.
+//
+// ── WHY "HMM daily says RANGE" IS NOT "no direction" ────────────────────────
+//
+// The daily HMM separates its two states by RETURN VARIANCE — hmm.js labels them with
+// `rangeState = B[0].sigma <= B[1].sigma`. So RANGE means QUIET, and it never meant
+// directionless. This file used to render "HMM daily says RANGE — no structural
+// direction", which is a claim the model does not make.
+//
+// The cost was not that it cancelled the tape (a 'flat' driver is excluded from the
+// directional set, so it never did). It was subtler and worse:
+//
+//   * `strong` became unreachable, because that needs two directional drivers and only
+//     the tape could ever be one;
+//   * whenever the tape had no read — "session developing", "both sides active" — the
+//     whole tag collapsed to flat and the chip rendered NOTHING.
+//
+// On 2026-09-29 USDCHF was +8.45% since March at 99% of its seven-month range, in the
+// 7th vol percentile, and showed no direction at all for most of the session. Eight of
+// the fourteen RANGE-labelled instruments were pinned at an extreme of their own range
+// that day — one coherent dollar move, all of it invisible here.
+//
+// Fixed by splitting the question: the HMM keeps answering "how violent is this tape"
+// and abstains on direction, and js/travelRead.js answers "has price been travelling",
+// from price alone. Both are descriptive, so the rule above is untouched.
 //
 // This is a DESCRIPTION of the current lean, not a prediction, and nothing here
 // is backtested. Pure: plain values in, plain object out — no DOM, no globals.
@@ -92,6 +118,7 @@ export function sessionBiasDir(text) {
  * @param {number} [i.cot]         [-1,+1] positioning bias for the pair, or null.
  * @param {number} [i.macro]       [-1,+1] fundamentals differential, or null.
  * @param {number} [i.carry]       [-1,+1] 10Y yield differential, or null.
+ * @param {object} [i.travel]      js/travelRead.js output: { dir, pos, mult, weight, detail }.
  * @param {string} [i.oiRegime]    'PIN' | 'BREAKOUT' | null.
  * @returns {{direction:'up'|'down'|'mixed'|'flat', strength:'strong'|'lean'|'mixed'|'flat',
  *            agree:number, total:number, drivers:Array, modifiers:Array, why:string}}
@@ -99,21 +126,46 @@ export function sessionBiasDir(text) {
 export function directionTag(i = {}) {
   const drivers = [];
 
-  // ── Driver 1: higher-timeframe structural trend ──────────────────────────
+  // ── Driver 1: how violent the tape is (NOT which way it points) ──────────
+  // `trendConfident === false` means the HMM's own 10-day drift is inside one standard
+  // error of zero, i.e. a flat fortnight wearing a direction's name (AUDJPY was labelled
+  // BULL on a mean of -2.5e-4). Only an explicit false downgrades — undefined means an
+  // older caller that cannot tell us, and those keep the previous behaviour.
   const g = i.regime;
   const htfDir = asDir(g?.trendDir);
-  if (g?.label === 'TREND' && htfDir) {
+  const htfNoise = g?.trendConfident === false;
+  if (g?.label === 'TREND' && htfDir && !htfNoise) {
     drivers.push({
       key: 'htf', label: 'Higher-timeframe trend', dir: htfDir,
       detail: `HMM daily ${htfDir} ${Math.round(g.trendProb ?? 0)}%${g.reliable === false ? ' (low confidence)' : ''}`,
       weight: g.reliable === false ? 0.6 : 1,
     });
+  } else if (g?.label === 'TREND' && htfDir && htfNoise) {
+    drivers.push({ key: 'htf', label: 'Volatility regime', dir: 'flat', weight: 0,
+      detail: `HMM daily TREND (high-volatility), but its 10-day drift is inside its own noise — no direction claimed` });
   } else if (g?.label === 'RANGE') {
-    drivers.push({ key: 'htf', label: 'Higher-timeframe trend', dir: 'flat',
-      detail: 'HMM daily says RANGE — no structural direction', weight: 1 });
+    // rangeProb is not always passed; the brief only carries trend_prob, and they are
+    // complements, so derive it rather than print a confident 0%.
+    const rp = g.rangeProb ?? (g.trendProb != null ? 100 - g.trendProb : null);
+    drivers.push({ key: 'htf', label: 'Volatility regime', dir: 'flat', weight: 0,
+      detail: `HMM daily RANGE${rp != null ? ` ${Math.round(rp)}%` : ''} — a LOW-VOLATILITY state, which says nothing about direction` });
   }
 
-  // ── Driver 2: today's tape ───────────────────────────────────────────────
+  // ── Driver 2: structural travel ──────────────────────────────────────────
+  // Where price sits in its own ~3-month range, weighted by how directly it got there
+  // (measured against a random walk over the same window). This is the structural read
+  // the variance HMM cannot give: it is what finds a quiet one-way grind.
+  const tv = i.travel;
+  if (tv && (tv.dir === 'up' || tv.dir === 'down') && (tv.weight ?? 0) > 0) {
+    drivers.push({ key: 'travel', label: 'Structural travel', dir: tv.dir,
+      detail: tv.detail ?? `${Math.round((tv.pos ?? 0) * 100)}% of its recent range`,
+      weight: Math.max(0.15, Math.min(1, tv.weight)) });
+  } else if (tv) {
+    drivers.push({ key: 'travel', label: 'Structural travel', dir: 'flat', weight: 0,
+      detail: tv.detail ?? 'no structural travel either way' });
+  }
+
+  // ── Driver 3: today's tape ───────────────────────────────────────────────
   const bd = i.session?.bias ?? '';
   const tape = sessionBiasDir(bd);
   if (tape) {
@@ -126,7 +178,7 @@ export function directionTag(i = {}) {
     });
   }
 
-  // ── Driver 3: room left in the range ─────────────────────────────────────
+  // ── Driver 4: room left in the range ─────────────────────────────────────
   // Not a direction of its own — it says whether the lean can still travel.
   // Past ~85% of the expected day range, continuation is the low-probability
   // side, so this caps strength rather than pointing anywhere.

@@ -42,7 +42,6 @@
  * `extractBars` (barUtils.js).
  */
 import { pipSize } from './instrumentRegistry.js';
-import { prevOutcomeSameDayAt } from './visitMemory.js';
 import { extractBars } from './barUtils.js';
 import { buildMondayRanges } from './sessionRanges.js';
 import { RUNGS_ABOVE, RUNGS_BELOW, SIDES, sessionOf, sessionHandoffPhase, confluenceThresholdPips } from './asiaFibAtlasEngine.js';
@@ -190,6 +189,17 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
                 if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
               }
             }
+            // A 'neither' verdict is itself only KNOWN once the reference
+            // week closes -- but `resolveTime` correctly stays null for it
+            // (minsToResolve must keep meaning "time to a REAL resolution").
+            // `prevResolved` below needs a separate "knowable as of" time --
+            // left null (the old behaviour), a 'neither' prior is permanently
+            // invisible to that search, so a later same-week touch skips
+            // straight past a genuine 'neither' prior to whatever resolved
+            // touch came before it (found 2026-09-29: a same-week repeat that
+            // should have carried forward its prior resolved outcome instead
+            // read a DIFFERENT, older touch's outcome).
+            const knownByTime = outcome === 'neither' ? sessionCloseBar.time : resolveTime;
             // Concurrency occupancy caps at the EXISTING winEnd regardless
             // of extension -- that boundary already sits almost exactly at
             // next week's fresh-range start, so it's always the right cap.
@@ -213,15 +223,27 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
             const key = `${side}|${level}|${rearmFrac}`;
             const hist = lastVisit[key] ?? [];
             const prev = hist.at(-1) ?? null;
+            // Look-ahead fix (2026-09-29) — same mechanism and same fix as
+            // asiaFibAtlasEngine.js's own identical bug (see that file's
+            // doc for the full reasoning): `prev.outcome` gets stored
+            // EAGERLY, the moment THIS walk processes that touch (via its
+            // own forward-looking resolution search), not deferred until
+            // the bar where its resolution actually lands -- so a LATER
+            // touch reading `prev.outcome` can see a resolution that, in
+            // real time, hadn't happened yet. `prevResolved` finds the most
+            // recent same-rung touch whose OWN resolveTime had genuinely
+            // already passed by `bar.time`. `gapMin` below is unaffected --
+            // it only needs WHEN the prior touch occurred, not its outcome.
+            const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
             // "Same reference week" = same Monday index `i`, not same
             // calendar date (a touch Wednesday and one the following
-            // Monday can both belong to week `i`).
+            // Monday can both belong to week `i`). Two separate checks —
+            // `sameWeek` (raw `prev`, for gapMin) vs `sameWeekResolved`
+            // (`prevResolved`, for prevOutcomeSameDay) — same reason the
+            // two references themselves are kept separate above.
             const sameWeek = prev && prev.weekIdx === i;
-            // CAUSALLY GATED (2026-09-28, js/visitMemory.js): the latest
-            // same-week touch that had ALREADY resolved by this bar. It was
-            // hist.at(-1)'s eventual outcome, and a Monday-range touch can take
-            // days to resolve -- a later retest routinely preceded it.
-            const prevOutcomeSameDay = prevOutcomeSameDayAt(hist, i, bar.time, 'weekIdx');
+            const sameWeekResolved = prevResolved && prevResolved.weekIdx === i;
+            const prevOutcomeSameDay = (sameWeekResolved && prevResolved.outcome !== 'neither') ? prevResolved.outcome : null;
             // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
             // finding, analysis/fib_atlas_whiplash_analysis.mjs +
             // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
@@ -244,7 +266,18 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               prevOutcomeSameDay, gapMin, mondayConfluenceGrade,
               mondayHigh: mon.high, mondayLow: mon.low, mondayRange: mon.range,
             });
-            lastVisit[key] = [...hist, { outcome, resolveTime, weekIdx: i, time: bar.time }].slice(-3);
+            // NOT capped (was `.slice(-3)` until 2026-09-29): that cap
+            // predates `prevResolved`'s backward search above and was only
+            // ever safe because the OLD code read just `hist.at(-1)` --
+            // any cap >=1 was equivalent. Found live via a stale-test
+            // rewrite (mondayFibAtlasEngine.test.mjs) exposing a real case:
+            // a rung whiplashed 5x unresolved this week before its FIRST
+            // touch resolved -- the 3-slot cap had already evicted that
+            // touch by the time `prevResolved` needed it, silently
+            // returning null instead of the correct outcome. Per-rung
+            // history is naturally small (rearm mechanics bound retouch
+            // frequency), so keeping it uncapped costs nothing real.
+            lastVisit[key] = [...hist, { outcome, weekIdx: i, time: bar.time, resolveTime: knownByTime }];
           }
         }
       }

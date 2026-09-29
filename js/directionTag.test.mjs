@@ -218,3 +218,114 @@ test('today.html never compares raw feed vocabulary to up/down', () => {
 
   assert.equal(bad.length, 0, `\nRaw feed vocabulary compared directly:\n  ${bad.join('\n  ')}\n`);
 });
+
+// ── The variance/direction confusion ────────────────────────────────────────
+// The daily HMM splits its states by RETURN VARIANCE (hmm.js: `rangeState` is whichever
+// has the smaller sigma), so "RANGE" means QUIET and never meant directionless. This file
+// used to render "HMM daily says RANGE - no structural direction", and the cost was not
+// that it cancelled the tape -- a flat driver is excluded from the directional set -- but
+// that `strong` became unreachable and a quiet session collapsed the whole tag to flat.
+//
+// USDCHF on 2026-09-29: +8.45% since March, 99% of its seven-month range, 7th vol
+// percentile, HMM RANGE at 92%, and the card showed nothing at all.
+const USDCHF = { label: 'RANGE', trendDir: null, trendProb: 8, rangeProb: 92, reliable: true };
+const TRAVEL_UP = { dir: 'up', pos: 1, mult: 1.76, weight: 0.95,
+  detail: '100% of its 63-bar range, travelling 1.76x as directly as a random walk' };
+
+test('a quiet one-way grind is no longer invisible', () => {
+  const t = directionTag({ regime: USDCHF, travel: TRAVEL_UP, session: null, rangeUsed: 0.4 });
+  assert.equal(t.direction, 'up', 'the USDCHF case: RANGE label, but price is at the top of its range');
+  assert.notEqual(t.strength, 'flat');
+});
+
+test('and it can reach strong when the tape agrees, which RANGE alone could never do', () => {
+  const t = directionTag({ regime: USDCHF, travel: TRAVEL_UP, rangeUsed: 0.4,
+    session: { bias: 'upside leg dominating, downside contained', dir: 80 } });
+  assert.equal(t.direction, 'up');
+  assert.equal(t.strength, 'strong', 'travel + tape are two directional drivers');
+});
+
+test('the RANGE driver stops claiming something the model never said', () => {
+  const t = directionTag({ regime: USDCHF });
+  const htf = t.drivers.find(d => d.key === 'htf');
+  assert.doesNotMatch(htf.detail, /no structural direction/,
+    'RANGE is a volatility state; it makes no directional claim');
+  assert.match(htf.detail, /LOW-VOLATILITY/);
+  assert.match(htf.detail, /92%/, 'rangeProb is derived from trendProb when absent');
+  assert.equal(htf.dir, 'flat');
+  assert.equal(htf.weight, 0, 'it abstains rather than voting flat with weight');
+});
+
+test('rangeProb is derived from trendProb rather than printed as a confident 0%', () => {
+  const t = directionTag({ regime: { label: 'RANGE', trendProb: 8, reliable: true } });
+  assert.match(t.drivers.find(d => d.key === 'htf').detail, /RANGE 92%/);
+  const none = directionTag({ regime: { label: 'RANGE', reliable: true } });
+  assert.doesNotMatch(none.drivers.find(d => d.key === 'htf').detail, /0%/,
+    'with neither probability available it must say nothing, not 0%');
+});
+
+test('travel that is flat cannot create a direction', () => {
+  const flat = { dir: 'flat', pos: 0.44, mult: 0.27, weight: 0, detail: 'mid-range at 44% of its 63-bar range' };
+  const t = directionTag({ regime: USDCHF, travel: flat });
+  assert.equal(t.direction, 'flat');
+  assert.equal(t.drivers.find(d => d.key === 'travel').dir, 'flat');
+});
+
+// EURCHF sat at 97% of its range having chopped there. travelRead gives it weight 0, and
+// a zero-weight driver must not be counted toward the two-driver bar for 'strong'.
+test('a zero-weight travel read does not smuggle in a strong reading', () => {
+  const chopped = { dir: 'up', pos: 0.97, mult: 1.02, weight: 0, detail: 'it chopped there' };
+  const t = directionTag({ regime: USDCHF, travel: chopped,
+    session: { bias: 'upside leg dominating, downside contained', dir: 80 } });
+  assert.notEqual(t.strength, 'strong', 'only the tape is really pointing here');
+});
+
+test('travel disagreeing with the tape is MIXED, not averaged away', () => {
+  const t = directionTag({ regime: USDCHF, travel: TRAVEL_UP,
+    session: { bias: 'downside leg dominating, upside contained', dir: 75 } });
+  assert.equal(t.direction, 'mixed');
+  assert.equal(t.strength, 'mixed');
+});
+
+// ── trendDir with no dead-band ──────────────────────────────────────────────
+// `trendDir` is the bare sign of the mean of the last 10 log returns. AUDJPY was labelled
+// BULL on a mean of -2.5e-4 -- a quarter of a percent over a fortnight, inside its own
+// daily noise, and the sign flips on a one-bar change of window.
+test('a trend direction built from noise is not allowed to point the arrow', () => {
+  const noisy = { label: 'TREND', trendDir: 'BULL', trendProb: 70, reliable: true, trendConfident: false };
+  const t = directionTag({ regime: noisy, session: null });
+  const htf = t.drivers.find(d => d.key === 'htf');
+  assert.equal(htf.dir, 'flat');
+  assert.match(htf.detail, /inside its own noise/);
+  assert.equal(t.direction, 'flat', 'nothing else is pointing, so nothing is claimed');
+});
+
+test('a confident trend direction still drives exactly as before', () => {
+  const good = { label: 'TREND', trendDir: 'BULL', trendProb: 80, reliable: true, trendConfident: true };
+  const t = directionTag({ regime: good, session: { bias: 'upside leg dominating, downside contained', dir: 80 } });
+  assert.equal(t.direction, 'up');
+  assert.equal(t.strength, 'strong');
+});
+
+// Older callers cannot tell us, and must not be silently downgraded.
+test('an absent confidence flag preserves the previous behaviour', () => {
+  const t = directionTag({ regime: { label: 'TREND', trendDir: 'BEAR', trendProb: 75, reliable: true } });
+  assert.equal(t.drivers.find(d => d.key === 'htf').dir, 'down');
+});
+
+test('travel is a DRIVER and the modifiers are still barred from pointing', () => {
+  // The evidential rule is unchanged: adding a descriptive driver must not open the door
+  // to macro, COT or carry setting the arrow.
+  const t = directionTag({ regime: USDCHF, travel: null, session: null,
+    cot: 0.9, macro: 0.9, carry: 0.9 });
+  assert.equal(t.direction, 'flat', 'three non-validated inputs still cannot make a direction');
+  const t2 = directionTag({ regime: USDCHF, travel: TRAVEL_UP, session: null,
+    cot: -0.9, macro: -0.9, carry: -0.9 });
+  assert.equal(t2.direction, 'mixed', 'but they can still drag a real lean to mixed');
+});
+
+test('today.html passes the two new fields through, or the fix is inert in production', () => {
+  const src = readFileSync(new URL('../today.html', import.meta.url), 'utf8');
+  assert.match(src, /travel:\s*r\.d\.regime\?\.travel/, 'travel must reach directionTag');
+  assert.match(src, /trendConfident:\s*r\.d\.regime\.trend_dir_confident/, 'confidence must reach directionTag');
+});

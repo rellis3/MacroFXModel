@@ -256,7 +256,11 @@ t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrev cleanly and 
   for (const r of touches) {
     assert.ok(!(r.prevOutcomeSameDay != null && r.prevOutcomeCrossDay != null), 'same-day and cross-day must be mutually exclusive');
     if (r.prevOutcomeSameDay != null) assert.equal(r.daysSincePrev, 0);
-    if (r.prevOutcomeCrossDay != null) assert.ok(r.daysSincePrev > 0);
+    // Cross-day reads the latest ALREADY-RESOLVED visit (34d3438), which can be
+    // a prior session while the raw last visit (what daysSincePrev measures)
+    // is an unresolved touch earlier today -- so only require that some prior
+    // visit exists, not that the raw last one was on another day.
+    if (r.prevOutcomeCrossDay != null) assert.ok(r.daysSincePrev != null && r.daysSincePrev >= 0);
   }
 });
 

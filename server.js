@@ -24,6 +24,7 @@ import { rankIC, blockBootstrapIC, spearman } from './js/statsCore.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
+import { travelRead } from './js/travelRead.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -1513,8 +1514,14 @@ async function buildCorrHistoryJS() {
         const n = cnts2[k], mu = sums2b[k] / n;
         corr_std2[k] = n > 1 ? +(Math.sqrt(Math.max(0, sums2c[k] / n - mu * mu))).toFixed(5) : 0;
       }
+      // last_betas was missing: the pair drawer needs it and would have shown
+      // correlations with no beta whenever it read this cache rather than the file
+      // `.beta`, NOT `.betas` -- the record field is singular, as /api/hedge-alerts
+      // itself reads it at lastRec.beta. The plural spelling resolves to undefined and
+      // would have written an empty object with nothing to say it had.
+      const lastBetas2 = records.length ? (records[records.length - 1].beta ?? {}) : {};
       const alertsCache = { generated: output.generated, pairs: availPairs,
-        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2,
+        avg_corr: avgCorr, corr_std: corr_std2, last_corr: lastCorr2, last_betas: lastBetas2,
         last_cot_corr: output.cot_corr, cot_corr_generated: output.cot_corr_generated };
       await kv.put('hedge_alerts_cache', JSON.stringify(alertsCache), { expirationTtl: 86400 * 7 });
       console.log('[CORR] hedge_alerts_cache written to KV');
@@ -14897,6 +14904,8 @@ let _chapters = { at: 0, data: null, error: null };
 
 async function _refreshChapters() {
   try {
+    // the borrow below needs it; refreshing here rather than hoping someone else did
+    if (!_drillBundle.data) await _refreshDrillBundle().catch(() => {});
     const since = new Date(Date.now() - 6 * 365.25 * 864e5).toISOString().slice(0, 10);
     const series = {}, missing = [];
     for (const [k, id] of Object.entries(_CHAPTER_FRED)) {
@@ -14907,7 +14916,22 @@ async function _refreshChapters() {
     }
     // A chapter whose members did not arrive is reported as such rather than rendered
     // thin and silent -- the failure this repo keeps re-learning.
-    _chapters = { at: Date.now(), error: null, data: { series, missing, tenors: _CHAPTER_TENORS,
+    // MERGE THE DRILL BUNDLE rather than fetching the same series twice. vix, hy, dxy,
+    // gold, oil, copper, ig, ccc and the CBOE vol set are already pulled once a day for
+    // the drill; re-fetching them here would double the load on the same feeds for
+    // identical numbers, and the two copies would drift apart on any day one fetch
+    // failed and the other did not.
+    const borrowed = [];
+    if (_drillBundle?.data?.series && Array.isArray(_drillBundle.data.dates)) {
+      const dd = _drillBundle.data.dates;
+      for (const [k, arr] of Object.entries(_drillBundle.data.series)) {
+        if (series[k] || !Array.isArray(arr)) continue;
+        const rows = [];
+        for (let i = 0; i < dd.length; i++) if (Number.isFinite(arr[i])) rows.push({ date: dd[i], value: arr[i] });
+        if (rows.length) { series[k] = rows; borrowed.push(k); }
+      }
+    }
+    _chapters = { at: Date.now(), error: null, data: { series, missing, borrowed, tenors: _CHAPTER_TENORS,
       fred: _CHAPTER_FRED, from: since, to: new Date().toISOString().slice(0, 10) } };
   } catch (e) { _chapters.error = e.message; console.warn('[chapters]', e.message); }
   return _chapters;
@@ -23178,9 +23202,15 @@ async function computeDailyBrief() {
       regime: regRaw ? {
         label:        regRaw.regime,
         trend_dir:    regRaw.trendDir ?? null,
+        // Whether that trend_dir is more than the sign of a near-zero mean. AUDJPY read
+        // BULL on a 10-day drift of -2.5e-4; consumers use this to stop repeating it.
+        trend_dir_confident: regRaw.trendDirConfident ?? null,
         range_prob:   Math.round((regRaw.rangeProb ?? 0) * 100),
         trend_prob:   Math.round((regRaw.trendProb ?? 0) * 100),
         reliable:     regRaw.reliable,
+        // Structural travel (js/travelRead.js) — the directional read the variance-based
+        // HMM cannot give. null until the next levels refresh computes it.
+        travel:       regRaw.travel ?? null,
         sizing_mult:  sizingMult,
         sizing_label: sizingLabel,
       } : null,
@@ -32218,7 +32248,23 @@ app.get('/api/corr-history', (req, res) => {
 // Much smaller than the full corr-history response.
 app.get('/api/hedge-alerts', async (req, res) => {
   const p = CORR_HISTORY_PATH;
-  if (!fs.existsSync(p)) return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {} });
+  // THE DISK COPY DIES WITH EVERY DEPLOY. corr_history.json is 12MB on Railway's
+  // ephemeral filesystem and is neither tracked nor persisted, so each push wiped it and
+  // the drawer read "correlation history isn't built yet" until a 5-year H4 rebuild
+  // finished. On a day with fifteen deploys that is most of the day.
+  //
+  // The builder ALREADY writes a 26KB summary to KV as `hedge_alerts_cache` at the end of
+  // every rebuild -- it was there the whole time and nothing read it back. Serving it here
+  // while the disk copy is missing is the entire fix. (My first attempt added a SECOND
+  // cache key without checking; two caches of the same thing is how they end up
+  // disagreeing, which is the bug this repo keeps finding.)
+  if (!fs.existsSync(p)) {
+    try {
+      const raw = await kv.get('hedge_alerts_cache');
+      if (raw) { const c = JSON.parse(raw); return res.json({ ...c, from: 'kv', rebuilding: true }); }
+    } catch (e) { console.warn('[hedge-alerts] kv', e.message); }
+    return res.json({ pairs: [], avg_corr: {}, corr_std: {}, last_corr: {}, last_betas: {}, last_cot_corr: {}, rebuilding: true });
+  }
   try {
     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
     const records = data.records || [];
@@ -34057,10 +34103,19 @@ async function runLevelsRefresh() {
         }
         const result = fitHMM(returns);
         if (result) {
+          // STRUCTURAL TRAVEL, from the same closes. The HMM splits on VARIANCE, so a
+          // quiet one-way grind lands in RANGE and the page then showed no direction for
+          // it at all (USDCHF, 2026-09-29: +8.45% since March, 99% of range, labelled
+          // RANGE 92%). travelRead answers the directional question from price. Free --
+          // `closes` is already fetched here, ascending, which is the order it needs.
+          const travel = travelRead(closes);
           // Preserve intraday30m set by reloadLevels() — don't clobber it
-          state.hmmRegimes[sym] = { ...result, intraday30m: state.hmmRegimes[sym]?.intraday30m };
+          state.hmmRegimes[sym] = { ...result, travel, intraday30m: state.hmmRegimes[sym]?.intraday30m };
           const reliableTag = result.reliable ? '' : '⚠ambiguous';
-          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}`);
+          const tvTag = travel && travel.dir !== 'flat'
+            ? ` travel=${travel.dir}@${Math.round(travel.pos * 100)}%x${travel.mult.toFixed(2)}` : '';
+          const weakTag = result.trendDir && !result.trendDirConfident ? '⚠drift-in-noise' : '';
+          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}${weakTag}${tvTag}`);
         }
       }
     }

@@ -85,9 +85,9 @@ t('every touch time falls within [Tuesday 00:00, +7 days) of its own governing M
 });
 
 t('prevOutcomeSameDay is CAUSAL: it equals an earlier same-week touch of this rung that had already resolved', () => {
-  // 2026-09-28 (js/visitMemory.js). Was hist.at(-1)'s eventual outcome; a
-  // Monday-range touch can take days to resolve, so a later retest routinely
-  // read a result that did not exist yet.
+  // 2026-09-28. Was hist.at(-1)'s eventual outcome; a Monday-range touch can
+  // take days to resolve, so a later retest routinely read a result that did
+  // not exist yet (the look-ahead fixed in 34d3438).
   const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   const key = r => `${r.side}|${r.level}|${r.rearmFrac}`;
   let checked = 0;
@@ -103,28 +103,47 @@ t('prevOutcomeSameDay is CAUSAL: it equals an earlier same-week touch of this ru
   assert.ok(checked > 0, 'expected some causal same-week values');
 });
 
-t('prevOutcomeSameDay only carries forward within the SAME reference week, never across weeks', () => {
+t('prevOutcomeSameDay only carries forward within the SAME reference week, never across weeks, and only from a touch ALREADY RESOLVED by cur\'s own time (2026-09-29 look-ahead fix, commit 34d3438)', () => {
   const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   const byKey = new Map();   // `${side}|${level}` -> touches sorted by time
   for (const r of touches) { const k = `${r.side}|${r.level}`; (byKey.get(k) ?? byKey.set(k, []).get(k)).push(r); }
-  let checked = 0;
+  let checked = 0, sawGenuineLookaheadGuard = false;
   for (const [, list] of byKey) {
     list.sort((a, b) => a.time - b.time);
     for (let i = 1; i < list.length; i++) {
-      const prev = list[i - 1], cur = list[i];
+      const cur = list[i];
       checked++;
-      if (cur.mondayDate !== prev.mondayDate) {
+      if (cur.mondayDate !== list[i - 1].mondayDate) {
         // Different reference week -> must NOT inherit the previous week's outcome.
-        assert.equal(cur.prevOutcomeSameDay, null, `touch in week ${cur.mondayDate} leaked prevOutcomeSameDay from week ${prev.mondayDate}`);
-      } else if (prev.outcome !== 'neither' && prev.resolveTime != null && prev.resolveTime <= cur.time) {
-        // Only an outcome that had ALREADY resolved by this touch carries
-        // forward (2026-09-28 causal gate -- an unresolved prior is 'neither'
-        // at this instant, exactly as live sees it).
-        assert.equal(cur.prevOutcomeSameDay, prev.outcome, `same-week repeat should carry forward the prior resolved outcome`);
+        assert.equal(cur.prevOutcomeSameDay, null, `touch in week ${cur.mondayDate} leaked prevOutcomeSameDay from week ${list[i - 1].mondayDate}`);
+        continue;
       }
+      // The immediately-PRIOR touch by occurrence is NOT necessarily the
+      // right antecedent -- if it hadn't resolved yet by `cur`'s own time,
+      // using its outcome would be exactly the look-ahead bug the fix
+      // closed (2026-09-29, see mondayFibAtlasEngine.js's own doc on
+      // `prevResolved`). Independently recompute the correct antecedent
+      // here (most recent SAME-WEEK touch whose OWN resolveTime had
+      // already passed by cur.time) rather than assuming it's list[i-1].
+      let expected = null;
+      for (let j = i - 1; j >= 0; j--) {
+        const h = list[j];
+        if (h.mondayDate !== cur.mondayDate) break;
+        if (h.resolveTime != null && h.resolveTime <= cur.time) {
+          if (h.outcome !== 'neither') expected = h.outcome;
+          break;
+        }
+        // h itself hadn't resolved by cur.time -- confirms this fixture
+        // actually exercises the look-ahead guard, not just the trivial
+        // "immediately-prior touch already resolved" case.
+        sawGenuineLookaheadGuard = true;
+      }
+      assert.equal(cur.prevOutcomeSameDay, expected,
+        `same-week touch at ${cur.time} must inherit the most recent ALREADY-RESOLVED same-rung outcome this week, not merely the immediately-prior touch`);
     }
   }
   assert.ok(checked > 20, 'expected enough same-key touch pairs to actually exercise this check');
+  assert.ok(sawGenuineLookaheadGuard, 'expected at least one case where the immediately-prior touch had NOT yet resolved, to actually exercise the look-ahead guard rather than only the trivial case');
 });
 
 t('gapMin (2026-09-04 whiplash-gap filter) is null across a reference-week boundary, and otherwise matches this rung\'s own last-touch time delta THIS week, grouped BY OUTCOME (unlike prevOutcomeSameDay, a same-week neither prior still counts)', () => {

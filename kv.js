@@ -233,6 +233,12 @@ const _CF_EXACT = new Set([
   'volatility_bot_v2_state',       // Volatility V2 one-shot state (entered zones) — survives BOT restarts via KV; keep across redeploys so a same-day server bounce can't double-enter
   'volatility_bot_v2_trade_log',   // Volatility V2 resolved closed-trade log (deduped, capped) — give-back/MFE history
   'volatility_bot_v2_decision_log', // Volatility V2 per-touch decision audit (entered/rejected/skipped + why), capped rolling window — bot-config.html's Decision Timeline
+  'volatility_bot_v2_drift_history', // Volatility V2 weekly live-vs-backtest drift audit history (Sunday job) — an
+                                    // ACCUMULATING record across weeks, not re-derivable if lost mid-accumulation.
+                                    // Missing here means a silent 48h TTL: each week's entry expires before the
+                                    // next Sunday's run appends to it, so the history array never actually grows.
+                                    // Must also be in _worker.js's isAllowedKVKey AND PERMANENT_KEYS — this is a
+                                    // separate gate, and passing only one of them fails silently rather than 403.
   'volatility_bot_v3_config',      // Volatility V3 (Level Atlas Vote Portfolio, local decision engine) bot settings — must survive redeploys
   'volatility_bot_v3_credentials', // Volatility V3 MT5 credentials — must survive redeploys
   // No volatility_bot_v3_plan — 2026-09-18: v3 computes decisions locally
