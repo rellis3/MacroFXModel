@@ -21,7 +21,7 @@
  * implements exactly these estimators and is cross-checked against the Python.
  */
 export const LADDER_PARAMS = {
-  "generated": "2026-08-21",
+  "generated": "2026-09-29",
   "source": "forge/vol.py walk-forward -> forge/out_vol_lon/vol_report.json",
   "pairs": {
     "AUDCAD": {
@@ -3615,7 +3615,7 @@ export const LADDER_PARAMS = {
       },
       "n_folds": 6
     },
-    "SPX500": {
+    "SPX": {
       "estimator": "yz_10",
       "width": {
         "hl": [
@@ -4014,7 +4014,7 @@ export const LADDER_PARAMS = {
       },
       "n_folds": 6
     },
-    "US30": {
+    "DOW": {
       "estimator": "yz_10",
       "width": {
         "hl": [
@@ -4812,6 +4812,7 @@ export const LADDER_PARAMS = {
       "CADJPY",
       "CHFJPY",
       "DE30",
+      "DOW",
       "EURAUD",
       "EURCAD",
       "EURCHF",
@@ -4830,10 +4831,9 @@ export const LADDER_PARAMS = {
       "NZDCAD",
       "NZDJPY",
       "NZDUSD",
-      "SPX500",
+      "SPX",
       "UK100",
       "US2000",
-      "US30",
       "USDCAD",
       "USDCHF",
       "USDJPY"

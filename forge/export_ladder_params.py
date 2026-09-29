@@ -24,8 +24,12 @@ from pathlib import Path
 import numpy as np
 
 # forge pair key -> the name the live forecaster publishes the instrument under.
-NAME_MAP = {"gold": "GOLD", "nq": "NQ", "spx500": "SPX500", "de30": "DE30",
-            "uk100": "UK100", "us30": "US30", "us2000": "US2000"}
+# spx500/us30 map to SPX/DOW, not SPX500/US30 -- REFERENCE_ENGINE_PAIRS (server.js)
+# and every LADDER_PARAMS.pairs[...] lookup site spell them SPX/DOW. The old
+# SPX500/US30 keys were never reachable: both pairs silently fell back to the
+# index-class default instead of their own fitted spec (found 2026-09-28).
+NAME_MAP = {"gold": "GOLD", "nq": "NQ", "spx500": "SPX", "de30": "DE30",
+            "uk100": "UK100", "us30": "DOW", "us2000": "US2000"}
 
 # Aliases: the same price series present under a second filename. Verified identical
 # (byte-for-byte equal fold scores), so shipping both would put two entries in the
@@ -33,8 +37,8 @@ NAME_MAP = {"gold": "GOLD", "nq": "NQ", "spx500": "SPX500", "de30": "DE30",
 # for, and silently unreachable. Skip the alias, keep the canonical name.
 DUPLICATE_OF = {"nas100_usd": "nq", "xauusd": "gold"}
 
-CLASS_OF = {"GOLD": "commodity", "NQ": "index", "SPX500": "index", "DE30": "index",
-            "UK100": "index", "US30": "index", "US2000": "index"}
+CLASS_OF = {"GOLD": "commodity", "NQ": "index", "SPX": "index", "DE30": "index",
+            "UK100": "index", "DOW": "index", "US2000": "index"}
 
 RUNGS = ("P50", "P75", "P90")
 SLOTS = (("hl", "BM"), ("oc", "HN"), ("oh", "OH"), ("ol", "OL"))
