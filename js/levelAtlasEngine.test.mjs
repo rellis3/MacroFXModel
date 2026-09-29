@@ -161,12 +161,18 @@ t('prevOutcomeSameDay excludes the tautological same-day "neither" case', () => 
   assert.ok(touches.some(r => r.prevOutcomeSameDay != null), 'expected at least some same-day non-neither visits');
 });
 
-t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrev cleanly and never both fire', () => {
+t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrevResolved cleanly and never both fire', () => {
+  // prevOutcomeSameDay/CrossDay read `prevResolved` (the most recent ALREADY-
+  // RESOLVED touch), not `prev` (the most recent touch by occurrence) -- so
+  // their companion "how many days since" is `daysSincePrevResolved`, not
+  // `daysSincePrev` (which deliberately stays on `prev`, for gapMin-style
+  // consumers that only need WHEN the immediately-prior touch happened,
+  // resolved or not -- see that field's own doc).
   const { touches } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
   for (const r of touches) {
     assert.ok(!(r.prevOutcomeSameDay != null && r.prevOutcomeCrossDay != null), 'same-day and cross-day must be mutually exclusive');
-    if (r.prevOutcomeSameDay != null) assert.equal(r.daysSincePrev, 0);
-    if (r.prevOutcomeCrossDay != null) assert.ok(r.daysSincePrev > 0);
+    if (r.prevOutcomeSameDay != null) assert.equal(r.daysSincePrevResolved, 0);
+    if (r.prevOutcomeCrossDay != null) assert.ok(r.daysSincePrevResolved > 0);
   }
   assert.ok(touches.some(r => r.prevOutcomeCrossDay != null), 'expected at least some cross-day visits over a multi-year synthetic run');
 });

@@ -474,6 +474,19 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               if (outer != null && reach(fwd, outer)) { outcome = 'out'; resolveTime = b2.time; resolveIdx = j; break; }
               if (isUp ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; resolveIdx = j; break; }
             }
+            // A 'neither' verdict (ran to session-end without hitting either
+            // barrier) is itself only KNOWN once the session actually closes --
+            // but `resolveTime` stays null for it (correct: it never actually
+            // resolved out/back, and minsToResolve/the exposed field below must
+            // keep meaning "time to a real resolution", not "time we gave up").
+            // `prevResolved` below needs a DIFFERENT thing: when a LATER touch
+            // may first treat this one as knowable. Left at null (the old
+            // behaviour), a 'neither' prior is permanently invisible to that
+            // search, so a later same-day touch skips straight past a genuine
+            // 'neither' prior to whatever resolved touch came before it -- the
+            // wrong reference, not just a missing one. `knownByTime` is that
+            // separate "knowable as of" time, stored only in `lastVisit`.
+            const knownByTime = outcome === 'neither' ? bars[bars.length - 1].time : resolveTime;
             const pullbackFrac = rungSpan > 0 ? Math.min(1, Math.abs(here - deepest) / rungSpan) : null;
             // `deepest` only ever moves AWAY from `here` in the retracement
             // direction (down for isUp, up for isDown), so (here-deepest) is
@@ -565,10 +578,17 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             // exact (side, rung, re-arm) — the "have we seen this before, and how
             // often did it go this way" read, distinct from the single-prior-visit
             // repeatability check below. Requires ≥3 prior visits to report.
-            const rollOut = hist.filter(h => h.outcome === 'out').length;
-            const rollBack = hist.filter(h => h.outcome === 'back').length;
-            const rollingRate = hist.length >= 3
-              ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
+            // Sliced explicitly here (2026-09-29) -- `hist` itself is no longer
+            // capped (see `lastVisit[key]` assignment below), since `prevResolved`
+            // needs to reach back past however many intervening touches stayed
+            // unresolved, and a fixed 5-slot cap could silently evict the correct
+            // antecedent before it's found (same bug/fix as asiaFibAtlasEngine.js
+            // and mondayFibAtlasEngine.js's own identical history caps).
+            const rollWindow = hist.slice(-5);
+            const rollOut = rollWindow.filter(h => h.outcome === 'out').length;
+            const rollBack = rollWindow.filter(h => h.outcome === 'back').length;
+            const rollingRate = rollWindow.length >= 3
+              ? { n: rollWindow.length, outPct: +(rollOut / rollWindow.length * 100).toFixed(0), backPct: +(rollBack / rollWindow.length * 100).toFixed(0) }
               : null;
             const record = {
               instrument: sym, assetClass, date, side, rung, rearmFrac, ordinal,
@@ -642,6 +662,13 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
               outcomeRepeated: (prevResolved?.outcome != null) ? (prevResolved.outcome === outcome) : null,
               daysSincePrev: daysSincePrevN,
+              // Companion to prevOutcomeSameDay/prevOutcomeCrossDay below --
+              // those read `prevResolved`, not `prev`, so a caller checking
+              // "how many days since the touch whose outcome this reports"
+              // needs THIS, not `daysSincePrev` above (which stays on `prev`
+              // for gapMin/wtStateRepeated-style consumers that only need
+              // WHEN the immediately-prior touch happened, resolved or not).
+              daysSincePrevResolved: daysSincePrevResolvedN,
               // `prevOutcome` alone conflates two very different mechanisms and
               // was found (2026-08) to be actively misleading if reported as one
               // dimension: a SAME-DAY re-arm repeat and a CROSS-DAY visit weeks
@@ -667,7 +694,18 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, dayIdx: i, resolveTime }].slice(-5);
+            // NOT capped (was `.slice(-5)` until 2026-09-29): that cap predates
+            // `prevResolved`'s backward search above and was only ever safe when
+            // the old code read just `hist.at(-1)` -- any cap >=1 was equivalent
+            // then. A rung that whiplashes unresolved several times before its
+            // first touch actually resolves can evict the correct antecedent
+            // before `prevResolved` reaches it (same class of bug found and
+            // fixed live in mondayFibAtlasEngine.js/asiaFibAtlasEngine.js, same
+            // day). Per-rung history is naturally small (rearm mechanics bound
+            // retouch frequency), so keeping it uncapped costs nothing real --
+            // `rollingRate` above explicitly re-slices to the last 5 for its own
+            // deliberately-short window.
+            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, dayIdx: i, resolveTime: knownByTime }];
           }
           // Capture the CURRENT armed state as of the last bar walked (today,
           // when this is the live/in-progress day) at the SAME re-arm
@@ -743,10 +781,11 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
           // prevOutcome/prevOutcomeSameDay/prevOutcomeCrossDay below.
           const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
           const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.dayIdx) : null;
-          const rollOut = hist.filter(h => h.outcome === 'out').length;
-          const rollBack = hist.filter(h => h.outcome === 'back').length;
-          const rollingRate = hist.length >= 3
-            ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
+          const rollWindow = hist.slice(-5);
+          const rollOut = rollWindow.filter(h => h.outcome === 'out').length;
+          const rollBack = rollWindow.filter(h => h.outcome === 'back').length;
+          const rollingRate = rollWindow.length >= 3
+            ? { n: rollWindow.length, outPct: +(rollOut / rollWindow.length * 100).toFixed(0), backPct: +(rollBack / rollWindow.length * 100).toFixed(0) }
             : null;
           const dist = Math.abs(bar.close - here);
 
