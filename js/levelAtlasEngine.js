@@ -530,6 +530,20 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             const hist = lastVisit[key] ?? [];
             const prev = hist.at(-1) ?? null;
             const daysSincePrevN = prev ? (i - prev.dayIdx) : null;
+            // Look-ahead fix (2026-09-29, same bug/same fix as Fib Atlas's
+            // own asiaFibAtlasEngine.js -- see that file's doc for the full
+            // mechanism): `prev.outcome` gets stored EAGERLY, the moment
+            // THIS walk processes that touch (via its own forward-looking
+            // resolution search), not deferred until the bar where its
+            // resolution actually lands -- so a LATER touch reading
+            // `prev.outcome` can see a resolution that, in real time,
+            // hadn't happened yet. `prevResolved` finds the most recent
+            // same-rung touch whose OWN resolveTime had genuinely already
+            // passed by `bar.time`. prevWtState/wtStateRepeated/daysSincePrev
+            // below are unaffected -- they only need WHEN the prior touch
+            // occurred or what was true AT its own moment, not its outcome.
+            const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
+            const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.dayIdx) : null;
             const touchSession = sessionOf(new Date(bar.time * 1000).getUTCHours());
             // Only expose a session's volatility bucket to a touch that happens
             // AFTER that session closed — Asia is closed by London/NY, London by
@@ -623,10 +637,10 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               overlapWindow: (new Date(bar.time * 1000).getUTCHours() >= 12 && new Date(bar.time * 1000).getUTCHours() < 16),
               // ── Repeatability: how does THIS visit compare to the LAST visit
               // to this exact rung/side/re-arm? (prior touch only — no lookahead)
-              prevOutcome: prev?.outcome ?? null,
+              prevOutcome: prevResolved?.outcome ?? null,
               prevWtState: prev?.wtState ?? null,
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
-              outcomeRepeated: (prev?.outcome != null) ? (prev.outcome === outcome) : null,
+              outcomeRepeated: (prevResolved?.outcome != null) ? (prevResolved.outcome === outcome) : null,
               daysSincePrev: daysSincePrevN,
               // `prevOutcome` alone conflates two very different mechanisms and
               // was found (2026-08) to be actively misleading if reported as one
@@ -648,12 +662,12 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               //   prevOutcomeCrossDay — a genuinely separate day's prior visit.
               //                         Found to carry ~nothing (EURUSD 2026-08)
               //                         — no cross-day "level memory" detected.
-              prevOutcomeSameDay: (daysSincePrevN === 0 && prev.outcome !== 'neither') ? prev.outcome : null,
-              prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+              prevOutcomeSameDay: (daysSincePrevResolvedN === 0 && prevResolved && prevResolved.outcome !== 'neither') ? prevResolved.outcome : null,
+              prevOutcomeCrossDay: (daysSincePrevResolvedN > 0) ? prevResolved.outcome : null,
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, dayIdx: i }].slice(-5);
+            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, dayIdx: i, resolveTime }].slice(-5);
           }
           // Capture the CURRENT armed state as of the last bar walked (today,
           // when this is the live/in-progress day) at the SAME re-arm
@@ -722,6 +736,13 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
           const hist = lastVisit[key] ?? [];
           const prev = hist.at(-1) ?? null;
           const daysSincePrevN = prev ? (i - prev.dayIdx) : null;
+          // Look-ahead fix (2026-09-29) -- same bug/fix as the resolved-touch
+          // loop above (see its own doc for the full mechanism). This
+          // pending-zone record reads the SAME `lastVisit` map, so it needs
+          // the identical `prevResolved` substitution for its own
+          // prevOutcome/prevOutcomeSameDay/prevOutcomeCrossDay below.
+          const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
+          const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.dayIdx) : null;
           const rollOut = hist.filter(h => h.outcome === 'out').length;
           const rollBack = hist.filter(h => h.outcome === 'back').length;
           const rollingRate = hist.length >= 3
@@ -775,9 +796,9 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             roundNum: feats.roundNum?.bucket ?? null,
             prevCloseLoc, ivRegime, vrp, ivSkewDir,
             overlapWindow: (new Date(bar.time * 1000).getUTCHours() >= 12 && new Date(bar.time * 1000).getUTCHours() < 16),
-            prevOutcome: prev?.outcome ?? null,
-            prevOutcomeSameDay: (daysSincePrevN === 0 && prev?.outcome !== 'neither') ? prev.outcome : null,
-            prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+            prevOutcome: prevResolved?.outcome ?? null,
+            prevOutcomeSameDay: (daysSincePrevResolvedN === 0 && prevResolved && prevResolved.outcome !== 'neither') ? prevResolved.outcome : null,
+            prevOutcomeCrossDay: (daysSincePrevResolvedN > 0) ? prevResolved.outcome : null,
             rollingRate,
           });
         }

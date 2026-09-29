@@ -794,6 +794,28 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             const hist = lastVisit[key] ?? [];
             const prev = hist.at(-1) ?? null;
             const daysSincePrevN = prev ? (i - prev.sessIdx) : null;
+            // Look-ahead fix (2026-09-29, found chasing "why does live only
+            // take 1 of 10 backtest candidates"): `prev` (hist.at(-1)) is
+            // fine for anything only needing WHEN the prior touch occurred
+            // (gapMin, daysSincePrev) or what was true AT that touch's own
+            // moment (prevWtState) -- genuinely knowable in real time the
+            // instant the prior touch happens. But `prev.outcome` is NOT --
+            // resolving a touch needs forward-looking M1 data, and `hist`
+            // stores each touch's outcome EAGERLY, the moment THIS walk
+            // processes it (using that touch's own full forward look), not
+            // deferred until the bar where its resolution actually lands.
+            // Confirmed directly: a touch at 10:56 whose resolution only
+            // landed by ~12:00 was already being read as a KNOWN 'out'
+            // outcome by the 11:19 touch of the same rung -- 23 minutes
+            // later in the walk's own bar order, but nowhere near 23
+            // minutes later in when that information was actually knowable.
+            // `prevOutcomeSameDay` is one of only two VOTE_DIMS this
+            // engine's entire margin decision runs on (the other,
+            // sessionHandoff, has no such dependency) -- this directly
+            // explains backtest margin>=2 counts a live bot could not
+            // have reproduced in real time.
+            const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
+            const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.sessIdx) : null;
             const rollOut = hist.filter(h => h.outcome === 'out').length;
             const rollBack = hist.filter(h => h.outcome === 'back').length;
             const rollingRate = hist.length >= 3
@@ -842,16 +864,22 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               htfTrend: feats.htfTrend?.bucket ?? null,
               volClimax: feats.volClimax?.bucket ?? null,
               roundNum: feats.roundNum?.bucket ?? null,
-              prevOutcome: prev?.outcome ?? null,
+              // prevOutcome/outcomeRepeated/prevOutcomeSameDay/prevOutcomeCrossDay
+              // all read `.outcome` -- look-ahead-sensitive, so these use
+              // `prevResolved` (see its own doc above), not raw `prev`.
+              // prevWtState/wtStateRepeated only read a FEATURE true at
+              // prev's own touch moment, no outcome needed -- raw `prev`
+              // stays correct and unchanged for those.
+              prevOutcome: prevResolved?.outcome ?? null,
               prevWtState: prev?.wtState ?? null,
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
-              outcomeRepeated: (prev?.outcome != null) ? (prev.outcome === outcome) : null,
+              outcomeRepeated: (prevResolved?.outcome != null) ? (prevResolved.outcome === outcome) : null,
               daysSincePrev: daysSincePrevN,
               // Same split as levelAtlasEngine's prevOutcomeSameDay/CrossDay,
               // for the same reason (§6.4 of the playbook — a same-day
               // 'neither' re-arm repeat is close to a tautology, not a finding).
-              prevOutcomeSameDay: (daysSincePrevN === 0 && prev.outcome !== 'neither') ? prev.outcome : null,
-              prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+              prevOutcomeSameDay: (daysSincePrevResolvedN === 0 && prevResolved && prevResolved.outcome !== 'neither') ? prevResolved.outcome : null,
+              prevOutcomeCrossDay: (daysSincePrevResolvedN > 0) ? prevResolved.outcome : null,
               // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
               // finding, analysis/fib_atlas_whiplash_analysis.mjs +
               // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
@@ -866,7 +894,11 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time }].slice(-5);
+            // `resolveTime` carried here specifically so `prevResolved`
+            // (above) can tell whether THIS touch's own outcome had
+            // actually resolved by a LATER touch's own bar.time -- without
+            // it, prevResolved's filter would have nothing to compare against.
+            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time, resolveTime }].slice(-5);
           }
         }
       }

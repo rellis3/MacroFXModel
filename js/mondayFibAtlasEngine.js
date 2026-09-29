@@ -212,11 +212,27 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
             const key = `${side}|${level}|${rearmFrac}`;
             const hist = lastVisit[key] ?? [];
             const prev = hist.at(-1) ?? null;
+            // Look-ahead fix (2026-09-29) — same mechanism and same fix as
+            // asiaFibAtlasEngine.js's own identical bug (see that file's
+            // doc for the full reasoning): `prev.outcome` gets stored
+            // EAGERLY, the moment THIS walk processes that touch (via its
+            // own forward-looking resolution search), not deferred until
+            // the bar where its resolution actually lands -- so a LATER
+            // touch reading `prev.outcome` can see a resolution that, in
+            // real time, hadn't happened yet. `prevResolved` finds the most
+            // recent same-rung touch whose OWN resolveTime had genuinely
+            // already passed by `bar.time`. `gapMin` below is unaffected --
+            // it only needs WHEN the prior touch occurred, not its outcome.
+            const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
             // "Same reference week" = same Monday index `i`, not same
             // calendar date (a touch Wednesday and one the following
-            // Monday can both belong to week `i`).
+            // Monday can both belong to week `i`). Two separate checks —
+            // `sameWeek` (raw `prev`, for gapMin) vs `sameWeekResolved`
+            // (`prevResolved`, for prevOutcomeSameDay) — same reason the
+            // two references themselves are kept separate above.
             const sameWeek = prev && prev.weekIdx === i;
-            const prevOutcomeSameDay = (sameWeek && prev.outcome !== 'neither') ? prev.outcome : null;
+            const sameWeekResolved = prevResolved && prevResolved.weekIdx === i;
+            const prevOutcomeSameDay = (sameWeekResolved && prevResolved.outcome !== 'neither') ? prevResolved.outcome : null;
             // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
             // finding, analysis/fib_atlas_whiplash_analysis.mjs +
             // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
@@ -239,7 +255,7 @@ export function mondayFibAtlasWalk(packed, { instrument, assetClass = 'fx', rear
               prevOutcomeSameDay, gapMin, mondayConfluenceGrade,
               mondayHigh: mon.high, mondayLow: mon.low, mondayRange: mon.range,
             });
-            lastVisit[key] = [...hist, { outcome, weekIdx: i, time: bar.time }].slice(-3);
+            lastVisit[key] = [...hist, { outcome, weekIdx: i, time: bar.time, resolveTime }].slice(-3);
           }
         }
       }
