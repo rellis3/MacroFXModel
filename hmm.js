@@ -4,6 +4,14 @@
 //   0 = RANGE  (mean-reverting, small return variance — ideal for fade trades)
 //   1 = TREND  (directional, large return variance — fade trades carry more risk)
 //
+// READ THE STATE NAMES LITERALLY. The split is on return VARIANCE, not on direction:
+// `rangeState` is whichever state has the smaller sigma. "RANGE" therefore means QUIET,
+// and it is NOT a statement that price has no direction. A slow relentless grind is at
+// once the most efficient trend and the least volatile tape there is, so it lands in
+// RANGE every time -- USDCHF on 2026-09-29 was +8.45% since March at 99% of its range,
+// in the 7th vol percentile, labelled RANGE at 92%. Anything that wants a DIRECTIONAL
+// read should use js/travelRead.js, which measures travel from price.
+//
 // Observations: daily log returns (scalar per bar)
 // Algorithm: Baum-Welch EM for parameter estimation, Viterbi for state decoding
 // Numerically stable via per-timestep scaling in the forward pass.
@@ -231,6 +239,28 @@ export function fitHMM(returns) {
     const recentMean  = recent.reduce((s, x) => s + x, 0) / recent.length;
     const trendDir    = regime === 'TREND' ? (recentMean >= 0 ? 'BULL' : 'BEAR') : null;
 
+    // IS THAT MEAN ACTUALLY DIFFERENT FROM ZERO? `trendDir` is the bare SIGN of
+    // recentMean with no dead-band, so a flat fortnight becomes a confident BULL or BEAR
+    // on every page that renders it. On 2026-09-29 AUDJPY was labelled BULL on a 10-day
+    // mean of -2.5e-4 -- a drift of a quarter of a percent, well inside its own daily
+    // noise, and the sign flips on a one-bar change of window.
+    //
+    // So report the strength alongside the sign: a one-sample t against zero. Anything
+    // under 1 standard error is a flat fortnight wearing a direction's name. Deliberately
+    // lenient (|t| >= 1, not 2) because this is a DESCRIPTION of recent drift, not a
+    // significance test -- it exists so a reader is not told "BULL" about noise.
+    //
+    // ADDED, NOT CHANGED: `trendDir` keeps its exact old meaning because hmmSignalScore()
+    // and the live bots branch on it, and a null there would be read as BEAR. Consumers
+    // that care opt in via trendDirConfident.
+    const rN = recent.length;
+    const rSd = rN > 1
+      ? Math.sqrt(recent.reduce((s, x) => s + (x - recentMean) ** 2, 0) / (rN - 1))
+      : 0;
+    const recentSe = rSd > 0 ? rSd / Math.sqrt(rN) : 0;
+    const recentT  = recentSe > 0 ? recentMean / recentSe : 0;
+    const trendDirConfident = trendDir != null && Math.abs(recentT) >= 1;
+
     // Sigma ratio: how clearly separated the two states are
     const sigmaRatio = Math.max(B[rangeState].sigma, 1e-9) > 0
       ? B[trendState].sigma / B[rangeState].sigma
@@ -239,6 +269,9 @@ export function fitHMM(returns) {
     return {
       regime,
       trendDir,
+      trendDirConfident,
+      recentMean,
+      recentT: +recentT.toFixed(3),
       rangeProb,
       trendProb: 1 - rangeProb,
       sigmaRatio,

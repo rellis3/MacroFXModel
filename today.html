@@ -7119,7 +7119,13 @@ function directionFor(r) {
   const carryScore = carryEdgeFor(r, cc)?.score ?? null;
   return window.directionTagBrick.directionTag({
     regime:    r.d.regime ? { label: r.d.regime.label, trendDir: r.d.regime.trend_dir,
-                              trendProb: r.d.regime.trend_prob, reliable: r.d.regime.reliable } : null,
+                              trendProb: r.d.regime.trend_prob, rangeProb: r.d.regime.range_prob,
+                              // false = the HMM's own 10-day drift is inside its noise, so
+                              // the BULL/BEAR on it is not worth pointing an arrow with
+                              trendConfident: r.d.regime.trend_dir_confident, reliable: r.d.regime.reliable } : null,
+    // structural travel: where price sits in its own 3-month range and how directly it
+    // got there. The HMM splits on VARIANCE, so this is what sees a quiet one-way grind.
+    travel:    r.d.regime?.travel ?? null,
     session:   r.s ? { bias: r.s.bias_detail ?? r.s.bias ?? '', dir: r.s.dir } : null,
     rangeUsed: r.used,
     cot:       r.ct?.bias ?? null,

@@ -24,6 +24,7 @@ import { rankIC, blockBootstrapIC, spearman } from './js/statsCore.js';
 import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WINDOW_WEEKS, MIN_WEEKS_QUALIFY } from './js/cotFactorCore.js';
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
+import { travelRead } from './js/travelRead.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -23201,9 +23202,15 @@ async function computeDailyBrief() {
       regime: regRaw ? {
         label:        regRaw.regime,
         trend_dir:    regRaw.trendDir ?? null,
+        // Whether that trend_dir is more than the sign of a near-zero mean. AUDJPY read
+        // BULL on a 10-day drift of -2.5e-4; consumers use this to stop repeating it.
+        trend_dir_confident: regRaw.trendDirConfident ?? null,
         range_prob:   Math.round((regRaw.rangeProb ?? 0) * 100),
         trend_prob:   Math.round((regRaw.trendProb ?? 0) * 100),
         reliable:     regRaw.reliable,
+        // Structural travel (js/travelRead.js) — the directional read the variance-based
+        // HMM cannot give. null until the next levels refresh computes it.
+        travel:       regRaw.travel ?? null,
         sizing_mult:  sizingMult,
         sizing_label: sizingLabel,
       } : null,
@@ -34093,10 +34100,19 @@ async function runLevelsRefresh() {
         }
         const result = fitHMM(returns);
         if (result) {
+          // STRUCTURAL TRAVEL, from the same closes. The HMM splits on VARIANCE, so a
+          // quiet one-way grind lands in RANGE and the page then showed no direction for
+          // it at all (USDCHF, 2026-09-29: +8.45% since March, 99% of range, labelled
+          // RANGE 92%). travelRead answers the directional question from price. Free --
+          // `closes` is already fetched here, ascending, which is the order it needs.
+          const travel = travelRead(closes);
           // Preserve intraday30m set by reloadLevels() — don't clobber it
-          state.hmmRegimes[sym] = { ...result, intraday30m: state.hmmRegimes[sym]?.intraday30m };
+          state.hmmRegimes[sym] = { ...result, travel, intraday30m: state.hmmRegimes[sym]?.intraday30m };
           const reliableTag = result.reliable ? '' : '⚠ambiguous';
-          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}`);
+          const tvTag = travel && travel.dir !== 'flat'
+            ? ` travel=${travel.dir}@${Math.round(travel.pos * 100)}%x${travel.mult.toFixed(2)}` : '';
+          const weakTag = result.trendDir && !result.trendDirConfident ? '⚠drift-in-noise' : '';
+          hmmResults.push(`${sym}:${result.regime}${result.trendDir ? `(${result.trendDir})` : ''}@${Math.round(result.rangeProb * 100)}%range ratio=${result.sigmaRatio?.toFixed(2)}${reliableTag}${weakTag}${tvTag}`);
         }
       }
     }
