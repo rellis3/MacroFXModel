@@ -43,6 +43,7 @@ import { forecastSigma } from './forecastSigma.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
+import { knownOutcome, prevOutcomeSameDayAt, rollingRateAt } from './visitMemory.js';
 
 export const RUNGS = ['p50', 'p75', 'p90'];
 export const SIDES = ['up', 'down'];   // up = O-H rungs, down = O-L rungs
@@ -551,11 +552,10 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             // exact (side, rung, re-arm) — the "have we seen this before, and how
             // often did it go this way" read, distinct from the single-prior-visit
             // repeatability check below. Requires ≥3 prior visits to report.
-            const rollOut = hist.filter(h => h.outcome === 'out').length;
-            const rollBack = hist.filter(h => h.outcome === 'back').length;
-            const rollingRate = hist.length >= 3
-              ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
-              : null;
+            // Every prior-visit read is AS OF this bar (js/visitMemory.js): a
+            // same-day prior touch that hasn't reached either barrier yet is
+            // 'neither' here, exactly as live sees it -- never its eventual outcome.
+            const rollingRate = rollingRateAt(hist, bar.time);
             const record = {
               instrument: sym, assetClass, date, side, rung, rearmFrac, ordinal,
               hourUtc: new Date(bar.time * 1000).getUTCHours(),
@@ -623,10 +623,10 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               overlapWindow: (new Date(bar.time * 1000).getUTCHours() >= 12 && new Date(bar.time * 1000).getUTCHours() < 16),
               // ── Repeatability: how does THIS visit compare to the LAST visit
               // to this exact rung/side/re-arm? (prior touch only — no lookahead)
-              prevOutcome: prev?.outcome ?? null,
+              prevOutcome: knownOutcome(prev, bar.time),
               prevWtState: prev?.wtState ?? null,
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
-              outcomeRepeated: (prev?.outcome != null) ? (prev.outcome === outcome) : null,
+              outcomeRepeated: (prev != null) ? (knownOutcome(prev, bar.time) === outcome) : null,
               daysSincePrev: daysSincePrevN,
               // `prevOutcome` alone conflates two very different mechanisms and
               // was found (2026-08) to be actively misleading if reported as one
@@ -648,12 +648,17 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
               //   prevOutcomeCrossDay — a genuinely separate day's prior visit.
               //                         Found to carry ~nothing (EURUSD 2026-08)
               //                         — no cross-day "level memory" detected.
-              prevOutcomeSameDay: (daysSincePrevN === 0 && prev.outcome !== 'neither') ? prev.outcome : null,
-              prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+              // CAUSALLY GATED (2026-09-28, js/visitMemory.js): the most
+              // recent same-day prior touch that had ALREADY resolved by this
+              // bar. It used to be hist.at(-1)'s eventual outcome, which a
+              // re-armed retest can precede -- a future result leaking into
+              // "context available at this instant".
+              prevOutcomeSameDay: prevOutcomeSameDayAt(hist, i, bar.time),
+              prevOutcomeCrossDay: (daysSincePrevN > 0) ? knownOutcome(prev, bar.time) : null,
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, dayIdx: i }].slice(-5);
+            lastVisit[key] = [...hist, { outcome, resolveTime, wtState: feats.wtState?.bucket ?? null, dayIdx: i }].slice(-5);
           }
           // Capture the CURRENT armed state as of the last bar walked (today,
           // when this is the live/in-progress day) at the SAME re-arm
@@ -722,11 +727,7 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
           const hist = lastVisit[key] ?? [];
           const prev = hist.at(-1) ?? null;
           const daysSincePrevN = prev ? (i - prev.dayIdx) : null;
-          const rollOut = hist.filter(h => h.outcome === 'out').length;
-          const rollBack = hist.filter(h => h.outcome === 'back').length;
-          const rollingRate = hist.length >= 3
-            ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
-            : null;
+          const rollingRate = rollingRateAt(hist, bar.time);
           const dist = Math.abs(bar.close - here);
 
           pending.push({
@@ -775,9 +776,9 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             roundNum: feats.roundNum?.bucket ?? null,
             prevCloseLoc, ivRegime, vrp, ivSkewDir,
             overlapWindow: (new Date(bar.time * 1000).getUTCHours() >= 12 && new Date(bar.time * 1000).getUTCHours() < 16),
-            prevOutcome: prev?.outcome ?? null,
-            prevOutcomeSameDay: (daysSincePrevN === 0 && prev?.outcome !== 'neither') ? prev.outcome : null,
-            prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+            prevOutcome: knownOutcome(prev, bar.time),
+            prevOutcomeSameDay: prevOutcomeSameDayAt(hist, i, bar.time),
+            prevOutcomeCrossDay: (daysSincePrevN > 0) ? knownOutcome(prev, bar.time) : null,
             rollingRate,
           });
         }

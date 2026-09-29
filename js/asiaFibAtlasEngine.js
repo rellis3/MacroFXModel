@@ -125,6 +125,7 @@ import { forecastSigma } from './forecastSigma.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
+import { knownOutcome, prevOutcomeSameDayAt, rollingRateAt } from './visitMemory.js';
 import { extractBars, resamplePacked, bisect } from './barUtils.js';
 import { buildAsiaSessions, buildMondayRanges, prevSession, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
 import { FIB_LEVELS, KEY_LEVELS, calcFibs } from './fibProjection.js';
@@ -794,11 +795,10 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             const hist = lastVisit[key] ?? [];
             const prev = hist.at(-1) ?? null;
             const daysSincePrevN = prev ? (i - prev.sessIdx) : null;
-            const rollOut = hist.filter(h => h.outcome === 'out').length;
-            const rollBack = hist.filter(h => h.outcome === 'back').length;
-            const rollingRate = hist.length >= 3
-              ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
-              : null;
+            // Every prior-visit read is AS OF this bar (js/visitMemory.js). With
+            // extendResolutionDays > 0 a prior visit can resolve DAYS later, so
+            // this gates the cross-day read too, not only the same-day one.
+            const rollingRate = rollingRateAt(hist, bar.time);
 
             const record = {
               instrument: sym, assetClass, date, side, level, rearmFrac, ordinal,
@@ -842,16 +842,19 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               htfTrend: feats.htfTrend?.bucket ?? null,
               volClimax: feats.volClimax?.bucket ?? null,
               roundNum: feats.roundNum?.bucket ?? null,
-              prevOutcome: prev?.outcome ?? null,
+              prevOutcome: knownOutcome(prev, bar.time),
               prevWtState: prev?.wtState ?? null,
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
-              outcomeRepeated: (prev?.outcome != null) ? (prev.outcome === outcome) : null,
+              outcomeRepeated: (prev != null) ? (knownOutcome(prev, bar.time) === outcome) : null,
               daysSincePrev: daysSincePrevN,
               // Same split as levelAtlasEngine's prevOutcomeSameDay/CrossDay,
               // for the same reason (§6.4 of the playbook — a same-day
               // 'neither' re-arm repeat is close to a tautology, not a finding).
-              prevOutcomeSameDay: (daysSincePrevN === 0 && prev.outcome !== 'neither') ? prev.outcome : null,
-              prevOutcomeCrossDay: (daysSincePrevN > 0) ? prev.outcome : null,
+              // CAUSALLY GATED (2026-09-28, js/visitMemory.js) -- was
+              // hist.at(-1)'s eventual outcome, which a re-armed retest (or,
+              // with extendResolutionDays, the next session) can precede.
+              prevOutcomeSameDay: prevOutcomeSameDayAt(hist, i, bar.time, 'sessIdx'),
+              prevOutcomeCrossDay: (daysSincePrevN > 0) ? knownOutcome(prev, bar.time) : null,
               // "Whiplash" gap-since-this-rung's-own-last-touch (2026-09-03/04
               // finding, analysis/fib_atlas_whiplash_analysis.mjs +
               // fib_atlas_gap_filter_backtest.mjs, LEGO_MODULES.md) — minutes
@@ -866,7 +869,7 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               rollingRate,
             };
             touches.push(record);
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time }].slice(-5);
+            lastVisit[key] = [...hist, { outcome, resolveTime, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time }].slice(-5);
           }
         }
       }
