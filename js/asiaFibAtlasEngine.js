@@ -702,6 +702,15 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
                 if (isAbove ? bwd <= inner : bwd >= inner) { outcome = 'back'; resolveTime = b2.time; break; }
               }
             }
+            // A 'neither' verdict is itself only KNOWN once the session
+            // closes (or, with extension enabled, once extBars also runs dry)
+            // -- but `resolveTime` correctly stays null for it (minsToResolve
+            // below must keep meaning "time to a REAL resolution"). `prevResolved`
+            // needs a separate "knowable as of" time -- left null (the old
+            // behaviour), a 'neither' prior is permanently invisible to that
+            // search, so a later same-day touch skips straight past a genuine
+            // 'neither' prior to whatever resolved touch came before it.
+            const knownByTime = outcome === 'neither' ? sessionCloseBar.time : resolveTime;
             const concurrencyResolveTime = resolveTime != null ? Math.min(resolveTime, concurrencyResolveCap) : null;
             const sgn = isAbove ? 1 : -1;
             const pullbackFrac = rungSpan > 0 ? Math.min(1, Math.abs(here - deepest) / rungSpan) : null;
@@ -816,10 +825,17 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             // have reproduced in real time.
             const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
             const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.sessIdx) : null;
-            const rollOut = hist.filter(h => h.outcome === 'out').length;
-            const rollBack = hist.filter(h => h.outcome === 'back').length;
-            const rollingRate = hist.length >= 3
-              ? { n: hist.length, outPct: +(rollOut / hist.length * 100).toFixed(0), backPct: +(rollBack / hist.length * 100).toFixed(0) }
+            // `hist` itself is now uncapped (2026-09-29, needed so
+            // `prevResolved` above can reach back past several intervening
+            // unresolved touches) -- but rollingRate is deliberately a SHORT,
+            // recency-weighted base rate ("last <=5 visits"), not a full-
+            // history rate. Slice explicitly rather than relying on `hist`'s
+            // own length to stay bounded.
+            const rollWindow = hist.slice(-5);
+            const rollOut = rollWindow.filter(h => h.outcome === 'out').length;
+            const rollBack = rollWindow.filter(h => h.outcome === 'back').length;
+            const rollingRate = rollWindow.length >= 3
+              ? { n: rollWindow.length, outPct: +(rollOut / rollWindow.length * 100).toFixed(0), backPct: +(rollBack / rollWindow.length * 100).toFixed(0) }
               : null;
 
             const record = {
@@ -875,6 +891,12 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
               wtStateRepeated: (prev?.wtState != null && feats.wtState?.bucket != null) ? (prev.wtState === feats.wtState.bucket) : null,
               outcomeRepeated: (prevResolved?.outcome != null) ? (prevResolved.outcome === outcome) : null,
               daysSincePrev: daysSincePrevN,
+              // Companion to prevOutcomeSameDay/prevOutcomeCrossDay below --
+              // those read `prevResolved`, not `prev`. `daysSincePrev` above
+              // deliberately stays on `prev` for gapMin (needs WHEN the
+              // immediately-prior touch happened, any outcome, not just
+              // resolved ones).
+              daysSincePrevResolved: daysSincePrevResolvedN,
               // Same split as levelAtlasEngine's prevOutcomeSameDay/CrossDay,
               // for the same reason (§6.4 of the playbook — a same-day
               // 'neither' re-arm repeat is close to a tautology, not a finding).
@@ -898,7 +920,21 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             // (above) can tell whether THIS touch's own outcome had
             // actually resolved by a LATER touch's own bar.time -- without
             // it, prevResolved's filter would have nothing to compare against.
-            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time, resolveTime }].slice(-5);
+            //
+            // NOT capped (was `.slice(-5)` until 2026-09-29): that cap
+            // predates `prevResolved`'s backward search and was only ever
+            // safe because the OLD code read just `hist.at(-1)` -- any cap
+            // >=1 was equivalent then. Found live in mondayFibAtlasEngine.js
+            // (same pattern, smaller cap, hit first) via a stale-test
+            // rewrite: a rung whiplashed unresolved more times than the cap
+            // allowed before its first touch resolved, silently evicting
+            // the one entry `prevResolved` needed and returning null
+            // instead of the correct outcome. Asia's shorter session makes
+            // this rarer but not impossible, so fixed here too rather than
+            // waiting for a live case. Per-rung history is naturally small
+            // (rearm mechanics bound retouch frequency), so uncapped costs
+            // nothing real.
+            lastVisit[key] = [...hist, { outcome, wtState: feats.wtState?.bucket ?? null, sessIdx: i, time: bar.time, resolveTime: knownByTime }];
           }
         }
       }
