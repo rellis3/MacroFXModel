@@ -1,0 +1,2 @@
+# Per-touch rows (~67MB) — regenerate: node scripts/v4/stage0_touches.mjs <pair> proxy|none
+*.json
