@@ -125,6 +125,9 @@ for tau, rung in ((0.5, 'p50'), (0.75, 'p75'), (0.9, 'p90')):
               .fit(np.log(tr[['ewma_rel']]), tr['logr']).predict(np.log(te[['ewma_rel']])))
     mk = lambda cols: walk(D, lambda tr, te: HGBR(loss='quantile', quantile=tau, **GBM).fit(tr[cols], tr['logr']).predict(te[cols]))
     q2, q3 = mk(P), mk(P + IV)
+    if tau == 0.75:   # walk-forward q75 per day, consumed by forge/COMBO_EURUSD_PREREG.md
+        json.dump({d: (None if np.isnan(v) else float(v)) for d, v in zip(D['date'], q3)},
+                  open('analysis/output/rangebook/eurusd_pred_q75.json', 'w'))
     L = {k: pin(D['logr'], q, tau)[T.index] for k, q in (('q0', q0), ('q1', q1), ('q2', q2), ('q3', q3))}
     print(f"| {tau:.2f} ({rung} line) | {fmt(boot_skill(L['q3'], L['q0'], T['date']))} | "
           f"{fmt(boot_skill(L['q3'], L['q1'], T['date']))} | {fmt(boot_skill(L['q3'], L['q2'], T['date']))} |")

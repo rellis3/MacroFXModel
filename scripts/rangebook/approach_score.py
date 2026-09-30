@@ -116,6 +116,10 @@ for tr_i, te_i in folds():
     pf.loc[te_i] = HGBR(**GBM, categorical_features=CATS).fit(T[COLS], T['follow']).predict(E[COLS])
     pa.loc[te_i] = HGBR(**GBM, categorical_features=CATS).fit(T[COLS], T['fadeR']).predict(E[COLS])
 W = df[df['year'].isin(YEARS)].copy()
+# walk-forward p_cont / p_base per pass, consumed by forge/COMBO_EURUSD_PREREG.md
+json.dump({f'{d}|{ln}|{ps}': [float(p_gbm[i]), float(p_base[i])]
+           for i, d, ln, ps in zip(W.index, W['date'], W['line'], W['pass'])},
+          open(f'analysis/output/rangebook/{PAIR}_pred_pass.json', 'w'))
 W['lb'] = (p_base[W.index] - W['cont']) ** 2; W['lg'] = (p_gbm[W.index] - W['cont']) ** 2
 g = W.groupby('date')[['lg', 'lb']].sum(); a, b = g['lg'].to_numpy(), g['lb'].to_numpy()
 point = 1 - a.sum() / b.sum(); ix = np.random.default_rng(7).integers(0, len(a), (1000, len(a)))
