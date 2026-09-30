@@ -3,19 +3,9 @@
 """
 import json, collections
 from brier import counts, add_counts, predictor, bss
+from crosspair_buckets import USD, CROSS, ALL, DIST, USED, EXTD
 
 SPLIT = '2023-01-01'
-USD = ['eurusd', 'gbpusd', 'usdjpy', 'audusd', 'usdcad', 'usdchf', 'nzdusd']
-CROSS = ['eurgbp', 'eurjpy', 'gbpjpy', 'euraud', 'eurchf', 'audjpy', 'cadjpy', 'chfjpy']
-ALL = USD + CROSS + ['gold']
-
-def bk(v, edges, names):
-    for e, n in zip(edges, names):
-        if v < e: return n
-    return names[-1]
-DIST = lambda v: bk(v, (0.25, 0.5, 1.0), ('<0.25', '0.25-0.5', '0.5-1', '>1'))
-USED = lambda v: bk(v, (0.4, 0.7, 1.0), ('<0.4', '0.4-0.7', '0.7-1', '>1'))
-EXTD = lambda v: bk(v, (0.1, 0.3, 0.6), ('<0.1', '0.1-0.3', '0.3-0.6', '>0.6'))
 def lfam(line):
     if line.startswith('Range_'): return line
     return ('Close_' if line.startswith('Close') else 'OHOL_') + line.split('_')[1]
