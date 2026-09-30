@@ -2,11 +2,11 @@
     python scripts/rangebook/score.py [pair] > analysis/output/rangebook/<pair>_RESULTS.md
 Also writes analysis/output/rangebook/<pair>_book.json (the train-fitted tables).
 """
-import json, random, sys, collections
+import json, sys, collections
+from brier import fit, bss
 
 PAIR = (sys.argv[1] if len(sys.argv) > 1 else 'eurusd').lower()
 SPLIT = '2023-01-01'
-MIN_N = 50
 recs = json.load(open(f'analysis/output/rangebook/{PAIR}.json'))['records']
 recs = [r for r in recs if all(r['pre'][k] is not None for k in ('sigmaReg', 'hmm', 'yRange'))]
 
@@ -71,44 +71,6 @@ def rows_B(outcome):
                     {'drive': DRIVE(b['driveMin']), 'sigmaReg': p['sigmaReg'], 'hmm': hmm_or(p['hmm'], 'up' if side == 'up' else 'dn'),
                      'yRange': p['yRange'], 'event': p['event']}, b[outcome]))
     return out
-
-
-def fit(train, extras):
-    """Cell frequencies with back-off: full key -> base key -> base key minus trailing parts."""
-    cnt = collections.defaultdict(lambda: [0, 0])
-    for _, base, ex, y in train:
-        full = base + tuple(ex[e] for e in extras)
-        for i in range(len(full) + 1):
-            c = cnt[full[:i]]; c[0] += y; c[1] += 1
-    def pred(base, ex):
-        full = base + tuple(ex[e] for e in extras)
-        for i in range(len(full), -1, -1):
-            h, n = cnt[full[:i]]
-            if n >= MIN_N: return (h + 1) / (n + 2)
-        h, n = cnt[()]
-        return (h + 1) / (n + 2)
-    return pred, cnt
-
-
-def per_day_se(test, pred):
-    se = collections.defaultdict(float)
-    for d, base, ex, y in test:
-        se[d] += (pred(base, ex) - y) ** 2
-    return se
-
-
-def bss(test, pred_m, pred_b, boots=1000, seed=7):
-    a, b = per_day_se(test, pred_m), per_day_se(test, pred_b)
-    days = sorted(b)
-    A, B = [a[d] for d in days], [b[d] for d in days]
-    point = 1 - sum(A) / sum(B)
-    rnd = random.Random(seed); n = len(days); vals = []
-    for _ in range(boots):
-        idx = [rnd.randrange(n) for _ in range(n)]
-        sb = sum(B[i] for i in idx)
-        vals.append(1 - sum(A[i] for i in idx) / sb if sb else 0)
-    vals.sort()
-    return point, vals[int(0.025 * boots)], vals[int(0.975 * boots) - 1]
 
 
 def split(rows):

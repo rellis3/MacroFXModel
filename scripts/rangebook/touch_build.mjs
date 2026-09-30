@@ -8,7 +8,7 @@ import { loadCalendarProxy } from '../v4/calendarProxy.mjs';
 import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 import { costForPair } from '../../js/perLineStrategy.js';
 import { pipSize } from '../../js/instrumentRegistry.js';
-import { buildContext, scrambleFrom, touchSetups } from './common.mjs';
+import { buildContext, scrambleFrom, touchSetups, race } from './common.mjs';
 
 const PAIR = (process.argv[2] ?? 'eurusd').toLowerCase(), SYM = PAIR.toUpperCase();
 const ASSET = assetClassFor(PAIR), COST = costForPair(PAIR, ASSET), PIP = pipSize(SYM);
@@ -19,21 +19,8 @@ const r4 = x => (x == null || !Number.isFinite(x)) ? null : Math.round(x * 1e4) 
 function touchRows(ctx, di) {
   return touchSetups(ctx, di).map(({ d, t, up, k, tg, unit, dc, df, sameBar, sit, pre }) => {
     const bars = d.bars;
-    const beyond = b => up ? b.high - t.level : t.level - b.low;       // + = in the continue direction
-    const back = b => up ? t.level - b.low : b.high - t.level;         // + = toward the fade side
-    const contHit = b => up ? b.high >= tg.cont : b.low <= tg.cont;
-    const fadeHit = b => up ? b.low <= tg.fade : b.high >= tg.fade;
-    let outcome = 'open', resolveK = null, mb = 0, mk = 0, dayB = 0, dayK = 0;
-    for (let j = k + 1; j < bars.length; j++) {
-      const b = bars[j];
-      dayB = Math.max(dayB, beyond(b)); dayK = Math.max(dayK, back(b));
-      if (outcome === 'open') {
-        mb = Math.max(mb, beyond(b)); mk = Math.max(mk, back(b));
-        const c = contHit(b), f = fadeHit(b);
-        if (c || f) { outcome = c && f ? 'both' : c ? 'cont' : 'fade'; resolveK = j; }
-      }
-    }
-    const lastMove = (up ? bars.at(-1).close - t.level : t.level - bars.at(-1).close) / unit;   // + = continue side
+    const { outcome, resolveK, mb, mk, dayB, dayK, lastMove: lm } = race(bars, k, up, t.level, tg);
+    const lastMove = lm / unit;
     return {
       date: d.date, line: t.line, k, time: t.time, sameBar: sameBar ? 1 : 0,
       dc: r4(dc), df: r4(df), outcome, mins: resolveK == null ? null : Math.round((bars[resolveK].time - t.time) / 60),

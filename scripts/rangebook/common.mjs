@@ -101,3 +101,25 @@ export function touchSetups(ctx, di) {
   }
   return out;
 }
+
+// The continue-vs-fade race from the bar AFTER a touch at bar k (touch book rules):
+// outcome cont / fade / both / open, max excursions before resolution and to the day
+// end, and the last close's move from the line. All distances in price units.
+export function race(bars, k, up, level, tg) {
+  const beyond = b => up ? b.high - level : level - b.low;        // + = in the continue direction
+  const back = b => up ? level - b.low : b.high - level;          // + = toward the fade side
+  const contHit = b => up ? b.high >= tg.cont : b.low <= tg.cont;
+  const fadeHit = b => up ? b.low <= tg.fade : b.high >= tg.fade;
+  let outcome = 'open', resolveK = null, mb = 0, mk = 0, dayB = 0, dayK = 0;
+  for (let j = k + 1; j < bars.length; j++) {
+    const b = bars[j];
+    dayB = Math.max(dayB, beyond(b)); dayK = Math.max(dayK, back(b));
+    if (outcome === 'open') {
+      mb = Math.max(mb, beyond(b)); mk = Math.max(mk, back(b));
+      const c = contHit(b), f = fadeHit(b);
+      if (c || f) { outcome = c && f ? 'both' : c ? 'cont' : 'fade'; resolveK = j; }
+    }
+  }
+  const lastMove = up ? bars.at(-1).close - level : level - bars.at(-1).close;   // + = continue side
+  return { outcome, resolveK, mb, mk, dayB, dayK, lastMove };
+}
