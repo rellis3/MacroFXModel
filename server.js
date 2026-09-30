@@ -121,7 +121,7 @@ import { buildScorecard as buildMacroScorecard, topBottomPair as macroTopBottomP
 import { classifyTapeSpeed as _classifyTape, describeTapeSpeed as _describeTape, speedFromCloses as _tapeSpeed, atr14 as _tapeAtr, paramsKeyFor as _tapeKey } from './js/tapeSpeedEngine.js';
 import { summarisePositionBook as _summariseBook } from './js/positionBookMetrics.js';
 import { BOOK_HISTORY_KV, BOOK_INSTRUMENTS, fineRow as _bookFineRow, parseStore as _bookParse, upsertFine as _bookUpsert, rollDaily as _bookRoll, changeOver as _bookChange, approxBytes as _bookBytes } from './js/positionBookHistory.js';
-import { LEDGER_KV, upsertCalls as _ledgerUpsert, scoreRows as _ledgerScore, summarise as _ledgerSummary, citeFor as _ledgerCite, dayOf as _ledgerDay } from './js/pairLedger.js';   // what the page called, scored against what happened
+import { LEDGER_KV, LEDGER_SCORE_SCHEMA, upsertCalls as _ledgerUpsert, scoreRows as _ledgerScore, summarise as _ledgerSummary, citeFor as _ledgerCite, dayOf as _ledgerDay } from './js/pairLedger.js';   // what the page called, scored against what happened
 import { SCORECARD_HISTORY_KV, rowFromScorecard as _scRow, upsertRow as _scUpsert, parseStore as _scParse, seriesFor as _scSeries } from './js/scorecardHistory.js';   // one row per day of what the scorecard said
 import { fetchYieldCurveData, yieldCurveScore, YIELD_CURVE_UNIVERSE } from './js/yieldCurveEngine.js';
 import { fetchConsumerConfidenceData, consumerConfidenceCompositeScore, CONFIDENCE_UNIVERSE } from './js/consumerConfidenceEngine.js';
@@ -8020,8 +8020,36 @@ app.post('/api/ledger/record', express.json({ limit: '512kb' }), async (req, res
 // which is the day a morning call belongs to.
 async function _dailyClosesFor(sym, count = 14) {
   const bars = await _fetchOandaCandles(sym, 'D', count);
-  return bars.filter(b => b.complete).map(b => ({ d: String(b.time).slice(0, 10), close: b.close }));
+  return bars.filter(b => b.complete).map(b => ({ d: _sessionDayOf(b.time), close: b.close }));
 }
+/**
+ * The calendar day a daily candle's session BELONGS to.
+ *
+ * OANDA stamps a D candle with the moment the session OPENS, and the default alignment
+ * is 17:00 New York -- so the candle stamped 2026-09-28T21:00Z opens on Monday evening
+ * and closes on TUESDAY. Slicing the date straight off that stamp, which is what this
+ * did, labels every close one session early:
+ *
+ *   label 2026-09-24 -> close 1.13911, which is the 25th's close (exactly)
+ *   label 2026-09-27 -> close 1.13714, which is the 28th's (Sunday stamp, Monday session)
+ *   label 2026-09-28 -> close 1.13418, which is the 29th's
+ *
+ * pairLedger then matched a call's day against that label, so `h0` -- documented as "the
+ * close of the call day" -- was handing back the NEXT session's close, and every horizon
+ * was silently shifted by one. It surfaced because the end-of-day board scored the 28th's
+ * fourteen leans at 11 right while the ledger scored the same fourteen at 2; both were
+ * correct for the day they were actually measuring.
+ *
+ * Taking the end of the session (start + 1 day, minus a millisecond so an exact midnight
+ * boundary does not roll forward) is right for BOTH alignments: a 17:00-NY candle lands
+ * on the next calendar day, a 00:00-UTC candle stays on its own.
+ */
+function _sessionDayOf(time) {
+  const t = Date.parse(String(time));
+  if (!Number.isFinite(t)) return String(time).slice(0, 10);
+  return new Date(t + 86400_000 - 1).toISOString().slice(0, 10);
+}
+
 let _ledgerScoring = false;
 async function _scoreLedger() {
   if (_ledgerScoring) return { skipped: 'running' };
@@ -8029,7 +8057,10 @@ async function _scoreLedger() {
   _ledgerScoring = true;
   try {
     const rows = await _readLedger();
-    const pending = rows.filter(r => !r.out?.h5 && r.sym);
+    // A row scored before the session-label fix carries the wrong closes at every
+    // horizon, so completeness is not enough -- it must also be scored under the
+    // current schema or it is re-scored from scratch.
+    const pending = rows.filter(r => (!r.out?.h5 || r.out?.v !== LEDGER_SCORE_SCHEMA) && r.sym);
     if (!pending.length) return { scored: 0, pending: 0 };
     const syms = [...new Set(pending.map(r => r.sym))];
     const closesBySym = {};

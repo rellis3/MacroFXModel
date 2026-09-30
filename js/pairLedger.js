@@ -38,6 +38,14 @@ export const MIN_N_TO_SHOW = 30;   // below this the summary says "collecting", 
 export const dayOf = (ms = Date.now()) => new Date(ms).toISOString().slice(0, 10);
 
 /**
+ * Bumped when the MEANING of a scored row changes, so old rows re-score instead of
+ * being trusted. v2: the close series was labelled by OANDA's candle START (17:00 NY the
+ * previous evening), so h0 held the NEXT session's close and every horizon was shifted
+ * by one. See _sessionDayOf in server.js.
+ */
+export const LEDGER_SCORE_SCHEMA = 2;
+
+/**
  * One call as the board posts it. `call` fields come from the rendered card;
  * `price`/`atr` are stamped server-side where possible.
  */
@@ -110,7 +118,7 @@ export function scoreRow(row, closes) {
       pnlNetAtr: dirSign === 0 || !atr || row.spread == null ? null : +(((move * dirSign) - row.spread) / atr).toFixed(3),
     };
   };
-  const out = { h0: h(0), h1: h(1), h5: h(5), scoredAt: Date.now() };
+  const out = { v: LEDGER_SCORE_SCHEMA, h0: h(0), h1: h(1), h5: h(5), scoredAt: Date.now() };
   if (!out.h0) return null;
   return out;
 }
@@ -119,7 +127,7 @@ export function scoreRow(row, closes) {
 export function scoreRows(rows, closesBySym) {
   let scored = 0;
   const list = (rows ?? []).map(r => {
-    if (r.out?.h5) return r;
+    if (r.out?.h5 && r.out.v === LEDGER_SCORE_SCHEMA) return r;
     const closes = closesBySym[r.sym] ?? closesBySym[r.pair];
     const out = scoreRow(r, closes);
     if (!out) return r;

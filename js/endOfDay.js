@@ -136,6 +136,82 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
  * `leans` counts only pairs where the page committed, and carries `n` so a reader can
  * see the denominator — 3 of 4 and 3 of 12 are very different days.
  */
+/**
+ * Collapse committed leans into the CURRENCY VIEWS they actually express.
+ *
+ * WHY THE LEG TALLY OVERSTATES ITSELF. "11 of 14 directions right" counts legs, and legs
+ * are not bets. On 2026-09-30 fourteen committed leans contained six yen legs -- USDJPY,
+ * GBPJPY, EURJPY, AUDJPY, CADJPY and NZDJPY -- so a single yen rally would have settled
+ * six of the fourteen at once and the board would have called it six independent
+ * successes. The page already warns about this where it groups leans for trading ("one
+ * of each at most"); the score did not use that grouping.
+ *
+ * Each FX leg belongs to two views (its base and its quote), so the views are assigned
+ * greedily, largest first, and every leg lands in exactly ONE -- the biggest view it
+ * belongs to. That yields a partition, which is what "how many bets was this really"
+ * needs; overlapping groups would double-count again in a new way.
+ *
+ * A view resolves right when more than half of its legs did. An exact tie resolves to
+ * null and is left out of the tally rather than rounded in someone's favour.
+ *
+ * Indices share one "risk" view because they move together; gold stands alone.
+ *
+ * @param {Array} rows committed rows: { name, lean:'up'|'down', leanRight:boolean|null }
+ * @returns {{views:Array, right:number, n:number, legs:number, largest:object|null}}
+ */
+export function currencyViews(rows) {
+  const committed = (rows ?? []).filter(r => r && (r.lean === 'up' || r.lean === 'down') && r.leanRight !== null);
+  if (!committed.length) return { views: [], right: 0, n: 0, legs: 0, largest: null };
+
+  // every view each leg could be filed under
+  const candidates = new Map();   // key -> Set(index)
+  const put = (key, i) => { if (!candidates.has(key)) candidates.set(key, new Set()); candidates.get(key).add(i); };
+  const INDEX = /^(NQ|SPX500|DE30|UK100|US30|US2000|DOW|US500)$/;
+
+  committed.forEach((r, i) => {
+    const up = r.lean === 'up';
+    if (INDEX.test(r.name)) return put(up ? 'long risk' : 'short risk', i);
+    if (r.name === 'GOLD') return put(up ? 'long gold' : 'short gold', i);
+    const m = /^([A-Z]{3})([A-Z]{3})$/.exec(r.name);
+    if (!m) return put(`${up ? 'long' : 'short'} ${r.name}`, i);
+    const [, base, quote] = m;
+    put(`${up ? 'long' : 'short'} ${base}`, i);
+    put(`${up ? 'short' : 'long'} ${quote}`, i);
+  });
+
+  // greedy partition: biggest view first, each leg claimed once
+  const taken = new Set(), views = [];
+  for (;;) {
+    let best = null, bestN = 0;
+    for (const [key, set] of candidates) {
+      const n = [...set].filter(i => !taken.has(i)).length;
+      // ties broken by name so the same day always decomposes the same way
+      if (n > bestN || (n === bestN && n > 0 && best && key < best)) { best = key; bestN = n; }
+    }
+    if (!best || !bestN) break;
+    const legs = [...candidates.get(best)].filter(i => !taken.has(i));
+    legs.forEach(i => taken.add(i));
+    const right = legs.filter(i => committed[i].leanRight).length;
+    views.push({
+      view: best,
+      legs: legs.map(i => committed[i].name),
+      n: legs.length,
+      right,
+      // more than half, or nothing -- a 1-1 split is not a verdict
+      held: right * 2 === legs.length ? null : right * 2 > legs.length,
+    });
+  }
+
+  const decided = views.filter(v => v.held !== null);
+  return {
+    views,
+    right: decided.filter(v => v.held).length,
+    n: decided.length,
+    legs: committed.length,
+    largest: views[0] ?? null,
+  };
+}
+
 export const PLAN_WINDOW_UTC = { from: 6, to: 11 };   // 07:00-12:00 London in BST
 
 /** Was this plan captured in the morning window, or just labelled as if it were? */
@@ -250,6 +326,9 @@ export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, c
     rows: priced.sort((a, b) => (b.used ?? -1) - (a.used ?? -1)),
     unpriced,
     leans: { right: committed.filter(r => r.leanRight).length, n: committed.length },
+    // the same commitments counted as BETS rather than legs -- six yen legs is one
+    // view, and reporting it as six is how one bet gets read as six successes
+    views: currencyViews(committed),
     range: {
       n: scored.length,
       over: scored.filter(r => r.rangeVerdict === 'over').length,

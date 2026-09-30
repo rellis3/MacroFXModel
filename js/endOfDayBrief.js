@@ -208,6 +208,28 @@ export function tomorrow({ ahead = [], rows = [], nowMs = Date.now() } = {}) {
  * where it can be tested.
  */
 /**
+ * The leg tally restated as bets, because legs are not bets.
+ *
+ * Fourteen committed leans with six yen legs in them is not fourteen calls: one yen
+ * rally settles six at once, and the leg tally then reports a single view as six
+ * successes. The page has always grouped leans this way for TRADING ("one of each at
+ * most"); this puts the same grouping in the score.
+ *
+ * Silent when the decomposition adds nothing -- if every leg is already its own view
+ * there is no second number worth printing.
+ */
+export function viewLine(v) {
+  if (!v || !v.views?.length || v.legs < 2) return '';
+  if (v.views.length === v.legs) return '';   // already one bet per leg
+  const big = v.largest;
+  const concentrated = big && big.n >= 3
+    ? ` The largest single view carried ${big.n} of them (${big.view}), so one move settled ${big.n === v.legs ? 'all' : big.n} at once.`
+    : '';
+  return `Counted as bets rather than legs, those ${v.legs} collapse into ${v.views.length} ${
+    v.views.length === 1 ? 'view' : 'views'}${v.n ? `, of which ${v.right} of ${v.n} held` : ''}.${concentrated} `;
+}
+
+/**
  * The running direction record, from the ledger rather than from a number typed into a
  * string.
  *
@@ -386,7 +408,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
     out.under.map(r => `<b>${r.name}</b> used ${r.used}%`).join(', ')} — days that never got going. A stop sized off the forecast had far more room than it needed.`);
 
   if (eod.leans.n) paragraphs.push(`On direction the page committed on ${eod.leans.n} ${eod.leans.n === 1 ? 'instrument' : 'instruments'} and ${eod.leans.right} ${eod.leans.right === 1 ? 'is' : 'are'} the right way${
-    eod.commitments.nFalsifiers ? `; ${eod.commitments.falsified} of ${eod.commitments.nFalsifiers} named falsifiers traded` : ''}. ${recordLine(leanRecord)}`);
+    eod.commitments.nFalsifiers ? `; ${eod.commitments.falsified} of ${eod.commitments.nFalsifiers} named falsifiers traded` : ''}. ${viewLine(eod.views)}${recordLine(leanRecord)}`);
   else if (!eod.marked) paragraphs.push(`${eod.notMarked.charAt(0).toUpperCase()}${eod.notMarked.slice(1)}. What follows is a read of the session, not a scorecard — the difference matters, because a day with no call cannot be evidence for or against the page.`);
   else paragraphs.push(`The page committed no direction on any instrument today. That is the absence of a call rather than a miss, and it is the honest outcome on a board where the read is mostly about size.`);
 

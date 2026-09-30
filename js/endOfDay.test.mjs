@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { scorePair, endOfDay, pairReview, plannedInWindow, isTradingDay, PLAN_WINDOW_UTC } from './endOfDay.js';
+import { scorePair, endOfDay, pairReview, plannedInWindow, isTradingDay, PLAN_WINDOW_UTC, currencyViews } from './endOfDay.js';
+import { viewLine } from './endOfDayBrief.js';
 
 const AM = '2026-09-23T07:30:00.000Z';   // inside the capture window
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -348,6 +349,109 @@ t("price precision is the instrument's, not the move's", () => {
   assert.equal(jpy.open, 157.392, 'a JPY pair carries three, not five');
   const gold = scorePair('GOLD', morning(), live());
   assert.equal(gold.open, 4362.35);
+});
+
+// ── Legs are not bets ───────────────────────────────────────────────────────
+// "11 of 14 directions right" counted legs. On 2026-09-28 those fourteen contained four
+// AUD legs and four NZD legs; on 2026-09-30 six of fourteen were yen. One move settles a
+// whole cluster, and the leg tally then reports a single view as six successes.
+const leg = (name, lean, leanRight) => ({ name, lean, leanRight });
+
+t('every leg lands in exactly one view — a partition, not overlapping groups', () => {
+  const rows = [
+    leg('GOLD', 'down', true), leg('NQ', 'down', true), leg('USDJPY', 'up', false),
+    leg('AUDUSD', 'up', false), leg('NZDUSD', 'up', true), leg('EURCHF', 'up', true),
+    leg('GBPCHF', 'up', true), leg('AUDJPY', 'up', false), leg('CADJPY', 'up', false),
+    leg('EURAUD', 'down', true), leg('EURNZD', 'down', true), leg('AUDCAD', 'up', true),
+    leg('NZDCAD', 'up', true), leg('NZDJPY', 'up', false),
+  ];
+  const v = currencyViews(rows);
+  const placed = v.views.flatMap(x => x.legs);
+  assert.equal(placed.length, rows.length, 'a leg was dropped or counted twice');
+  assert.equal(new Set(placed).size, rows.length);
+  assert.ok(v.views.length < rows.length, '14 legs must collapse to fewer views');
+  assert.equal(v.legs, 14);
+});
+
+t('a six-leg yen view is reported as ONE bet, not six', () => {
+  const rows = ['USDJPY', 'GBPJPY', 'EURJPY', 'AUDJPY', 'CADJPY', 'NZDJPY']
+    .map(p => leg(p, 'down', true));
+  const v = currencyViews(rows);
+  assert.equal(v.views.length, 1, 'all six express one view');
+  assert.equal(v.largest.n, 6);
+  assert.match(v.largest.view, /JPY/);
+  assert.equal(v.right, 1, 'one view held, not six');
+  assert.equal(v.n, 1);
+  assert.equal(v.legs, 6, 'the leg count is still reported honestly alongside');
+});
+
+t('a view holds on a majority and an exact split is no verdict', () => {
+  const half = currencyViews([leg('EURJPY', 'down', true), leg('AUDJPY', 'down', false)]);
+  assert.equal(half.views[0].held, null, '1-1 is not a result');
+  assert.equal(half.n, 0, 'an undecided view is excluded from the denominator');
+  const most = currencyViews([leg('EURJPY', 'down', true), leg('AUDJPY', 'down', true), leg('CADJPY', 'down', false)]);
+  assert.equal(most.views[0].held, true);
+  assert.equal(most.right, 1);
+  assert.equal(most.n, 1);
+});
+
+t('indices share one risk view; gold stands alone', () => {
+  const v = currencyViews([leg('NQ', 'down', true), leg('SPX500', 'down', true),
+                           leg('US30', 'down', false), leg('GOLD', 'up', true)]);
+  const risk = v.views.find(x => /risk/.test(x.view));
+  assert.equal(risk.n, 3, 'the three indices are one bet');
+  assert.ok(v.views.some(x => /gold/.test(x.view)));
+  assert.equal(v.views.length, 2);
+});
+
+t('a long and a short of the same currency are different views', () => {
+  const v = currencyViews([leg('EURUSD', 'up', true), leg('USDJPY', 'up', true)]);
+  // EURUSD up is USD weak; USDJPY up is USD strong. They must not merge.
+  assert.equal(v.views.length, 2);
+});
+
+t('uncommitted, mixed and unscored rows never reach the tally', () => {
+  const v = currencyViews([
+    leg('EURJPY', 'flat', null), leg('AUDJPY', 'mixed', null),
+    leg('CADJPY', 'down', null),          // committed but not yet scored
+    leg('NZDJPY', 'down', true),
+  ]);
+  assert.equal(v.legs, 1, 'only the scored commitment counts');
+  assert.equal(v.views[0].legs[0], 'NZDJPY');
+});
+
+t('nothing in, nothing claimed', () => {
+  for (const x of [[], null, undefined]) {
+    const v = currencyViews(x);
+    assert.deepEqual(v.views, []);
+    assert.equal(v.n, 0); assert.equal(v.legs, 0); assert.equal(v.largest, null);
+  }
+});
+
+t('the decomposition is stable — same input, same answer', () => {
+  const rows = [leg('EURJPY', 'down', true), leg('AUDJPY', 'down', true),
+                leg('EURAUD', 'up', false), leg('GBPJPY', 'down', true)];
+  const a = JSON.stringify(currencyViews(rows));
+  const b = JSON.stringify(currencyViews(rows.slice().reverse()));
+  assert.equal(JSON.parse(a).views.length, JSON.parse(b).views.length,
+    'reordering the input must not change how many bets there were');
+});
+
+t('the sentence stays silent when the grouping adds nothing', () => {
+  assert.equal(viewLine(currencyViews([leg('GOLD', 'up', true), leg('NQ', 'down', true)])), '',
+    'two unrelated legs are already two bets');
+  assert.equal(viewLine(currencyViews([leg('GOLD', 'up', true)])), '');
+  assert.equal(viewLine(currencyViews([])), '');
+  assert.equal(viewLine(null), '');
+});
+
+t('the sentence names the concentration when one view carries the day', () => {
+  const rows = ['USDJPY', 'GBPJPY', 'EURJPY', 'AUDJPY', 'CADJPY', 'NZDJPY']
+    .map(p => leg(p, 'down', true)).concat(leg('UK100', 'up', true));
+  const line = viewLine(currencyViews(rows));
+  assert.match(line, /collapse into 2 views/);
+  assert.match(line, /carried 6 of them/);
+  assert.match(line, /one move settled 6 at once/);
 });
 
 console.log(`endOfDay: ${n} groups, all passed`);
