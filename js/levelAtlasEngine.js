@@ -43,6 +43,7 @@ import { forecastSigma } from './forecastSigma.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
+import { rollingRateAt } from './visitMemory.js';
 
 export const RUNGS = ['p50', 'p75', 'p90'];
 export const SIDES = ['up', 'down'];   // up = O-H rungs, down = O-L rungs
@@ -585,11 +586,9 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
             // antecedent before it's found (same bug/fix as asiaFibAtlasEngine.js
             // and mondayFibAtlasEngine.js's own identical history caps).
             const rollWindow = hist.slice(-5);
-            const rollOut = rollWindow.filter(h => h.outcome === 'out').length;
-            const rollBack = rollWindow.filter(h => h.outcome === 'back').length;
-            const rollingRate = rollWindow.length >= 3
-              ? { n: rollWindow.length, outPct: +(rollOut / rollWindow.length * 100).toFixed(0), backPct: +(rollBack / rollWindow.length * 100).toFixed(0) }
-              : null;
+            // Each visit read AS OF this bar (js/visitMemory.js): a prior touch
+            // that hasn't resolved yet counts as 'neither', as live sees it.
+            const rollingRate = rollingRateAt(rollWindow, bar.time);
             const record = {
               instrument: sym, assetClass, date, side, rung, rearmFrac, ordinal,
               hourUtc: new Date(bar.time * 1000).getUTCHours(),
@@ -782,11 +781,9 @@ export function atlasWalk(packed, { instrument, assetClass = 'fx', rearmFracs = 
           const prevResolved = [...hist].reverse().find(h => h.resolveTime != null && h.resolveTime <= bar.time) ?? null;
           const daysSincePrevResolvedN = prevResolved ? (i - prevResolved.dayIdx) : null;
           const rollWindow = hist.slice(-5);
-          const rollOut = rollWindow.filter(h => h.outcome === 'out').length;
-          const rollBack = rollWindow.filter(h => h.outcome === 'back').length;
-          const rollingRate = rollWindow.length >= 3
-            ? { n: rollWindow.length, outPct: +(rollOut / rollWindow.length * 100).toFixed(0), backPct: +(rollBack / rollWindow.length * 100).toFixed(0) }
-            : null;
+          // Each visit read AS OF this bar (js/visitMemory.js): a prior touch
+          // that hasn't resolved yet counts as 'neither', as live sees it.
+          const rollingRate = rollingRateAt(rollWindow, bar.time);
           const dist = Math.abs(bar.close - here);
 
           pending.push({

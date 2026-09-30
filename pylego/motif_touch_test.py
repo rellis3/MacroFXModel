@@ -171,3 +171,41 @@ if __name__ == '__main__':
             print(f'FAIL {fn.__name__}: {type(e).__name__}: {e}')
     print(f'\n{len(fns) - failed}/{len(fns)} passed')
     sys.exit(1 if failed else 0)
+
+
+def test_confirmed_double_top_survives_a_later_third_touch():
+    """Causality (2026-09-28). The double top confirms at idx9; price then
+    rallies back to the touch level at idx13 -- a third touch that did not
+    exist when the double top confirmed. A live scanner standing at idx9 saw
+    (and traded) the 2-touch motif, so full-history detection must still
+    report it. Before the fix the greedy run builder absorbed idx13 and the
+    confirmed 2-touch motif silently became an unconfirmed 3-touch one."""
+    prices = _COMMON + [85, 80, 80, 100, 130, 110, 100, 100]
+    bars = _flat_bars(prices)
+    atr_arr = np.full(len(bars), 5.0)
+    motifs = detect_touch_motifs(bars, atr_arr, pivot_n=1, tol_atr_mult=1.2,
+                                 min_retrace_atr_mult=2.5, min_bars_between_touches=3,
+                                 breakout_max_bars=40)
+    tops = {tuple(m.touch_idxs): m for m in motifs if m.is_top}
+    assert (3, 7) in tops
+    two = tops[(3, 7)]
+    assert two.n_touches == 2 and two.confirm_idx == 9 and two.direction == -1
+    # Identical to what detection on the bars live had at idx9 reports.
+    live = [m for m in detect_touch_motifs(bars.iloc[:10], atr_arr[:10], pivot_n=1, tol_atr_mult=1.2,
+                                           min_retrace_atr_mult=2.5, min_bars_between_touches=3,
+                                           breakout_max_bars=40) if m.is_top]
+    assert [(m.touch_idxs, m.confirm_idx, m.direction) for m in live] == [([3, 7], 9, -1)]
+    # The later 3-touch run is still reported beside it, as live would log it too.
+    assert (3, 7, 13) in tops and tops[(3, 7, 13)].n_touches == 3
+
+
+def test_causal_false_reproduces_the_legacy_rewrite():
+    """The before/after comparison's `causal=False` must be the OLD detector:
+    the confirmed double top is absorbed into the 3-touch run and vanishes."""
+    prices = _COMMON + [85, 80, 80, 100, 130, 110, 100, 100]
+    bars = _flat_bars(prices)
+    atr_arr = np.full(len(bars), 5.0)
+    motifs = detect_touch_motifs(bars, atr_arr, pivot_n=1, tol_atr_mult=1.2,
+                                 min_retrace_atr_mult=2.5, min_bars_between_touches=3,
+                                 breakout_max_bars=40, causal=False)
+    assert [m.touch_idxs for m in motifs if m.is_top] == [[3, 7, 13]]

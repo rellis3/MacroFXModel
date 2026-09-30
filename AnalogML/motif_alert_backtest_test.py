@@ -24,6 +24,7 @@ class FakeMotif:
     n_touches: int = 2
     is_top: bool = True
     played_out: bool | None = True
+    direction: int = -1
 
 
 def test_live_pick_prefers_the_latest_touch_run():
@@ -68,7 +69,7 @@ def test_live_pick_hands_bars_back_to_an_older_run():
 
 def _confidence_over(confirm_idxs: list, r: float = 1.0) -> CausalConfidence:
     motifs = [FakeMotif(touch_idxs=[0, c - 5], confirm_idx=c) for c in confirm_idxs]
-    raced = {c: {"r": r, "exit_idx": c + 1} for c in confirm_idxs}
+    raced = {(c, -1): {"r": r, "exit_idx": c + 1} for c in confirm_idxs}
     return CausalConfidence(motifs, raced)
 
 
@@ -100,7 +101,7 @@ def test_confidence_excludes_trades_still_open_at_alert_time():
     conservative divergence in the module docstring."""
     motifs = [FakeMotif(touch_idxs=[0, c - 5], confirm_idx=c) for c in range(100, 120)]
     # Every race resolves long after bar 130.
-    raced = {c: {"r": 1.0, "exit_idx": 500} for c in range(100, 120)}
+    raced = {(c, -1): {"r": 1.0, "exit_idx": 500} for c in range(100, 120)}
     conf = CausalConfidence(motifs, raced)
     at_130 = conf.at(130, 2, True)
     assert at_130["n_samples"] == 20                 # all counted as samples
@@ -115,7 +116,7 @@ def test_confidence_separates_categories():
             for c in range(100, 120)]
     bottoms = [FakeMotif(touch_idxs=[0, c - 5], confirm_idx=c, n_touches=3, is_top=False)
                for c in range(100, 105)]
-    raced = {c: {"r": 1.0, "exit_idx": c + 1} for c in range(100, 120)}
+    raced = {(c, -1): {"r": 1.0, "exit_idx": c + 1} for c in range(100, 120)}
     conf = CausalConfidence(tops + bottoms, raced)
     assert conf.at(119, 2, True)["n_samples"] == 19
     assert conf.at(119, 3, False) is None            # only 5 -> under the floor
@@ -127,9 +128,23 @@ def test_confidence_played_out_rate_is_causal_too():
                for c in range(100, 120)]
               + [FakeMotif(touch_idxs=[0, c - 5], confirm_idx=c, played_out=False)
                  for c in range(120, 140)])
-    raced = {c: {"r": 1.0, "exit_idx": c + 1} for c in range(100, 140)}
+    raced = {(c, -1): {"r": 1.0, "exit_idx": c + 1} for c in range(100, 140)}
     conf = CausalConfidence(motifs, raced)
     # At bar 120 only the all-played-out half exists yet.
     assert conf.at(120, 2, True)["played_out_rate"] == 1.0
     # By the end, half and half -- the later failures are visible only later.
     assert conf.at(140, 2, True)["played_out_rate"] == 0.5
+
+
+def test_confidence_keeps_same_bar_motifs_apart():
+    """Two motifs confirming on the SAME bar in opposite directions are two
+    different trades. Keying the raced trades by bar alone handed both of
+    them one result; the key is (confirm bar, direction)."""
+    wins = [FakeMotif(touch_idxs=[0, c - 5], confirm_idx=c, direction=1) for c in range(100, 115)]
+    losses = [FakeMotif(touch_idxs=[0, c - 5], confirm_idx=c, direction=-1) for c in range(100, 115)]
+    raced = {**{(c, 1): {"r": 1.5, "exit_idx": c + 1} for c in range(100, 115)},
+             **{(c, -1): {"r": -1.0, "exit_idx": c + 1} for c in range(100, 115)}}
+    conf = CausalConfidence(wins + losses, raced)
+    at = conf.at(200, 2, True)
+    assert at["n_raced"] == 30
+    assert abs(at["avg_r"] - 0.25) < 1e-9          # (15 x 1.5 - 15 x 1.0) / 30

@@ -125,6 +125,7 @@ import { forecastSigma } from './forecastSigma.js';
 import { createHtfContext, createConfluenceFeatures } from './confluenceFeatures.js';
 import { sessionConfluenceLevels, DAILY_CONFLUENCE_SOURCES } from './rangeLineAnalyser.js';
 import { pipSize } from './instrumentRegistry.js';
+import { rollingRateAt } from './visitMemory.js';
 import { extractBars, resamplePacked, bisect } from './barUtils.js';
 import { buildAsiaSessions, buildMondayRanges, prevSession, mondayForDay, prevMonday, dowOf } from './sessionRanges.js';
 import { FIB_LEVELS, KEY_LEVELS, calcFibs } from './fibProjection.js';
@@ -832,11 +833,9 @@ export function asiaFibAtlasWalk(packed, { instrument, assetClass = 'fx', rearmF
             // history rate. Slice explicitly rather than relying on `hist`'s
             // own length to stay bounded.
             const rollWindow = hist.slice(-5);
-            const rollOut = rollWindow.filter(h => h.outcome === 'out').length;
-            const rollBack = rollWindow.filter(h => h.outcome === 'back').length;
-            const rollingRate = rollWindow.length >= 3
-              ? { n: rollWindow.length, outPct: +(rollOut / rollWindow.length * 100).toFixed(0), backPct: +(rollBack / rollWindow.length * 100).toFixed(0) }
-              : null;
+            // Each visit read AS OF this bar (js/visitMemory.js): a prior touch
+            // that hasn't resolved yet counts as 'neither', as live sees it.
+            const rollingRate = rollingRateAt(rollWindow, bar.time);
 
             const record = {
               instrument: sym, assetClass, date, side, level, rearmFrac, ordinal,
