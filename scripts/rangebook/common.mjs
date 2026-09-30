@@ -157,3 +157,14 @@ export function passesOf(d) {
   return out;
 }
 
+
+// Stretch from a slow fair value (forge/RUBBER_BAND_PREREG.md S2/S3, forge/SLOW_MR_BOOK_PREREG.md):
+// fair value = mean of the previous n London days' closes; px = close of the bar before bar k;
+// z = (px − fv) ÷ (σ_day · open · scale). Uses only bars before k and completed prior days.
+export function stretchZ(ctx, di, k, n, scale) {
+  const d = ctx.days[di];
+  if (di < n) return null;
+  const fv = ctx.days.slice(di - n, di).reduce((a, x) => a + x.bars.at(-1).close, 0) / n;
+  const px = d.bars[k - 1].close;
+  return { fv, z: (px - fv) / (d.sigmaFrac * d.open * scale) };
+}

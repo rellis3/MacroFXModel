@@ -7,7 +7,7 @@ import { loadM1ForPair } from '../../js/volBacktestM1Engine.js';
 import { loadCalendarProxy } from '../v4/calendarProxy.mjs';
 import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 import { costForPair } from '../../js/perLineStrategy.js';
-import { buildContext, scrambleFrom } from './common.mjs';
+import { buildContext, scrambleFrom, stretchZ } from './common.mjs';
 
 const PAIR = (process.argv[2] ?? 'eurusd').toLowerCase(), SYM = PAIR.toUpperCase(), ASSET = assetClassFor(PAIR);
 const COST = costForPair(PAIR, ASSET);
@@ -22,13 +22,7 @@ function stateS1(ctx, di, k) {
   const px = d.bars[k - 1].close, fv = pv / vv;
   return { fv, z: (px - fv) / (d.sigmaFrac * d.open) };
 }
-function stateSlow(ctx, di, k, n, scale) {
-  const d = ctx.days[di];
-  if (di < n) return null;
-  const fv = ctx.days.slice(di - n, di).reduce((a, x) => a + x.bars.at(-1).close, 0) / n;
-  const px = d.bars[k - 1].close;
-  return { fv, z: (px - fv) / (d.sigmaFrac * d.open * scale) };
-}
+const stateSlow = stretchZ;
 
 function dayRows(ctx, di) {
   const d = ctx.days[di], bars = d.bars, unit = d.sigmaFrac * d.open, costU = COST / 100 * d.open / unit;
