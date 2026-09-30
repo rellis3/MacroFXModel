@@ -9,6 +9,7 @@ import { loadM1ForPair } from '../../js/volBacktestM1Engine.js';
 import { LINE_SIDE } from '../../js/voteAtlasV4Lines.js';
 import { computeWaveTrend, computeMoneyFlowVMC } from '../../js/vumanchuCore.js';
 import { createHtfContext, htfIdxAt } from '../../js/confluenceFeatures.js';
+import { STATE_WT } from '../../js/vumanchuState.js';
 import { loadCalendarProxy } from '../v4/calendarProxy.mjs';
 import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 import { buildContext, scrambleFrom, passesOf } from './common.mjs';
@@ -25,10 +26,11 @@ function derive(series) {
   const { wt1, wt2 } = computeWaveTrend(bars);
   const mf = computeMoneyFlowVMC(bars);
   const htf = createHtfContext(series);
+  const htfS = createHtfContext(series, { wt: STATE_WT });   // live-page WaveTrend 9/12/3 (forge/FADE_CONTINUE_BOOK_SPEC.md)
   const volPre = new Float64Array(n + 1);
   for (let i = 0; i < n; i++) volPre[i + 1] = volPre[i] + (series.volumes[i] || 0);
   const idx = new Map(Array.from(series.times, (t, i) => [t, i]));
-  return { series, wt1, wt2, mf, htf, volPre, idx };
+  return { series, wt1, wt2, mf, htf, htfS, volPre, idx };
 }
 
 function lowerBound(arr, t) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < t) lo = m + 1; else hi = m; } return lo; }
@@ -58,6 +60,10 @@ function featuresFor(der, ctx, di, p, prevPassTime) {
   f.wtSinceCross = since;
   for (const tf of ['15m', '1h']) { const i = htfIdxAt(der.htf, tf, t); f['wt' + tf] = i >= 0 ? der.htf.byTf[tf].wt1[i] * sg : null; }
   f.mf = Number.isFinite(der.mf[j]) ? der.mf[j] * sg : null;
+  // MTF stretch at the live pages' settings: last completed M15 AND H1 wt1 beyond ±53 in the touch direction.
+  { const a = htfIdxAt(der.htfS, '15m', t), b = htfIdxAt(der.htfS, '1h', t);
+    f.wtS15 = a >= 0 ? der.htfS.byTf['15m'].wt1[a] * sg : null; f.wtS1h = b >= 0 ? der.htfS.byTf['1h'].wt1[b] * sg : null;
+    f.mtfStretch = f.wtS15 != null && f.wtS1h != null ? (f.wtS15 >= 53 && f.wtS1h >= 53 ? 1 : 0) : null; }
   // Relative tick volume: this window vs the same clock minutes on the previous 20 London days.
   const off = t - d.openSec;
   for (const w of [5, 15, 60]) {
@@ -112,7 +118,9 @@ if (rows.length !== seq.length) { console.error(`feature rows ${rows.length} != 
   const picks = rows.filter((_, i) => i % Math.floor(rows.length / 5) === 2).slice(0, 5);
   if (picks.length < 4) { console.error('self-check sampled too few rows'); process.exit(2); }
   for (const r of picks) {
-    const from = der.idx.get(r.time);
+    // From the bar AFTER the pass: the pass bar defines the pass (scrambling it can move the pass);
+    // no feature reads it (all windows end at the bar before).
+    const from = der.idx.get(r.time) + 1;
     const q = scrambleFrom(full, from, 53);
     q.volumes = Float64Array.from(full.volumes); for (let i = from; i < q.n; i++) q.volumes[i] = 1 + ((i * 2654435761) % 997);
     const c2 = buildContext(q, OPTS), d2 = derive(q);
