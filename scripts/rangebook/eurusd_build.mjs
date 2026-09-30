@@ -4,9 +4,9 @@
 // Book C (is the running extreme the day's). Aborts on a failed future-scramble check.
 //   node scripts/rangebook/eurusd_build.mjs [pair]
 import fs from 'fs';
-import { fitHMM } from '../../hmm.js';
 import { loadM1ForPair } from '../../js/volBacktestM1Engine.js';
-import { v4Days, nyCloseDailyBars, STATIC_LINES } from '../../js/voteAtlasV4Lines.js';
+import { STATIC_LINES } from '../../js/voteAtlasV4Lines.js';
+import { buildContext as buildCtx, preDay } from './common.mjs';
 import { loadCalendarProxy } from '../v4/calendarProxy.mjs';
 import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 
@@ -20,40 +20,7 @@ const r4 = x => (x == null || !Number.isFinite(x)) ? null : Math.round(x * 1e4) 
 
 const full = await loadM1ForPair(PAIR);
 
-function buildContext(packed) {
-  const days = v4Days(packed, { instrument: SYM, assetClass: ASSET, eventTagFor: tagFor });
-  const ny = nyCloseDailyBars(packed).filter(b => b.n >= 60);
-  return { days, ny, dayIdx: new Map(days.map((d, i) => [d.date, i])) };
-}
-
-// ── Pre-day regime (only bars/days completed before the London open) ─────────
-function preDay(ctx, di) {
-  const d = ctx.days[di];
-  const prior = ctx.days.slice(Math.max(0, di - 20), di).map(x => x.ladder.sigma_daily_pct);
-  let sigmaReg = null;
-  if (prior.length >= 10) {
-    const s = [...prior].sort((a, b) => a - b), med = s[Math.floor(s.length / 2)];
-    const r = d.ladder.sigma_daily_pct / med;
-    sigmaReg = r < 0.85 ? 'quiet' : r > 1.15 ? 'heavy' : 'normal';
-  }
-  const closes = ctx.ny.filter(b => b.endSec <= d.openSec).slice(-200).map(b => b.close);
-  let hmm = null;
-  if (closes.length >= 100) {
-    const rets = []; for (let i = 1; i < closes.length; i++) rets.push(Math.log(closes[i] / closes[i - 1]));
-    const h = fitHMM(rets);
-    if (h) hmm = (h.regime === 'TREND' && h.trendDir && h.trendDirConfident) ? (h.trendDir === 'BULL' ? 'TREND_up' : 'TREND_dn') : 'RANGE';
-  }
-  let yRange = null;
-  const y = ctx.days[di - 1];
-  if (y && y.bars.length > 200) {
-    let hi = -Infinity, lo = Infinity; for (const b of y.bars) { if (b.high > hi) hi = b.high; if (b.low < lo) lo = b.low; }
-    const r = (hi - lo) / y.open * 100 / y.ladder.hl.p50;
-    yRange = r < 0.8 ? 'small' : r > 1.2 ? 'big' : 'normal';
-  }
-  const ev = d.eventTag;
-  const event = ['FOMC', 'NFP', 'CPI'].includes(ev) ? 'tier1' : ev === 'high' ? 'high' : 'none';
-  return { sigmaReg, hmm, yRange, event };
-}
+const buildContext = packed => buildCtx(packed, { sym: SYM, assetClass: ASSET, tagFor });
 
 // ── Checkpoint state from bars[0..k-1] only ──────────────────────────────────
 function stateAt(d, k) {
