@@ -3,16 +3,14 @@
 Inputs: analysis/output/rangebook/eurusd.json, eurusd_touches.json (built by the book
 builders) and js/data/cmeCvolEod.json. Fixed model settings; yearly walk-forward.
 """
-import bisect, json, math
+import json, math
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier as HGBC, HistGradientBoostingRegressor as HGBR
 from sklearn.linear_model import LogisticRegression, QuantileRegressor
+from daytable import GBM, YEARS, EMBARGO, P, IV, day_table, walk, boot_skill as _boot
 
 HL = {'p50': 1.4417, 'p75': 1.8877, 'p90': 2.3967}      # EURUSD fitted hl widths (forecastLadderParams.js)
-GBM = dict(max_depth=3, learning_rate=0.05, max_iter=300, l2_regularization=1.0, min_samples_leaf=100, random_state=0)
-YEARS = [2023, 2024, 2025, 2026]
-EMBARGO = 5
 rng_boot = np.random.default_rng(7)
 
 # ── Day table ─────────────────────────────────────────────────────────────────
@@ -21,67 +19,15 @@ touch = json.load(open('analysis/output/rangebook/eurusd_touches.json'))['rows']
 reached = {}
 for r in touch: reached.setdefault(r['date'], set()).add(r['line'])
 
-D = pd.DataFrame([{'date': r['date'], 'sig': r['sigmaPct'], 'hl50': r['hl50'], 'dayRange': r['dayRange'],
-                   'cfo': r['closeFromOpen'], **r['pre']} for r in recs])
-D['real'] = D['dayRange'] * D['hl50']                       # realized day range, % of open
-prev = D['real'].shift(1)
-D['ewma_rel'] = prev.ewm(alpha=0.06, adjust=False).mean() / D['hl50']
-D['yrange_rel'] = prev / D['hl50']
-D['m5_rel'] = prev.rolling(5).mean() / D['hl50']
-D['m20_rel'] = prev.rolling(20).mean() / D['hl50']
-D['sig_rel'] = D['sig'] / D['sig'].shift(1).rolling(20).median()
-D['y_cfo'] = D['cfo'].shift(1)
-dt = pd.to_datetime(D['date'])
-D['weekday'] = dt.dt.weekday; D['month'] = dt.dt.month
-D['hmm_c'] = D['hmm'].map({'RANGE': 0, 'TREND_up': 1, 'TREND_dn': 2})
-D['event_c'] = D['event'].map({'none': 0, 'high': 1, 'tier1': 2})
-
-# Implied vol: latest CME settle dated strictly before the London day.
-cv = json.load(open('js/data/cmeCvolEod.json'))['series']['EURUSD']
-cdates = [x['date'] for x in cv]
-def iv_for(date, lag=0):
-    i = bisect.bisect_left(cdates, date) - 1 - lag
-    return cv[i] if i >= 0 else None
-for col in ('cvol', 'atm', 'skew', 'convexity'):
-    D[col] = [(iv_for(d) or {}).get(col) for d in D['date']]
-D['cvol_d1'] = D['cvol'] - [(iv_for(d, 1) or {}).get('cvol') for d in D['date']]
-D['cvol_d5'] = D['cvol'] - [(iv_for(d, 5) or {}).get('cvol') for d in D['date']]
-D['iv_rv'] = D['cvol'] / (D['sig'] * math.sqrt(252))
-
-P = ['sig', 'sig_rel', 'ewma_rel', 'yrange_rel', 'm5_rel', 'm20_rel', 'y_cfo', 'hmm_c', 'event_c', 'weekday', 'month']
-IV = ['cvol', 'atm', 'skew', 'convexity', 'cvol_d1', 'cvol_d5', 'iv_rv']
-D = D.dropna(subset=P + IV).reset_index(drop=True)
-D['year'] = pd.to_datetime(D['date']).dt.year
+D = day_table(recs, json.load(open('js/data/cmeCvolEod.json'))['series']['EURUSD'])
 D['y_p50'] = (D['dayRange'] >= 1).astype(int)
 D['y_p75'] = (D['dayRange'] >= HL['p75'] / HL['p50']).astype(int)
 D['y_p90'] = (D['dayRange'] >= HL['p90'] / HL['p50']).astype(int)
 D['y_up'] = (D['cfo'] > 0).astype(int)
 D['y_oh'] = [int('OH_p50' in reached.get(d, ())) for d in D['date']]
 D['y_ol'] = [int('OL_p50' in reached.get(d, ())) for d in D['date']]
-D['logr'] = np.log(D['dayRange'])
 
-def folds(df):
-    """(train_idx, test_idx) per walk-forward year, with an embargo before each test year."""
-    for y in YEARS:
-        te = df.index[df['year'] == y]
-        if not len(te): continue
-        tr = df.index[df['date'] < f'{y}-01-01']
-        yield tr[:-EMBARGO] if len(tr) > EMBARGO else tr, te
-
-def walk(df, fit_predict):
-    out = pd.Series(np.nan, index=df.index)
-    for tr, te in folds(df):
-        out.loc[te] = fit_predict(df.loc[tr], df.loc[te])
-    return out
-
-def boot_skill(loss_a, loss_b, groups):
-    """1 - sum(a)/sum(b) with a day-bootstrap 95% interval (rows grouped by date)."""
-    g = pd.DataFrame({'a': loss_a, 'b': loss_b, 'g': groups}).groupby('g').sum()
-    a, b = g['a'].to_numpy(), g['b'].to_numpy()
-    point = 1 - a.sum() / b.sum()
-    idx = rng_boot.integers(0, len(a), (1000, len(a)))
-    vals = np.sort(1 - a[idx].sum(1) / b[idx].sum(1))
-    return point, vals[25], vals[974]
+boot_skill = lambda a, b, g: _boot(a, b, g, rng_boot)
 
 fmt = lambda s: f'{s[0]:+.3f} ({s[1]:+.3f} to {s[2]:+.3f})' + (' ✔' if s[1] > 0 else '')
 

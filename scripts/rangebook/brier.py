@@ -5,21 +5,40 @@ import collections, random
 MIN_N = 50
 
 
-def fit(train, extras):
-    """train rows: (day, base_key tuple, {extra: value}, y). Back-off: full key -> base -> shorter."""
+def counts(train, extras=()):
+    """Cell counts for every key prefix. train rows: (day, base_key tuple, {extra: value}, y)."""
     cnt = collections.defaultdict(lambda: [0, 0])
     for _, base, ex, y in train:
         full = base + tuple(ex[e] for e in extras)
         for i in range(len(full) + 1):
             c = cnt[full[:i]]; c[0] += y; c[1] += 1
+    return cnt
+
+
+def add_counts(*cnts):
+    """Sum several count tables (e.g. to pool instruments)."""
+    out = collections.defaultdict(lambda: [0, 0])
+    for c in cnts:
+        for k, (h, n) in c.items():
+            o = out[k]; o[0] += h; o[1] += n
+    return out
+
+
+def predictor(cnt, extras=()):
+    """Back-off: full key -> base key -> shorter, first cell with n >= MIN_N; Laplace smoothing."""
     def pred(base, ex):
         full = base + tuple(ex[e] for e in extras)
         for i in range(len(full), -1, -1):
-            h, n = cnt[full[:i]]
+            h, n = cnt[full[:i]] if full[:i] in cnt else (0, 0)
             if n >= MIN_N: return (h + 1) / (n + 2)
         h, n = cnt[()]
         return (h + 1) / (n + 2)
-    return pred, cnt
+    return pred
+
+
+def fit(train, extras):
+    cnt = counts(train, extras)
+    return predictor(cnt, extras), cnt
 
 
 def per_day_se(test, pred):

@@ -118,7 +118,7 @@ function dayRecord(ctx, di) {
     }
   }
 
-  return { date: d.date, sigmaPct: L.sigma_daily_pct, hl50: hlPct('p50'), pre: preDay(ctx, di),
+  return { date: d.date, sigmaPct: L.sigma_daily_pct, hl50: hlPct('p50'), hl75: hlPct('p75'), hl90: hlPct('p90'), pre: preDay(ctx, di),
            dayRange: r4((dayHi - dayLo) / open * 100 / hlPct('p50')), closeFromOpen: r4((lastClose - open) / unit),
            A, B, C };
 }
@@ -131,7 +131,9 @@ const records = ctx.days.map((_, di) => dayRecord(ctx, di)).filter(Boolean);
 {
   const idx = new Map(Array.from(full.times, (x, i) => [x, i]));
   let seed = 3; const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
-  const picks = records.filter((_, i) => i % Math.floor(records.length / 8) === 5).slice(0, 8);
+  const NCHK = Number(process.env.SELFCHECK_N ?? 8);
+  const picks = records.filter((_, i) => i % Math.floor(records.length / NCHK) === 5).slice(0, NCHK);
+  if (picks.length < Math.min(4, NCHK)) { console.error('self-check sampled too few days'); process.exit(2); }
   const stateOnly = rec => JSON.stringify({ pre: rec.pre, A: rec.A.filter(a => a.h === 10).map(({ hit, ...x }) => x), C: rec.C.filter(c => c.h === 10).map(({ exceeded, ...x }) => x) });
   for (const rec of picks) {
     const d = ctx.days[ctx.dayIdx.get(rec.date)];
