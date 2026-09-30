@@ -13,6 +13,7 @@ NEW = {'gbpusd': 'GBPUSD', 'audusd': 'AUDUSD', 'usdcad': 'USDCAD', 'usdchf': 'US
 SEEN = {'eurusd': 'EURUSD'}
 cv = json.load(open('js/data/cmeCvolEod.json'))['series']
 rng = np.random.default_rng(7)
+HL_RATIO = {}
 fmt = lambda s: f'{s[0]:+.3f} ({s[1]:+.3f} to {s[2]:+.3f})' + (' ✔' if s[1] > 0 else '')
 
 def losses(pair, key):
@@ -24,6 +25,10 @@ def losses(pair, key):
         mk = lambda cols: walk(D, lambda tr, te: HGBR(loss='quantile', quantile=tau, **GBM).fit(tr[cols], tr['logr']).predict(te[cols]))
         q2, q3 = mk(P), mk(P + IV)
         out[tau] = {k: pinball(D['logr'], q, tau)[T.index].to_numpy() for k, q in (('lines', q0), ('m2', q2), ('m3', q3))}
+        if tau == 0.75 and pair in NEW:   # walk-forward q75 per day, for the big-day switch (forge/RUBBER_BAND_PREREG.md)
+            json.dump({d: (None if np.isnan(v) else float(v)) for d, v in zip(D['date'], q3)},
+                      open(f'analysis/output/rangebook/{pair}_pred_q75.json', 'w'))
+            HL_RATIO[pair] = float(np.median(np.log(D['hl75'] / D['hl50'])))
     return out, (pair + '|' + T['date']).to_numpy(), len(T)
 
 print('\n## 5. Q3 — does the big-day forecast hold on pairs it was not found on?\n')
@@ -49,3 +54,7 @@ print(f'\nPooled over the 6 new instruments, 0.90: M3 vs your lines {fmt(p90)}; 
       f'M3 beats the lines at 0.90 on {wins90} of 6.\n')
 print(f"**Q3 verdict:** big-day forecast {'CONFIRMED' if p90[1] > 0 and wins90 >= 4 else 'NOT confirmed'}; "
       f"implied vol {'adds' if piv[1] > 0 else 'does not add'} information (pooled).")
+
+# big-day threshold per instrument: log(hl p75 / hl p50) (EURUSD from its fitted widths)
+HL_RATIO['eurusd'] = float(np.log(1.8877 / 1.4417))
+json.dump(HL_RATIO, open('analysis/output/rangebook/hl_ratio.json', 'w'))
