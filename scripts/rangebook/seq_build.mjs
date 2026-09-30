@@ -41,7 +41,7 @@ function dayRows(ctx, di) {
       sameBar: sameBar ? 1 : 0, pullback: r4(p.pullback), prevOver: r4(p.prevOver), dc: r4(dc), df: r4(df),
       used: r4((p.hiB - p.loB) / d.open * 100 / d.ladder.hl.p50),
       linesBefore: Object.values(firstK).filter(k => k < p.k).length, mom60: r4(mom),
-      outcome: rc.outcome, beyondBefore: r4(rc.mb / unit), backBefore: r4(rc.mk / unit),
+      outcome: rc.outcome, resolveTime: rc.resolveK == null ? null : bars[rc.resolveK].time, beyondBefore: r4(rc.mb / unit), backBefore: r4(rc.mk / unit),
       lastMove: r4(rc.lastMove / unit), costSig: r4(COST / 100 * d.open / unit), ...pre });
   }
   // Path state at each checkpoint, per side, from passes strictly before the checkpoint bar.
