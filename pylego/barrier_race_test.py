@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 
-from barrier_race import (Entry, VariableEntry, excursion, mae_from_path, race_grid,
+from barrier_race import (Entry, VariableEntry, excursion, mae_from_path, mfe_from_path, race_grid,
                           race_trades, race_trades_on_finer_path,
                           race_trades_variable, race_trailing)
 
@@ -419,6 +419,24 @@ def test_finer_path_overturns_an_unresolvable_htf_bar():
     assert fine[0]['outcome'] == 'sl' and fine[0]['r'] == -1.0  # what really happened
 
 
+def test_finer_path_per_entry_sl_overrides_the_scalar():
+    """An Entry carrying its own `sl` races against THAT stop (and prices cost
+    against it); one without keeps the call's scalar. Same path, two stops:
+    the 1.0 stop is hit at 99.0, the 2.0 stop survives and the 3.0 target
+    (2.0 x 1.5) is reached."""
+    h1 = _h1(3, highs=[100.0, 103.5, 100.0], lows=[100.0, 98.5, 100.0])
+    flat = [(100.0, 100.0, 100.0, 100.0)] * 3
+    hour1 = [(100.0, 100.0, 98.5, 99.0), (99.0, 103.5, 99.0, 103.2)]
+    m1 = _m1_from([flat, hour1, flat])
+    res = race_trades_on_finer_path(
+        h1, m1, [Entry(idx=0, direction=1), Entry(idx=0, direction=1, sl=2.0)],
+        sl=1.0, tp_r=1.5, max_bars_ahead=3, min_bars_ahead=1, cost_price=0.2)
+    assert res[0]['outcome'] == 'sl' and res[0]['sl'] == 1.0
+    assert abs(res[0]['r'] - (-1.0 - 0.2)) < 1e-12
+    assert res[1]['outcome'] == 'tp' and res[1]['sl'] == 2.0
+    assert abs(res[1]['r'] - (1.5 - 0.1)) < 1e-12
+
+
 def test_finer_path_returns_htf_indices():
     """`idx`/`exit_idx`/`bars_held` stay HTF positions so callers need no
     changes; the exact minute is available separately."""
@@ -457,3 +475,28 @@ def test_finer_path_entry_price_comes_from_the_htf_bar():
     res = race_trades_on_finer_path(h1, m1, [Entry(idx=0, direction=1)],
                                     sl=1.0, tp_r=1.5, max_bars_ahead=3, min_bars_ahead=1)
     assert res[0]['entry_price'] == 123.5   # the H1 open, NOT the stray M1 open
+
+
+def test_mfe_from_path_long_and_short():
+    """Favourable excursion on the real path: high-vs-entry long,
+    low-vs-entry short, in R of the stop."""
+    bars = _bars([100, 100, 100], [104, 106, 101], [99, 97, 95], [100, 100, 100])
+    mfe_r, mfe_pct = mfe_from_path(bars, idx=0, exit_idx=2, direction=1,
+                                   entry_price=100.0, sl_price=10.0, tp_dist=15.0)
+    assert abs(mfe_r - 0.6) < 1e-12 and abs(mfe_pct - 6.0) < 1e-12
+    mfe_r, _ = mfe_from_path(bars, idx=0, exit_idx=2, direction=-1,
+                             entry_price=100.0, sl_price=10.0, tp_dist=15.0)
+    assert abs(mfe_r - 0.5) < 1e-12
+
+
+def test_mfe_from_path_capped_at_target_and_floored_at_zero():
+    """Past the target the position is already flat, so MFE stops there; a
+    trade that only ever went against you has MFE 0, never negative."""
+    bars = _bars([100, 100], [130, 99], [99, 90], [100, 95])
+    mfe_r, _ = mfe_from_path(bars, idx=0, exit_idx=1, direction=1,
+                             entry_price=100.0, sl_price=10.0, tp_dist=15.0)
+    assert mfe_r == 1.5
+    down = _bars([100, 100], [100, 99], [95, 90], [96, 91])
+    mfe_r, _ = mfe_from_path(down, idx=0, exit_idx=1, direction=1,
+                             entry_price=100.0, sl_price=10.0, tp_dist=15.0)
+    assert mfe_r == 0.0

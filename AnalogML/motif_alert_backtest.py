@@ -90,6 +90,7 @@ from motif_features import bucket_trade, compute_features  # noqa: E402
 from pylego.barrier_race import (  # noqa: E402
     Entry,
     mae_from_path,
+    mfe_from_path,
     race_trades_on_finer_path,
 )
 from pylego.costs import default_spread  # noqa: E402
@@ -134,6 +135,24 @@ ALL_PAIRS = [
     "gbpaud", "gbpcad", "gbpchf", "gbpjpy", "gbpnzd", "gbpusd", "gold",
     "nzdjpy", "nzdusd", "usdcad", "usdchf", "usdjpy",
 ]
+
+# Index CFDs (2026-09-28) -- BACKTEST-ONLY: motif_track.py / motif_bot.py do
+# not scan or trade them. Opt in with --include-indices; the export lists them
+# under `backtest_only_pairs` so the viewer keeps them out of its default
+# selection and out of the ⭐ Best Config (which must stay the live population).
+#
+# Why they never simply joined ALL_PAIRS: the frozen grid is a FIXED 20-pip
+# stop, and an index "pip" is one point. On the FX book 20 pips sits at a
+# median 1.27x H1 ATR14 at the confirm bar; on indices the same 20 points is
+# 0.29x (US30), 0.47x (DE30), 0.53x (NQ) ... 3.2x (US2000) -- inside one bar's
+# noise on some, far outside on others. So indices race a stop of
+# INDEX_SL_ATR_MULT x ATR14 at the confirm bar instead: the FX book's own
+# median ratio (25 FX pairs, 2016-2026), fixed from FX alone rather than tuned
+# on any index result, and causal (Wilder ATR is trailing). Racing FX with the
+# same ATR rule changes its best-config PF by ~0.01, so this is a like-for-like
+# stop, not a better one smuggled in for indices.
+INDEX_PAIRS = ["nq", "spx500", "de30", "us30", "uk100", "us2000"]
+INDEX_SL_ATR_MULT = 1.27
 
 
 def _motif_key(pair: str, m) -> str:
@@ -181,7 +200,7 @@ class CausalConfidence:
                 continue
             key = (m.n_touches, m.is_top)
             c = self.cats.setdefault(key, {"confirm": [], "played": [], "r": [], "exit": []})
-            raced = raced_by_confirm.get(m.confirm_idx)
+            raced = raced_by_confirm.get((m.confirm_idx, m.direction))
             c["confirm"].append(m.confirm_idx)
             c["played"].append(bool(m.played_out))
             # nan r / exit -1 marks "detected but never raced" (no forward
@@ -240,6 +259,11 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
     pip = pip_size(pair)
     sl_price = args.sl_pips * pip
     cost_price = default_spread(pair)
+    # Retail cost in price units: the per-pair tables are the SAME estimates
+    # the viewer's retail basis uses (see retail_cost_r in main()).
+    retail_price = (motif_policy.INDEX_RETAIL_SPREAD_PTS.get(pair, default_spread(pair) / pip) * pip
+                    if pair in INDEX_PAIRS else
+                    RETAIL_SPREAD_PIPS.get(pair, default_spread(pair) / pip) * pip)
     account_risk_dollars = args.account_size * args.risk_pct
     cutoff = pd.Timestamp(IS_OOS_CUTOFF, tz=bars.index.tz)
 
@@ -253,8 +277,12 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
     # ---- every confirmed motif's trade, raced once on the real bar path ----
     # scan_pair_motif's contract: entry is the OPEN of the bar after confirmation.
     confirmed = [m for m in motifs if m.confirm_idx is not None and m.confirm_idx + 1 < n]
-    entries = [Entry(idx=m.confirm_idx + 1, direction=m.direction) for m in confirmed]
-    by_entry_idx = {m.confirm_idx + 1: m for m in confirmed}
+    # Index CFDs race a volatility-scaled stop (see INDEX_SL_ATR_MULT); every
+    # other instrument keeps the frozen pip grid (Entry.sl=None -> sl_price).
+    scaled = pair in INDEX_PAIRS
+    def _entry_sl(m) -> float | None:
+        return float(args.index_sl_atr_mult * atr_arr[m.confirm_idx]) if scaled else None
+    entries = [Entry(idx=m.confirm_idx + 1, direction=m.direction, sl=_entry_sl(m)) for m in confirmed]
     raced = race_trades_on_finer_path(bars, m1, entries, sl=sl_price, tp_r=args.tp_r,
                                       max_bars_ahead=args.max_bars_ahead,
                                       cost_price=cost_price,
@@ -263,10 +291,15 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                                              max_bars_ahead=args.max_bars_ahead,
                                              cost_price=0.0,
                                              min_bars_ahead=args.min_bars_ahead)
-    nocost_r_by_idx = {t["idx"]: t["r"] for t in raced_nocost}
-    raced_by_entry = {t["idx"]: t for t in raced}
-    # Keyed by confirm_idx for the confidence panel (which thinks in motifs).
-    raced_by_confirm = {idx - 1: t for idx, t in raced_by_entry.items()}
+    # Keyed by (entry bar, direction), not entry bar alone: two motifs CAN
+    # confirm on the same bar (a top and a bottom, or two runs on one side),
+    # and keying by bar handed both of them whichever trade was raced last --
+    # possibly the opposite direction. Same bar + same direction is the same
+    # trade (same open, same stop), so this key is exact.
+    nocost_r_by_idx = {(t["idx"], t["direction"]): t["r"] for t in raced_nocost}
+    raced_by_entry = {(t["idx"], t["direction"]): t for t in raced}
+    # Keyed by (confirm_idx, direction) for the confidence panel (which thinks in motifs).
+    raced_by_confirm = {(idx - 1, d): t for (idx, d), t in raced_by_entry.items()}
     confidence = CausalConfidence(motifs, raced_by_confirm)
 
     # ---- 👀 nearing alerts: replay the poller ----
@@ -318,7 +351,7 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
         entry_idx = m.confirm_idx + 1
         key = _motif_key(pair, m)
         near = nearing_by_key.get(key)
-        t = raced_by_entry.get(entry_idx)
+        t = raced_by_entry.get((entry_idx, m.direction))
         entry_date = bars.index[entry_idx]
         shown = confidence.at(m.confirm_idx, m.n_touches, m.is_top)
         alert = {
@@ -340,8 +373,11 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
         if t is not None:
             # MAE on the M1 path too: the H1 exit bar's full range extends
             # past the actual exit minute, which inflates it.
+            t_sl = t["sl"]   # == sl_price unless this pair races a scaled stop
             mae_r, mae_pct = mae_from_path(m1, t["fine_entry_idx"], t["fine_exit_idx"],
-                                           t["direction"], t["entry_price"], sl_price)
+                                           t["direction"], t["entry_price"], t_sl)
+            mfe_r, mfe_pct = mfe_from_path(m1, t["fine_entry_idx"], t["fine_exit_idx"],
+                                           t["direction"], t["entry_price"], t_sl, t_sl * args.tp_r)
             price_return_pct = t["direction"] * (t["exit_price"] - t["entry_price"]) / t["entry_price"] * 100.0
             trade = {
                 "pair": pair,
@@ -356,8 +392,8 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 # the race that produced `r`). Taken from the raced entry
                 # price, not re-read from the bar, for exactly that reason.
                 "entry_price": round(t["entry_price"], 5),
-                "stop_price": round(t["entry_price"] - t["direction"] * sl_price, 5),
-                "target_price": round(t["entry_price"] + t["direction"] * sl_price * args.tp_r, 5),
+                "stop_price": round(t["entry_price"] - t["direction"] * t_sl, 5),
+                "target_price": round(t["entry_price"] + t["direction"] * t_sl * args.tp_r, 5),
                 "exit_price": round(t["exit_price"], 5),
                 "n_touches": m.n_touches,
                 "is_top": bool(m.is_top),
@@ -365,6 +401,11 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 "mae_r": round(mae_r, 4),
                 "return_pct": round(price_return_pct, 4),
                 "mae_pct": round(mae_pct, 4),
+                # Diagnostic only (capped at the target): how far a trade got
+                # in its favour before it closed. On losers it answers "how
+                # many stop-outs were most of the way to the target first?"
+                "mfe_r": round(mfe_r, 4),
+                "mfe_pct": round(mfe_pct, 4),
                 "pnl_dollars": round(t["r"] * account_risk_dollars, 2),
                 "risk_dollars": round(account_risk_dollars, 2),
                 "is_oos": "OOS" if entry_date >= cutoff else "IS",
@@ -378,12 +419,51 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
                 "shown_pf": alert["shown_pf"],
                 "shown_played_out_rate": alert["shown_played_out_rate"],
             }
+            if scaled:
+                # Per-trade stop -> per-trade cost in R. The export's per-pair
+                # pair_cost_r/retail_cost_r identity assumes a constant stop,
+                # so these trades carry their own and the viewer prefers them.
+                trade["sl_pips"] = round(t_sl / pip, 2)
+                trade["cost_r"] = round(cost_price / t_sl, 5)
+                trade["retail_cost_r"] = round(retail_price / t_sl, 5)
             trades.append(trade)
             alert.update({"outcome": t["outcome"], "r": round(t["r"], 4),
                           "exit_date": bars.index[t["exit_idx"]].isoformat()})
-            if entry_idx in nocost_r_by_idx:
-                nocost_r.append(nocost_r_by_idx[entry_idx])
+            if (entry_idx, m.direction) in nocost_r_by_idx:
+                nocost_r.append(nocost_r_by_idx[(entry_idx, m.direction)])
         alerts.append(alert)
+
+    # ---- the SAME race on the pre-fix (non-causal) detector ----
+    # Only for the "detector fix: before vs after" card. The legacy detector
+    # let a touch that arrived AFTER a 2-touch motif confirmed rewrite it into
+    # a 3-touch run (see pylego.motif_touch._touch_runs), so the backtest lost
+    # exactly the 2-touch trades where price came back to the level while the
+    # live tracker, which never sees the future, logged and traded them.
+    legacy_trades: list[dict] = []
+    if args.detector_fix_compare:
+        legacy = detect_touch_motifs(
+            bars, atr_arr, pivot_n=args.pivot_n, tol_atr_mult=args.tol_atr_mult,
+            min_retrace_atr_mult=args.min_retrace_atr_mult,
+            min_bars_between_touches=args.min_bars_between_touches,
+            breakout_max_bars=args.breakout_max_bars, causal=False,
+        )
+        lconf = [m for m in legacy if m.confirm_idx is not None and m.confirm_idx + 1 < n]
+        lraced = race_trades_on_finer_path(
+            bars, m1, [Entry(idx=m.confirm_idx + 1, direction=m.direction, sl=_entry_sl(m)) for m in lconf],
+            sl=sl_price, tp_r=args.tp_r, max_bars_ahead=args.max_bars_ahead,
+            cost_price=cost_price, min_bars_ahead=args.min_bars_ahead)
+        lby = {(t["idx"], t["direction"]): t for t in lraced}
+        for m in lconf:
+            t = lby.get((m.confirm_idx + 1, m.direction))
+            if t is None:
+                continue
+            ed = bars.index[m.confirm_idx + 1]
+            legacy_trades.append({
+                "pair": pair, "entry_date": ed.isoformat(), "n_touches": m.n_touches,
+                "r": round(t["r"], 4), "is_oos": "OOS" if ed >= cutoff else "IS",
+                "cost_r": round(cost_price / t["sl"], 5),
+                "retail_cost_r": round(retail_price / t["sl"], 5),
+            })
 
     # ---- link each 👀 to what it went on to do ----
     confirmed_keys = {_motif_key(pair, m) for m in confirmed}
@@ -398,6 +478,7 @@ def build_pair(pair: str, args: argparse.Namespace) -> dict:
     converted = sum(1 for a in nearing_by_key.values() if a["converted"])
     return {
         "pair": pair, "alerts": alerts, "trades": trades, "nocost_r": nocost_r,
+        "legacy_trades": legacy_trades,
         "funnel": {
             "bars": n,
             "first_bar": bars.index[0].isoformat(), "last_bar": bars.index[-1].isoformat(),
@@ -446,6 +527,69 @@ def _strip_curve(bench: dict) -> dict:
     if bench.get("result"):
         bench["result"] = {k: v for k, v in bench["result"].items() if k != "equity_curve"}
     return bench
+
+
+def _median_trade_cost(trades: list[dict], pair: str, key: str) -> float | None:
+    vals = [t[key] for t in trades if t["pair"] == pair and key in t]
+    return round(float(np.median(vals)), 5) if vals else None
+
+
+def detector_fix_summary(fixed: list[dict], legacy: list[dict], pair_cost_r: dict,
+                         retail_cost_r: dict) -> dict:
+    """Before/after of the 2026-09-28 detector causality fix, on the population
+    the LIVE BOT trades: best-config (motif_policy.passes_best_config -- 2-touch
+    only, the pair's spread within its budget), priced at RETAIL spreads.
+    Backtest-only pairs (indices) are reported separately and kept out of the
+    headline, which must stay the live book. `legacy` is the same race on the
+    pre-fix detector; `fixed` is this export's own trades."""
+    def retail_r(t):
+        if "retail_cost_r" in t and "cost_r" in t:
+            return t["r"] + t["cost_r"] - t["retail_cost_r"]
+        return t["r"] + pair_cost_r.get(t["pair"], 0.0) - retail_cost_r.get(t["pair"], 0.0)
+
+    def best(t):
+        return motif_policy.passes_best_config(t["pair"], None, n_touches=t["n_touches"])
+
+    def block(rows):
+        rs = [(t, retail_r(t)) for t in rows]
+        return {
+            "is": summarize_r(r for t, r in rs if t["is_oos"] == "IS"),
+            "oos": summarize_r(r for t, r in rs if t["is_oos"] == "OOS"),
+            "full": summarize_r(r for _, r in rs),
+        }
+
+    def curve(rows):
+        # Cumulative retail R by ISO week -- small enough to ship, fine enough to see.
+        by_wk: dict = {}
+        for t in rows:
+            wk = pd.Timestamp(t["entry_date"]).strftime("%G-W%V")
+            by_wk[wk] = by_wk.get(wk, 0.0) + retail_r(t)
+        out, cum = [], 0.0
+        for wk in sorted(by_wk):
+            cum += by_wk[wk]
+            out.append([wk, round(cum, 2)])
+        return out
+
+    live_pairs = lambda t: t["pair"] not in INDEX_PAIRS
+    res = {"population": "best-config (2-touch, pair within its spread budget), retail spreads, live pairs only"}
+    for name, rows in (("legacy", legacy), ("fixed", fixed)):
+        b = [t for t in rows if best(t) and live_pairs(t)]
+        res[name] = {**block(b), "curve": curve(b),
+                     "all_signals": block([t for t in rows if live_pairs(t)])}
+    per_pair = []
+    for p_ in sorted({t["pair"] for t in fixed} | {t["pair"] for t in legacy}):
+        lb = [t for t in legacy if t["pair"] == p_ and t["n_touches"] == 2]
+        fb = [t for t in fixed if t["pair"] == p_ and t["n_touches"] == 2]
+        per_pair.append({
+            "pair": p_, "backtest_only": p_ in INDEX_PAIRS,
+            "in_best_config": bool(fb) and best(fb[0]),
+            "legacy": summarize_r(retail_r(t) for t in lb),
+            "fixed": summarize_r(retail_r(t) for t in fb),
+            "legacy_oos": summarize_r(retail_r(t) for t in lb if t["is_oos"] == "OOS"),
+            "fixed_oos": summarize_r(retail_r(t) for t in fb if t["is_oos"] == "OOS"),
+        })
+    res["per_pair_2touch"] = per_pair
+    return res
 
 
 def split_summary(trades: list[dict]) -> dict:
@@ -596,6 +740,15 @@ def main() -> None:
     p.add_argument("--replay-monthlydd", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["monthlydd"])
     p.add_argument("--replay-lockout", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["lockout"])
     p.add_argument("--replay-cooldown", type=float, default=motif_policy.RISK_GUARD_DEFAULTS["cooldown"])
+    p.add_argument("--include-indices", action="store_true",
+                   help="also backtest INDEX_PAIRS (backtest-only -- not scanned or traded live) "
+                        "with a stop of --index-sl-atr-mult x ATR14 at the confirm bar instead "
+                        "of the fixed pip grid; see INDEX_PAIRS' own note. Indices with no local "
+                        "M1 are skipped, not fatal.")
+    p.add_argument("--index-sl-atr-mult", type=float, default=INDEX_SL_ATR_MULT)
+    p.add_argument("--no-detector-fix-compare", dest="detector_fix_compare", action="store_false",
+                   help="skip the before/after card's second race on the pre-fix detector "
+                        "(on by default; roughly doubles the race time).")
     p.add_argument("--out", default=str(DATA_DIR / "motif_alert_backtest.json"))
     args = p.parse_args()
 
@@ -603,12 +756,27 @@ def main() -> None:
     all_trades: list[dict] = []
     all_alerts: list[dict] = []
     all_nocost_r: list[float] = []
+    all_legacy: list[dict] = []
     per_pair = []
+    if args.include_indices:
+        pairs = pairs + [p_ for p_ in INDEX_PAIRS if p_ not in pairs]
+    built = []
     for pair in pairs:
-        res = build_pair(pair, args)
+        try:
+            res = build_pair(pair, args)
+        except SystemExit as e:
+            # An index with no local M1 must not take the FX book down with it
+            # (the daily regen runs --include-indices before every host has
+            # index history); a missing FX pair still fails loud.
+            if pair not in INDEX_PAIRS:
+                raise
+            print(f"  [skip] {pair}: {e}")
+            continue
+        built.append(pair)
         all_trades.extend(res["trades"])
         all_alerts.extend(res["alerts"])
         all_nocost_r.extend(res["nocost_r"])
+        all_legacy.extend(res["legacy_trades"])
         summary = split_summary(res["trades"])
         per_pair.append({"pair": pair, "funnel": res["funnel"], **summary})
         f = res["funnel"]
@@ -617,6 +785,7 @@ def main() -> None:
               f"  ✅ {f['confirmed_alerts']:>4} confirmed"
               f"  {len(res['trades']):>4} trades  full PF={summary['full']['profit_factor']:.2f}")
 
+    pairs = built
     overall = split_summary(all_trades)
     # simulate_portfolio sorts and subtracts entry/exit dates, so it needs real
     # Timestamps; the exported trades keep ISO strings for the JSON viewer.
@@ -645,8 +814,11 @@ def main() -> None:
             "timeframe", "atr_period", "pivot_n", "tol_atr_mult", "min_retrace_atr_mult",
             "min_bars_between_touches", "breakout_max_bars", "sl_pips", "tp_r",
             "max_bars_ahead", "min_bars_ahead", "nearing_atr_mult", "nearing_price",
-            "account_size", "risk_pct", "max_concurrent_risk_pct")},
+            "account_size", "risk_pct", "max_concurrent_risk_pct", "include_indices",
+            "index_sl_atr_mult")},
             "is_oos_cutoff": IS_OOS_CUTOFF},
+        # Pairs this export covers that the live tracker/bot do NOT trade.
+        "backtest_only_pairs": [p_ for p_ in pairs if p_ in INDEX_PAIRS],
         "caveat": (
             "Backtest of the TELEGRAM ALERT STREAM, not of the raw signal -- replays "
             "motif_track.py/motif_nearing_watch.py's own emission gating (one live touch-run "
@@ -704,24 +876,38 @@ def main() -> None:
         # Constant per pair because the stop is a fixed 20 pips, which is what
         # lets a viewer re-price every trade at a MULTIPLE of today's cost
         # (the capacity test) without re-racing: R(k) = R(1) - (k-1) * cost_r.
-        "pair_cost_r": {p_: round(default_spread(p_) / (args.sl_pips * pip_size(p_)), 5)
+        # Index pairs race a per-trade stop, so their cost is per trade
+        # (`cost_r` / `retail_cost_r` on each trade, which the viewer prefers);
+        # the per-pair figure here is that pair's MEDIAN, used only by the
+        # capacity card's cost multiples.
+        "pair_cost_r": {p_: (_median_trade_cost(all_trades, p_, "cost_r") if p_ in INDEX_PAIRS
+                             else round(default_spread(p_) / (args.sl_pips * pip_size(p_)), 5))
                         for p_ in pairs},
         # The same figure at RETAIL spreads (see RETAIL_SPREAD_PIPS). Pairs
         # absent from that table (gold) keep the modelled cost. Same exact
         # re-pricing identity as above, so the viewer can switch cost basis
         # without re-racing: R_retail = R + pair_cost_r - retail_cost_r.
         "retail_cost_r": {
-            p_: round((RETAIL_SPREAD_PIPS[p_] * pip_size(p_)) / (args.sl_pips * pip_size(p_)), 5)
+            p_: _median_trade_cost(all_trades, p_, "retail_cost_r") if p_ in INDEX_PAIRS
+            else round((RETAIL_SPREAD_PIPS[p_] * pip_size(p_)) / (args.sl_pips * pip_size(p_)), 5)
             if p_ in RETAIL_SPREAD_PIPS
             else round(default_spread(p_) / (args.sl_pips * pip_size(p_)), 5)
             for p_ in pairs},
-        "retail_spread_pips": {p_: RETAIL_SPREAD_PIPS.get(p_) for p_ in pairs},
+        "retail_spread_pips": {p_: (motif_policy.INDEX_RETAIL_SPREAD_PTS.get(p_) if p_ in INDEX_PAIRS
+                                    else RETAIL_SPREAD_PIPS.get(p_)) for p_ in pairs},
         "per_pair": per_pair,
         # Written AFTER every other section so `encode_features` has seen every
         # trade's vocabulary before the legend is frozen.
         "feature_legend": encode_features(all_trades),
         "trades": all_trades,
     }
+    if args.detector_fix_compare:
+        out["detector_fix"] = detector_fix_summary(all_trades, all_legacy,
+                                                   out["pair_cost_r"], out["retail_cost_r"])
+        d_ = out["detector_fix"]
+        print(f"[detector fix] best-config retail, live pairs: "
+              f"legacy OOS n={d_['legacy']['oos']['n']} PF={d_['legacy']['oos']['profit_factor']:.2f}  ->  "
+              f"fixed OOS n={d_['fixed']['oos']['n']} PF={d_['fixed']['oos']['profit_factor']:.2f}")
     if args.include_alerts:
         out["alerts"] = all_alerts
     if risk_guard_replay is not None:

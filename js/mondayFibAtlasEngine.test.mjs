@@ -84,6 +84,25 @@ t('every touch time falls within [Tuesday 00:00, +7 days) of its own governing M
   }
 });
 
+t('prevOutcomeSameDay is CAUSAL: it equals an earlier same-week touch of this rung that had already resolved', () => {
+  // 2026-09-28. Was hist.at(-1)'s eventual outcome; a Monday-range touch can
+  // take days to resolve, so a later retest routinely read a result that did
+  // not exist yet (the look-ahead fixed in 34d3438).
+  const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
+  const key = r => `${r.side}|${r.level}|${r.rearmFrac}`;
+  let checked = 0;
+  for (let i = 0; i < touches.length; i++) {
+    const r = touches[i];
+    if (r.prevOutcomeSameDay == null) continue;
+    const known = touches.slice(0, i).filter(q => key(q) === key(r) && q.mondayDate === r.mondayDate
+      && q.time < r.time && q.outcome !== 'neither' && q.resolveTime != null && q.resolveTime <= r.time);
+    assert.ok(known.length > 0, 'prevOutcomeSameDay with no already-resolved same-week prior touch');
+    assert.equal(r.prevOutcomeSameDay, known.at(-1).outcome);
+    checked++;
+  }
+  assert.ok(checked > 0, 'expected some causal same-week values');
+});
+
 t('prevOutcomeSameDay only carries forward within the SAME reference week, never across weeks, and only from a touch ALREADY RESOLVED by cur\'s own time (2026-09-29 look-ahead fix, commit 34d3438)', () => {
   const { touches } = mondayFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx' });
   const byKey = new Map();   // `${side}|${level}` -> touches sorted by time

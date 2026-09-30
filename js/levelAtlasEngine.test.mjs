@@ -146,19 +146,29 @@ t('repeatability fields reference a STRICTLY PRIOR visit, never the current one'
   }
 });
 
-t('prevOutcomeSameDay excludes the tautological same-day "neither" case', () => {
-  // If the prior visit's own forward scan already ran to session-end without
-  // hitting either barrier ('neither'), a LATER same-day visit has strictly
-  // LESS remaining time and therefore can also never resolve 'out' — so
-  // reporting that combination is close to a mathematical certainty, not a
-  // finding. prevOutcomeSameDay must never surface it.
+t('prevOutcomeSameDay is CAUSAL: it equals an earlier same-day touch of this rung that had already resolved', () => {
+  // 2026-09-28 (js/visitMemory.js). It used to be hist.at(-1)'s EVENTUAL
+  // outcome, which a re-armed retest can precede -- a future result leaking
+  // into the touch's context. Every non-null value must be traceable to a
+  // touch of the same key, same day, with resolveTime <= this touch's time;
+  // and it is never 'neither' (the tautological same-day case stays excluded).
   const { touches } = atlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
-  for (const r of touches) {
-    if (r.daysSincePrev === 0 && r.prevOutcome === 'neither') {
-      assert.equal(r.prevOutcomeSameDay, null, 'same-day neither must be excluded from prevOutcomeSameDay');
+  const key = r => `${r.side}|${r.rung}|${r.rearmFrac}`;
+  let checked = 0, gatedAway = 0;
+  for (let i = 0; i < touches.length; i++) {
+    const r = touches[i];
+    assert.notEqual(r.prevOutcomeSameDay, 'neither');
+    const earlier = touches.slice(0, i).filter(q => key(q) === key(r) && q.date === r.date && q.time < r.time);
+    const known = earlier.filter(q => q.outcome !== 'neither' && q.resolveTime != null && q.resolveTime <= r.time);
+    if (r.prevOutcomeSameDay != null) {
+      assert.ok(known.length > 0, 'prevOutcomeSameDay with no already-resolved same-day prior touch');
+      assert.equal(r.prevOutcomeSameDay, known.at(-1).outcome);
+      checked++;
+    } else if (earlier.length && earlier.at(-1).outcome !== 'neither') {
+      gatedAway++;   // the old code would have leaked this one
     }
   }
-  assert.ok(touches.some(r => r.prevOutcomeSameDay != null), 'expected at least some same-day non-neither visits');
+  assert.ok(checked > 0, 'expected some causal same-day values');
 });
 
 t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrevResolved cleanly and never both fire', () => {

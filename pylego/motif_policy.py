@@ -34,6 +34,15 @@ RETAIL_SPREAD_PIPS = {
     # fall back to pylego.costs.default_spread for it (see passes_best_config).
 }
 
+# Index CFD spread ESTIMATES in index points (pip = 1 point), same basis and
+# same caveat as RETAIL_SPREAD_PIPS: typical raw-account quotes, not measured
+# fills. Deliberately a SEPARATE table: motif_bot samples live spread for every
+# RETAIL_SPREAD_PIPS key, and indices are backtest-only until rolled out
+# (AnalogML/motif_alert_backtest.py --include-indices).
+INDEX_RETAIL_SPREAD_PTS = {
+    "nq": 1.2, "spx500": 0.5, "de30": 1.2, "us30": 2.4, "uk100": 1.0, "us2000": 0.4,
+}
+
 # The two adjustments selected IN-SAMPLE (pre-2023) and held OUT-OF-SAMPLE
 # (2023+) on the M1-resolved backtest (PR #1462): skip with-trend swing
 # regime, drop pairs whose realistic spread exceeds this many pips. Verified
