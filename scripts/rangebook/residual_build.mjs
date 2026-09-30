@@ -8,8 +8,8 @@ import { loadCalendarProxy } from '../v4/calendarProxy.mjs';
 import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 import { costForPair } from '../../js/perLineStrategy.js';
 import { buildContext, scrambleFrom } from './common.mjs';
+import { USD_BASKET as BASKET, partnerLog, dayBuckets, dayModel } from './relval.mjs';
 
-const BASKET = [['eurusd', 0.576, -1], ['usdjpy', 0.136, 1], ['gbpusd', 0.119, -1], ['usdcad', 0.091, 1], ['usdchf', 0.036, 1]];
 const PAIRS = { gold: { partner: BASKET }, nq: { partner: [['spx500', 1, 1]] }, gbpusd: { partner: [['eurusd', 1, 1]] }, nzdusd: { partner: [['audusd', 1, 1]] } };
 const TARGET = (process.argv[2] ?? 'gold').toLowerCase();
 const cfg = PAIRS[TARGET]; if (!cfg) throw new Error(`unknown target ${TARGET}`);
@@ -17,42 +17,7 @@ const ASSET = assetClassFor(TARGET), COST = costForPair(TARGET, ASSET);
 const WSUM = cfg.partner.reduce((a, [, w]) => a + w, 0);
 const PCOST = cfg.partner.reduce((a, [k, w]) => a + w / WSUM * costForPair(k, assetClassFor(k)), 0);
 const OPTS = { sym: TARGET.toUpperCase(), assetClass: ASSET, tagFor: loadCalendarProxy()(TARGET.toUpperCase()) };
-const B = 300, LOOKBACK = 20, r4 = x => Math.round(x * 1e4) / 1e4;
-
-// Partner log-price per 5-min bucket: last M1 close in the bucket (weighted basket if several).
-function partnerLog(series) {
-  const maps = series.map(({ p }) => { const m = new Map(); for (let i = 0; i < p.n; i++) m.set(Math.floor(p.times[i] / B) * B, p.closes[i]); return m; });
-  const out = new Map();
-  for (const t of maps[0].keys()) {
-    let v = 0, ok = true;
-    series.forEach(({ w, s }, i) => { const c = maps[i].get(t); if (c == null) ok = false; else v += (w / WSUM) * s * Math.log(c); });
-    if (ok) out.set(t, v);
-  }
-  return out;
-}
-
-// Per London day: 5-min buckets of the target (open = first M1 open, close = last M1 close) with the partner.
-function dayBuckets(d, plog) {
-  const m = new Map();
-  for (const b of d.bars) {
-    const t = Math.floor(b.time / B) * B;
-    const x = m.get(t); if (x) x.close = b.close; else m.set(t, { t, open: b.open, close: b.close });
-  }
-  return [...m.values()].filter(x => plog.has(x.t)).map(x => ({ ...x, p: plog.get(x.t) }));
-}
-const rets = bk => { const r = []; for (let i = 1; i < bk.length; i++) r.push([Math.log(bk[i].close / bk[i - 1].close), bk[i].p - bk[i - 1].p]); return r; };
-
-// Causal day inputs from the previous LOOKBACK days: beta and residual sd.
-function dayModel(prevBks) {
-  const rr = prevBks.flatMap(rets);
-  if (rr.length < 500) return null;
-  const n = rr.length, mx = rr.reduce((a, [, x]) => a + x, 0) / n, my = rr.reduce((a, [y]) => a + y, 0) / n;
-  let sxy = 0, sxx = 0; for (const [y, x] of rr) { sxy += (x - mx) * (y - my); sxx += (x - mx) ** 2; }
-  const beta = sxx > 0 ? sxy / sxx : 0;
-  const res = rr.map(([y, x]) => y - beta * x), mr = res.reduce((a, b) => a + b, 0) / n;
-  const sd = Math.sqrt(res.reduce((a, b) => a + (b - mr) ** 2, 0) / (n - 1));
-  return sd > 0 ? { beta, sd } : null;
-}
+const LOOKBACK = 20, r4 = x => Math.round(x * 1e4) / 1e4;
 
 // The decision for one day: returns { trade, z, beta, sd, entry } or null.
 function dayTrade(d, bk, model) {
