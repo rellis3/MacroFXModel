@@ -236,12 +236,15 @@ t('prevOutcomeSameDay excludes the tautological same-day "neither" case (same re
   assert.ok(touches.some(r => r.prevOutcomeSameDay != null), 'expected at least some same-day non-neither visits');
 });
 
-t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrev cleanly and never both fire', () => {
+t('prevOutcomeSameDay / prevOutcomeCrossDay partition daysSincePrevResolved cleanly and never both fire', () => {
+  // prevOutcomeSameDay/CrossDay read `prevResolved`, not `prev` -- their
+  // companion "how many days since" is `daysSincePrevResolved`, not
+  // `daysSincePrev` (which stays on `prev`, for gapMin's own needs).
   const { touches } = asiaFibAtlasWalk(P, { instrument: 'EURUSD', assetClass: 'fx', rearmFracs: [0.3] });
   for (const r of touches) {
     assert.ok(!(r.prevOutcomeSameDay != null && r.prevOutcomeCrossDay != null), 'same-day and cross-day must be mutually exclusive');
-    if (r.prevOutcomeSameDay != null) assert.equal(r.daysSincePrev, 0);
-    if (r.prevOutcomeCrossDay != null) assert.ok(r.daysSincePrev > 0);
+    if (r.prevOutcomeSameDay != null) assert.equal(r.daysSincePrevResolved, 0);
+    if (r.prevOutcomeCrossDay != null) assert.ok(r.daysSincePrevResolved > 0);
   }
 });
 
