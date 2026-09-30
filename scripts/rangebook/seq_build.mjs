@@ -5,48 +5,18 @@
 //   node scripts/rangebook/seq_build.mjs [pair]
 import fs from 'fs';
 import { loadM1ForPair } from '../../js/volBacktestM1Engine.js';
-import { linesAtBar, LINE_SIDE, ALL_LINES } from '../../js/voteAtlasV4Lines.js';
+import { LINE_SIDE } from '../../js/voteAtlasV4Lines.js';
 import { loadCalendarProxy } from '../v4/calendarProxy.mjs';
 import { assetClassFor } from '../../js/forecastAnalyserStore.js';
 import { costForPair } from '../../js/perLineStrategy.js';
-import { buildContext, preDay, scrambleFrom, targets, race } from './common.mjs';
+import { buildContext, preDay, scrambleFrom, targets, race, passesOf } from './common.mjs';
 
 const PAIR = (process.argv[2] ?? 'eurusd').toLowerCase(), SYM = PAIR.toUpperCase();
 const ASSET = assetClassFor(PAIR), COST = costForPair(PAIR, ASSET);
 const OPTS = { sym: SYM, assetClass: ASSET, tagFor: loadCalendarProxy()(SYM) };
-const REARM = 0.1, CHECKPOINTS = [7, 10, 13, 16];
+const CHECKPOINTS = [7, 10, 13, 16];
 const r4 = x => (x == null || !Number.isFinite(x)) ? null : Math.round(x * 1e4) / 1e4;
 const session = m => m < 420 ? 'Asia' : m < 780 ? 'London' : m < 1020 ? 'NY' : 'Late';
-
-// Every pass of every line in a day (bars[0..k-1] price the lines, as firstTouches does).
-function passesOf(d) {
-  const bars = d.bars, unit = d.sigmaFrac * d.open;
-  const st = Object.fromEntries(ALL_LINES.map(n => [n, { armed: true, n: 0, lastK: null, pull: 0, over: 0, prevOver: null }]));
-  const out = [];
-  let runHi = d.open, runLo = d.open;
-  for (let k = 0; k < bars.length; k++) {
-    const b = bars[k], lv = linesAtBar(d, k, runHi, runLo);
-    for (const name of ALL_LINES) {
-      const L = lv[name]; if (L == null) continue;
-      const up = LINE_SIDE[name] === 'up', s = st[name];
-      if (s.armed) {
-        if (up ? b.high >= L : b.low <= L) {
-          s.n++; s.armed = false;
-          out.push({ line: name, pass: s.n, k, level: L, hiB: runHi, loB: runLo,
-                     pullback: s.n === 1 ? null : s.pull / unit, prevOver: s.n === 1 ? null : s.over / unit });
-          s.pull = 0; s.over = 0;
-        } else if (s.n > 0) s.pull = Math.max(s.pull, up ? L - b.low : b.high - L);
-      } else {
-        s.over = Math.max(s.over, up ? b.high - L : L - b.low);
-        s.pull = Math.max(s.pull, up ? L - b.low : b.high - L);
-        if (up ? b.close <= L - REARM * unit : b.close >= L + REARM * unit) s.armed = true;
-      }
-    }
-    if (b.high > runHi) runHi = b.high;
-    if (b.low < runLo) runLo = b.low;
-  }
-  return out;
-}
 
 function dayRows(ctx, di) {
   const d = ctx.days[di], bars = d.bars, unit = d.sigmaFrac * d.open;

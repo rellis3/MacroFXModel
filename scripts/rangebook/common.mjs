@@ -1,7 +1,7 @@
 // Shared pieces for the range/touch book builders: day context and pre-day regime.
 // Everything here reads only data completed before a day's London-midnight open.
 import { fitHMM } from '../../hmm.js';
-import { v4Days, nyCloseDailyBars, firstTouches, LINE_SIDE } from '../../js/voteAtlasV4Lines.js';
+import { v4Days, nyCloseDailyBars, firstTouches, LINE_SIDE, linesAtBar, ALL_LINES } from '../../js/voteAtlasV4Lines.js';
 
 export function buildContext(packed, { sym, assetClass, tagFor }) {
   const days = v4Days(packed, { instrument: sym, assetClass, eventTagFor: tagFor });
@@ -123,3 +123,37 @@ export function race(bars, k, up, level, tg) {
   const lastMove = up ? bars.at(-1).close - level : level - bars.at(-1).close;   // + = continue side
   return { outcome, resolveK, mb, mk, dayB, dayK, lastMove };
 }
+
+// Sequence book (forge/SEQUENCE_BOOK_EURUSD_PREREG.md): a line re-arms after a bar CLOSES this far (σ) back inside.
+export const REARM = 0.1;
+
+// Every pass of every line in a day (bars[0..k-1] price the lines, as firstTouches does).
+export function passesOf(d) {
+  const bars = d.bars, unit = d.sigmaFrac * d.open;
+  const st = Object.fromEntries(ALL_LINES.map(n => [n, { armed: true, n: 0, lastK: null, pull: 0, over: 0, prevOver: null }]));
+  const out = [];
+  let runHi = d.open, runLo = d.open;
+  for (let k = 0; k < bars.length; k++) {
+    const b = bars[k], lv = linesAtBar(d, k, runHi, runLo);
+    for (const name of ALL_LINES) {
+      const L = lv[name]; if (L == null) continue;
+      const up = LINE_SIDE[name] === 'up', s = st[name];
+      if (s.armed) {
+        if (up ? b.high >= L : b.low <= L) {
+          s.n++; s.armed = false;
+          out.push({ line: name, pass: s.n, k, level: L, hiB: runHi, loB: runLo,
+                     pullback: s.n === 1 ? null : s.pull / unit, prevOver: s.n === 1 ? null : s.over / unit });
+          s.pull = 0; s.over = 0;
+        } else if (s.n > 0) s.pull = Math.max(s.pull, up ? L - b.low : b.high - L);
+      } else {
+        s.over = Math.max(s.over, up ? b.high - L : L - b.low);
+        s.pull = Math.max(s.pull, up ? L - b.low : b.high - L);
+        if (up ? b.close <= L - REARM * unit : b.close >= L + REARM * unit) s.armed = true;
+      }
+    }
+    if (b.high > runHi) runHi = b.high;
+    if (b.low < runLo) runLo = b.low;
+  }
+  return out;
+}
+
