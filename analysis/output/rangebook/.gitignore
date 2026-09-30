@@ -1,0 +1,2 @@
+# per-day rows (regenerate: node scripts/rangebook/eurusd_build.mjs)
+*.json
