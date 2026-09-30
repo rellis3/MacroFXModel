@@ -460,6 +460,17 @@ def _plan_age_hours(plan: dict, now_epoch: float) -> float | None:
         return None
 
 
+def _chain_key(spec: dict, plan: dict) -> str:
+    """Identity of the OI capture behind an instrument's zones — what one-shot state
+    is scoped to. ``oiSavedAtMs`` is the capture time and survives the intraday
+    basis re-projection unchanged (js/oi.js), so it changes exactly when a new chain
+    arrives. Older plans without it fall back to the plan's UTC date."""
+    ts = (spec or {}).get("oiSavedAtMs")
+    if isinstance(ts, (int, float)) and ts > 0:
+        return f"oi:{int(ts)}"
+    return f"day:{str((plan or {}).get('generatedAt') or '')[:10]}"
+
+
 def _oi_age_hours(spec: dict, now_epoch: float) -> float | None:
     """Hours since the OI chain behind this instrument was pasted.
 
@@ -642,6 +653,10 @@ def run(base_url: str, force_live: bool) -> None:
             kv.put_json("oi_bot_state", {
                 "generatedAt": (plan or {}).get("generatedAt"),
                 "entered": {i: sorted(s.entered) for i, s in sessions.items()},
+                # Which OI capture each instrument's `entered` belongs to — the restore
+                # key. generatedAt changes on every re-plan (5-10 min), so keying on it
+                # alone meant a restart almost never restored anything.
+                "chains": {i: s.chain for i, s in sessions.items()},
                 "features": features,
                 "risk_ledger": {str(k): v for k, v in risk_ledger.items()},
                 "runners": {str(k): v for k, v in runners.items()},
@@ -664,23 +679,33 @@ def run(base_url: str, force_live: bool) -> None:
         for instruments already present), drop instruments the plan no longer has,
         and PRIME any zone price has already passed (dry_run) so we never
         retro-enter an overnight crossing. Restores KV-persisted `entered` state
-        when the plan's generatedAt matches (restart double-entry protection), and
+        when it belongs to the same OI capture (restart double-entry protection), and
         rebuilds the broker-symbol → asset-class map for the correlated-group cap."""
         instrs = _plan_instruments(new_plan)
-        restore = (saved_state.get("entered") or {}) \
-            if saved_state.get("generatedAt") == (new_plan or {}).get("generatedAt") else {}
+        saved_entered = saved_state.get("entered") or {}
+        saved_chains = saved_state.get("chains") or {}
+        same_plan = saved_state.get("generatedAt") == (new_plan or {}).get("generatedAt")
         sym_class.clear()
         for instr, slice_ in instrs.items():
             zones = slice_.get("zones", [])
             spot = slice_.get("spot")
+            chain = _chain_key(slice_, new_plan)
             if instr in sessions:
                 sessions[instr].set_zones(spot, zones)
+                if sessions[instr].set_chain(chain):
+                    log.info(f"new OI chain for {instr} ({chain}) — one-shot zone state reset for the new day")
             else:
                 sessions[instr] = OISession(instr, spot, zones)
-                for zid in restore.get(instr, []):
+                sessions[instr].set_chain(chain)
+                # Restore when the saved state is for the SAME OI capture (a state file
+                # written before `chains` existed falls back to the exact-plan match).
+                restore = saved_entered.get(instr, []) if (
+                    (instr in saved_chains and saved_chains[instr] == chain)
+                    or (instr not in saved_chains and same_plan)) else []
+                for zid in restore:
                     sessions[instr].mark_entered(zid)
-                if restore.get(instr):
-                    log.info(f"restored {len(restore[instr])} entered zone(s) for {instr} "
+                if restore:
+                    log.info(f"restored {len(restore)} entered zone(s) for {instr} "
                              f"from persisted state (restart protection)")
             try:
                 cls = I.asset_class(instr)

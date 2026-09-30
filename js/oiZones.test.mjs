@@ -39,6 +39,22 @@ console.log('[BREAKOUT regime — follow wall breaks (squeeze)]');
   ok('no fade zones in BREAKOUT', !z.some(x => x.mode === 'fade'));
 }
 
+console.log('[BREAKOUT — walls price already went through are not break candidates]');
+{
+  // Spot 4150: the 4100 put wall is below (valid break DOWN); a put wall at 4180 sits ABOVE
+  // spot — it used to become a sell armed to fire on a RALLY to 4160 (2026-09-30 gold).
+  // Mirror: a call wall at 4120, below spot, used to become a dip-buy at 4140.
+  const inst = { ...base, exposures: { gex: -5000 },
+    callWalls: [...base.callWalls, { strike: 4120, oi: 9500, tier: 'strong', mult: 3.3 }],
+    putWalls: [...base.putWalls, { strike: 4180, oi: 8500, tier: 'strong', mult: 3.1 }] };
+  const z = buildOIZones(inst, 4150, cfg).filter(x => x.mode === 'break');
+  ok('put wall above spot → no break-sell', !z.some(x => x.side === 'sell' && x.level === 4180));
+  ok('call wall below spot → no break-buy', !z.some(x => x.side === 'buy' && x.level === 4120));
+  ok('every break sell arms BELOW spot, every break buy ABOVE',
+    z.every(x => x.side === 'sell' ? x.entry < 4150 : x.entry > 4150), JSON.stringify(z.map(x => [x.side, x.entry])));
+  ok('the valid walls still trade', z.some(x => x.side === 'sell' && x.level === 4100) && z.some(x => x.side === 'buy' && x.level === 4300));
+}
+
 console.log('[Breakout OI-flow confirmation — building = backed, unwinding = weak/trim]');
 {
   // Break UP through the call wall. If OI is BUILDING at 4300 → confirmed (no trim);

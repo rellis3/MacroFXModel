@@ -50,6 +50,47 @@ def zone_id(z: dict) -> str:
     return f"{z.get('mode')}_{z.get('side')}_{lvl_s}"
 
 
+SAME_LEVEL_FRAC = 0.0005   # 0.05% of price: NQ ~15pt, gold ~2, RUT ~1.4 — under any strike spacing
+
+
+def _parse_zid(zid: str):
+    """(mode, side, level) from a zone_id, or None when the level isn't numeric."""
+    parts = str(zid).split("_", 2)
+    if len(parts) != 3:
+        return None
+    try:
+        return parts[0], parts[1], float(parts[2])
+    except ValueError:
+        return None
+
+
+def already_entered(z: dict, entered) -> bool:
+    """Has this zone — or the SAME zone under a re-projected level — already traded?
+
+    The server re-projects every strike onto a fresh futures→spot basis every 5 min
+    (server.js _refreshOIBasis), so a zone's level drifts by a fraction of a point and
+    its zone_id changes with it. An exact-id one-shot check then reads a stopped-out
+    zone as brand new. Fades/breaks are mostly saved by priming (price is past them);
+    max pain is exempt from priming, so it re-fired: 2026-09-28 NQ sold 30182, 30231,
+    30241 inside an hour, each stopped at the next guard wall, all one zone.
+    Max pain: one trade per side per session (the pin is day-static). Others: same
+    mode+side within SAME_LEVEL_FRAC of the level."""
+    if zone_id(z) in entered:
+        return True
+    mode, side = z.get("mode"), z.get("side")
+    try:
+        lvl = float(z.get("level"))
+    except (TypeError, ValueError):
+        return False
+    for zid in entered:
+        p = _parse_zid(zid)
+        if not p or p[0] != mode or p[1] != side:
+            continue
+        if mode == "maxpain" or abs(p[2] - lvl) <= SAME_LEVEL_FRAC * abs(lvl):
+            return True
+    return False
+
+
 def _tp(z: dict):
     """Bracket take-profit: TP1 (primary scale-out) if present, else TP2, else 0
     (SL-only). One broker-enforced TP — the scale-out ladder is a Stage-3 refinement."""
@@ -279,10 +320,26 @@ class OISession:
         self.touches: dict[str, int] = {}
         self.streak: dict[str, int] = {}
         self._firing: dict[str, bool] = {}       # last-tick trigger state (edge detection)
+        self.chain = None                        # which OI capture the one-shot state belongs to
+
+    def set_chain(self, chain) -> bool:
+        """Scope one-shot state to ONE OI capture. Levels drift intraday (the basis
+        refresh) so ``entered`` is matched loosely (``already_entered``) — which means it
+        must be cleared when a genuinely new chain arrives, or yesterday's max-pain trade
+        would block today's. Returns True when state from a previous chain was dropped."""
+        if chain == self.chain:
+            return False
+        dropped = self.chain is not None and bool(self.entered or self.primed)
+        if self.chain is not None:
+            self.entered.clear()
+            self.primed.clear()
+        self.chain = chain
+        return dropped
 
     def set_zones(self, spot, zones) -> None:
-        """Adopt a refreshed plan slice WITHOUT losing one-shot state (a re-published
-        plan keeps the same zone_ids, so ``entered``/``primed`` still apply)."""
+        """Adopt a refreshed plan slice WITHOUT losing one-shot state. A re-projected
+        plan can carry slightly different levels (new zone_ids); ``already_entered``
+        still recognises them. A new OI chain is ``set_chain``'s job, not this."""
         if spot:
             self.spot = float(spot)
         self.zones = list(zones or [])
@@ -317,7 +374,7 @@ class OISession:
         out = []
         for z in self.zones:
             zid = zone_id(z)
-            if zid in self.entered or zid in self.primed:
+            if zid in self.primed or already_entered(z, self.entered):
                 continue
             firing = should_fire(z, px, self.spot, tol)
             if not dry_run:

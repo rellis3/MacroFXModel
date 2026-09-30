@@ -237,6 +237,36 @@ bf = make_spec("gold", {**BUY_FADE, "tpCapDist": 50, "tp2": 4300}, None)
 ok("buy side caps upward, and tp1/tp2 both capped collapse to one target",
    bf["tp"] == 4150 and bf["tp2"] is None, f"{bf['tp']} {bf['tp2']}")
 
+# 2026-09-28 NQ: the 5-min basis refresh re-projects every strike, the zone_id (which
+# carries the level) changes, and a stopped-out max-pain sell fired again — three
+# times inside an hour, each stopped at the next wall. One zone, one trade.
+def _mp(shift):
+    return {"mode": "maxpain", "side": "sell", "level": 29654.95 + shift, "entry": 30100,
+            "minDist": 60, "sl": 30500, "slGuardWalls": [30254.95 + shift, 30304.95 + shift],
+            "slFrac": 1.0, "slFloor": 25, "tp1": 29654.95 + shift, "sizeFactor": 1}
+rs = OISession("nq", 30100, [_mp(0.0)])
+fired = []
+for px, shift in [(30182.3, 0.0), (30231.3, 0.35), (30241.4, -0.2)]:
+    rs.set_zones(30100, [_mp(shift)])
+    for sp in rs.decide(px):
+        fired.append(sp["zone_id"]); rs.mark_entered(sp["zone_id"])
+ok("basis-shifted max-pain zone does NOT re-fire after its trade (1 entry, not 3)",
+   len(fired) == 1, str(fired))
+fz = {"mode": "fade", "side": "sell", "level": 30804.95, "entry": 30804.95, "sl": 30830, "tp1": 30700}
+rs2 = OISession("nq", 30700, [fz]); rs2.mark_entered(zone_id(fz))
+rs2.set_zones(30700, [{**fz, "level": 30805.4, "entry": 30805.4}])
+ok("fade re-projected by 0.45pt is still the traded zone", rs2.decide(30806) == [])
+rs2.set_zones(30700, [{**fz, "level": 30854.95, "entry": 30854.95}])
+ok("the NEXT wall (50pt away) is a different zone and still fires", len(rs2.decide(30855)) == 1)
+
+ch = OISession("nq", 30100, [_mp(0.0)])
+ok("first chain set → nothing dropped", ch.set_chain("oi:1") is False)
+ch.mark_entered(zone_id(_mp(0.0)))
+ok("same chain (basis re-plan) keeps the one-shot state",
+   ch.set_chain("oi:1") is False and ch.decide(30241.4) == [])
+ok("NEW chain (next day's capture) resets it → today's max pain can trade once",
+   ch.set_chain("oi:2") is True and len(ch.decide(30241.4)) == 1)
+
 ok("empty book → nothing to conflict with",
    stack_conflict(SYMS, True, 1.34526, [], 0.0010) is None)
 ok("missing open_price is skipped, not crashed",

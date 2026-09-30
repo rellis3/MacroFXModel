@@ -428,8 +428,14 @@ export function buildOIZones(inst, price, cfg = {}) {
     return share == null ? 1 : 1 - (1 - breakGexFloor) * share;   // share 0 (short-gamma, breaks run) -> 1.0x; share 1 (long-gamma, "may stall") -> breakGexFloor
   };
   const breakStrength = w => strength(w) * breakGexWeight(w);
-  const breakCalls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(tierOK).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
-  const breakPuts  = _cap((Array.isArray(inst.putWalls)  ? inst.putWalls  : []).filter(tierOK).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
+  // Only walls price has NOT yet gone through: a call wall above spot (break UP), a put wall
+  // below (break DOWN) — the same side-of-price rule the fades use. Without it a put wall
+  // ABOVE spot became a "follow the break DOWN" sell whose entry (wall − brk) also sat above
+  // spot, so the engine armed it to fire on a RALLY: a counter-trend short in a short-gamma
+  // regime, the opposite of the mode's thesis (2026-09-30 gold plan: sells at 4209/4259 with
+  // spot 4191). Call walls below spot mirrored it as dip-buys.
+  const breakCalls = _cap((Array.isArray(inst.callWalls) ? inst.callWalls : []).filter(w => tierOK(w) && w.strike > price).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
+  const breakPuts  = _cap((Array.isArray(inst.putWalls)  ? inst.putWalls  : []).filter(w => tierOK(w) && w.strike < price).slice().sort((x, y) => breakStrength(y) - breakStrength(x)));
 
   const isLiquidating = (strike, kind) => avoidLiquidating &&
     (change?.events || []).some(e => e.type === 'liquidation' && e.kind === kind && Math.abs(e.strike - strike) <= tol);
