@@ -53,8 +53,8 @@ export const CATALOGUE = [
   { id: 'DGS10',  source: 'fred', group: 'curve', label: 'US 10-year', why: 'The world’s discount rate; the long leg of nearly every spread here.', readBy: ['chapters', 'drill', 'weekMap', 'rates', 'nowcast'], evidence: ['multi-spread-sleeve', 'yield-move-fx-range', 'yields-to-fx-direction'] },
   { id: 'DGS20',  source: 'fred', group: 'curve', label: 'US 20-year', why: 'Completes the long end for the curve surface.', readBy: ['chapters'], evidence: [] },
   { id: 'DGS30',  source: 'fred', group: 'curve', label: 'US 30-year', why: 'The inflation and deficit vote, least tied to the next meeting.', readBy: ['chapters', 'drill', 'weekMap', 'rates'], evidence: [] },
-  { id: 'T10Y2Y', source: 'fred', group: 'curve', label: '10y minus 2y', why: 'The classic recession spread. Pulled since the liquidity gate was built.', readBy: ['netLiquidity', 'liquidityGate'], evidence: [],
-    trap: 'THE most famous spread in macro and this desk has never tested it. Pulled, displayed, never scored -- the first thing to study, not the first thing to add.' },
+  { id: 'T10Y2Y', source: 'fred', group: 'curve', label: '10y minus 2y', why: 'The classic recession spread.', readBy: ['netLiquidity', 'liquidityGate'], evidence: ['curve-inversion'],
+    trap: 'Fifty years of daily data collapse to TEN independent inversion episodes. Any statistic computed per DAY on this series is counting one event hundreds of times -- which is how the folk version survives. Tested 2026-10-01: the tradeable half is null.' },
   { id: 'THREEFYTP10', source: 'fred', group: 'curve', label: '10y term premium (ACM)', why: 'Splits the 10-year into expectations and the premium paid to hold duration.', readBy: ['rates', 'weekMap'], evidence: [], trap: 'Lags by days -- judge freshness on its own cadence, not the daily one.' },
 
   // ── Real yields and inflation pricing ─────────────────────────────────────

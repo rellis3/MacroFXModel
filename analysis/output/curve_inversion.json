@@ -1,0 +1,129 @@
+{
+ "id": "curve-inversion",
+ "ranAt": "2026-10-01T23:07:56.457Z",
+ "minEvents": 6,
+ "span": {
+  "from": "1976-06-01",
+  "to": "2026-10-01",
+  "obs": 12581
+ },
+ "episodes": [
+  {
+   "start": "1978-08-18",
+   "end": "1980-05-01",
+   "ongoing": false
+  },
+  {
+   "start": "1980-09-12",
+   "end": "1982-07-16",
+   "ongoing": false
+  },
+  {
+   "start": "1988-12-13",
+   "end": "1989-11-06",
+   "ongoing": false
+  },
+  {
+   "start": "1990-03-08",
+   "end": "1990-03-29",
+   "ongoing": false
+  },
+  {
+   "start": "1998-05-26",
+   "end": "1998-07-27",
+   "ongoing": false
+  },
+  {
+   "start": "2000-02-02",
+   "end": "2000-12-28",
+   "ongoing": false
+  },
+  {
+   "start": "2005-12-27",
+   "end": "2007-06-05",
+   "ongoing": false
+  },
+  {
+   "start": "2019-08-27",
+   "end": "2019-08-29",
+   "ongoing": false
+  },
+  {
+   "start": "2022-04-01",
+   "end": "2022-04-04",
+   "ongoing": false
+  },
+  {
+   "start": "2022-07-06",
+   "end": "2024-09-05",
+   "ongoing": false
+  }
+ ],
+ "cells": {
+  "rec12m": {
+   "n": 10,
+   "hits": 3,
+   "rate": 0.3,
+   "lo": 0.108,
+   "hi": 0.603,
+   "untestable": false
+  },
+  "rec18m": {
+   "n": 10,
+   "hits": 5,
+   "rate": 0.5,
+   "lo": 0.237,
+   "hi": 0.763,
+   "untestable": false
+  },
+  "rec24m": {
+   "n": 10,
+   "hits": 6,
+   "rate": 0.6,
+   "lo": 0.313,
+   "hi": 0.832,
+   "untestable": false
+  },
+  "eq3m": {
+   "n": 10,
+   "nCtl": 5322,
+   "obs": -1.6495,
+   "ctlMean": 2.218,
+   "pLower": 0.1142,
+   "untestable": false
+  },
+  "eq6m": {
+   "n": 10,
+   "nCtl": 5280,
+   "obs": -1.6616,
+   "ctlMean": 5.734,
+   "pLower": 0.0574,
+   "untestable": false
+  },
+  "eq12m": {
+   "n": 10,
+   "nCtl": 5218,
+   "obs": 10.5031,
+   "ctlMean": 12.9963,
+   "pLower": 0.3269,
+   "untestable": false
+  },
+  "unrate12m": {
+   "n": 10,
+   "mean": 0.57,
+   "untestable": false
+  }
+ },
+ "gate": {
+  "looRecMin": 0.556,
+  "eqSignStable": true,
+  "mirror": {
+   "n": 6,
+   "mean": -1.11,
+   "clean": false
+  },
+  "controlDiffers": false
+ },
+ "verdict": "NULL",
+ "note": "The recession association is reported descriptively; the TRADEABLE claim — risk assets weaker after an inversion — did not clear the pre-registered gate."
+}

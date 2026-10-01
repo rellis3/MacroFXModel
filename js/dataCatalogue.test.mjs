@@ -84,9 +84,12 @@ test('no series is listed twice', () => {
 test('the untested list is the answer to "what should we pull next"', () => {
   const u = untested();
   assert.ok(u.length > 0, 'if everything were tested this list would be empty, which would be news');
-  // the specific one that prompted the catalogue
-  assert.ok(u.some(c => c.id === 'T10Y2Y'),
-    'T10Y2Y is pulled and has never been scored — if that changes, update the catalogue, do not delete the test');
+  // T10Y2Y was the canary here and was SCORED on 2026-10-01 (curve-inversion, null), so
+  // the canary moved rather than the test being deleted. T5YIFR is the next one: the
+  // 5y5y forward, pulled for Chapter D, never put to a question.
+  assert.ok(u.some(c => c.id === 'T5YIFR'),
+    'T5YIFR is pulled and has never been scored — if that changes, move this canary again, do not delete the test');
+  assert.ok(!u.some(c => c.id === 'T10Y2Y'), 'T10Y2Y has been tested; its verdict belongs in the catalogue');
 });
 
 test('the traps carry real detail, not a shrug', () => {
