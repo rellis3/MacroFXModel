@@ -8357,9 +8357,18 @@ app.get('/api/futures-quote', async (req, res) => {
         );
         if (!r.ok) continue;
         const data = await r.json();
-        const meta = data?.chart?.result?.[0]?.meta;
-        const price = meta?.regularMarketPrice;
-        if (price) return { price, symbol, kind, source: 'yahoo', t: Number(meta?.regularMarketTime) || null };
+        const res0 = data?.chart?.result?.[0];
+        const price = res0?.meta?.regularMarketPrice;
+        // The last COMPLETE 1-minute bar (start time + close), for minute-exact pairing
+        // with OANDA's candle of the same minute. regularMarketTime is a last-trade time
+        // inside a minute, and pairing it with a whole-minute candle left NQ's basis
+        // swinging ~35pt between polls (a busy NQ minute moves that much).
+        const ts = res0?.timestamp || [], cl = res0?.indicators?.quote?.[0]?.close || [];
+        let bar = null;
+        for (let i = ts.length - 2; i >= 0 && i >= ts.length - 6; i--) {
+          if (Number.isFinite(cl[i]) && cl[i] > 0) { bar = { t: ts[i], close: cl[i] }; break; }
+        }
+        if (price) return { price, symbol, kind, source: 'yahoo', bar };
       } catch { /* try next host */ }
     }
     return null;
@@ -8377,17 +8386,17 @@ app.get('/api/futures-quote', async (req, res) => {
     return null;
   };
 
-  // OANDA mid at a PAST moment (unix seconds): the close of the M1 candle containing it.
+  // OANDA mid close of the M1 candle that STARTS at tSec (unix seconds) — the same
+  // minute as Yahoo's bar, so the two closes are taken at the same instant.
   const oandaSpotAt = async (tSec) => {
     if (!oSym || !process.env.OANDA_KEY || !(tSec > 0)) return null;
     try {
       const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
-      const from = new Date((tSec - 180) * 1000).toISOString();
+      const from = new Date((tSec - 120) * 1000).toISOString();
       const r = await fetch(`${oB}/v3/instruments/${encodeURIComponent(oSym)}/candles?granularity=M1&price=M&count=5&from=${encodeURIComponent(from)}`,
         { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(6_000) });
       if (!r.ok) return null;
-      const cs = ((await r.json()).candles || []).filter(c => c?.mid?.c && Date.parse(c.time) / 1000 <= tSec);
-      const c = cs[cs.length - 1];
+      const c = ((await r.json()).candles || []).find(c => c?.mid?.c && Math.abs(Date.parse(c.time) / 1000 - tSec) < 1);
       return c ? +c.mid.c : null;
     } catch { return null; }
   };
@@ -8418,18 +8427,19 @@ app.get('/api/futures-quote', async (req, res) => {
 
   if (fut) {
     let price = fut.price, aligned = false, spotThen = null;
-    if (spot?.price > 0 && fut.t && fut.source === 'yahoo' && kind === 'future') {
-      spotThen = await oandaSpotAt(fut.t);
+    if (spot?.price > 0 && fut.bar && fut.source === 'yahoo' && kind === 'future') {
+      spotThen = await oandaSpotAt(fut.bar.t);
       if (spotThen > 0) {
         const inverted = ['USD/JPY', 'USD/CAD', 'USD/CHF'].includes(pair);
-        price = fut.price * (inverted ? spotThen / spot.price : spot.price / spotThen);
+        price = fut.bar.close * (inverted ? spotThen / spot.price : spot.price / spotThen);
         aligned = true;
       }
     }
     return res.json({ ok: true, price, symbol: fut.symbol, kind: fut.kind, source: fut.source,
       spot: spot?.price ?? null, spotSymbol: spot?.symbol ?? null, spotSource: spot?.source ?? null,
       basis: (spot?.price != null) ? +(price - spot.price).toFixed(8) : null, at,
-      aligned, futuresRaw: fut.price, futuresAt: fut.t ? fut.t * 1000 : null, spotAtFutures: spotThen });
+      aligned, futuresRaw: fut.price, futuresBar: fut.bar?.close ?? null,
+      futuresAt: fut.bar ? fut.bar.t * 1000 : null, spotAtFutures: spotThen });
   }
 
   // No real future — fall back to the OANDA CFD, labelled honestly as such so the
