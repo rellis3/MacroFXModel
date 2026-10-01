@@ -168,6 +168,11 @@
   // The week ahead and the live record, from the same bricks the desk uses.
   import { eventImpact } from './js/eventImpactMap.js';
   import { EVENT_FAMILY_RE } from './js/deskWatch.js';
+  import { familyFor, orderFamilies } from './js/eventBookIndex.js';
+  // The picker lives in the plain script below, which runs BEFORE this module (modules
+  // are deferred) but builds itself inside a fetch callback, so it is still waiting when
+  // this line runs.
+  window.EVENT_BOOK_INDEX = { familyFor, orderFamilies };
   import { formatScorecard, summariseCalls, COUNTRY_INSTRUMENTS } from './js/releaseScorecard.js';
   const esc = s => String(s ?? '').replace(/</g, '&lt;');
   const fam = ev => EVENT_FAMILY_RE.find(([, re]) => re.test(ev ?? ''))?.[0] ?? null;
@@ -179,10 +184,21 @@
       const evs = await (await fetch('/api/events')).json(); const now = Date.now();
       const rows = (evs ?? []).filter(e => (e.impact ?? '').toLowerCase() === 'high' && e.ms > now - 864e5).sort((a, b) => a.ms - b.ms);
       if (!rows.length) { el.innerHTML = '<p class="note">Nothing high-impact left on the feed this week. The calendar for the coming week publishes on Sunday.</p>'; return; }
+      window.__weekRows = rows;          // the picker orders itself from these
+      try { window.__buildPicker?.(); } catch { /* picker not up yet; boot() calls it */ }
       el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
         <tr><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">when (UK)</th><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">release</th><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">expected</th><th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.06em">what the book says it does</th></tr>` +
-        rows.map(e => { const f = fam(e.event); const imp = f ? eventImpact(e.country, f) : null; const inst = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 4).map(([k, v]) => `<b>${disp(k)}</b> ${v.spike}× <span style="color:var(--text3)">(n=${v.n})</span>`).join(' · ') : null;
-          return `<tr style="border-top:1px solid var(--border)"><td style="padding:6px;white-space:nowrap;color:var(--text2)">${when(e.ms)}${e.ms < now ? ' <span style="color:var(--text3)">(out)</span>' : ''}</td><td style="padding:6px"><b>${esc(e.country)}</b> ${esc(e.event)}</td><td style="padding:6px;color:var(--text2)">${esc(e.estimate ?? '—')}${e.prev != null ? ` <span style="color:var(--text3)">was ${esc(e.prev)}</span>` : ''}</td><td style="padding:6px;color:var(--text2)">${inst ? `${inst} a normal half-hour` : imp ? `${imp.medSpike}× the median across instruments` : f ? 'in the book, but no pair clears 1.5× on it' : '<span style="color:var(--text3)">not a family the book measures</span>'}</td></tr>`; }).join('') + '</table>';
+        rows.map(e => {
+          // ITS OWN FAMILY FIRST. The coarse bucket collapses 76 families into 16
+          // country|category entries, each pointing at one representative -- so the
+          // Unemployment Rate row rendered PAYROLLS' figures, both being "US|employment".
+          const own = window.__BOOK ? familyFor(e.country, e.event, window.__BOOK.families) : null;
+          const ownRow = own ? window.__BOOK.book?.[own] : null;
+          const f = fam(e.event); const imp = ownRow ? null : (f ? eventImpact(e.country, f) : null);
+          const src = ownRow ? Object.entries(ownRow.instruments ?? {}).map(([k, v]) => [k, { spike: v.spikeR0, n: v.n }])
+                             : imp ? Object.entries(imp.instruments) : null;
+          const inst = src ? src.filter(([, v]) => Number.isFinite(v.spike)).sort((a, b) => b[1].spike - a[1].spike).slice(0, 4).map(([k, v]) => `<b>${disp(k)}</b> ${(+v.spike).toFixed(2)}× <span style="color:var(--text3)">(n=${v.n})</span>`).join(' · ') : null;
+          return `<tr style="border-top:1px solid var(--border)"><td style="padding:6px;white-space:nowrap;color:var(--text2)">${when(e.ms)}${e.ms < now ? ' <span style="color:var(--text3)">(out)</span>' : ''}</td><td style="padding:6px"><b>${esc(e.country)}</b> ${esc(e.event)}</td><td style="padding:6px;color:var(--text2)">${esc(e.estimate ?? '—')}${e.prev != null ? ` <span style="color:var(--text3)">was ${esc(e.prev)}</span>` : ''}</td><td style="padding:6px;color:var(--text2)">${inst ? `${inst} a normal half-hour${own ? '' : ' <span style="color:var(--text3)">(nearest family)</span>'}` : imp ? `${imp.medSpike}× the median across instruments` : (own || imp) ? 'in the book, but no pair clears 1.5× on it' : '<span style="color:var(--text3)">not a family the book measures — it holds 30 US families, 24 GB, 16 EU and only one each for AU and NZ</span>'}</td></tr>`; }).join('') + '</table>';
     } catch (e) { el.textContent = `calendar unavailable: ${e.message}`; }
   }
   async function live() {
@@ -195,6 +211,9 @@
       el.innerHTML = tally + (cards.length ? cards.map(c => `<div style="padding:8px 0;border-top:1px solid var(--border);font-size:12.5px;line-height:1.55;color:var(--text2)"><div style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);font-weight:700">${when(c.ms)}</div>${formatScorecard(c, { html: true }).split('\n').map(l => `<div>${l}</div>`).join('')}</div>`).join('') : '<p class="note">The first card lands thirty minutes after the next high-impact print.</p>');
     } catch (e) { el.textContent = `record unavailable: ${e.message}`; }
   }
+  // the book lands on its own clock; re-render the week once it does, so each row can
+  // use its own family rather than the coarse bucket
+  window.__weekRerender = week;
   week(); live();
 </script>
 <script>
@@ -228,7 +247,7 @@ let BOOK = null, EVENTS = null;
 Promise.all([
   fetch('/backfill/event_response_book.json').then(r => r.json()),
   fetch('/backfill/event_response_events.json').then(r => r.json()).catch(() => null),
-]).then(([book, events]) => { BOOK = book; EVENTS = events; boot(); })
+]).then(([book, events]) => { BOOK = book; EVENTS = events; window.__BOOK = book; boot(); try { window.__weekRerender?.(); } catch {} })
   .catch(e => { $('banner').textContent = 'Could not load the book: ' + e.message; });
 
 function boot(){
@@ -247,11 +266,8 @@ function boot(){
     [totalEvents.toLocaleString(), 'individual releases'],
   ].map(([v, l]) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
 
-  // Family picker — movers first, the rest greyed but still selectable.
-  const order = [...fams].sort((a, b) => (b[1].joinProof?.medianSpikeR0 ?? 0) - (a[1].joinProof?.medianSpikeR0 ?? 0));
-  $('famSel').innerHTML = order.map(([k, f]) =>
-    `<option value="${k}">${f.label}${(f.joinProof?.medianSpikeR0 ?? 0) >= 2 ? '' : '  (no measurable reaction)'}</option>`).join('');
-  $('famSel').onchange = () => { fillInstruments(); render(); };
+  buildPicker();
+  $('famSel').onchange = () => { _userPicked = true; fillInstruments(); render(); };
   $('instSel').onchange = render;
 
   $('honesty').innerHTML = `This page reports <b>size and timing</b>, which replicate across 76 families, and
@@ -300,6 +316,59 @@ function renderRanking(){
     + `The tail — ${rest.length} more families — runs from ${rest.length ? rest[0].r.toFixed(2) : '—'}× down to `
     + `${rest.length ? rest[rest.length - 1].r.toFixed(2) : '—'}×; `
     + `a value below 1 means the half-hour of the release is <i>quieter</i> than an ordinary half-hour.`;
+}
+
+/**
+ * The release picker, ordered by what is actually DUE.
+ *
+ * It used to be sorted by historic spike size alone and labelled with the book's own
+ * long-form names -- "US Payroll Jobs Growth", "US Headline Unemployment Rate" -- which
+ * are not the words on the calendar ("Non-Farm Employment Change", "Unemployment Rate").
+ * So a reader looking up tomorrow's print had to already know the book's name for it, and
+ * then find it somewhere in a list of 76 sorted by something else entirely.
+ *
+ * Now: what is due this week first, carrying the CALENDAR's wording and when it lands,
+ * then the releases that actually move the tape, then the rest. Rebuilt when the calendar
+ * arrives, since the two fetches race.
+ */
+window.__buildPicker = buildPicker;
+let _userPicked = false;   // once the reader chooses, a rebuild must not move them
+function buildPicker(){
+  if (!BOOK) return;
+  const sel = $('famSel'); if (!sel) return;
+  const keep = sel.value;
+  const idx = window.EVENT_BOOK_INDEX;
+  const fams = BOOK.families;
+  const spike = k => fams[k]?.joinProof?.medianSpikeR0 ?? 0;
+  const tag = k => spike(k) >= 2 ? '' : '  (no measurable reaction)';
+  const opt = (k, text) => `<option value="${k}">${text}</option>`;
+
+  let html = '', firstDue = null;
+  if (idx) {
+    const { due, movers, rest, dueByKey } = idx.orderFamilies(fams, BOOK.book, window.__weekRows ?? []);
+    firstDue = due[0] ?? null;
+    const when = ms => new Date(ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+    if (due.length) html += `<optgroup label="due this week">` + due.map(k => {
+      const d = dueByKey.get(k);
+      // the calendar's words, because that is what the reader came in holding
+      return opt(k, `${when(d.ms)}${d.past ? ' (out)' : ''} — ${d.country} ${d.event}`);
+    }).join('') + '</optgroup>';
+    html += `<optgroup label="moves the tape (2× or more)">` + movers.map(k => opt(k, fams[k].label)).join('') + '</optgroup>';
+    html += `<optgroup label="everything else">` + rest.map(k => opt(k, fams[k].label + tag(k))).join('') + '</optgroup>';
+  } else {
+    // the index failed to load -- fall back to the old order rather than an empty picker
+    html = Object.keys(fams).sort((a, b) => spike(b) - spike(a)).map(k => opt(k, fams[k].label + tag(k))).join('');
+  }
+  sel.innerHTML = html;
+  // Default to the soonest release that is actually DUE -- the point of the reorder. The
+  // first build runs before the calendar lands, so without this the restore below pins
+  // whatever the top mover happened to be and the due group is decoration.
+  if (!_userPicked && firstDue && fams[firstDue]) sel.value = firstDue;
+  else if (keep && fams[keep]) sel.value = keep;
+  fillInstruments();
+  // The calendar and the book race, so this can run a second time and move the selection.
+  // Without re-rendering, the panel below would describe the previously selected release.
+  if (keep !== sel.value) { try { render(); } catch { /* boot() renders in a moment */ } }
 }
 
 function fillInstruments(){
