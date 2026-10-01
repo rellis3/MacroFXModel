@@ -8357,8 +8357,9 @@ app.get('/api/futures-quote', async (req, res) => {
         );
         if (!r.ok) continue;
         const data = await r.json();
-        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-        if (price) return { price, symbol, kind, source: 'yahoo' };
+        const meta = data?.chart?.result?.[0]?.meta;
+        const price = meta?.regularMarketPrice;
+        if (price) return { price, symbol, kind, source: 'yahoo', t: Number(meta?.regularMarketTime) || null };
       } catch { /* try next host */ }
     }
     return null;
@@ -8376,6 +8377,21 @@ app.get('/api/futures-quote', async (req, res) => {
     return null;
   };
 
+  // OANDA mid at a PAST moment (unix seconds): the close of the M1 candle containing it.
+  const oandaSpotAt = async (tSec) => {
+    if (!oSym || !process.env.OANDA_KEY || !(tSec > 0)) return null;
+    try {
+      const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
+      const from = new Date((tSec - 180) * 1000).toISOString();
+      const r = await fetch(`${oB}/v3/instruments/${encodeURIComponent(oSym)}/candles?granularity=M1&price=M&count=5&from=${encodeURIComponent(from)}`,
+        { headers: { Authorization: `Bearer ${process.env.OANDA_KEY}` }, signal: AbortSignal.timeout(6_000) });
+      if (!r.ok) return null;
+      const cs = ((await r.json()).candles || []).filter(c => c?.mid?.c && Date.parse(c.time) / 1000 <= tSec);
+      const c = cs[cs.length - 1];
+      return c ? +c.mid.c : null;
+    } catch { return null; }
+  };
+
   // BOTH LEGS, ONE CALL, ISSUED TOGETHER.
   //
   // The basis is only meaningful if futures and spot are sampled at the same moment
@@ -8385,12 +8401,36 @@ app.get('/api/futures-quote', async (req, res) => {
   // the two could be minutes apart and nothing recorded that they were. Firing them
   // in parallel here bounds the gap to one round trip and stamps it server-side, so
   // the client cannot accidentally mix timestamps.
+  //
+  // ...AND AT THE SAME MOMENT IN MARKET TIME, not just wall-clock. Yahoo's CME quotes are
+  // ~10 MIN DELAYED (regularMarketTime; measured 2026-10-01 on NQ=F/GC=F/ES=F) while OANDA's
+  // pricing is live, so `fut - spot` was the real basis PLUS ten minutes of price movement:
+  // NQ read 150pt. The 5-min basis refresh re-projected every strike with that number, so
+  // walls slid tens of points behind price all session (one NQ wall wore five different
+  // levels on 10-01, max pain wandered ~100pt) and fades fired at levels no dealer held.
+  // Fix: take OANDA's mid AT the futures' own timestamp, and roll the futures forward to
+  // now by OANDA's move since then (ratio, so the inverted 6J/6C/6S contracts move the
+  // right way). `price` is then an estimate of the futures NOW, and price - spot equals the
+  // time-aligned basis -- every consumer (oiRefreshBasis, buildOIEntry) is fixed in place.
+  // Without an aligned candle the old behaviour stands, flagged `aligned: false`.
   const [fut, spot] = await Promise.all([yahooFutures(), oandaSpot()]);
   const at = Date.now();
 
-  if (fut) return res.json({ ok: true, price: fut.price, symbol: fut.symbol, kind: fut.kind, source: fut.source,
-    spot: spot?.price ?? null, spotSymbol: spot?.symbol ?? null, spotSource: spot?.source ?? null,
-    basis: (spot?.price != null) ? +(fut.price - spot.price).toFixed(8) : null, at });
+  if (fut) {
+    let price = fut.price, aligned = false, spotThen = null;
+    if (spot?.price > 0 && fut.t && fut.source === 'yahoo' && kind === 'future') {
+      spotThen = await oandaSpotAt(fut.t);
+      if (spotThen > 0) {
+        const inverted = ['USD/JPY', 'USD/CAD', 'USD/CHF'].includes(pair);
+        price = fut.price * (inverted ? spotThen / spot.price : spot.price / spotThen);
+        aligned = true;
+      }
+    }
+    return res.json({ ok: true, price, symbol: fut.symbol, kind: fut.kind, source: fut.source,
+      spot: spot?.price ?? null, spotSymbol: spot?.symbol ?? null, spotSource: spot?.source ?? null,
+      basis: (spot?.price != null) ? +(price - spot.price).toFixed(8) : null, at,
+      aligned, futuresRaw: fut.price, futuresAt: fut.t ? fut.t * 1000 : null, spotAtFutures: spotThen });
+  }
 
   // No real future — fall back to the OANDA CFD, labelled honestly as such so the
   // client never presents a CFD mid as a futures price (that would make basis ≈ 0).
