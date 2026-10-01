@@ -74,3 +74,13 @@ placebo does too is geometry, not the level.
 ## Also planned (separate step)
 OI walls need the NQ book (NQ is not in the 16); they were placebo-tested at random prices on
 2026-09-23 (artefact). Run last, with the same placebo, only at the vol lines.
+
+## Amendment (2026-10-01, before the OI step ran; levels T1/T2 numbers not yet seen)
+OI walls run on the six book FX pairs that have a dated CME option archive (`OI Data/*.csv`:
+EURUSD, GBPUSD, AUDUSD, USDCAD, USDCHF, USDJPY; 2020-09 →), not on NQ, which is not in the book.
+- **oiWall** = the 5 strikes with the most open interest (calls + puts, expiries within 35 days of
+  the OI date), converted to spot (1/strike for JPY, CAD, CHF, whose futures are quoted USD per unit).
+- Publication lag: a London day uses the OI dated two business days earlier (Monday uses Thursday),
+  so the file was certainly published before the day opened.
+- Same measures, same placebo (0.15–0.5σ shift), same T1/T2 rules; scored on these six pairs, 2020-09
+  onward only, and reported separately (its own BH family of 2 tests).
