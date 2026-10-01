@@ -31,8 +31,9 @@ hl = json.load(open('analysis/output/rangebook/hl_ratio.json')) if os.path.exist
 for p in ALL:
     f = f'analysis/output/rangebook/{p}_pred_q75.json'
     if os.path.exists(f) and p in hl: q75[p] = (json.load(open(f)), hl[p])
+IDX = ['nq', 'spx', 'dow', 'us2000', 'de30', 'uk100']
 rows = []
-for p in ALL:
+for p in ALL + IDX:
     seq = [s for s in json.load(open(f'analysis/output/rangebook/{p}_sequence.json'))['passes'] if not s['sameBar']]
     ap = {f"{a['date']}|{a['line']}|{a['pass']}": a for a in json.load(open(f'analysis/output/rangebook/{p}_approach.json'))['rows']}
     for s in seq:
@@ -43,13 +44,13 @@ for p in ALL:
         if p in q75:
             v = q75[p][0].get(s['date'])
             if v is not None: big = v > q75[p][1]
-        rows.append({'inst': p, 'date': s['date'], 'half': 'h1' if s['date'] < SPLIT else 'h2', 'fam': fam(s['line']),
+        rows.append({'grp': 'IDX' if p in IDX else 'FX', 'inst': p, 'date': s['date'], 'half': 'h1' if s['date'] < SPLIT else 'h2', 'fam': fam(s['line']),
                      'sess': sess(s['londonMin']), 'used': usedb(s['used']), 'pass': min(s['pass'], 3), 'outcome': s['outcome'],
                      'be': s['df'] / (s['dc'] + s['df']), 'fol': fol, 'fad': fad, 'over': s['beyondBefore'], 'pull': s['backBefore'],
                      'stretch': a.get('mtfStretch'), 'vol': a.get('relVol15'), 'mv60': a.get('mv60'), 'big': big})
 
 def thirds(key):
-    xs = sorted(r[key] for r in rows if r['half'] == 'h1' and r[key] is not None)
+    xs = sorted(r[key] for r in rows if r['grp'] == 'FX' and r['half'] == 'h1' and r[key] is not None)   # same edges as the original book
     return xs[len(xs) // 3], xs[2 * len(xs) // 3]
 VOL, MOV = thirds('vol'), thirds('mv60')
 tb = lambda v, e: None if v is None else 'low' if v < e[0] else 'mid' if v < e[1] else 'high'
@@ -101,7 +102,9 @@ def build(rs):
                 if c and c['n'] >= 30: book['mods'][f'{fm}|{mod}|{v}'] = c
     return book
 
-books = {'pooled': build(rows), 'eurusd': build([r for r in rows if r['inst'] == 'eurusd'])}
+FXR = [r for r in rows if r['grp'] == 'FX']
+books = {'pooled': build(FXR), 'eurusd': build([r for r in rows if r['inst'] == 'eurusd']), 'gold': build([r for r in rows if r['inst'] == 'gold']),
+         'indices': build([r for r in rows if r['grp'] == 'IDX']), **{p: build([r for r in rows if r['inst'] == p]) for p in IDX}}
 
 # ── Edge flag: both halves positive + Benjamini-Hochberg at 10% over every row × direction ──
 tests = []
@@ -119,7 +122,7 @@ for bk, b in books.items():
         for k, c in b[part].items():
             c['edge'] = [d for d in ('fol', 'fad') if (bk, part, k, d) in passed and c[d + '_h1'] > 0 and c[d + '_h2'] > 0]
 
-json.dump({'books': books, 'meta': {'instruments': ALL, 'rows_pooled': len(rows), 'rows_eurusd': sum(r['inst'] == 'eurusd' for r in rows),
+json.dump({'books': books, 'meta': {'instruments': ALL, 'indices': IDX, 'rows_pooled': len(FXR), 'rows_by_book': {k: sum(1 for r in rows if (k == 'pooled' and r['grp'] == 'FX') or (k == 'indices' and r['grp'] == 'IDX') or r['inst'] == k) for k in books}, 'rows_eurusd': sum(r['inst'] == 'eurusd' for r in rows),
            'pips_per_sigma_eurusd': pps, 'tests': m, 'bh_pass': cutoff, 'vol_thirds': VOL, 'move_thirds': MOV}},
           open('analysis/output/rangebook/fade_continue_book.json', 'w'))
 
@@ -133,13 +136,14 @@ def line(label, c, pip=False):
 HDR = ('| situation | touches | continue | fade | stall | break-even | follow R | fade R | continue 16–22 → 23–26 | pullback before continuing (med/90th) | overshoot before fading (med/90th) | flags |\n'
        '|---|---|---|---|---|---|---|---|---|---|---|---|')
 print('# The Fade / Continue Book\n')
-print(f"Spec: forge/FADE_CONTINUE_BOOK_SPEC.md. Every pass of every Vol Forecast v3 line, 2016 → 2026-08. Pooled: {len(rows):,} passes over "
-      f"16 instruments in σ units; EURUSD alone: {books and sum(r['inst'] == 'eurusd' for r in rows):,}. Continue = reached the next line out first; "
+print(f"Spec: forge/FADE_CONTINUE_BOOK_SPEC.md. Every pass of every Vol Forecast v3 line, 2016 → 2026-08. Pooled: {len(FXR):,} passes over "
+      f"16 instruments in σ units; EURUSD alone: {sum(r['inst'] == 'eurusd' for r in rows):,}; six indices pooled: {sum(r['grp'] == 'IDX' for r in rows):,}. Continue = reached the next line out first; "
       "fade = reached the line behind first; stall = neither by the London day end. Break-even = the continue rate a follow trade needs at that "
       "line spacing (before spread). R = net of spread.\n")
 print(f"**Edge rows:** {sum(len(c['edge']) > 0 for b in books.values() for part in ('main', 'mods') for c in b[part].values())} "
       f"of {sum(len(b[part]) for b in books.values() for part in ('main', 'mods'))} rows ({m} tests, Benjamini–Hochberg 10%: {cutoff} survive before the both-halves check).\n")
-for bk, title, pip in (('pooled', 'All 16 instruments pooled', False), ('eurusd', 'EURUSD alone', True)):
+TITLES = [('pooled', 'All 16 FX/gold instruments pooled', False), ('eurusd', 'EURUSD alone', True), ('gold', 'Gold alone', False), ('indices', 'Six indices pooled (NQ, SPX, DOW, US2000, DE30, UK100)', False)] + [(p, p.upper() + ' alone', False) for p in IDX]
+for bk, title, pip in TITLES:
     b = books[bk]
     print(f'## {title}\n')
     for fm in FAMS:
