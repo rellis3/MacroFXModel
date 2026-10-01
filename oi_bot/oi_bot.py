@@ -859,8 +859,14 @@ def run(base_url: str, force_live: bool) -> None:
                         _runners_dirty = True
                         continue
                     if r["partner"] not in _open_tk:
+                        # Re-send the runner's OWN take-profit with the new stop. MT5's
+                        # TRADE_ACTION_SLTP treats an omitted tp as 0, so a BE move that
+                        # passed only sl= silently DELETED TP2 — 2026-10-01 NQ runner
+                        # 43027185 rode on with SL at entry and no target at all.
+                        _tp_now = next((p.get("tp") for p in _book if p.get("ticket") == _tb), None)
                         try:
-                            if hasattr(broker, "modify") and broker.modify(_tb, r["pair"], sl=r["be"], paper_mode=paper):
+                            if hasattr(broker, "modify") and broker.modify(_tb, r["pair"], sl=r["be"], tp=_tp_now,
+                                                                           paper_mode=paper):
                                 log.info(f"SCALE-OUT [{r['pair']}]: TP1 leg closed → runner {_tb} "
                                          f"stop moved to break-even {r['be']}")
                         except Exception as e:
