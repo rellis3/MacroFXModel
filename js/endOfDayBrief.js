@@ -208,6 +208,26 @@ export function tomorrow({ ahead = [], rows = [], nowMs = Date.now() } = {}) {
  * where it can be tested.
  */
 /**
+ * A wide day, restated as the number of separate moves behind it.
+ *
+ * The board scores thirty correlated instruments against a forecast that is a MEDIAN --
+ * so half of all days are SUPPOSED to exceed it, and one currency shock prints "the
+ * forecast missed" on every pair carrying that leg. On 2026-10-01, 27 of 30 ran past
+ * forecast and EUR was a leg in seven of the biggest; listed as 27 misses that reads as a
+ * broken model, when the measured record over 298 pair-days is a median range used of
+ * 100% with 49% above -- exactly where a median belongs.
+ *
+ * So this says it once, with the count that matters, and only when the day really is
+ * carried by one leg. Silent otherwise, including on a broad day where everything moved
+ * for its own reasons -- that one IS thirty separate overshoots and should read as such.
+ */
+export function concentrationLine(c) {
+  if (!c || !c.concentrated || !c.largest || c.largest.n < 3) return '';
+  const l = c.largest;
+  return `Those ${c.over} are not ${c.over} separate misses: ${l.leg} is a leg in ${l.n} of them, and as independent moves the overshoot is closer to ${c.independent}. The forecast is the MEDIAN day, so half of all days are meant to clear it — measured across every day this page has stored, the median instrument uses 100% of its forecast and 49% run over. A day like this is the tail of that distribution, not a broken number.`;
+}
+
+/**
  * The leg tally restated as bets, because legs are not bets.
  *
  * Fourteen committed leans with six yen legs in them is not fourteen calls: one yen
@@ -375,7 +395,8 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
         ? `No call was made this morning, so this is the day as it happened — the dollar ${usd.word} across ${usd.n} legs${risk.equity != null ? `, equities ${pct2(risk.equity)}` : ''}.`
         : `No call was made this morning, so this is the day as it happened.`)
     : wide
-    ? `A wider day than the page forecast — the median instrument used ${med}% of its expected range, and ${eod.range.over} of ${eod.range.n} ran clean past it.`
+    ? `A wider day than the page forecast — the median instrument used ${med}% of its expected range, and ${eod.range.over} of ${eod.range.n} ran clean past it${
+        eod.range.concentration?.concentrated ? `, though ${eod.range.concentration.largest.leg} is a leg in ${eod.range.concentration.largest.n} of them` : ''}.`
     : quiet
     ? `A quiet day by the page's own numbers — the median instrument used only ${med}% of the range forecast for it.`
     : usd.n && usd.word && usd.dir !== 'flat'
@@ -403,7 +424,7 @@ export function endOfDayBrief({ morning = null, eod = null, moved = [], ahead = 
   { const l = weekFrameLine(week); if (l) paragraphs.push(l); }
 
   if (out.over.length) paragraphs.push(`The forecast was beaten hardest by ${
-    out.over.map(r => `<b>${r.name}</b> at ${r.used}% (${(r.move > 0 ? '+' : '') + r.move.toFixed(r.dp)} ${r.unit} against ${r.expected} expected)`).join(', ')}. A range that far past its forecast is the page being wrong about SIZE, which is the one thing it measures well enough to be judged on.`);
+    out.over.map(r => `<b>${r.name}</b> at ${r.used}% (${(r.move > 0 ? '+' : '') + r.move.toFixed(r.dp)} ${r.unit} against ${r.expected} expected)`).join(', ')}. A range that far past its forecast is the page being wrong about SIZE, which is the one thing it measures well enough to be judged on. ${concentrationLine(eod.range.concentration)}`);
   if (out.under.length) paragraphs.push(`At the other end, ${
     out.under.map(r => `<b>${r.name}</b> used ${r.used}%`).join(', ')} — days that never got going. A stop sized off the forecast had far more room than it needed.`);
 

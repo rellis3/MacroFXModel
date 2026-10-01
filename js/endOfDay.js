@@ -137,6 +137,94 @@ export function scorePair(name, morning, live, { high = null, low = null, rangeP
  * see the denominator — 3 of 4 and 3 of 12 are very different days.
  */
 /**
+ * Assign each member to exactly ONE group: biggest group first, claimed members removed,
+ * repeat. Shared by the direction score and the range score, which ask the same question
+ * of the same board -- "how many independent things happened here?" -- and would
+ * otherwise drift apart as two implementations of one idea.
+ *
+ * A candidate can appear in several groups (an FX leg belongs to its base AND its quote),
+ * so overlapping groups would double-count in a new way. A partition is what "how many
+ * bets was this really" needs.
+ *
+ * @param {Map<string, Set<number>>} candidates group key -> member indices
+ * @returns {Array<{key:string, members:number[]}>} largest first
+ */
+export function greedyPartition(candidates) {
+  const taken = new Set(), out = [];
+  for (;;) {
+    let best = null, bestN = 0;
+    for (const [key, set] of candidates) {
+      const n = [...set].filter(i => !taken.has(i)).length;
+      // ties broken by name so the same board always decomposes the same way
+      if (n > bestN || (n === bestN && n > 0 && best && key < best)) { best = key; bestN = n; }
+    }
+    if (!best || !bestN) break;
+    const members = [...candidates.get(best)].filter(i => !taken.has(i));
+    members.forEach(i => taken.add(i));
+    out.push({ key: best, members });
+  }
+  return out;
+}
+
+/**
+ * The legs of an instrument, for grouping. Direction-free: the range question does not
+ * care which way a pair went, only which currency it shares with the rest of the board.
+ */
+function legsOf(name) {
+  if (/^(NQ|SPX500|DE30|UK100|US30|US2000|DOW|US500)$/.test(name)) return ['the index block'];
+  if (name === 'GOLD' || name === 'XAUUSD') return ['gold'];
+  const m = /^([A-Z]{3})([A-Z]{3})$/.exec(name);
+  return m ? [m[1], m[2]] : [name];
+}
+
+/**
+ * How concentrated a wide-range day actually was.
+ *
+ * WHY. On 2026-10-01 twenty-seven of thirty instruments ran past their forecast and the
+ * board listed sixteen separate "misses" -- but EUR was a leg in seven of the biggest and
+ * CHF in three. One EUR shock prints "the forecast missed" sixteen times, and a forecast
+ * that is a MEDIAN is supposed to be exceeded half the time anyway. Reported as thirty
+ * independent tests it reads as a broken model; reported as three or four it reads as
+ * what it is, a tail day in a calibrated distribution.
+ *
+ * Measured over 298 pair-days the forecast sits where a median should: median range used
+ * 100%, 49% above. So the model does not need refitting -- the REPORTING did.
+ *
+ * @param {Array} rows scored rows carrying { name, used }
+ * @param {number} [overAt=140] the page's own "over" threshold
+ */
+export function rangeConcentration(rows, overAt = 140) {
+  const over = (rows ?? []).filter(r => r && Number.isFinite(r.used) && r.used >= overAt);
+  const scored = (rows ?? []).filter(r => r && Number.isFinite(r.used));
+  if (over.length < 3) return null;   // nothing to collapse
+
+  const candidates = new Map();
+  over.forEach((r, i) => {
+    for (const leg of legsOf(r.name)) {
+      if (!candidates.has(leg)) candidates.set(leg, new Set());
+      candidates.get(leg).add(i);
+    }
+  });
+  const groups = greedyPartition(candidates)
+    .map(({ key, members }) => ({ leg: key, n: members.length, names: members.map(i => over[i].name) }));
+
+  return {
+    over: over.length,
+    scored: scored.length,
+    groups,
+    // how many genuinely separate moves the wide day amounts to
+    independent: groups.length,
+    largest: groups[0] ?? null,
+    // A day is CONCENTRATED when one leg carries a third or more of the overshoot AND
+    // carries at least three instruments. Both conditions, because the headline and the
+    // paragraph read this same flag -- without the floor, a four-instrument day where two
+    // happened to share a leg would set the flag, the headline would announce a
+    // concentration, and the paragraph explaining it would stay silent.
+    concentrated: !!groups[0] && groups[0].n >= 3 && groups[0].n * 3 >= over.length,
+  };
+}
+
+/**
  * Collapse committed leans into the CURRENCY VIEWS they actually express.
  *
  * WHY THE LEG TALLY OVERSTATES ITSELF. "11 of 14 directions right" counts legs, and legs
@@ -179,28 +267,17 @@ export function currencyViews(rows) {
     put(`${up ? 'short' : 'long'} ${quote}`, i);
   });
 
-  // greedy partition: biggest view first, each leg claimed once
-  const taken = new Set(), views = [];
-  for (;;) {
-    let best = null, bestN = 0;
-    for (const [key, set] of candidates) {
-      const n = [...set].filter(i => !taken.has(i)).length;
-      // ties broken by name so the same day always decomposes the same way
-      if (n > bestN || (n === bestN && n > 0 && best && key < best)) { best = key; bestN = n; }
-    }
-    if (!best || !bestN) break;
-    const legs = [...candidates.get(best)].filter(i => !taken.has(i));
-    legs.forEach(i => taken.add(i));
-    const right = legs.filter(i => committed[i].leanRight).length;
-    views.push({
-      view: best,
-      legs: legs.map(i => committed[i].name),
-      n: legs.length,
+  const views = greedyPartition(candidates).map(({ key, members }) => {
+    const right = members.filter(i => committed[i].leanRight).length;
+    return {
+      view: key,
+      legs: members.map(i => committed[i].name),
+      n: members.length,
       right,
       // more than half, or nothing -- a 1-1 split is not a verdict
-      held: right * 2 === legs.length ? null : right * 2 > legs.length,
-    });
-  }
+      held: right * 2 === members.length ? null : right * 2 > members.length,
+    };
+  });
 
   const decided = views.filter(v => v.held !== null);
   return {
@@ -338,6 +415,9 @@ export function endOfDay({ morning = null, live = {}, hl = {}, chainAM = null, c
       // how many rows are on the weak measure, so the panel can say the board is
       // understated rather than presenting open-to-now as if it were a range
       weak: scored.filter(r => r.rangeFrom === 'open-to-now').length,
+      // a wide day on thirty correlated instruments is not thirty wide days -- how many
+      // separate moves the overshoot actually amounts to
+      concentration: rangeConcentration(scored),
     },
     // What the page COMMITTED to, and what became of it. Kept apart from the direction
     // tally because they answer different questions: a lean can be right by the close

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { scorePair, endOfDay, pairReview, plannedInWindow, isTradingDay, PLAN_WINDOW_UTC, currencyViews } from './endOfDay.js';
-import { viewLine } from './endOfDayBrief.js';
+import { scorePair, endOfDay, pairReview, plannedInWindow, isTradingDay, PLAN_WINDOW_UTC, currencyViews, rangeConcentration } from './endOfDay.js';
+import { viewLine, concentrationLine } from './endOfDayBrief.js';
 
 const AM = '2026-09-23T07:30:00.000Z';   // inside the capture window
 let n = 0; const t = (name, fn) => { try { fn(); n++; } catch (e) { console.log('FAIL', name); throw e; } };
@@ -452,6 +452,103 @@ t('the sentence names the concentration when one view carries the day', () => {
   assert.match(line, /collapse into 2 views/);
   assert.match(line, /carried 6 of them/);
   assert.match(line, /one move settled 6 at once/);
+});
+
+// ── A wide day is not thirty wide days ──────────────────────────────────────
+// The forecast is the MEDIAN high-low, so half of all days are meant to clear it, and
+// across 298 stored pair-days the median instrument uses 100% of its forecast with 49%
+// running over -- calibrated. But the board scores thirty correlated instruments, so one
+// currency shock prints "the forecast missed" on every pair carrying that leg. On
+// 2026-10-01, 27 of 30 ran past forecast and EUR was a leg in seven of the biggest.
+const used = (name, u) => ({ name, used: u });
+
+t('a wide day carried by one currency is reported as a few moves, not many misses', () => {
+  const c = rangeConcentration([
+    used('EURCHF', 527), used('EURCAD', 357), used('GBPCHF', 339), used('EURUSD', 281),
+    used('USDCHF', 237), used('EURJPY', 223), used('EURGBP', 209), used('EURAUD', 187),
+    used('EURNZD', 181), used('GBPJPY', 181), used('GBPCAD', 180), used('GBPUSD', 168),
+    used('USDJPY', 120), used('GOLD', 88),
+  ]);
+  assert.equal(c.over, 12, 'only the rows past 140% count as over');
+  assert.equal(c.scored, 14);
+  assert.ok(c.independent < c.over, 'the whole point: fewer moves than legs');
+  assert.equal(c.largest.leg, 'EUR');
+  assert.ok(c.largest.n >= 5);
+  assert.equal(c.concentrated, true);
+});
+
+t('every over-forecast instrument is placed exactly once', () => {
+  const rows = ['EURCHF', 'EURUSD', 'GBPJPY', 'AUDJPY', 'NZDCAD', 'USDCHF'].map(n => used(n, 200));
+  const c = rangeConcentration(rows);
+  const placed = c.groups.flatMap(g => g.names);
+  assert.equal(placed.length, rows.length);
+  assert.equal(new Set(placed).size, rows.length);
+});
+
+// A broad day IS many separate overshoots and must read as such -- silencing that would
+// explain away a real model failure.
+t('a day where nothing shares a leg is NOT called concentrated', () => {
+  const c = rangeConcentration([used('GOLD', 200), used('NQ', 190), used('US30', 185), used('BTCUSD', 180)]);
+  assert.equal(c.concentrated, false);
+  assert.equal(concentrationLine(c), '');
+});
+
+// The headline and the paragraph read the same flag. If they can disagree, the headline
+// announces a concentration the paragraph never explains.
+t('the flag and the sentence never disagree', () => {
+  const boards = [
+    [used('EURCHF', 527), used('EURUSD', 281), used('EURJPY', 223), used('EURGBP', 209), used('GOLD', 90)],
+    [used('GOLD', 200), used('NQ', 190), used('US30', 185), used('BTCUSD', 180)],
+    [used('GOLD', 200), used('NQ', 190)],
+    [used('EURUSD', 90), used('GOLD', 80), used('NQ', 70)],
+    [],
+  ];
+  for (const b of boards) {
+    const c = rangeConcentration(b);
+    assert.equal(!!(c?.concentrated), !!concentrationLine(c),
+      `flag and line disagree on ${JSON.stringify(b.map(x => x.name))}`);
+  }
+});
+
+t('fewer than three over forecast is not a pattern', () => {
+  assert.equal(rangeConcentration([used('GOLD', 200), used('NQ', 190)]), null);
+  assert.equal(rangeConcentration([]), null);
+  assert.equal(rangeConcentration(null), null);
+});
+
+t('rows with no range reading are ignored rather than counted as inside', () => {
+  const c = rangeConcentration([
+    used('EURCHF', 527), used('EURUSD', 281), used('EURJPY', 223),
+    { name: 'GBPUSD', used: null }, { name: 'AUDUSD' }, null,
+  ]);
+  assert.equal(c.over, 3);
+  assert.equal(c.scored, 3, 'an unscored row is not a row that stayed inside');
+});
+
+t('the threshold is the page’s own "over" line and is configurable', () => {
+  const rows = [used('EURCHF', 150), used('EURUSD', 150), used('EURJPY', 150)];
+  assert.equal(rangeConcentration(rows).over, 3, '150 is over the 140 default');
+  assert.equal(rangeConcentration(rows, 200), null, 'nothing clears a 200 threshold');
+});
+
+t('indices group together and gold stands alone', () => {
+  const c = rangeConcentration([used('NQ', 200), used('SPX500', 200), used('US30', 200), used('GOLD', 200)]);
+  const idx = c.groups.find(g => /index/.test(g.leg));
+  assert.equal(idx.n, 3);
+  assert.ok(c.groups.some(g => g.leg === 'gold'));
+});
+
+t('the sentence states the calibration rather than just asserting it is fine', () => {
+  const c = rangeConcentration([used('EURCHF', 527), used('EURUSD', 281), used('EURJPY', 223),
+                                used('EURGBP', 209), used('EURAUD', 187)]);
+  const line = concentrationLine(c);
+  assert.match(line, /MEDIAN day/);
+  assert.match(line, /100%/, 'the measured median must be quoted, not hand-waved');
+  assert.match(line, /49%/);
+  // it must EXPLAIN the tail, never predict from it: no forward claim anywhere, and the
+  // calibration is quoted from the measured record rather than asserted
+  assert.doesNotMatch(line, /\b(tomorrow|expect|will|likely)\b/i);
+  assert.match(line, /not a broken number/, 'the reader needs the conclusion stated outright');
 });
 
 console.log(`endOfDay: ${n} groups, all passed`);
