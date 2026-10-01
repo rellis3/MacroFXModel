@@ -20450,6 +20450,31 @@ app.get('/api/oi-bot/hold-calibration', async (req, res) => {
 // worked, independent of whether the basis moved enough to reproject. Zero pairs quoted across
 // two consecutive ticks (30 min) is not "the market was quiet" — every pair having nothing to do
 // at once does not happen — it is the fetch path being broken again.
+// oi_store is read-modify-written by THREE parties: the nightly capture (oi_recon/ingest.mjs,
+// via /api/kv/set), the 5-min basis refresh below, and /api/oi/reanalyse. The two server
+// writers read the whole store, spend seconds-to-minutes fetching quotes per pair, then
+// wrote the whole store back -- so a capture landing inside that window was silently
+// overwritten with the copy read before it. 2026-10-01: the 06:00 UTC capture logged
+// VERDICT OK, its own expectations step read the new book back out of oi_store, and the
+// store was serving 2026-09-30's chain again by 07:49 -- 26h old on the site and heading
+// for the bot's 30h OI-chain gate.
+// So: re-read right before writing and apply each update ONLY where that pair's chain is
+// still the one this writer started from (savedAtMs unchanged). A pair re-captured in the
+// meantime keeps the newer chain; the next basis tick re-projects it anyway.
+async function _oiStorePutGuarded(readStore, updates, who) {
+  const raw = await kv.getStrict('oi_store');
+  const latest = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+  const apply = {}, kept = [];
+  for (const [pair, v] of Object.entries(updates || {})) {
+    if ((latest?.[pair]?.savedAtMs ?? null) !== (readStore?.[pair]?.savedAtMs ?? null)) { kept.push(pair); continue; }
+    apply[pair] = v;
+  }
+  if (kept.length) console.warn(`[${who}] ${kept.length} pair(s) re-captured while this ran — kept the newer chain: ${kept.join(', ')}`);
+  if (!Object.keys(apply).length) return 0;
+  await kv.put('oi_store', JSON.stringify({ data: { ...latest, ...apply }, timestamp: Date.now() }));
+  return Object.keys(apply).length;
+}
+
 let _basisZeroQuoteStreak = 0;
 async function _refreshOIBasis() {
   try {
@@ -20460,14 +20485,15 @@ async function _refreshOIBasis() {
     const raw = await kv.getStrict('oi_store');
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
     let changed = 0, quoted = 0, n = 0;
+    const updates = {};
     for (const [pair, inst] of Object.entries(store || {})) {
       if (!inst || typeof inst !== 'object') continue;
       n++;
       try {
         const r = await _oiRefreshBasis(inst, { baseUrl: `http://127.0.0.1:${PORT}` });
         if (r?.quoted) quoted++;
-        if (r?.changed) { store[pair] = r.inst; changed++; }
-        else if (r?.inst) store[pair] = r.inst;   // spot/futures freshened even on sub-pip drift
+        if (r?.changed) { updates[pair] = r.inst; changed++; }
+        else if (r?.inst) updates[pair] = r.inst;   // spot/futures freshened even on sub-pip drift
       } catch { /* leave this pair as-is */ }
     }
     if (n && quoted === 0) {
@@ -20479,7 +20505,7 @@ async function _refreshOIBasis() {
       _basisZeroQuoteStreak = 0;
     }
     if (changed) {
-      await kv.put('oi_store', JSON.stringify({ data: store, timestamp: Date.now() }));
+      await _oiStorePutGuarded(store, updates, 'oi-basis');
       try { await _refreshOIBotZones(); } catch { /* zones refresh is best-effort */ }   // push drifted lines to the bot
       console.log(`[oi-basis] re-projected ${changed} pair(s) onto a fresh basis + refreshed bot zones (${quoted}/${n} quoted)`);
     }
@@ -20577,9 +20603,9 @@ app.post('/api/oi/reanalyse', async (req, res) => {
       } catch (e) { errors.push({ pair, error: e.message }); }
     }
     if (Object.keys(fresh).length) {
-      const merged = { ...store };
-      for (const [p, v] of Object.entries(fresh)) merged[p] = { ...(store[p] || {}), ...v };
-      await kv.put('oi_store', JSON.stringify({ data: merged, timestamp: Date.now() }));
+      const updates = {};
+      for (const [p, v] of Object.entries(fresh)) updates[p] = { ...(store[p] || {}), ...v };
+      await _oiStorePutGuarded(store, updates, 'oi-reanalyse');
     }
     let zonesRefreshed = null;
     if (Object.keys(fresh).length) { try { zonesRefreshed = await _refreshOIBotZones(); } catch (e) { zonesRefreshed = `failed: ${e.message}`; } }
