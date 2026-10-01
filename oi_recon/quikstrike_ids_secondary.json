@@ -1,0 +1,14 @@
+{
+  "_note": "SECONDARY nightly pull (run_secondary.py) - commodities, capture-only. Kept OUT of quikstrike_ids.json on purpose: the main sweep pulls every product in that file and ingest.mjs publishes them to oi_store, which the bots read. pid/pf are filled by `python run_secondary.py --learn \"XAG/USD\"` (pick the product by hand, close Chrome). `match` is text the tool header must contain or the pull refuses - a guess until the first real capture confirms the heading; edit it if a product is refused. Sugar is not here: it is an ICE product and QuikStrike (CME) does not carry it.",
+
+  "XAG/USD":    { "pid": null, "pf": null, "match": "Silver" },
+  "XCU/USD":    { "pid": null, "pf": null, "match": "Copper" },
+  "WTICO_USD":  { "pid": null, "pf": null, "match": "Crude" },
+  "NATGAS_USD": { "pid": null, "pf": null, "match": "Natural Gas" },
+  "SOYBN_USD":  { "pid": null, "pf": null, "match": "Soybean" },
+  "CORN_USD":   { "pid": null, "pf": null, "match": "Corn" },
+  "WHEAT_USD":  { "pid": null, "pf": null, "match": "Wheat" },
+  "XPT/USD":    { "pid": null, "pf": null, "match": "Platinum" },
+  "XPD/USD":    { "pid": null, "pf": null, "match": "Palladium" },
+  "BCO_USD":    { "pid": null, "pf": null, "match": "Brent" }
+}

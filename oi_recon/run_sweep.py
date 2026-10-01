@@ -44,7 +44,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from pull_quikstrike import (VIEWS, _drop_cached_session, _launch,  # noqa: E402
+from pull_quikstrike import (SWEEP_SUB, VIEWS, _drop_cached_session, _launch,  # noqa: E402
                              _load_qs_ids, pull_chain, pull_product)
 from recon import outdir, safe_name                               # noqa: E402
 
@@ -124,7 +124,7 @@ def main() -> None:
         print('\n  Nothing was fetched, written or validated.')
         return
 
-    d = outdir('quikstrike')
+    d = outdir(SWEEP_SUB)
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     log = d / f'sweep_{stamp}.log'
     sys.stdout = Tee(log)                                # noqa: SIM115

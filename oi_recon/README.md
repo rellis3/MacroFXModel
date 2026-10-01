@@ -140,6 +140,24 @@ QuikStrike chain (`Report: Standard`) or a Black-76 inversion off `settle`, whic
 would not be bit-identical to CME's published Volatility column and would need
 validating against the fixtures first.
 
+## Product ids (pid) and the secondary pull
+
+**Where the pids came from.** QuikStrike identifies a product by `pid` (and a family
+`pf`) in the tool's URL. The main 11 were supplied by hand from those URLs on
+2026-07-31 and checked with `--learn-pid`, which opens Chrome, lets you pick the
+product in QuikStrike's own picker, then reads `pid`/`pf` off the URL it navigates to
+and writes them to `quikstrike_ids.json`. `match` is set by hand: text the tool header
+must contain, or the pull refuses (pid 130 was supplied as DAX and turned out to be Dow,
+and that check is what caught it).
+
+**Secondary pull (commodities, 2026-10-01).** `run_secondary.bat` is a second scheduled
+task (07:30 UK, waits for the main run's browser lock). Same scraper, but its own product
+list (`quikstrike_ids_secondary.json`), its own folder (`out/<date>/quikstrike_secondary/`),
+no KV write and no heartbeat. The main run is unchanged: the two env vars it uses
+(`QS_IDS_FILE`, `OI_SWEEP_SUB`) are unset there and default to the main values.
+Learn each product once: `python run_secondary.py --learn "XAG/USD"`. Capture only until
+js/oi.js knows the products' contract sizes/units (otherwise FX defaults, wrong gamma).
+
 ## Scope note
 
 `products.py` covers 11 instruments, not the 13 in `OI_CME_PAIRS`. **DE30/FDAX

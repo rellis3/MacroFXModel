@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -164,7 +165,11 @@ def _dump_frame(fr, label: str) -> None:
         print('     could not read frame:', e)
 
 
-QS_IDS = HERE / 'quikstrike_ids.json'
+# Which product list, and which capture folder. Both default to the MAIN nightly run
+# and are only ever changed by the secondary run (run_secondary.py), which sets them
+# in its own process environment so it can never touch the main run's ids or files.
+QS_IDS = HERE / os.environ.get('QS_IDS_FILE', 'quikstrike_ids.json')
+SWEEP_SUB = os.environ.get('OI_SWEEP_SUB', 'quikstrike')
 
 
 QS_SESSION = HERE / '.qs_session.json'      # holds insid/qsid - gitignored
@@ -286,7 +291,10 @@ def mode_learn_pid(product: str, headless: bool) -> None:
         return
     pid, pf, url = seen[-1]
     ids = _load_qs_ids()
-    ids[product] = dict(pid=int(pid), pf=int(pf) if pf else None)
+    # Merge, don't replace: the entry may carry a hand-set `match` (the header text a
+    # pull must see before it writes), and re-learning a pid must not quietly drop it.
+    prev = ids.get(product) if isinstance(ids.get(product), dict) else {}
+    ids[product] = {**prev, 'pid': int(pid), 'pf': int(pf) if pf else None}
     QS_IDS.write_text(json.dumps(ids, indent=2))
     print(f'[learn-pid] {product}: pid={pid} pf={pf} -> {QS_IDS.name}')
     print(f'            from {url[:100]}')
@@ -452,7 +460,7 @@ def _prior_strikes(product: str | None, box: str) -> tuple[int, str]:
     strikes on 11 and 19 August. A capture that suddenly returns a fraction of
     that has not found a smaller book - it has read a half-rendered table.
     """
-    d = outdir('quikstrike')
+    d = outdir(SWEEP_SUB)
     root, today = d.parent.parent, d.parent.name
     best = (0, '')
     try:
@@ -461,7 +469,7 @@ def _prior_strikes(product: str | None, box: str) -> tuple[int, str]:
     except OSError:
         return best
     for day in days[:5]:                              # a week is plenty of history
-        f = day / 'quikstrike' / f'{safe_name(product or "current")}_{box}.tsv'
+        f = day / SWEEP_SUB / f'{safe_name(product or "current")}_{box}.tsv'
         if f.exists():
             try:
                 return shape(f.read_text(encoding='utf-8'))['strikes'], day.name
@@ -993,7 +1001,7 @@ def pull_product(ctx, page, product: str | None, views: list,
     tool, and the OI matrix would then be captured as a single expiry's strikes
     while still looking like a valid ladder. The smile lives in pull_chain.
     """
-    d = outdir('quikstrike')
+    d = outdir(SWEEP_SUB)
     results: dict = {}
     fr = _open_product(ctx, page, product)
     if not fr:
@@ -1243,7 +1251,7 @@ def pull_chain(ctx, page, product: str, code: str) -> str | None:
     corruption of every greek downstream. Nothing is written unless the view
     heading names the expiry we asked for.
     """
-    d = outdir('quikstrike')
+    d = outdir(SWEEP_SUB)
     # Navigate to the product ourselves rather than inheriting whatever is loaded.
     # This is what lets phase 2 run as its own sweep, so the session only has to
     # be dropped ONCE at the end instead of after every product.
