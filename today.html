@@ -5081,6 +5081,19 @@ async function loadTimelineData() {
   if (drName) { const r = allRows().find(x => x.name === drName); try { renderDrawerTimeline(r); } catch {} try { renderDrawerEod(r); } catch {} }
 }
 const _tlFam = ev => (window.deskWatchBrick?.EVENT_FAMILY_RE ?? EVENT_FAMILY_RE).find(([, re]) => re.test(ev ?? ''))?.[0] ?? null;
+/**
+ * The book's measured size for a NAMED release.
+ *
+ * `_tlFam` only resolves five coarse categories, and the impact map keeps ONE family per
+ * country|category -- so every employment release here rendered PAYROLLS' figures, and
+ * "Core PCE Price Index m/m" matched no category and silently showed nothing. This asks
+ * for the release's own family first (js/eventBookIndex.js maps the calendar's wording to
+ * it) and falls back to the old category lookup, so nothing that worked gets worse.
+ */
+const _tlImpact = (country, event) => !country || !event ? null
+  : window.eventImpactBrick?.eventImpactFor
+    ? window.eventImpactBrick.eventImpactFor(country, event, _tlFam(event))
+    : (f => f ? window.eventImpactBrick?.eventImpact(country, f) : null)(_tlFam(event));
 const _tlDay = ms => new Date(ms).toISOString().slice(0, 10);
 const _tlAgo = d => Math.round((Date.now() - Date.parse(d + 'T12:00:00Z')) / 864e5);
 // Releases in a window of days-ago [from, to), for a set of currencies (null = all), biggest surprises first.
@@ -5095,7 +5108,7 @@ function _tlReleases(fromAgo, toAgo, ccys = null, limit = 4, pairName = null) {
   for (const e of events ?? []) if ((e.impact ?? '').toLowerCase() === 'high') put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
   for (const d of _tl.snapshots ?? []) for (const e of d.released ?? []) put(e.country, e.event, e.ms, { estimate: e.estimate, prev: e.prev, actual: e.actual });
   for (const [key, list] of Object.entries(_tl.surprises ?? {})) { const [cc, name] = key.split('|'); for (const x of list) if (Number.isFinite(x.z) || x.actual != null) put(cc, name, x.ms, { estimate: x.estimate, actual: x.actual, z: x.z, name, revised: x.revised, revisedDelta: x.revisedDelta, revision: x.revision }); }
-  const out = [...by.values()].map(x => { const fam = _tlFam(x.name); const imp = fam ? window.eventImpactBrick?.eventImpact(x.cc, fam) : null; return { ...x, fam, imp, size: pairName ? imp?.instruments?.[pairName] : null }; })
+  const out = [...by.values()].map(x => { const fam = _tlFam(x.name); const imp = _tlImpact(x.cc, x.name); return { ...x, fam, imp, size: pairName ? imp?.instruments?.[pairName] : null }; })
     .filter(x => x.actual != null || x.estimate != null || x.imp);
   return out.sort((a, b) => ((b.size?.spike ?? b.imp?.medSpike ?? 0) - (a.size?.spike ?? a.imp?.medSpike ?? 0)) || (Math.abs(b.z ?? 0) - Math.abs(a.z ?? 0)) || (a.day < b.day ? 1 : -1)).slice(0, limit);
 }
@@ -5130,7 +5143,7 @@ function _tlLedgerLine(fromAgo, toAgo, pair = null) {
 function _tlAheadEvents(fromDays, toDays, ccys = null, pairName = null) {
   const now = Date.now();
   return (events ?? []).filter(e => { const dd = (e.ms - now) / 864e5; return (e.impact ?? '').toLowerCase() === 'high' && dd >= fromDays && dd < toDays && (!ccys || ccys.includes(e.country)); }).slice(0, 5)
-    .map(e => { const fam = _tlFam(e.event); const imp = fam ? window.eventImpactBrick?.eventImpact(e.country, fam) : null; const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? `: ${esc0(e.estimate)} expected` : ''}${nowcastText(e.country, e.event, e.ms)}${size ? ` — ${_tlImpactWord(size.spike)} for this pair` : imp ? ` — ${_tlImpactWord(imp.medSpike)}` : ''}</div>`; }).join('');
+    .map(e => { const fam = _tlFam(e.event); const imp = _tlImpact(e.country, e.event); const size = pairName ? imp?.instruments?.[pairName] : null; return `<div class="tl-l"><span class="k">${new Date(e.ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}</span>${esc0(e.country)} ${esc0(e.event)}${e.estimate != null ? `: ${esc0(e.estimate)} expected` : ''}${nowcastText(e.country, e.event, e.ms)}${size ? ` — ${_tlImpactWord(size.spike)} for this pair` : imp ? ` — ${_tlImpactWord(imp.medSpike)}` : ''}</div>`; }).join('');
 }
 // The calendar feed covers the current week only; on a weekend the week ahead is not published yet.
 function _tlNoCal(fromDays, toDays) {
@@ -7942,7 +7955,7 @@ function eventRangeChip(r) {
     const fam = EVENT_FAMILY_RE.find(([, re]) => re.test(e.event ?? ''))?.[0];
     if (!fam) continue;
     const eff = fx[fam]?.[r.name];
-    const bk = window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name];
+    const bk = _tlImpact(e.country, e.event)?.instruments?.[r.name];
     if (!eff && !(bk && bk.spike >= 2)) continue;
     const past = e.ms <= Date.now();
     const bkTxt = bk ? `The Event Response Book (76 families, 26 instruments): this release has moved ${dispName(r.name)} ${bk.spike}× an ordinary half-hour in its first 30 minutes and left a next day ${bk.next}× normal (n=${bk.n}); next-day direction ${bk.upPct}% up — a coin flip.` : '';
@@ -8041,7 +8054,7 @@ function drSpineHtml(r) {
   let clock = '<span class="muted">nothing scheduled</span>';
   if (d.news_flag) clock = `<b class="amb">${esc0(d.news_flag)}</b> <span class="muted">today \u00b7 range \u00d7${d.news_mult}</span>`;
   else if (e) { const hrs = (e.ms - Date.now()) / 3600e3; const fam = (typeof _tlFam === 'function') ? _tlFam(e.event) : null;
-    const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null;
+    const bk = _tlImpact(e.country, e.event)?.instruments?.[r.name];
     clock = `<b>${esc0(e.event)}</b> <span class="muted">${hrs >= 0 ? `in ${hrs < 1 ? Math.round(hrs * 60) + ' min' : hrs.toFixed(hrs < 10 ? 1 : 0) + 'h'}` : `${Math.abs(hrs).toFixed(1)}h ago`}${bk ? ` \u00b7 ${bk.spike}\u00d7 an ordinary half-hour` : ''}</span>`; }
   out.push(row('cost', costTxt, ''));
   out.push(row('next', clock, ''));
@@ -8106,9 +8119,9 @@ function beforeYouTradeHtml(r) {
   // 4 clock: the next print for this pair and what the book says it does
   { const evs = (typeof pairEvents === 'function' ? pairEvents(r.name) : []).filter(x => x.ms > Date.now() && (x.impact ?? '').toLowerCase() === 'high').slice(0, 4);
     const e = nextPairEvent(r.name); const fam = e ? _tlFam(e.event) : null;
-    const bk = fam ? window.eventImpactBrick?.eventImpact(e.country, fam)?.instruments?.[r.name] : null;
+    const bk = e ? _tlImpact(e.country, e.event)?.instruments?.[r.name] : null;
     // the spine names the next print and its size; this row is the rest of the book
-    const later = evs.slice(1).map(x => { const f = _tlFam(x.event); const b = f ? window.eventImpactBrick?.eventImpact(x.country, f)?.instruments?.[r.name] : null; const h = (x.ms - Date.now()) / 3600e3;
+    const later = evs.slice(1).map(x => { const b = _tlImpact(x.country, x.event)?.instruments?.[r.name]; const h = (x.ms - Date.now()) / 3600e3;
       return `${esc0(x.event)} (${h < 24 ? h.toFixed(0) + 'h' : Math.round(h / 24) + 'd'}${b ? `, ${b.spike}\u00d7` : ''})`; });
     const t = `${bk ? `The book on the next one: <b>${bk.spike}\u00d7</b> an ordinary half-hour on release, <b>${bk.next}\u00d7</b> the next day.` : e ? 'The next print is not a mover for this pair in the book.' : 'Nothing high-impact scheduled in the calendar window \u2014 a reason to expect an ordinary range, not a trend.'}${later.length ? ` Then: ${later.join(', ')}.` : ''}${d.news_flag ? ` Today\u2019s range is scaled \u00d7${d.news_mult} for ${esc0(d.news_flag)} until it clears.` : ''} Sizes are tested range facts; direction after a print is a coin flip here.`;
     rows.push(line(4, 'Clock', t, 'day', bk && bk.spike >= 2 ? { t: `${bk.spike}\u00d7 mover`, cls: 'warn' } : { t: 'range, never direction', cls: 'neu' })); }
@@ -8632,7 +8645,7 @@ function booksCardHtml() {
   // event book: the next high-impact print and its measured size
   const nowMs = Date.now(); const nxt = (events ?? []).filter(e => e.ms > nowMs && (e.impact ?? '').toLowerCase() === 'high').sort((a, b) => a.ms - b.ms)[0];
   let evLive = 'what each release does to each pair, measured';
-  if (nxt) { const fam = _tlFam(nxt.event); const imp = fam ? window.eventImpactBrick?.eventImpact(nxt.country, fam) : null; const pairs = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 2).map(([k, v]) => `${dispName(k)} ${v.spike}×`).join(', ') : null; evLive = `next: <b>${esc0(nxt.country)} ${esc0(nxt.event)}</b> ${new Date(nxt.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${pairs ? ` · the book: ${esc0(pairs)} a normal half-hour` : imp ? ` · ${imp.medSpike}× median` : ' · not a mover in the book'}`; }
+  if (nxt) { const imp = _tlImpact(nxt.country, nxt.event); const pairs = imp ? Object.entries(imp.instruments).sort((a, b) => b[1].spike - a[1].spike).slice(0, 2).map(([k, v]) => `${dispName(k)} ${v.spike}×`).join(', ') : null; evLive = `next: <b>${esc0(nxt.country)} ${esc0(nxt.event)}</b> ${new Date(nxt.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${pairs ? ` · the book: ${esc0(pairs)} a normal half-hour` : imp ? ` · ${imp.medSpike}× median` : ' · not a mover in the book'}`; }
   const rc = releaseCalls?.summary; row('event-response.html', '📅', 'Event Book', evLive, rc?.n ? `your calls: ${rc.hits} of ${rc.n} right` : 'call the print ▲▼ in the calendar above; it is scored here');
   // rates & policy
   const f = fred ?? {}; const s2 = f.us2y?.value, s10 = f.us10y?.value, s30 = f.us30y?.value, real = f.tips?.value, bei = f.bei?.value;

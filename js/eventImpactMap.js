@@ -5,6 +5,8 @@
 // next: next-day |move| ÷ ordinary day, n, upPct: next-day up-rate (a coin flip
 // everywhere -- shown so no one mistakes the size map for a direction) }.
 // Measurement only: what each release has done to each instrument, in size.
+import { familyFor } from './eventBookIndex.js';
+
 export const EVENT_IMPACT_MAP = {
  "US|cpi": {
   "family": "us|core-inflation-rate-month-over-month",
@@ -652,7 +654,1352 @@ export const EVENT_IMPACT_MAP = {
  }
 };
 
-/** Lookup by calendar country code (US, GB, EU, JP, AU, CA, NZ, CH) and family. */
+/** Lookup by calendar country code (US, GB, EU, JP, AU, CA, NZ, CH) and COARSE family. */
 export function eventImpact(country, family) {
   return EVENT_IMPACT_MAP[`${country}|${family}`] ?? null;
+}
+
+// The same measurements keyed by the release's OWN family, so a caller that knows which
+// release it is holding does not get the category representative's numbers instead.
+export const EVENT_FAMILY_IMPACT = {
+ "us|producer-price-index-month-over-month": {
+  "label": "US Producer Price Index Month-over-Month",
+  "events": 148,
+  "medSpike": 1.51,
+  "instruments": {
+   "USDJPY": {
+    "spike": 1.51,
+    "next": 1.11,
+    "n": 124,
+    "upPct": 52
+   }
+  }
+ },
+ "us|core-inflation-rate-month-over-month": {
+  "label": "US Core Inflation Rate Month-over-Month",
+  "events": 148,
+  "medSpike": 2.89,
+  "instruments": {
+   "EURUSD": {
+    "spike": 2.89,
+    "next": 1.23,
+    "n": 124,
+    "upPct": 44
+   },
+   "GBPUSD": {
+    "spike": 2.27,
+    "next": 1.29,
+    "n": 123,
+    "upPct": 48
+   },
+   "AUDUSD": {
+    "spike": 3.13,
+    "next": 1.4,
+    "n": 124,
+    "upPct": 52
+   },
+   "NZDUSD": {
+    "spike": 3.29,
+    "next": 1.25,
+    "n": 124,
+    "upPct": 48
+   },
+   "USDJPY": {
+    "spike": 3.09,
+    "next": 1.32,
+    "n": 124,
+    "upPct": 50
+   },
+   "USDCAD": {
+    "spike": 2.17,
+    "next": 1.34,
+    "n": 124,
+    "upPct": 52
+   },
+   "USDCHF": {
+    "spike": 2.75,
+    "next": 1.28,
+    "n": 124,
+    "upPct": 56
+   },
+   "GOLD": {
+    "spike": 2.02,
+    "next": 1.08,
+    "n": 122,
+    "upPct": 55
+   }
+  }
+ },
+ "us|ism-manufacturing-pmi": {
+  "label": "US ISM Manufacturing PMI",
+  "events": 102,
+  "medSpike": 1.74,
+  "instruments": {
+   "EURUSD": {
+    "spike": 1.7,
+    "next": 1.31,
+    "n": 102,
+    "upPct": 50
+   },
+   "NZDUSD": {
+    "spike": 1.63,
+    "next": 1.02,
+    "n": 102,
+    "upPct": 57
+   },
+   "USDJPY": {
+    "spike": 1.93,
+    "next": 1.14,
+    "n": 102,
+    "upPct": 53
+   },
+   "USDCHF": {
+    "spike": 1.74,
+    "next": 1.17,
+    "n": 102,
+    "upPct": 51
+   }
+  }
+ },
+ "us|payroll-jobs-growth": {
+  "label": "US Payroll Jobs Growth",
+  "events": 101,
+  "medSpike": 2.97,
+  "instruments": {
+   "EURUSD": {
+    "spike": 3.03,
+    "next": 1,
+    "n": 101,
+    "upPct": 55
+   },
+   "GBPUSD": {
+    "spike": 2.45,
+    "next": 0.94,
+    "n": 101,
+    "upPct": 53
+   },
+   "AUDUSD": {
+    "spike": 2.46,
+    "next": 1.11,
+    "n": 101,
+    "upPct": 54
+   },
+   "NZDUSD": {
+    "spike": 2.87,
+    "next": 0.92,
+    "n": 101,
+    "upPct": 55
+   },
+   "USDJPY": {
+    "spike": 3.34,
+    "next": 0.95,
+    "n": 101,
+    "upPct": 48
+   },
+   "USDCAD": {
+    "spike": 2.68,
+    "next": 0.96,
+    "n": 101,
+    "upPct": 43
+   },
+   "USDCHF": {
+    "spike": 3.13,
+    "next": 1.02,
+    "n": 101,
+    "upPct": 48
+   },
+   "GOLD": {
+    "spike": 2.97,
+    "next": 1.24,
+    "n": 98,
+    "upPct": 56
+   }
+  }
+ },
+ "us|headline-unemployment-rate": {
+  "label": "US Headline Unemployment Rate",
+  "events": 102,
+  "medSpike": 2.96,
+  "instruments": {
+   "EURUSD": {
+    "spike": 3.02,
+    "next": 1.02,
+    "n": 102,
+    "upPct": 54
+   },
+   "GBPUSD": {
+    "spike": 2.42,
+    "next": 1,
+    "n": 102,
+    "upPct": 52
+   },
+   "AUDUSD": {
+    "spike": 2.47,
+    "next": 1.12,
+    "n": 102,
+    "upPct": 53
+   },
+   "NZDUSD": {
+    "spike": 2.93,
+    "next": 0.92,
+    "n": 102,
+    "upPct": 54
+   },
+   "USDJPY": {
+    "spike": 3.32,
+    "next": 1,
+    "n": 102,
+    "upPct": 48
+   },
+   "USDCAD": {
+    "spike": 2.64,
+    "next": 0.95,
+    "n": 102,
+    "upPct": 43
+   },
+   "USDCHF": {
+    "spike": 3.09,
+    "next": 1.01,
+    "n": 102,
+    "upPct": 48
+   },
+   "GOLD": {
+    "spike": 2.96,
+    "next": 1.24,
+    "n": 99,
+    "upPct": 57
+   }
+  }
+ },
+ "us|retail-sales-month-over-month": {
+  "label": "US Retail Sales Month-over-Month",
+  "events": 102,
+  "medSpike": 1.61,
+  "instruments": {
+   "EURUSD": {
+    "spike": 1.6,
+    "next": 0.93,
+    "n": 102,
+    "upPct": 46
+   },
+   "GBPUSD": {
+    "spike": 1.58,
+    "next": 0.95,
+    "n": 101,
+    "upPct": 46
+   },
+   "AUDUSD": {
+    "spike": 1.61,
+    "next": 0.96,
+    "n": 102,
+    "upPct": 43
+   },
+   "NZDUSD": {
+    "spike": 1.71,
+    "next": 0.9,
+    "n": 102,
+    "upPct": 46
+   },
+   "USDJPY": {
+    "spike": 1.76,
+    "next": 0.93,
+    "n": 102,
+    "upPct": 57
+   },
+   "USDCHF": {
+    "spike": 1.51,
+    "next": 1.07,
+    "n": 102,
+    "upPct": 56
+   }
+  }
+ },
+ "us|michigan-consumer-sentiment-prel": {
+  "label": "US Michigan Consumer Sentiment Prel",
+  "events": 78,
+  "medSpike": 1.54,
+  "instruments": {
+   "USDCAD": {
+    "spike": 1.54,
+    "next": 1.07,
+    "n": 78,
+    "upPct": 49
+   }
+  }
+ },
+ "eu|ecb-interest-rate-decision": {
+  "label": "EU ECB Interest Rate Decision",
+  "events": 68,
+  "medSpike": 2.57,
+  "instruments": {
+   "EURUSD": {
+    "spike": 2.34,
+    "next": 1.61,
+    "n": 67,
+    "upPct": 40
+   },
+   "EURJPY": {
+    "spike": 2.57,
+    "next": 1.39,
+    "n": 68,
+    "upPct": 59
+   },
+   "EURGBP": {
+    "spike": 2.7,
+    "next": 1.04,
+    "n": 68,
+    "upPct": 53
+   },
+   "EURAUD": {
+    "spike": 2.87,
+    "next": 1.15,
+    "n": 68,
+    "upPct": 43
+   },
+   "EURCAD": {
+    "spike": 2.08,
+    "next": 1.37,
+    "n": 68,
+    "upPct": 46
+   },
+   "EURCHF": {
+    "spike": 1.95,
+    "next": 1.13,
+    "n": 68,
+    "upPct": 52
+   },
+   "EURNZD": {
+    "spike": 2.87,
+    "next": 1.2,
+    "n": 68,
+    "upPct": 50
+   }
+  }
+ },
+ "eu|deposit-facility-rate": {
+  "label": "EU Deposit Facility Rate",
+  "events": 68,
+  "medSpike": 2.57,
+  "instruments": {
+   "EURUSD": {
+    "spike": 2.34,
+    "next": 1.61,
+    "n": 67,
+    "upPct": 40
+   },
+   "EURJPY": {
+    "spike": 2.57,
+    "next": 1.39,
+    "n": 68,
+    "upPct": 59
+   },
+   "EURGBP": {
+    "spike": 2.7,
+    "next": 1.04,
+    "n": 68,
+    "upPct": 53
+   },
+   "EURAUD": {
+    "spike": 2.87,
+    "next": 1.15,
+    "n": 68,
+    "upPct": 43
+   },
+   "EURCAD": {
+    "spike": 2.08,
+    "next": 1.37,
+    "n": 68,
+    "upPct": 46
+   },
+   "EURCHF": {
+    "spike": 1.95,
+    "next": 1.13,
+    "n": 68,
+    "upPct": 52
+   },
+   "EURNZD": {
+    "spike": 2.87,
+    "next": 1.2,
+    "n": 68,
+    "upPct": 50
+   }
+  }
+ },
+ "us|fed-interest-rate-decision": {
+  "label": "US Fed Interest Rate Decision",
+  "events": 67,
+  "medSpike": 5.08,
+  "instruments": {
+   "EURUSD": {
+    "spike": 5.12,
+    "next": 1.6,
+    "n": 67,
+    "upPct": 46
+   },
+   "GBPUSD": {
+    "spike": 4.23,
+    "next": 2.02,
+    "n": 67,
+    "upPct": 51
+   },
+   "AUDUSD": {
+    "spike": 5.74,
+    "next": 1.43,
+    "n": 67,
+    "upPct": 40
+   },
+   "NZDUSD": {
+    "spike": 5.08,
+    "next": 1.52,
+    "n": 67,
+    "upPct": 46
+   },
+   "USDJPY": {
+    "spike": 5.7,
+    "next": 2.19,
+    "n": 67,
+    "upPct": 39
+   },
+   "USDCAD": {
+    "spike": 4.5,
+    "next": 1.64,
+    "n": 67,
+    "upPct": 55
+   },
+   "USDCHF": {
+    "spike": 5.05,
+    "next": 2.06,
+    "n": 67,
+    "upPct": 48
+   },
+   "GOLD": {
+    "spike": 4.28,
+    "next": 1.63,
+    "n": 67,
+    "upPct": 57
+   }
+  }
+ },
+ "us|ism-non-manufacturing-pmi": {
+  "label": "US ISM Non-Manufacturing PMI",
+  "events": 64,
+  "medSpike": 1.69,
+  "instruments": {
+   "USDJPY": {
+    "spike": 1.52,
+    "next": 0.88,
+    "n": 63,
+    "upPct": 60
+   },
+   "GOLD": {
+    "spike": 1.69,
+    "next": 1.04,
+    "n": 63,
+    "upPct": 54
+   }
+  }
+ },
+ "us|markit-manufacturing-pmi-flash": {
+  "label": "US Markit Manufacturing PMI Flash",
+  "events": 51,
+  "medSpike": 1.65,
+  "instruments": {
+   "AUDUSD": {
+    "spike": 1.65,
+    "next": 1.06,
+    "n": 51,
+    "upPct": 55
+   },
+   "USDJPY": {
+    "spike": 1.64,
+    "next": 0.85,
+    "n": 51,
+    "upPct": 51
+   }
+  }
+ },
+ "eu|markit-composite-pmi-flash": {
+  "label": "EU Markit Composite PMI Flash",
+  "events": 51,
+  "medSpike": 1.62,
+  "instruments": {
+   "EURJPY": {
+    "spike": 1.59,
+    "next": 0.85,
+    "n": 51,
+    "upPct": 47
+   },
+   "EURGBP": {
+    "spike": 1.62,
+    "next": 1.05,
+    "n": 51,
+    "upPct": 51
+   }
+  }
+ },
+ "gb|inflation-rate-year-over-year": {
+  "label": "GB Inflation Rate Year-over-Year",
+  "events": 102,
+  "medSpike": 1.9,
+  "instruments": {
+   "GBPUSD": {
+    "spike": 2.02,
+    "next": 0.8,
+    "n": 101,
+    "upPct": 44
+   },
+   "EURGBP": {
+    "spike": 2.19,
+    "next": 0.87,
+    "n": 102,
+    "upPct": 42
+   },
+   "GBPJPY": {
+    "spike": 1.81,
+    "next": 0.78,
+    "n": 102,
+    "upPct": 43
+   },
+   "GBPAUD": {
+    "spike": 1.61,
+    "next": 1,
+    "n": 102,
+    "upPct": 46
+   },
+   "GBPCAD": {
+    "spike": 2.03,
+    "next": 0.94,
+    "n": 102,
+    "upPct": 47
+   },
+   "GBPCHF": {
+    "spike": 1.9,
+    "next": 0.88,
+    "n": 102,
+    "upPct": 53
+   },
+   "GBPNZD": {
+    "spike": 1.78,
+    "next": 1.1,
+    "n": 102,
+    "upPct": 54
+   }
+  }
+ },
+ "gb|retail-sales-month-over-month": {
+  "label": "GB Retail Sales Month-over-Month",
+  "events": 102,
+  "medSpike": 1.52,
+  "instruments": {
+   "EURGBP": {
+    "spike": 1.52,
+    "next": 1.11,
+    "n": 102,
+    "upPct": 50
+   },
+   "GBPCHF": {
+    "spike": 1.51,
+    "next": 0.97,
+    "n": 102,
+    "upPct": 50
+   }
+  }
+ },
+ "gb|headline-unemployment-rate": {
+  "label": "GB Headline Unemployment Rate",
+  "events": 100,
+  "medSpike": 1.64,
+  "instruments": {
+   "EURGBP": {
+    "spike": 1.5,
+    "next": 1.27,
+    "n": 100,
+    "upPct": 50
+   },
+   "GBPJPY": {
+    "spike": 1.63,
+    "next": 1.06,
+    "n": 100,
+    "upPct": 54
+   },
+   "GBPAUD": {
+    "spike": 1.71,
+    "next": 1.01,
+    "n": 100,
+    "upPct": 52
+   },
+   "GBPNZD": {
+    "spike": 1.64,
+    "next": 0.91,
+    "n": 100,
+    "upPct": 46
+   }
+  }
+ },
+ "gb|claimant-count-change": {
+  "label": "GB Claimant Count Change",
+  "events": 71,
+  "medSpike": 1.54,
+  "instruments": {
+   "GBPJPY": {
+    "spike": 1.54,
+    "next": 0.95,
+    "n": 71,
+    "upPct": 49
+   },
+   "GBPAUD": {
+    "spike": 1.52,
+    "next": 0.99,
+    "n": 71,
+    "upPct": 44
+   }
+  }
+ },
+ "gb|boe-interest-rate-decision": {
+  "label": "GB BoE Interest Rate Decision",
+  "events": 67,
+  "medSpike": 4.9,
+  "instruments": {
+   "GBPUSD": {
+    "spike": 4.9,
+    "next": 1.27,
+    "n": 67,
+    "upPct": 45
+   },
+   "EURGBP": {
+    "spike": 6.08,
+    "next": 1.43,
+    "n": 67,
+    "upPct": 46
+   },
+   "GBPJPY": {
+    "spike": 4.37,
+    "next": 1.2,
+    "n": 67,
+    "upPct": 49
+   },
+   "GBPAUD": {
+    "spike": 5.45,
+    "next": 1.22,
+    "n": 67,
+    "upPct": 57
+   },
+   "GBPCAD": {
+    "spike": 5.78,
+    "next": 1.26,
+    "n": 67,
+    "upPct": 54
+   },
+   "GBPCHF": {
+    "spike": 4.58,
+    "next": 1.32,
+    "n": 67,
+    "upPct": 43
+   },
+   "GBPNZD": {
+    "spike": 4.75,
+    "next": 1.41,
+    "n": 67,
+    "upPct": 55
+   }
+  }
+ },
+ "us|annual-wage-growth": {
+  "label": "US Annual Wage Growth",
+  "events": 106,
+  "medSpike": 2.99,
+  "instruments": {
+   "EURUSD": {
+    "spike": 3.03,
+    "next": 0.99,
+    "n": 106,
+    "upPct": 54
+   },
+   "GBPUSD": {
+    "spike": 2.47,
+    "next": 1,
+    "n": 106,
+    "upPct": 52
+   },
+   "AUDUSD": {
+    "spike": 2.48,
+    "next": 1.08,
+    "n": 106,
+    "upPct": 52
+   },
+   "NZDUSD": {
+    "spike": 2.99,
+    "next": 0.94,
+    "n": 106,
+    "upPct": 54
+   },
+   "USDJPY": {
+    "spike": 3.32,
+    "next": 0.94,
+    "n": 106,
+    "upPct": 48
+   },
+   "USDCAD": {
+    "spike": 2.69,
+    "next": 0.95,
+    "n": 106,
+    "upPct": 44
+   },
+   "USDCHF": {
+    "spike": 3.14,
+    "next": 1.01,
+    "n": 106,
+    "upPct": 46
+   },
+   "GOLD": {
+    "spike": 2.91,
+    "next": 1.24,
+    "n": 103,
+    "upPct": 55
+   }
+  }
+ },
+ "us|factory-orders-month-over-month": {
+  "label": "US Factory Orders Month-over-Month",
+  "events": 103,
+  "medSpike": 1.66,
+  "instruments": {
+   "USDJPY": {
+    "spike": 1.66,
+    "next": 1.07,
+    "n": 103,
+    "upPct": 50
+   }
+  }
+ },
+ "us|retail-sales-excluding-autos-month-over-month": {
+  "label": "US Retail Sales Excluding Autos Month-over-Month",
+  "events": 102,
+  "medSpike": 1.61,
+  "instruments": {
+   "EURUSD": {
+    "spike": 1.6,
+    "next": 0.93,
+    "n": 102,
+    "upPct": 46
+   },
+   "GBPUSD": {
+    "spike": 1.58,
+    "next": 0.95,
+    "n": 101,
+    "upPct": 46
+   },
+   "AUDUSD": {
+    "spike": 1.61,
+    "next": 0.96,
+    "n": 102,
+    "upPct": 43
+   },
+   "NZDUSD": {
+    "spike": 1.71,
+    "next": 0.9,
+    "n": 102,
+    "upPct": 46
+   },
+   "USDJPY": {
+    "spike": 1.76,
+    "next": 0.93,
+    "n": 102,
+    "upPct": 57
+   },
+   "USDCHF": {
+    "spike": 1.51,
+    "next": 1.07,
+    "n": 102,
+    "upPct": 56
+   }
+  }
+ },
+ "gb|manufacturing-production-month-over-month": {
+  "label": "GB Manufacturing Production Month-over-Month",
+  "events": 150,
+  "medSpike": 1.51,
+  "instruments": {
+   "EURGBP": {
+    "spike": 1.51,
+    "next": 1.13,
+    "n": 126,
+    "upPct": 56
+   }
+  }
+ },
+ "gb|retail-price-index-year-over-year": {
+  "label": "GB Retail Price Index Year-over-Year",
+  "events": 150,
+  "medSpike": 1.85,
+  "instruments": {
+   "GBPUSD": {
+    "spike": 2,
+    "next": 0.92,
+    "n": 124,
+    "upPct": 44
+   },
+   "EURGBP": {
+    "spike": 2.07,
+    "next": 0.88,
+    "n": 126,
+    "upPct": 42
+   },
+   "GBPJPY": {
+    "spike": 1.74,
+    "next": 0.83,
+    "n": 126,
+    "upPct": 45
+   },
+   "GBPAUD": {
+    "spike": 1.56,
+    "next": 1.02,
+    "n": 126,
+    "upPct": 47
+   },
+   "GBPCAD": {
+    "spike": 1.93,
+    "next": 0.91,
+    "n": 126,
+    "upPct": 49
+   },
+   "GBPCHF": {
+    "spike": 1.85,
+    "next": 0.96,
+    "n": 126,
+    "upPct": 54
+   },
+   "GBPNZD": {
+    "spike": 1.74,
+    "next": 1.04,
+    "n": 126,
+    "upPct": 55
+   }
+  }
+ },
+ "gb|retail-sales-year-over-year": {
+  "label": "GB Retail Sales Year-over-Year",
+  "events": 101,
+  "medSpike": 1.5,
+  "instruments": {
+   "GBPCHF": {
+    "spike": 1.5,
+    "next": 0.98,
+    "n": 101,
+    "upPct": 50
+   }
+  }
+ },
+ "gb|construction-output-year-over-year": {
+  "label": "GB Construction Output Year-over-Year",
+  "events": 97,
+  "medSpike": 1.58,
+  "instruments": {
+   "EURGBP": {
+    "spike": 1.58,
+    "next": 1.09,
+    "n": 97,
+    "upPct": 52
+   }
+  }
+ },
+ "gb|employment-change": {
+  "label": "GB Employment Change",
+  "events": 87,
+  "medSpike": 1.61,
+  "instruments": {
+   "GBPAUD": {
+    "spike": 1.61,
+    "next": 1.02,
+    "n": 87,
+    "upPct": 55
+   },
+   "GBPNZD": {
+    "spike": 1.54,
+    "next": 0.89,
+    "n": 87,
+    "upPct": 47
+   }
+  }
+ },
+ "gb|public-sector-net-borrowing-ex-banks": {
+  "label": "GB Public Sector Net Borrowing Ex Banks",
+  "events": 48,
+  "medSpike": 1.66,
+  "instruments": {
+   "GBPJPY": {
+    "spike": 1.66,
+    "next": 1.3,
+    "n": 48,
+    "upPct": 54
+   }
+  }
+ },
+ "ca|unemployment-rate": {
+  "label": "CA Unemployment Rate",
+  "events": 220,
+  "medSpike": 2.56,
+  "instruments": {
+   "USDCAD": {
+    "spike": 2.85,
+    "next": 0.93,
+    "n": 112,
+    "upPct": 50
+   },
+   "EURCAD": {
+    "spike": 2.56,
+    "next": 0.94,
+    "n": 112,
+    "upPct": 48
+   },
+   "GBPCAD": {
+    "spike": 2.47,
+    "next": 1.1,
+    "n": 112,
+    "upPct": 57
+   },
+   "AUDCAD": {
+    "spike": 2.77,
+    "next": 0.88,
+    "n": 112,
+    "upPct": 57
+   },
+   "CADJPY": {
+    "spike": 2.32,
+    "next": 1.19,
+    "n": 112,
+    "upPct": 52
+   }
+  }
+ },
+ "au|employment-change": {
+  "label": "AU Employment Change",
+  "events": 219,
+  "medSpike": 3.27,
+  "instruments": {
+   "AUDUSD": {
+    "spike": 3.27,
+    "next": 1.22,
+    "n": 111,
+    "upPct": 40
+   },
+   "EURAUD": {
+    "spike": 3.27,
+    "next": 1.13,
+    "n": 111,
+    "upPct": 57
+   },
+   "GBPAUD": {
+    "spike": 3.21,
+    "next": 1.17,
+    "n": 111,
+    "upPct": 57
+   },
+   "AUDJPY": {
+    "spike": 2.31,
+    "next": 0.94,
+    "n": 111,
+    "upPct": 50
+   },
+   "AUDCAD": {
+    "spike": 3.81,
+    "next": 1.15,
+    "n": 111,
+    "upPct": 42
+   },
+   "AUDCHF": {
+    "spike": 2.96,
+    "next": 1.09,
+    "n": 111,
+    "upPct": 44
+   },
+   "AUDNZD": {
+    "spike": 3.66,
+    "next": 1.2,
+    "n": 111,
+    "upPct": 50
+   }
+  }
+ },
+ "ca|overnight-rate": {
+  "label": "CA Overnight Rate",
+  "events": 146,
+  "medSpike": 2.44,
+  "instruments": {
+   "USDCAD": {
+    "spike": 2.7,
+    "next": 1.14,
+    "n": 74,
+    "upPct": 49
+   },
+   "EURCAD": {
+    "spike": 2.19,
+    "next": 1.29,
+    "n": 74,
+    "upPct": 54
+   },
+   "GBPCAD": {
+    "spike": 2.44,
+    "next": 1.1,
+    "n": 74,
+    "upPct": 53
+   },
+   "AUDCAD": {
+    "spike": 2.61,
+    "next": 1.27,
+    "n": 74,
+    "upPct": 64
+   },
+   "CADJPY": {
+    "spike": 2.4,
+    "next": 1.02,
+    "n": 74,
+    "upPct": 45
+   }
+  }
+ },
+ "nz|official-cash-rate": {
+  "label": "NZ Official Cash Rate",
+  "events": 135,
+  "medSpike": 6.91,
+  "instruments": {
+   "NZDUSD": {
+    "spike": 5.58,
+    "next": 1.34,
+    "n": 63,
+    "upPct": 40
+   },
+   "EURNZD": {
+    "spike": 7.2,
+    "next": 1.43,
+    "n": 63,
+    "upPct": 54
+   },
+   "GBPNZD": {
+    "spike": 6.91,
+    "next": 1.34,
+    "n": 63,
+    "upPct": 60
+   },
+   "AUDNZD": {
+    "spike": 8.91,
+    "next": 1.67,
+    "n": 63,
+    "upPct": 57
+   },
+   "NZDJPY": {
+    "spike": 5.09,
+    "next": 1.3,
+    "n": 63,
+    "upPct": 43
+   }
+  }
+ },
+ "fomc": {
+  "label": "US FOMC statement (tone)",
+  "events": 78,
+  "medSpike": 5.61,
+  "instruments": {
+   "EURUSD": {
+    "spike": 5.48,
+    "next": 1.55,
+    "n": 78,
+    "upPct": 49
+   },
+   "GBPUSD": {
+    "spike": 4.59,
+    "next": 1.95,
+    "n": 78,
+    "upPct": 51
+   },
+   "AUDUSD": {
+    "spike": 6.46,
+    "next": 1.68,
+    "n": 78,
+    "upPct": 44
+   },
+   "NZDUSD": {
+    "spike": 5.74,
+    "next": 1.5,
+    "n": 78,
+    "upPct": 45
+   },
+   "USDJPY": {
+    "spike": 5.61,
+    "next": 1.85,
+    "n": 78,
+    "upPct": 37
+   },
+   "USDCAD": {
+    "spike": 4.47,
+    "next": 1.64,
+    "n": 78,
+    "upPct": 53
+   },
+   "USDCHF": {
+    "spike": 6.09,
+    "next": 2.05,
+    "n": 78,
+    "upPct": 47
+   },
+   "GOLD": {
+    "spike": 4.93,
+    "next": 1.61,
+    "n": 78,
+    "upPct": 58
+   }
+  }
+ }
+};
+
+/** Every family in the book, key -> label. What familyFor() matches the calendar against. */
+export const EVENT_FAMILIES = {
+ "us|producer-price-index-month-over-month": {
+  "label": "US Producer Price Index Month-over-Month"
+ },
+ "us|core-inflation-rate-month-over-month": {
+  "label": "US Core Inflation Rate Month-over-Month"
+ },
+ "us|core-pce-price-index-month-over-month": {
+  "label": "US Core PCE Price Index Month-over-Month"
+ },
+ "eu|inflation-rate-year-over-year-flash-estimate": {
+  "label": "EU Inflation Rate Year-over-Year Flash Estimate"
+ },
+ "eu|headline-unemployment-rate": {
+  "label": "EU Headline Unemployment Rate"
+ },
+ "us|ism-manufacturing-pmi": {
+  "label": "US ISM Manufacturing PMI"
+ },
+ "us|trade-balance": {
+  "label": "US Trade Balance"
+ },
+ "us|payroll-jobs-growth": {
+  "label": "US Payroll Jobs Growth"
+ },
+ "us|headline-unemployment-rate": {
+  "label": "US Headline Unemployment Rate"
+ },
+ "us|retail-sales-month-over-month": {
+  "label": "US Retail Sales Month-over-Month"
+ },
+ "us|existing-home-sales": {
+  "label": "US Existing Home Sales"
+ },
+ "us|durable-goods-orders-month-over-month": {
+  "label": "US Durable Goods Orders Month-over-Month"
+ },
+ "us|personal-spending-month-over-month": {
+  "label": "US Personal Spending Month-over-Month"
+ },
+ "us|personal-income-month-over-month": {
+  "label": "US Personal Income Month-over-Month"
+ },
+ "us|jolts-job-openings": {
+  "label": "US JOLTs Job Openings"
+ },
+ "us|housing-starts-level": {
+  "label": "US Housing Starts Level"
+ },
+ "us|michigan-consumer-sentiment-prel": {
+  "label": "US Michigan Consumer Sentiment Prel"
+ },
+ "eu|ecb-interest-rate-decision": {
+  "label": "EU ECB Interest Rate Decision"
+ },
+ "eu|deposit-facility-rate": {
+  "label": "EU Deposit Facility Rate"
+ },
+ "us|fed-interest-rate-decision": {
+  "label": "US Fed Interest Rate Decision"
+ },
+ "us|ism-non-manufacturing-pmi": {
+  "label": "US ISM Non-Manufacturing PMI"
+ },
+ "us|markit-manufacturing-pmi-flash": {
+  "label": "US Markit Manufacturing PMI Flash"
+ },
+ "eu|markit-composite-pmi-flash": {
+  "label": "EU Markit Composite PMI Flash"
+ },
+ "gb|inflation-rate-year-over-year": {
+  "label": "GB Inflation Rate Year-over-Year"
+ },
+ "gb|retail-sales-month-over-month": {
+  "label": "GB Retail Sales Month-over-Month"
+ },
+ "gb|headline-unemployment-rate": {
+  "label": "GB Headline Unemployment Rate"
+ },
+ "gb|gfk-consumer-confidence-index": {
+  "label": "GB GFK Consumer Confidence Index"
+ },
+ "gb|gdp-month-over-month": {
+  "label": "GB GDP Month-over-Month"
+ },
+ "us|building-permits-level": {
+  "label": "US Building Permits Level"
+ },
+ "gb|gdp-year-over-year": {
+  "label": "GB GDP Year-over-Year"
+ },
+ "gb|claimant-count-change": {
+  "label": "GB Claimant Count Change"
+ },
+ "gb|boe-interest-rate-decision": {
+  "label": "GB BoE Interest Rate Decision"
+ },
+ "us|eia-weekly-crude-oil-inventory": {
+  "label": "US EIA Weekly Crude Oil Inventory"
+ },
+ "us|weekly-natural-gas-storage-report": {
+  "label": "US Weekly Natural Gas Storage Report"
+ },
+ "us|eia-weekly-gasoline-inventory": {
+  "label": "US EIA Weekly Gasoline Inventory"
+ },
+ "us|s-p-case-shiller-home-price-year-over-year": {
+  "label": "US S&P/Case-Shiller Home Price Year-over-Year"
+ },
+ "eu|producer-price-index-month-over-month": {
+  "label": "EU Producer Price Index Month-over-Month"
+ },
+ "eu|industrial-sentiment-index": {
+  "label": "EU Industrial Sentiment Index"
+ },
+ "eu|services-sentiment": {
+  "label": "EU Services Sentiment"
+ },
+ "us|annual-wage-growth": {
+  "label": "US Annual Wage Growth"
+ },
+ "us|factory-orders-month-over-month": {
+  "label": "US Factory Orders Month-over-Month"
+ },
+ "eu|consumer-confidence-final": {
+  "label": "EU Consumer Confidence Final"
+ },
+ "us|retail-sales-excluding-autos-month-over-month": {
+  "label": "US Retail Sales Excluding Autos Month-over-Month"
+ },
+ "us|durable-goods-orders-ex-transp-month-over-month": {
+  "label": "US Durable Goods Orders Ex Transp Month-over-Month"
+ },
+ "eu|retail-sales-month-over-month": {
+  "label": "EU Retail Sales Month-over-Month"
+ },
+ "eu|industrial-production-month-over-month": {
+  "label": "EU Industrial Production Month-over-Month"
+ },
+ "eu|core-inflation-rate-year-over-year-final": {
+  "label": "EU Core Inflation Rate Year-over-Year Final"
+ },
+ "eu|consumer-confidence-flash": {
+  "label": "EU Consumer Confidence Flash"
+ },
+ "eu|retail-sales-year-over-year": {
+  "label": "EU Retail Sales Year-over-Year"
+ },
+ "us|michigan-current-conditions-prel": {
+  "label": "US Michigan Current Conditions Prel"
+ },
+ "us|michigan-consumer-expectations-prel": {
+  "label": "US Michigan Consumer Expectations Prel"
+ },
+ "eu|zew-economic-sentiment-index": {
+  "label": "EU ZEW Economic Sentiment Index"
+ },
+ "gb|manufacturing-production-month-over-month": {
+  "label": "GB Manufacturing Production Month-over-Month"
+ },
+ "gb|retail-price-index-year-over-year": {
+  "label": "GB Retail Price Index Year-over-Year"
+ },
+ "eu|trade-balance": {
+  "label": "EU Trade Balance"
+ },
+ "gb|nationwide-housing-prices-month-over-month": {
+  "label": "GB Nationwide Housing Prices Month-over-Month"
+ },
+ "gb|retail-sales-excluding-fuel-month-over-month": {
+  "label": "GB Retail Sales Excluding Fuel Month-over-Month"
+ },
+ "us|goods-trade-balance-adv": {
+  "label": "US Goods Trade Balance Adv"
+ },
+ "gb|cbi-distributive-trades": {
+  "label": "GB CBI Distributive Trades"
+ },
+ "gb|mortgage-lending-level": {
+  "label": "GB Mortgage Lending Level"
+ },
+ "gb|mortgage-approvals": {
+  "label": "GB Mortgage Approvals"
+ },
+ "gb|retail-sales-year-over-year": {
+  "label": "GB Retail Sales Year-over-Year"
+ },
+ "gb|boe-consumer-credit": {
+  "label": "GB BoE Consumer Credit"
+ },
+ "gb|construction-output-year-over-year": {
+  "label": "GB Construction Output Year-over-Year"
+ },
+ "gb|cbi-industrial-trends-orders": {
+  "label": "GB CBI Industrial Trends Orders"
+ },
+ "gb|public-sector-net-borrowing": {
+  "label": "GB Public Sector Net Borrowing"
+ },
+ "gb|employment-change": {
+  "label": "GB Employment Change"
+ },
+ "gb|goods-trade-balance": {
+  "label": "GB Goods Trade Balance"
+ },
+ "gb|construction-pmi-index": {
+  "label": "GB Construction PMI Index"
+ },
+ "gb|public-sector-net-borrowing-ex-banks": {
+  "label": "GB Public Sector Net Borrowing Ex Banks"
+ },
+ "ca|unemployment-rate": {
+  "label": "CA Unemployment Rate"
+ },
+ "au|employment-change": {
+  "label": "AU Employment Change"
+ },
+ "ca|overnight-rate": {
+  "label": "CA Overnight Rate"
+ },
+ "nz|official-cash-rate": {
+  "label": "NZ Official Cash Rate"
+ },
+ "fomc": {
+  "label": "US FOMC statement (tone)"
+ },
+ "beige-book": {
+  "label": "US Beige Book"
+ }
+};
+
+/**
+ * Impact for a named release, by the CALENDAR's own wording.
+ *
+ * Resolves the release to its own family first and falls back to the coarse category, so
+ * nothing that used eventImpact() gets worse and anything that can name the release gets
+ * its actual numbers. Returns the same shape either way, plus `family` and `exact`.
+ */
+export function eventImpactFor(country, event, coarseFamily = null) {
+  const key = familyFor(country, event, EVENT_FAMILIES);
+  const own = key ? EVENT_FAMILY_IMPACT[key] : null;
+  if (own) return { ...own, family: key, exact: true };
+  // The book HOLDS this release but it was filtered out for never clearing 1.5x an
+  // ordinary half-hour. That is an answer -- "nothing happens here" -- and falling back
+  // to the category would hand it a different, livelier family's numbers, which is the
+  // bug this whole split exists to remove.
+  if (key) return null;
+  const c = coarseFamily ? eventImpact(country, coarseFamily) : null;
+  return c ? { ...c, exact: false } : null;
 }
