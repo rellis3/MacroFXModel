@@ -33,3 +33,13 @@ days' forecasts < 0.85 quiet / 0.85–1.15 normal / > 1.15 heavy (known before t
   their SHORT trades alone (no long-drift passes; see the book's note of 2026-10-01).
 - Spread matters here: a 0.1σ stop on EURUSD is ≈ 4.5 pips, so a 0.8-pip spread costs ≈ 0.18R per trade. Reported per cell.
 - Self-check: the entry, stop and target of sampled trades unchanged under future-scramble from the bar after entry.
+
+## Amendment (2026-10-01, builds running, no results seen): IV/RV and skew splits
+Owner asked about realised vs implied vol. For the 7 CVOL instruments (AUDUSD, EURUSD, GBPUSD, USDCAD, USDCHF, USDJPY,
+gold; js/data/cmeCvolEod.json), using only CVOL rows dated before the trade's London date:
+- **IV ÷ RV** = previous CVOL ÷ 20-day realised vol of the CVOL `underlying` series (annualised %); terciles from 2016–22.
+  Textbook: high premium (nervous, two-way) → HOLD works better; low/negative premium → BREAK works better.
+- **Skew alignment**: CVOL `skew` (upvar − dnvar) sign vs the trade direction (+ = the options market is paying more for
+  protection in the trade's direction). Terciles of skew × direction.
+Both are descriptive splits of the pre-registered cells, reported for every cell, not pass conditions; any pattern they
+show would need its own pre-registered test.
