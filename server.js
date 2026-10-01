@@ -25,6 +25,7 @@ import { cotFactorSeries, qualifies, COT_FACTOR_UNIVERSE, COT_DATASETS, COT_WIND
 import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { travelRead } from './js/travelRead.js';
+import { crossSourceRead } from './js/sourceConflict.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -4542,10 +4543,33 @@ async function _buildMorningBrief() {
   let conflictLine = '';
   try {
     const fredWti = g('wti'), fredDate = fred?.wti?.asOf ?? null;
-    const bars = await _btFetchD1('WTICO_USD', 15).catch(() => null);   // session-dated (fetchD1 shifts evening opens)
+    const bars = await _btFetchD1('WTICO_USD', 200).catch(() => null);   // session-dated (fetchD1 shifts evening opens)
     const liveWti = bars?.at(-1)?.close ?? null;
     const sameDay = fredDate ? bars?.find(b => b.date === fredDate)?.close ?? null : null;
-    if (Number.isFinite(fredWti) && fredWti > 0 && Number.isFinite(sameDay)) {
+
+    // WHOSE GAP IS IT. A flat 4% line on the LEVEL fired on 8 of 125 shared dates, and
+    // most of that is structure: FRED is the spot Cushing settle and OANDA a front-month
+    // CFD, so FRED sits about 1% above it with a robust spread of 1.5%. Worse, "the
+    // sources disagree, treat oil as unsupported" throws away a working number when only
+    // one of them is broken -- FRED printed +16.6% on 2026-09-28 against OANDA's +0.5%,
+    // and -16.1% on 2026-04-08 against -2.1%; OANDA has no such day in the window.
+    // So judge the gap against its own history and name the feed that moved impossibly.
+    const wtiSeries = _crack?.data?.wtiSeries;
+    if (Array.isArray(wtiSeries) && wtiSeries.length >= 30 && Array.isArray(bars)) {
+      const oanda = new Map(bars.map(b => [b.date, b.close]));
+      const rows = wtiSeries.filter(o => oanda.has(o.date)).map(o => ({ date: o.date, a: o.value, b: oanda.get(o.date) }));
+      const read = crossSourceRead(rows, { aName: 'FRED DCOILWTICO', bName: 'OANDA WTICO_USD' });
+      if (read) {
+        conflictLine = read.verdict === 'suspect'
+          ? `WTI cross-source: ${read.line} Oil is load-bearing for inflation expectations and the commodity currencies, so use the working feed rather than dropping the read. `
+          : read.verdict === 'conflict'
+            ? `${read.line} Oil is load-bearing for any inflation-expectations story and for the commodity currencies, so LEAD with this conflict. `
+            : `WTI cross-check: ${read.line} `;
+      }
+    }
+    if (!conflictLine && Number.isFinite(fredWti) && fredWti > 0 && Number.isFinite(sameDay)) {
+      // fallback: the series was not available this pass, so fall back to the old
+      // same-date comparison rather than saying nothing about a load-bearing input
       const gap = (sameDay - fredWti) / fredWti * 100;
       if (Math.abs(gap) >= 4) {
         conflictLine = `DATA CONFLICT — WTI: FRED DCOILWTICO reads ${fredWti.toFixed(2)} for ${fredDate} while OANDA's close for the same session reads ${sameDay.toFixed(2)} — a ${gap.toFixed(1)}% gap on a shared date. `
@@ -14758,6 +14782,11 @@ async function _refreshCrack() {
     const last = hist[hist.length - 1]; const back = hist[Math.max(0, hist.length - 21)];
     let study = null; try { study = JSON.parse(fs.readFileSync(path.join(__dirname, 'analysis', 'output', 'crack_spread.json'), 'utf8')); } catch { /* the card still shows the numbers */ }
     _crack = { at: Date.now(), error: null, data: {
+      // Kept so the brief's cross-source check can judge today's FRED-vs-OANDA gap against
+      // the gap these two NORMALLY run, instead of a flat threshold that mostly measures
+      // the basis between a spot settle and a front-month CFD. Already fetched here, so
+      // this costs nothing.
+      wtiSeries: wti.slice(-200),
       last: { date: last.date, wti: last.wti, gasoline: last.gasoline, heatingOil: last.heatingOil, crack: +last.crack.toFixed(2) },
       change20: { crack: +(last.crack - back.crack).toFixed(2), wtiPct: +((last.wti / back.wti - 1) * 100).toFixed(2), from: back.date },
       context: ctx ? { ...ctx, last: +ctx.last.toFixed(2), p25: +ctx.p25.toFixed(1), median: +ctx.median.toFixed(1), p75: +ctx.p75.toFixed(1), p90: +ctx.p90.toFixed(1), percentile: +ctx.percentile.toFixed(3) } : null,
