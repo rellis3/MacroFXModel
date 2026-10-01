@@ -432,6 +432,73 @@ function meter(pct, ref, label){
   </div>`;
 }
 
+/**
+ * Every instrument this release touches, in one table.
+ *
+ * The page could only be read one pair at a time: to see whether payrolls hits the yen
+ * harder than the euro you had to flick the instrument picker back and forth and hold two
+ * numbers in your head. The comparison across instruments IS the interesting part of a
+ * release, and it was the one view the page would not give you.
+ *
+ * Purely a display: it reads the same rows render() already has, and touches nothing that
+ * feeds today.html (js/eventImpactMap.js is generated and is left alone).
+ *
+ * Ordered by the 30-minute multiple, because that is the measure this book says
+ * replicates. The next-day up-rate is shown greyed and never coloured -- on this page
+ * direction is a banked null across five registered tests, and a column of red and green
+ * up-rates would invite exactly the reading the rest of the page spends its words
+ * refusing. Distance from the coin flip is shown instead of a verdict.
+ */
+function allInstrumentsTable(fk, selected){
+  const fam = BOOK.book[fk]; if (!fam?.instruments) return '';
+  const rows = Object.entries(fam.instruments)
+    .filter(([, r]) => r && Number.isFinite(r.spikeR0))
+    .sort((a, b) => b[1].spikeR0 - a[1].spikeR0);
+  if (rows.length < 2) return '';            // nothing to compare
+  const max = rows[0][1].spikeR0 || 1;
+  const th = t => `<th style="text-align:left;padding:4px 6px;color:var(--text3);font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">${t}</th>`;
+
+  return `<div style="margin:0 0 18px">
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+      <b style="font-size:12.5px">Every instrument this release touches</b>
+      <span class="muted" style="font-size:11px">${rows.length} measured · click a row to open it below</span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <tr>${th('instrument')}${th('first 30 min')}${th('')}${th('next day')}${th('typical next-day move')}${th('releases')}${th('next day closed higher')}</tr>
+      ${rows.map(([k, r]) => {
+        const on = k === selected;
+        const up = r.r1?.[2];
+        const w = Math.max(2, Math.round((r.spikeR0 / max) * 100));
+        const hot = r.spikeR0 >= 2;
+        return `<tr data-inst="${k}" style="border-top:1px solid var(--border);cursor:pointer;${on ? 'background:var(--card2)' : ''}">
+          <td style="padding:6px"><b style="${on ? '' : 'font-weight:600'}">${instName(k)}</b></td>
+          <td style="padding:6px;white-space:nowrap"><b>${r.spikeR0.toFixed(2)}×</b></td>
+          <td style="padding:6px;width:28%">
+            <div style="height:7px;background:var(--card2);border-radius:4px;position:relative">
+              <div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;border-radius:4px;background:${hot ? 'var(--blue)' : 'var(--text3)'};opacity:${hot ? '.85' : '.5'}"></div>
+            </div>
+          </td>
+          <td style="padding:6px;color:var(--text2);white-space:nowrap">${r.moveMultiple != null ? r.moveMultiple.toFixed(2) + '×' : '—'}</td>
+          <td style="padding:6px;color:var(--text2);white-space:nowrap">${fmtBp(r.absR1Median)} <span class="muted">(${bpToPct(r.absR1Median)})</span></td>
+          <td style="padding:6px;color:var(--text3)">${r.n ?? '—'}</td>
+          <td style="padding:6px;color:var(--text3);white-space:nowrap">${up == null ? '—'
+            : `${up.toFixed(1)}% <span style="color:var(--text3)">${Math.abs(up - 50) < 3 ? '· a coin flip' : `· ${(up - 50 > 0 ? '+' : '') + (up - 50).toFixed(1)}pp`}</span>`}</td>
+        </tr>`;
+      }).join('')}
+    </table>
+    <p class="foot" style="margin-top:6px">The 30-minute multiple is the measure this book says replicates; bars past
+      2× clear the bar it uses to call a reaction real, and greyed bars sit below it. The last column is deliberately
+      uncoloured — five registered tests have failed to predict the direction of a post-release move, and the
+      up-rate across all 558 rows has a median of 50.5%. Read it as "no edge here", not as a lean.</p>
+  </div>`;
+}
+
+/** eurusd -> EUR/USD, gold -> GOLD. Display only. */
+function instName(k){
+  const s = String(k).toUpperCase();
+  return /^[A-Z]{6}$/.test(s) ? s.slice(0, 3) + '/' + s.slice(3) : s;
+}
+
 function render(){
   const fk = $('famSel').value, inst = $('instSel').value;
   const meta = BOOK.families[fk], fam = BOOK.book[fk], row = fam?.instruments?.[inst];
@@ -440,7 +507,7 @@ function render(){
   const spike = row.spikeR0, reacts = (meta.joinProof?.medianSpikeR0 ?? 0) >= 2;
   const evRows = EVENTS?.families?.[fk]?.instruments?.[inst] ?? null;
 
-  let html = '';
+  let html = allInstrumentsTable(fk, inst);
   if (!reacts) html += `<div class="warn">The market does not measurably react to this release.
     Its 30-minute window runs <b>${(meta.joinProof?.medianSpikeR0 ?? 0).toFixed(2)}×</b> an ordinary one across
     ${meta.joinProof?.instruments ?? 0} instruments — at or below the ordinary tape. Everything below is still
@@ -478,6 +545,18 @@ function render(){
     every row on this page, and that is the measurement — the size of a release's move is forecastable, its
     direction is not.</p>`;
   $('detail').innerHTML = html;
+  if (!$('detail').dataset.wired) {
+    $('detail').dataset.wired = '1';
+    // delegated, because the table is replaced on every render and per-row handlers
+    // would be rebound (and leak) each time
+    $('detail').addEventListener('click', ev => {
+      const tr = ev.target.closest?.('tr[data-inst]'); if (!tr) return;
+      const sel = $('instSel');
+      if (!sel || sel.value === tr.dataset.inst) return;
+      sel.value = tr.dataset.inst;
+      render();
+    });
+  }
 
   renderAnalogues(fk, inst, evRows);
 }
