@@ -4427,9 +4427,20 @@ async function _buildMorningBrief() {
     const cv = await _getCvol();
     const rlz = k => fc?.instruments?.[k]?.vol_annual;
     const cmp = (iv, r) => (iv != null && r != null) ? ` vs our realized σ ${r.toFixed(1)}% (${iv >= r ? 'options paying up' : 'options cheap vs realized'})` : '';
+    // _getCvol ALREADY works out that a leg is stale, and this line ignored it. FRED's
+    // EVZCLS -- the CBOE EUR/USD 1-month implied vol index -- stopped on 2025-03-11, so
+    // the brief kept printing 10.68 at "84.8th percentile" and comparing it with today's
+    // realized vol: a 570-day-old number telling the model options were cheap or dear
+    // against a tape it predates by nineteen months. A dead series is a thing to SAY, not
+    // a number to narrate.
+    const ivRow = (id, label, rlzKey) => {
+      if (cv.levels[id] == null) return null;
+      if (cv.stale?.[id]) return `${label}: this series stopped on ${cv.asOf?.[id] ?? 'an unknown date'} (${cv.ageDays?.[id] ?? '?'} days ago), so there is NO current implied-vol read for it. Do not compare it with realized vol and do not treat its percentile as today's.`;
+      return `${label} ${cv.levels[id]} — ${cv.pct[id]}th pctile of 5y${cmp(cv.levels[id], rlz(rlzKey))}`;
+    };
     ivLine = [
-      cv.levels.EVZCLS != null ? `EUR/USD 1M implied vol (EVZ) ${cv.levels.EVZCLS} — ${cv.pct.EVZCLS}th pctile of 5y${cmp(cv.levels.EVZCLS, rlz('EURUSD'))}` : null,
-      cv.levels.GVZCLS != null ? `Gold 1M implied vol (GVZ) ${cv.levels.GVZCLS} — ${cv.pct.GVZCLS}th pctile of 5y${cmp(cv.levels.GVZCLS, rlz('GOLD'))}` : null,
+      ivRow('EVZCLS', 'EUR/USD 1M implied vol (EVZ)', 'EURUSD'),
+      ivRow('GVZCLS', 'Gold 1M implied vol (GVZ)', 'GOLD'),
     ].filter(Boolean).join('\n');
   } catch { /* omitted from prompt when unavailable */ }
   // Economic surprise — actual vs CONSENSUS per currency, which is the macro
