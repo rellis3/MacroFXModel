@@ -334,11 +334,78 @@
     </div>
   </div>
 
+  <button id="chubHealthBtn" onclick="chubHealthOpen()" title="When each data source last actually updated">⬤ data</button>
   <button id="scratchBtn" onclick="scratchOpen()" title="Personal notes, synced across devices">📝 Notes</button>
   <button id="navEditBtn" onclick="navEditOpen()" title="Drag shortcuts between categories">✏️ Edit Nav</button>
 
 `;
   }
+
+
+/* ── Data health ─────────────────────────────────────────────────────────────
+   Staleness here was never a missing flag -- /api/cvol knew EVZ had been dead for 570
+   days and the brief narrated it anyway. It was a flag nobody looked at. This is the
+   one place to look, on every page the hub is on.
+
+   The dot is coloured by the WORST feed that needs attention, and a snapshot never
+   colours it: an export waiting to be refreshed is not an outage, and a badge that is
+   always amber is a badge nobody reads. */
+var CHUB_HEALTH_COLOUR = { fresh: '#10b981', lagging: '#f59e0b', stale: '#f87171', dead: '#ef4444', unknown: '#64748b', snapshot: '#64748b' };
+
+function chubHealthPaint(h) {
+  var b = document.getElementById('chubHealthBtn');
+  if (!b) return;
+  var c = CHUB_HEALTH_COLOUR[h && h.worst] || '#64748b';
+  var n = h && h.needsEyes ? ' ' + h.needsEyes : '';
+  b.innerHTML = '<span style="color:' + c + '">\u2b24</span> data' + n;
+  b.style.borderColor = h && h.needsEyes ? c + '66' : 'var(--border,#1e2a3a)';
+  b.title = h ? h.summary : 'data freshness';
+}
+
+// On window, not a bare declaration: this file is one big IIFE, so an inline onclick
+// cannot see a local function. Every other handler here is assigned the same way.
+window.chubHealthLoad = function () {
+  fetch('/api/data-health').then(function (r) { return r.json(); }).then(function (j) {
+    if (j && j.ok) { window.__chubHealth = j; chubHealthPaint(j); }
+  }).catch(function () { /* the pill just stays grey */ });
+};
+
+window.chubHealthOpen = function () {
+  var h = window.__chubHealth;
+  var ov = document.getElementById('chubHealthOverlay');
+  if (!ov) {
+    document.body.insertAdjacentHTML('beforeend',
+      '<div id="chubHealthOverlay" onclick="if(event.target===this)chubHealthClose()" style="display:none;position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.6)">' +
+      '<div style="max-width:720px;margin:6vh auto;background:var(--s1,#111827);border:1px solid var(--border,#1e2a3a);border-radius:10px;padding:16px;max-height:84vh;overflow:auto">' +
+      '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:4px"><b style="font-size:14px">Data health</b>' +
+      '<span id="chubHealthSum" style="font-size:11.5px;color:var(--text2,#94a3b8)"></span><span style="flex:1"></span>' +
+      '<button class="chub-btn" onclick="chubHealthLoad();setTimeout(chubHealthOpen,400)">\u21bb refresh</button>' +
+      '<button class="chub-btn" onclick="chubHealthClose()">close</button></div>' +
+      '<p style="font-size:11px;color:var(--text3,#64748b);line-height:1.5;margin:0 0 10px">Each source against ITS OWN cadence, counted in business days \u2014 a weekly series six days old is current, and Friday\u2019s close is one session old on Monday, not three. A snapshot is a manual export, not a fault.</p>' +
+      '<div id="chubHealthBody"></div></div></div>');
+    ov = document.getElementById('chubHealthOverlay');
+  }
+  var body = document.getElementById('chubHealthBody');
+  var sum = document.getElementById('chubHealthSum');
+  if (!h) { body.innerHTML = '<p style="font-size:12px;color:var(--text2,#94a3b8)">Still loading \u2014 press refresh.</p>'; }
+  else {
+    sum.textContent = h.summary;
+    body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+      h.rows.map(function (r) {
+        var c = CHUB_HEALTH_COLOUR[r.state] || '#64748b';
+        var age = r.ageDays == null ? '\u2014' : (r.ageDays < 1 ? Math.round(r.ageDays * 24) + 'h' : r.ageDays.toFixed(1) + 'd');
+        return '<tr style="border-top:1px solid var(--border,#1e2a3a)">' +
+          '<td style="padding:6px 6px 6px 0;white-space:nowrap"><span style="color:' + c + '">\u2b24</span> <b style="font-weight:600">' + r.state + '</b></td>' +
+          '<td style="padding:6px">' + (r.label || r.id) + '</td>' +
+          '<td style="padding:6px;color:var(--text2,#94a3b8);white-space:nowrap">' + age + '</td>' +
+          '<td style="padding:6px;color:var(--text3,#64748b);font-size:11px">' + (r.why || '') + '</td></tr>';
+      }).join('') + '</table>';
+  }
+  ov.style.display = 'block';
+};
+window.chubHealthClose = function () { var o = document.getElementById('chubHealthOverlay'); if (o) o.style.display = 'none'; };
+
+  try { window.chubHealthLoad(); } catch (e) { /* the pill stays grey */ }
 
   if (!document.getElementById('navEditOverlay')) {
     document.body.insertAdjacentHTML('beforeend', `

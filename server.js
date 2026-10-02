@@ -28,6 +28,7 @@ import { travelRead } from './js/travelRead.js';
 import { crossSourceRead } from './js/sourceConflict.js';
 import { loadCvolSeries as cvolSeriesFor, cvolMeta as _cvolMeta } from './js/impliedVolCore.js';
 import { constantMaturityIV } from './js/ivMetrics.js';
+import { health as _dataHealth } from './js/dataHealth.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -14434,6 +14435,70 @@ async function _briefIvLive() {
   if (!eurusd && !gold) return null;
   return { asOf: String(asOf ?? '').slice(0, 10) || 'today', eurusd, gold };
 }
+
+// ── /api/data-health — when did each feed last actually update? ──────────────
+// Reads what is ALREADY cached rather than re-fetching anything: every number below is a
+// timestamp some other job has already written. The point is not new data, it is that
+// staleness here has never been a missing flag -- /api/cvol knew EVZ was 570 days dead and
+// the brief narrated it anyway -- it is a flag nobody was looking at. One place to look.
+let _dataHealthCache = { at: 0, data: null };
+async function _buildDataHealth() {
+  const srcs = [];
+  const push = (id, label, last, cadenceDays = 1, extra = {}) => srcs.push({ id, label, last, cadenceDays, ...extra });
+  const lastOf = rows => (Array.isArray(rows) && rows.length ? (rows.at(-1).date ?? rows.at(-1).d ?? null) : null);
+
+  // the drill bundle: 71 series on one 24h refresh, so report the WORST leg rather than
+  // the bundle's own run time -- a bundle that ran is not a bundle whose feeds printed
+  try {
+    const d = _drillBundle.data;
+    if (d?.series) {
+      const dates = d.dates ?? [];
+      let worst = null, worstKey = null;
+      for (const [k, arr] of Object.entries(d.series)) {
+        if (!Array.isArray(arr)) continue;
+        for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) { const dt = dates[i]; if (dt && (!worst || dt < worst)) { worst = dt; worstKey = k; } break; }
+      }
+      push('drill', `Drill bundle (71 series, worst leg: ${worstKey ?? '?'})`, worst, 1);
+    }
+  } catch { /* reported as unknown below */ }
+
+  try { if (_crack.data?.last?.date) push('crack', 'Crude & crack (FRED)', _crack.data.last.date, 1); } catch {}
+  try { if (_rates.series) { const k = Object.keys(_rates.series)[0]; push('rates', 'Rates complex (FRED)', lastOf(_rates.series[k]), 1); } } catch {}
+  try { if (_chapters.data?.series) { const k = Object.keys(_chapters.data.series)[0]; push('chapters', 'Chapter series (FRED)', lastOf(_chapters.data.series[k]), 1); } } catch {}
+  try { if (_nowcast.at) push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at, 7, { market: false }); } catch {}
+  try { if (_macroRegime.at) push('regime', 'Currency regime table', _macroRegime.at, 30, { market: false }); } catch {}
+
+  // CVOL: each leg on its own, because that is where the dead one hid
+  try {
+    const cv = await _getCvol();
+    for (const [sid, when] of Object.entries(cv.asOf ?? {})) {
+      const isSnap = sid.startsWith('CME_');
+      push(`cvol:${sid}`, `Implied vol · ${sid}`, when, 1, isSnap ? { kind: 'snapshot' } : {});
+    }
+  } catch {}
+
+  // the OI capture, which is what the live IV term structure rides on
+  try {
+    const raw = await kv.get('oi_store');
+    if (raw) { const p = JSON.parse(raw); push('oi_store', 'CME settles capture (OI + IV term structure)', p.savedAt ?? p.at ?? null, 1); }
+  } catch {}
+
+  // the written reads, on a wall clock rather than a market one
+  try { const st = await _loadEodReviewStore(); if (st?.latest?.generatedAt) push('eodReview', 'Evening written review', st.latest.generatedAt, 1, { market: false }); } catch {}
+  try { const raw = await kv.get('hedge_alerts_cache'); if (raw) push('corr', 'Correlations & betas', JSON.parse(raw).generated ?? null, 1); } catch {}
+  try { const raw = await kv.get('fred_data_v3'); if (raw) { const p = JSON.parse(raw); push('fredDash', 'FRED dashboard cache', p.at ?? p.savedAt ?? null, 1, { market: false }); } } catch {}
+
+  const out = _dataHealth(srcs);
+  _dataHealthCache = { at: Date.now(), data: out };
+  return out;
+}
+
+app.get('/api/data-health', async (_req, res) => {
+  try {
+    if (_dataHealthCache.data && Date.now() - _dataHealthCache.at < 5 * 60_000) return res.json({ ok: true, cached: true, ..._dataHealthCache.data });
+    res.json({ ok: true, cached: false, ...(await _buildDataHealth()) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 app.get('/api/cvol', async (_req, res) => {
   try {
