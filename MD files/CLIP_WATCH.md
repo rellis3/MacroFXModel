@@ -746,3 +746,60 @@ for the root concept underneath all of them.
   level engine, the C+Z export and the Pine indicator.
 - **Record the delta-is-not-quite-a-probability point** wherever `dex` gets explained, so the
   approximation is never silently promoted to an identity.
+
+---
+
+## 2026-10-02 — Jess Inskip, Greeks series: long put and short put
+
+**Definitionally these complete the 2×2 already logged above and add nothing new to test.**
+Same mechanics, remaining two cells, correct as stated. Logged short on purpose — a clip
+that restates a framework already passed does not get a second full pass.
+
+**Two things in them are new, though, and one lands on a live assertion.**
+
+**(a) Payoff asymmetry, which the 2×2 board does not carry.** The short-put clip adds what
+the four-quadrant board leaves out: *"losses can be substantial because the stock can only
+go to zero."* Max gain is the premium received; max loss is strike minus premium. The board
+encodes the **signs** of direction, time and IV, but not the **shape** of the payoff — and
+the shape is what sizes a position. Not actionable here (nothing on this desk sells options)
+but it is the honest caveat on an otherwise complete teaching artefact.
+
+**(b) THE FINDING: a put is not a direction, and the prompt says it is.** Across these two
+clips her whole point is that the same instrument means opposite things depending on which
+side you hold: a **long** put is bearish, a **short** put is **bullish**. The contract is
+identical; the sign comes from who initiated.
+
+`js/ai.js` asserts otherwise, to a paid model:
+
+```js
+pcBias: inst.pcRatio > 1.3  ? 'BEARISH (put-heavy — market hedged down)'
+      : inst.pcRatio < 0.77 ? 'BULLISH (call-heavy — market positioned up)' : 'NEUTRAL',
+```
+
+And `js/oi.js:2428` shows what feeds it:
+
+```js
+const pcRatio = totalPutOI / Math.max(totalCallOI, 0.01);
+```
+
+**Pure open interest.** `oi_recon/fetch_oi.py` captures `openInterest` and `volume` and
+nothing else — no bid/ask classification, no trade-initiator side. Open interest counts a
+contract once regardless of who opened it, so a put-heavy book is equally consistent with
+puts **bought** as hedges (bearish, as the prompt assumes) and puts **sold** for premium
+(bullish, which is her short-put clip exactly). The data cannot distinguish them, and
+`volume` would not resolve it either without side classification.
+
+So "put-heavy — market hedged down" is an **interpretation presented as a reading**, resting
+on an assumption about initiator that the capture does not carry. It may well be the right
+prior — retail and institutional put buying for protection is real — but it is a prior, it
+is unlabelled, and like `gexRead` it has no entry among the ledger's 81.
+
+**Verdict and action.**
+- **Nothing to test in the clips themselves.** Framework already covered.
+- **`pcBias` joins `gexRead` on the same list**: two hard-coded interpretive sentences going
+  into a paid prompt, neither scored, both in an OI family where max pain came back null and
+  wall-touch came back an artefact. Whatever is done about the gamma rule should cover this
+  one in the same pass — they share a harness, a data source and a failure mode.
+- **Cheapest honest fix if neither gets tested soon:** make the prompt state the assumption
+  rather than hide it — "put-heavy; direction depends on initiator, which this data does not
+  carry" is both shorter and true.
