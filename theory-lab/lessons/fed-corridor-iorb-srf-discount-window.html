@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Fed's Corridor: IORB, the SRF and the Discount Window — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .fc-toggle{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 2px}
+  .fc-toggle button{font-family:'DM Mono',monospace;font-size:11.5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--s2);color:var(--text2);cursor:pointer}
+  .fc-toggle button.active{border-color:var(--blue-bd);background:var(--blue-bg);color:var(--blue)}
+  .fc-regime{margin-top:8px;padding:10px 12px;border-radius:var(--r);border:1px solid var(--border);background:var(--s1);font-size:13px;line-height:1.55;color:var(--text2)}
+  .fc-regime strong{color:var(--text)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Plumbing / The Fed's Corridor</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Plumbing · Lesson 1 of 2</div>
+  <h1 class="tl-title">The Fed's Corridor: IORB, the SRF and the Discount Window</h1>
+  <p class="tl-dek">Every night trillions of dollars of cash are lent against Treasuries. The Fed doesn't set that price directly. It builds a floor under it and a ceiling over it, then lets the market find its level in between. This lesson covers the corridor: what each wall is, who leans on it, and what happened the two times it was tested.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a></span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="fed-corridor-iorb-srf-discount-window-micro.html">Visual Guide</a>. It covers the same ground in short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Overnight funding</strong> is cash lent until tomorrow, mostly through repo against Treasuries. <strong>SOFR</strong> is the market's measured price for it.</li>
+      <li><strong>The floor:</strong> banks can earn <strong>IORB</strong> (interest on reserve balances) on cash parked at the Fed, so they won't lend much below it. Money market funds can't hold reserves; their floor is the <strong>ON RRP</strong> (overnight reverse repo facility), which sits at or near the bottom of the target range.</li>
+      <li><strong>The ceiling:</strong> the <strong>Standing Repo Facility (SRF)</strong>, made permanent in July 2021, lends cash against Treasuries at a fixed minimum rate. Nobody eligible should pay much more than that in the market. The <strong>discount window</strong> lends to banks at the same top-of-range rate, but borrowing there carries a stigma.</li>
+      <li><strong>The mid-month chain:</strong> on tax dates, cash leaves money market funds, funds pull cash out of repo, cash gets scarcer, and SOFR rises. It's a calendar effect, not a crisis.</li>
+      <li><strong>Two real tests:</strong> in September 2019 there was no standing ceiling, and SOFR spiked far above the target range until the Fed restarted repo operations. In March 2023, after SVB failed, discount-window borrowing hit a record and the Fed launched a new facility, the BTFP.</li>
+      <li><strong>The desk's verdict:</strong> SOFR above the floor and SRF usage are <strong>not stress signals</strong> (<code>funding-stress</code>, NULL). A drawn SRF was followed by a <em>calmer</em> tape, −0.561 ATR. That was the opposite of the desk's own written prior, and it matches the "arbitrage, not collapse" reading.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> covers how one repo
+    works: a sale and a buy-back, with the price difference as the interest. <a href="central-bank-policy.html">Central
+    Bank Policy</a> covers why the Fed moves its target rate. This lesson connects the two. Once the Fed announces a
+    target range for the federal funds rate, something has to make overnight money actually trade inside that
+    range. The Fed doesn't do it by dealing in the market all day. It sets <em>administered rates</em>, offers it will
+    always honour, and arbitrage pushes market rates between them.
+  </p>
+  <p>
+    It matters for reading a macro board because SOFR, the facility take-up numbers and the discount-window balance
+    all get printed as if they were stress gauges. Most of the time they aren't. They move with the calendar: month-end
+    balance-sheet dressing, mid-month tax dates, Treasury settlement days. Knowing which wall a rate is pressing against,
+    and why, separates "the plumbing is doing its job" from "something is breaking." This desk tested that
+    distinction on its own data, and the result went against its own prior.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A price kept in a lane by two standing offers</h3>
+    <p>
+      Picture a market for overnight cash. The Fed stands at the bottom and says: "Anyone with spare cash can leave it
+      with me and earn this rate." Nobody sensible will then lend to anyone else for less, which makes that rate the
+      <strong>floor</strong>. The Fed also stands at the top and says: "Anyone who needs cash and has good collateral
+      can borrow from me at this rate." Nobody sensible will then pay more to anyone else, which makes that rate the
+      <strong>ceiling</strong>.
+    </p>
+    <p style="margin-bottom:0">
+      Between the two, the market sets the price. When cash is plentiful it sits near the floor. When cash is scarce it
+      climbs toward the ceiling, and when it gets there borrowers stop paying more and go to the Fed instead. The
+      Fed's offers do the steering, and the market does the trading.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a lemonade stand where a grown-up promises: "I'll always buy lemonade for 40 cents, and I'll always sell it for 50 cents." Now no kid on the street will ever sell lemonade for 30 cents, because the grown-up pays more. And no kid will ever pay 70 cents, because the grown-up sells for less. So the price on the street always stays between 40 and 50 cents. The Fed is that grown-up, and the lemonade is overnight cash.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Overnight funding, and who is in the room</h2>
+  <p>
+    <strong>Overnight funding</strong> means borrowing cash today and paying it back tomorrow. Most of it is done as
+    <strong>repo</strong>: the borrower hands over Treasuries as collateral, gets cash, and buys the Treasuries back the
+    next day for slightly more. A bank, a securities dealer or a fund manages its daily cash this way. Holding a
+    large bond inventory, meeting a margin call or parking spare cash safely overnight all run through repo.
+  </p>
+  <p>
+    <strong>SOFR</strong>, the Secured Overnight Financing Rate, is published each morning by the New York Fed. It is
+    computed from the previous day's actual overnight Treasury repo transactions, so it is a measured price rather than
+    a survey. When people say "funding got tight," they usually mean SOFR rose relative to the Fed's administered
+    rates.
+  </p>
+
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏦</div>
+      <h4>Banks</h4>
+      <p>Hold <em>reserves</em>, cash in an account at the Fed, and earn IORB on them. A bank lends into repo only when the market pays more than IORB after balance-sheet costs. Banks are the only ones who can use the discount window.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📑</div>
+      <h4>Primary dealers</h4>
+      <p>The securities firms that trade directly with the New York Fed and bid at Treasury auctions. They hold large bond inventories and fund them overnight in repo, so they are the big <em>cash borrowers</em> and middlemen between cash lenders and leveraged investors. They have access to the SRF.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">💵</div>
+      <h4>Money market funds</h4>
+      <p>The big <em>cash lenders</em>. They hold investors' cash and must keep it safe and liquid, so they lend it overnight in repo. They can't hold reserves and can't use the discount window, but they can use the Fed's ON RRP.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🏛️</div>
+      <h4>The Treasury's account</h4>
+      <p>The US Treasury keeps its cash in the <em>Treasury General Account</em> (TGA) at the Fed. When taxes are paid or new debt settles, money moves out of private hands into the TGA. Reserves and market cash shrink by that amount. The TGA isn't a trader, but its swings drain and refill the system.</p>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of a big overnight swap meet. The money funds show up with piles of cash and want a safe place to leave it until morning. The dealers show up with piles of government bonds and need cash to keep holding them. They swap for one night. Banks can join in when it's worth their while. And the government's own piggy bank sometimes swallows a big pile of cash on tax day, which leaves less cash on the tables for everyone else.</p>
+  </div>
+
+  <h3>The corridor in one line</h3>
+  <p>
+    Put the administered rates in order and you have the corridor. With every rate quoted annualised, on an
+    ordinary day:
+  </p>
+  <div class="tl-math">
+    \[ r_{\text{ON RRP}} \;\le\; \text{SOFR} \;\lesssim\; r_{\text{SRF}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>r_ON RRP</code><span>the floor for non-banks: what a money fund earns by lending to the Fed instead</span></div>
+    <div class="tl-eq-chip c1"><code>SOFR</code><span>the market's measured overnight repo rate, set by supply and demand for cash</span></div>
+    <div class="tl-eq-chip c4"><code>r_SRF</code><span>the ceiling: the minimum bid rate at which the Fed lends cash against Treasuries</span></div>
+  </div>
+  <p>
+    IORB sits inside the band, usually a little below the top. The \(\lesssim\) is deliberate. The ceiling is
+    <em>soft</em>: not every borrower has access to the SRF, and some would rather pay a few basis points over the
+    rate than be seen using a Fed facility. SOFR can print a little above the SRF rate. Without any standing
+    ceiling, as in 2019, it can print far above.
+  </p>
+  <p>
+    Each wall comes from an arbitrage. A bank compares two uses for a dollar of reserves:
+  </p>
+  <div class="tl-math">
+    \[ \text{Lend in repo} \iff \text{SOFR} - c_{\text{bs}} > \text{IORB} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>SOFR</code><span>what the bank earns lending that dollar overnight in repo</span></div>
+    <div class="tl-eq-chip c3"><code>c_bs</code><span>the balance-sheet cost: capital and leverage rules make every dollar of assets cost something</span></div>
+    <div class="tl-eq-chip c2"><code>IORB</code><span>what the bank earns by doing nothing and leaving the dollar at the Fed</span></div>
+  </div>
+  <p>
+    A dealer that needs cash makes the mirror-image comparison at the top:
+  </p>
+  <div class="tl-math">
+    \[ \text{Borrow from the SRF} \iff \text{market repo rate} > r_{\text{SRF}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>market repo rate</code><span>what private cash lenders are charging tonight</span></div>
+    <div class="tl-eq-chip c2"><code>r_SRF</code><span>what the Fed charges, against the same Treasury collateral</span></div>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>SOFR</td><td>Secured Overnight Financing Rate. Built from actual overnight Treasury repo trades and published each business day by the New York Fed.</td></tr>
+    <tr><td>IORB</td><td>Interest on reserve balances. The rate the Fed pays banks on cash held in their Fed accounts.</td></tr>
+    <tr><td>\(r_{\text{ON RRP}}\)</td><td>The overnight reverse repo rate. Eligible non-banks, mainly money market funds, can lend cash to the Fed at this rate against Treasuries. It is set at or near the bottom of the target range (at the bottom since late 2024).</td></tr>
+    <tr><td>\(r_{\text{SRF}}\)</td><td>The Standing Repo Facility's minimum bid rate. The Fed lends cash against Treasuries and agency securities at this rate. It sits at the top of the target range.</td></tr>
+    <tr><td>\(c_{\text{bs}}\)</td><td>Balance-sheet cost. The implicit charge a bank pays for growing its balance sheet under capital and leverage rules. It explains why repo can trade above IORB without banks instantly arbitraging it away.</td></tr>
+    <tr><td>bp</td><td>Basis point: one hundredth of a percentage point. 0.05% = 5bp.</td></tr>
+    <tr><td>TGA</td><td>Treasury General Account. The government's cash account at the Fed. When it rises, reserves fall by the same amount.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The floor: IORB for banks, ON RRP for everyone else</h2>
+  <p>
+    Since 2008 the Fed has run with <em>ample reserves</em>: banks hold far more cash at the Fed than they need for
+    payments. In that system the main tool is the rate the Fed pays on those reserves. If the Fed pays banks IORB
+    risk-free, a bank has little reason to lend overnight for less. Raise IORB and every overnight rate moves up with
+    it. That is how a rate decision reaches the market the same afternoon.
+  </p>
+  <p>
+    But many cash lenders aren't banks. Money market funds, some government-sponsored enterprises and others hold
+    huge cash balances and <strong>cannot earn IORB</strong>, because they have no reserve account. Without help they
+    could end up lending below IORB, which would leak the floor. The <strong>ON RRP</strong> facility plugs that gap:
+    eligible non-banks can lend cash to the Fed overnight, against Treasury collateral, at a fixed rate set at or near the bottom
+    of the target range (exactly at the bottom since late 2024). A money fund then has no reason to lend to a dealer for less than the Fed pays.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>IORB: the floor for banks</h4>
+      <p>Paid on reserves. Only banks hold reserves. It is usually set inside the target range, a little below the top, so it pulls the fed funds rate into the range.</p>
+    </div>
+    <div class="tl-compare-card green">
+      <h4>ON RRP: the floor for non-banks</h4>
+      <p>Open to money market funds and other eligible counterparties. It is set at or near the bottom of the range. When cash is abundant, heavy ON RRP usage means funds have more cash than private borrowers want.</p>
+    </div>
+  </div>
+  <p>
+    In practice ON RRP usage is a good gauge of excess cash. When cash is plentiful, funds park large amounts there.
+    When cash gets scarcer, private repo starts paying more than the ON RRP rate, funds move their cash into the
+    market, and ON RRP balances shrink. A falling ON RRP balance usually means the system is moving from abundant cash
+    toward something tighter.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Banks have a special piggy bank at the Fed that pays them interest. So why would they lend their money to anyone else for less? Money funds don't get that special piggy bank, so the Fed gives them a slightly smaller one, the ON RRP. Now nobody has a reason to lend their cash out for peanuts.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The ceiling: the Standing Repo Facility, and the discount window</h2>
+  <p>
+    A floor alone doesn't stop rates going <em>up</em>. If, on one particular day, cash lenders are short of cash and
+    borrowers badly need it, the overnight rate can climb well above the target range. For a decade after 2008 the
+    Fed had no standing tool to cap that. It could step in with ad hoc repo operations, but they weren't guaranteed
+    in advance.
+  </p>
+  <p>
+    That changed in <strong>July 2021</strong>, when the FOMC set up the <strong>Standing Repo Facility</strong> as a
+    permanent part of its framework. Through the SRF the Fed stands ready every day to lend cash overnight against
+    Treasuries and agency securities at a minimum bid rate set at the top of the target range. Primary dealers have
+    access, and eligible banks can sign up. If market repo would cost more than the SRF rate, a dealer can borrow from
+    the Fed instead, and the market rate gets capped near that level.
+  </p>
+  <p>
+    The <strong>discount window</strong> is much older. It lets banks (only banks) borrow directly from their regional
+    Reserve Bank against a wide range of collateral, including loans and securities a dealer couldn't easily repo. Its
+    main programme, <em>primary credit</em>, has in recent years been priced at the top of the target range, the same
+    level as the SRF. So why does it matter which one is used?
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Standing Repo Facility</h4>
+      <p>Repo form, against Treasuries and agency debt. Built to be used routinely and to cap repo rates day to day. Using it is meant to signal nothing more than "this was the cheapest cash tonight."</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Discount window</h4>
+      <p>A loan to a bank, against broad collateral. A last-resort source of liquidity. Borrowing there has long carried a <strong>stigma</strong>: banks fear that if it becomes known, markets will read it as "this bank can't raise cash anywhere else."</p>
+    </div>
+  </div>
+  <p>
+    Stigma is the reason the distinction matters. A backstop that everyone is afraid to touch doesn't work as a
+    ceiling, because borrowers will pay well over its rate in the market to avoid being seen there. The SRF was designed
+    to be the ordinary, unembarrassing ceiling, while the discount window stays the emergency door. That gives the
+    clearest practical reading of the two:
+  </p>
+  <div class="tl-solid blue">
+    <strong>Arbitrage, not collapse.</strong> A dealer that uses the SRF on a day when market repo costs more than the
+    SRF rate is doing the obvious thing: borrowing where it's cheaper. Rising SRF usage on its own is evidence that the
+    ceiling is being <em>used as designed</em>. Heavy, sustained discount-window borrowing, especially by banks
+    under pressure, is a different and more serious signal.
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>There are two doors to borrow money from the Fed. One is the normal front door (the SRF), and using it just means you found the cheapest deal in town. The other is the emergency door (the discount window). It works fine, but everyone worries that people who use it must be in trouble, so they avoid it even when they need it.</p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The corridor: drag cash scarcity and watch SOFR move between the walls</div>
+    <svg viewBox="0 0 640 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Chart of the overnight rate against cash scarcity. Horizontal lines mark the ON RRP floor at the bottom of the band, IORB a little higher, and the SRF ceiling and discount window rate at the top. The SOFR curve sits near the floor when cash is abundant, rises through IORB as cash gets scarce, and is capped near the ceiling when the SRF is on, or spikes off the chart when it is off.">
+      <rect id="fc-band" x="60" y="0" width="550" height="0" style="fill:var(--blue);opacity:.07"/>
+      <line x1="60" y1="270" x2="610" y2="270" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="270" x2="60" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="335" y="300" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Cash scarcity → (abundant on the left, scarce on the right)</text>
+      <text x="18" y="145" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 18 145)">Overnight rate (%)</text>
+      <g id="fc-yticks"></g>
+      <line id="fc-rrp" x1="60" x2="610" y1="0" y2="0" style="stroke:var(--green);stroke-width:1.5"/>
+      <text id="fc-rrp-t" x="606" y="0" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--green)">ON RRP — floor for money funds</text>
+      <line id="fc-iorb" x1="60" x2="610" y1="0" y2="0" style="stroke:var(--blue);stroke-width:1.5"/>
+      <text id="fc-iorb-t" x="606" y="0" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--blue)">IORB — floor for banks</text>
+      <line id="fc-srf" x1="60" x2="610" y1="0" y2="0" style="stroke:var(--red);stroke-width:1.5"/>
+      <text id="fc-srf-t" x="606" y="0" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--red)">SRF min bid — ceiling · discount window (same rate)</text>
+      <polyline id="fc-ghost" points="" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:4,4"/>
+      <polyline id="fc-curve" points="" style="fill:none;stroke:var(--amber);stroke-width:2.5"/>
+      <line id="fc-marker" x1="60" y1="20" x2="60" y2="270" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:2,2"/>
+      <circle id="fc-dot" cx="60" cy="200" r="5.5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+      <text id="fc-off" x="0" y="34" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--red)" style="display:none">↑ off the chart</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Cash scarcity</span><span class="tl-live" id="fc-s-val">20 / 100</span></div>
+        <input type="range" id="fc-slider" min="0" max="100" step="1" value="20">
+        <div class="fc-toggle" role="group" aria-label="Standing ceiling on or off">
+          <button type="button" id="fc-on" class="active">SRF in place (since July 2021)</button>
+          <button type="button" id="fc-off-btn">No standing ceiling (as in Sept 2019)</button>
+        </div>
+        <div class="tl-hint">Illustrative settings: a 4.25–4.50% target range, ON RRP at 4.25%, IORB at 4.40%, SRF and discount-window rates at 4.50%. The exact spreads have been adjusted several times; the shape is the point. The amber curve is SOFR under the selected regime. The dashed grey curve is the other regime, shown for comparison.</div>
+      </div>
+    </div>
+    <div class="tl-readout">SOFR ≈ <b id="fc-sofr">4.30</b>% · vs IORB <b id="fc-spread">−10</b>bp · vs ceiling <b id="fc-gap">−20</b>bp</div>
+    <div class="fc-regime" id="fc-regime"></div>
+    <div class="tl-chart-caption">
+      The market curve is a stylised supply-and-demand shape, not a fitted model: almost flat while cash is plentiful,
+      then increasingly steep as the last spare cash is used up. With the SRF on, the curve is capped a few basis points
+      above the ceiling, because not every borrower can or will use the facility. With it off, nothing stops the climb.
+      That is the shape of September 2019.
+    </div>
+  </div>
+
+  <h3>The mid-month chain: why SOFR lifts around the 15th</h3>
+  <p>
+    Here is how a perfectly ordinary calendar event becomes a rate move, with each actor doing the one thing it is
+    forced to do:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Mid-month tax date</b>Corporate and individual tax payments fall due; Treasury coupon settlement often lands nearby</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Investors</b>Pull cash out of money market funds to pay the bill</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Money market funds</b>Must meet redemptions, so lend less in repo that night</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Treasury's account</b>The payments land in the TGA at the Fed, draining reserves and market cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Still need to fund the same bond inventory, so they bid up for scarcer cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>SOFR lifts toward the ceiling for a day or two, then settles</div>
+  </div>
+  <p>
+    Nothing in that chain is a failure. Every link is someone meeting a known obligation on a known date. The rate
+    moves because cash is briefly in the wrong place: in the Treasury's account instead of the repo market. The
+    month-end version has a different cause, banks shrinking their balance sheets for reporting dates, but the same
+    character: predictable, temporary, and calendar-driven.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>On tax day, lots of people take money out of their savings to pay the government. The savings funds then have less to lend that night, while the bond dealers still need the same amount. Fewer lenders and the same number of borrowers means the price of borrowing goes up for a day. Then the money flows back and everything calms down.</p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Both arbitrages, in dollars, on the illustrative corridor</h3>
+    <p>Using the chart's illustrative settings (ON RRP 4.25%, IORB 4.40%, SRF 4.50%) and the actual/360 convention used in US repo:</p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The dealer at the ceiling</h4>
+          <p>On a tight night, private repo is quoted at 4.62%. A dealer needs $1 billion overnight. Borrowing from the SRF at 4.50% instead saves 12bp:</p>
+          <div class="tl-math">\[ 1{,}000{,}000{,}000 \times 0.0012 \times \tfrac{1}{360} = \$3{,}333.33 \text{ saved, for one night} \]</div>
+          <p>That is the whole motive. Nothing about the dealer's health changed; the Fed was simply the cheaper lender that night.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The bank inside the corridor</h4>
+          <p>SOFR is 4.45%, 5bp over IORB. A bank with $500 million of spare reserves could lend them in repo instead of leaving them at the Fed:</p>
+          <div class="tl-math">\[ 500{,}000{,}000 \times 0.0005 \times \tfrac{1}{360} = \$694.44 \text{ extra per night, before balance-sheet cost} \]</div>
+          <p>If the bank's balance-sheet cost \(c_{\text{bs}}\) is worth more than 5bp to it, it stays put. This is why SOFR can sit a little above IORB without banks instantly closing the gap.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The money fund at the floor</h4>
+          <p>On an abundant-cash night a dealer offers a money fund 4.22% for overnight cash. The ON RRP pays 4.25%. The fund lends to the Fed instead, so the dealer must offer at least the ON RRP rate to get the cash. That is the floor at work.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>SOFR prints 8bp above IORB on the 16th of the month</h3>
+    <p>
+      A macro trader sees the morning SOFR print come in well above IORB, and the SRF shows some take-up. The headline
+      writes itself: "funding stress." Before reacting, the trader checks the calendar. It is the 16th, a corporate tax
+      date, and a Treasury coupon settlement landed the day before. That is the mid-month chain above, exactly. The
+      trader also notes that the facility did its job: the rate was capped near the SRF rate rather than running away.
+    </p>
+    <p style="margin-bottom:0">
+      The honest read is "calendar tightness, ceiling working," not a risk-off signal. What <em>would</em> change the
+      read: the rate staying elevated for days after the tax date; SOFR blowing well past the SRF rate; or large and
+      rising discount-window borrowing outside a quarter-end. Even then, this desk's own tests (Section 06) say to be
+      careful about acting on it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: two tests of the walls</h2>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>September 2019: the repo spike, with no ceiling in place</h3>
+    <p>
+      In mid-September 2019, two drains on cash landed together: <strong>quarterly corporate tax payments</strong> fell
+      due on the 16th, and a large <strong>settlement of newly issued Treasury securities</strong> went through the
+      same day. Both moved cash from private hands into the Treasury's account at the Fed. Reserves had already been
+      shrinking for some time as the Fed ran down its balance sheet.
+    </p>
+    <p>
+      Cash lenders pulled back, and overnight repo rates jumped. On September 17, SOFR printed 5.25% against a target
+      range of 2.00–2.25%, and the effective fed funds rate briefly moved above the top of its range. There was no
+      standing facility to cap the move. The New York Fed <strong>restarted overnight repo operations</strong> on
+      September 17 for the first time in about a decade, and kept offering them in the weeks that followed. In
+      October the Fed also began buying Treasury bills to rebuild reserves.
+    </p>
+    <p style="margin-bottom:0">
+      The lesson the Fed drew is visible in the toggle on the chart above. A ceiling you have to improvise after the
+      spike is worse than one that is always there. The Standing Repo Facility, made permanent in July 2021, is that
+      standing ceiling.
+    </p>
+  </div>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2023: SVB, the discount window, and the BTFP</h3>
+    <p>
+      Silicon Valley Bank failed on March 10, 2023, after a run by uninsured depositors. Like many banks, it held
+      large amounts of Treasuries and agency securities bought when rates were low. Once rates rose, those bonds were
+      worth well below face value (the inverse price-yield relationship from
+      <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>). Selling them to meet withdrawals locked in
+      the loss.
+    </p>
+    <p>
+      On March 12 the Fed announced the <strong>Bank Term Funding Program (BTFP)</strong>. It offered loans of up to one
+      year to banks against Treasuries and agency securities valued <strong>at par</strong>, not at their lower market
+      value. That removed the need to sell at a loss to raise cash. At the same time banks turned to the discount window
+      in size: the Fed's weekly figure for primary credit reached about $152.9 billion in the week of March 15, a
+      record, above the previous peak of about $110.7 billion in October 2008. The BTFP stopped making new loans in
+      March 2024.
+    </p>
+    <p style="margin-bottom:0">
+      This was the emergency door being used for its real purpose: a bank-specific run, not a calendar date. The
+      contrast with an ordinary SRF day is the whole point of this lesson. One is a liquidity backstop catching real
+      distress; the other is a price cap doing routine work.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In 2019 there was no "always-open" borrowing door, so when cash ran short on tax day, the price of borrowing shot up until the Fed rushed to open one. In 2023 a bank got into real trouble because people pulled their money out all at once, and the Fed opened a special door so banks wouldn't have to sell their bonds at a loss. The first was a traffic jam; the second was a real accident.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>What this desk found when it tested the claim</h2>
+  <p>
+    The folk claim is simple: <em>SOFR above the Fed's floor, or the Standing Repo Facility being drawn, is a funding-stress
+    warning, so expect wider, rougher markets next.</em> This desk pre-registered that test and ran it on its own data
+    (2,123 SOFR sessions, 2018-04 to 2026-09, next-five-session range against an ATR-quintile-matched control).
+  </p>
+
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>funding-stress: SOFR above the floor is the calendar, not stress.</strong> With month-end excluded,
+    headline SOFR ≥ 3bp over the floor left just 15 episodes, below the pre-registered floor of 20, so untestable.
+    <strong>12 of those 15 fall on the 14th–18th of a month</strong>, the mid-month tax and settlement dates in the chain
+    above. Removing month-end didn't remove the calendar; it revealed a different one. Direction was null on all three
+    instruments.</span>
+  </div>
+
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>funding-stress: a drawn SRF was followed by a CALMER tape, not a wider one.</strong> 21 episodes. SPX500
+    next-5-session range <strong>−0.561 ATR [−0.984, −0.181]</strong> versus control, negative in both halves (−0.928 /
+    −0.228). EUR/USD −0.483 [−1.150, +0.119] and USD/JPY +0.417 [−0.066, +0.963] are both null. And the SRF is drawn on
+    <strong>667 of 2,123 sessions (31%)</strong>, which makes "the backstop was used" routine plumbing rather than a stress
+    marker.</span>
+  </div>
+
+  <div class="tl-verdict context">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>repo-stress-range: the 99th-percentile SOFR spike is month-end plumbing.</strong> 26 episodes 2018–2026.
+    Next-five-session range vs matched control: SPX500 +0.14 ATR [−0.54, +0.98], EUR/USD +0.13 [−0.37, +0.65], USD/JPY +0.08
+    [−0.76, +0.93], and the dollar moved <em>less</em> than usual (0.45% vs 0.59%). The setup fires on a quarter of all
+    sessions since 2024. Read it as month-end tightness unless the backstops are in use.</span>
+  </div>
+
+  <div class="tl-solid amber">
+    <strong>The framing beat the desk's own prior.</strong> The pre-registered expectation was that a drawn SRF
+    precedes <em>wider</em> ranges: the instinctive "the backstop was used, so something is wrong" reading. The data
+    went the other way. The "arbitrage, not collapse" reading in Section 04 predicts exactly what came back: SRF days
+    are mostly ordinary days on which the Fed was the cheapest lender. Next time a plumbing claim gets a prior assigned by
+    instinct, ask first which wall is being leaned on, and why.
+  </div>
+  <p>
+    Note the step that the result does <strong>not</strong> license. The calmer tape after SRF use is reported as
+    measured, <strong>not as evidence that the backstop works</strong>. With usage this routine, SRF days are mostly
+    ordinary days, and the sample starts in 2018 and contains no crisis. The question still open is whether funding
+    stress matters when the facility is <em>not</em> there to cap it, which is September 2019's world, not today's. And
+    these are range findings: they say nothing about which way markets move.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📍</div>
+      <h4>Read SOFR relative to the walls</h4>
+      <p>The level of SOFR means little alone. Its spread to IORB, to the ON RRP rate and to the SRF rate says which wall is binding and how much room is left.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🗓️</div>
+      <h4>Check the calendar first</h4>
+      <p>Month-ends, quarter-ends, mid-month tax dates and Treasury settlement days explain most SOFR jumps. A spike on one of those days is the null hypothesis, not a finding.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📉</div>
+      <h4>Watch the ON RRP balance drain</h4>
+      <p>A shrinking ON RRP balance means spare cash is moving into private markets. Once it is near empty, further drains such as a TGA rebuild or balance-sheet runoff come out of bank reserves directly.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🚪</div>
+      <h4>Treat the two doors differently</h4>
+      <p>SRF take-up on a tight day is a price cap working. Large, rising discount-window borrowing away from a quarter-end is the signal worth a second look, and even then a level, not a "was it used" flag.</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Every rate in this lesson is already pulled; two studies have scored them</h3>
+    <p style="margin-bottom:0">
+      The catalogue's policy group carries SOFR, IORB, the SRF (<code>RPONTSYD</code>), the ON RRP (<code>RRPONTSYD</code>)
+      and the discount window (<code>WLCFLPCL</code>). The verdicts quoted above are the ledger entries
+      <code>funding-stress</code> (null) and <code>repo-stress-range</code> (context) in <code>js/deskEvidence.js</code>.
+      The discount-window series has not been tested; the 94.7%-non-zero usage rate means any test must use its level, not
+      a used/not-used flag.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the corridor gets misread</h3>
+    <ul>
+      <li><strong>Reading SRF usage as an alarm.</strong> It is drawn on about a third of sessions. On most of those days it's simply the cheapest cash. The desk's test found calmer, not rougher, markets afterwards.</li>
+      <li><strong>Forgetting the calendar.</strong> A SOFR jump on the 15th or the last business day of a quarter is almost always tax, settlement or balance-sheet dressing.</li>
+      <li><strong>Treating the ceiling as hard.</strong> SOFR can print a few basis points above the SRF rate because not every borrower has access, and some avoid any Fed facility. "Capped near" is more accurate than "capped at."</li>
+      <li><strong>Lumping the two doors together.</strong> The SRF and the discount window may charge the same rate, but they serve different users, take different collateral and carry very different signalling weight.</li>
+      <li><strong>Over-reading the null.</strong> "Calmer after SRF use" does not prove the backstop works in a crisis. The sample has no crisis in it.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Fed steers overnight rates with standing offers, not daily trading.</strong> A floor (IORB for banks, ON RRP for money funds) and a ceiling (the SRF, permanent since July 2021) keep SOFR in a lane.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Each wall is an arbitrage.</strong> No one lends below what the Fed pays them; no one with access borrows above what the Fed charges.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The mid-month chain is calendar, not crisis.</strong> Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two doors, two meanings.</strong> The SRF is the routine price cap; the discount window is the stigmatised emergency door, used in size in March 2023 alongside the new BTFP.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>SOFR above the floor is not a stress signal on this desk's data (funding-stress, NULL).</strong> 12 of 15 non-month-end episodes land on the 14th–18th of a month.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A drawn SRF did not precede a wider tape; the desk's prior lost.</strong> SPX500 −0.561 ATR [−0.984, −0.181] (calmer), with the SRF drawn on 667 of 2,123 sessions (31%). Reported as measured, not as proof the backstop works.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The ceiling is soft, and the sample has no crisis.</strong> September 2019's spike happened without a standing ceiling. Whether stress matters when no facility caps it is still untested here.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why do money market funds need the ON RRP when banks already have IORB?</summary>
+    <div class="tl-answer">Money market funds can't hold reserves at the Fed, so they can't earn IORB. Without another option they might lend cash below IORB, and overnight rates could slip under the Fed's intended floor. The ON RRP lets them lend to the Fed at a fixed rate at or near the bottom of the target range, so no fund needs to lend privately for less.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. The SRF and the discount window charge the same top-of-range rate. Why does it matter which one a borrower uses?</summary>
+    <div class="tl-answer">They serve different users and signal different things. The SRF is a repo facility against Treasuries and agency debt, open to primary dealers and eligible banks, and built for routine use as a price cap. The discount window lends only to banks, against broader collateral, and has long carried a stigma: using it can be read as "this bank can't raise cash anywhere else." A ceiling that people are afraid to touch doesn't cap rates, which is why a routine, unembarrassing facility was built.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Walk the mid-month chain from a tax date to a higher SOFR, naming what each actor is forced to do.</summary>
+    <div class="tl-answer">Taxes fall due → investors withdraw from money market funds to pay them → the funds must meet those redemptions, so they lend less cash in repo that night → the payments land in the Treasury's account at the Fed, draining market cash → dealers still need to fund the same bond inventory, so they bid more for scarcer cash → SOFR rises for a day or two, then settles once the cash flows back.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What was different about September 2019 compared with a tight day today?</summary>
+    <div class="tl-answer">In 2019 there was no standing ceiling. When tax payments and Treasury settlement drained cash on the same day, nothing capped the overnight rate, and SOFR printed 5.25% against a 2.00–2.25% target range until the New York Fed restarted repo operations. Today the Standing Repo Facility is always available at the top of the range, so on a similar day dealers would borrow there instead and the market rate would be capped near the SRF rate.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. The desk found SPX500 ranges were narrower (−0.561 ATR) after SRF draws. Why can't you conclude "the backstop works"?</summary>
+    <div class="tl-answer">Because the SRF is drawn on 31% of sessions, so SRF days are mostly ordinary days, and the 2018–2026 sample contains no crisis. The comparison can't show what would have happened without the facility. The result does refute the original prior (that SRF use warns of wider markets), and it fits the "arbitrage, not collapse" reading. But it is a range finding with no counterfactual, not proof the backstop prevents stress.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Federal Reserve Bank of New York, background materials on the Secured Overnight Financing Rate and on the Standing Repo and Overnight Reverse Repo facilities: the official descriptions of how each rate and facility works.</li>
+    <li>Board of Governors of the Federal Reserve System, FOMC statement and implementation note of July 28, 2021, establishing the standing repo facilities.</li>
+    <li>Afonso, Cipriani, Copeland, Kovner, La Spada and Martin, "The Market Events of Mid-September 2019," Federal Reserve Bank of New York Staff Reports (2020): a detailed account of the repo spike and its causes.</li>
+    <li>Board of Governors of the Federal Reserve System, Bank Term Funding Program materials (March 2023), and the weekly H.4.1 release, which reports discount-window and facility balances.</li>
+    <li><a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a>: the repo mechanics this lesson builds on. <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>: where SOFR goes once it is published.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="collateral-margin-repo-markets.html">← Collateral, Margin &amp; Repo Markets</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="qe-qt-balance-sheet.html">QE and QT: What the Fed's Balance Sheet Actually Does →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Illustrative corridor settings (percent). Shape matters, not the exact spreads.
+  var RRP = 4.25, IORB = 4.40, SRF = 4.50;
+  var Y_MIN = 4.15, Y_MAX = 5.05;
+  var X_L = 60, X_R = 610, Y_B = 270, Y_T = 20;
+
+  // Stylised private-market rate as cash gets scarcer: nearly flat, then convex.
+  function market(s){ return RRP + 0.02 + 0.0016*s + 0.012*Math.exp((s-60)/8); }
+  // With a standing ceiling: market rate is capped softly a few bp above the SRF rate
+  // (not every borrower has access or is willing to use it).
+  var LEAK = 0.05;
+  function withSRF(s){
+    var m = market(s);
+    if (m <= SRF) return m;
+    return SRF + LEAK*(1 - Math.exp(-(m - SRF)/0.10));
+  }
+
+  function xOf(s){ return X_L + s/100*(X_R - X_L); }
+  function yOf(r){ return Y_B - (r - Y_MIN)/(Y_MAX - Y_MIN)*(Y_B - Y_T); }
+  function yClip(r){ return Math.max(Y_T, Math.min(Y_B, yOf(r))); }
+
+  var slider = document.getElementById('fc-slider');
+  if (!slider) return;
+  var curve = document.getElementById('fc-curve');
+  var ghost = document.getElementById('fc-ghost');
+  var marker = document.getElementById('fc-marker');
+  var dot = document.getElementById('fc-dot');
+  var off = document.getElementById('fc-off');
+  var sVal = document.getElementById('fc-s-val');
+  var sofrOut = document.getElementById('fc-sofr');
+  var spreadOut = document.getElementById('fc-spread');
+  var gapOut = document.getElementById('fc-gap');
+  var regime = document.getElementById('fc-regime');
+  var btnOn = document.getElementById('fc-on');
+  var btnOff = document.getElementById('fc-off-btn');
+  var srfOn = true;
+
+  function placeLine(id, r){
+    var l = document.getElementById(id), t = document.getElementById(id + '-t');
+    var y = yOf(r);
+    l.setAttribute('y1', y); l.setAttribute('y2', y);
+    t.setAttribute('y', y - 4);
+  }
+  placeLine('fc-rrp', RRP);
+  placeLine('fc-iorb', IORB);
+  placeLine('fc-srf', SRF);
+  var band = document.getElementById('fc-band');
+  band.setAttribute('y', yOf(SRF));
+  band.setAttribute('height', yOf(RRP) - yOf(SRF));
+
+  var ticks = document.getElementById('fc-yticks');
+  var tickHtml = '';
+  for (var r = 4.2; r <= 5.0001; r += 0.2){
+    var y = yOf(r);
+    tickHtml += '<text x="52" y="' + (y + 3.5).toFixed(1) + '" text-anchor="end" font-size="9.5" font-family="\'DM Mono\',monospace" fill="var(--text3)">' + r.toFixed(2) + '</text>';
+  }
+  ticks.innerHTML = tickHtml;
+
+  function pts(fn){
+    var out = [];
+    for (var i = 0; i <= 100; i++) out.push(xOf(i).toFixed(1) + ',' + yClip(fn(i)).toFixed(1));
+    return out.join(' ');
+  }
+  var ptsOn = pts(withSRF), ptsOff = pts(market);
+
+  function regimeText(s, r){
+    if (r < IORB - 0.05) return '<strong>Near the floor.</strong> Cash is abundant. Money funds have more than private borrowers want, so they park the rest at the ON RRP. SOFR sits just above the ON RRP rate, below IORB.';
+    if (r < IORB + 0.02) return '<strong>Around IORB.</strong> Spare cash is being absorbed. ON RRP balances drain as private repo starts to match what the Fed pays, and banks weigh lending reserves against leaving them at the Fed.';
+    if (r < SRF) return '<strong>Inside the corridor, climbing.</strong> SOFR is above IORB, so banks with spare balance-sheet room lend reserves into repo. This is where mid-month tax dates and month-ends push the rate.';
+    if (srfOn) return '<strong>Ceiling engaged: the SRF.</strong> Market repo would cost more than the SRF rate, so dealers borrow from the Fed instead. SOFR is capped a few bp above the ceiling. The discount window charges the same rate, but stigma keeps banks away from it on a day like this.';
+    if (r < SRF + 0.15) return '<strong>No standing ceiling.</strong> SOFR is through the top of the range and nothing automatically stops it. The discount window is open to banks at this rate, but stigma means few will use it.';
+    return '<strong>No standing ceiling: the September 2019 shape.</strong> The rate keeps climbing with scarcity. The only fix is for the Fed to step in with emergency repo operations after the fact.';
+  }
+
+  function update(){
+    var s = parseInt(slider.value, 10);
+    var r = srfOn ? withSRF(s) : market(s);
+    sVal.textContent = s + ' / 100';
+    sofrOut.textContent = r.toFixed(2);
+    var sp = Math.round((r - IORB)*100), gp = Math.round((r - SRF)*100);
+    spreadOut.textContent = (sp > 0 ? '+' : '') + sp;
+    gapOut.textContent = (gp > 0 ? '+' : '') + gp;
+    var x = xOf(s), y = yOf(r);
+    marker.setAttribute('x1', x); marker.setAttribute('x2', x);
+    dot.setAttribute('cx', x); dot.setAttribute('cy', Math.max(Y_T, y));
+    if (y < Y_T){ off.style.display = ''; off.setAttribute('x', Math.min(x, X_R - 40)); }
+    else { off.style.display = 'none'; }
+    regime.innerHTML = regimeText(s, r);
+  }
+
+  function setMode(on){
+    srfOn = on;
+    btnOn.classList.toggle('active', on);
+    btnOff.classList.toggle('active', !on);
+    curve.setAttribute('points', on ? ptsOn : ptsOff);
+    ghost.setAttribute('points', on ? ptsOff : ptsOn);
+    update();
+  }
+
+  btnOn.addEventListener('click', function(){ setMode(true); });
+  btnOff.addEventListener('click', function(){ setMode(false); });
+  slider.addEventListener('input', update);
+  setMode(true);
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+</body>
+</html>
