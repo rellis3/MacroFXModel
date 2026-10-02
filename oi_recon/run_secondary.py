@@ -89,7 +89,19 @@ def main() -> None:
     print(out[-4000:])
     m = re.search(r'^.*tables captured.*$', out, re.M)
     capture = m.group(0).strip() if m else 'no summary line'
-    ok = rc == 0
+    # Volume is the one view allowed to be missing. On a thin product (palladium, Brent)
+    # a single 250-lot trade makes the OI-change grid and the volume grid IDENTICAL, and
+    # the scraper's duplicate guard -- right for the main run, where identical means the
+    # view never switched -- refuses the second. Seen 2026-10-02 on both, Brent on one run
+    # and not the next. Volume only feeds the volume-magnet levels, so it is not fatal here;
+    # the settles/OI/change views still have to be complete.
+    views = dict((k, (int(a), int(b))) for k, a, b in re.findall(r'(raw\w+) (\d+)/(\d+)', capture))
+    core_ok = bool(views) and all(views.get(k, (0, 1))[0] == views.get(k, (0, 1))[1]
+                                  for k in ('rawIVTerm', 'rawOI', 'rawChg'))
+    vol = views.get('rawVol')
+    ok = rc == 0 or core_ok
+    if ok and vol and vol[0] < vol[1]:
+        capture += f'  [{vol[1] - vol[0]} volume grid(s) refused as identical to the change grid - thin product, accepted]'
     JOURNAL.parent.mkdir(parents=True, exist_ok=True)
     with JOURNAL.open('a', encoding='utf-8') as f:
         f.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(timespec='seconds'),
@@ -98,7 +110,7 @@ def main() -> None:
                             'dir': f'out/{date.today().isoformat()}/{SUB}'}) + '\n')
     print(f'\n=== VERDICT ===\n\n  capture   {capture}\n  target    files only (no KV)\n'
           f'\n  VERDICT   {"OK" if ok else "NOT OK - capture fell short"}')
-    sys.exit(rc)
+    sys.exit(0 if ok else (rc or 1))
 
 
 if __name__ == '__main__':
