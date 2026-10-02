@@ -10,6 +10,7 @@ IDX = ['nq', 'spx', 'dow', 'us2000', 'de30', 'uk100']
 SETS = {'16 FX + gold': ALL, '6 indices': IDX}
 SPLIT = '2023-01-01'; N = NormalDist()
 CELLS = [(ty, s, tg) for ty in ('HOLD', 'BREAK', 'DOPEN') for s in ('0.1', '0.2') for tg in ('r5', 'r10', 'far')]
+INVERSE = {'usdcad', 'usdchf', 'usdjpy'}
 CV = {'audusd': 'AUDUSD', 'eurusd': 'EURUSD', 'gbpusd': 'GBPUSD', 'usdcad': 'USDCAD', 'usdchf': 'USDCHF', 'usdjpy': 'USDJPY', 'gold': 'XAUUSD'}
 
 # IV/RV and skew per CVOL instrument and London date (rows dated strictly before the date)
@@ -32,7 +33,10 @@ def load(pairs):
     T = []
     for p in pairs:
         for t in json.load(open(f'analysis/output/rangebook/{p}_asym.json'))['rows']:
-            t['inst'] = p; t['ivrv'], sk = ivinfo(p, t['date']); t['skewAl'] = None if sk is None else sk * t['dir']
+            t['inst'] = p; t['ivrv'], sk = ivinfo(p, t['date'])
+            # CVOL USDCAD/USDCHF/USDJPY are quoted on the CAD/CHF/JPY futures (inverse of spot): flip the skew sign.
+            if sk is not None and p in INVERSE: sk = -sk
+            t['skewAl'] = None if sk is None else sk * t['dir']
             T.append(t)
     return T
 def stats(v, h2):

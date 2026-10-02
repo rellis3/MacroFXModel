@@ -73,3 +73,11 @@ BH 10% over 36 cells: 0 survive before the both-halves, cross-set and short-side
   data says these entries are right about 1 time in 20, so the posted winners are what a fair bet looks like when
   only winners are shown. A real edge would need either fills far cheaper than a CFD spread at 01:00, or information
   the levels do not carry.
+
+## Correction (2026-10-02): skew sign for USDCAD, USDCHF, USDJPY
+The CVOL series for USDCAD, USDCHF and USDJPY are quoted on the CAD, CHF and JPY futures (underlying 0.726 / 1.257 /
+0.0063), the inverse of the spot pairs, so their skew points the other way. The skew split above multiplied it by the
+trade direction without flipping it. Fixed in asym_score.py (INVERSE set); IV÷RV is unaffected (vol is the same either
+way up). Corrected skew split for BREAK trades (with / against the trade):
+0.1σ 5R −0.010 / −0.176 · 0.1σ 10R +0.048 / −0.175 · 0.2σ 5R +0.022 / −0.085 · 0.2σ 10R +0.020 / −0.048.
+The skew lead shrinks from up to +0.19R to +0.02..+0.05R; most of it was the sign error.
