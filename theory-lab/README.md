@@ -69,6 +69,15 @@ markup, the house content order, and a verification checklist.
 
 ## Curriculum map
 
+- **Theory in the Real World** (10, each with a full lesson and a visual
+  guide) — the story layer: hard theory told through real episodes, real
+  causal chains (`.tl-chain`), and this desk's own tested verdict on each
+  folk claim (`.tl-verdict`). Three sequences: *Options from the Ground Up*
+  (the four positions, payoff shape vs Greek signs, covered call ≡ short
+  put), *Market Plumbing* (the Fed corridor — IORB, SRF, discount window;
+  QE/QT), and *How Markets Talk to Each Other* (the domino chain, forced
+  selling, the VIX as uncertainty, the yield curve and growth, four markets
+  four questions). Sits above Foundation Mathematics on the hub.
 - **Foundation Mathematics** (5) — algebra/functions, trigonometry/logs/
   exponentials, complex numbers, partial derivatives/multivariable calculus,
   optimization basics. Start here if you've only done GCSE-level maths —

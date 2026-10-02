@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mood, Quote and Forced Selling — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / Mood, the Quote and Forced Selling</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 2 of 5</div>
+  <h1 class="tl-title">Mood, the Quote and Forced Selling</h1>
+  <p class="tl-dek">A price is just where the last willing buyer met the last willing seller. Most of the time both are choosing. In a crisis, one side stops choosing — margin calls, redemptions and risk limits turn sellers into people who <em>must</em> sell, at any price, whatever they can. This lesson shows what that does to a thin order book, and why "correlations go to one".</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~20 min read</span>
+    <span>Prereqs: The Domino Effect (lesson 1); Limit Order Books (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="investor-mood-forced-selling-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>The quote is a meeting point, not a verdict.</strong> The price you see is where the marginal buyer and marginal seller agreed, for a size that may be tiny. A big enough order walks down the book until it finds enough buyers.</li>
+      <li>Buying reads as optimism, selling as fear, not-knowing as uncertainty — but there is a fourth kind of move people forget: <strong>systematic</strong>. Margin calls, fund redemptions, risk (VaR) limits and volatility-targeting rules all <em>force</em> selling that ignores price.</li>
+      <li>Forced sellers sell <strong>what they can, not what they want</strong>: the liquid, the profitable, the safe. That is why in a liquidation even Treasuries and gold can fall alongside stocks, and why correlations "go to one".</li>
+      <li>Volatility feeds on itself through dealers: higher vol shrinks how much inventory a dealer's risk limit allows, so the book thins, so a given sale moves price further — which raises vol again.</li>
+      <li><strong>The desk's verdict:</strong> a day when every index falls together is followed by a <em>wider</em> week (validated — a range fact, not a bounce call); "crowded, underwater positions are squeeze fuel" tested null; "the rally's leader leads the decline" is untested here.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="domino-chain-cross-asset.html">previous lesson</a> traced how one shock
+    reprices every market at once. Most of the time that repricing is orderly: people
+    change their minds, quotes adjust, and trading carries on. The episodes people
+    remember — March 2020, the UK gilt spiral, August 2024 — were different. In each,
+    the move was driven less by people changing their minds than by people who no
+    longer had a choice.
+  </p>
+  <p>
+    To understand those days you need three things this lesson builds: what a quoted
+    price actually is (and how little size may stand behind it); the specific rules
+    that turn an investor into a forced seller; and why a forced seller's behaviour —
+    sell now, sell the liquid stuff, ignore price — produces patterns that look
+    irrational from outside, like the safest bond in the world falling on the same day
+    as stocks. The mechanics of the book itself are covered in depth in
+    <a href="limit-order-books.html">Limit Order Books</a> and
+    <a href="market-microstructure.html">Market Microstructure</a>; the margin and
+    collateral side in <a href="collateral-margin-repo-markets.html">Collateral, Margin
+    &amp; Repo Markets</a>.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A market is an auction where some bidders can be forced out</h3>
+    <p>
+      Picture a car-boot sale. The price of a lamp is whatever the keenest buyer and
+      the most willing seller agree on. If the seller is in no hurry and nobody offers
+      enough, they simply take the lamp home. That is a <em>voluntary</em> seller: they
+      have a price below which they will not go.
+    </p>
+    <p style="margin-bottom:0">
+      Now imagine the seller's landlord is at the gate demanding the rent in cash, in
+      the next ten minutes. They will take whatever is offered — and they will sell the
+      thing people will actually pay cash for right now, which might be their best
+      item, not their worst. Nothing about the lamp changed. The <em>seller</em> did.
+      That is forced selling, and it is how a perfectly good asset can fall hard for
+      reasons that have nothing to do with it.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>What a price is, and who is forced to sell</h2>
+
+  <h3>1. The quote: where the marginal buyer meets the marginal seller</h3>
+  <p>
+    An order book lists resting <strong>bids</strong> (buyers, each with a price and a
+    size) and <strong>asks</strong> (sellers). The best bid and best ask are the
+    quote; the gap between them is the spread. A "price" printed on a screen is the
+    last trade — the point where one marginal buyer and one marginal seller met, for
+    whatever size they traded. It says nothing about how much more would trade there.
+  </p>
+  <p>
+    A sell order larger than the size at the best bid fills that level, then the next
+    one down, and so on — it <em>walks the book</em>. The seller's average price is the
+    size-weighted average of every level it touched:
+  </p>
+  <div class="tl-math">
+    \[ \bar{p} = \frac{\sum_i p_i\,q_i}{\sum_i q_i}, \qquad \text{impact} = \frac{p_{\text{last}} - p_{\text{mid}}}{p_{\text{mid}}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p̄</code><span>the seller's volume-weighted average fill price</span></div>
+    <div class="tl-eq-chip c2"><code>pᵢ, qᵢ</code><span>price and filled quantity at each bid level touched</span></div>
+    <div class="tl-eq-chip c3"><code>p_last</code><span>the deepest level reached — the new best bid after the sale</span></div>
+    <div class="tl-eq-chip c4"><code>p_mid</code><span>the mid-price before the order arrived</span></div>
+  </div>
+  <p>
+    Empirically, across many markets, the average impact of a large order grows
+    roughly with the <em>square root</em> of its size relative to normal volume, scaled
+    by volatility — the "square-root law" (see Further reading). The two inputs that
+    matter are therefore the size you must trade and how deep and calm the book is.
+    Forced selling makes the first large at exactly the moment the second is thin.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The price on the screen is what one person paid for a small amount. If you need to sell a mountain, the first buyer only wants a little, so you have to keep going to buyers who will only pay less, and less, until the mountain is gone. The bigger the mountain, and the fewer the buyers, the lower you end up.</p>
+  </div>
+
+  <h3>2. Four kinds of move: optimism, fear, uncertainty — and systematic</h3>
+  <p>
+    The everyday reading of a move is psychological: buying is optimism, selling is
+    fear, and not knowing is uncertainty, which shows up as volatility. That framing
+    is useful but incomplete. A fourth category is the one most readings omit:
+    <strong>systematic</strong> selling, which happens because a rule or a contract
+    requires it, regardless of what the seller thinks. Asking "was this move
+    <em>forced</em>?" is a different question from asking "is the market scared?", and
+    it often has a better answer.
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Voluntary seller</h4>
+      <p>Sells because their view changed. Has a reservation price — below it, they stop and wait. Picks <em>what</em> to sell (usually what they now like least). Can spread the sale over days.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Forced seller</h4>
+      <p>Sells because a rule says so: margin call, redemption, VaR breach, vol-target cut. No reservation price. Sells what can be turned into cash fastest — often the most liquid or most profitable holding. Must sell now.</p>
+    </div>
+  </div>
+
+  <h3>3. Margin calls: leverage multiplies the loss and the selling</h3>
+  <p>
+    A leveraged investor holds assets \(A\) financed partly by a loan \(L\); their own
+    money is the equity \(E = A - L\), and leverage is \(\lambda = A/E\). A fall of
+    \(x\) in asset prices cuts equity by \(\lambda x\) as a fraction — at 5× leverage, a
+    10% fall wipes out half the equity. To get back to the lender's allowed leverage,
+    they must sell:
+  </p>
+  <div class="tl-math">
+    \[ S = A' - \lambda_{\max}\,E' \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">A′</div><div class="tl-fp-name">Assets after the fall</div><div class="tl-fp-desc">What the book is worth now</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">E′</div><div class="tl-fp-name">Equity after the fall</div><div class="tl-fp-desc">Shrinks λ times faster than the assets</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">λ_max</div><div class="tl-fp-name">Allowed leverage</div><div class="tl-fp-desc">Set by the lender — and lenders cut it when vol rises</div></div>
+  </div>
+  <p>
+    Worse, lenders typically <em>raise</em> margin requirements (cut \(\lambda_{\max}\))
+    when markets get volatile, so the sale required grows at the very moment selling is
+    most costly. This "margin spiral" is the core of Brunnermeier and Pedersen's
+    account of how funding liquidity and market liquidity drain each other.
+  </p>
+
+  <h3>4. Risk limits and the dealer-inventory spiral</h3>
+  <p>
+    Banks and dealers run under Value-at-Risk limits: the loss on a position that should
+    only be exceeded with small probability over a short horizon. For a position of size
+    \(Q\) with daily volatility \(\sigma\):
+  </p>
+  <div class="tl-math">
+    \[ \text{VaR} = z\,\sigma\,\sqrt{h}\;Q \quad\Longrightarrow\quad Q_{\max} = \frac{\text{VaR limit}}{z\,\sigma\,\sqrt{h}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z</code><span>the confidence multiplier, e.g. 2.33 for 99%</span></div>
+    <div class="tl-eq-chip c2"><code>σ</code><span>daily volatility of the position's price</span></div>
+    <div class="tl-eq-chip c3"><code>h</code><span>horizon in days</span></div>
+    <div class="tl-eq-chip c4"><code>Q_max</code><span>the largest inventory the limit allows — inversely proportional to σ</span></div>
+  </div>
+  <p>
+    Double \(\sigma\) and, with the limit unchanged, the dealer may hold only half as
+    much. In a dealer-intermediated market like government bonds — where liquidity
+    depends on who is holding inventory rather than on an anonymous exchange book —
+    that is a direct cut in how much a dealer can absorb from sellers.
+  </p>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Bond volatility rises</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Same VaR limit, higher σ: forced to hold less inventory</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Quote smaller size, wider spreads</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Sellers</b>Each sale walks a thinner book; price moves further</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Bigger moves raise volatility again</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A shopkeeper is only allowed to keep so much "risky stuff" on the shelves. When things get jumpy, every item counts as riskier, so they must keep fewer of them — and they stop buying from people who walk in to sell. With fewer shops buying, sellers have to accept worse prices, which makes things even jumpier.</p>
+  </div>
+
+  <h3>5. Volatility targeting and risk parity</h3>
+  <p>
+    Many systematic funds size their exposure to keep portfolio volatility near a target:
+    \(w = \sigma^{*}/\hat\sigma\), where \(\sigma^{*}\) is the target and \(\hat\sigma\)
+    the recently measured volatility. If measured vol doubles, exposure halves —
+    mechanically, after the fact, and across everyone running the same rule. Risk-parity
+    portfolios (see <a href="risk-parity-erc.html">Risk Parity &amp; ERC</a>) behave
+    similarly when bonds and stocks both turn volatile. None of this selling expresses a
+    view; it is arithmetic on a rearview-mirror number.
+  </p>
+
+  <h3>6. Sell what you can, not what you want</h3>
+  <p>
+    A forced seller needs cash, quickly, at the least cost per dollar raised. That points
+    them at the <strong>most liquid</strong> holdings (Treasuries, large-cap stocks,
+    gold, index futures) and often the <strong>most profitable</strong> ones (selling a
+    winner raises the most cash per unit and may not crystallise a loss). Two
+    consequences follow:
+  </p>
+  <ul style="margin:0 0 14px 20px;color:var(--text2)">
+    <li><strong>Correlations go to one.</strong> Assets with nothing in common fall together because they share a <em>holder</em> who is selling, not a fundamental.</li>
+    <li><strong>The rally's leader may lead the decline.</strong> If everyone raises cash from their biggest winner, the winner falls first and hardest — and, symmetrically, the most-sold asset may lead the recovery. This is a plausible, testable claim; see Section 04 for its status here.</li>
+  </ul>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(p_i, q_i\)</td><td>Price and quantity filled at book level \(i\).</td></tr>
+    <tr><td>\(\bar p\)</td><td>Volume-weighted average fill price of the whole order.</td></tr>
+    <tr><td>\(p_{\text{mid}}, p_{\text{last}}\)</td><td>Mid-price before the order; deepest price the order reached.</td></tr>
+    <tr><td>\(A, L, E\)</td><td>Assets, loan, and equity (\(E = A - L\)); primes mark values after a price fall.</td></tr>
+    <tr><td>\(\lambda\)</td><td>Leverage, \(A/E\). \(\lambda_{\max}\) is the most the lender allows.</td></tr>
+    <tr><td>\(S\)</td><td>The sale needed to get back within \(\lambda_{\max}\).</td></tr>
+    <tr><td>\(x\)</td><td>The fractional fall in asset prices.</td></tr>
+    <tr><td>VaR</td><td>Value-at-Risk: a loss level exceeded only with small probability over horizon \(h\).</td></tr>
+    <tr><td>\(z\)</td><td>Normal quantile for the VaR confidence level (≈ 2.33 at 99%).</td></tr>
+    <tr><td>\(\sigma, \hat\sigma, \sigma^{*}\)</td><td>Volatility; measured recent volatility; a fund's target volatility.</td></tr>
+    <tr><td>\(h\)</td><td>VaR horizon, in days.</td></tr>
+    <tr><td>\(Q, Q_{\max}\)</td><td>Position size; largest position the VaR limit allows.</td></tr>
+    <tr><td>\(w\)</td><td>Exposure scaling for a volatility-targeting fund, \(\sigma^{*}/\hat\sigma\).</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Walk the book: forced versus voluntary selling into a thinning market</div>
+    <svg id="ob-svg" viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A depth chart of an order book. Bids are green bars to the left of a central price column, asks red bars to the right. A sell order eats into the bids from the top; consumed size is shaded, and a marker shows the new best bid.">
+      <text x="160" y="16" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" style="fill:var(--green)">Bids (buyers) — size at each price</text>
+      <text x="490" y="16" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" style="fill:var(--red)">Asks (sellers)</text>
+      <g id="ob-rows"></g>
+      <line id="ob-mid" x1="20" x2="620" y1="0" y2="0" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <text id="ob-midlbl" x="624" y="0" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" style="fill:var(--text3)">mid 100.00</text>
+      <line id="ob-new" x1="20" x2="300" y1="0" y2="0" style="stroke:var(--amber);stroke-width:2"/>
+      <text id="ob-newlbl" x="24" y="0" font-size="10" font-family="'DM Mono',monospace" style="fill:var(--amber)">deepest fill</text>
+    </svg>
+    <div class="tl-btnrow" id="ob-type" style="margin:8px 0">
+      <button type="button" class="tl-btn active" data-type="forced">Forced seller (must sell it all)</button>
+      <button type="button" class="tl-btn" data-type="vol">Voluntary seller (won't go below 99.70)</button>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Size to sell</span><span class="tl-live" id="ob-q-val">300</span></div>
+        <input type="range" id="ob-q" min="0" max="1100" step="10" value="300">
+        <div class="tl-hint">Units of the asset. At normal volatility the whole bid side holds 1,032 units across 12 price levels.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility (× normal)</span><span class="tl-live" id="ob-m-val">1.0×</span></div>
+        <input type="range" id="ob-m" min="1" max="4" step="0.5" value="1">
+        <div class="tl-hint">Dealers run fixed VaR limits, so the size they quote scales as 1/σ, and at higher vol they pull their quotes nearest the mid. Double the vol, half the book.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="ob-readout">Sold <b id="ob-sold">300</b> · average price <b id="ob-vwap">99.79</b> (<b id="ob-avgbp">−21</b>bp vs mid) · last fill <b id="ob-last">99.70</b> (<b id="ob-lastbp">−30</b>bp) · unsold <b id="ob-unsold">0</b></div>
+    <div class="tl-chart-caption">
+      Real arithmetic on a toy book: each bid level \(i\) (0 = best, prices 99.95 down to
+      99.40 in 0.05 steps) holds \((20 + 12i)/m\) units at volatility multiple \(m\), with the
+      top \(\mathrm{round}(m)-1\) levels pulled. Try 300 units at 1× and then at 2×: the
+      same order moves the price from −30bp to −50bp. Then switch to the voluntary seller
+      at 2×: they stop at 99.70 with more than half unsold — and wait. The forced seller
+      cannot.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: when the sellers had no choice</h2>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2020: the dash for cash</h3>
+    <p>
+      As COVID-19 spread in March 2020, investors of every kind scrambled for cash at the
+      same time. Funds faced redemptions, companies drew down credit lines, foreign
+      holders sold dollar assets to raise dollars, and leveraged funds running
+      Treasury relative-value trades were forced to unwind them.
+    </p>
+    <p>
+      The tell-tale sign was what fell <em>together</em>. For several days in mid-March,
+      US Treasury yields rose — Treasuries were being sold — while stocks also fell. The
+      world's standard safe asset was dumped precisely because it was the easiest thing
+      to sell. Even gold fell for a stretch. Liquidity in the Treasury market, normally
+      the deepest in the world, deteriorated sharply: spreads widened and the size
+      dealers would quote shrank, the dealer-inventory spiral in action.
+    </p>
+    <p style="margin-bottom:0">
+      The Federal Reserve cut its policy rate to near zero on 15 March and announced at
+      least $700 billion of Treasury and mortgage-backed securities purchases; on 23
+      March it made those purchases open-ended, and it set up emergency facilities
+      including one for money market funds. The forced sellers were met by a buyer with
+      no risk limit, and the scramble subsided.
+    </p>
+  </div>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2021: Archegos and the race to sell first</h3>
+    <p>
+      Archegos Capital Management, a family office, had built very large, concentrated
+      positions in a handful of stocks — including ViacomCBS and several US-listed
+      Chinese companies — mostly through total return swaps with several prime brokers.
+      Because the exposure sat on the banks' books, no single bank saw the whole
+      position.
+    </p>
+    <p style="margin-bottom:0">
+      In the week of 22 March 2021, ViacomCBS shares fell after the company announced a
+      share sale. Archegos could not meet its margin calls. On Friday 26 March, banks
+      began selling large blocks of the underlying stocks — price-insensitive sales,
+      driven by collateral rather than by any view on the companies. Banks that sold
+      early limited their losses; Credit Suisse later reported a loss of about $5.5
+      billion and Nomura close to $3 billion. When several forced sellers hold the same
+      thing, the liquidation becomes a race, and the slowest seller walks the book the
+      furthest.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A 10% fall that forces a 44% sale — into a book half as deep</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Set up the leverage</h4>
+        <p>A fund holds \(A = 500\) of assets with a loan \(L = 400\): equity \(E = 100\), leverage \(\lambda = 5\), which is the lender's maximum.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Prices fall 10%</h4>
+        <p>\(A' = 450\), the loan is unchanged, so \(E' = 50\). Equity halved; leverage is now \(450/50 = 9\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>The forced sale</h4>
+        <p>\(S = A' - \lambda_{\max} E' = 450 - 5 \times 50 = 200\). The fund must sell <strong>200 of its 450</strong> — 44% of everything it owns — because prices fell 10%.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Into a normal book</h4>
+        <p>Sell 300 units into the toy book at normal vol: fills at 99.95 (20), 99.90 (32), 99.85 (44), 99.80 (56), 99.75 (68), 99.70 (80). \(\bar p = 29{,}937/300 = 99.79\), about −21bp; the last fill, 99.70, is −30bp.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Into a stressed book</h4>
+        <p>Volatility doubles: dealers quote half the size and pull the top level. The same 300 units now fill down to 99.50: \(\bar p = 29{,}904/300 = 99.68\) (−32bp), last fill −50bp. A voluntary seller with a 99.70 floor would sell 140 and stop. The forced seller's own selling is now part of the next day's volatility — and the next lender's margin decision.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>"Is this fear, or is this forced?"</h3>
+    <p>
+      Every major index closes down. Treasuries are down too, and gold is off. The
+      morning headlines say "panic". A trader runs a forced-selling checklist instead:
+      are safe assets falling <em>with</em> risky ones (selling what can be sold)? Are the
+      year's biggest winners falling hardest (raising cash from profits)? Are bid-ask
+      spreads in normally deep markets widening (dealers pulling inventory)? Yes on all
+      three points toward systematic de-leveraging rather than a change in anyone's view
+      of the economy.
+    </p>
+    <p style="margin-bottom:0">
+      What does that tell them to do? On this desk's evidence, the honest read is about
+      <em>range</em>: a session where every index falls has been followed by a wider week,
+      with no reliable edge on direction. So they size down and widen their expected
+      ranges — and they do not buy the dip on the theory that "forced selling always
+      reverses", because that direction call is exactly what the evidence does not
+      support.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict validated">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>"A session where every index closes down is followed by a wider week" (<code>breadth-all-down</code>, 2026-09-18).</strong> All six indices down on one session (n=1,002 since 2008): next-5 range SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]. Two in a row (n=243): +0.55 and +0.35. Direction five sessions later 58–61% up, the ordinary drift. <em>A range fact, not a bounce call.</em></span>
+  </div>
+
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"A crowded, underwater retail position is squeeze fuel" (<code>squeeze-fuel</code>, 2026-09-13).</strong> Crowded-and-underwater days were not wider than matched days on any of four instruments over nine years; direction flat. Retail is ~60% long on every major every day. Visible positioning is descriptive only — the forced sellers that matter are usually not the ones you can see.</span>
+  </div>
+
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"Fear buys gold" (<code>fear-gold</code>, 2026-09-21).</strong> 58 VIX spikes 2010–2026: gold's excess return +0.07% [−0.42, +0.30] at five sessions and −1.19% [−2.30, −0.48] at twenty. Consistent with this lesson: in a liquidation gold is something to <em>sell</em> for cash, not a reliable haven.</span>
+  </div>
+
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"A drawn backstop warns of a wider tape" (<code>funding-stress</code>, 2026-10-02).</strong> When the Standing Repo Facility was drawn (21 episodes), SPX500's next-5-session range was −0.561 ATR [−0.984, −0.181] versus control — <em>calmer</em>, not wider — and the facility is drawn on 667 of 2,123 sessions (31%). Routine plumbing, not a stress marker; and the sample contains no pre-2018 crisis, so it says nothing about a March 2020.</span>
+  </div>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>"The thing that caused the rally leads the decline."</strong> Not tested here. A fair test must control for beta: the leading sector is usually the high-beta one, which falls more in <em>any</em> sell-off, so a naive version would look true for the wrong reason. Logged as a candidate, with fourteen sector ETFs and about six years of data in hand.</span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> "forced selling always reverses, so buy the liquidation"
+    sounds like the obvious trade from this lesson. The desk's evidence supports a
+    <em>wider</em> week after an all-down session and nothing about which way it goes.
+    The reversal in March 2020 needed a central bank with an unlimited balance sheet;
+    you do not get to assume one.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧭</div>
+      <h4>Label the move</h4>
+      <p>Fear, optimism, uncertainty or systematic? The fourth label changes what you expect next: forced flows stop when the forcing stops, not when the news improves.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🔗</div>
+      <h4>Watch what falls together</h4>
+      <p>Havens falling with risk assets, winners falling hardest and unrelated assets correlating are the fingerprints of a shared holder raising cash.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📏</div>
+      <h4>Size for range</h4>
+      <p>Book depth thins exactly when you need it. Execution algorithms (see <a href="market-impact-almgren-chriss.html">Almgren-Chriss</a>) slow down; risk managers cut size and widen stops.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🏦</div>
+      <h4>Know who has no limit</h4>
+      <p>Spirals end when a buyer without a balance-sheet constraint appears — usually a central bank. Knowing whether that buyer exists is half the analysis.</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The board measures size and direction, not "was it forced?"</h3>
+    <p style="margin-bottom:0">
+      The verdicts above are entries in <code>js/deskEvidence.js</code>. No read on the
+      board currently classifies a move as forced; bond volatility (the MOVE index), the
+      input to the dealer spiral, is a disclosed gap in the risk score; and margin data
+      is only available quarterly, so any test of forced selling here would have to work
+      from its price fingerprint rather than from margin balances.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the forced-selling story gets misused</h3>
+    <p><strong>Reading the last price as the price.</strong> It is the price for the last small trade. Ask what size stands behind it.</p>
+    <p><strong>Calling every sell-off forced.</strong> Most falls are people changing their minds. The forced-selling label needs evidence: havens falling with risk, liquidity draining, winners leading lower.</p>
+    <p><strong>Assuming the reversal.</strong> Forced selling ends when the forcing ends — that may take a central bank, a fund's wind-down, or a margin call being met. Tested here: an all-down day predicts range, not a bounce.</p>
+    <p style="margin-bottom:0"><strong>Treating visible positioning as the fuel.</strong> Retail positioning data tested null as squeeze fuel. The big forced sellers — swaps at prime brokers, LDI hedges, vol-target funds — rarely show up on a free feed.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A quote is a meeting point for a small size.</strong> Large orders walk the book; the average price is \(\sum p_i q_i / \sum q_i\), and impact grows with size and shrinks with depth.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Forced sellers have no reservation price.</strong> Margin calls, redemptions, VaR limits and vol targets make selling price-insensitive — at 5× leverage a 10% fall forces a 44% sale.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>They sell what they can, not what they want.</strong> That is why Treasuries and gold fell with stocks in March 2020, and why correlations go to one.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Validated here, for range:</strong> all indices down on one session → next-week range SPX500 +0.31 ATR, NAS100 +0.26 (n=1,002). Not a direction call.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: "crowded, underwater retail positioning is squeeze fuel".</strong> Not wider on any of four instruments over nine years.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: "the rally's leader leads the decline".</strong> Plausible and testable, but only once beta is controlled for.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. The screen shows a stock at 50.00. Why might selling 1 million shares get an average price well below 50?</summary>
+    <div class="tl-answer">50.00 is where the last small trade happened. The best bid may hold only a few thousand shares; a large order fills that, then walks down through lower bids until enough buyers are found. The average fill \(\sum p_i q_i/\sum q_i\) sits below the quote, and the last fill lower still.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A fund at its maximum 4× leverage holds 400 of assets. Prices fall 5%. How much must it sell?</summary>
+    <div class="tl-answer">\(E = 100\), \(L = 300\). After the fall \(A' = 380\), \(E' = 80\). \(S = A' - \lambda_{\max} E' = 380 - 4 \times 80 = 60\) — about 16% of its holdings, because prices fell 5%.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A dealer's VaR limit is unchanged and daily volatility rises from 0.5% to 1.5%. What happens to the inventory they can hold?</summary>
+    <div class="tl-answer">\(Q_{\max} \propto 1/\sigma\), so it falls to one third. The dealer quotes smaller size and wider spreads, so sellers walk a thinner book and prices move further — which can raise volatility again.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why did US Treasuries fall alongside stocks in mid-March 2020?</summary>
+    <div class="tl-answer">Because they were the easiest thing to sell. Funds facing redemptions, foreign holders needing dollars and leveraged relative-value funds unwinding all raised cash from the most liquid asset available. Their selling was forced and price-insensitive — about who was holding Treasuries, not about Treasuries themselves.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Every index closes down today. What can you say about next week, on this desk's evidence?</summary>
+    <div class="tl-answer">That it has tended to be wider: <code>breadth-all-down</code> found next-5-session ranges SPX500 +0.31 ATR [+0.17, +0.45] and NAS100 +0.26 [+0.15, +0.38] versus controls (n=1,002). Nothing about direction: five sessions later the market was up 58–61% of the time, the ordinary drift.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Someone claims "the sector that led the rally will lead the decline — it's where margin calls get their cash." What's the obvious confound?</summary>
+    <div class="tl-answer">Beta. The leading sector is usually the highest-beta one, which falls more in any sell-off whether or not anyone is forced to sell it. A real test has to compare the leader with sectors of matched beta; only an effect that survives that is evidence of forced liquidation. It is untested here.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Markus K. Brunnermeier and Lasse Heje Pedersen, "Market Liquidity and Funding Liquidity", <em>Review of Financial Studies</em>, 2009 — the formal model of margin spirals and why the two kinds of liquidity drain together.</li>
+    <li>Darrell Duffie, "Still the World's Safe Haven? Redesigning the U.S. Treasury Market After the COVID-19 Crisis", Hutchins Center Working Paper, 2020 — how dealer balance-sheet limits broke Treasury liquidity in March 2020.</li>
+    <li>Andreas Schrimpf, Hyun Song Shin and Vladyslav Sushko, "Leverage and margin spirals in fixed income markets during the Covid-19 crisis", <em>BIS Bulletin</em>, 2020 — the forced-selling mechanics of the dash for cash.</li>
+    <li>Paul, Weiss report to the Credit Suisse Board, "Credit Suisse Group Special Committee of the Board of Directors Report on Archegos Capital Management", July 2021 — the documented account of the Archegos losses.</li>
+    <li>Bence Tóth et al., "Anomalous price impact and the critical nature of liquidity in financial markets", <em>Physical Review X</em>, 2011 — evidence for the square-root impact law.</li>
+    <li><a href="limit-order-books.html">Limit Order Books</a>, <a href="market-impact-almgren-chriss.html">Market Impact (Almgren-Chriss)</a> and <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> — the mechanics behind this lesson in depth.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="domino-chain-cross-asset.html">← The Domino Effect</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Order-book toy. Bid level i (0 = best) sits at 99.95 - 0.05i and holds
+  // (20 + 12i)/m units at volatility multiple m (dealer size ~ 1/sigma under a
+  // fixed VaR limit); the top round(m)-1 levels are pulled entirely.
+  var svg = document.getElementById('ob-svg');
+  if (!svg) return;
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var NB = 12, NA = 5, MID = 100, TICK = 0.05, LIMIT = 99.70;
+  var ROW_H = 19, TOP = 30, CX_L = 300, CX_R = 340, SCALE = 270/155;
+  var rowsG = document.getElementById('ob-rows');
+  var qIn = document.getElementById('ob-q'), mIn = document.getElementById('ob-m');
+  var sellerType = 'forced';
+
+  function el(name, attrs, style){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    return e;
+  }
+  function levelSize(i, m){
+    var pulled = Math.round(m) - 1;
+    return i < pulled ? 0 : (20 + 12*i)/m;
+  }
+  function bidPrice(i){ return +(MID - TICK - TICK*i).toFixed(2); }
+  function askPrice(j){ return +(MID + TICK + TICK*j).toFixed(2); }
+  function rowY(r){ return TOP + r*ROW_H; } // r = 0..NA-1 asks (highest first), NA.. bids
+
+  function walk(Q, m, limit){
+    var rem = Q, cost = 0, sold = 0, last = null, fills = [];
+    for (var i = 0; i < NB; i++){
+      var p = bidPrice(i), q = levelSize(i, m), f = 0;
+      if (limit !== null && p < limit - 1e-9){ fills.push(0); continue; }
+      if (rem > 1e-9 && q > 0){ f = Math.min(rem, q); cost += f*p; sold += f; rem -= f; last = p; }
+      fills.push(f);
+    }
+    return { sold: sold, vwap: sold > 0 ? cost/sold : null, last: last, unsold: rem, fills: fills };
+  }
+
+  function fmtBp(p){ var v = Math.round((p - MID)/MID*10000); return (v > 0 ? '+' : (v < 0 ? '−' : '')) + Math.abs(v); }
+
+  function render(){
+    var Q = parseFloat(qIn.value), m = parseFloat(mIn.value);
+    var res = walk(Q, m, sellerType === 'vol' ? LIMIT : null);
+    while (rowsG.firstChild) rowsG.removeChild(rowsG.firstChild);
+    for (var j = 0; j < NA; j++){
+      var r = NA - 1 - j, y = rowY(r), sz = levelSize(j, m);
+      rowsG.appendChild(el('rect', { x: CX_R, y: y - 7, width: Math.max(0, sz*SCALE), height: 14, rx: 2 }, 'fill:var(--red);opacity:0.45'));
+      var t = el('text', { x: 320, y: y + 4, 'text-anchor': 'middle', 'font-size': 9.5, 'font-family': "'DM Mono',monospace" }, 'fill:var(--text3)');
+      t.textContent = askPrice(j).toFixed(2); rowsG.appendChild(t);
+    }
+    for (var i = 0; i < NB; i++){
+      var yb = rowY(NA + i), s = levelSize(i, m), f = res.fills[i], w = s*SCALE, wf = f*SCALE;
+      var p = bidPrice(i);
+      var belowLimit = sellerType === 'vol' && p < LIMIT - 1e-9;
+      rowsG.appendChild(el('rect', { x: CX_L - w, y: yb - 7, width: Math.max(0, w), height: 14, rx: 2 }, 'fill:var(--green);opacity:' + (belowLimit ? 0.25 : 0.55)));
+      if (wf > 0) rowsG.appendChild(el('rect', { x: CX_L - wf, y: yb - 7, width: wf, height: 14, rx: 2 }, 'fill:var(--red);opacity:0.85'));
+      if (s === 0){
+        var e = el('text', { x: CX_L - 6, y: yb + 4, 'text-anchor': 'end', 'font-size': 9, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text3)');
+        e.textContent = 'quote pulled'; rowsG.appendChild(e);
+      }
+      var tb = el('text', { x: 320, y: yb + 4, 'text-anchor': 'middle', 'font-size': 9.5, 'font-family': "'DM Mono',monospace" }, 'fill:' + (p < LIMIT - 1e-9 ? 'var(--text3)' : 'var(--text2)'));
+      tb.textContent = p.toFixed(2); rowsG.appendChild(tb);
+      var qt = el('text', { x: 360, y: yb + 4, 'font-size': 9, 'font-family': "'DM Mono',monospace" }, 'fill:var(--text3)');
+      qt.textContent = s > 0 ? Math.round(s) + (f > 0 ? ' (sold ' + Math.round(f) + ')' : '') : '';
+      rowsG.appendChild(qt);
+    }
+    var midY = rowY(NA) - ROW_H/2;
+    var mid = document.getElementById('ob-mid'); mid.setAttribute('y1', midY); mid.setAttribute('y2', midY);
+    document.getElementById('ob-midlbl').setAttribute('y', midY - 3);
+    var nl = document.getElementById('ob-new'), nlb = document.getElementById('ob-newlbl');
+    if (res.last !== null){
+      var idx = Math.round((MID - TICK - res.last)/TICK);
+      var y2 = rowY(NA + idx) + 9;
+      nl.setAttribute('y1', y2); nl.setAttribute('y2', y2); nl.style.display = '';
+      nlb.setAttribute('y', y2 + 11); nlb.style.display = '';
+      nlb.textContent = res.unsold > 1e-9 && sellerType === 'forced' ? 'book exhausted — price gaps lower' : 'deepest fill ' + res.last.toFixed(2);
+    } else { nl.style.display = 'none'; nlb.style.display = 'none'; }
+
+    document.getElementById('ob-q-val').textContent = Q.toFixed(0);
+    document.getElementById('ob-m-val').textContent = m.toFixed(1) + '×';
+    document.getElementById('ob-sold').textContent = Math.round(res.sold);
+    document.getElementById('ob-vwap').textContent = res.vwap === null ? '—' : res.vwap.toFixed(2);
+    document.getElementById('ob-avgbp').textContent = res.vwap === null ? '—' : fmtBp(res.vwap);
+    document.getElementById('ob-last').textContent = res.last === null ? '—' : res.last.toFixed(2);
+    document.getElementById('ob-lastbp').textContent = res.last === null ? '—' : fmtBp(res.last);
+    document.getElementById('ob-unsold').textContent = Math.round(res.unsold) + (res.unsold > 1e-9 ? (sellerType === 'vol' ? ' (waits)' : ' (no bids left in view)') : '');
+  }
+
+  qIn.addEventListener('input', render);
+  mIn.addEventListener('input', render);
+  var typeBtns = Array.prototype.slice.call(document.querySelectorAll('#ob-type .tl-btn'));
+  typeBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      typeBtns.forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      sellerType = b.getAttribute('data-type');
+      render();
+    });
+  });
+  render();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+</body>
+</html>
