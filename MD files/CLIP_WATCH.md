@@ -558,3 +558,102 @@ there is repeated.
   the precondition is a **liquidity floor** — a minimum volume and open interest below which
   a contract's price is not quoted at all. Without that this would import exactly the
   false-precision problem the catalogue was built to stop.
+
+---
+
+## 2026-10-02 — Jess Inskip, "The repo market map" (parts 1 and 2)
+
+> *Part 1:* *"Cash comes with interest... treasuries are collateral. [Banks, primary
+> dealers, non-bank financial institutions] are all matched up within this repo market. One
+> needs to earn interest from cash, the other needs to borrow cash... sells a treasury and
+> agrees to buy back that same treasury at a higher price. The difference of those
+> transactions, that's interest... and this determines the SOFR. If there is more cash
+> needed... like everyone needs to make all their tax payments all of a sudden and are
+> pulling from money markets, [that] can spike up SOFR rates overnight."*
+>
+> *Part 2:* *"Money markets cannot access the discount window... if there's only one place I
+> can go to borrow cash, well they could charge you a very very high rate... So the Fed
+> created the standing repo facility... **if you see increased usage of the standing repo
+> program, it doesn't mean that something is collapsing. It means that you can borrow cash
+> from the Fed at a better rate than you can at the repo market. What the Fed put into
+> action is working.**"*
+
+**This is the first clip in either log whose central claim this desk had already tested —
+and the first where the desk's own written prior was the thing that lost.**
+
+**1. The claim, stated plainly.** Two testable ones, cleanly separable:
+- **(a) Mid-month cash demand drives SOFR.** Tax payments and settlement pull cash out of
+  money market funds, which forces them to raise cash in repo, which bids up the overnight
+  rate. A *calendar* mechanism, explicitly not a stress mechanism.
+- **(b) SRF usage is benign, discount window usage is not.** Drawing the Standing Repo
+  Facility is arbitrage — you borrow where it is cheaper — and signals the ceiling working.
+  Borrowing at the discount window is a last resort and a red flag. The distinction is the
+  claim; either half alone is not.
+
+**2. What's already on this desk.** All of it. Every player on her map is a series already
+being pulled, and the catalogue's `policy` group *is* her diagram: `SOFR`, `IORB` (the floor
+the corridor sits on), `RPONTSYD` (the SRF), `RRPONTSYD` (reverse repo), `WLCFLPCL` (the
+discount window), `EFFR`, `DFEDTARU`.
+
+**Her (a) names the mechanism behind a result banked yesterday.** `funding-stress`
+(2026-10-02, NULL) found that with month-end excluded, **12 of the remaining 15 SOFR
+episodes land on the 14th–18th of a month.** The study recorded that as "mid-month tax and
+settlement dates" — a label, with no transmission chain behind it. She supplies the chain:
+withdrawals from money market funds → funds must raise cash → repo demand → higher buyback
+price → higher SOFR. **The desk found the artefact; the clip explains it.** That is the
+first time a clip here has done that in this direction.
+
+**Her (b) is the claim `funding-stress` S2 tested — and the desk lost its own bet.** The
+pre-registered expectation was that a drawn SRF precedes *wider* ranges. It came back the
+other way: SPX500 next-5-session range **−0.561 ATR [−0.984, −0.181]** against an
+ATR-quintile-matched control, negative in both halves. Markets are **calmer** after the
+facility is used. And the SRF is drawn on **667 of 2,123 sessions — 31%**, which is routine
+plumbing, not an alarm. Her framing predicts exactly this; the desk's did not.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding, and it should not be
+converted into a trade. Note precisely where she goes one step further than the evidence
+allows: `funding-stress`'s own `use` note says the negative is reported **as measured and
+NOT as evidence the backstop works** — because with usage that routine, SRF days are mostly
+ordinary days, and the sample begins in 2018 and contains no crisis at all. She concludes
+"what the Fed put into action is working." **Her mechanism is right and her conclusion
+over-reaches by exactly the one step the study declined to take.** The study cannot see the
+counterfactual; neither can she.
+
+**4. The display nugget — and the first genuinely strong follow-up any clip has produced.**
+`WLCFLPCL` is pulled, is read by `rates` and `weekMap`, and carries **`evidence: []`** — it
+has never been tested. Her clip supplies the sharp, falsifiable distinction that makes it
+worth testing, and the data is already in hand:
+
+- **1,242 weekly observations, 2002-12 → 2026-09.** It spans **two real bank crises** —
+  2023-03-15 at **$152.9bn** (SVB, the all-time high) and 2008-10-29 at **$110.7bn**. This
+  is the thing the SRF sample lacked, and `funding-stress` named that gap itself: *"the open
+  question this still does not answer is whether funding stress matters when the facility is
+  NOT there to cap it."* The discount window reaches back through two periods where it was.
+- **But the same trap applies, and it has to be designed around from the start.**
+  **94.7% of weeks are non-zero** — so "the discount window was used" is as meaningless as
+  "the SRF was drawn" at 31%. The level is the signal; the usage flag is not. Any
+  pre-registration starts from a level or a deviation, never a binary.
+
+**A live reading, flagged with its caveat rather than as a finding.** The latest print
+(2026-09-30) is **$8.74bn** — the 97th percentile since 2024, the 89th since 2002, up 12%
+over thirteen weeks. That looks notable and probably is not, for two reasons the desk has
+already learned twice: against the 2023 peak of $152.9bn it is a rounding error, so the
+high percentile is **computed over a quiet regime with no cycle in it**; and the print lands
+on **30 September — a quarter-end**, which is the precise balance-sheet-dressing artefact
+that killed the 99th-percentile SOFR read in `repo-stress-range` and then killed it again in
+`funding-stress`. A quarter-end spike in a funding metric is the null hypothesis here, not
+the finding. **Worth watching from the next few prints; not worth repeating as stress.**
+
+**5. Verdict and action.**
+- **Mechanism: CONFIRMED as an explanation, for a result already banked NULL as a signal.**
+  Both halves of her picture match what the data did. Nothing to re-test.
+- **Catalogue update earned.** The `SOFR` trap currently says "mid-month tax and settlement"
+  with no transmission behind it. It should carry the chain, because a trap a reader can
+  *reason about* survives better than one they have to memorise.
+- **One pre-registration worth writing: `discount-window-stress`.** Level-based, never a
+  usage flag; weekly cadence; episode-level not week-level (2008 and 2023 are two events,
+  not ninety weeks); and it must be mirrored. It is the only follow-up in this entire clip
+  log that both closes a stated open question and has its data already on the desk.
+- **Credit where it is due.** This is the first clip of the nine where the presenter's
+  framing would have produced a *better written prior* than the one the desk pre-registered.
+  Worth remembering the next time a plumbing claim gets a prior assigned by instinct.
