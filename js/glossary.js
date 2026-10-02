@@ -191,12 +191,12 @@ export const GLOSSARY = [
     not: 'Not reversal signals, and not prices to place orders at — they are zones by construction.',
   },
   {
-    id: 'options-walls', term: 'Options walls', aliases: ['call wall', 'put wall', 'OI walls'], section: 'levels', evidence: 'context',
+    id: 'options-walls', term: 'Options walls', aliases: ['call wall', 'put wall', 'OI walls'], section: 'levels', evidence: 'null',
     definition: 'Strikes where a large amount of options open interest sits — the call wall above price, the put wall below.',
     why: 'Dealers hedging those positions can make price sticky near the walls and faster away from them, so they are candidate places for the day to stall.',
     scale: 'A wall matters more the closer it is and the bigger it is relative to the rest of the board. A wall at 2 ATR is furniture.',
-    source: 'CME open interest by strike, captured nightly. Real data; a forward test of what walls actually do is collecting.',
-    not: 'Not a guarantee of anything. Max pain, in particular, was tested here and found null as a predictor.',
+    source: 'CME open interest by strike, captured nightly. The forward test is DONE: a placebo on 2026-09-23 compared walls against neighbouring strikes and against random prices.',
+    not: 'Not a barrier. Walls turned price away no more often than a strike next door or a price picked at random, so "it is defending the wall" is a story told after the fact. Max pain is separately null as a predictor.',
   },
   {
     id: 'max-pain', term: 'Max pain', aliases: [], section: 'levels', evidence: 'null',
@@ -211,7 +211,7 @@ export const GLOSSARY = [
     definition: 'From the shape of options positioning: whether dealer hedging is likely to dampen moves today (PIN — price stuck near here, drifting back to the middle) or amplify them (ACCELERATE — a break is more likely to run).',
     why: 'It says which kind of day the options market has set up: fade the edges, or respect the break.',
     scale: 'PIN favours fading; ACCELERATE favours following. It is one input to the direction tag, not the tag itself.',
-    source: 'Net gamma from the options board. Descriptive of positioning; the forward test is collecting.',
+    source: 'Net gamma from the options board. The forward test is DONE for range: 793 Nasdaq days, long-gamma days run about 15% quieter than a volatility-matched baseline, unchanged on event days. It was tested on FX and does not carry there.',
     not: 'Not a direction. PIN says stuck, ACCELERATE says fast — neither says up or down.',
   },
   {
@@ -506,6 +506,91 @@ export const GLOSSARY = [
     source: 'Ranked against the instrument\'s own history, usually within the current session band.',
     not: 'Not a probability of anything happening next.',
   },
+  // -- Options vocabulary -----------------------------------------------------
+  // Added 2026-10-02. The board prints GEX, DEX, the P/C ratio, the gamma flip,
+  // risk reversal, the IV term structure and an implied move, and until now a
+  // reader was asked to interpret a "put wall" with no definition of a put.
+  {
+    id: 'call-put', term: 'Call and put', aliases: ['call', 'put', 'long call', 'short put', 'option'], section: 'levels', evidence: 'context',
+    definition: 'An option is a contract. A CALL is the right to buy at a set price; a PUT is the right to sell. Whoever BUYS it holds the right; whoever SELLS it carries the obligation and keeps the premium.',
+    why: 'Every options number on this page is built from these four positions, and the direction of each one comes from which SIDE you are on, not from the word call or put.',
+    scale: 'Bought call = bullish. Bought put = bearish. SOLD put = bullish. SOLD call = bearish. The sold pair are the ones people get backwards.',
+    source: 'Definitional.',
+    not: 'Not "puts are bearish". A sold put is a bullish position, and open interest does not record who sold.',
+  },
+  {
+    id: 'premium', term: 'Premium', aliases: ['intrinsic value', 'extrinsic value', 'time value'], section: 'levels', evidence: 'context',
+    definition: 'What an option costs. It splits into INTRINSIC value (what it would be worth if exercised right now) and EXTRINSIC value (everything else -- time left, and implied volatility).',
+    why: 'It separates the two reasons an option moves: price going your way, versus time running out and volatility changing.',
+    scale: 'Deep in the money is almost all intrinsic. At or out of the money is all extrinsic, and extrinsic decays to zero at expiry.',
+    source: 'Definitional.',
+    not: 'Not all one thing. A contract can gain intrinsic value and still lose money overall if extrinsic drains faster.',
+  },
+  {
+    id: 'delta', term: 'Delta', aliases: ['moneyness', 'in the money', 'at the money', 'out of the money'], section: 'levels', evidence: 'context',
+    definition: 'How much an option price moves for a $1 move in the underlying, from -1 to +1. It is also roughly how much of a share the contract behaves like.',
+    why: 'Added up across a book it is the net directional exposure -- what DEX on this page is measuring.',
+    scale: 'At the money is about 0.5. Deep in the money approaches 1 (behaves like the stock). Far out of the money approaches 0.',
+    source: 'Definitional; computed from the options board.',
+    not: 'Not a probability, though it is close enough to one to be taught that way. Delta is N(d1); the chance of finishing in the money is N(d2), and they separate as time and volatility grow.',
+  },
+  {
+    id: 'gex', term: 'GEX', aliases: ['gamma exposure', 'net gamma', 'long gamma', 'short gamma'], section: 'levels', evidence: 'context',
+    definition: 'Net gamma exposure: an estimate of how dealers must trade to stay hedged. When they are LONG gamma they sell rallies and buy dips; when SHORT they do the opposite.',
+    why: 'It is the one positioning number on this desk with a tested forward result -- but only for how FAR price travels, and only on the Nasdaq.',
+    scale: 'The reliable state is "long gamma is quiet": those days run about 15% below a volatility-matched baseline. Short-gamma days are close to ORDINARY, not wild.',
+    source: '793 Nasdaq days from a 1,521-day archive, pre-registered: +0.315 vol-matched, 4 of 4 specifications, 6 of 6 years, identical on event days. Tested on FX and does NOT generalise.',
+    not: 'Not a direction. It never says up or down -- "mean-reversion bias" and "breakout risk" overstate it, and the wall-magnet direction beside it was falsified at 48.8% out of sample. On FX it is decoration.',
+  },
+  {
+    id: 'dex', term: 'DEX', aliases: ['delta exposure', 'net delta'], section: 'levels', evidence: 'unvalidated',
+    definition: 'Delta exposure: the options board\u2019s net directional position, the sum of every contract\u2019s delta weighted by open interest.',
+    why: 'It is the closest thing to a one-number answer for which way the options market is leaning.',
+    scale: 'Reported as a level. Positive is net long exposure, negative net short.',
+    source: 'Computed from the options board. Never tested on this desk -- it carries no entry in the evidence ledger.',
+    not: 'Not a signal yet. It shares the problem the P/C ratio has: open interest does not say who opened the contract.',
+  },
+  {
+    id: 'pc-ratio', term: 'Put/call ratio', aliases: ['P/C ratio', 'pcRatio', 'put-heavy', 'call-heavy'], section: 'levels', evidence: 'unvalidated',
+    definition: 'Total put open interest divided by total call open interest.',
+    why: 'It is the usual shorthand for whether the options market is leaning defensive or offensive.',
+    scale: 'Above about 1.3 is put-heavy, below about 0.77 call-heavy. Those cut-points have no recorded provenance on this desk.',
+    source: 'Raw open interest. Untested here, with no entry in the evidence ledger.',
+    not: 'NOT a direction, and the reason is structural: open interest counts a contract once and never records who opened it. Put-heavy fits puts bought as insurance AND puts sold for income equally well -- and covered-call writing, the commonest institutional strategy there is, piles into CALL open interest from a seller whose upside is capped.',
+  },
+  {
+    id: 'gamma-flip', term: 'Gamma flip', aliases: ['gexFlip', 'flip level'], section: 'levels', evidence: 'context',
+    definition: 'The price where net gamma changes sign -- above it dealers are long gamma, below it short, or the reverse.',
+    why: 'It marks where the character of the day is expected to change, rather than a level price should bounce off.',
+    scale: 'A book can cross zero several times, so there are often several flips and a short-gamma pocket between two of them. The nearest one is not always the relevant one.',
+    source: 'Computed from the gamma profile. The band either side has a tested RANGE meaning on the Nasdaq only.',
+    not: 'Not support or resistance. It is a boundary between two kinds of day, with no directional content.',
+  },
+  {
+    id: 'risk-reversal', term: 'Risk reversal', aliases: ['skew', 'RR25'], section: 'levels', evidence: 'unvalidated',
+    definition: 'The implied volatility of an out-of-the-money call minus that of the equivalent put -- what the options market charges for upside versus downside protection.',
+    why: 'It is the cleanest read on which tail people are actually paying to hedge.',
+    scale: 'Negative means puts are bid relative to calls (downside fear priced richer); positive the reverse.',
+    source: 'From the options board. Not tested on this desk.',
+    not: 'Not a forecast. It says what protection costs today, not which way price goes.',
+  },
+  {
+    id: 'iv-term-structure', term: 'IV term structure', aliases: ['term structure', 'ivTermStructure'], section: 'levels', evidence: 'null',
+    definition: 'Implied volatility across expiries -- whether the near dates are priced above or below the further ones.',
+    why: 'Near-dated above far-dated is the classic "something is happening soon" shape, and the obvious use is a filter that stands trades down when it inverts.',
+    scale: 'Upward sloping is the normal state. Inversion means the market is paying up for near-term cover.',
+    source: 'Computed nightly across 41 instruments. The filter use was tested on this desk\u2019s own trades.',
+    not: 'Not a usable stress filter: standing trades down on an inverted term structure would have cut GOOD trades. The shape is real; using it as a gate was tested and did not pay.',
+  },
+  {
+    id: 'implied-move', term: 'Implied move', aliases: ['expectedMove', 'options-implied move', 'straddle move'], section: 'levels', evidence: 'validated',
+    definition: 'How far the options market is pricing the instrument to travel by an expiry, backed out of implied volatility.',
+    why: 'It is an independent second opinion on the day\u2019s range -- priced by people with money at risk rather than computed from past bars.',
+    scale: 'Compare it with this page\u2019s own expected range. Agreement raises confidence; a wide gap is worth understanding before sizing.',
+    source: 'From CME settlements, recoverable back six years. It beat realised-volatility baselines on 7 of 7 instruments tested.',
+    not: 'Not the same as the Expected range on this page, which is computed from price history -- and not a direction. It is a distance with no sign.',
+  },
+
 ];
 
 // ── lookups ──────────────────────────────────────────────────────────────────
