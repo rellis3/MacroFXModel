@@ -114,9 +114,14 @@ function render() {
   const lt = S.lastTick;
   h += `<div class="card"><h2>Health</h2><div class="muted">Last check: ${lt ? `${ago(lt.at)} (${lt.reason}) — ${lt.ok ? '<span class="pos">ok</span>' : '<span class="neg">' + lt.error + '</span>'}` : 'none since the last server restart'}.
         Saved ${ago(S.updatedAt)}. The job runs every 5 minutes on Railway; implied vol for FX and gold depends on the morning options capture.</div>`;
+  h += `<div id="vixcap" class="muted" style="margin-top:6px">1-minute VIX/VXN recorder: loading…</div>`;
   if ((S.log ?? []).length) h += `<div style="margin-top:8px;font:11px/1.5 'DM Mono',monospace">${S.log.slice(0, 25).map(l => `<div><span class="muted">${l.at.slice(0, 16).replace('T', ' ')}</span> ${l.msg}</div>`).join('')}</div>`;
   h += `</div>`;
   el('out').innerHTML = h;
+  fetch('/api/vix-capture').then(r => r.json()).then(v => {
+    const s = Object.entries(v.perSym ?? {}).map(([k, x]) => `${k}: ${(x.days ?? []).length} days${x.error ? ' <span class="neg">(' + x.error + ')</span>' : ''}`).join(' · ');
+    el('vixcap').innerHTML = `1-minute VIX/VXN recorder (for testing the VIX-vs-Nasdaq idea later): ${s || 'no capture yet'}${v.lastRun ? ' · last run ' + ago(v.lastRun) : ''}`;
+  }).catch(() => { el('vixcap').textContent = '1-minute VIX/VXN recorder: status unavailable'; });
 }
 load(); setInterval(load, 60_000);
 </script>

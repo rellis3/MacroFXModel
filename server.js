@@ -83,6 +83,7 @@ import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } 
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
+import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
@@ -25846,6 +25847,13 @@ const paperRecord = createPaperRecord({
 });
 paperRecord.mount(app);
 svcInterval('paperRecord', () => svcRun('paperRecord', () => paperRecord.tick('scheduled')), 5 * 60_000);
+
+// 1-minute VIX / VXN recorder: Yahoo keeps only 7 days of 1-minute bars, so pull every 6 hours into R2 (vix_m1/...) to build
+// the minute-level history for testing the VIX-vs-Nasdaq divergence idea later. Status: /api/vix-capture.
+const vixCapture = createVixCapture({ r2: { configured: _r2Ok, getJSON: _r2GetJSON, putJSON: _r2PutJSON } });
+vixCapture.mount(app);
+svcTimeout('vixCapture', () => svcRun('vixCapture', () => vixCapture.tick('boot')), 2 * 60_000);
+svcInterval('vixCapture', () => svcRun('vixCapture', () => vixCapture.tick('scheduled')), 6 * 60 * 60_000);
 
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {
