@@ -97,11 +97,11 @@ function render() {
   const tradeDays = days.filter(([, x]) => (x.trades ?? []).length || x.skipped);
   if (!tradeDays.length) h += `<div class="muted">No trades yet. The first flags are set at 21:00 London; signals can fire from 00:00 to 10:00 the next morning on rich instruments only.</div>`;
   else {
-    h += `<table><tr><th>date</th><th>instrument</th><th>line</th><th>dir</th><th>signal</th><th>entry</th>${VARS.map(v => `<th>${v}</th>`).join('')}<th>R (avg)</th><th>status</th></tr>`;
+    h += `<table><tr><th>date</th><th>instrument</th><th>line</th><th>dir</th><th>signal</th><th>entry</th><th>vs H1 trend</th>${VARS.map(v => `<th>${v}</th>`).join('')}<th>R (avg)</th><th>status</th></tr>`;
     for (const [d, x] of tradeDays) {
-      if (x.skipped && !(x.trades ?? []).length) { h += `<tr><td>${d}</td><td colspan="${7 + VARS.length}" class="muted">skipped: ${x.skipped}</td></tr>`; continue; }
+      if (x.skipped && !(x.trades ?? []).length) { h += `<tr><td>${d}</td><td colspan="${8 + VARS.length}" class="muted">skipped: ${x.skipped}</td></tr>`; continue; }
       for (const t of x.trades) {
-        h += `<tr><td>${d}</td><td>${insts[t.inst]?.sym ?? t.inst}</td><td>${t.line}</td><td>${t.dir > 0 ? '<span class="pos">long</span>' : '<span class="neg">short</span>'}</td><td>${ldn(t.signalTime)}</td><td>${t.entry}</td>`
+        h += `<tr><td>${d}</td><td>${insts[t.inst]?.sym ?? t.inst}</td><td>${t.line}</td><td>${t.dir > 0 ? '<span class="pos">long</span>' : '<span class="neg">short</span>'}</td><td>${ldn(t.signalTime)}</td><td>${t.entry}</td><td class="${t.h1Rel === 'counter' ? 'blue' : 'muted'}">${t.h1Rel ?? '—'}</td>`
           + VARS.map(v => { const z = t.variants?.[v]; return `<td class="${cls(z?.R)}" title="${z ? z.status + ' · stop ' + z.stop + ' · target ' + z.target : ''}">${z ? f3(z.R) + (z.status === 'open' ? '…' : '') : '—'}</td>`; }).join('')
           + `<td class="${cls(t.R)}"><b>${f3(t.R)}</b></td><td class="muted">${t.done ? 'closed' : 'open (live mark)'}</td></tr>`;
       }

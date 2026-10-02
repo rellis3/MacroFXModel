@@ -12,7 +12,7 @@ import { v4Days, nyCloseDailyBars } from './voteAtlasV4Lines.js';
 import { constantMaturityIV } from './ivMetrics.js';
 import { assetClassFor } from './forecastAnalyserStore.js';
 import { costForPair } from './perLineStrategy.js';
-import { INSTRUMENTS, END_MIN, richFlag, detectBreaks, scoreTrade } from './paperRecordCore.js';
+import { INSTRUMENTS, END_MIN, richFlag, detectBreaks, scoreTrade, h1TrendState } from './paperRecordCore.js';
 
 export const PAPER_KV = 'paper_record_v1';
 const KEEP_DAYS = 400, CBOE = s => `https://cdn.cboe.com/api/global/us_indices/daily_prices/${s}_History.csv`;
@@ -121,7 +121,9 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
       day.lines ??= {}; day.lines[inst.key] = Object.fromEntries(Object.entries(d.static).map(([k, v]) => [k, +v.toFixed(5)]));
       for (const b of detectBreaks(d, bars)) {
         let t = day.trades.find(x => x.inst === inst.key && x.line === b.line);
-        if (!t) { t = { inst: inst.key, line: b.line, dir: b.dir, level: +b.level.toFixed(6), entry: b.entry, signalTime: b.signalTime, entryTime: b.entryTime }; day.trades.push(t); note(store, `${date} ${inst.sym} break of ${b.line} ${b.dir > 0 ? 'up' : 'down'} at ${b.entry}`); }
+        if (!t) { const h1 = h1TrendState(packed, b.signalTime);
+          t = { inst: inst.key, line: b.line, dir: b.dir, level: +b.level.toFixed(6), entry: b.entry, signalTime: b.signalTime, entryTime: b.entryTime,
+                h1Trend: h1, h1Rel: h1 == null ? null : h1 === 0 ? 'neutral' : h1 * b.dir > 0 ? 'with' : 'counter' }; day.trades.push(t); note(store, `${date} ${inst.sym} break of ${b.line} ${b.dir > 0 ? 'up' : 'down'} at ${b.entry}`); }
         if (t.done) continue;
         Object.assign(t, scoreTrade(d, bars, b, costPx, final));
         if (final) t.done = true;

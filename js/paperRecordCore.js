@@ -109,4 +109,20 @@ export function scoreTrade(d, bars, brk, costPx, final) {
   return { variants, R: vs.length === 4 ? round(vs.reduce((a, v) => a + v.R, 0) / 4, 4) : null, done };
 }
 
+// H1 trend state at a signal time from M1 closes (completed hours only): +1 = close > EMA20 > EMA50, -1 = the mirror, 0 = neither,
+// null = fewer than 50 hours. Same definition as the research's htf_trend_build.mjs. Recorded on each trade, not used as a filter:
+// the fade-continue-book stack test (STACK_RICHIV_TREND_RESULTS.md) found breaks AGAINST the H1 trend far stronger on indices
+// (+0.62R, n=199) but on too few days to act on; the forward record settles it.
+export function h1TrendState(packed, tSec) {
+  const s = [], c = [];
+  for (let i = 0; i < packed.n && packed.times[i] < Math.floor(tSec / 3600) * 3600; i++) {
+    const b = Math.floor(packed.times[i] / 3600) * 3600;
+    if (s[s.length - 1] !== b) { s.push(b); c.push(packed.closes[i]); } else c[c.length - 1] = packed.closes[i];
+  }
+  if (c.length < 50) return null;
+  const ema = n => { const k = 2 / (n + 1); let o = c[0]; for (let i = 1; i < c.length; i++) o = c[i] * k + o * (1 - k); return o; };
+  const e20 = ema(20), e50 = ema(50), last = c[c.length - 1];
+  return last > e20 && e20 > e50 ? 1 : last < e20 && e20 < e50 ? -1 : 0;
+}
+
 function round(x, n) { if (x == null || !Number.isFinite(x)) return null; const p = 10 ** n; return Math.round(x * p) / p; }
