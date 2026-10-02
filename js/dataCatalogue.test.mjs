@@ -25,6 +25,14 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 function fredIdsInCode() {
   // every file that NAMES a series id. Missing one makes the catalogue look stale when
   // it is the scan that is incomplete, so this list is part of the test's contract.
+  //
+  // KNOWN INCOMPLETE (2026-10-02). This list has NOT kept up: 28 engines in js/ reference
+  // FRED and only three appear below. js/laborMarketEngine.js, js/ismEngine.js and
+  // js/econTrendEngine.js are unscanned, so ~30 labour series are fetched and uncatalogued
+  // while these tests stay green. The regex below is the second allowlist and has the same
+  // flaw -- it enumerates the families already catalogued, so a genuinely new series cannot
+  // match even if its file were scanned. This test proves NO DRIFT WITHIN WHAT IT ALREADY
+  // KNOWS; it does not prove the catalogue is complete. Do not read a pass as the latter.
   const files = ['server.js', '_worker.js', 'js/weekMap.js', 'js/macroCore.js', 'js/volForecastBench.js',
                  'js/fredActuals.js', 'js/cpiEngine.js', 'js/creditStressEngine.js', 'GlobalLiquidity/backtestCore.mjs'];
   const ids = new Set();

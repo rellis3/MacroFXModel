@@ -803,3 +803,86 @@ is unlabelled, and like `gexRead` it has no entry among the ledger's 81.
 - **Cheapest honest fix if neither gets tested soon:** make the prompt state the assumption
   rather than hide it — "put-heavy; direction depends on initiator, which this data does not
   carry" is both shorter and true.
+
+---
+
+## 2026-10-02 — Jess Inskip, "the market is an anxious man" (volatility and triggers)
+
+> *"Volatility just means uncertainty... we need to understand their triggers... a rise in
+> unemployment — people don't have jobs, they're not going to spend money, businesses aren't
+> going to make money... interest rates increasing, it's going to cost more to borrow...
+> artificial intelligence — an increase in productivity, we can do so much more with less."*
+
+**The analogy is a teaching device and is not scored.** What is scorable is the three causal
+chains she hangs on it, and this desk has a direct verdict on one of them.
+
+**1. "Volatility just means uncertainty" — the loose version of a lesson that cost real
+money here.** The sharper statement, learned the hard way on 2026-09-29, is that
+**volatility is variance and variance is not direction**. Reading the HMM's "RANGE" state as
+*directionless* rather than *quiet* hid a full dollar move on 8 of 14 pairs, and the fix was
+a separate structural travel read (`js/travelRead.js`). "Uncertainty" invites exactly that
+conflation. Worth noting too that this framing sits in mild tension with her own VIX clip
+already in this log, whose entire point was that VIX is **not** a fear gauge; here fear of
+the unknown is reintroduced as the driver. Both are framings rather than facts, so neither
+is scored — but the desk should keep the harder definition.
+
+**2. The interest-rate chain is TESTED, and null three separate ways.** Her second trigger —
+rates up, therefore stocks down — is the most-tested folk chain on this desk:
+- `yields-to-fx-direction` (2026-08-23, **null**): forward coupling null; the relationship
+  is real only within the same bar. *"Never write that a yield move implies where a pair
+  goes next."*
+- `front-end-shock` (2026-09-17, **null**): a 2Y ±14bp weekly shock does not mean a volatile
+  following week — and the sign **reverses**. After a hawkish 2Y shock, EUR/USD and GBP/USD
+  ran **calmer** (−0.34 and −0.28 ATR, CIs clear of zero).
+- `growth-vs-yields` (2026-09-17): the NQ range effect is real, but **yields are a
+  passenger** — rates up with NQ flat is null. One-leg controls are what separated cause
+  from passenger.
+
+So the chain is intuitive, universally repeated, and does not survive a control. That is the
+single most repeated finding on this desk.
+
+**3. The AI/productivity chain is not testable here** and is logged as such rather than
+guessed at. No productivity series is wired, and a multi-year structural claim is not
+something a daily-bar harness can address.
+
+**4. THE FINDING: her unemployment chain pointed at a hole in the catalogue's own guard.**
+Checking whether the desk could test "unemployment → spending → earnings → equities", the
+first answer looked like "no labour data" — and that was **wrong**, which is the fourth time
+this session that reflex has been wrong. The desk has a great deal of it:
+`js/laborMarketEngine.js` is a 470-line scoring engine over roughly thirty series (`PAYEMS`,
+`UNRATE`, `CIVPART`, `AWHAETP`, JOLTS `JTSJOR`/`JTSQUR`, the US sector payroll split, plus
+foreign wage and unemployment legs). `js/ismEngine.js` carries business confidence for six
+countries. `js/econTrendEngine.js` holds unemployment and rates for eight currencies.
+
+**None of it is in `js/dataCatalogue.js`.** The catalogue has 91 entries across ten groups
+and its `growth` group contains exactly **one** (`DGORDER`). `UNRATE`, `PAYEMS`, `ICSA`,
+`CFNAI` and `INDPRO` are all absent while being read by live engines.
+
+**And the catalogue's header claims a test prevents precisely this:**
+
+> *"KEPT HONEST BY A TEST. js/dataCatalogue.test.mjs asserts every FRED id reachable in the
+> code appears here and vice versa, so the catalogue cannot quietly drift from what the
+> server actually fetches."*
+
+**The test passes, 9 of 9, and that claim is false.** It is guarded by two allowlists:
+- a **hard-coded list of nine files** (`server.js`, `_worker.js`, `js/weekMap.js`,
+  `js/macroCore.js`, `js/volForecastBench.js`, `js/fredActuals.js`, `js/cpiEngine.js`,
+  `js/creditStressEngine.js`, `GlobalLiquidity/backtestCore.mjs`) — while **28 engines in
+  `js/` reference FRED**, only three of which are on that list; and
+- a **regex enumerating only the id families already catalogued**, so `UNRATE`, `PAYEMS`,
+  `ICSA`, `CIVPART`, `JTSJOR` and the rest cannot match even if their file were scanned.
+
+**The guard can only ever rediscover what it already knows.** A new engine is invisible to
+it, silently, and the test goes green. This is the same shape as the `svcInterval` registry
+and the second KV TTL gate: a check that passes while not checking.
+
+**5. Verdict and action.**
+- **Clip: nothing to test.** One chain already null three ways, one untestable, one pointing
+  at a data gap that turned out to be a *catalogue* gap.
+- **Fixed now:** the catalogue header no longer claims a guarantee the test does not provide,
+  and the test file records what its two allowlists actually cover.
+- **Offered, not done:** widening the scan to all 28 FRED-touching engines and cataloguing
+  what it finds. That is real work — likely several dozen series needing a `why`, a `readBy`
+  and an evidence list — and it is the user's call.
+- **A genuine study is now visible:** the labour chain has thirty-odd series, a live scoring
+  engine, and no entry in the ledger's 81.

@@ -17,9 +17,17 @@
 // distinction is the whole value: on 2026-10-01 the honest answer to "what should we pull
 // next" was "nothing -- test T10Y2Y, which you have had all along and have never scored".
 //
-// KEPT HONEST BY A TEST. js/dataCatalogue.test.mjs asserts every FRED id reachable in the
-// code appears here and vice versa, so the catalogue cannot quietly drift from what the
-// server actually fetches -- which is exactly how the inventory got lost the first time.
+// PARTLY KEPT HONEST BY A TEST, AND KNOW THE LIMIT. js/dataCatalogue.test.mjs checks both
+// directions -- fetched-but-undocumented and catalogued-but-unfetched -- but only across a
+// hard-coded list of NINE files and only for a regex enumerating the id families already
+// catalogued. It therefore rediscovers what it already knows and cannot find anything new.
+// Twenty-eight engines in js/ reference FRED; three of them are on that list. Found
+// 2026-10-02: js/laborMarketEngine.js (~30 series incl. PAYEMS, UNRATE, CIVPART, JOLTS),
+// js/ismEngine.js and js/econTrendEngine.js are all invisible to the guard, and the whole
+// labour-market block is missing from this file while the `growth` group holds exactly one
+// entry. The header used to claim the test made drift impossible. It does not. Widening it
+// means scanning every FRED-touching engine and dropping the id allowlist -- until that is
+// done, TREAT THIS CATALOGUE AS INCOMPLETE rather than as the inventory.
 //
 // Pure data. No fetch, no DOM.
 
