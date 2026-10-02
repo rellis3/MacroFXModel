@@ -163,6 +163,10 @@ expectations or earnings legs.
 
 ## 2026-10-02 (2) — Jess Inskip, "Investor mood, the quote, and forced selling" (whiteboard)
 
+*Re-sent 2026-10-02 under a second share link (`1DkAfHi7ym` as well as `1CgmZw3u6X`) — same
+clip, identical transcript, already passed below. Noted here so the duplicate is visible at
+the entry rather than discovered by re-running the audit.*
+
 > *"Why would someone want to buy? Why would someone want to sell?... Buying is optimism,
 > selling is fear, and if you're not sure, uncertainty — and uncertainty comes with
 > volatility... If you own that on margin... you may not want to sell the stock, but you
