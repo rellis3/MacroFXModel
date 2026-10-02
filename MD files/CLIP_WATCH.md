@@ -971,3 +971,64 @@ overwriting flow; the strategy is documented only in `education/151 Trading Stra
 **Verdict.** Nothing to test in the clip. It is the third independent route to the same
 conclusion: `pcBias` and `gexRead` are interpretations shipped as readings, and open interest
 does not carry the side that would justify either.
+
+---
+
+## 2026-10-02 — Jess Inskip, "how a 10-year Treasury note works"
+
+> *"Price and yield have an inverse relationship... $50 on $1,100 is actually 4.5%... The
+> Fed can buy these securities, that's quantitative easing... if they buy a lot of
+> treasuries that could stimulate the economy because it's going to increase the price,
+> lower the yield... I am a foreign entity that owns a lot of these, I could offload them
+> and sell them, causing the price to go down but the yield to increase."*
+
+Mechanics are definitional and correct. **Three claims in it are testable, and the desk is
+missing the data for two of them — a real gap this time, verified against the repo rather
+than the catalogue, since the catalogue is now known to be incomplete.**
+
+**(a) A precision note on the series the desk reads most.** Her worked example computes
+coupon ÷ price — **current yield**. `DGS10` is a constant-maturity **yield to maturity**,
+which also amortises the pull-to-par of the premium or discount over the remaining life.
+They are not the same number: $50 on $1,100 is 4.55% current yield but roughly 3.9% YTM on a
+ten-year. Nothing here is wrong for teaching the inverse relationship, but **`DGS10` is the
+single most-read series on this desk**, and anyone reconstructing it as coupon-over-price
+will not reproduce it. Worth having written down once.
+
+**(b) "The ten-year is tied to your mortgage" — NOT TESTABLE HERE, and cheaply fixable.**
+There is no mortgage series anywhere: `MORTGAGE30US` appears in no file under `js/`,
+`analysis/`, `server.js` or `GlobalLiquidity/`. It is free on FRED, weekly, back to 1971.
+The claim is near-universally repeated and the spread (30y mortgage minus 10y Treasury) is
+itself a well-known credit/convexity indicator that widened sharply in 2023. **A genuine gap,
+small to close.**
+
+**(c) "Foreign selling pushes yields up" — NOT TESTABLE HERE.** `FDHBFIN` (foreign holdings
+of Treasuries) is absent, as is `TREAST` (the Fed's own Treasury holdings). The catalogue's
+`foreign` group holds 17 entries and every one is a foreign *interest rate* (`IRLTLT01…`),
+not a holdings series. Note the practical limit before anyone gets excited: TIC data is
+monthly and published on roughly a six-week lag, so this can answer a structural question
+and never a tradeable one.
+
+**(d) THE CANDIDATE: her QE claim is both famous and genuinely contested, and the desk can
+test a version of it now.** *"If they buy a lot of treasuries... it's going to increase the
+price, lower the yield."* The mechanism is sound — a large price-insensitive buyer lifts
+price. **The net effect is what is disputed**: across the actual QE program windows, 10-year
+yields frequently **rose**, because the growth and inflation expectations the purchases were
+meant to create push the other way harder than the price pressure pushes.
+
+That is exactly the **passenger** pattern this desk has already found twice — rates moving
+*with* a story rather than driving it (`growth-vs-yields`), and a famous spread dying to a
+control (`curve-inversion`). And `WALCL` is catalogued, long-history, and carries evidence
+ids for `repo-stress-range` and `stock-bond-flip` but **nothing on yields**.
+
+**The study almost writes itself, and it must be mirrored.** If balance-sheet *expansion* and
+balance-sheet *contraction* are followed by the same yield direction, it is a period artefact
+— the mirror that killed `breadth-narrowing` and `curve-inversion`. `WALCL` is weekly and
+includes MBS and everything else, so it is a proxy for the Treasury-purchase leg; `TREAST`
+would be the clean series and is not pulled. Episode-level, not week-level: QE3 alone would
+otherwise contribute hundreds of observations, the same collapse that reduced fifty years of
+curve data to ten episodes.
+
+**Verdict.** Nothing wrong in the clip. One precision note worth keeping, two honest data
+gaps found by checking the repo rather than trusting the catalogue, and **one pre-registerable
+study on a claim that is repeated everywhere, has the data mostly in hand, and has never been
+scored among the ledger's 81 entries.**
