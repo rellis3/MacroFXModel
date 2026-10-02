@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Four Option Positions — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local: clickable quadrant cells in the slide-3 SVG picker. */
+  .ofg-cell{cursor:pointer}
+  .ofg-cell:focus{outline:none;stroke:var(--amber)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Four Option Positions — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full derivations, the worked example and a 6-question self-test?<a href="options-four-positions.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Options from the Ground Up · Lesson 1 of 3</div>
+      <h1 class="sl-h1">The Four Option Positions, <em>and who owes whom</em></h1>
+      <p class="sl-lede">Two yes/no choices — bought or sold, call or put — give four positions. From those two choices alone you can read off who holds a right, who carries an obligation, the worst case, and the sign of every Greek.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Four words, four meanings</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">L</div><div><h4>Long</h4><p>You <strong>bought</strong> it. You paid the premium and you hold a <strong>right</strong>.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Short</h4><p>You <strong>sold</strong> it. You collected the premium and you carry an <strong>obligation</strong>.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">C</div><div><h4>Call</h4><p>The right to <strong>buy</strong> at the strike.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">P</div><div><h4>Put</h4><p>The right to <strong>sell</strong> at the strike.</p></div></div>
+      </div>
+      <div class="sl-quote">A put is bearish only for the person who <strong>bought</strong> it. The person who <strong>sold</strong> it is bullish — holding the identical piece of paper.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Pick a quadrant</h2>
+      <p class="sl-sub">K = 100, σ = 20%, r = 2%, 3 months. Premiums from Black-Scholes: call 4.23, put 3.73. Tap a cell.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Two by two grid of option positions above a profit and loss at expiry chart for the selected position">
+            <text x="225" y="16" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">CALL</text>
+            <text x="485" y="16" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">PUT</text>
+            <text x="50" y="52" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">LONG</text>
+            <text x="50" y="102" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">SHORT</text>
+            <rect class="ofg-cell" data-q="lc" tabindex="0" role="button" aria-label="Long call" x="100" y="24" width="250" height="44" rx="8" style="fill:var(--panel2);stroke:var(--border2);stroke-width:2"/>
+            <text x="225" y="51" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Long call</text>
+            <rect class="ofg-cell" data-q="lp" tabindex="0" role="button" aria-label="Long put" x="360" y="24" width="250" height="44" rx="8" style="fill:var(--panel2);stroke:var(--border2);stroke-width:2"/>
+            <text x="485" y="51" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Long put</text>
+            <rect class="ofg-cell" data-q="sc" tabindex="0" role="button" aria-label="Short call" x="100" y="74" width="250" height="44" rx="8" style="fill:var(--panel2);stroke:var(--border2);stroke-width:2"/>
+            <text x="225" y="101" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Short call</text>
+            <rect class="ofg-cell" data-q="sp" tabindex="0" role="button" aria-label="Short put" x="360" y="74" width="250" height="44" rx="8" style="fill:var(--panel2);stroke:var(--border2);stroke-width:2"/>
+            <text x="485" y="101" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Short put</text>
+            <line x1="60" y1="260" x2="610" y2="260" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="140" x2="60" y2="380" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="335" y1="140" x2="335" y2="380" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="60" y="395" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">50</text>
+            <text x="335" y="395" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">K=100</text>
+            <text x="610" y="395" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">150</text>
+            <text x="52" y="146" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">+60</text>
+            <text x="52" y="264" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="52" y="382" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−60</text>
+            <polyline id="m-ofg-line" points="" style="fill:none;stroke:var(--green);stroke-width:3"/>
+            <text id="m-ofg-name" x="600" y="160" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">Long call</text>
+          </svg>
+        </div>
+        <div class="sl-calc-steps">
+          <div id="m-ofg-facts">—</div>
+          <div id="m-ofg-signs">—</div>
+        </div>
+        <div class="sl-note">P&amp;L at expiry per unit. Tap across a diagonal (long call ↔ short put): delta keeps its sign, gamma, theta and vega all flip.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The reference card</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Long call · bullish</span>
+          <p>Right to buy. Pays premium. Max loss = premium. Max gain unlimited.<br><strong>Δ+ Γ+ Θ− ν+</strong></p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Short put · bullish</span>
+          <p>Obligation to buy. Collects premium. Max gain = premium. Max loss = strike − premium.<br><strong>Δ+ Γ− Θ+ ν−</strong></p>
+        </div>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Short call · bearish</span>
+          <p>Obligation to sell. Collects premium. Max gain = premium. Max loss <strong>unlimited</strong>.<br><strong>Δ− Γ− Θ+ ν−</strong></p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Long put · bearish</span>
+          <p>Right to sell. Pays premium. Max loss = premium. Max gain = strike − premium.<br><strong>Δ− Γ+ Θ− ν+</strong></p>
+        </div>
+      </div>
+      <p class="sl-p">Buyers (one diagonal): long gamma, short theta, long vega. Sellers (other diagonal): the mirror. Only delta depends on the row.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Why the signs follow from the side</h2>
+      <div class="sl-row"><div class="sl-box">C − P</div><div class="sl-arrow">=</div><div class="sl-box amber">S − Ke⁻ʳᵗ</div></div>
+      <p class="sl-p">Put-call parity: a call minus a put at the same strike is a forward — a straight line in S with no σ in it. Differentiate it twice in S, or once in σ, and you get zero.</p>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">So</div>
+        <p>A call and a put at one strike have <strong>identical gamma and identical vega</strong>. Their deltas differ by exactly 1 and their thetas by a small financing term. Buy either one and you are long gamma and long vega; sell either one and you are short both.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Premium = intrinsic + extrinsic</h2>
+      <p class="sl-sub">Calls, S = 100, σ = 20%, 3 months.</p>
+      <div class="sl-calc-steps" style="font-size:13px">
+        <div>K = 90 (in the money): 11.09 = <b>10.00</b> intrinsic + <b>1.09</b> extrinsic</div>
+        <div>K = 100 (at the money): 4.23 = <b>0</b> intrinsic + <b>4.23</b> extrinsic</div>
+        <div>K = 110 (out of the money): 1.04 = <b>0</b> intrinsic + <b>1.04</b> extrinsic</div>
+      </div>
+      <p class="sl-p"><strong>Intrinsic</strong> is what exercising right now would pay. <strong>Extrinsic</strong> is the price of the chance things improve before expiry. Only extrinsic value decays (that is theta), it is largest at the money, and at expiry it is zero.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Delta is N(d₁) — not the chance of finishing in the money</h2>
+      <p class="sl-sub">The model's risk-neutral probability of a call expiring in the money is N(d₂), and d₂ = d₁ − σ√τ. Push vol and time up and watch them separate.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Volatility σ</span><span class="sl-live" id="m-dp-sig-val">σ = 20%</span></div>
+        <input type="range" class="sl-slider" id="m-dp-sig" min="5" max="100" step="1" value="20">
+        <div class="sl-sliderhead"><span>Days to expiry</span><span class="sl-live" id="m-dp-dte-val">30 days</span></div>
+        <input type="range" class="sl-slider" id="m-dp-dte" min="7" max="730" step="1" value="30">
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two horizontal bars comparing at-the-money call delta N(d1) with the risk-neutral in-the-money probability N(d2)">
+            <text x="10" y="38" font-size="12" fill="var(--text2)">Δ = N(d₁)</text>
+            <rect x="120" y="22" width="500" height="22" rx="4" style="fill:var(--panel2)"/>
+            <rect id="m-dp-b1" x="120" y="22" width="261" height="22" rx="4" style="fill:var(--blue)"/>
+            <text x="10" y="88" font-size="12" fill="var(--text2)">N(d₂)</text>
+            <rect x="120" y="72" width="500" height="22" rx="4" style="fill:var(--panel2)"/>
+            <rect id="m-dp-b2" x="120" y="72" width="250" height="22" rx="4" style="fill:var(--amber)"/>
+            <line x1="370" y1="14" x2="370" y2="104" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+            <text x="370" y="116" text-anchor="middle" font-size="9.5" fill="var(--text3)">0.5</text>
+          </svg>
+        </div>
+        <div class="sl-calc-steps">
+          <div>ATM call: Δ = <b id="m-dp-n1">0.5229</b> · N(d₂) = <b id="m-dp-n2">0.5000</b> · gap = <b id="m-dp-gap">0.0229</b></div>
+        </div>
+        <div class="sl-note">30 days at 20%: 0.52 vs 0.50 — the shortcut is fine. One year at 60%: 0.63 vs 0.39. And N(d₂) is a pricing-measure probability, not anyone's real-world forecast.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">What "obligation" means on a bad day</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Option seller</b>Sells far from spot, collects a small premium</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Shock</b>Price gaps through the strike with no trades in between</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Broker</b>Marks the short option up, calls for margin now</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Seller</b>Can't pay, is closed out at whatever price exists</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Loss many times the premium; shortfall lands on the broker</div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened · 15 January 2015</div>
+        <p>The Swiss National Bank had held a 1.20 floor under EUR/CHF since September 2011. It dropped it without warning and cut its deposit rate to −0.75%. The franc surged within minutes and EUR/CHF traded well below parity at the extreme; stops could not fill. Client losses exceeded balances at leveraged FX brokers: Alpari's UK arm went into insolvency and FXCM took a rescue loan of about $300 million. Anyone short the franc's upside — including sellers of options paying out on it — held the obligation side.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">What the desk has tested</h2>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>"A put-heavy market is bearish."</strong> No ledger entry scores the put/call ratio, and its bullish/bearish thresholds have no recorded provenance. The 2×2 says why to doubt it: open interest cannot tell a bought put from a sold one.</span>
+      </div>
+      <div class="sl-stamp null">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>"Price pins to max pain into expiry."</strong> Tested 2026-09-10 and null, with publish-lag timing, DTE, gamma, sign convention and spot basis verified. A level to know about, not a magnet.</span>
+      </div>
+      <p class="sl-p">"Put open interest is rising" honestly translates to: <em>more insurance changed hands</em>. Who bought, who sold, and why are separate questions.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Pitfalls</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Puts are bearish"</h4><p>Only for the buyer. A short put is long the market.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Small premium, small risk"</h4><p>The premium is the seller's <em>best</em> case, not a measure of the worst.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>"Short options always earn theta"</h4><p>Almost always. A deep-ITM European put can have slightly positive theta for its holder.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>"Same row, same risk"</h4><p>Short put and short call share three Greek signs but not their worst case. That's the next lesson.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Which pair are both bullish?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Long call and short put</button>
+        <button class="sl-quiz-opt">Long call and long put</button>
+        <button class="sl-quiz-opt">Short call and short put</button>
+        <div class="sl-quiz-explain">The short put seller keeps the premium if price holds or rises — a bullish position on a put contract. Long call + long put are both buyers; short call + short put are both sellers.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>K = 100, put premium 3.73. The short put's max loss is…</h4>
+        <button class="sl-quiz-opt">3.73</button>
+        <button class="sl-quiz-opt" data-correct="true">96.27</button>
+        <button class="sl-quiz-opt">Unlimited</button>
+        <div class="sl-quiz-explain">If the underlying goes to zero the seller must buy at 100 something worth 0, less the 3.73 collected: 96.27. Bounded, because prices stop at zero.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A 1-year ATM call at 60% vol has delta 0.63. The model's chance it finishes in the money is…</h4>
+        <button class="sl-quiz-opt">0.63 — delta is the probability</button>
+        <button class="sl-quiz-opt" data-correct="true">About 0.39 — that's N(d₂)</button>
+        <button class="sl-quiz-opt">Exactly 0.50 — it's at the money</button>
+        <div class="sl-quiz-explain">d₁ = 0.333, d₂ = d₁ − σ√τ = −0.267. N(d₁) = 0.631 is delta; N(d₂) = 0.395 is the risk-neutral ITM probability. The gap grows with σ√τ.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why do a call and a put at one strike have identical gamma?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Their difference is a forward, which is a straight line with zero gamma</button>
+        <button class="sl-quiz-opt">Because their premiums are equal</button>
+        <button class="sl-quiz-opt">They don't — a put always has more gamma</button>
+        <div class="sl-quiz-explain">C − P = S − Ke⁻ʳᵗ. The right side is linear in S, so its second derivative is zero, making Γ_call = Γ_put.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Long = bought a right, pays premium. Short = sold an obligation, collects premium.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Buyers' worst case = premium. Sellers' best case = premium. The far end: strike − premium for puts, unlimited for calls.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Gamma, theta, vega signs come from the side; delta's sign from the row. Parity makes a call and put share gamma and vega exactly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Premium = intrinsic + extrinsic; only extrinsic decays, and it peaks at the money.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Delta is N(d₁), the ITM probability is N(d₂): 0.52 vs 0.50 short-dated, 0.63 vs 0.39 at one year and 60%.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Put/call ratio as direction: untested here. Max pain as a magnet: tested null.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Same Greeks, Different Risk</h3>
+        <p>Short put and short call share gamma, theta and vega signs — one loses at most the strike, the other without limit.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="payoff-shape-vs-greek-signs-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="options-four-positions.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function erf(x){
+    var sign = x < 0 ? -1 : 1; x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    return sign*(1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x));
+  }
+  function N(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function bsPrice(type, S, K, r, sig, T){
+    var sq = Math.sqrt(T), d1 = (Math.log(S/K) + (r + sig*sig/2)*T)/(sig*sq), d2 = d1 - sig*sq, disc = K*Math.exp(-r*T);
+    return type === 'call' ? S*N(d1) - disc*N(d2) : disc*N(-d2) - S*N(-d1);
+  }
+  var K = 100, R = 0.02, SIG = 0.20, T0 = 0.25;
+
+  // Slide 3 — quadrant picker.
+  (function(){
+    var cells = document.querySelectorAll('.ofg-cell');
+    if (!cells.length) return;
+    var POS = {
+      lc: { type:'call', side: 1, name:'Long call',  col:'var(--green)',  signs:'Δ+ Γ+ Θ− ν+' },
+      sc: { type:'call', side:-1, name:'Short call', col:'var(--red)',    signs:'Δ− Γ− Θ+ ν−' },
+      lp: { type:'put',  side: 1, name:'Long put',   col:'var(--purple)', signs:'Δ− Γ+ Θ− ν+' },
+      sp: { type:'put',  side:-1, name:'Short put',  col:'var(--amber)',  signs:'Δ+ Γ− Θ+ ν−' }
+    };
+    function pick(q){
+      var P = POS[q], prem = bsPrice(P.type, 100, K, R, SIG, T0), pts = [];
+      for (var i=0;i<=200;i++){
+        var s = 50 + i*0.5, pay = P.type==='call' ? Math.max(s-K,0) : Math.max(K-s,0);
+        var pnl = Math.max(-60, Math.min(60, P.side*(pay-prem)));
+        pts.push((60 + (s-50)*5.5).toFixed(1) + ',' + (260 - pnl*2).toFixed(1));
+      }
+      var line = document.getElementById('m-ofg-line');
+      line.setAttribute('points', pts.join(' ')); line.style.stroke = P.col;
+      document.getElementById('m-ofg-name').textContent = P.name;
+      var maxG = P.side>0 ? (P.type==='call' ? 'unlimited' : (K-prem).toFixed(2)) : prem.toFixed(2);
+      var maxL = P.side>0 ? prem.toFixed(2) : (P.type==='call' ? 'UNLIMITED' : (K-prem).toFixed(2));
+      document.getElementById('m-ofg-facts').innerHTML = (P.side>0 ? 'Right · pays ' : 'Obligation · collects ') + '<b>' + prem.toFixed(2) + '</b> · max gain <b>' + maxG + '</b> · max loss <b>' + maxL + '</b>';
+      document.getElementById('m-ofg-signs').innerHTML = 'Greek signs: <b>' + P.signs + '</b>';
+      for (var j=0;j<cells.length;j++){
+        var on = cells[j].getAttribute('data-q') === q;
+        cells[j].style.stroke = on ? P.col : 'var(--border2)';
+        cells[j].setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+    }
+    for (var c=0;c<cells.length;c++){
+      cells[c].addEventListener('click', function(){ pick(this.getAttribute('data-q')); });
+      cells[c].addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); pick(this.getAttribute('data-q')); } });
+    }
+    pick('lc');
+  })();
+
+  // Slide 7 — delta vs N(d2) bars.
+  (function(){
+    var sigS = document.getElementById('m-dp-sig'), dteS = document.getElementById('m-dp-dte');
+    if (!sigS) return;
+    function upd(){
+      var sig = parseFloat(sigS.value)/100, T = parseFloat(dteS.value)/365, sq = Math.sqrt(T);
+      var d1 = ((R + sig*sig/2)*T)/(sig*sq), d2 = d1 - sig*sq, a = N(d1), b = N(d2);
+      document.getElementById('m-dp-b1').setAttribute('width', (500*a).toFixed(1));
+      document.getElementById('m-dp-b2').setAttribute('width', (500*b).toFixed(1));
+      document.getElementById('m-dp-n1').textContent = a.toFixed(4);
+      document.getElementById('m-dp-n2').textContent = b.toFixed(4);
+      document.getElementById('m-dp-gap').textContent = (a-b).toFixed(4);
+      document.getElementById('m-dp-sig-val').textContent = 'σ = ' + sigS.value + '%';
+      document.getElementById('m-dp-dte-val').textContent = dteS.value + ' days';
+    }
+    sigS.addEventListener('input', upd); dteS.addEventListener('input', upd);
+    upd();
+  })();
+})();
+</script>
+</body>
+</html>
