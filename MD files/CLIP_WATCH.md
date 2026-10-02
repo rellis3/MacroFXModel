@@ -657,3 +657,92 @@ the finding. **Worth watching from the next few prints; not worth repeating as s
 - **Credit where it is due.** This is the first clip of the nine where the presenter's
   framing would have produced a *better written prior* than the one the desk pre-registered.
   Worth remembering the next time a plumbing claim gets a prior assigned by instinct.
+
+---
+
+## 2026-10-02 — Jess Inskip, Greeks series: Delta (parts 1–2) and the four-quadrant board
+
+> *"Delta is on a scale from negative one to positive one... if you combine together multiple
+> contracts or even an entire portfolio, you'll get a net delta, and then you'll understand
+> your directional risk... When you create a covered call, you are capping your upwards
+> potential... You've reduced your net deltas."*
+>
+> *The 2×2:* calls left, puts right, bullish top, bearish bottom. Long options: time decay
+> negative, profit from a **sharp** directional move, profit from an **increase** in IV.
+> Short options: time decay positive, profit from a **slight** move, profit from a
+> **decrease** in IV.
+
+**Pure pedagogy — nothing falsifiable about markets in either clip. But auditing it against
+the desk produced the most significant gap found in this entire log.**
+
+**1. The claim.** There isn't a market claim; it is a definitional framework, and it is
+correct as stated. The 2×2 is the cleanest compression of option mechanics in the series:
+every cell derives from two binary choices (bought/sold, call/put), and the four Greek signs
+follow from those rather than needing to be memorised.
+
+**One precision note, recorded because the desk holds delta data.** She says a 0.5 delta
+"is a 50% probability of being in the money... which should make perfect sense." That is the
+standard desk approximation and it is close enough for a 22-day at-the-money contract, but
+it is **not an identity**: delta is N(d₁), while the risk-neutral probability of expiring
+in the money is N(d₂). They separate as time and volatility grow. She presents it as
+self-evident; it is an approximation that happens to be good where she demonstrates it.
+Worth having written down somewhere before anyone here reads a delta as a probability.
+
+**2. What's already on this desk — more than expected, and that is the problem.**
+`js/ai.js` builds an options block for the AI prompt carrying `maxPain`, `callWall`,
+`putWall`, `pcRatio`, `gex`, **`dex`**, `gammaFlip` and `callWalls`. So delta is here, as
+`dex` — dollar delta exposure — which is precisely her "net delta across a portfolio tells
+you directional risk", aggregated across a book.
+
+**Two of those fields are not data but hard-coded interpretation, and both are sent to a
+paid model as assertions:**
+
+```js
+pcBias:  inst.pcRatio > 1.3  ? 'BEARISH (put-heavy — market hedged down)'
+       : inst.pcRatio < 0.77 ? 'BULLISH (call-heavy — market positioned up)' : 'NEUTRAL',
+gexRead: gex > 0 ? 'Positive GEX — dealers long gamma, dampening moves, mean-reversion bias'
+                 : 'Negative GEX — dealers short gamma, amplifying moves, breakout risk',
+```
+
+The same long-gamma/short-gamma rule drives `js/levelExpectation.js`, where it is the single
+rule separating **Reject** from **Break**: *"in a calm (long-gamma) band hedging fights the
+move so levels hold; in a jumpy (short-gamma) band hedging feeds the move so the same level
+gives way."* That read is exported to the C+Z paste and the Pine indicator.
+
+**3. THE FINDING: the gamma-regime claim has never been scored.** `js/deskEvidence.js` holds
+**81 entries. Not one of them is a verdict on it.** The only occurrence of "gamma" in the
+ledger is incidental — a sign-convention check inside the max-pain audit. There is no entry
+for GEX, none for DEX, none for `pcRatio`, and the 1.3 / 0.77 thresholds (reciprocals, so
+symmetric in logs, which is at least defensible) have no recorded provenance.
+
+**A harness for it already exists and was never banked.** `analysis/gamma_band_realised.py`
+(2026-08-23) carries a written prediction in its own source — *"deeper into long gamma =
+quieter"* — which is the pre-registration. It was built to answer exactly this and the
+result never reached the ledger.
+
+This is the live asymmetry her clip exposes. She is scrupulous about separating what a Greek
+**is** (a sensitivity, a rate of change) from what it **predicts** (on its own, nothing).
+The desk converts a gamma *sign* into a *forecast* — "mean-reversion bias", "breakout risk"
+— inside a prompt that costs money to run and inside a level engine whose output is
+exported. Two adjacent OI claims have already failed here: `oi-max-pain` is NULL, and the
+wall-touch read was found to be an artefact (walls reject no better than neighbouring
+strikes). The gamma-regime rule sits in the same family and has had none of that scrutiny.
+
+**4. Display nugget.** Second clip in a row to land on the same hole: **`js/glossary.js` has
+57 entries and exactly one option-adjacent** (`oi-regime`, aliasing PIN / ACCELERATE /
+gamma). The board prints `maxPain`, `callWall`, `putWall`, `pcRatio`, `gex`, `dex`,
+`gammaFlip`, `riskReversal`, `ivTermStructure` and `expectedMove` with no definition behind
+any of them. The T-chart clip flagged this; this one supplies the actual teaching content
+for the root concept underneath all of them.
+
+**5. Verdict and action.**
+- **Nothing to test in the clips.** Definitional, correct, and the best-built teaching
+  artefact anyone has sent. Her 2×2 is designed as a reference card, which is what it should
+  become here — not prose.
+- **Priority raised above the glossary: bank or kill the gamma-regime rule.**
+  `analysis/gamma_band_realised.py` already holds the pre-registration; it needs running,
+  mirroring, and an entry. Until then, `gexRead` and `levelExpectation`'s Reject/Break split
+  are the most load-bearing untested assertions on the desk — they reach a paid prompt, a
+  level engine, the C+Z export and the Pine indicator.
+- **Record the delta-is-not-quite-a-probability point** wherever `dex` gets explained, so the
+  approximation is never silently promoted to an identity.
