@@ -160,3 +160,70 @@ expectations or earnings legs.
 - **Open, and worth it**: wire `MICH` and `EXPINF1YR` into the catalogue as context series,
   and record plainly that the Fed-expectations and earnings legs are gaps rather than
   oversights.
+
+## 2026-10-02 (2) — Jess Inskip, "Investor mood, the quote, and forced selling" (whiteboard)
+
+> *"Why would someone want to buy? Why would someone want to sell?... Buying is optimism,
+> selling is fear, and if you're not sure, uncertainty — and uncertainty comes with
+> volatility... If you own that on margin... you may not want to sell the stock, but you
+> have to, to meet your minimum equity requirements. You have to raise cash, and normally
+> you are going to get cash from your most profitable position. **The thing that caused the
+> rally tends to lead the decline**, and then the inverse is true... Is this fear? Is this
+> optimism? Is this uncertainty, or is this systematic?"*
+
+**1. The claim, stated plainly.** Mostly foundational, with one sharp mechanical claim
+buried in it:
+- **(a) Microstructure.** Bid/ask, depth at each level, and price walking the book when one
+  side exhausts. Definitional, not a claim.
+- **(b) Psychology.** Buying = optimism, selling = fear, not-knowing = uncertainty =
+  volatility; therefore price is unpredictable because minds are. A framing.
+- **(c) THE TESTABLE ONE.** Margin calls force selling that is *systematic rather than
+  emotional*, and the cash is raised from the **most profitable position** — so **the leader
+  of the rally leads the decline**, and symmetrically the leader of the decline leads the
+  recovery.
+- **(d) A taxonomy for any move**: fear / optimism / uncertainty / **systematic**. The fourth
+  category is the one most readings omit.
+- **(e) Hype with earnings follow-through persists (Nvidia); hype without it collapses
+  (GameStop).** Post-hoc as stated — two cases chosen after the outcomes were known.
+
+**2. What's already on this desk.** (c) is **genuinely untested here**, and the data is in hand.
+- The ledger's nearest neighbours are all about *breadth and dispersion*, not *leadership
+  reversal*: `rotation-extreme` (NULL — Nasdaq-vs-Russell relative return extremes),
+  `breadth-narrowing` (NULL), `dispersion-crowded-week` (NULL), `mv-dispersion-range` and
+  `dispersion-reset` (both VALIDATED, both for RANGE). None asks whether the *winner* leads
+  the drawdown.
+- The data exists and is already pulled daily: **14 sector ETFs** (XLK/XLF/XLE/… plus SMH,
+  RSP, SPY) with **1,506 observations from 2020-10**, and 12 single names (NVDA from 2023-10,
+  753 obs — shorter, and too short to lean on).
+- **There is no cyclical/defensive classification** anywhere in the repo. The sectors are
+  pulled as a flat list; the split she teaches is not encoded.
+- **Margin data is nearly useless here.** FRED's `BOGZ1FL663067003Q` is **quarterly**
+  (305 obs back to 1945) and `MDOAH` died in 2019. So (c) cannot be tested *through* margin
+  balances — only through its price fingerprint, which is the right way anyway.
+- (d)'s fourth category has no representation on the board. Every existing read classifies a
+  move by *size* or *direction*; none asks whether it was **forced**.
+
+**3. Trading claim or macro-understanding claim.** (a), (b) and (d) are macro-understanding
+and belong in teaching, not in a test. (c) is a trading-adjacent claim and is the only thing
+here that could be pre-registered. (e) should not be repeated as evidence — two post-hoc
+cases is an anecdote with a moral.
+
+**4. Display nugget / lesson.** This clip is **Theory Lab material far more than board
+material** — it explains how a quote works, which no page here teaches. Its one durable
+board idea is (d): a fourth label, *systematic*, for a move that is forced rather than
+chosen. Worth holding as vocabulary even with nothing wired to it, because "was this
+forced?" is a question the current reads cannot ask.
+
+**5. Verdict and action.**
+- **One pre-registration candidate, and it is a good one**: *does the best-performing sector
+  over the prior N days lead the drawdown when the index falls?* Pre-registered properly it
+  needs a de-clustered definition of "drawdown", a control for sector beta (the leader is
+  usually the high-beta sector, which falls more in ANY sell-off — that is the obvious
+  confound and the thing that would make a naive version look true), and the symmetric test
+  on the recovery. Six years and fourteen sectors is enough to run it; the single names are
+  not.
+- **The beta confound is the whole study.** If the "leader leads the decline" effect survives
+  beta-matching it is a real forced-liquidation fingerprint; if it does not, it is the
+  statement "high-beta sectors are high-beta" wearing a story. That is exactly the shape of
+  the mirror that killed `breadth-narrowing`.
+- **Not built, not tested yet** — logged as a candidate.
