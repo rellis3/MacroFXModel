@@ -350,3 +350,50 @@ slowdown, and it has been wrong about that four times in ten."
   quote (why price moves at all) → the VIX (what vol does and does not say) → the curve (what
   rates encode). That is a course, not four clips.
 - **One line of board copy proposed** (see 4), measured rather than asserted.
+
+## 2026-10-02 (5) — Jess Inskip, "The T-chart" (the four option positions)
+
+> *"Calls are on the left, puts are on the right. Bullish strategies on the top, bearish on
+> the bottom... Anytime you hear long, think purchase. Call, think the right to buy. Short,
+> think sold. Put, think the right to sell... anything bullish involves a buy transaction of
+> some sort — a long call and a short put — whereas the short call and the long put are
+> bearish."*
+
+**1. The claim, stated plainly.** There is no claim. It is definitional: long/short ×
+call/put, who holds the right and who carries the obligation, and the P&L goal of each of
+the four. Nothing here is falsifiable and nothing should be tested.
+
+**2. What's already on this desk — and this is the entry.** The desk **reads eight
+option-derived numbers and explains none of them.**
+- Live on the board: `maxPain`, `callWall`, `putWall`, `pcRatio`, `gex`, `riskReversal`,
+  `ivTermStructure`, `expectedMove`. The OI dashboard, the pair drawers and the vol
+  intelligence endpoint all speak this language daily.
+- `js/glossary.js` has **57 entries and not one option term**. No call, no put, no strike, no
+  premium, no delta, no gamma — while the board shows a *gamma* exposure number.
+- Theory Lab has **`black-scholes.html`**, **`second-order-greeks.html`** and
+  **`fft-option-pricing-carr-madan.html`**. It teaches the Carr–Madan FFT method for pricing
+  options and has no lesson explaining what a call is.
+
+So the curriculum here starts at second-order Greeks. Her T-chart is the missing first page,
+and it is a prerequisite for lessons that already exist.
+
+**3. Trading claim or macro-understanding claim.** Neither — it is vocabulary, and it is the
+vocabulary the desk's own option reads are written in.
+
+**4. Display nugget.** Two, both cheap:
+- **Glossary entries** for the eight terms the board already prints. A reader meeting
+  "callWall 1.1317" or "GEX −1.2e11" has nowhere to look, and the glossary is the place that
+  exists for exactly this.
+- A T-chart **as a diagram** is the natural first panel of any options lesson, and it is one
+  SVG.
+
+**5. Verdict and action.**
+- **Nothing to test, nothing to correct, and the highest teaching value per minute of any
+  clip logged.** It is foundational rather than insightful, which is precisely why the gap
+  it exposes had gone unnoticed: nobody writes a lesson on what a call is when they are busy
+  building a gamma read.
+- **Recommended, small**: add the eight board terms to `js/glossary.js`. That is the cheapest
+  action from any clip in this log and it fixes a real asymmetry — the desk asks a reader to
+  interpret a put wall and offers them no definition of a put.
+- **Recommended, larger**: the T-chart is lesson 0 of an options sequence that would then
+  flow into the Black-Scholes and Greeks lessons already sitting there unsupported.
