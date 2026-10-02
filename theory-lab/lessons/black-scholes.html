@@ -37,6 +37,7 @@
     <li>The closed-form result is \(C = S_0N(d_1) - Ke^{-rT}N(d_2)\), with \(d_1 = [\ln(S_0/K) + (r+\sigma^2/2)T]/(\sigma\sqrt{T})\) and \(d_2 = d_1 - \sigma\sqrt{T}\).</li>
     <li>The Greeks are just this formula's partial derivatives: delta \(=N(d_1)\) is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to \(\sigma\), and rho is sensitivity to \(r\).</li>
     <li>The worked example (\(S_0=K=100\), \(r=2\%\), \(\sigma=20\%\), \(T=1\) year) prices the at-the-money call at roughly <strong>$8.92</strong>, all of it time value since intrinsic value is zero.</li>
+    <li>Two distinctions people blur: delta \(N(d_1)\) is a hedge ratio, not the probability of finishing in the money (that is \(N(d_2)\), and always smaller); and every premium splits into intrinsic value plus extrinsic (time) value.</li>
     <li>The page's interactive chart loads with sliders at \(\sigma=20\%\) and \(T=1.00\)y by default — the same inputs as the worked example — so it starts by reproducing that same $8.92 price before you drag either slider.</li>
   </ul>
 </div>
@@ -401,6 +402,74 @@
     <p>The Greeks are just answers to "how much does the option's price wiggle if one thing changes a little?" Delta: how much it moves if the stock moves a dollar. Gamma: how fast delta itself needs updating. Theta: how much value quietly leaks away just from a day passing, like an ice cube melting. Vega: how much it moves if the market's fear level (volatility) changes. Rho: how much it moves if interest rates change. Each one isolates a single knob and asks "how sensitive is the price to just this?"</p>
   </div>
 
+  <h3>Delta is not the probability of finishing in the money</h3>
+  <p>
+    A widely repeated shortcut says "a 0.30-delta call has about a 30% chance
+    of finishing in the money." It is a handy rule of thumb for short-dated,
+    low-volatility options, and it is <strong>not an identity</strong>. The
+    formula above already contains both numbers, and they are different
+    lookups into the same bell curve:
+  </p>
+  <div class="tl-math">
+    \[ \Delta_{\text{call}} = N(d_1), \qquad \Pr\nolimits^{\mathbb{Q}}(S_T > K) = N(d_2), \qquad d_1 = d_2 + \sigma\sqrt{T} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N(d₁)</code><span>delta — the hedge ratio, shares per option</span></div>
+    <div class="tl-eq-chip c2"><code>N(d₂)</code><span>risk-neutral probability the call finishes in the money</span></div>
+    <div class="tl-eq-chip c4"><code>σ√T</code><span>the gap between them — grows with volatility and time</span></div>
+  </div>
+  <p>
+    Because \(d_1\) always sits exactly \(\sigma\sqrt{T}\) above \(d_2\), a
+    call's delta is <strong>always larger</strong> than its risk-neutral
+    probability of finishing in the money (for any \(\sigma, T &gt; 0\)). The
+    gap is small when \(\sigma\sqrt{T}\) is small — a one-week option at 15%
+    vol — and large when it isn't. Delta answers a different question: "how
+    many shares do I hold to hedge this?" That hedge has to account not only
+    for <em>whether</em> the call pays off but for <em>how much</em> it pays
+    in the states where it does, and the big-payoff states (far above the
+    strike) pull the hedge ratio up beyond the bare odds. (Formally,
+    \(N(d_1)\) is also a probability of finishing in the money, but under a
+    different measure — one that uses the stock itself as the unit of
+    account — which is a precise way of saying "weighted by how big the
+    payoff is.")
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three calls where "delta = probability" goes wrong by more each time</h3>
+    <p>All with \(S_0 = 100\) and \(r = 2\%\):</p>
+    <div class="tl-stat-row">
+      <div class="tl-stat blue"><div class="tl-stat-num">0.579 vs 0.500</div><div class="tl-stat-label">K=100, σ=20%, T=1y</div><div class="tl-stat-sub">the worked example above: d₁=0.20, d₂=0.00</div></div>
+      <div class="tl-stat amber"><div class="tl-stat-num">0.599 vs 0.440</div><div class="tl-stat-label">K=100, σ=40%, T=1y</div><div class="tl-stat-sub">d₁=0.25, d₂=−0.15</div></div>
+      <div class="tl-stat purple"><div class="tl-stat-num">0.681 vs 0.353</div><div class="tl-stat-label">K=100, σ=60%, T=2y</div><div class="tl-stat-sub">d₁≈0.471, d₂≈−0.377</div></div>
+    </div>
+    <p>
+      Each tile reads <em>delta vs. risk-neutral P(ITM)</em>. Take the middle
+      one, step by step: \(d_1 = [0 + (0.02 + 0.40^2/2)(1)]/0.40 = 0.10/0.40 =
+      0.25\), so \(\Delta = N(0.25) \approx 0.599\). Then \(d_2 = 0.25 - 0.40 =
+      -0.15\), so \(N(d_2) = N(-0.15) \approx 0.440\). Delta says "about 60";
+      the pricing model's own probability of finishing in the money is
+      <strong>below a coin flip</strong>, about 44%. Read the delta as a
+      probability and you would be off by 16 percentage points — and on the
+      wrong side of 50%. In the long-dated, high-vol third case the delta
+      (0.68) is nearly double the probability (0.35).
+    </p>
+    <p style="margin-bottom:0">
+      And remember both numbers here are <em>risk-neutral</em>: the
+      real-world probability differs again by the risk premium (see the
+      pitfall below). So "delta ≈ chance of expiring in the money" stacks two
+      approximations — \(N(d_1) \approx N(d_2)\), then risk-neutral ≈ real
+      world — and is only safe as a quick gauge when \(\sigma\sqrt{T}\) is
+      small.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Delta is "how many shares do I need to hold to copy this option," not "how likely is it to pay." Imagine a raffle where you win either $1 or $1,000 depending on how high the stock goes. The chance of winning anything might be under half, but because some wins are huge, you still need a lot of shares to copy it. That is why delta comes out bigger than the odds — and the more the stock can swing, the bigger the gap.</p>
+  </div>
+
   <div class="tl-box example">
     <div class="tl-icon-badge purple">🧮</div>
     <div class="tl-box-label">Worked example</div>
@@ -566,6 +635,60 @@
     </div>
   </div>
 
+  <h3>Premium = intrinsic value + extrinsic value (time value)</h3>
+  <p>
+    The gap between the grey hockey stick and the blue curve has a name, and
+    it splits every option premium into two pieces that behave very
+    differently:
+  </p>
+  <div class="tl-math">
+    \[ \text{Premium} = \underbrace{\max(S - K,\,0)}_{\text{intrinsic (call)}} + \underbrace{\text{extrinsic}}_{\text{time value}}, \qquad \text{put intrinsic} = \max(K - S,\,0) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>intrinsic</code><span>what exercising right now would be worth — never negative</span></div>
+    <div class="tl-eq-chip c3"><code>extrinsic</code><span>everything else: the price of the chance things improve before expiry</span></div>
+  </div>
+  <p>
+    <strong>Intrinsic value</strong> is mechanical: how far in the money the
+    option is today, and zero if it is out of the money. <strong>Extrinsic
+    value</strong> (time value) is the rest of the premium — the part that
+    depends on \(\sigma\) and \(T\), the part theta eats away day by day, and
+    the part that is zero on the expiry date itself, when the blue curve
+    collapses onto the hockey stick. It is largest at the money, where the
+    outcome is least certain, and shrinks toward zero deep in or deep out of
+    the money.
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Splitting three premiums</h3>
+    <div class="tl-compare">
+      <div class="tl-compare-card blue">
+        <h4>ATM call — the worked example above</h4>
+        <p>\(S=K=100\), \(\sigma=20\%\), \(T=1\)y, \(r=2\%\): premium \(\approx \$8.92\). Intrinsic \(=\max(100-100,0)=0\), so <strong>all $8.92 is extrinsic</strong>.</p>
+      </div>
+      <div class="tl-compare-card purple">
+        <h4>In-the-money call, three months</h4>
+        <p>\(S=110\), \(K=100\), \(\sigma=20\%\), \(T=0.25\)y, \(r=2\%\): premium \(\approx \$11.36\). Intrinsic \(=110-100=\$10.00\); extrinsic \(\approx \$1.36\).</p>
+      </div>
+    </div>
+    <p style="margin-bottom:0">
+      The <strong>put</strong> on that same \(K=100\) strike with \(S=110\) is
+      worth about \(\$0.87\) — intrinsic \(\max(100-110,0)=0\), so all
+      extrinsic. Notice the in-the-money call carries more total premium than
+      the at-the-money one would at the same three-month horizon, yet only a
+      small slice of it is time value: most of what you pay for an in-the-money
+      option is simply the money it is already worth. When a trader says an
+      option is "mostly time value," they mean it is at or out of the money and
+      will lose that value to theta unless the underlying moves.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An option's price is two things glued together. One part is "what's it worth if I cash it in this second?" — that's intrinsic, and it can't go below zero. The other part is "what's the chance it gets better before time runs out?" — that's extrinsic, or time value. On the very last day there's no time left, so the second part melts to nothing and only the first part is left.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
@@ -675,6 +798,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gamma is why dealer hedging creates market structure.</strong> Rebalancing a short-gamma book means buying into rallies and selling into declines — a mechanical, price-agnostic flow, not a directional bet.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Constant volatility is the model's biggest simplification — and it's false in every real market.</strong> The volatility smile/skew is direct evidence, which is exactly why the next lesson's jump-diffusion extension exists.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>N(d₂) is a risk-neutral probability, not a real-world one.</strong> It's computed as if every asset drifted at the risk-free rate — conflating the two is a classic source of "mispriced option" claims that are really just this confusion.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Premium = intrinsic + extrinsic.</strong> Intrinsic is what exercising now is worth (never negative); extrinsic is time value — the part σ and T set, theta eats, and expiry erases.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Delta is not the probability of finishing in the money.</strong> Δ = N(d₁) always exceeds the risk-neutral P(ITM) = N(d₂), by a gap that grows with σ√T — at σ=40%, T=1y, ATM: delta 0.60 vs. probability 0.44.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Continuous, frictionless rebalancing is an idealization.</strong> Real dealers rehedge in discrete steps and pay costs — the gap between the model and real rehedging is itself a source of the walls and squeezes the OI course studies.</span></div>
   </div>
 
@@ -793,6 +918,19 @@
       first-order approximation and a common quoting language, but a trader
       relying on it without adjustment will systematically misprice
       far-out-of-the-money options and underestimate tail risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q7. A one-year at-the-money call on a 40%-vol stock has a delta of about 0.60. A colleague says "so it has a 60% chance of paying off." What's wrong, and roughly what is the model's own probability?</summary>
+    <div class="tl-answer">
+      Delta is \(N(d_1)\), the hedge ratio; the risk-neutral probability of
+      finishing in the money is \(N(d_2)\), and \(d_2 = d_1 - \sigma\sqrt{T}\).
+      With \(S=K=100\), \(r=2\%\), \(\sigma=40\%\), \(T=1\): \(d_1 = 0.25\),
+      \(d_2 = -0.15\), so the probability is \(N(-0.15)\approx 0.44\) — below
+      a coin flip, not 60%. Delta is larger because it weights the
+      in-the-money states by how big their payoff is. And 0.44 is still a
+      risk-neutral number; the real-world probability differs again by the
+      risk premium.
     </div>
   </details>
 
