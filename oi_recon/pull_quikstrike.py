@@ -245,6 +245,14 @@ def _with_pid(url: str, pid, pf) -> str:
     return out
 
 
+def _header_has(head: str | None, want: str) -> bool:
+    """Case- AND whitespace-insensitive: the page renders some gaps as non-breaking
+    spaces or tabs, which print as ordinary spaces in the log. 2026-10-02: natural gas
+    showed "EXPIRATION: LN1V6" in the refusal line yet "EXPIRATION: LN" did not match."""
+    norm = lambda t: re.sub(r'\s+', ' ', (t or '').replace(' ', ' ')).strip().lower()
+    return norm(want) in norm(head)
+
+
 def _load_qs_ids() -> dict:
     try:
         return json.loads(QS_IDS.read_text())
@@ -955,7 +963,7 @@ def _open_product(ctx, page, product: str | None):
         # the product. A wrong header is worth one more look however the session
         # was obtained; re-mint only when the cached one is the suspect, since
         # minting again straight after minting buys nothing.
-        if expired or want.lower() not in (head or '').lower():
+        if expired or not _header_has(head, want):
             if src == 'cached':
                 print(f'  [pull] cached session looks {"expired" if expired else "wrong"}'
                       ' - re-minting and retrying once')
@@ -975,10 +983,11 @@ def _open_product(ctx, page, product: str | None):
                 except Exception:                        # noqa: BLE001
                     pass
 
-        if want.lower() not in (head or '').lower():
+        if not _header_has(head, want):
             first = (head or '').strip().splitlines()
             print(f'  ! REFUSING: expected "{want}" in the tool header, not found.')
             print(f'    header says: {" | ".join(first[:3])[:120]}')
+            print(f'    raw:         {(head or "")[:80]!r}')
             print(f'    pid={ent["pid"]} pf={ent.get("pf")} may be mispaired - '
                   f'run --learn-pid --product "{product}" to record the real one.')
             return None
