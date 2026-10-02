@@ -90,6 +90,12 @@ function lastSundayMs(y, m) {
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════════════════════════════════════════════
+/**
+ * NOT the canonical registry pip (gold is 1.0 there, not 0.1). Same quarantine as
+ * js/backtest-engine.js: this worker's thresholds were tuned in these units, so changing
+ * the number re-tunes the analysis rather than correcting it. Read gold "pips" from this
+ * worker as its own unit and do not compare them with the bots.
+ */
 function getPip(sym) {
   if (sym.includes('JPY')) return 0.01;
   if (sym === 'XAUUSD')    return 0.1;

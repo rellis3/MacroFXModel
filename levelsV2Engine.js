@@ -46,7 +46,10 @@ async function sendTelegramV2(token, chatId, html) {
 }
 
 // ── Instrument helpers ────────────────────────────────────────────────────────
-function pipOf(sym) { try { return pipSizeOf(sym); } catch { return sym.includes('JPY') ? 0.01 : sym.includes('XAU') ? 0.1 : 0.0001; } }
+// The fallback only fires when the registry has no entry, and it used to answer 0.1 for
+// gold -- the very drift the registry exists to end, waiting in the error path. Gold and
+// the indices are 1.0.
+function pipOf(sym) { try { return pipSizeOf(sym); } catch { return sym.includes('JPY') ? 0.01 : (/^[A-Z]{3}_[A-Z]{3}$/.test(sym) && !/XA[UG]/.test(sym)) ? 0.0001 : 1; } }
 function digitsOf(sym) { return sym.includes('JPY') ? 3 : sym.includes('XAU') ? 2 : sym === 'NAS100_USD' ? 1 : 5; }
 function assetClassFor(sym) { return sym.includes('XAU') || sym.includes('GOLD') ? 'commodity' : sym === 'NAS100_USD' ? 'index' : 'fx'; }
 // The learn universe (server.js ASIA_INSTRUMENTS) keys FX pairs lowercase/no-slash

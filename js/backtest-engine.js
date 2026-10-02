@@ -79,6 +79,22 @@ export function calcRSI(values, period) {
 
 // ── Symbol helpers ────────────────────────────────────────────────────────────
 
+/**
+ * NOT the canonical registry pip. Gold here is 0.1; js/instrumentRegistry.js says 1.0.
+ *
+ * Left as it is DELIBERATELY, and the reason is not that 0.1 is right. js/backtest-worker.js
+ * spends this on stop and target sizing -- minSlPips, slFraction, tpBuf -- so every gold
+ * parameter anyone has tuned on this engine was tuned against 0.1. Re-pointing it at the
+ * registry would not fix a number, it would multiply every gold stop by ten and silently
+ * re-tune results that live bot settings may have been chosen from.
+ *
+ * So the unit is quarantined rather than corrected: "pips" out of this engine are ITS OWN
+ * unit for gold and are NOT comparable with bot-config.html, the Python bots, or anything
+ * reading js/instrumentRegistry.js. Correcting it is a deliberate re-tune -- change this
+ * line AND re-fit the gold parameters in the same pass, never one without the other.
+ *
+ * Indices are not handled and fall to the FX default, which is wrong for them too.
+ */
 export function getPipSize(symbol) {
   if (symbol.includes('JPY')) return 0.01;
   if (symbol.includes('XAU') || symbol.includes('GOLD')) return 0.1;

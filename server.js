@@ -26,6 +26,7 @@ import { refreshAllPairs } from './levels.js';
 import { fitHMM, hmmSignalScore } from './hmm.js';
 import { travelRead } from './js/travelRead.js';
 import { crossSourceRead } from './js/sourceConflict.js';
+import { loadCvolSeries as cvolSeriesFor, cvolMeta as _cvolMeta } from './js/impliedVolCore.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -4433,13 +4434,28 @@ async function _buildMorningBrief() {
     // realized vol: a 570-day-old number telling the model options were cheap or dear
     // against a tape it predates by nineteen months. A dead series is a thing to SAY, not
     // a number to narrate.
-    const ivRow = (id, label, rlzKey) => {
+    // RETIRED and NOT-REFRESHED are different problems and get different words. EVZ is
+    // gone at source -- CBOE pulled the whole FX vol family, EVZ/JYVIX/BPVIX/EUVIX all
+    // return AccessDenied -- so nothing will revive it. The CME CVOL leg is a static
+    // snapshot that simply needs re-converting, which is a chore, not a dead end. Telling
+    // the model "this series stopped" about a file somebody can refresh in a minute would
+    // send it looking for a replacement that already exists.
+    const ivRow = (id, label, rlzKey, kind = 'feed') => {
       if (cv.levels[id] == null) return null;
-      if (cv.stale?.[id]) return `${label}: this series stopped on ${cv.asOf?.[id] ?? 'an unknown date'} (${cv.ageDays?.[id] ?? '?'} days ago), so there is NO current implied-vol read for it. Do not compare it with realized vol and do not treat its percentile as today's.`;
+      if (cv.stale?.[id]) return kind === 'snapshot'
+        ? `${label}: ${cv.levels[id]} as of ${cv.asOf?.[id]}, a STATIC snapshot now ${cv.ageDays?.[id]} days old (refresh: scripts/convertCmeCvol.py against a fresh CME export). Usable as context for where implied vol has been; do NOT compare it with today's realized vol or call its percentile current.`
+        : `${label}: this series stopped on ${cv.asOf?.[id] ?? 'an unknown date'} (${cv.ageDays?.[id] ?? '?'} days ago), so there is NO current implied-vol read for it. Do not compare it with realized vol and do not treat its percentile as today's.`;
       return `${label} ${cv.levels[id]} — ${cv.pct[id]}th pctile of 5y${cmp(cv.levels[id], rlz(rlzKey))}`;
     };
     ivLine = [
-      ivRow('EVZCLS', 'EUR/USD 1M implied vol (EVZ)', 'EURUSD'),
+      // EVZ only gets a line to say it has stopped; the EUR/USD number comes from CME CVOL,
+      // which carries ATM, skew and convexity rather than a single index level.
+      cv.levels.CME_EURUSD != null
+        ? ivRow('CME_EURUSD', 'EUR/USD implied vol (CME CVOL)', 'EURUSD', 'snapshot')
+        : ivRow('EVZCLS', 'EUR/USD 1M implied vol (EVZ)', 'EURUSD'),
+      cv.levels.CME_EURUSD_SKEW != null && !cv.stale?.CME_EURUSD
+        ? `EUR/USD CVOL skew ${cv.levels.CME_EURUSD_SKEW} — which side the market is paying up to hedge. Size and positioning only; this desk has no validated directional read from skew.`
+        : null,
       ivRow('GVZCLS', 'Gold 1M implied vol (GVZ)', 'GOLD'),
     ].filter(Boolean).join('\n');
   } catch { /* omitted from prompt when unavailable */ }
@@ -14312,13 +14328,40 @@ async function _getCvol() {
     ageDays[sid] = last ? Math.round((Date.now() - Date.parse(last + 'T00:00:00Z')) / 86400000) : null;
   });
 
+  // EVZ IS GONE AT SOURCE, so no amount of re-fetching will revive it. FRED's EVZCLS
+  // stopped on 2025-03-11, and CBOE has retired the whole FX vol index family -- EVZ,
+  // JYVIX, BPVIX and EUVIX all return AccessDenied from the daily-prices endpoint that
+  // still serves GVZ. There is nothing to repoint it at.
+  //
+  // But this desk already HAD a better FX implied-vol source and nobody was using it:
+  // js/data/cmeCvolEod.json, CME's CVOL for seven FX/gold products back to 2016, with ATM,
+  // skew and convexity rather than a single index level. It is a STATIC snapshot, so it
+  // carries its own as-of date and goes stale on exactly the same rule as everything else
+  // here -- no pretending a conversion from August is today's number.
+  try {
+    const rows = cvolSeriesFor('EURUSD');
+    const last = rows?.at(-1);
+    if (last && Number.isFinite(last.cvol)) {
+      const vals = rows.map(r => r.cvol).filter(Number.isFinite);
+      const below = vals.filter(v => v < last.cvol).length;
+      levels.CME_EURUSD  = Math.round(last.cvol * 100) / 100;
+      pct.CME_EURUSD     = Math.round((below / vals.length) * 1000) / 10;
+      asOf.CME_EURUSD    = last.date;
+      ageDays.CME_EURUSD = Math.round((Date.now() - Date.parse(last.date + 'T00:00:00Z')) / 86400000);
+      if (Number.isFinite(last.skew)) { levels.CME_EURUSD_SKEW = Math.round(last.skew * 100) / 100; asOf.CME_EURUSD_SKEW = last.date; ageDays.CME_EURUSD_SKEW = ageDays.CME_EURUSD; }
+    }
+  } catch (e) { console.warn('[cvol] CME CVOL unavailable:', e.message); }
+
   if (Object.keys(levels).length === 0) throw new Error('all FRED series fetches failed');
 
   // Stale once it has not printed for two weeks — long enough to clear a
   // holiday gap, short enough to catch a discontinuation.
   const stale = {};
   for (const sid of Object.keys(levels)) stale[sid] = (ageDays[sid] ?? 0) > 14;
-  const data = { levels, pct, asOf, ageDays, stale, coherence: (pct.EVZCLS ?? 0) >= 50 };
+  // coherence used to key off EVZCLS -- a dead series, so it was reading a 2025 percentile
+  // as today's. Prefer the CME leg where it exists.
+  const fxPct = pct.CME_EURUSD ?? pct.EVZCLS ?? 0;
+  const data = { levels, pct, asOf, ageDays, stale, fxSource: levels.CME_EURUSD != null ? 'CME_CVOL' : 'EVZCLS', coherence: fxPct >= 50 };
   CVOL_CACHE.data      = data;
   CVOL_CACHE.fetchedAt = Date.now();
   return data;

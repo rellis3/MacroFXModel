@@ -30,8 +30,11 @@ const usedPct = (realised, expected) =>
 /**
  * The pip size, taken from the SAME rule the page uses (`_pipSz` in today.html):
  * a JPY pair is 0.01, any other FX pair 0.0001, everything else 1 — which covers
- * indices and gold, whose canonical pip is 1.0 and NOT the 0.1 that js/utils.js
- * still carries.
+ * indices and gold, whose canonical pip is 1.0. (This used to warn that js/utils.js
+ * "still carries" 0.1 for gold. It does not any more: utils reads
+ * js/instrumentRegistry.js, which is the one canonical table and is held in sync with
+ * pylego/instruments.json by js/reconcile.test.mjs. The note is kept, corrected, because
+ * a stale warning sends the next reader hunting a bug that was fixed.)
  *
  * It is derived from the live row rather than a name table so a pair the page adds
  * later (a JPY cross, a new index) scores correctly the day it appears instead of

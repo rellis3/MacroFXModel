@@ -825,7 +825,15 @@ function computeTodaysLevels(s) {
     return;
   }
 
-  const pip = pair.includes('JPY') ? 0.01 : pair === 'XAUUSD' ? 0.1 : 0.0001;
+  // THE CANONICAL RULE (js/instrumentRegistry.js): a JPY pair is 0.01, any other FX pair
+  // 0.0001, and everything else -- gold and all five indices -- is 1. This line read gold
+  // as 0.1, the last surviving copy of the 10x drift the registry was built to end, and
+  // it gave every index on the list an FX pip, so a tolerance meant as 2 points on the
+  // Dow was being applied as 0.0002. The page is a plain script and cannot import the
+  // registry, so the rule is restated rather than branched per symbol.
+  const isFx = /^[A-Z]{6}$/.test(pair) && !/^XA[UG]/.test(pair);
+  const pip = !isFx ? 1 : pair.includes('JPY') ? 0.01 : 0.0001;
+  const dp  = !isFx ? (/^XA[UG]/.test(pair) ? 2 : 1) : pair.includes('JPY') ? 3 : 5;
   const tolP = tol * pip;
   const FEXT2 = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
   const FRET2 = [0.382, 0.5, 0.618];
@@ -879,7 +887,9 @@ function computeTodaysLevels(s) {
     return { ...c, fibLabel: lbl, quality: { mfe, mae, ratio, wr: fs?.winRate ?? 0, n: fs?.n ?? 0 } };
   }).sort((a, b) => b.quality.ratio - a.quality.ratio);
 
-  const dp = pip === 0.01 ? 3 : pip === 0.1 ? 2 : 5;
+  // dp comes from the symbol above, not from reverse-engineering the pip -- the old line
+  // tested `pip === 0.1`, a value that no longer exists, so gold silently rendered 5 dp.
+
   const rows = scored.map(lv => {
     const q = lv.quality;
     const rc = q.ratio >= 2 ? 'ratio-good' : q.ratio >= 1.2 ? 'ratio-ok' : 'ratio-bad';
