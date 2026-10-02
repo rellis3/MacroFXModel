@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rich-Vol Break Record — paper forward test</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text3:#8b949e; --pos:#3fb950; --neg:#f85149; --amber:#d29922; --blue:#58a6ff; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; padding:20px 16px }
+  h1 { font-size:19px; margin:0 0 4px } h2 { font-size:14px; margin:0 0 8px }
+  .sub { color:var(--text3); font-size:12px; margin-bottom:14px; max-width:1000px }
+  table { border-collapse:collapse; font:11px/1.4 'DM Mono',ui-monospace,monospace }
+  th,td { padding:4px 8px; border:1px solid var(--border); text-align:right; white-space:nowrap }
+  th { color:var(--text3); font-weight:600 } td:first-child,th:first-child { text-align:left }
+  .pos { color:var(--pos) } .neg { color:var(--neg) } .amber { color:var(--amber) } .muted { color:var(--text3) } .blue { color:var(--blue) }
+  button { background:#238636; border:none; color:#fff; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px }
+  button.sec { background:#21262d; border:1px solid var(--border) }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:14px; overflow-x:auto }
+  .big { font-size:24px; font-weight:700; font-variant-numeric:tabular-nums } .lbl { color:var(--text3); font-size:10px; text-transform:uppercase; letter-spacing:.05em }
+  .row { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-end }
+  .pill { display:inline-block; padding:1px 7px; border-radius:10px; font-size:10px; font-weight:600 }
+  .pill.rich { background:rgba(63,185,80,.18); color:var(--pos) } .pill.no { background:#21262d; color:var(--text3) } .pill.na { background:rgba(210,153,34,.15); color:var(--amber) }
+  a { color:var(--blue) }
+</style>
+</head>
+<body>
+  <h1>Rich-Vol Break Record <span class="muted" style="font-size:12px">paper forward test, no orders</span></h1>
+  <div class="sub">
+    The one rule that passed its pre-registered tests in the Fade/Continue research: on days when <b>implied vol is rich versus realised vol</b>,
+    take the first 1-minute close at least 0.05σ <b>through</b> a Vol Forecast line between 00:00 and 10:00 London, entering at the next bar's open
+    in the break direction. Stop 0.1σ or 0.2σ behind the line, targets 5R and 10R, exit at the day's end. Each trade's R is the average of those four
+    variants, net of spread. Backtest: <b>+0.118R</b> per trade on FX/gold, <b>+0.071R</b> on indices, but most trades lose 1R and a few large winners
+    carry the result, so it needs a few hundred trades before the live number means much.
+    Rich flags are set the evening before (from 21:00 London) from the options capture's implied vol (FX, gold) or the CBOE vol index (NQ VXN, SPX VIX,
+    DOW VXD, US2000 RVX) ÷ 20-day realised vol. Branch <code>fade-continue-book</code>, <code>forge/BREAK_IVRV_PREREG.md</code>.
+  </div>
+  <button onclick="tick()">▶ Run a check now</button>
+  <button class="sec" onclick="load()">↻ Reload</button>
+  <span class="muted" id="status" style="margin-left:10px"></span>
+  <div id="out" style="margin-top:14px"></div>
+
+<script>
+const el = id => document.getElementById(id);
+const f3 = v => v == null || !isFinite(v) ? '—' : (v >= 0 ? '+' : '') + (+v).toFixed(3);
+const cls = v => v == null ? 'muted' : v > 0 ? 'pos' : v < 0 ? 'neg' : 'muted';
+const ldn = s => s ? new Date(s * 1000).toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour: '2-digit', minute: '2-digit' }) : '—';
+const ago = iso => { if (!iso) return '—'; const m = Math.round((Date.now() - Date.parse(iso)) / 60000); return m < 90 ? m + ' min ago' : Math.round(m / 60) + ' h ago'; };
+const IDX = new Set(['nq', 'spx', 'dow', 'us2000']);
+const VARS = ['0.1σ/5R', '0.1σ/10R', '0.2σ/5R', '0.2σ/10R'];
+let S = null;
+
+async function load() {
+  el('status').textContent = 'Loading…';
+  try { S = await (await fetch('/api/paper-record')).json(); }
+  catch (e) { el('status').innerHTML = '<span class="neg">Could not load the record: ' + e.message + '. Check the server is up, then reload.</span>'; return; }
+  if (S.error) { el('status').innerHTML = '<span class="neg">' + S.error + '</span>'; return; }
+  el('status').textContent = 'Updated ' + ago(S.updatedAt);
+  render();
+}
+async function tick() {
+  el('status').textContent = 'Running a check…';
+  try { const r = await (await fetch('/api/paper-record/tick', { method: 'POST' })).json(); el('status').innerHTML = r.ok ? '<span class="pos">Check done</span>' : '<span class="neg">Check failed: ' + (r.error || r.skipped) + '</span>'; }
+  catch (e) { el('status').innerHTML = '<span class="neg">Check failed: ' + e.message + '</span>'; }
+  load();
+}
+
+function summary(trades, label, backtest) {
+  const done = trades.filter(t => t.done && t.R != null);
+  const R = done.map(t => t.R), n = R.length, sum = R.reduce((a, b) => a + b, 0);
+  const wins = v => done.filter(t => t.variants?.[v]?.status === 'target').length;
+  return `<div><div class="lbl">${label}</div><div class="big ${cls(n ? sum / n : null)}">${n ? f3(sum / n) : '—'}<span class="muted" style="font-size:12px"> R/trade</span></div>
+    <div class="muted">${n} closed · total ${f3(sum)}R · backtest ${f3(backtest)} · targets hit ${VARS.map(v => n ? Math.round(wins(v) / n * 100) + '%' : '—').join(' / ')}</div></div>`;
+}
+
+function render() {
+  const days = Object.entries(S.days ?? {}).sort((a, b) => b[0].localeCompare(a[0]));
+  const all = days.flatMap(([d, x]) => (x.trades ?? []).map(t => ({ ...t, date: d })));
+  const insts = Object.fromEntries((S.rule?.instruments ?? []).map(i => [i.key, i]));
+  let h = '';
+  h += `<div class="card"><div class="row">${summary(all.filter(t => !IDX.has(t.inst)), 'FX + gold', 0.118)}${summary(all.filter(t => IDX.has(t.inst)), 'Indices', 0.071)}${summary(all, 'All', null)}</div>
+        <div class="muted" style="margin-top:8px">Targets hit, in order: ${VARS.join(' / ')}. With 5R–10R targets most trades should lose; read the R per trade, not the hit rate.</div></div>`;
+
+  // flags: the newest day that has them, plus today if different
+  const flagDays = days.filter(([, x]) => x.flags).slice(0, 2);
+  for (const [d, x] of flagDays) {
+    h += `<div class="card"><h2>Rich-vol flags for ${d} <span class="muted" style="font-weight:400">set ${ago(x.flagsAt)}</span></h2><table><tr><th>instrument</th><th>implied vol</th><th>realised vol (20d)</th><th>IV ÷ RV</th><th>rich at</th><th>today</th><th>IV source</th><th>IV as of</th></tr>`;
+    for (const [k, f] of Object.entries(x.flags)) {
+      const pill = f.rich === true ? '<span class="pill rich">RICH</span>' : f.rich === false ? '<span class="pill no">no</span>' : `<span class="pill na">n/a</span> <span class="muted">${f.why ?? ''}</span>`;
+      h += `<tr><td>${insts[k]?.sym ?? k}${f.provisional ? ' <span class="amber" title="threshold borrowed from FX: gold has no settlement IV history">*</span>' : ''}</td><td>${f.iv ?? '—'}</td><td>${f.rv ?? '—'}</td><td>${f.ratio ?? '—'}</td><td>${f.threshold ?? '—'}</td><td>${pill}</td><td class="muted">${f.ivSource ?? ''}</td><td class="muted">${f.ivAsOf ? String(f.ivAsOf).slice(0, 16).replace('T', ' ') : ''}</td></tr>`;
+    }
+    h += `</table><div class="muted" style="margin-top:6px"><span class="amber">*</span> gold's threshold is provisional (borrowed from FX).</div></div>`;
+  }
+
+  // trades by day
+  h += `<div class="card"><h2>Trades</h2>`;
+  const tradeDays = days.filter(([, x]) => (x.trades ?? []).length || x.skipped);
+  if (!tradeDays.length) h += `<div class="muted">No trades yet. The first flags are set at 21:00 London; signals can fire from 00:00 to 10:00 the next morning on rich instruments only.</div>`;
+  else {
+    h += `<table><tr><th>date</th><th>instrument</th><th>line</th><th>dir</th><th>signal</th><th>entry</th>${VARS.map(v => `<th>${v}</th>`).join('')}<th>R (avg)</th><th>status</th></tr>`;
+    for (const [d, x] of tradeDays) {
+      if (x.skipped && !(x.trades ?? []).length) { h += `<tr><td>${d}</td><td colspan="${7 + VARS.length}" class="muted">skipped: ${x.skipped}</td></tr>`; continue; }
+      for (const t of x.trades) {
+        h += `<tr><td>${d}</td><td>${insts[t.inst]?.sym ?? t.inst}</td><td>${t.line}</td><td>${t.dir > 0 ? '<span class="pos">long</span>' : '<span class="neg">short</span>'}</td><td>${ldn(t.signalTime)}</td><td>${t.entry}</td>`
+          + VARS.map(v => { const z = t.variants?.[v]; return `<td class="${cls(z?.R)}" title="${z ? z.status + ' · stop ' + z.stop + ' · target ' + z.target : ''}">${z ? f3(z.R) + (z.status === 'open' ? '…' : '') : '—'}</td>`; }).join('')
+          + `<td class="${cls(t.R)}"><b>${f3(t.R)}</b></td><td class="muted">${t.done ? 'closed' : 'open (live mark)'}</td></tr>`;
+      }
+    }
+    h += `</table>`;
+  }
+  h += `</div>`;
+
+  // health
+  const lt = S.lastTick;
+  h += `<div class="card"><h2>Health</h2><div class="muted">Last check: ${lt ? `${ago(lt.at)} (${lt.reason}) — ${lt.ok ? '<span class="pos">ok</span>' : '<span class="neg">' + lt.error + '</span>'}` : 'none since the last server restart'}.
+        Saved ${ago(S.updatedAt)}. The job runs every 5 minutes on Railway; implied vol for FX and gold depends on the morning options capture.</div>`;
+  if ((S.log ?? []).length) h += `<div style="margin-top:8px;font:11px/1.5 'DM Mono',monospace">${S.log.slice(0, 25).map(l => `<div><span class="muted">${l.at.slice(0, 16).replace('T', ' ')}</span> ${l.msg}</div>`).join('')}</div>`;
+  h += `</div>`;
+  el('out').innerHTML = h;
+}
+load(); setInterval(load, 60_000);
+</script>
+</body>
+</html>

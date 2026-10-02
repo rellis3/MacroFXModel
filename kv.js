@@ -53,6 +53,8 @@ const _CF_EXACT = new Set([
   'desk_watch_v1',           // the early-warning layer's state + fire log: which conditions are on, when each
                              // started, and what happened after. The forward record of the evidence book.
                              // Must also be in _worker.js PERMANENT_KEYS.
+  'paper_record_v1',         // rich-vol break paper record (paper-record.html): every flag and hypothetical trade since
+                             // the record began; a forward test, not re-derivable. Must also be in _worker.js PERMANENT_KEYS.
   'daily_snapshot_v1',       // one row per day of what the page THOUGHT: the brief's regime line, the chain
                              // verdicts, the watch states, the macro deltas, the leans. The look-back
                              // timeline's memory; not re-derivable. Must also be in _worker.js PERMANENT_KEYS.

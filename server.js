@@ -81,6 +81,7 @@ import { mountSessionPathRoutes, startRunJob as _startSessionPathRunJob } from '
 import { mountSessionHandoffRoutes, startRunJob as _startSessionHandoffRunJob } from './js/sessionHandoffRoutes.js';
 import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaLivePlanZones, asiaAllLines, liveCache as _faAsiaLiveCache, liveWarming as _faAsiaLiveWarming, saveAllLiveSnapshots as _faAsiaSaveAllLiveSnapshots } from './js/asiaFibAtlasRoutes.js';
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
+import { createPaperRecord } from './js/paperRecordRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
 import {
@@ -25778,6 +25779,23 @@ mountBotAuditRoutes(app, express, {
     return await r.json();
   },
 });
+
+// ── Rich-vol break paper record (paper-record.html) ──────────────────────────
+// A forward test of the one pre-registered pass of the Fade/Continue Book research (fade-continue-book branch,
+// forge/BREAK_IVRV_PREREG.md): breaks of the Vol Forecast lines on days when implied vol is rich versus realised.
+// Logs hypothetical trades only — no orders, no bots, no alerts. Every 5 min; flags for the next day are set from 21:00
+// London. Event tags come from this server's own vol forecast for that session (recorded per day on first use).
+const _PR_FC_NAME = { SPX: 'SPX500', DOW: 'US30' };
+const paperRecord = createPaperRecord({
+  kv, getFastLive: _laGetFastLive, liveCache: _laLiveCache,
+  liveEventTag: (sym, date) => {
+    const fc = forecastState.latest;
+    if (!fc || fc.session_date !== date) return null;
+    return fc.instruments?.[_PR_FC_NAME[sym] ?? sym]?.ladder?.event_tag ?? null;
+  },
+});
+paperRecord.mount(app);
+svcInterval('paperRecord', () => svcRun('paperRecord', () => paperRecord.tick('scheduled')), 5 * 60_000);
 
 // Report M1 cache status and Drive IDs for download instructions
 app.get('/api/vol-backtest/m1-status', (_req, res) => {

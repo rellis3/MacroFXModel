@@ -138,6 +138,9 @@ export const SERVICES = [
     cadence: 'every 60s, no I/O', cost: 'low', lean: true, on: true,
     feeds: '/api/services\'s `memory` block (rss/heap/peak). Added 2026-09-24: Railway\'s own usage dashboard showed a 33GB avg / 66GB peak RSS this project '
         + 'had no visibility into at all — every existing number here was CPU wall-time, nothing measured memory. Off ⇒ memory goes back to that same blind spot.' },
+  { id: 'paperRecord', where: 'server', label: 'Rich-vol break paper record (forward test, no orders)',
+    cadence: 'every 5 min; next-day flags from 21:00 London; signals 00:00-10:00 London', cost: 'low', lean: false, on: true,
+    feeds: '/api/paper-record -> paper-record.html. Reads oi_store IV, CBOE vol-index CSVs (once a day) and the level-atlas live M1 cache; writes paper_record_v1. Off = the record stops (days left unflagged are marked skipped).' },
   { id: 'dailySnapshot', where: 'server', label: 'Daily snapshot (one row per day of what the page thought)',
     cadence: 'hourly, overwrites the current UTC day\'s row', cost: 'low', lean: false, on: true,
     feeds: '/api/daily-snapshot -> the day-history strip. Reads KV that other jobs already wrote; it adds no upstream fetches of its own, so off just freezes the history at the last row written.' },
