@@ -83,3 +83,80 @@ names: **2,478 daily observations, 2016-10-03 to 2026-10-02**, range 36.6 to 182
   vanish in a way equity liquidity usually does not, and therefore why a bond move of a
   given size is not comparable to an equity move of the same size. That is a real framing
   for reading the rates leg of the chain, and it costs nothing to hold.
+
+## 2026-10-02 — Jess Inskip, "The domino effect: tracing one shock through the whole board"
+
+> *"Oil increased, inflation expectations increased, which caused Fed easing bets to
+> collapse. That caused yields to rise, the dollar to strengthen, gold to fall, and equity
+> multiples to compress... There is an important takeaway here: short-run inflation
+> expectations increase, the two-year increased more than the ten-year, so you see it
+> reflected in the bond market... A multiple is price divided by earnings. The numerator has
+> decreased. The denominator has actually increased... earnings season is literally the most
+> important thing."*
+
+**1. The claim, stated plainly.** This is not one claim but a **method**, which is why it is
+the most useful clip in the log so far. Three separable parts:
+- **(a) A transmission chain**: oil ↑ → short-run inflation expectations ↑ → Fed easing bets
+  collapse → yields ↑ → dollar ↑, gold ↓, equity multiples compress.
+- **(b) A diagnostic**: the 2-year rose MORE than the 10-year (+35bp vs +31bp), which is the
+  signature of a *short-run inflation expectations* shock rather than a term-premium or
+  supply story. Which leg moves more tells you which story it is.
+- **(c) A decomposition**: multiple compression came from the numerator falling while the
+  denominator ROSE — earnings expectations were revised UP (12.8% → 13.2%) while the
+  multiple fell 22 → 19.8. So the compression is price-driven, not earnings-driven, and the
+  thing to watch is whether it turns into an earnings collapse.
+
+**2. What's already on this desk.** Most of the chain is built; two legs are not, and one
+whole branch is missing.
+- **The chain already carries (a) almost exactly.** `js/macroChain.js` has `oil-bei` (oil →
+  breakevens), then `real-dxy`, `real-gold`, `real-nq`, `real-spx` — real yields into the
+  dollar, gold and equities. Her domino diagram is this desk's chain diagram with a
+  different drawing.
+- **The 2y-vs-long-end diagnostic (b) is on the chain too, and better developed.** The curve
+  node's punch lines read: *"2-year up, 30-year down → hard flattening: the market thinks
+  tightening bites before inflation does"* and *"2-year down, 30-year up → bear steepening on
+  easing: credibility, not policy, is being priced."* Chapter A adds `curveFactors`, which
+  splits any curve move into level, slope and curvature with shares. She uses 2y-vs-10y;
+  this desk uses 2y-vs-30y and a three-factor split. Same idea, further along.
+- **`oil-to-breakevens` is a tested NULL here — and it supports her, not against her.** What
+  was nulled was the *lag*: oil reaching breakevens has no delay to trade on. Her chain
+  asserts the transmission, not a tradeable lag, so the finding sharpens it rather than
+  killing it. Anyone waiting for the breakeven leg to catch up is the one the null is aimed at.
+- **Two legs are genuinely absent.** *Fed easing bets* — cuts priced into fed funds futures —
+  is not on this desk at all, and CME's endpoints return 403 so it cannot simply be pulled.
+  *Survey* inflation expectations are not pulled either: `MICH` (University of Michigan,
+  1978→, 584 obs) and `EXPINF1YR` (Cleveland Fed, 1982→) are both free on FRED and neither is
+  in the catalogue. The desk has market-implied breakevens and no survey measure, and her
+  entire argument runs through the survey one — the consumer who sees the pump price.
+- **The earnings branch does not exist here at all.** No forward P/E, no earnings-growth
+  expectations, no revisions data. Part (c) cannot be computed on this desk today.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding, unambiguously, and
+she says so herself — the output is "where do I look next", not an entry. No
+pre-registration is owed. The honest audit question for this type, per the header, is
+whether the chain already covers the mechanism: it covers (a) and (b), and not the Fed-
+expectations or earnings legs.
+
+**4. Display nugget, and the lesson.** Two, of different sizes.
+- **Small and concrete**: `MICH` / `EXPINF1YR` are free, long and uncatalogued. Monthly and
+  lagged (`MICH` last prints 2026-08-01), so they are a context read, never a daily input —
+  but the gap between *survey* and *market-implied* inflation expectations is exactly the
+  de-anchoring question the Fed acts on, and this desk currently cannot see it.
+- **Larger**: this clip is a **worked example**, and Theory Lab has none. All 304 lesson
+  files there are `tl-status concept` — a technique explained in the abstract. Tracing one
+  real shock end-to-end through the chain, with before/after numbers and the reasoning at
+  each node, is a different and missing format. Proposed, not built — per the header's rule
+  on real additions.
+
+**5. Verdict and action.**
+- **Nothing to test, nothing to correct.** The method is sound and most of it is already the
+  house method. That is a good outcome: it is independent confirmation that the chain on
+  `today.html` is pointed at the right relationships.
+- **The one thing she does that the chain does not** is *sequence* — she walks the dominoes
+  in causal order and says what would falsify the story at each step ("if the 2-year stops
+  rising while oil keeps rising, they are looking through it; move your focus to earnings").
+  The chain shows all links at once, flat, with a holds/broken stamp. Her version has a
+  reading ORDER and an explicit next-question. That is the transferable part.
+- **Open, and worth it**: wire `MICH` and `EXPINF1YR` into the catalogue as context series,
+  and record plainly that the Fed-expectations and earnings legs are gaps rather than
+  oversights.
