@@ -21251,7 +21251,7 @@ app.get('/api/oi-today', async (req, res) => {
         basisStale: ageH != null && ageH >= 4,
         savedAt: inst.savedAt ?? null,
         levels: levels.map((l, i) => {
-          const ex = levelExpectation(l, { sym: pair, spot: inst.spot, gexFlips: inst.gexFlips,
+          const ex = levelExpectation(l, { spot: inst.spot, gexFlips: inst.gexFlips,
             gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
           const t = rp ? rp[l.price.toFixed(6)] : null;
           return {

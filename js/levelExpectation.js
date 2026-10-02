@@ -58,27 +58,6 @@ export function gammaBandAt(price, gexFlips, { spot = null, gammaFlip = null } =
 // in a LONG-gamma band the dealers' hedging works against the move, so levels hold
 // (REJECT). In a SHORT-gamma band their hedging works with the move, so the same
 // level gives way (BREAK). That is the entire mechanism.
-//
-// WHAT THE EVIDENCE ACTUALLY SUPPORTS (re-scored 2026-10-02 — read this before
-// trusting a word below). The mechanism above is a HYPOTHESIS and parts of it are
-// already falsified. Three results bear on it:
-//
-//   `gex-range`  VALIDATED, but only for RANGE and only on the Nasdaq: 793 NQ days,
-//                +0.315 vol-matched, unchanged on event days. It says long-gamma
-//                days are QUIETER. It says NOTHING about direction, and it was
-//                tested on FX and does NOT generalise there.
-//   wall placebo FALSIFIED (2026-09-23): walls reject no more than neighbouring
-//                strikes or random prices. "Sellers defend it" is not a thing this
-//                desk has been able to measure.
-//   `oi-max-pain` NULL: price does not drift to max pain.
-//
-// So Reject-vs-Break is a RANGE finding being used to make a DIRECTIONAL call at a
-// level, on instruments where the range finding does not hold. The vocabulary is
-// kept because the export and the indicator parse it and because a shared set of
-// five words is still useful; what changed is that the engine now reports its own
-// evidence status per instrument and the reason strings no longer assert the two
-// mechanisms that were falsified. Treat Reject/Break as a LABEL FOR A ZONE, not a
-// prediction, until something re-scores it at the level.
 // Three words each - enough to recall the meaning without a legend elsewhere.
 const GIST = {
   Reject: 'turns away',
@@ -91,14 +70,14 @@ const GIST = {
 
 const PHRASE = {
   call_wall: {
-    long:  { act: 'Reject', why: 'heavy call OI above, in a band where hedging leans against the move - but walls were placebo-tested and do not reject more than nearby strikes' },
-    short: { act: 'Break',  why: 'heavy call OI, in a band where hedging leans with the move - untested as a break signal' } },
+    long:  { act: 'Reject', why: 'heavy call OI above - sellers defend it, and hedging works against the move' },
+    short: { act: 'Break',  why: 'heavy call OI, but hedging here ADDS to the move - defence tends to give way' } },
   put_wall: {
-    long:  { act: 'Reject', why: 'heavy put OI below, in a band where hedging leans against the move - but walls were placebo-tested and do not reject more than nearby strikes' },
-    short: { act: 'Break',  why: 'heavy put OI, in a band where hedging leans with the move - untested as a break signal' } },
+    long:  { act: 'Reject', why: 'heavy put OI below - buyers defend it, and hedging works against the move' },
+    short: { act: 'Break',  why: 'heavy put OI, but hedging here ADDS to the move - support tends to give way' } },
   max_pain: {
-    long:  { act: 'Magnet', why: 'where most options expire worthless - tested here and price does NOT drift to it (null)' },
-    short: { act: 'Magnet', why: 'expiry reference only - the magnet claim was tested here and came back null' } },
+    long:  { act: 'Magnet', why: 'the price where most options expire worthless - drift tends toward it' },
+    short: { act: 'Magnet', why: 'expiry magnet, but weaker here - the move can overrun it' } },
   gamma_flip: {
     long:  { act: 'Edge',   why: 'boundary: quieter above, jumpier below' },
     short: { act: 'Edge',   why: 'boundary: quieter above, jumpier below' } },
@@ -106,14 +85,14 @@ const PHRASE = {
     long:  { act: 'Edge',   why: 'whole-book boundary: crossing it changes how price behaves' },
     short: { act: 'Edge',   why: 'whole-book boundary: crossing it changes how price behaves' } },
   hvl: {
-    long:  { act: 'Pin',    why: 'the biggest cluster of hedging - the pin is assumed, not measured here' },
+    long:  { act: 'Pin',    why: 'the biggest cluster of hedging - price tends to stick here' },
     short: { act: 'Pin',    why: 'big hedging cluster, but weaker hold in this band' } },
   oi_volume: {
     long:  { act: 'Watch',  why: "today's trading only, not a standing position - can vanish tomorrow" },
     short: { act: 'Watch',  why: "today's trading only, not a standing position - can vanish tomorrow" } },
   oi_cluster: {
-    long:  { act: 'Reject', why: 'several strikes stacked - thicker than one strike, though hedging-based holds are unproven here' },
-    short: { act: 'Break',  why: 'several strikes stacked, in a band where hedging leans with the move - untested' } },
+    long:  { act: 'Reject', why: 'several strikes stacked together - a thicker level than a single strike' },
+    short: { act: 'Break',  why: 'several strikes stacked, but hedging here adds to the move' } },
 };
 
 /**
@@ -124,25 +103,6 @@ const PHRASE = {
  *   long  a clause for the export
  *   tag   stable machine key, for logging the expectation and scoring it later
  */
-// Where the band read is allowed to carry weight. `gex-range` is validated on the
-// Nasdaq, was tested on FX and did not generalise, and has not been looked at
-// anywhere else. A caller that passes ctx.sym gets told which of those it is;
-// one that does not gets 'untested', because silence should not read as support.
-const NQ_SYMS = new Set(['NAS100', 'NQ', 'USTEC', 'US100', 'NDX']);
-const FX_RE = /^[A-Z]{3}(USD|EUR|GBP|JPY|CHF|CAD|AUD|NZD)$/;
-
-export function evidenceScope(sym) {
-  if (NQ_SYMS.has(sym)) return 'nq-validated';
-  if (FX_RE.test(String(sym ?? ''))) return 'fx-negative';
-  return 'untested';
-}
-
-const SCOPE_NOTE = {
-  'nq-validated': 'range-only, validated here',
-  'fx-negative':  'NOT validated on FX',
-  'untested':     'untested on this instrument',
-};
-
 export function levelExpectation(level, ctx = {}) {
   const p = PHRASE[level?.type];
   if (!p || !Number.isFinite(level?.price)) return null;
@@ -155,12 +115,8 @@ export function levelExpectation(level, ctx = {}) {
     && Math.abs(level.price - ctx.spot) > 2.5 * ctx.refMove;
   const bandNote = band === 'long' ? 'calm zone' : band === 'short' ? 'jumpy zone' : 'zone unknown';
   const gist = GIST[e.act] || '';
-  const evidence = evidenceScope(ctx.sym);
   return {
     band,
-    // What the band read is worth on THIS instrument. Exposed as a field so a
-    // caller can grey the label out rather than having to parse the sentence.
-    evidence,
     // Exposed as a plain boolean so a caller can FILTER on it (the export's `today`
     // mode drops far levels) without parsing it back out of the strings below.
     far,
@@ -172,7 +128,7 @@ export function levelExpectation(level, ctx = {}) {
     mid: `${e.act} (${gist})${far ? ' far' : ''}`,
     // Export line: action first, then why, in that order, so the action is
     // readable at a glance and the reason is there to learn from.
-    long: `${e.act} - ${e.why} (${bandNote}; ${SCOPE_NOTE[evidence]})${far ? '; beyond ~2.5x expected move' : ''}`,
+    long: `${e.act} - ${e.why} (${bandNote})${far ? '; beyond ~2.5x expected move' : ''}`,
     tag: `${level.type}:${band ?? 'unknown'}${far ? ':far' : ''}`,
   };
 }

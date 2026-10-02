@@ -36,7 +36,7 @@ if (src.miss || !src.data) { console.error(`${SRC} is empty`); process.exit(2); 
 const rows = [];
 for (const [pair, inst] of Object.entries(src.data)) {
   if (!inst || typeof inst !== 'object' || !Number.isFinite(inst.spot)) continue;
-  const ctx = { sym: pair, spot: inst.spot, gexFlips: inst.gexFlips,
+  const ctx = { spot: inst.spot, gexFlips: inst.gexFlips,
                 gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move };
   for (const lv of oiStoreToLevels(inst)) {
     const ex = levelExpectation(lv, ctx);

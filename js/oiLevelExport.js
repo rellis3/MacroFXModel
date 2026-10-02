@@ -323,8 +323,8 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
       // is the type, a 't'-prefixed token the tier, and everything after is invisible to
       // an un-updated indicator. Order: (1) expectation, (2) heat, (3) P(touch).
       const ex = levelExpectation(l, isDay(l)
-        ? { sym: pair, spot: inst.spot, gammaFlip: dayEx.gammaFlip, refMove: inst.refMove?.move }
-        : { sym: pair, spot: inst.spot, gexFlips: inst.gexFlips, gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
+        ? { spot: inst.spot, gammaFlip: dayEx.gammaFlip, refMove: inst.refMove?.move }
+        : { spot: inst.spot, gexFlips: inst.gexFlips, gammaFlip: inst.gammaFlip, refMove: inst.refMove?.move });
       // `today` drops far levels (beyond ~2.5x the expected move): context in the full
       // export, noise on a chart of the session ahead.
       if (today && ex?.far) continue;
