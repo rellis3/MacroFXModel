@@ -1118,3 +1118,61 @@ level-form `f.har` shadow and the HAR-IV COG-v2 shadow — same band math, same
 kill-switch/try-catch discipline, same KV archive. No export button or visual was added;
 this is observation-only, so a genuine calendar-forward track record accumulates before
 any decision to promote it. See `MD files/LEGO_MODULES.md` §1ba for the full account.
+
+## Phase 19 — per-jump momentum ignition: does the next 5/15/30/60 min continue an individual jump? (`jump_momentum_ignition.py`)
+
+Phase 13 closed the DAILY version of the direction question (next-day continuation NULL,
+44-52% everywhere). That left one narrower, more literal claim untested: `jump-diffusion.html`
+and `vol-forecast-v3.html` mark each Lee-Mykland jump on the M5 chart with a directional
+arrow — does the next few bars actually keep going that way, i.e. is there a live, tradeable
+"enter on the arrow" edge at the horizon the chart itself implies?
+
+Pre-registered: cumulative forward log-return over the next H grid steps (H = 1/3/6/12 ->
+5/15/30/60 min), signed to the jump's own direction, mean > 0 on BOTH halves of a
+chronological 60/40 split, on a majority of core instruments (7 FX majors + gold). Tested
+against zero AND against a placebo (jump sign replaced by a random draw at the true up/down
+base rate), because conditioning on an already-large single bar can manufacture a
+one-bar mean-reversion artifact (bid-ask bounce) that looks "real" against zero alone.
+
+**NULL.** Across 8 instruments x 4 horizons x 2 halves = 64 cells, only 5 crossed both bars
+(t>1.96 and past the placebo band), and none replicated IS->OOS for any instrument:
+USDCAD showed continuation on all 4 horizons IS-only (t 2.15-3.01) but every OOS cell was
+flat; USDCHF showed reversion at 5/15min IS-only, also gone OOS; GBPUSD's one hit (60min IS,
+t=2.37) likewise didn't carry to OOS. With 64 near-independent tests at nominal thresholds,
+a handful of IS-only hits is exactly what chance predicts — not a discovery.
+
+**Confirms Phase 13 at a horizon it never measured.** The orange arrow says a jump just
+happened; it carries no information about which way price goes over the next 5-60 minutes.
+Run `python3 jump_momentum_ignition.py` (`--selftest` for the placebo-harness and
+contiguity-guard checks).
+
+## Phase 20 — post-jump MFE/MAE: is there a hold-and-manage edge once the fixed-close return is flat? (`jump_momentum_mfe_mae.py`)
+
+Phase 19's endpoint return is flat, but that doesn't rule out a shape worth designing a
+stop/target around: maybe the BEST excursion (MFE) in the jump's direction is reliably
+bigger than the WORST excursion (MAE) against it, even if price ends up roughly flat by a
+fixed close. The obvious confound: a jump is a volatility burst, and Phase 13 already found
+real, replicated evidence that post-jump volatility runs elevated for a while — so both MFE
+and MAE are mechanically bigger after a jump than after a quiet bar, in EITHER direction,
+whether or not the jump's sign means anything. Reporting "MFE(H) beats MAE(H)" without a
+control would just be re-measuring that clustering.
+
+Every number here is checked against the Phase-19 placebo (same jump, random re-signed
+direction at the true base rate) applied to MFE and MAE separately, at 9 horizons from 5 to
+120 minutes, IS/OOS. **NULL, same as Phase 19, and by a wide margin**: at almost every
+horizon, true MFE and true MAE sit within noise of the placebo's 90% band — e.g. EURUSD at
+30min OOS: MFE 7.10bp vs placebo-hi 7.81bp, MAE -7.28bp vs placebo-lo -7.89bp, both slightly
+*inside* the no-information band, not outside it. Across 8 instruments x 9 horizons = 72 OOS
+cells, exactly **1** crossed both bars (USDJPY, 30min, barely). USDCAD swept "EDGE" on
+literally every IS horizon (5 through 120min) with **zero** OOS replication — the same
+instrument that threw the lone unreplicated hit in Phase 19, now doing it again across an
+entire horizon grid, which reads as an IS-only quirk in that pair's data window rather than
+anything about jumps.
+
+**The honest read: there is no hold duration to find, because the premise doesn't hold.**
+The post-jump excursion really is bigger than after a quiet bar (that part is real, Phase
+13's own finding) — but it is bigger by the same amount whichever direction you guess. A
+wider MFE ceiling comes bundled with an equally wider MAE floor; there is no horizon where
+the arrow's direction buys you a better ceiling without an equally worse floor. Nothing here
+for a stop/target design to exploit. Run `python3 jump_momentum_mfe_mae.py` (`--selftest`
+for the placebo-harness, planted-drift-detection, and gap-freeze checks).
