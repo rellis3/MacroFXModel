@@ -31,6 +31,13 @@ clip gets the same pass, in order, every time:
    entry) found no tradeable touch/pullback edge anywhere, but its own §7
    "return to VWAP" book is a real, cross-instrument-replicated base rate
    that was never asked whether it belonged on a page.
+4b. **Dates are not claims** (owner, 2026-10-02). Clips arrive undated and may be months
+   old. Check the "happening right now" facts only far enough to confirm the described
+   setup is a real, occurring configuration — never as a scorecard on the presenter, and
+   never as evidence for or against the mechanism. The claim is what is being tested; the
+   day it was filmed is not. (This supersedes the earlier habit of tallying live-fact
+   accuracy, which was measuring an assumption about when the clip was made.)
+
 5. **Verdict and action** — built now (cheap, unambiguous), pre-registered
    for later (needs a real test), noted as already covered / already nulled
    with a pointer to where, and/or proposed as a display or desk-watch item
@@ -922,9 +929,15 @@ at all in the falsifiable sense: "positioning tells you which way it's going rig
 no stated reading rule, no horizon and no failure condition. It cannot be tested as spoken,
 and should not be dressed up as though it had been.
 
-**4. The live facts — checked separately, and this time they hold.** The standing rule here
-is to score the mechanism and the "happening right now" facts apart, because Crown was
-0-for-2 on the live facts in earlier clips. On this one he is **4 for 4**:
+**4. The live facts — incidental, and the clip is undated.** Owner, 2026-10-02: *"when he
+talks fact I think we have to take it a little bit slack, as it's just the general idea I'm
+interested in — the video may be old or new so [we] don't know when he did it."* That is the
+right weighting and it changes what this section is for. A clip arrives without a date, so
+"was breadth narrow on the day he filmed" is unanswerable and scoring him on it is scoring
+an assumption. The facts are checked only far enough to know the mechanism is COHERENT — a
+setup that has never occurred would make the mechanism moot — and not as a scorecard.
+Noted, therefore, without a verdict on him: as of 2026-10-02 the described conditions do
+all exist, which is as much as can honestly be said.
 - *"Equal-weighted getting crushed against cap-weighted."* RSP/SPY closed 2026-10-01 at
   **0.2736 — the 2nd percentile of the past year and the 1st of the past three**, −5.2% over
   three months. True, and not a mild version of true.
@@ -935,8 +948,14 @@ is to score the mechanism and the "happening right now" facts apart, because Cro
   12:30 UTC**. True.
 - *"They gap higher."* The Russell closed **+0.72%**, high +1.5%. The CFD shows no *gap*
   (open 2816.03 against a 2816.08 prior close) because it trades through the release — the
-  gap is real in the ETF and absorbed overnight in the CFD. True in the instrument he was
-  trading; a measurement artefact, not an error.
+  gap is real in the ETF and absorbed overnight in the CFD. A measurement artefact, not an
+  error.
+
+None of the above is evidence for or against the mechanism, and it is not a record of his
+accuracy. If the clip is from an earlier narrow-breadth episode — there have been several,
+and his own chart marks three — every number here would differ and the mechanism would be
+exactly as true or as false as it is now. **The claim is the thing being tested; the day is
+not.**
 
 **5. Verdict and action.**
 - **Nothing to build, and nothing to re-test.** Claim (a) is the exact claim `breadth-narrowing`
