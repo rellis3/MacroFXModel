@@ -500,3 +500,61 @@ observations.
   because there are two negative quarters of GDP does not mean we're in a recession. You must
   look at the totality of the data."* That is the same instinct as the mirror test and the
   leave-one-out check — one indicator is never the finding.
+
+## 2026-10-02 (8) — Jess Inskip, "Four markets, four questions" (the synthesis clip)
+
+> *"The stock market is going to tell us investor MOOD... the treasury market tells us
+> investor DEMAND... the options market is really investor UNCERTAINTY... prediction markets
+> give you investor EXPECTATIONS as probabilities... If we see yields increasing, is it
+> because of growth or because of inflation expectations? We actually don't know, and we need
+> to interpret that."*
+
+**1. The claim, stated plainly.** A framing rather than a claim: four markets, each
+answering a *different kind* of question — equities = mood, treasuries = demand, options =
+uncertainty, prediction markets = explicit probabilities. The analytical move is to read
+them against each other rather than separately.
+
+**2. What's already on this desk.** Three of the four legs are built, and her stated open
+problem is already solved here.
+- **She asks "is the yield rise growth or inflation? We actually don't know."** This desk
+  answers exactly that, with arithmetic rather than inference: `ratesSplitLine` decomposes
+  the 10-year into **real + breakeven** and names the driver —
+  `dominant = |real| >= |bei| ? 'REAL-RATE' : 'INFLATION-EXPECTATION'`. It also refuses to
+  attribute at all when the three series printed on different days, rather than comparing
+  one day against another. Her question has a sharper answer here than a prediction market
+  would give, because it is an identity rather than a crowd's opinion.
+- Equities-as-mood, treasuries-as-demand and options-as-uncertainty are the board, the chain
+  and the vol stack respectively. Her VIX framing is the one already banked as the house rule
+  — vol is about size, never sign.
+- **Prediction markets are absent entirely.** Nothing in the repo touches Kalshi, Polymarket
+  or PredictIt.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding, and the most complete
+statement of the method any clip in this log has given. Nothing to pre-register.
+
+**4. Display nugget — and an honest check on the prediction-market idea.** Both venues are
+**free and keyless**: Kalshi's `trade-api/v2/markets` and Polymarket's `gamma-api` both
+returned 200 with `question`, `outcomePrices`, `volume` and `liquidity` in hand. So the feed
+is possible.
+
+**But the macro markets are not the liquid ones.** Kalshi's first 200 open markets contained
+**zero** macro-relevant contracts; Polymarket's **top 60 by volume** contained zero. Both are
+dominated by politics and sport. That does not prove the macro markets are absent — neither
+sample was a proper series query — but it does establish the shape of the problem: **a thin
+market's "probability" is a handful of trades, not a consensus.** Quoting 23% from a contract
+with four-figure volume as "the market's probability of a recession" would be the same error
+as a percentile computed over no cycle. Liquidity has to be checked before any price from
+there is repeated.
+
+**5. Verdict and action.**
+- **Nothing to build from the framing** — it is the house method, stated more cleanly than
+  the house states it.
+- **The one thing worth taking** is her insistence that each market answers a *different
+  question*. The board currently shows all four kinds of information side by side without
+  labelling which question each one answers. That is a presentation idea, free, and it is
+  the clearest articulation of it anyone has offered.
+- **Prediction markets: a candidate, with a precondition.** They would fill the Fed-easing-
+  bets gap logged against her domino clip (which needs fed funds futures, and CME 403s). But
+  the precondition is a **liquidity floor** — a minimum volume and open interest below which
+  a contract's price is not quoted at all. Without that this would import exactly the
+  false-precision problem the catalogue was built to stop.
