@@ -397,3 +397,32 @@ vocabulary the desk's own option reads are written in.
   interpret a put wall and offers them no definition of a put.
 - **Recommended, larger**: the T-chart is lesson 0 of an options sequence that would then
   flow into the Black-Scholes and Greeks lessons already sitting there unsupported.
+
+## 2026-10-02 (6) — Jess Inskip, "What a wash sale is" — NOT APPLICABLE
+
+> *"A wash sale has to do with tax things, which means it's only applicable to a taxable
+> account... close a position at a loss, and within 30 calendar days reopen it... the IRS
+> disallows the loss and adds it to your cost basis."*
+
+**Verdict first, because it is a short one: this does not apply to this desk, and the
+explanation is correct for what it covers.**
+
+**Why it does not apply.** Three reasons, any one of which is sufficient:
+- It is a **US IRS rule** (§1091) for US taxable accounts. This desk is UK-based — 77
+  references to `Europe/London` against 8 to `America/New_York`, instruments quoted
+  `UK100_GBP` and `DE30_EUR`, oi_store timestamps written in UK locale.
+- The instruments are **FX, indices and gold via MT5 CFDs**, not US shares in a US brokerage
+  account.
+- The UK has its own 30-day rule for shares — same-day matching, then the 30-day
+  "bed-and-breakfast" rule, then the Section 104 pool — and it is **not the same mechanism**
+  as a wash sale, despite the superficially similar 30 days. Anything further than noting
+  that belongs with an accountant, not here.
+
+**What the audit confirmed.** There is **no tax or cost-basis handling anywhere in this
+repo** — no `costBasis`, no `taxYear`, nothing. That is a deliberate scope boundary, not a
+gap: the trade history, the give-back diagnostic and the P&L reads are all pre-tax and
+measure execution, not after-tax outcome. Nothing here should change.
+
+**Logged anyway**, because a clip that yields a clean "no" is worth recording — it stops the
+same question being re-asked, and it is the fastest entry in this log by some distance. The
+pass is as valuable when it returns nothing as when it returns a gap.
