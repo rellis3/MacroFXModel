@@ -61,6 +61,6 @@ set RC=%ERRORLEVEL%
 echo [%date% %time%] finished with exit code %RC% >> "%LOGFILE%"
 
 echo.
-findstr /C:"capture " /C:"no pid yet" /C:"VERDICT" "%LOGFILE%"
+findstr /C:"capture " /C:"ingest " /C:"no pid yet" /C:"VERDICT" "%LOGFILE%"
 echo Full log: %~dp0%LOGFILE%
 endlocal & exit /b %RC%

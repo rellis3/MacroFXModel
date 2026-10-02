@@ -235,6 +235,32 @@ f_normaliseTicker(t, goldT, nqT, spxT, de30T, uk100T, us30T, us2kT) =>
     // BTC feeds vary by exchange — normalise the common tickers to the export's BTCUSD
     else if tU == "BTCUSDT" or tU == "XBTUSD" or tU == "BTCUSD.P" or tU == "BTCUSDT.P" or tU == "BTC1!"
         r := "BTCUSD"
+    // 2026-10-02 — commodities. The export names them the way it names gold (SILVER, WTI,
+    // CORN …, matching cog_volatility_v3_sessions.pine). The OANDA CFD ticker and the
+    // continuous CME future both map here. A CME chart (SI1!, ZC1!) needs the export's
+    // ?terms=futures levels — the same rule as NQ1! — and grains then come in cents.
+    else if tU == "XAGUSD" or tU == "SILVER" or tU == "SI1!"
+        r := "SILVER"
+    else if tU == "XCUUSD" or tU == "COPPER" or tU == "HG1!"
+        r := "COPPER"
+    else if tU == "XPTUSD" or tU == "PLATINUM" or tU == "PL1!"
+        r := "PLATINUM"
+    else if tU == "XPDUSD" or tU == "PALLADIUM" or tU == "PA1!"
+        r := "PALLADIUM"
+    else if tU == "WTICOUSD" or tU == "USOIL" or tU == "WTI" or tU == "CL1!"
+        r := "WTI"
+    else if tU == "BCOUSD" or tU == "UKOIL" or tU == "BRENT" or tU == "BRN1!" or tU == "BZ1!"
+        r := "BRENT"
+    else if tU == "NATGASUSD" or tU == "NATGAS" or tU == "NG1!"
+        r := "NATGAS"
+    else if tU == "SOYBNUSD" or tU == "SOYBEAN" or tU == "ZS1!"
+        r := "SOYBEAN"
+    else if tU == "CORNUSD" or tU == "CORN" or tU == "ZC1!"
+        r := "CORN"
+    else if tU == "WHEATUSD" or tU == "WHEAT" or tU == "ZW1!"
+        r := "WHEAT"
+    else if tU == "SUGARUSD" or tU == "SUGAR" or tU == "SB1!"   // vol zones only (ICE — no OI)
+        r := "SUGAR"
     r
 
 // =====================================================
@@ -248,6 +274,12 @@ f_pipSize(sym) =>
      symU == "SPX500" or symU == "DE30" or
       symU == "UK100" or symU == "US2000"            ? 1.0    :
      symU == "BTCUSD"                                ? 1.0    :
+     symU == "PLATINUM" or symU == "PALLADIUM"       ? 0.1    :
+     symU == "SILVER" or symU == "WTI" or
+      symU == "BRENT"                                ? 0.01   :
+     symU == "COPPER" or symU == "NATGAS"            ? 0.001  :
+     symU == "SOYBEAN" or symU == "CORN" or
+      symU == "WHEAT"                                ? (close > 50 ? 1.0 : 0.01) :   // CME cents chart vs OANDA dollars
      str.contains(symU, "JPY")                       ? 0.01   : 0.0001
 
 // =====================================================
@@ -271,7 +303,13 @@ f_isKnownTicker(rowUp) =>
      str.contains(rowUp, "BTCUSD") or
      str.contains(rowUp, "SPX500") or str.contains(rowUp, "DE30")   or
      str.contains(rowUp, "UK100")  or str.contains(rowUp, "US2000") or
-     str.contains(rowUp, "US30"))
+     str.contains(rowUp, "US30")   or
+     str.contains(rowUp, "SILVER") or str.contains(rowUp, "COPPER") or
+     str.contains(rowUp, "PLATINUM") or str.contains(rowUp, "PALLADIUM") or
+     str.contains(rowUp, "WTI")    or str.contains(rowUp, "BRENT")  or
+     str.contains(rowUp, "NATGAS") or str.contains(rowUp, "SOYBEAN") or
+     str.contains(rowUp, "CORN")   or str.contains(rowUp, "WHEAT")  or
+     str.contains(rowUp, "SUGAR"))
 
 var float[]  czPrices = array.new_float()
 var int[]    czCounts = array.new_int()

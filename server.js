@@ -203,7 +203,7 @@ import { parseOILevels, oiAudit, oiStoreToLevels, oiDeltas, classifyOIChange, oi
 import { levelExpectation } from './js/levelExpectation.js';   // per-level Reject/Break/Magnet reading
 import { levelHeat } from './js/levelHeat.js';                 // per-level dealer-gamma heat bucket
 import { buildOILevelText } from './js/oiLevelExport.js';
-import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
+import { rebuildGexProfile as _oiRebuildGex, buildOIEntry as _oiBuildEntry, oiDayBandFrac as _oiDayBand, oiRefreshBasis as _oiRefreshBasis, oiRegimeAtSpot as _oiRegimeAtSpot, oiCtxFrom as _oiCtxFrom, oiContextByDate as _oiContextByDate, oiRefMoveForDTE as _oiRefMoveForDTE, OI_PRODUCT_SPEC as _OI_SPEC } from './js/oi.js';   // self-heal a quota-trimmed gexProfile · headless re-analyse · day trading band · live basis control · canonical pin/breakout regime · shared oiCtx shaping (live + backfill) · day-expiry-scaled reference move
 import { buildOIZones, explainNoZones, oiSizeCalibrationStats as _oiSizeCalibrationStats } from './js/oiZones.js';
 import { gammaFlip as computeGammaFlip, distanceToFlip, flipDrift, rolloffSummary } from './js/gammaFlow.js';
 import { buildRangeZones } from './js/rangeLineZones.js';
@@ -2574,7 +2574,11 @@ function _forecastKeyForPair(pair) {
   const alias = { XAUUSD: 'GOLD', GOLDUSD: 'GOLD', NAS100: 'NQ', NAS100USD: 'NQ', NDX: 'NQ',
                   US500: 'SPX500', SPX500USD: 'SPX500', DAX: 'DE30', DE30EUR: 'DE30',
                   FTSE100: 'UK100', UK100GBP: 'UK100', DOW30: 'US30', US30USD: 'US30',
-                  RUS2000: 'US2000', US2000USD: 'US2000' };
+                  RUS2000: 'US2000', US2000USD: 'US2000',
+                  // commodities: OI keys → the vol forecast's names (js/volForecastScheduler.js)
+                  XAGUSD: 'SILVER', XCUUSD: 'COPPER', XPTUSD: 'PLATINUM', XPDUSD: 'PALLADIUM',
+                  WTICOUSD: 'WTI', BCOUSD: 'BRENT', NATGASUSD: 'NATGAS', SOYBNUSD: 'SOYBEAN',
+                  CORNUSD: 'CORN', WHEATUSD: 'WHEAT' };
   const key = alias[k] ?? k;
   return forecastState.latest?.instruments?.[key] ? key : null;
 }
@@ -8308,6 +8312,12 @@ app.get('/api/oi-reachability', async (req, res) => {
     const raw = await kv.get('oi_store').catch(() => null);
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
     const norm = x => String(x).toLowerCase().replace(/[/_]/g, '');
+    // Commodities live in their own key (oi_store_cmdty) — look there when the pair is one.
+    const _cm = Object.keys(_OI_SPEC).find(k => norm(k) === norm(pair));
+    if (_cm) {
+      const rawC = await kv.get('oi_store_cmdty').catch(() => null);
+      Object.assign(store, rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {});
+    }
     const key = Object.keys(store).find(k => norm(k) === norm(pair));
     const inst = key ? store[key] : null;
     if (!inst) return res.json({ ok: false, error: `no OI stored for ${pair}` });
@@ -8316,7 +8326,7 @@ app.get('/api/oi-reachability', async (req, res) => {
       'XAU/USD': 'XAU_USD', 'USD/CAD': 'USD_CAD', 'USD/CHF': 'USD_CHF', 'NAS100_USD': 'NAS100_USD',
       'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD', 'US2000_USD': 'US2000_USD',
       'DE30_USD': 'DE30_EUR', 'UK100_GBP': 'UK100_GBP' };
-    const osym = OA[key];
+    const osym = OA[key] ?? _OI_SPEC[key]?.oanda;
     if (!osym) return res.json({ ok: false, error: `no OANDA mapping for ${key}` });
     if (!process.env.OANDA_KEY) return res.json({ ok: false, error: 'OANDA_KEY not configured' });
 
@@ -8392,6 +8402,11 @@ app.get('/api/futures-quote', async (req, res) => {
     'NAS100_USD': 'NAS100_USD', 'SPX500_USD': 'SPX500_USD', 'US30_USD': 'US30_USD',
     'US2000_USD': 'US2000_USD', 'DE30_USD': 'DE30_EUR', 'UK100_GBP': 'UK100_GBP',
   };
+  // Commodities from the one product table (js/oi.js OI_PRODUCT_SPEC). Yahoo quotes the
+  // grains in CENTS (ZC=F 499.75) and OANDA in dollars: `fScale` puts the futures leg in
+  // OANDA units so the basis is a real basis, not a 100x unit gap.
+  for (const [k, v] of Object.entries(_OI_SPEC)) { FUTURES_MAP[k] = v.yahoo; OANDA_MAP[k] = v.oanda; }
+  const fScale = _OI_SPEC[req.query.pair]?.priceScale ?? 1;
   const pair = req.query.pair;
   const symbol = FUTURES_MAP[pair];
   if (!symbol && !OANDA_MAP[pair]) return res.json({ ok: false, error: 'No futures/CFD mapping for this pair' });
@@ -8419,7 +8434,8 @@ app.get('/api/futures-quote', async (req, res) => {
         for (let i = ts.length - 2; i >= 0 && i >= ts.length - 6; i--) {
           if (Number.isFinite(cl[i]) && cl[i] > 0) { bar = { t: ts[i], close: cl[i] }; break; }
         }
-        if (price) return { price, symbol, kind, source: 'yahoo', bar };
+        if (bar) bar.close *= fScale;
+        if (price) return { price: price * fScale, symbol, kind, source: 'yahoo', bar };
       } catch { /* try next host */ }
     }
     return null;
@@ -20594,8 +20610,8 @@ app.get('/api/oi-bot/hold-calibration', async (req, res) => {
 // So: re-read right before writing and apply each update ONLY where that pair's chain is
 // still the one this writer started from (savedAtMs unchanged). A pair re-captured in the
 // meantime keeps the newer chain; the next basis tick re-projects it anyway.
-async function _oiStorePutGuarded(readStore, updates, who) {
-  const raw = await kv.getStrict('oi_store');
+async function _oiStorePutGuarded(readStore, updates, who, key = 'oi_store') {
+  const raw = await kv.getStrict(key);
   const latest = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
   const apply = {}, kept = [];
   for (const [pair, v] of Object.entries(updates || {})) {
@@ -20604,12 +20620,35 @@ async function _oiStorePutGuarded(readStore, updates, who) {
   }
   if (kept.length) console.warn(`[${who}] ${kept.length} pair(s) re-captured while this ran — kept the newer chain: ${kept.join(', ')}`);
   if (!Object.keys(apply).length) return 0;
-  await kv.put('oi_store', JSON.stringify({ data: { ...latest, ...apply }, timestamp: Date.now() }));
+  await kv.put(key, JSON.stringify({ data: { ...latest, ...apply }, timestamp: Date.now() }));
   return Object.keys(apply).length;
 }
 
 let _basisZeroQuoteStreak = 0;
+// The commodity store (oi_store_cmdty) gets the same re-projection, every 3rd tick (15 min):
+// it is page/export-only, nothing trades it, and its basis moves slowly. Never refreshes
+// the bot plan -- that is built from oi_store alone.
+let _basisTick = 0;
+async function _refreshOIBasisCmdty() {
+  try {
+    const raw = await kv.getStrict('oi_store_cmdty');
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    const updates = {};
+    let changed = 0;
+    for (const [pair, inst] of Object.entries(store || {})) {
+      if (!inst || typeof inst !== 'object') continue;
+      try {
+        const r = await _oiRefreshBasis(inst, { baseUrl: `http://127.0.0.1:${PORT}` });
+        if (r?.changed) { updates[pair] = r.inst; changed++; }
+        else if (r?.inst) updates[pair] = r.inst;
+      } catch { /* leave this pair as-is */ }
+    }
+    if (changed) await _oiStorePutGuarded(store, updates, 'oi-basis-cmdty', 'oi_store_cmdty');
+    return changed;
+  } catch (e) { console.warn('[oi-basis-cmdty] refresh failed:', e.message); return 0; }
+}
 async function _refreshOIBasis() {
+  if (_basisTick++ % 3 === 0) _refreshOIBasisCmdty();   // fire-and-forget: never delays the bots' refresh
   try {
     // getStrict: a swallowed backend failure would read as "no pairs stored",
     // which happens to no-op safely here (nothing to loop over -> changed stays
@@ -21110,10 +21149,18 @@ app.get('/api/oi-levels', async (_req, res) => {
 // "rebuildable"). The OI dashboard reads this instead of the raw KV key so the OI-by-
 // strike chart, heat and gamma-flip never come up blank just because a pair got trimmed.
 // Returns the SAME { data } envelope as /api/kv/get so the dashboard's read is unchanged.
-app.get('/api/oi-store', async (_req, res) => {
+// ?cmdty=1 also merges `oi_store_cmdty` (silver, copper, crude, gas, grains — the secondary
+// pull). Opt-in: oi-dashboard.html asks for it; cot-extremes.html and indexv2.html read this
+// route too and get exactly what they always did.
+app.get('/api/oi-store', async (req, res) => {
   try {
     const raw = await kv.get('oi_store').catch(() => null);
     const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+    if (String(req.query.cmdty || '') === '1') {
+      const rawC = await kv.get('oi_store_cmdty').catch(() => null);
+      const cm = rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {};
+      for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
+    }
     for (const inst of Object.values(store || {})) {
       if (inst && typeof inst === 'object'
           && !(Array.isArray(inst.gexProfile) && inst.gexProfile.length)) {
@@ -21617,6 +21664,13 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
     try {
       const raw = await kv.get('oi_store').catch(() => null);
       const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : {};
+      // Commodities (oi_store_cmdty, the secondary pull) join the export; the indicator
+      // draws each block only on its own chart (XAGUSD, CORNUSD, ...). `?cmdty=0` leaves them out.
+      if (String(req.query.cmdty || '') !== '0') {
+        const rawC = await kv.get('oi_store_cmdty').catch(() => null);
+        const cm = rawC ? (JSON.parse(rawC).data ?? JSON.parse(rawC)) : {};
+        for (const [k, v] of Object.entries(cm || {})) if (!(k in store)) store[k] = v;
+      }
       // COT rides along as a per-pair CONTEXT line only — it has no price coordinate, so
       // it is never emitted as an `OI {price}` level the indicator would draw.
       const cot = await _cotForExport();
@@ -21628,7 +21682,8 @@ app.get('/api/vol-forecast/zones', async (req, res) => {
       if (String(req.query.reach || '') === '1' && process.env.OANDA_KEY) {
         const OA = { 'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
           'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
-          'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP' };
+          'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP',
+          ...Object.fromEntries(Object.entries(_OI_SPEC).map(([k, v]) => [k, v.oanda])) };
         const H = Math.max(4, Math.min(288, parseInt(req.query.reachH, 10) || 48));   // default 4h (calibrated horizon)
         const oB = (process.env.OANDA_ENV || 'live') === 'practice' ? 'https://api-fxpractice.oanda.com' : 'https://api-fxtrade.oanda.com';
         const forPair = async (k) => {

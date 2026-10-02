@@ -44,6 +44,7 @@ a{color:var(--acc)}
 .rail .dot{width:5px;height:5px;border-radius:50%;background:var(--ok)}
 .rail .dot.old{background:var(--warn)}
 .rail .dot.none{background:var(--tx3)}
+.rail .rail-sep{flex-basis:100%;font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin:6px 0 0}
 
 /* price bar — the CFD vs futures reconciliation the whole thing hangs off */
 .pricebar{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;
@@ -253,11 +254,21 @@ const FRIENDLY = {
   'XAU/USD':'GOLD','NAS100_USD':'NQ','SPX500_USD':'SPX500','DE30_USD':'DAX',
   'UK100_GBP':'FTSE','US30_USD':'US30','US2000_USD':'RUS2K',
 };
+// Commodities (the secondary pull, KV oi_store_cmdty). A COPY of js/oi.js OI_PRODUCT_SPEC's
+// display fields — this page is a classic script and cannot import it; js/oiCommodity.test.mjs
+// fails if the two drift. [label, dp, pip, OANDA candle symbol]
+const CMDTY = {
+  'XAG/USD':['SILVER',3,0.01,'XAG_USD'], 'XCU/USD':['COPPER',4,0.001,'XCU_USD'],
+  'XPT/USD':['PLATINUM',2,0.1,'XPT_USD'], 'XPD/USD':['PALLADIUM',2,0.1,'XPD_USD'],
+  'WTICO_USD':['WTI',2,0.01,'WTICO_USD'], 'BCO_USD':['BRENT',2,0.01,'BCO_USD'],
+  'NATGAS_USD':['NATGAS',3,0.001,'NATGAS_USD'], 'SOYBN_USD':['SOYBEANS',4,0.01,'SOYBN_USD'],
+  'CORN_USD':['CORN',4,0.01,'CORN_USD'], 'WHEAT_USD':['WHEAT',4,0.01,'WHEAT_USD'],
+};
 let STORE = {}, SYM = null, SPOTADJ = true, SORT = 'strength', PANELS = {};
 
-const nm  = k => FRIENDLY[k] || k;
-const dp  = k => /JPY/i.test(k) ? 3 : (/XAU/.test(k) || /_/.test(k)) ? 2 : 5;
-const pip = k => /JPY/i.test(k) ? 0.01 : /XAU/.test(k) ? 0.1 : /_/.test(k) ? 1 : 0.0001;
+const nm  = k => CMDTY[k]?.[0] || FRIENDLY[k] || k;
+const dp  = k => CMDTY[k] ? CMDTY[k][1] : /JPY/i.test(k) ? 3 : (/XAU/.test(k) || /_/.test(k)) ? 2 : 5;
+const pip = k => CMDTY[k] ? CMDTY[k][2] : /JPY/i.test(k) ? 0.01 : /XAU/.test(k) ? 0.1 : /_/.test(k) ? 1 : 0.0001;
 const fx  = (v,k) => Number.isFinite(v) ? v.toFixed(dp(k)) : '—';
 const fOI = n => !Number.isFinite(n) ? '—' : Math.abs(n)>=1e6 ? (n/1e6).toFixed(1)+'M'
                 : Math.abs(n)>=1000 ? (n/1000).toFixed(1)+'K' : String(Math.round(n));
@@ -363,7 +374,8 @@ function panel(cls,key,title,helpKey,render,flush){
 // the chart is unreadable — which is the whole complaint this answers.
 const OANDA_SYM = {'EUR/USD':'EUR_USD','GBP/USD':'GBP_USD','USD/JPY':'USD_JPY','AUD/USD':'AUD_USD',
   'XAU/USD':'XAU_USD','USD/CAD':'USD_CAD','USD/CHF':'USD_CHF','NAS100_USD':'NAS100_USD',
-  'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP'};
+  'SPX500_USD':'SPX500_USD','US30_USD':'US30_USD','US2000_USD':'US2000_USD','DE30_USD':'DE30_EUR','UK100_GBP':'UK100_GBP',
+  ...Object.fromEntries(Object.entries(CMDTY).map(([k,v])=>[k,v[3]]))};
 
 // Which level types the chart can draw, their colour, and whether they start visible.
 // Walls default ON (they're the tradeable levels); the greek flips default OFF because
@@ -784,7 +796,7 @@ async function load(){
   // /api/oi-store = the KV oi_store with each gexProfile self-healed (rebuilt from the
   // stored raw paste if the localStorage quota-trim shed it), so the OI-by-strike chart
   // and gamma-flip never come up blank for a trimmed pair. Falls back to the raw KV key.
-  let r = await fetch('/api/oi-store',{cache:'no-store'});
+  let r = await fetch('/api/oi-store?cmdty=1',{cache:'no-store'});   // cmdty=1: + oi_store_cmdty
   if(!r.ok) r = await fetch('/api/kv/get?key=oi_store',{cache:'no-store'});
   if(!r.ok) throw new Error('KV '+r.status);
   const j = await r.json();
@@ -852,12 +864,16 @@ function bookTile(e){
 }
 
 function renderRail(){
-  const keys=Object.keys(STORE);
-  document.getElementById('rail').innerHTML = keys.map(k=>{
+  // Existing instruments first, then the commodities under their own label.
+  const keys=Object.keys(STORE).filter(k=>!CMDTY[k]);
+  const ckeys=Object.keys(STORE).filter(k=>CMDTY[k]);
+  const btn = k=>{
     const a=ageOf(STORE[k]);
     return `<button class="${k===SYM?'on':''} ${a.h>36?'stale':''}" data-k="${esc(k)}">
       <span class="dot ${a.cls}"></span>${esc(nm(k))}<span class="muted">${a.txt}</span></button>`;
-  }).join('');
+  };
+  document.getElementById('rail').innerHTML = keys.map(btn).join('')
+    + (ckeys.length ? `<span class="muted rail-sep" title="Commodities — page and export only; no bot trades these">Commodities</span>` + ckeys.map(btn).join('') : '');
   document.querySelectorAll('#rail button').forEach(b=>b.onclick=()=>{
     if(SYM===b.dataset.k) return;
     // Cancel any in-flight poll for the OLD pair before switching, so its response can't

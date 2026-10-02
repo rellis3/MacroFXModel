@@ -98,6 +98,101 @@ export async function oiSaveStore(store) {
   _saveLocalCache(store);
 }
 
+// ── Commodity products (2026-10-02) ──────────────────────────────────────────
+// The original 11 products are identified by string tests scattered through this file
+// (includes('XAU'), isIndexFutures, …) and anything unrecognised falls through to FX
+// defaults: contract 125,000, 12% flat vol, 5 decimals. A commodity reaching that path
+// gets wrong gamma with no error. So the commodities are described ONCE, here, and every
+// per-product branch below asks this table first; existing products are not in it and
+// behave exactly as before.
+//
+//   contract   CME contract multiplier (units of the underlying per contract) — prices GEX
+//   vol        flat annual vol, the fallback when no IV was captured
+//   dp / pip   display decimals / one "pip" for distances, in OANDA (spot) price units
+//   priceScale CME price × priceScale = OANDA price. Grains: CME quotes CENTS per bushel
+//              (corn 499.75), OANDA dollars (4.9975) → 0.01, applied to the raw tables
+//              before parsing (oiScaleRawPrices) so every level comes out in dollars.
+//   yahoo/oanda/tv  the futures quote, the spot CFD, and the export block name — the SAME
+//              names the vol-forecast zones export already uses (SILVER, WTI, CORN …), so one
+//              chart matches both blocks; the Pine indicators map XAGUSD/SI1! → SILVER etc.
+//
+// Known v1 limitation: crude, gas and grains list a DIFFERENT futures month under each
+// expiry column; one basis (front month vs the CFD) is applied to all of them, so
+// far-dated columns are off by the calendar spread. The walls come from the primary
+// (near) expiry, which sits on the front month.
+export const OI_PRODUCT_SPEC = {
+  'XAG/USD':    { name: 'Silver',      fut: 'SI', contract: 5000,  vol: 0.30, dp: 3, pip: 0.01,   priceScale: 1,    yahoo: 'SI=F', oanda: 'XAG_USD',    tv: 'SILVER' },
+  'XCU/USD':    { name: 'Copper',      fut: 'HG', contract: 25000, vol: 0.25, dp: 4, pip: 0.001,  priceScale: 1,    yahoo: 'HG=F', oanda: 'XCU_USD',    tv: 'COPPER' },
+  'XPT/USD':    { name: 'Platinum',    fut: 'PL', contract: 50,    vol: 0.30, dp: 2, pip: 0.1,    priceScale: 1,    yahoo: 'PL=F', oanda: 'XPT_USD',    tv: 'PLATINUM' },
+  'XPD/USD':    { name: 'Palladium',   fut: 'PA', contract: 100,   vol: 0.40, dp: 2, pip: 0.1,    priceScale: 1,    yahoo: 'PA=F', oanda: 'XPD_USD',    tv: 'PALLADIUM' },
+  'WTICO_USD':  { name: 'WTI Crude',   fut: 'CL', contract: 1000,  vol: 0.35, dp: 2, pip: 0.01,   priceScale: 1,    yahoo: 'CL=F', oanda: 'WTICO_USD',  tv: 'WTI' },
+  'BCO_USD':    { name: 'Brent Crude', fut: 'BZ', contract: 1000,  vol: 0.33, dp: 2, pip: 0.01,   priceScale: 1,    yahoo: 'BZ=F', oanda: 'BCO_USD',    tv: 'BRENT' },
+  'NATGAS_USD': { name: 'Natural Gas', fut: 'NG', contract: 10000, vol: 0.60, dp: 3, pip: 0.001,  priceScale: 1,    yahoo: 'NG=F', oanda: 'NATGAS_USD', tv: 'NATGAS' },
+  'SOYBN_USD':  { name: 'Soybeans',    fut: 'ZS', contract: 5000,  vol: 0.18, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZS=F', oanda: 'SOYBN_USD',  tv: 'SOYBEAN' },
+  'CORN_USD':   { name: 'Corn',        fut: 'ZC', contract: 5000,  vol: 0.25, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZC=F', oanda: 'CORN_USD',   tv: 'CORN' },
+  'WHEAT_USD':  { name: 'Wheat',       fut: 'ZW', contract: 5000,  vol: 0.28, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZW=F', oanda: 'WHEAT_USD',  tv: 'WHEAT' },
+};
+export function oiSpec(pair) { return OI_PRODUCT_SPEC[pair] || null; }
+export function isOICommodity(pair) { return !!OI_PRODUCT_SPEC[pair]; }
+
+// Rescale the PRICE cells of a raw QuikStrike table by `k`, leaving OI/volume/vol cells
+// alone. Three layouts, matching the parsers that read them:
+//   'matrix'  (rawOI/rawChg/rawVol, _matrixRows): clean numbers in the header block are
+//             futures prices; column 0 of each data row is the strike.
+//   'chain'   (rawIV, parseIVSettlement): the title's "vs <price>"; data cols 0-6 are
+//             option prices and the strike (cols 7+ are vol and OI).
+//   'settle'  (rawIVTerm, parseSettlementTermStructure): data rows (date in col 2) carry
+//             strike, future and straddle prices in cols 3-9.
+// Anything that does not match its layout passes through untouched.
+export function oiScaleRawPrices(raw, kind, k) {
+  if (!raw || !raw.trim() || !(k > 0) || k === 1) return raw;
+  const fmt = v => String(+(v * k).toPrecision(10));
+  const scaleCell = c => {
+    const t = String(c ?? '').trim().replace(/,/g, '');
+    return /^-?\d+(\.\d+)?$/.test(t) ? fmt(parseFloat(t)) : c;
+  };
+  const lines = raw.split('\n');
+  if (kind === 'matrix') {
+    const hdr = _matrixHeaderIdx(lines);
+    if (hdr < 0) return raw;
+    return lines.map((ln, i) => {
+      if (i === hdr) return ln;
+      const cells = ln.split('\t');
+      if (i < hdr) return cells.map(scaleCell).join('\t');           // header-block prices (DTE labels are not clean numbers)
+      cells[0] = scaleCell(cells[0]);                                 // strike
+      return cells.join('\t');
+    }).join('\n');
+  }
+  if (kind === 'chain') {
+    return lines.map(ln => {
+      let out = ln.replace(/(\bvs\s+)([\d,]+\.?\d*)/i, (_, a, n) => a + fmt(parseFloat(n.replace(/,/g, ''))));
+      const cells = out.replace(/\r$/, '').split('\t');
+      if (cells.length >= 8 && Number.isFinite(parseFloat(String(cells[3]).replace(/,/g, '')))) {
+        for (let j = 0; j <= 6; j++) cells[j] = scaleCell(cells[j]);
+        out = cells.join('\t');
+      }
+      return out;
+    }).join('\n');
+  }
+  if (kind === 'settle') {
+    return lines.map(ln => {
+      const cells = ln.replace(/\r$/, '').split('\t');
+      if (cells.length < 14 || !/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(String(cells[2] ?? '').trim())) return ln;
+      for (let j = 3; j <= 9; j++) cells[j] = scaleCell(cells[j]);
+      return cells.join('\t');
+    }).join('\n');
+  }
+  return raw;
+}
+
+// Display decimals for a pair — the commodity table first, then the original rules.
+export function oiPriceDigits(pair) {
+  const s = oiSpec(pair);
+  if (s) return s.dp;
+  pair = pair || '';
+  return pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+}
+
 // ── Modal ────────────────────────────────────────────────────────────────────
 
 const OI_FRIENDLY = {
@@ -107,6 +202,7 @@ const OI_FRIENDLY = {
   'UK100_GBP':  'FTSE100 Futures',
   'US30_USD':   'DOW30 / YM Futures',
   'US2000_USD': 'RUS2000 / RTY Futures',
+  ...Object.fromEntries(Object.entries(OI_PRODUCT_SPEC).map(([k, v]) => [k, `${v.name} / ${v.fut} Futures`])),
 };
 
 // Instruments that actually have a CME (or equivalent listed) options market.
@@ -115,6 +211,7 @@ const OI_FRIENDLY = {
 const OI_CME_PAIRS = new Set([
   'EUR/USD', 'GBP/USD', 'USD/JPY', 'AUD/USD', 'XAU/USD', 'USD/CAD', 'USD/CHF',
   'NAS100_USD', 'SPX500_USD', 'DE30_USD', 'UK100_GBP', 'US30_USD', 'US2000_USD',
+  ...Object.keys(OI_PRODUCT_SPEC),
 ]);
 
 // Recover the raw pastes for one pair from KV when localStorage lost them to a
@@ -160,7 +257,7 @@ export function openOIModal() {
   // Auto-fill spot: prefer live OANDA quote (always fresh), fall back to saved value
   const livePrice = window._latestQuote?.price ?? window._latestQuote?.mid ?? null;
   const pair = sym;
-  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+  const digits = oiPriceDigits(pair);
   document.getElementById('oiSpotPrice').value = livePrice
     ? livePrice.toFixed(digits)
     : (existing?.spot ?? '');
@@ -403,6 +500,10 @@ function futuresIsInverted(pair) {
 // basis 0 (or clamped) means no shift was applied, so the level already IS in futures terms.
 export function oiFuturesTermsPrice(price, inst) {
   const basis = Number.isFinite(inst?.basis) ? inst.basis : 0;
+  // Commodity units: levels are stored in OANDA units (grains in dollars); a CME chart
+  // (ZC1!) is in the exchange's units (cents) — undo priceScale on the way out.
+  const ps = oiSpec(inst?.pair)?.priceScale ?? 1;
+  if (ps !== 1 && Number.isFinite(price)) return (price + basis) / ps;
   if (!(Number.isFinite(price) && basis)) return price;
   if (futuresIsInverted(inst?.pair || '')) {
     const denom = price + basis;
@@ -522,7 +623,7 @@ export function calcOISpot() {
   // For inverted pairs (6J/6C/6S) strikes are foreign-ccy/USD — invert to get the
   // spot-equivalent the Spot field expects (e.g. 0.0068 → 147.x for USD/JPY).
   if (futuresIsInverted(pair)) est = 1 / est;
-  const digits = pair.includes('JPY') ? 3 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+  const digits = oiPriceDigits(pair);
   // The put/call-balance estimate drifts far from ATM on a FULL strike table
   // (S&P landed ~6164 vs a real ~7524). If a live/auto-filled spot is present and
   // the estimate diverges wildly from it, the estimate is the unreliable one —
@@ -556,7 +657,7 @@ export function autoEstimateBasis() {
     if (!futEl || futEl.dataset.manual === '1' || futEl.dataset.liveSymbol) return;
     const pair = S.currentPair?.symbol ?? 'EUR/USD';
     const inverted = futuresIsInverted(pair);
-    const digits = inverted ? 6 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+    const digits = inverted ? 6 : oiPriceDigits(pair);
     // Don't inject an OI-centroid estimate that implies an implausible basis vs
     // live spot — that's the full-strike-table skew. Leave the field blank so the
     // save falls back to no shift (futures≈spot) instead of showing a wrong price.
@@ -600,7 +701,7 @@ export function updateOIBasis() {
   let futuresSpot = futuresRaw;
   if (futuresIsInverted(pair)) futuresSpot = 1 / futuresRaw;
   const basis = futuresSpot - spotRaw;
-  const digits = isJpy ? 2 : pair.includes('XAU') ? 2 : isIndexFutures(pair) ? 2 : 5;
+  const digits = isJpy ? 2 : oiPriceDigits(pair);
   const basisSign = basis >= 0 ? '+' : '';
   const _liveSym  = futEl?.dataset.liveSymbol;
   const _lk = futEl?.dataset.liveKind;
@@ -1235,6 +1336,7 @@ function isIndexFutures(pair) { return isNQ(pair) || isES(pair) || isYM(pair) ||
 // uses the SAME sigma/T as the profile it's meant to describe (two different vols
 // would put the flip somewhere the chart's own bars don't support).
 export function oiFlatVol(pair) {
+  if (oiSpec(pair)) return oiSpec(pair).vol;
   return isIndexFutures(pair) ? 0.20 : pair.includes('XAU') ? 0.18 : 0.12;
 }
 export const OI_GREEK_T = 14 / 365;   // documented limitation: fixed 14-DTE assumption
@@ -1310,6 +1412,7 @@ export function oiGreeks(strike, spot, pair, T = OI_GREEK_T, sigma) {
 // the GEX profile and any rebuild all price gamma in the same units. Was inlined in
 // two places (oiCalcExposures + the profile loop); two copies drift, this doesn't.
 export function oiContractSize(pair) {
+  if (oiSpec(pair)) return oiSpec(pair).contract;
   return isNQ(pair) ? 20 : isES(pair) ? 50 : isYM(pair) ? 5 : isRTY(pair) ? 50
        : isFDAX(pair) ? 25 : isFTSE(pair) ? 10 : (pair || '').includes('XAU') ? 100 : 125000;
 }
@@ -1742,6 +1845,7 @@ export function computeGravityRegime(oi, atr, pipSize) {
 // ── Formatters ───────────────────────────────────────────────────────────────
 
 export function oiFmtStrike(val, pair) {
+  if (oiSpec(pair)) return val.toFixed(oiSpec(pair).dp);
   if (pair.includes('JPY')) return val.toFixed(3);
   if (pair.includes('XAU') || isIndexFutures(pair) || pair === 'NQ' || pair === 'ES') return val.toFixed(2);
   return val.toFixed(5);
@@ -1787,6 +1891,18 @@ export async function buildOIEntry({
   dashboardQuote = null, priorEntry = null, baseUrl = '', skipLiveQuote = false,
 } = {}) {
   if (!rawOI || !rawOI.trim()) return { error: 'no OI data' };
+  // Commodity price units (OI_PRODUCT_SPEC.priceScale — grains are quoted in cents at CME,
+  // dollars on OANDA). Scale ONLY the copies that get parsed; the originals are what gets
+  // stored, so a re-analyse of a stored entry scales once, never twice.
+  const _priceScale = oiSpec(pair)?.priceScale ?? 1;
+  const _src = { rawOI, rawChg, rawIV, rawIVTerm };
+  if (_priceScale !== 1) {
+    rawOI = oiScaleRawPrices(rawOI, 'matrix', _priceScale);
+    rawChg = oiScaleRawPrices(rawChg, 'matrix', _priceScale);
+    rawVol = oiScaleRawPrices(rawVol, 'matrix', _priceScale);   // a stored (compact, already-dollar) volume list is not a matrix → untouched
+    rawIV = oiScaleRawPrices(rawIV, 'chain', _priceScale);
+    rawIVTerm = oiScaleRawPrices(rawIVTerm, 'settle', _priceScale);
+  }
   const parsed = oiParseTable(rawOI);
   if (!parsed || parsed.strikes.length < 2) return { error: 'could not parse' };
 
@@ -1911,10 +2027,10 @@ export async function buildOIEntry({
   // `_saveLocalCache` already sheds raw text if localStorage overflows, and KV (the
   // source of truth) has no such cap, so size is handled where it belongs.
   const _isMatrix = !!parsed.primaryExpiry;   // set only by the matrix parser
-  const _compactOI = _isMatrix ? rawOI : parsed.strikes
+  const _compactOI = _isMatrix ? _src.rawOI : parsed.strikes
     .map((s, i) => `${s}\t${parsed.calls[i]}\t${parsed.puts[i]}`).join('\n');
   const _hasChg = (parsed.callChg || []).some(v => v) || (parsed.putChg || []).some(v => v);
-  const _compactChg = _isMatrix && rawChg.trim() ? rawChg
+  const _compactChg = _isMatrix && rawChg.trim() ? _src.rawChg
     : _hasChg ? parsed.strikes.map((s, i) => `${s}\t${parsed.callChg[i] || 0}\t${parsed.putChg[i] || 0}`).join('\n')
     : '';
 
@@ -2363,7 +2479,7 @@ export async function buildOIEntry({
   if (primaryExpiry?.scoredOn === 'totalOI')
     _warnings.push(`no near-the-money OI in any expiry — expiry picked on TOTAL OI, which favours far-dated tail hedges (course pitfall 2)`);
   if (futuresSource === 'heatmap-header-settle' && Number.isFinite(futuresStale) && Math.abs(futuresStale) > 0)
-    _warnings.push(`basis used the SETTLEMENT futures price; the live price was ${Math.abs(futuresStale / (pair.includes('JPY') ? 0.01 : 0.0001)).toFixed(0)} pips away — enter the current futures price for an accurate basis (course L229)`);
+    _warnings.push(`basis used the SETTLEMENT futures price; the live price was ${Math.abs(futuresStale / (oiSpec(pair)?.pip ?? (pair.includes('JPY') ? 0.01 : 0.0001))).toFixed(0)} pips away — enter the current futures price for an accurate basis (course L229)`);
   if (!Number.isFinite(dteEff))
     _warnings.push(`no DTE resolved — wall strength and gamma are expiry-dependent (course pitfall 2); paste the QuikStrike title line or fill the DTE field`);
   const dataWarning = _warnings.length ? _warnings.join(' · ') : null;
@@ -2461,8 +2577,9 @@ export async function buildOIEntry({
     rawOI: _compactOI,
     rawChg: _compactChg,
     rawVol: _compactVol,
-    rawIV: rawIV && rawIV.trim() ? rawIV : null,   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
-    rawIVTerm: rawIVTerm && rawIVTerm.trim() ? rawIVTerm : null   // "Settlements" term-structure paste (re-parse on reopen)
+    rawIV: _src.rawIV && _src.rawIV.trim() ? _src.rawIV : null,   // QuikStrike IV settlement paste (for charm/vanna re-parse on reopen)
+    rawIVTerm: _src.rawIVTerm && _src.rawIVTerm.trim() ? _src.rawIVTerm : null,   // "Settlements" term-structure paste (re-parse on reopen)
+    priceScale: _priceScale,   // CME → OANDA price units applied at parse (1 = none; grains 0.01)
   };
 
   // Per-expiry: preserve prior expiry entries and record THIS paste under its label
@@ -2537,7 +2654,7 @@ export async function processOIData() {
   closeOIModal();
   window.renderAll();
   const basisNote = basisClamped ? ' · basis ignored (implausible — no shift applied)'
-    : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
+    : basis ? ` · basis ${basis >= 0 ? '+' : ''}${basis.toFixed(oiSpec(pair) ? oiSpec(pair).dp : pair.includes('JPY') ? 2 : isIndexFutures(pair) ? 2 : 5)}` : '';
   const pairLabel = OI_FRIENDLY[pair] || pair;
   // Show which expiry drove the walls when it was auto-selected from a multi-expiry
   // matrix (so a full-table paste never silently reads the wrong/empty column).

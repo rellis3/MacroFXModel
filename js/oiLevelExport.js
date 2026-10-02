@@ -37,7 +37,7 @@ import { levelExpectation } from './levelExpectation.js';
 import { levelHeat } from './levelHeat.js';
 import { wallHoldScore } from './oiZones.js';
 import { gammaFlip, distanceToFlip, rolloffSummary } from './gammaFlow.js';
-import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands } from './oi.js';
+import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands, OI_PRODUCT_SPEC, oiSpec } from './oi.js';
 
 // Canonical chart-ticker per oi_store key. Mirrors the Confluence-Zones indicator's
 // normalisation targets so the same chart symbols the user already uses resolve here
@@ -45,6 +45,8 @@ import { rebuildGexProfile, oiFuturesTermsPrice, oiBandSelect, oiRegimeBands } f
 const CANON = {
   'XAU/USD': 'GOLD', 'NAS100_USD': 'NQ', 'SPX500_USD': 'SPX500',
   'DE30_USD': 'DE30', 'UK100_GBP': 'UK100', 'US30_USD': 'US30', 'US2000_USD': 'US2000',
+  // Commodities: the vol-forecast export's names (SILVER, WTI, CORN, …) — js/oi.js OI_PRODUCT_SPEC.tv.
+  ...Object.fromEntries(Object.entries(OI_PRODUCT_SPEC).map(([k, v]) => [k, v.tv])),
 };
 
 // Which level types to export, in the order they should print within a block, and
@@ -61,7 +63,10 @@ function canonName(pair) {
   return String(pair).toUpperCase().replace(/[/_ ]/g, '');   // EUR/USD → EURUSD
 }
 
-function priceDp(pair, canon) {
+function priceDp(pair, canon, terms = 'spot') {
+  const sp = oiSpec(pair);
+  // A grain in futures terms is in CME cents (499.75), so 2dp; otherwise the table's dp.
+  if (sp) return (terms === 'futures' && sp.priceScale !== 1) ? 2 : sp.dp;
   if (canon === 'GOLD' || INDEX_CANON.has(canon)) return 2;
   if (JPY_KEY.test(pair)) return 3;
   return 5;
@@ -196,7 +201,7 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     // when present. Everything below reads THIS, not inst.gexProfile directly.
     const gexProfile = rebuildGexProfile(inst);
     const canon = canonName(pair);
-    const dp = priceDp(pair, canon);
+    const dp = priceDp(pair, canon, terms);
     // Futures-terms display converter (identity in spot mode). Only the printed number
     // changes — sorting, dedup and the P(touch) key all still use the spot price.
     const px = (p) => futuresTerms ? oiFuturesTermsPrice(p, inst) : p;
@@ -280,7 +285,10 @@ export function buildOILevelText(store, { topWalls = null, minTier = "moderate",
     if (em && em.upper != null) {
       emitOI(em.upper, `OI ${px(em.upper).toFixed(dp)} : exp_move_hi`);
       emitOI(em.lower, `OI ${px(em.lower).toFixed(dp)} : exp_move_lo`);
-      lines.push(`· exp move ±${em.move} (${em.pct}%)${em.dte != null ? ` to ${em.dte}DTE` : ''} — EOD`);
+      // A ± distance has no basis, but a grain's unit does change in futures terms (cents).
+      const _emMove = (futuresTerms && (oiSpec(pair)?.priceScale ?? 1) !== 1 && Number.isFinite(+em.move))
+        ? +(em.move / oiSpec(pair).priceScale).toFixed(2) : em.move;
+      lines.push(`· exp move ±${_emMove} (${em.pct}%)${em.dte != null ? ` to ${em.dte}DTE` : ''} — EOD`);
     }
     const rr = inst.riskReversal;
     if (rr) lines.push(`· risk reversal ${rr.rr >= 0 ? '+' : ''}${rr.rr} (${rr.tilt} tilt)`);

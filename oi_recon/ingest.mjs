@@ -20,7 +20,7 @@
 // before it is allowed into the payload.
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
-import { buildOIEntry } from '../js/oi.js';
+import { buildOIEntry, OI_PRODUCT_SPEC, isOICommodity } from '../js/oi.js';
 
 const argv = process.argv.slice(2);
 const flag = (n, d = null) => { const i = argv.indexOf(n); if (i < 0) return d; const v = argv[i + 1]; argv.splice(i, 2); return v; };
@@ -71,7 +71,16 @@ const SYMS = {
   USD_CAD: 'USD/CAD', USD_CHF: 'USD/CHF', XAU_USD: 'XAU/USD',
   NAS100_USD: 'NAS100_USD', SPX500_USD: 'SPX500_USD', US30_USD: 'US30_USD',
   US2000_USD: 'US2000_USD', DE30_USD: 'DE30_USD',
+  // Commodities (secondary pull): stem = the key with '/' flattened, as safe_name does.
+  ...Object.fromEntries(Object.keys(OI_PRODUCT_SPEC).map(k => [k.replace(/\//g, '_'), k])),
 };
+
+// COMMODITIES NEVER REACH THE BOTS' KEY, AND NOTHING ELSE REACHES THEIRS. oi_store feeds
+// the OI bot planner, range-line and the history archive; commodities live in
+// oi_store_cmdty, which only the analysis page and the indicator export read. A stem
+// on the wrong side of that line is refused here, before anything is built or written.
+const CMDTY_KEY = 'oi_store_cmdty';
+const _isCmdty = sym => isOICommodity(sym);
 
 const stems = [...new Set(readdirSync(dir)
   .filter(f => /_(rawOI|rawChg|rawVol|rawIVTerm|rawIV)\.tsv$/.test(f))
@@ -139,6 +148,10 @@ let ivSmile = 0, ivTerm = 0;
 for (const stem of stems.sort()) {
   const sym = SYMS[stem];
   if (!sym) { console.log(`  ${stem.padEnd(12)} no symbol mapping - skipped`); bad++; continue; }
+  if (_isCmdty(sym) !== (key === CMDTY_KEY)) {
+    console.log(`  ${sym.padEnd(12)} REFUSED - ${_isCmdty(sym) ? 'a commodity' : 'not a commodity'}, and the target is '${key}' `
+      + `(commodities go to '${CMDTY_KEY}' only)`); bad++; continue;
+  }
   const rawOI = rd(stem, 'rawOI');
   if (!rawOI.trim()) { console.log(`  ${sym.padEnd(12)} no rawOI - skipped`); bad++; continue; }
 

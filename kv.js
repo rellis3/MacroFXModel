@@ -89,6 +89,10 @@ const _CF_EXACT = new Set([
   'oi_expect_log',          // forward record: what each OI level's expectation CLAIMED, per session.
                             // Accumulates a post-hoc-proof-resistant log and CANNOT be rebuilt - the
                             // levels and the spot they were judged against are gone once the day is.
+  'oi_store_cmdty',         // COMMODITY OI (silver, copper, crude, gas, grains, ...), written by the
+                            // secondary QuikStrike pull (oi_recon/run_secondary.py). Kept apart from
+                            // oi_store so the bots never see it; read by the OI analysis page and the
+                            // indicator export. Also in _worker.js isAllowedKVKey + PERMANENT_KEYS.
   'oi_store_py',            // SHADOW of oi_store, written by the automated QuikStrike
                             // sweep (oi_recon/). Deliberately NOT in _worker.js's
                             // PERMANENT_KEYS: while it is only being compared against the
