@@ -28,3 +28,20 @@ honest weaknesses: it rests on rare large winners (most trades lose a full R, as
 works from 2020 on (2016–19 is negative). The day-clustered CI's lower bound is about +0.01R. Treat it as a candidate
 for a forward paper record, not a trading rule. Live inputs: implied vol (the settlement-built iv30 passed check 1 on
 its own) and realised vol from prices.
+
+## Q5 — slippage stress (2026-10-02, post-hoc, not pre-registered)
+The rule's R is already net of one spread. Extra cost expressed as multiples of that spread (per-trade `costR` is stored):
+
+| set | extra cost | n | net R/trade | 2016–22 | 2023–26 |
+|---|---|---|---|---|---|
+| FX + gold | as tested (1 spread) | 5,591 | +0.119 | +0.099 | +0.161 |
+| FX + gold | +½ spread | 5,591 | +0.062 | +0.042 | +0.102 |
+| FX + gold | +1 spread (2× total) | 5,591 | +0.005 | −0.014 | +0.043 |
+| FX + gold | +2 spreads | 5,591 | −0.109 | −0.126 | −0.074 |
+| Indices | as tested | 1,142 | +0.070 | +0.080 | +0.054 |
+| Indices | +½ spread | 1,142 | +0.040 | +0.049 | +0.026 |
+| Indices | +1 spread | 1,142 | +0.011 | +0.018 | −0.002 |
+
+One spread costs 0.114R per trade on FX/gold (0.060R on indices) at these stop sizes, so **the edge is about one spread wide**:
+a fill one spread worse than modelled removes it. The paper record must be judged with that in mind — its fills are the
+bot's own M1 opens, not real executions, and the live spread at 00:00–10:00 London is wider than the daytime figure used.
