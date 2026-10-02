@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yield Curve and Growth — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local: preset buttons and the broken chain link. */
+  .yc-presets{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+  .yc-presets button{background:var(--panel2);border:1px solid var(--border2);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .yc-presets button:hover{border-color:var(--blue-bd);color:var(--text)}
+  .yc-sl{margin-top:10px}
+  .yc-broken{border-style:dashed !important;border-color:var(--red-bd) !important;background:var(--panel) !important}
+  .yc-broken b{color:var(--red) !important}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">What the Yield Curve Says About Growth — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Want the forward-rate worked example, all three episodes in full and a 5-question self-test?<a href="yield-curve-growth-expectations.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">How Markets Talk to Each Other · Lesson 4 of 5</div>
+      <h1 class="sl-h1">What the Yield Curve <em>Says About Growth</em></h1>
+      <p class="sl-lede">The yield curve is the bond market's best guess at where interest rates are going, plus a fee for waiting. That makes it a real reading of what the market <em>expects</em> — and a much shakier forecast of what will <em>happen</em>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">The one idea</div>
+      <h2 class="sl-h2">A long yield = expected path + term premium</h2>
+      <div class="sl-row"><div class="sl-box">yₙ</div><div class="sl-arrow">≈</div><div class="sl-box green">average expected policy rate</div><div class="sl-arrow">+</div><div class="sl-box amber">TPₙ</div></div>
+      <p class="sl-p">Lend for ten years, or lend for two and re-lend? Investors compare the two, so the 10-year sits near the average of the short rates people expect, plus a premium for locking money away.</p>
+      <div class="sl-quote">10-year <strong>below</strong> the 2-year means: "rates are high now and I expect them lower later." Rates are usually cut when growth weakens — so an inverted curve reads as an <strong>expected</strong> slowdown.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Interactive</div>
+      <h2 class="sl-h2">Shape the curve</h2>
+      <p class="sl-sub">Drag the five tenors or pick a preset. Mark a curve as "before", change it, and the move gets named.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A yield curve through the 3-month, 2-year, 5-year, 10-year and 30-year points, following five sliders, with a dashed earlier curve and a live shape label">
+            <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="250" x2="60" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <g id="yc-grid"></g>
+            <text x="335" y="284" text-anchor="middle" font-size="11" fill="var(--text3)">Maturity (square-root scale) →</text>
+            <polyline id="yc-before" points="" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,4"/>
+            <polyline id="yc-now" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>
+            <g id="yc-dots"></g>
+            <text id="yc-shape" x="600" y="38" text-anchor="end" font-size="15" font-weight="600" fill="var(--text)">—</text>
+            <text x="600" y="56" text-anchor="end" font-size="10" fill="var(--text3)">dashed = "before"</text>
+          </svg>
+        </div>
+        <div class="yc-presets">
+          <button type="button" data-preset="normal">Normal</button>
+          <button type="button" data-preset="flat">Flat</button>
+          <button type="button" data-preset="inverted">Inverted</button>
+          <button type="button" data-preset="humped">Humped</button>
+          <button type="button" id="yc-mark">Mark as "before"</button>
+        </div>
+        <div id="yc-controls"></div>
+        <div class="sl-calc-steps">
+          <div>2s10s <b id="yc-2s10s">—</b> · 3m10y <b id="yc-3m10y">—</b> · 2y→5y forward <b id="yc-fwd">—</b></div>
+          <div>Δ2y <b id="yc-d2">—</b> · Δ10y <b id="yc-d10">—</b> → <b id="yc-move">—</b></div>
+        </div>
+        <div class="sl-note">Presets are illustrative shapes, not history. Forward ≈ (5·y₅ − 2·y₂)/3 — the rate implied for years 2–5, including any term premium.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Four moves</div>
+      <h2 class="sl-h2">Bull or bear, steeper or flatter</h2>
+      <p class="sl-sub">Bull = yields falling. Bear = yields rising. Steepening = 10y minus 2y widens.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">Bull steepening</span><p>Front end falls faster — cuts being priced. How inversions usually end.</p></div>
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">Bear steepening</span><p>Long end rises faster — growth/inflation, term premium, or bond supply worries.</p></div>
+      </div>
+      <div class="sl-compare" style="margin-top:12px">
+        <div class="sl-ccard red"><span class="sl-ctag red">Bear flattening</span><p>Front end rises faster — hikes priced. How most inversions are made.</p></div>
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">Bull flattening</span><p>Long end falls faster — long-run growth fading, or a rush into duration.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Worked example</div>
+      <h2 class="sl-h2">What an inverted front end is pricing</h2>
+      <p class="sl-sub">3m 5.30%, 2y 4.50%, 5y 4.00%, 10y 4.10% (illustrative).</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Step by step</div>
+        <div class="sl-calc-steps" style="margin-top:0;padding-top:0;border-top:none">
+          <div>2s10s = 4.10 − 4.50 = <b>−40bp</b></div>
+          <div>3m10y = 4.10 − 5.30 = <b>−120bp</b></div>
+          <div>f(2→5) ≈ (5×4.00 − 2×4.50) / 3 = 11 / 3 ≈ <b>3.67%</b></div>
+          <div>minus a +0.30% term premium → expected ≈ <b>3.37%</b></div>
+        </div>
+      </div>
+      <p class="sl-p">Roughly two percentage points of cuts priced from the 5.30% bill rate. That is what the market <em>expects</em>. It says nothing about whether the expectation is right.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Who calls it</div>
+      <h2 class="sl-h2">Recessions are dated by the NBER — in hindsight</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🏛️</div><div><h4>Business Cycle Dating Committee</h4><p>Picks the peak and trough months, judging depth, breadth and duration.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>Months late</h4><p>The December 2007 peak was announced in December 2008.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Not "two negative quarters"</h4><p>Early 2022 GDP estimates showed two in a row. No recession was declared.</p></div></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Why it matters</div>
+        <p>What the curve is said to predict is only labelled after the fact. Even if the curve were right, you could not know in time to trade it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">It actually happened</div>
+      <h2 class="sl-h2">Three inversions</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Pick one</div>
+        <div class="sl-tabs" id="ep-tabs">
+          <button class="sl-tab active" data-panel="ep-1">2006–07</button>
+          <button class="sl-tab" data-panel="ep-2">2019</button>
+          <button class="sl-tab" data-panel="ep-3">2022–24</button>
+        </div>
+        <div class="sl-panel active" id="ep-1">
+          <p class="sl-p" style="margin-top:0">Fed at 5.25% from June 2006 for over a year; the curve flat or inverted through 2006 into 2007, positive again by mid-2007. Stocks peaked in October 2007. The NBER dated the recession's start to December 2007.</p>
+          <div class="sl-verdict">Right — with a fuse of more than a year, during which equities rose.</div>
+        </div>
+        <div class="sl-panel" id="ep-2">
+          <p class="sl-p" style="margin-top:0">A brief inversion in August 2019. A recession began in February 2020 — caused by a pandemic no bond market priced in 2019. On the desk's count, the Nasdaq rose 48.5% over the following year.</p>
+          <div class="sl-verdict">Right for the wrong reason — and untradeable.</div>
+        </div>
+        <div class="sl-panel" id="ep-3">
+          <p class="sl-p" style="margin-top:0">The fastest hikes in four decades. 2s10s inverted from July 2022 to around September 2024 — the longest continuous inversion in the series, about a full point deep at its worst in 2023. No NBER recession has been dated to follow it as of writing. It ended in a bull steepening as cuts arrived.</p>
+          <div class="sl-verdict">The recession most expected did not arrive (as of writing).</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">The chain</div>
+      <h2 class="sl-h2">Where "inversion → sell stocks" breaks</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Fed</b>Hikes; 2-year dragged up</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Bond market</b>2y above 10y: inverted</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Market expects</b>Cuts later — true by construction</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Recession?</b>6 of 10 in 24m, CI [31%, 83%]</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link yc-broken"><b>✗ Equities weaker?</b>No separation from a matched control</div>
+      </div>
+      <p class="sl-p">The first three links hold. The fourth is a coin-flip-wide interval. The fifth — the one people trade — is not in the data.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">What the desk found</div>
+      <h2 class="sl-h2">curve-inversion: null for the tradeable half</h2>
+      <div class="sl-stamp null"><span class="sl-stamp-tag">Null</span><span><strong>Ten inversion episodes, 1976–2026</strong> (12,581 daily 10y–2y readings; the unit is the episode). Recession within 24 months: <strong>6 of 10 — 60%, 95% CI [31%, 83%]</strong>; within 12 months 3 of 10. Forward Nasdaq vs month-matched control: +12m <strong>+10.5% vs +13.0%</strong> (p=0.33). The mirror killed it: <strong>steepenings returned −1.1% at +12m (n=6) — worse than inversions.</strong></span></div>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">Flipping the conditional</span><p>P(inversion | recession) is high. P(recession | inversion) is 60%, from 31% to 83%. Four of ten: no recession at all.</p></div>
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">What survives</span><p>"The market expects a slowdown" — a measurement, reported descriptively, always with the denominator.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Using it</div>
+      <h2 class="sl-h2">How to read it without over-reading it</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Which end moved?</h4><p>2-year up = the Fed's next meetings. 10-year down = long-run growth.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>What is priced?</h4><p>Back out the 2→5 forward — and remember QE-era term premia can squeeze it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>What is it worth?</h4><p>As an equity timing signal, on this desk's test: nothing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏠</div><div><h4>Rates you pay</h4><p>Bills → savings; 2–10y → car and business loans; 10y → the mortgage benchmark.</p></div></div>
+      </div>
+      <p class="sl-p">Related: <a href="qe-qt-balance-sheet-micro.html">QE and QT</a> — how the Fed's balance sheet pushes on the term premium.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Check yourself</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>The 2-year falls 30bp and the 10-year falls 10bp. What is the move?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Bull steepening — cuts being priced at the front end</button>
+        <button class="sl-quiz-opt">Bear flattening — hikes being priced</button>
+        <button class="sl-quiz-opt">Bull flattening — long-run growth fading</button>
+        <div class="sl-quiz-explain">Yields fell (bull) and 10y minus 2y widened by 20bp (steepening), led by the front end.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>2-year 4.8%, 5-year 4.2%. Roughly what rate is implied for years 2–5?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 3.8% — cuts priced</button>
+        <button class="sl-quiz-opt">About 4.5% — the simple average</button>
+        <button class="sl-quiz-opt">About 5.4% — hikes priced</button>
+        <div class="sl-quiz-explain">(5×4.2 − 2×4.8)/3 = (21 − 9.6)/3 = 3.8%. Below today's 2-year, so cuts are priced (before any term premium).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Who dates US recessions?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The NBER's Business Cycle Dating Committee, in hindsight</button>
+        <button class="sl-quiz-opt">Anyone, once GDP falls two quarters in a row</button>
+        <button class="sl-quiz-opt">The Fed, at its next meeting</button>
+        <div class="sl-quiz-explain">The NBER picks peak and trough months on depth, breadth and duration, announcing months later. Early 2022 had two negative GDP quarters and no recession.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What killed the desk's curve-inversion test?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The mirror: steepenings were followed by worse 12-month returns (−1.1%, n=6) than inversions</button>
+        <button class="sl-quiz-opt">2008 alone was carrying the result</button>
+        <button class="sl-quiz-opt">There were no recessions after inversions</button>
+        <div class="sl-quiz-explain">Leave-one-out passed (2008 is not carrying it), and 6 of 10 inversions were followed by a recession. But curve shape did not separate equity outcomes, and inversions never beat a matched control.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Recap</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A yield ≈ expected policy path + term premium. The curve is a measurement of expectations.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Inversions are usually built at the front end: the Fed hikes, the 2-year climbs over the 10-year.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Bull/bear × steepening/flattening tells you which end moved and what is being repriced.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The NBER dates recessions in hindsight; "two negative quarters" is shorthand.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p><strong>curve-inversion is NULL as a trade</strong>: 6 of 10 (60%, CI [31%, 83%]) recessions within 24 months, no equity separation from control, steepenings worse.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Four Markets, Four Questions</h3>
+        <p>Each market on the board answers a different question. Lesson 5 puts them side by side.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="four-markets-four-questions-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="vix-uncertainty-not-fear-micro.html">← Previous: the VIX</a>
+          <a class="sl-btn ghost" href="yield-curve-growth-expectations.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 3 — curve morpher (same math as the full lesson).
+  var TENORS = [
+    { label: '3m', m: 0.25 }, { label: '2y', m: 2 }, { label: '5y', m: 5 }, { label: '10y', m: 10 }, { label: '30y', m: 30 }
+  ];
+  var PRESETS = {
+    normal:   [2.0, 2.6, 3.2, 3.7, 4.1],
+    flat:     [4.0, 4.05, 4.0, 4.05, 4.1],
+    inverted: [5.3, 4.8, 4.3, 4.1, 4.2],
+    humped:   [3.0, 3.8, 4.1, 3.9, 3.8]
+  };
+  var X0 = 60, X1 = 600, Y0 = 250, Y1 = 30, YMAX = 8, SQ = Math.sqrt(30);
+  function xOf(m){ return X0 + Math.sqrt(m) / SQ * (X1 - X0); }
+  function yOf(v){ return Y0 - v / YMAX * (Y0 - Y1); }
+  var controls = document.getElementById('yc-controls');
+  if (!controls) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var sliders = [], lives = [];
+  var before = PRESETS.normal.slice();
+
+  var grid = document.getElementById('yc-grid');
+  function txt(x, y, s, anchor){
+    var t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', x); t.setAttribute('y', y); t.setAttribute('text-anchor', anchor);
+    t.setAttribute('font-size', '10'); t.setAttribute('font-family', "'DM Mono',monospace"); t.setAttribute('fill', 'var(--text3)');
+    t.textContent = s; grid.appendChild(t);
+  }
+  for (var v = 0; v <= 8; v += 2) {
+    var ln = document.createElementNS(NS, 'line');
+    ln.setAttribute('x1', X0); ln.setAttribute('x2', 610); ln.setAttribute('y1', yOf(v)); ln.setAttribute('y2', yOf(v));
+    ln.setAttribute('style', 'stroke:var(--border);stroke-width:1'); grid.appendChild(ln);
+    txt(52, yOf(v) + 4, v + '%', 'end');
+  }
+  TENORS.forEach(function(t){ txt(xOf(t.m), 265, t.label, 'middle'); });
+
+  TENORS.forEach(function(t, i){
+    var wrap = document.createElement('div'); wrap.className = 'yc-sl';
+    var head = document.createElement('div'); head.className = 'sl-sliderhead';
+    var name = document.createElement('span'); name.textContent = t.label + ' yield';
+    var live = document.createElement('span'); live.className = 'sl-live';
+    head.appendChild(name); head.appendChild(live);
+    var input = document.createElement('input');
+    input.type = 'range'; input.className = 'sl-slider'; input.min = '0'; input.max = '8'; input.step = '0.05';
+    input.value = String(PRESETS.normal[i]); input.setAttribute('aria-label', t.label + ' yield');
+    input.addEventListener('input', render);
+    wrap.appendChild(head); wrap.appendChild(input); controls.appendChild(wrap);
+    sliders.push(input); lives.push(live);
+  });
+
+  function vals(){ return sliders.map(function(s){ return parseFloat(s.value); }); }
+  function pts(arr){ return arr.map(function(v, i){ return xOf(TENORS[i].m).toFixed(1) + ',' + yOf(v).toFixed(1); }).join(' '); }
+  function bp(x){ var n = Math.round(x * 100); return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n) + 'bp'; }
+  function shape(y){
+    var s = y[3] - y[1];
+    if (y[2] - Math.max(y[0], y[4]) > 0.15 && y[2] >= y[1] && y[2] >= y[3]) return { t: 'Humped', c: 'var(--purple)' };
+    if (s < -0.10) return { t: 'Inverted', c: 'var(--red)' };
+    if (Math.abs(s) <= 0.25) return { t: 'Flat', c: 'var(--amber)' };
+    if (s > 1.5) return { t: 'Steep', c: 'var(--green)' };
+    return { t: 'Normal (upward)', c: 'var(--green)' };
+  }
+  function move(y, b){
+    var d2 = y[1] - b[1], d10 = y[3] - b[3];
+    var dSlope = d10 - d2, dLevel = (d2 + d10) / 2;
+    if (Math.abs(dSlope) < 0.05) {
+      if (Math.abs(dLevel) < 0.05) return 'no meaningful change';
+      return dLevel > 0 ? 'parallel shift up' : 'parallel shift down';
+    }
+    if (dSlope > 0) return dLevel < 0 ? 'bull steepening (cuts priced)' : 'bear steepening (long end leading up)';
+    return dLevel > 0 ? 'bear flattening (hikes priced)' : 'bull flattening (long end leading down)';
+  }
+  function render(){
+    var y = vals();
+    y.forEach(function(v, i){ lives[i].textContent = v.toFixed(2) + '%'; });
+    document.getElementById('yc-now').setAttribute('points', pts(y));
+    document.getElementById('yc-before').setAttribute('points', pts(before));
+    var dots = document.getElementById('yc-dots');
+    while (dots.firstChild) dots.removeChild(dots.firstChild);
+    y.forEach(function(v, i){
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', xOf(TENORS[i].m)); c.setAttribute('cy', yOf(v)); c.setAttribute('r', 4.5);
+      c.setAttribute('style', 'fill:var(--blue);stroke:var(--bg);stroke-width:1.5');
+      dots.appendChild(c);
+    });
+    var sh = shape(y), el = document.getElementById('yc-shape');
+    el.textContent = sh.t; el.setAttribute('fill', sh.c);
+    document.getElementById('yc-2s10s').textContent = bp(y[3] - y[1]);
+    document.getElementById('yc-3m10y').textContent = bp(y[3] - y[0]);
+    document.getElementById('yc-fwd').textContent = ((5 * y[2] - 2 * y[1]) / 3).toFixed(2) + '%';
+    document.getElementById('yc-d2').textContent = bp(y[1] - before[1]);
+    document.getElementById('yc-d10').textContent = bp(y[3] - before[3]);
+    document.getElementById('yc-move').textContent = move(y, before);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(btn){
+    btn.addEventListener('click', function(){
+      var p = PRESETS[btn.getAttribute('data-preset')];
+      sliders.forEach(function(s, i){ s.value = String(p[i]); });
+      render();
+    });
+  });
+  document.getElementById('yc-mark').addEventListener('click', function(){ before = vals(); render(); });
+  render();
+})();
+</script>
+</body>
+</html>
