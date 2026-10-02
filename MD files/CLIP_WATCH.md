@@ -924,3 +924,50 @@ still holds a written prediction that was never run to a banked result.
 material in this log and the strongest case for the Theory Lab sequence; it has now produced
 three separate pointers at the same place — `gexRead`, `pcBias`, and a glossary with 57
 entries and one option term.
+
+---
+
+## 2026-10-02 — Jess Inskip, "what is a covered call"
+
+**Largely a restatement** — the covered call already appeared in her delta clip as the
+worked example for net delta (long 100 shares at 1.0, short a 0.2-delta call, net 0.8).
+This adds construction detail and the strike-selection tradeoff (lower strike, more premium,
+less room to appreciate), which is the moneyness relationship restated. Short entry.
+
+**(a) The gap in her own series: a covered call IS a short put.** Long stock plus a short
+call produces the same expiry payoff as a naked short put at that strike — capped upside at
+the strike, premium collected, downside running all the way to zero less the premium.
+(Exactly so at expiry and for the same strike; dividends, financing and early assignment
+separate them in practice.) Her 2×2 cell for the short put — *bullish, time decay positive,
+profits from a slight move up, profits from a decrease in IV* — is a word-for-word
+description of the covered call she presents here as a different strategy. **The series
+teaches them in separate videos and never connects them**, which is the one genuine
+pedagogical miss in an otherwise unusually careful sequence. If the Theory Lab sequence gets
+built, that equivalence is the lesson worth adding rather than copying.
+
+**(b) "It's actually very conservative" is a framing, not a measurement.** The premium
+cushions the downside by its own size and nothing more; max loss is the whole stock position
+less $500 on a $10,000 outlay. Conservative *relative to holding the stock outright*, by
+0.5% of capital. Not scored — it is a characterisation, and the slack rule applies — but
+recorded because "conservative" is doing a lot of work in that sentence.
+
+**(c) It sharpens the `pcBias` finding with the most important real-world case.** The entry
+on her put clips noted that open interest cannot tell a bought put from a sold one. The
+covered call is the sharper version on the *call* side: systematic overwriting — the large
+income ETFs and institutional buy-write programs — sells calls continuously, and by her own
+framing that seller is **neutral short term with capped upside**, not bullish.
+
+That flow lands in `totalCallOI`, lowers `pcRatio`, and `js/ai.js` tells a paid model:
+
+```js
+pcRatio < 0.77 ? 'BULLISH (call-heavy — market positioned up)'
+```
+
+**So the single most common institutional options strategy produces exactly the open-interest
+signature the prompt reads as bullish conviction.** Nothing in the live code models
+overwriting flow; the strategy is documented only in `education/151 Trading Strategies.md`
+(§2.2), which is a reference text, not a feed.
+
+**Verdict.** Nothing to test in the clip. It is the third independent route to the same
+conclusion: `pcBias` and `gexRead` are interpretations shipped as readings, and open interest
+does not carry the side that would justify either.
