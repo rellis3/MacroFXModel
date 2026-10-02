@@ -14444,8 +14444,19 @@ async function _briefIvLive() {
 let _dataHealthCache = { at: 0, data: null };
 async function _buildDataHealth() {
   const srcs = [];
+  // ALWAYS push, even with a null timestamp. A source whose in-memory cache has not filled
+  // since the last restart would otherwise VANISH from the panel, and a missing row reads
+  // as "fine" -- the worst of the three possible answers. It shows as `unknown` instead.
   const push = (id, label, last, cadenceDays = 1, extra = {}) => srcs.push({ id, label, last, cadenceDays, ...extra });
   const lastOf = rows => (Array.isArray(rows) && rows.length ? (rows.at(-1).date ?? rows.at(-1).d ?? null) : null);
+  // oi_store stamps rows with a UK LOCALE string ("02/10/2026, 06:37:09"), not ISO, so
+  // Date.parse returns NaN and the row read `unknown` while the capture was running fine.
+  const ukStamp = v => {
+    if (!v) return null;
+    const m = String(v).match(/^(\d{2})\/(\d{2})\/(\d{4})[,\s]+(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (m) return `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}:${m[6] ?? '00'}Z`;
+    return Number.isFinite(Date.parse(String(v))) ? String(v) : null;
+  };
 
   // the drill bundle: 71 series on one 24h refresh, so report the WORST leg rather than
   // the bundle's own run time -- a bundle that ran is not a bundle whose feeds printed
@@ -14459,14 +14470,14 @@ async function _buildDataHealth() {
         for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) { const dt = dates[i]; if (dt && (!worst || dt < worst)) { worst = dt; worstKey = k; } break; }
       }
       push('drill', `Drill bundle (71 series, worst leg: ${worstKey ?? '?'})`, worst, 1);
-    }
-  } catch { /* reported as unknown below */ }
+    } else push('drill', 'Drill bundle (71 series)', null, 1);
+  } catch { push('drill', 'Drill bundle (71 series)', null, 1); }
 
-  try { if (_crack.data?.last?.date) push('crack', 'Crude & crack (FRED)', _crack.data.last.date, 1); } catch {}
-  try { if (_rates.series) { const k = Object.keys(_rates.series)[0]; push('rates', 'Rates complex (FRED)', lastOf(_rates.series[k]), 1); } } catch {}
-  try { if (_chapters.data?.series) { const k = Object.keys(_chapters.data.series)[0]; push('chapters', 'Chapter series (FRED)', lastOf(_chapters.data.series[k]), 1); } } catch {}
-  try { if (_nowcast.at) push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at, 7, { market: false }); } catch {}
-  try { if (_macroRegime.at) push('regime', 'Currency regime table', _macroRegime.at, 30, { market: false }); } catch {}
+  push('crack', 'Crude & crack (FRED)', _crack.data?.last?.date ?? null, 1);
+  try { const k = _rates.series ? Object.keys(_rates.series)[0] : null; push('rates', 'Rates complex (FRED)', k ? lastOf(_rates.series[k]) : null, 1); } catch { push('rates', 'Rates complex (FRED)', null, 1); }
+  try { const k = _chapters.data?.series ? Object.keys(_chapters.data.series)[0] : null; push('chapters', 'Chapter series (FRED)', k ? lastOf(_chapters.data.series[k]) : null, 1); } catch { push('chapters', 'Chapter series (FRED)', null, 1); }
+  push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at || null, 7, { market: false });
+  push('regime', 'Currency regime table', _macroRegime.at || null, 30, { market: false });
 
   // CVOL: each leg on its own, because that is where the dead one hid
   try {
@@ -14478,15 +14489,36 @@ async function _buildDataHealth() {
   } catch {}
 
   // the OI capture, which is what the live IV term structure rides on
+  // the OI/IV capture: the stamp lives on each PAIR, not at the top level, so take the
+  // newest across pairs. This is the live implied-vol source, so a silent unknown here is
+  // exactly the row that must not be wrong.
+  let oiLast = null;
   try {
     const raw = await kv.get('oi_store');
-    if (raw) { const p = JSON.parse(raw); push('oi_store', 'CME settles capture (OI + IV term structure)', p.savedAt ?? p.at ?? null, 1); }
+    const store = raw ? (JSON.parse(raw).data ?? JSON.parse(raw)) : null;
+    if (store) for (const v of Object.values(store)) {
+      const t = ukStamp(v?.savedAt); if (t && (!oiLast || t > oiLast)) oiLast = t;
+    }
   } catch {}
+  push('oi_store', 'CME settles capture (OI + IV term structure)', oiLast, 1);
 
   // the written reads, on a wall clock rather than a market one
   try { const st = await _loadEodReviewStore(); if (st?.latest?.generatedAt) push('eodReview', 'Evening written review', st.latest.generatedAt, 1, { market: false }); } catch {}
   try { const raw = await kv.get('hedge_alerts_cache'); if (raw) push('corr', 'Correlations & betas', JSON.parse(raw).generated ?? null, 1); } catch {}
-  try { const raw = await kv.get('fred_data_v3'); if (raw) { const p = JSON.parse(raw); push('fredDash', 'FRED dashboard cache', p.at ?? p.savedAt ?? null, 1, { market: false }); } } catch {}
+  // the FRED dashboard has no top-level stamp -- each series carries its own asOf -- so
+  // report the WORST leg, for the same reason the drill bundle does: a cache that was
+  // written is not a set of series that printed.
+  let fredWorst = null, fredWorstKey = null;
+  try {
+    const raw = await kv.get('fred_data_v3');
+    const p = raw ? JSON.parse(raw) : null;
+    const rows = p?.data ?? p ?? {};
+    for (const [k, v] of Object.entries(rows)) {
+      const a = v?.asOf; if (!a || !/^\d{4}-\d{2}-\d{2}/.test(String(a))) continue;
+      if (!fredWorst || a < fredWorst) { fredWorst = a; fredWorstKey = k; }
+    }
+  } catch {}
+  push('fredDash', `FRED dashboard cache${fredWorstKey ? ` (worst leg: ${fredWorstKey})` : ''}`, fredWorst, 1);
 
   const out = _dataHealth(srcs);
   _dataHealthCache = { at: Date.now(), data: out };
