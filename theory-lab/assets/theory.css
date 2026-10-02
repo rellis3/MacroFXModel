@@ -389,3 +389,30 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
   .tl-tts-select{font-size:11px;padding:6px}
 }
 .tl-eli5 p+p{margin-top:8px}
+
+/* ── Story layer ───────────────────────────────────────────────────────────
+   .tl-chain — a causal transmission chain: shock → link → link → outcome.
+   Each link names the actor and what it is forced to do. Wraps on a phone.
+   .tl-verdict — the desk's own tested verdict on a claim, stamped beside it.
+   Variants mirror js/deskEvidence.js verdicts: validated / null / context /
+   underpowered / untested. Never soften a null into anything greener. */
+.tl-chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;margin:18px 0;padding:14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl)}
+.tl-chain-link{flex:1 1 130px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;font-size:12.5px;line-height:1.5;color:var(--text2)}
+.tl-chain-link b{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:3px}
+.tl-chain-link.shock{border-color:var(--red-bd);background:var(--red-bg)}
+.tl-chain-link.shock b{color:var(--red)}
+.tl-chain-link.end{border-color:var(--amber-bd);background:var(--amber-bg)}
+.tl-chain-link.end b{color:var(--amber)}
+.tl-chain-arrow{flex:0 0 auto;align-self:center;color:var(--text3);font-size:15px}
+.tl-verdict{display:flex;gap:12px;align-items:flex-start;margin:16px 0;padding:12px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--s1);font-size:13px;line-height:1.6;color:var(--text2)}
+.tl-verdict-tag{flex:0 0 auto;font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:20px;border:1px solid}
+.tl-verdict strong{color:var(--text)}
+.tl-verdict.validated .tl-verdict-tag{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+.tl-verdict.null .tl-verdict-tag{color:var(--red);background:var(--red-bg);border-color:var(--red-bd)}
+.tl-verdict.context .tl-verdict-tag{color:var(--blue);background:var(--blue-bg);border-color:var(--blue-bd)}
+.tl-verdict.underpowered .tl-verdict-tag,.tl-verdict.untested .tl-verdict-tag{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd)}
+.tl-story{border-left:3px solid var(--amber);background:var(--s1);border-radius:0 var(--rl) var(--rl) 0;padding:16px 18px;margin:20px 0}
+.tl-story-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.tl-story h3{font-size:16px;margin:0 0 8px}
+.tl-story p{font-size:14px;color:var(--text2);margin:0 0 10px}
+@media (max-width:600px){.tl-chain{flex-direction:column}.tl-chain-arrow{transform:rotate(90deg)}}

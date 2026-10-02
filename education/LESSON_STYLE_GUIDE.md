@@ -361,6 +361,37 @@ Add `.tl-chart.interactive` plus a `.tl-controls`/`.tl-control` block (see
 `primer-stats-normal.html`'s z-score slider) if the chart recomputes live via
 a `<script>` — real math (e.g. the erf-based normal CDF), no fake numbers.
 
+### 5.16 Story layer — `.tl-chain`, `.tl-verdict`, `.tl-story`
+
+For lessons that bring theory to life: a real episode, the causal chain it ran
+through, and what this desk found when it tested the claim.
+
+```html
+<div class="tl-chain">
+  <div class="tl-chain-link shock"><b>Shock</b>Bond volatility jumps</div>
+  <div class="tl-chain-arrow">→</div>
+  <div class="tl-chain-link"><b>Dealers</b>Raise haircuts, shrink inventory</div>
+  <div class="tl-chain-arrow">→</div>
+  <div class="tl-chain-link end"><b>Outcome</b>Liquidity thins, vol rises further</div>
+</div>
+
+<div class="tl-verdict null">
+  <span class="tl-verdict-tag">Null</span>
+  <span><strong>Tested here:</strong> what the desk found, with n and the effect.</span>
+</div>
+
+<div class="tl-story">
+  <div class="tl-story-label">It actually happened</div>
+  <h3>September 2019: the repo spike</h3>
+  <p>...</p>
+</div>
+```
+
+`.tl-verdict` variants match `js/deskEvidence.js`: `validated` (green), `null`
+(red), `context` (blue), `underpowered` / `untested` (amber). Quote the ledger
+entry's own numbers; never round a null up. Slide decks use `.sl-chain` /
+`.sl-chain-link` / `.sl-stamp` / `.sl-stamp-tag` from `deck.css`, same variants.
+
 ---
 
 ## 6. Color system — what each color means
