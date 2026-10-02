@@ -72,13 +72,14 @@ export const CATALOGUE = [
 
   // ── Policy and funding ────────────────────────────────────────────────────
   { id: 'DFEDTARU', source: 'fred', group: 'policy', label: 'Fed funds target (upper)', why: 'The anchor every other rate is priced against.', readBy: ['rates', 'weekMap'], evidence: ['post-fomc-usd-drift', 'fed-two-moves'] },
-  { id: 'SOFR', source: 'fred', group: 'policy', label: 'SOFR', why: 'Secured overnight funding -- where plumbing stress shows first.', readBy: ['rates', 'weekMap'], evidence: ['repo-stress-range'],
-    trap: 'SOFR minus IORB is the actual stress measure and has never been scored on its own. Both legs are pulled.' },
+  { id: 'SOFR', source: 'fred', group: 'policy', label: 'SOFR', why: 'Secured overnight funding -- where plumbing stress shows first.', readBy: ['rates', 'weekMap'], evidence: ['repo-stress-range', 'funding-stress'],
+    trap: 'CALENDAR, NOT STRESS. The 99th percentile over the floor fires on a quarter of sessions (month-end balance sheets); take month-end out and 12 of the remaining 15 episodes land on the 14th-18th, which is mid-month tax and settlement. Tested twice, null both times. The daily FRED series is only the published reference rate -- the NY Fed API carries the percentiles a stress read actually needs.' },
   { id: 'EFFR', source: 'fred', group: 'policy', label: 'Effective fed funds', why: 'Where unsecured overnight money actually trades versus the target.', readBy: ['rates', 'weekMap'], evidence: [] },
   { id: 'IORB', source: 'fred', group: 'policy', label: 'Interest on reserve balances', why: 'The floor the whole corridor sits on.', readBy: ['rates', 'weekMap'], evidence: [] },
   { id: 'IOER', source: 'fred', group: 'policy', label: 'Interest on excess reserves (retired)', why: 'The pre-2021 floor, spliced to IORB at 2021-07-29 so the history is continuous.', readBy: ['weekMap'], evidence: [],
     trap: 'Ends 2021-07-28 BY DESIGN. It is a historical leg, not a dead feed -- weekMapBuild splices it.' },
-  { id: 'RPONTSYD',  source: 'fred', group: 'policy', label: 'Standing repo facility', why: 'The backstop that caps funding stress.', readBy: ['rates', 'weekMap'], evidence: [] },
+  { id: 'RPONTSYD',  source: 'fred', group: 'policy', label: 'Standing repo facility', why: 'The backstop that caps funding stress.', readBy: ['rates', 'weekMap'], evidence: ['funding-stress'],
+    trap: 'Drawn on 667 of 2,123 sessions since 2018 -- 31%. "The SRF was used" is routine plumbing, not an alarm. De-clustered it gives 21 episodes, the last in 2024-01.' },
   { id: 'RRPONTSYD', source: 'fred', group: 'policy', label: 'Reverse repo', why: 'Drains reserves; one of the three legs of net liquidity.', readBy: ['rates', 'weekMap', 'netLiquidity', 'liquidityGate'], evidence: ['repo-stress-range'] },
   { id: 'WLCFLPCL',  source: 'fred', group: 'policy', label: 'Discount window', why: 'Who is borrowing at the penalty rate, which is a stress tell.', readBy: ['rates', 'weekMap'], evidence: [] },
   { id: 'DTB3',   source: 'fred', group: 'policy', label: '3-month T-bill', why: 'Bill supply and the front end of the money curve.', readBy: ['weekMap'], evidence: [] },

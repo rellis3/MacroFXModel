@@ -1,0 +1,339 @@
+{
+ "id": "funding-stress",
+ "ranAt": "2026-10-02T03:18:36.475Z",
+ "minEvents": 20,
+ "span": {
+  "from": "2018-04-02",
+  "to": "2026-09-30",
+  "sessions": 2123
+ },
+ "monthEndShare": 0.24,
+ "episodes": {
+  "s1_median_ex_monthEnd": [
+   "2018-05-15",
+   "2018-08-15",
+   "2018-09-17",
+   "2018-11-05",
+   "2019-02-15",
+   "2019-03-15",
+   "2019-12-16",
+   "2020-03-04",
+   "2020-07-15",
+   "2024-12-26",
+   "2025-09-15",
+   "2026-02-17",
+   "2026-03-16",
+   "2026-04-15",
+   "2026-06-15"
+  ],
+  "s2_srf_drawn": [
+   "2018-05-16",
+   "2018-11-15",
+   "2019-05-13",
+   "2019-09-17",
+   "2020-10-07",
+   "2021-05-26",
+   "2021-09-23",
+   "2021-12-08",
+   "2021-12-28",
+   "2022-03-03",
+   "2022-03-30",
+   "2022-04-28",
+   "2022-05-19",
+   "2022-06-23",
+   "2022-09-01",
+   "2022-10-03",
+   "2022-10-19",
+   "2022-12-02",
+   "2023-01-04",
+   "2023-05-02",
+   "2024-01-12"
+  ],
+  "mirror_monthEnd": [
+   "2018-04-02",
+   "2018-05-31",
+   "2018-06-29",
+   "2018-09-28",
+   "2018-11-02",
+   "2018-11-29",
+   "2018-12-27",
+   "2019-01-31",
+   "2019-02-28",
+   "2019-03-28",
+   "2019-04-26",
+   "2019-05-29",
+   "2019-06-26",
+   "2019-07-29",
+   "2019-08-30",
+   "2019-09-26",
+   "2019-10-31",
+   "2019-11-29",
+   "2020-03-03",
+   "2024-09-30",
+   "2024-12-27",
+   "2025-06-30",
+   "2025-09-30",
+   "2025-10-29",
+   "2025-11-25",
+   "2025-12-29",
+   "2026-01-30",
+   "2026-02-27",
+   "2026-03-31",
+   "2026-06-30",
+   "2026-08-31"
+  ]
+ },
+ "cells": {
+  "s1_median_ex_monthEnd|SPX500|range": {
+   "n": 15,
+   "setupMean": 2.074,
+   "controlMean": 2.179,
+   "diff": -0.105,
+   "lo": -0.814,
+   "hi": 0.577,
+   "halves": [
+    -0.076,
+    -0.13
+   ],
+   "untestable": true
+  },
+  "s1_median_ex_monthEnd|SPX500|dir": {
+   "n": 15,
+   "setupMean": -0.506,
+   "controlMean": -0.205,
+   "diff": -0.302,
+   "lo": -2.274,
+   "hi": 1.464,
+   "halves": [
+    0.567,
+    -1.061
+   ],
+   "untestable": true
+  },
+  "s1_median_ex_monthEnd|EURUSD|range": {
+   "n": 15,
+   "setupMean": 2.787,
+   "controlMean": 2.007,
+   "diff": 0.78,
+   "lo": 0.251,
+   "hi": 1.322,
+   "halves": [
+    0.576,
+    0.958
+   ],
+   "untestable": true
+  },
+  "s1_median_ex_monthEnd|EURUSD|dir": {
+   "n": 15,
+   "setupMean": 0.01,
+   "controlMean": -0.223,
+   "diff": 0.233,
+   "lo": -0.367,
+   "hi": 0.956,
+   "halves": [
+    0.249,
+    0.219
+   ],
+   "untestable": true
+  },
+  "s1_median_ex_monthEnd|USDJPY|range": {
+   "n": 15,
+   "setupMean": 2.383,
+   "controlMean": 2.557,
+   "diff": -0.174,
+   "lo": -1.041,
+   "hi": 0.676,
+   "halves": [
+    -0.816,
+    0.388
+   ],
+   "untestable": true
+  },
+  "s1_median_ex_monthEnd|USDJPY|dir": {
+   "n": 15,
+   "setupMean": 0.053,
+   "controlMean": -0.427,
+   "diff": 0.479,
+   "lo": -0.086,
+   "hi": 1.049,
+   "halves": [
+    0.573,
+    0.397
+   ],
+   "untestable": true
+  },
+  "s2_srf_drawn|SPX500|range": {
+   "n": 21,
+   "setupMean": 2.073,
+   "controlMean": 2.634,
+   "diff": -0.561,
+   "lo": -0.984,
+   "hi": -0.181,
+   "halves": [
+    -0.928,
+    -0.228
+   ],
+   "untestable": false
+  },
+  "s2_srf_drawn|SPX500|dir": {
+   "n": 21,
+   "setupMean": -0.154,
+   "controlMean": 0.5,
+   "diff": -0.654,
+   "lo": -2.104,
+   "hi": 0.704,
+   "halves": [
+    -0.582,
+    -0.719
+   ],
+   "untestable": false
+  },
+  "s2_srf_drawn|EURUSD|range": {
+   "n": 21,
+   "setupMean": 2.203,
+   "controlMean": 2.686,
+   "diff": -0.483,
+   "lo": -1.15,
+   "hi": 0.119,
+   "halves": [
+    -1.066,
+    0.047
+   ],
+   "untestable": false
+  },
+  "s2_srf_drawn|EURUSD|dir": {
+   "n": 21,
+   "setupMean": -0.091,
+   "controlMean": 0.153,
+   "diff": -0.243,
+   "lo": -0.913,
+   "hi": 0.511,
+   "halves": [
+    -0.51,
+    -0.001
+   ],
+   "untestable": false
+  },
+  "s2_srf_drawn|USDJPY|range": {
+   "n": 21,
+   "setupMean": 2.476,
+   "controlMean": 2.059,
+   "diff": 0.417,
+   "lo": -0.066,
+   "hi": 0.963,
+   "halves": [
+    0.218,
+    0.598
+   ],
+   "untestable": false
+  },
+  "s2_srf_drawn|USDJPY|dir": {
+   "n": 21,
+   "setupMean": 0.333,
+   "controlMean": 0.853,
+   "diff": -0.52,
+   "lo": -1.322,
+   "hi": 0.229,
+   "halves": [
+    -0.024,
+    -0.972
+   ],
+   "untestable": false
+  },
+  "mirror_monthEnd|SPX500|range": {
+   "n": 31,
+   "setupMean": 2.705,
+   "controlMean": 2.477,
+   "diff": 0.227,
+   "lo": -0.339,
+   "hi": 0.834,
+   "halves": [
+    0.045,
+    0.399
+   ],
+   "untestable": false
+  },
+  "mirror_monthEnd|SPX500|dir": {
+   "n": 31,
+   "setupMean": 0.106,
+   "controlMean": 0.509,
+   "diff": -0.404,
+   "lo": -1.363,
+   "hi": 0.463,
+   "halves": [
+    -0.608,
+    -0.212
+   ],
+   "untestable": false
+  },
+  "mirror_monthEnd|EURUSD|range": {
+   "n": 31,
+   "setupMean": 2.502,
+   "controlMean": 2.271,
+   "diff": 0.231,
+   "lo": -0.273,
+   "hi": 0.771,
+   "halves": [
+    0.496,
+    -0.016
+   ],
+   "untestable": false
+  },
+  "mirror_monthEnd|EURUSD|dir": {
+   "n": 31,
+   "setupMean": -0.204,
+   "controlMean": -0.006,
+   "diff": -0.197,
+   "lo": -0.618,
+   "hi": 0.245,
+   "halves": [
+    0.216,
+    -0.585
+   ],
+   "untestable": false
+  },
+  "mirror_monthEnd|USDJPY|range": {
+   "n": 31,
+   "setupMean": 3.05,
+   "controlMean": 2.596,
+   "diff": 0.454,
+   "lo": -0.354,
+   "hi": 1.272,
+   "halves": [
+    -0.073,
+    0.948
+   ],
+   "untestable": false
+  },
+  "mirror_monthEnd|USDJPY|dir": {
+   "n": 31,
+   "setupMean": 0.15,
+   "controlMean": -0.135,
+   "diff": 0.285,
+   "lo": -0.288,
+   "hi": 0.923,
+   "halves": [
+    -0.069,
+    0.617
+   ],
+   "untestable": false
+  }
+ },
+ "gate": {
+  "s1_median_ex_monthEnd": {
+   "testable": 0,
+   "clears": 0,
+   "halvesAgree": true,
+   "mirrorBigger": null,
+   "pass": false
+  },
+  "s2_srf_drawn": {
+   "testable": 3,
+   "clears": 0,
+   "halvesAgree": true,
+   "mirrorBigger": null,
+   "pass": false
+  }
+ },
+ "verdict": "NULL"
+}
