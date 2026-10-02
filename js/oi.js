@@ -112,6 +112,8 @@ export async function oiSaveStore(store) {
 //   priceScale CME price × priceScale = OANDA price. Grains: CME quotes CENTS per bushel
 //              (corn 499.75), OANDA dollars (4.9975) → 0.01, applied to the raw tables
 //              before parsing (oiScaleRawPrices) so every level comes out in dollars.
+//   maxBasis   basis cap (fraction of spot) where the default 5% is too tight — energy/grains:
+//              OANDA's CFD and Yahoo's front month can sit on different contract months
 //   yahoo/oanda/tv  the futures quote, the spot CFD, and the export block name — the SAME
 //              names the vol-forecast zones export already uses (SILVER, WTI, CORN …), so one
 //              chart matches both blocks; the Pine indicators map XAGUSD/SI1! → SILVER etc.
@@ -125,12 +127,12 @@ export const OI_PRODUCT_SPEC = {
   'XCU/USD':    { name: 'Copper',      fut: 'HG', contract: 25000, vol: 0.25, dp: 4, pip: 0.001,  priceScale: 1,    yahoo: 'HG=F', oanda: 'XCU_USD',    tv: 'COPPER' },
   'XPT/USD':    { name: 'Platinum',    fut: 'PL', contract: 50,    vol: 0.30, dp: 2, pip: 0.1,    priceScale: 1,    yahoo: 'PL=F', oanda: 'XPT_USD',    tv: 'PLATINUM' },
   'XPD/USD':    { name: 'Palladium',   fut: 'PA', contract: 100,   vol: 0.40, dp: 2, pip: 0.1,    priceScale: 1,    yahoo: 'PA=F', oanda: 'XPD_USD',    tv: 'PALLADIUM' },
-  'WTICO_USD':  { name: 'WTI Crude',   fut: 'CL', contract: 1000,  vol: 0.35, dp: 2, pip: 0.01,   priceScale: 1,    yahoo: 'CL=F', oanda: 'WTICO_USD',  tv: 'WTI' },
-  'BCO_USD':    { name: 'Brent Crude', fut: 'BZ', contract: 1000,  vol: 0.33, dp: 2, pip: 0.01,   priceScale: 1,    yahoo: 'BZ=F', oanda: 'BCO_USD',    tv: 'BRENT' },
-  'NATGAS_USD': { name: 'Natural Gas', fut: 'NG', contract: 10000, vol: 0.60, dp: 3, pip: 0.001,  priceScale: 1,    yahoo: 'NG=F', oanda: 'NATGAS_USD', tv: 'NATGAS' },
-  'SOYBN_USD':  { name: 'Soybeans',    fut: 'ZS', contract: 5000,  vol: 0.18, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZS=F', oanda: 'SOYBN_USD',  tv: 'SOYBEAN' },
-  'CORN_USD':   { name: 'Corn',        fut: 'ZC', contract: 5000,  vol: 0.25, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZC=F', oanda: 'CORN_USD',   tv: 'CORN' },
-  'WHEAT_USD':  { name: 'Wheat',       fut: 'ZW', contract: 5000,  vol: 0.28, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZW=F', oanda: 'WHEAT_USD',  tv: 'WHEAT' },
+  'WTICO_USD':  { name: 'WTI Crude',   fut: 'CL', contract: 1000,  vol: 0.35, dp: 2, pip: 0.01,   priceScale: 1,    yahoo: 'CL=F', oanda: 'WTICO_USD',  maxBasis: 0.1, tv: 'WTI' },
+  'BCO_USD':    { name: 'Brent Crude', fut: 'BZ', contract: 1000,  vol: 0.33, dp: 2, pip: 0.01,   priceScale: 1,    yahoo: 'BZ=F', oanda: 'BCO_USD',    maxBasis: 0.1, tv: 'BRENT' },
+  'NATGAS_USD': { name: 'Natural Gas', fut: 'NG', contract: 10000, vol: 0.60, dp: 3, pip: 0.001,  priceScale: 1,    yahoo: 'NG=F', oanda: 'NATGAS_USD', maxBasis: 0.15, tv: 'NATGAS' },
+  'SOYBN_USD':  { name: 'Soybeans',    fut: 'ZS', contract: 5000,  vol: 0.18, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZS=F', oanda: 'SOYBN_USD',  maxBasis: 0.1, tv: 'SOYBEAN' },
+  'CORN_USD':   { name: 'Corn',        fut: 'ZC', contract: 5000,  vol: 0.25, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZC=F', oanda: 'CORN_USD',   maxBasis: 0.1, tv: 'CORN' },
+  'WHEAT_USD':  { name: 'Wheat',       fut: 'ZW', contract: 5000,  vol: 0.28, dp: 4, pip: 0.01,   priceScale: 0.01, yahoo: 'ZW=F', oanda: 'WHEAT_USD',  maxBasis: 0.1, tv: 'WHEAT' },
 };
 export function oiSpec(pair) { return OI_PRODUCT_SPEC[pair] || null; }
 export function isOICommodity(pair) { return !!OI_PRODUCT_SPEC[pair]; }
@@ -519,9 +521,14 @@ export function oiFuturesTermsPrice(price, inst) {
 // strikes around price). When that happens we must NOT shift the strikes: for
 // gold/indices futures≈spot so the correct fallback is no shift at all.
 export const MAX_BASIS_FRAC = 0.05;   // 5% of spot — clips garbage (gold saw ~46%), keeps every real basis
-export function basisImplausible(basis, spot) {
+// `pair` (optional) lets a commodity widen the cap: OANDA's energy/grain CFDs can reference
+// a different futures month than Yahoo's front contract, so their "basis" carries a
+// calendar spread — nat gas month-to-month runs past 5% in winter. A clamped basis means
+// NO shift, which would leave every level off by the whole spread with no warning.
+export function basisImplausible(basis, spot, pair = null) {
+  const cap = (pair && oiSpec(pair)?.maxBasis) || MAX_BASIS_FRAC;
   return Number.isFinite(basis) && Number.isFinite(spot) && spot > 0 &&
-    Math.abs(basis) > spot * MAX_BASIS_FRAC;
+    Math.abs(basis) > spot * cap;
 }
 
 // A strike far from spot carrying OI that dwarfs every wall actually near spot is not
@@ -1539,7 +1546,7 @@ export async function oiRefreshBasis(inst, { baseUrl = '', minPipFrac = 1e-6 } =
   const newFutures = live.price, newSpot = live.spot;
   const futuresSpot = futuresIsInverted(inst.pair) ? 1 / newFutures : newFutures;
   const newBasis = futuresSpot - newSpot;
-  if (basisImplausible(newBasis, newSpot)) return { inst, changed: false, quoted: true };
+  if (basisImplausible(newBasis, newSpot, inst.pair)) return { inst, changed: false, quoted: true };
   const d = newBasis - (Number.isFinite(inst.basis) ? inst.basis : 0);
   if (Math.abs(d) < newSpot * minPipFrac) {   // sub-pip drift — refresh spot/futures only, no re-project
     return { inst: { ...inst, spot: newSpot, futures: newFutures, basis: newBasis, basisAt: Date.now() }, changed: false, quoted: true, dPips: 0 };
@@ -2006,7 +2013,7 @@ export async function buildOIEntry({
   // amount and wreck the levels (gold saw ~$1863 / ~46%). For gold/indices
   // futures≈spot, so the safe fallback is NO shift.
   let basisClamped = false;
-  if (basisImplausible(basis, spot)) {
+  if (basisImplausible(basis, spot, pair)) {
     console.warn(`[OI ${pair}] implausible basis ${basis.toFixed(2)} (${(Math.abs(basis) / spot * 100).toFixed(0)}% of spot ${spot}) — not shifting strikes`);
     basis = 0;
     futuresUsed = null;

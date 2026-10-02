@@ -1,7 +1,7 @@
 // Commodity OI support (2026-10-02): the one product table, the cents→dollars scaler,
 // and the copies of the table that live where it cannot be imported.
 import { readFileSync } from 'fs';
-import { OI_PRODUCT_SPEC, oiSpec, oiScaleRawPrices, oiContractSize, oiFlatVol, oiPriceDigits,
+import { OI_PRODUCT_SPEC, oiSpec, basisImplausible, oiScaleRawPrices, oiContractSize, oiFlatVol, oiPriceDigits,
          oiFmtStrike, oiFuturesTermsPrice } from './oi.js';
 
 let failures = 0;
@@ -37,6 +37,13 @@ const settle = 'ZCZ6\t49\t20/11/2026\t500\t499.75\t498.5\t1.25\t28.25\t27.5\t0.7
 const ss = oiScaleRawPrices(settle, 'settle', 0.01).split('\t');
 ok('settle strike/future/straddle scaled', ss[3] === '5' && ss[4] === '4.9975' && ss[7] === '0.2825', ss.slice(3, 10).join(' '));
 ok('settle IV + OI untouched', ss[10] === '28.5' && ss[13] === '9000' && ss[15] === '8000');
+
+console.log('[basis cap: wider only where calendar spreads live]');
+ok('gold: 6% basis still implausible', basisImplausible(240, 4000, 'XAU/USD') === true);
+ok('no pair given: 6% implausible (old behaviour)', basisImplausible(0.18, 3, null) === true);
+ok('nat gas: 6% basis accepted (cap 15%)', basisImplausible(0.18, 3, 'NATGAS_USD') === false);
+ok('nat gas: 20% still rejected', basisImplausible(0.6, 3, 'NATGAS_USD') === true);
+ok('silver keeps the 5% default', basisImplausible(3.6, 60, 'XAG/USD') === true);
 
 console.log('[futures terms undo the unit]');
 ok('corn level 4.99 + basis 0.0075 → 499.75 cents', Math.abs(oiFuturesTermsPrice(4.99, { pair: 'CORN_USD', basis: 0.0075 }) - 499.75) < 1e-9);
