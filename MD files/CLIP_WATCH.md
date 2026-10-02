@@ -886,3 +886,41 @@ and the second KV TTL gate: a check that passes while not checking.
   and an evidence list — and it is the user's call.
 - **A genuine study is now visible:** the labour chain has thirty-odd series, a live scoring
   engine, and no entry in the ledger's 81.
+
+---
+
+## 2026-10-02 — Jess Inskip, Greeks series: long call and short call (series complete)
+
+**The final cell pair. With this the 2×2 is fully covered and the framework is closed** —
+long call, short call, long put, short put, each with its direction, time-decay sign and IV
+sign. Correct throughout, nothing new to test, logged short on purpose.
+
+**Two things worth keeping.**
+
+**(a) The payoff asymmetry is itself asymmetric — and her board hides that.** The earlier
+entry noted the 2×2 encodes the *signs* of direction, time and IV but not the *shape* of the
+payoff. This clip completes the point and shows the shape is not even consistent across a
+row. On the short side: a **short put** is bounded (max loss = strike − premium, since the
+stock stops at zero) while a **short call** is genuinely **unlimited**. The board puts them
+in the same row with the same three signs. They are not the same risk, and no Greek on the
+card tells you which one you are holding. That is the single real gap in an otherwise
+excellent teaching artefact, and it is the part that matters most for sizing.
+
+**(b) It supplies the mechanism behind the desk's untested gamma claim.** The reason a short
+call is dangerous is the reason dealers *must* hedge it dynamically: unbounded loss cannot be
+left unhedged, so the position is delta-hedged continuously, and that forced hedging is the
+entire basis of the gamma story — buying into strength and selling into weakness when long
+gamma (damping), the reverse when short (amplifying). That is exactly what `gexRead` asserts
+in `js/ai.js`.
+
+**So the mechanism is sound, and that still is not evidence.** This is the same split the
+repo-market clip produced: her transmission chain was right and her conclusion ("the backstop
+is working") went one step past what the data could show. A plausible mechanism makes a claim
+worth testing; it does not substitute for the test. `js/deskEvidence.js` still holds no
+verdict on the gamma regime across its 81 entries, and `analysis/gamma_band_realised.py`
+still holds a written prediction that was never run to a banked result.
+
+**Verdict.** Nothing to test in the clip. The Greeks series as a whole is the best teaching
+material in this log and the strongest case for the Theory Lab sequence; it has now produced
+three separate pointers at the same place — `gexRead`, `pcBias`, and a glossary with 57
+entries and one option term.
