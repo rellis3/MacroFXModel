@@ -27,6 +27,7 @@ import { fitHMM, hmmSignalScore } from './hmm.js';
 import { travelRead } from './js/travelRead.js';
 import { crossSourceRead } from './js/sourceConflict.js';
 import { loadCvolSeries as cvolSeriesFor, cvolMeta as _cvolMeta } from './js/impliedVolCore.js';
+import { constantMaturityIV } from './js/ivMetrics.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -4452,16 +4453,29 @@ async function _buildMorningBrief() {
         : `${label}: this series stopped on ${cv.asOf?.[id] ?? 'an unknown date'} (${cv.ageDays?.[id] ?? '?'} days ago), so there is NO current implied-vol read for it. Do not compare it with realized vol and do not treat its percentile as today's.`;
       return `${label} ${cv.levels[id]} — ${cv.pct[id]}th pctile of 5y${cmp(cv.levels[id], rlz(rlzKey))}`;
     };
+    // THE LIVE SOURCE FIRST. oi_recon/'s CME QuikStrike settles capture runs every night
+    // and is already ivTermStructure()-computed onto oi_store for 41 instruments: a
+    // SAME-DAY term structure with a day-over-day change and a risk reversal. The CME CVOL
+    // json beside it is a static 2026-08 export of seven products.
+    //
+    // An earlier version of /api/vol-forecast/intelligence made exactly this mistake and
+    // records it in its own comment -- "corrected from the first version, which wrongly
+    // claimed no IV-term-structure data source exists". I made it twice: first saying this
+    // desk had no FX implied vol at all, then pointing this line at the static file.
+    // Order: live term structure, then the snapshot, then the dead index.
+    const ivLive = await _briefIvLive().catch(() => null);
     ivLine = [
-      // EVZ only gets a line to say it has stopped; the EUR/USD number comes from CME CVOL,
-      // which carries ATM, skew and convexity rather than a single index level.
-      cv.levels.CME_EURUSD != null
-        ? ivRow('CME_EURUSD', 'EUR/USD implied vol (CME CVOL)', 'EURUSD', 'snapshot')
-        : ivRow('EVZCLS', 'EUR/USD 1M implied vol (EVZ)', 'EURUSD'),
-      cv.levels.CME_EURUSD_SKEW != null && !cv.stale?.CME_EURUSD
-        ? `EUR/USD CVOL skew ${cv.levels.CME_EURUSD_SKEW} — which side the market is paying up to hedge. Size and positioning only; this desk has no validated directional read from skew.`
+      ivLive?.eurusd
+        ? `EUR/USD implied vol ${ivLive.eurusd.iv30}% (30-day constant maturity, CME settles ${ivLive.asOf}) — front ${ivLive.eurusd.front}% at ${ivLive.eurusd.frontDte}d, back ${ivLive.eurusd.back}%, curve ${ivLive.eurusd.shape}${cmp(ivLive.eurusd.iv30, rlz('EURUSD'))}`
+        : cv.levels.CME_EURUSD != null
+          ? ivRow('CME_EURUSD', 'EUR/USD implied vol (CME CVOL)', 'EURUSD', 'snapshot')
+          : ivRow('EVZCLS', 'EUR/USD 1M implied vol (EVZ)', 'EURUSD'),
+      ivLive?.eurusd?.rr != null
+        ? `EUR/USD risk reversal ${ivLive.eurusd.rr} — which side the market is paying up to hedge. Positioning and SIZE only; no validated directional read from skew on this desk.`
         : null,
-      ivRow('GVZCLS', 'Gold 1M implied vol (GVZ)', 'GOLD'),
+      ivLive?.gold
+        ? `Gold implied vol ${ivLive.gold.iv30}% (30-day constant maturity, same capture) — curve ${ivLive.gold.shape}${cmp(ivLive.gold.iv30, rlz('GOLD'))}`
+        : ivRow('GVZCLS', 'Gold 1M implied vol (GVZ)', 'GOLD'),
     ].filter(Boolean).join('\n');
   } catch { /* omitted from prompt when unavailable */ }
   // Economic surprise — actual vs CONSENSUS per currency, which is the macro
@@ -14382,6 +14396,42 @@ async function _getCvol() {
   CVOL_CACHE.data      = data;
   CVOL_CACHE.fetchedAt = Date.now();
   return data;
+}
+
+/**
+ * Today's implied vol, from the capture that actually runs nightly.
+ *
+ * oi_store carries an ivTermStructure per instrument (and a risk reversal when the
+ * per-strike chain was captured), computed from CME QuikStrike settles. constantMaturityIV
+ * collapses it to a 30-day point by total-variance interpolation -- the same iv30 the IV
+ * forecast ladder is calibrated on -- so the brief quotes a number comparable with the
+ * rest of the desk rather than the front expiry, which reads artificially low whenever it
+ * spans a weekend.
+ *
+ * Returns null rather than a stale number: if the capture has not run, the caller falls
+ * back to the static CME export and says plainly that it is a snapshot.
+ */
+async function _briefIvLive() {
+  const raw = await kv.get('oi_store');
+  if (!raw) return null;
+  const parsed = JSON.parse(raw);
+  const store = parsed.data ?? parsed;
+  const asOf = parsed.savedAt ?? parsed.at ?? null;
+  const pick = want => {
+    const k = Object.keys(store).find(x => _normPair(x) === _normPair(want));
+    const ts = k ? store[k]?.ivTermStructure : null;
+    if (!ts?.points?.length) return null;
+    const iv30 = constantMaturityIV(ts.points);
+    if (!Number.isFinite(iv30)) return null;
+    const rr = store[k]?.riskReversal;
+    const rrVal = Number.isFinite(rr?.rr25) ? rr.rr25 : Number.isFinite(rr?.rr) ? rr.rr : null;
+    return { iv30: +(iv30 * 100).toFixed(2), front: ts.front?.iv ?? null, frontDte: ts.front?.dte ?? null,
+             back: ts.back?.iv ?? null, shape: ts.shape ?? null,
+             rr: rrVal == null ? null : +rrVal.toFixed(2) };
+  };
+  const eurusd = pick('EUR_USD'), gold = pick('XAU_USD');
+  if (!eurusd && !gold) return null;
+  return { asOf: String(asOf ?? '').slice(0, 10) || 'today', eurusd, gold };
 }
 
 app.get('/api/cvol', async (_req, res) => {
