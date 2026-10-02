@@ -177,6 +177,20 @@ export const CATALOGUE = [
     why: 'ATM, skew and convexity for 7 FX/gold products back to 2016. Useful HISTORY for research (js/fxVolCarryEngine.js builds the VRP backtest on it).',
     readBy: ['impliedVolCore', 'fxVolCarry'], evidence: [],
     trap: 'NOT A FEED. A manual parquet conversion (scripts/convertCmeCvol.py), last run 2026-08-21, and CME’s own endpoints 403 so it cannot be automated. For TODAY’s implied vol use oi_store.ivTermStructure above -- the brief was pointed at this file by mistake on 2026-10-02 while a same-day term structure sat beside it.' },
+
+  // -- The CBOE vol surface, pulled daily and largely unexamined -------------
+  // _CBOE_EXTRA in server.js fetches these straight from CBOE's daily CSVs into the drill
+  // bundle. They were in no catalogue and no ledger entry, which is how a teaching clip
+  // ended up pointing at two series this desk already had.
+  { id: 'cboe:VIX3M', source: 'cboe', group: 'vol', label: 'VIX 3-month', why: 'The back leg of the VIX term structure. VIX above it is the inversion the desk trades as a RANGE signal.', readBy: ['drill', 'chapters', 'marketView'], evidence: ['vix-inversion', 'mv-vixterm-range'] },
+  { id: 'cboe:VIX9D', source: 'cboe', group: 'vol', label: 'VIX 9-day', why: 'The front of the term structure — what is priced for this week specifically, which is where an event sits.', readBy: ['drill'], evidence: [] },
+  { id: 'cboe:VIX6M', source: 'cboe', group: 'vol', label: 'VIX 6-month', why: 'The far end, for the full curve shape rather than a single slope.', readBy: ['drill'], evidence: [] },
+  { id: 'cboe:SKEW', source: 'cboe', group: 'vol', label: 'CBOE SKEW index', why: 'The cost of TAIL puts relative to at-the-money — the asymmetry the VIX level cannot show. 1,505 daily observations from 2020-10.', readBy: ['drill'], evidence: [],
+    trap: 'PULLED DAILY, NEVER TESTED, NEVER DISPLAYED. The desk has three vol LEVEL findings validated and the two series describing the SHAPE of the surface (this and VVIX) sitting unexamined. Any test of it must disentangle SKEW from the VIX level first -- they co-move, and the control is the study.' },
+  { id: 'cboe:VVIX', source: 'cboe', group: 'vol', label: 'VVIX (vol of vol)', why: 'What the market pays for optionality ON volatility — how unstable the vol estimate itself is.', readBy: ['drill'], evidence: [], trap: 'Same as SKEW: 1,506 daily observations, no verdict, not displayed.' },
+  { id: 'cboe:VXN', source: 'cboe', group: 'vol', label: 'Nasdaq volatility (VXN)', why: 'The VIX for the Nasdaq — lets an equity vol read separate tech from the broad index.', readBy: ['drill'], evidence: [] },
+  { id: 'cboe:RVX', source: 'cboe', group: 'vol', label: 'Russell volatility (RVX)', why: 'Small-cap implied vol, the leg a VIX-only read misses entirely.', readBy: ['drill'], evidence: [] },
+  { id: 'cboe:DSPX', source: 'cboe', group: 'vol', label: 'CBOE Dispersion Index', why: 'Implied spread between single-name and index volatility — the crowded-into-one-trade shape. Free, no key, back to 2014; FRED does not carry it.', readBy: ['drill', 'marketView'], evidence: ['dispersion-crowded-week', 'dispersion-reset', 'mv-dispersion-range'] },
 ];
 
 export const byId = id => CATALOGUE.find(c => c.id === id) ?? null;

@@ -227,3 +227,64 @@ forced?" is a question the current reads cannot ask.
   statement "high-beta sectors are high-beta" wearing a story. That is exactly the shape of
   the mirror that killed `breadth-narrowing`.
 - **Not built, not tested yet** — logged as a candidate.
+
+## 2026-10-02 (3) — Jess Inskip, "The VIX is not a fear gauge, it's an uncertainty index"
+
+> *"Some people call it the fear gauge. That is wrong... The VIX calculation is going to look
+> at SPX options on the call side AND on the put side, 30 days out, and do a normalization. I
+> like to refer to it as the uncertainty index... It's a very common misconception. Just
+> because the VIX is spiking, it doesn't mean the market's about to go down. It means people
+> are willing to pay more for potential upside OR potential downside. But since fear tends to
+> drive human emotion, we tend to pay more for the downside."*
+
+**1. The claim, stated plainly.**
+- **(a) Construction.** VIX is a 30-day normalisation across SPX calls *and* puts, not a
+  put-only measure. Definitional and correct.
+- **(b) The central claim.** A VIX spike means **uncertainty**, not direction. It does not
+  imply the market is about to fall.
+- **(c) The asymmetry.** Puts cost more than equivalent calls because of hedging demand, so
+  the index is usually *driven* by downside pricing even though it measures both.
+
+**2. What's already on this desk.** Claim (b) is not merely supported here — **it is the most
+replicated result this desk has.**
+- **Nineteen validated findings, twelve of which measure RANGE rather than direction.** Every
+  single validated volatility finding is a range finding: `vix-inversion` (VIX above VIX3M →
+  a wider week), `mv-vixterm-range` (inverted VIX curve → a wider month),
+  `iv-over-rv-wider` (implied far above realised → the tape calms down). Not one of them
+  says which way.
+- **`fear-gold` — NULL**, and it is the direct instance of her point: after 58 VIX spikes
+  gold showed **no bid on average** at five sessions (+0.07% [−0.42, +0.30]) and **lagged by
+  1.2%** a month later. The "fear" trade, tested, did not pay. The desk's own note for it is
+  *"the gold people buy, and the one that has not paid."*
+- So she arrives, from teaching, at the conclusion this desk reached from testing: **vol tells
+  you about SIZE, never about SIGN.** Independent confirmation of the house rule, and the
+  cleanest one yet.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding, and the single most
+useful kind: it removes a false signal rather than adding one. Nothing to pre-register from
+(a) or (b) — (b) is already established in the stronger, tested form.
+
+**4. Display nugget — and here (c) finds a real gap.** Her asymmetry point has a number
+attached to it that this desk **already pulls and has never used**: the **CBOE SKEW index**,
+the cost of tail puts relative to at-the-money. It is in the drill bundle with **1,505 daily
+observations from 2020-10**, it reads **141.92** today (29th percentile of a year), it is in
+the catalogue nowhere and in the ledger nowhere. `VVIX` — the vol of vol — is in the same
+position: 1,506 observations, unused.
+So the desk has three volatility *levels* tested and validated, and the two series that
+describe the **shape** of the vol surface sitting unexamined.
+
+**5. Verdict and action.**
+- **Nothing to correct and nothing to test from the main claim.** Bank it as confirmation:
+  an outside teacher independently reaching "vol is about size, not sign" is worth more than
+  another internal replication of it.
+- **The lesson value is high and specific.** "Fear gauge" is the single most common wrong
+  framing of a number that sits on this board every day, and no page here says plainly what
+  the VIX is or corrects the misnomer. That is a one-screen Theory Lab piece.
+- **The pre-registration candidate is (c), not (b).** Does the SKEW index — tail-put cost
+  relative to ATM — say anything the VIX level does not? The obvious framing, matching the
+  house pattern: a *range* question first (does high SKEW precede wider ranges, controlling
+  for the VIX level?) and a direction question only to kill it. Needs SKEW to be
+  disentangled from VIX, since the two co-move; the control is the study.
+- **Smaller and free**: add `SKEW` and `VVIX` to the data catalogue. Both are pulled daily,
+  neither is documented, and that is exactly the condition that caused three
+  already-have-it mistakes earlier today.
