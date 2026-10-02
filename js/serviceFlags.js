@@ -138,6 +138,9 @@ export const SERVICES = [
     cadence: 'every 60s, no I/O', cost: 'low', lean: true, on: true,
     feeds: '/api/services\'s `memory` block (rss/heap/peak). Added 2026-09-24: Railway\'s own usage dashboard showed a 33GB avg / 66GB peak RSS this project '
         + 'had no visibility into at all — every existing number here was CPU wall-time, nothing measured memory. Off ⇒ memory goes back to that same blind spot.' },
+  { id: 'vixCapture', where: 'server', label: '1-minute VIX / VXN recorder (Yahoo, every 6 h)',
+    cadence: 'every 6 h + once 2 min after boot', cost: 'low', lean: false, on: true,
+    feeds: '/api/vix-capture status; R2 vix_m1/<SYM>/<date>.json. Yahoo serves only 7 days of 1-minute bars, so off for more than a week loses minutes for good.' },
   { id: 'paperRecord', where: 'server', label: 'Rich-vol break paper record (forward test, no orders)',
     cadence: 'every 5 min; next-day flags from 21:00 London; signals 00:00-10:00 London', cost: 'low', lean: false, on: true,
     feeds: '/api/paper-record -> paper-record.html. Reads oi_store IV, CBOE vol-index CSVs (once a day) and the level-atlas live M1 cache; writes paper_record_v1. Off = the record stops (days left unflagged are marked skipped).' },

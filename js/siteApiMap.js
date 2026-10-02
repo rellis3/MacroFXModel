@@ -611,6 +611,7 @@
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/forward-track</span><span class="am-desc">Pooled forward-tracking stats split at tracking-start vs pre-tracking</span><span class="am-consumers">forward-track.html</span></div>
           <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/paper-record</span><span class="am-desc">Rich-vol break paper record: daily flags, trades, scores, job health (KV paper_record_v1)</span><span class="am-consumers">paper-record.html</span></div>
           <div class="am-row"><span class="am-method am-post">POST</span><span class="am-path">/api/paper-record/tick</span><span class="am-desc">Runs one paper-record check now (same as the 5-min job)</span><span class="am-consumers">paper-record.html</span></div>
+          <div class="am-row"><span class="am-method am-get">GET</span><span class="am-path">/api/vix-capture</span><span class="am-desc">1-minute VIX/VXN recorder status: days captured per symbol, last bar, errors (R2 vix_m1/)</span><span class="am-consumers">paper-record.html</span></div>
         </div>
         <div class="am-feat">
           <div class="am-feat-hd">Fill realism &amp; honest policy</div>
