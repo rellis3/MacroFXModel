@@ -56,7 +56,18 @@ export function classify(s, now = Date.now()) {
   const base = { id: s?.id ?? null, label: s?.label ?? s?.id ?? null, kind: s?.kind ?? 'feed',
                  cadenceDays: s?.cadenceDays ?? 1, last: s?.last ?? null };
   const ms = typeof s?.last === 'number' ? s.last : Date.parse(String(s?.last ?? ''));
-  if (!Number.isFinite(ms)) return { ...base, state: 'unknown', ageDays: null, overdue: null, why: 'no last-update time reported' };
+  if (!Number.isFinite(ms)) {
+    // "unknown" is usually not a fault: most of these caches live in memory and refill on
+    // a 6- or 24-hour job, so every deploy empties them. Saying "no timestamp" about a
+    // cache that simply has not run yet reads as breakage and trains the reader to ignore
+    // the panel. Where the boot time and the refresh interval are known, say which it is.
+    const bootMin = Number.isFinite(s?.bootedAt) ? Math.round((now - s.bootedAt) / 60000) : null;
+    const why = bootMin != null && s?.refreshEveryH
+      ? `not refreshed since the restart ${bootMin} min ago — this one runs every ${s.refreshEveryH}h, so it is waiting, not broken`
+      : bootMin != null ? `nothing cached since the restart ${bootMin} min ago`
+      : 'no last-update time reported';
+    return { ...base, state: 'unknown', ageDays: null, overdue: null, why };
+  }
 
   const cad = Math.max(0.0001, base.cadenceDays);
   // business days for market data, calendar for anything on a wall clock

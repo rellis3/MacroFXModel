@@ -14442,12 +14442,13 @@ async function _briefIvLive() {
 // staleness here has never been a missing flag -- /api/cvol knew EVZ was 570 days dead and
 // the brief narrated it anyway -- it is a flag nobody was looking at. One place to look.
 let _dataHealthCache = { at: 0, data: null };
+const _BOOTED_AT = Date.now();
 async function _buildDataHealth() {
   const srcs = [];
   // ALWAYS push, even with a null timestamp. A source whose in-memory cache has not filled
   // since the last restart would otherwise VANISH from the panel, and a missing row reads
   // as "fine" -- the worst of the three possible answers. It shows as `unknown` instead.
-  const push = (id, label, last, cadenceDays = 1, extra = {}) => srcs.push({ id, label, last, cadenceDays, ...extra });
+  const push = (id, label, last, cadenceDays = 1, extra = {}) => srcs.push({ id, label, last, cadenceDays, bootedAt: _BOOTED_AT, ...extra });
   const lastOf = rows => (Array.isArray(rows) && rows.length ? (rows.at(-1).date ?? rows.at(-1).d ?? null) : null);
   // oi_store stamps rows with a UK LOCALE string ("02/10/2026, 06:37:09"), not ISO, so
   // Date.parse returns NaN and the row read `unknown` while the capture was running fine.
@@ -14470,14 +14471,14 @@ async function _buildDataHealth() {
         for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) { const dt = dates[i]; if (dt && (!worst || dt < worst)) { worst = dt; worstKey = k; } break; }
       }
       push('drill', `Drill bundle (71 series, worst leg: ${worstKey ?? '?'})`, worst, 1);
-    } else push('drill', 'Drill bundle (71 series)', null, 1);
-  } catch { push('drill', 'Drill bundle (71 series)', null, 1); }
+    } else push('drill', 'Drill bundle (71 series)', null, 1, { refreshEveryH: 24 });
+  } catch { push('drill', 'Drill bundle (71 series)', null, 1, { refreshEveryH: 24 }); }
 
-  push('crack', 'Crude & crack (FRED)', _crack.data?.last?.date ?? null, 1);
-  try { const k = _rates.series ? Object.keys(_rates.series)[0] : null; push('rates', 'Rates complex (FRED)', k ? lastOf(_rates.series[k]) : null, 1); } catch { push('rates', 'Rates complex (FRED)', null, 1); }
-  try { const k = _chapters.data?.series ? Object.keys(_chapters.data.series)[0] : null; push('chapters', 'Chapter series (FRED)', k ? lastOf(_chapters.data.series[k]) : null, 1); } catch { push('chapters', 'Chapter series (FRED)', null, 1); }
-  push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at || null, 7, { market: false });
-  push('regime', 'Currency regime table', _macroRegime.at || null, 30, { market: false });
+  push('crack', 'Crude & crack (FRED)', _crack.data?.last?.date ?? null, 1, { refreshEveryH: 6 });
+  try { const k = _rates.series ? Object.keys(_rates.series)[0] : null; push('rates', 'Rates complex (FRED)', k ? lastOf(_rates.series[k]) : null, 1, { refreshEveryH: 6 }); } catch { push('rates', 'Rates complex (FRED)', null, 1, { refreshEveryH: 6 }); }
+  try { const k = _chapters.data?.series ? Object.keys(_chapters.data.series)[0] : null; push('chapters', 'Chapter series (FRED)', k ? lastOf(_chapters.data.series[k]) : null, 1, { refreshEveryH: 24 }); } catch { push('chapters', 'Chapter series (FRED)', null, 1, { refreshEveryH: 24 }); }
+  push('nowcast', 'Nowcasts (Cleveland/GDPNow)', _nowcast.at || null, 7, { market: false, refreshEveryH: 24 });
+  push('regime', 'Currency regime table', _macroRegime.at || null, 30, { market: false, refreshEveryH: 24 });
 
   // CVOL: each leg on its own, because that is where the dead one hid
   try {
@@ -14520,7 +14521,7 @@ async function _buildDataHealth() {
   } catch {}
   push('fredDash', `FRED dashboard cache${fredWorstKey ? ` (worst leg: ${fredWorstKey})` : ''}`, fredWorst, 1);
 
-  const out = _dataHealth(srcs);
+  const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;
 }
