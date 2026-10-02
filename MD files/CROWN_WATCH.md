@@ -871,3 +871,94 @@ live-monitoring fact, not something this entry adds.
 - **Not claimed:** whether Crown's specific numbers (MACD 11 days late in
   2022, crude overbought 34 sessions) are accurate — this desk tested the
   indicators' broader signal value, not those exact statistics.
+
+## 2026-10-02 — "Bullish and bearish at the same time" (narrow breadth + IWM on its 200-day, calls into NFP)
+
+> *"Market breadth had become so extremely narrow that the equal-weighted S&P was
+> getting crushed against the cap-weighted S&P... and at the same time IWM just hit its
+> 200-day moving average and it stopped going down. And both of these things happening at
+> the same time really gets our attention... fundamentally we are still bearish small caps
+> longer term... one of the most important skills in trading is knowing when to diverge
+> from the fundamentals and focus on positioning... the next catalyst, that was today,
+> non-farm payrolls, had an asymmetric payout to the upside. Because if the jobs data was
+> strong, a lot of the pain was already priced in."*
+
+**1. The claim, stated plainly.** Four separable claims, and they do not stand or fall
+together:
+- **(a) The setup.** Extreme breadth narrowness (RSP/SPY at an extreme) *co-occurring with*
+  the Russell holding its 200-day is a signal worth acting on.
+- **(b) The structure.** An asset that has "absorbed a ton of bad news" has an asymmetric
+  payoff into its next scheduled catalyst, because the bad outcome is already priced.
+- **(c) The execution.** Keep the long-term bearish position, add short-dated upside
+  convexity (call spreads) into the event.
+- **(d) The lesson.** "Fundamentals tell you where you should go in the long run,
+  positioning tells you which way it's going right now."
+
+**2. What's already on this desk.** Claim (a) is not merely adjacent to an existing
+finding — it *is* one, nulled, in this clip's own words.
+- **`breadth-narrowing` — NULL.** The ledger entry reads: *"Market narrowing — equal-weight
+  (RSP) lagging cap-weight (SPY) hard — is a 'textbook rotation' worth acting on."* Tested
+  over 23 years, 35 de-clustered NARROW events against 267 controls: direction −0.5% at 20
+  days [−2.70, +1.57], no reversion of the spread, no continuation of the rotation. The
+  range near-miss died on its mirror — extreme *broadening* raises forward range too. Its
+  `use` line was written before this clip existed and answers it directly: **"Show the
+  narrowing, never alert on it. Use it for positioning, not timing."** Crown uses it for
+  timing.
+- **`priced-in-direction` — NULL.** "Was it priced in" — what the market did *into* a
+  release changing what the outcome does to it — was tested here and came back null. That
+  is claim (b)'s stated mechanism.
+- **`daily-band-fade` — NULL**, and the level-touch book is closed (`hl-signal`): a line on
+  a daily chart, including a moving average, is not an entry here. The specific 200-day
+  touch has not been tested on its own, but every member of its family has.
+- **`squeeze-fuel` — NULL**: "crowded and underwater is squeeze fuel" failed on four
+  instruments over nine years. Claim (b) is the same shape wearing different clothes.
+- **`breadth-all-down` — VALIDATED, and it is the one breadth finding that works**: every
+  index closing down precedes a *wider* week (+0.31 ATR on SPX500). A range fact, explicitly
+  "not a bounce call."
+
+**3. Trading claim or macro-understanding claim.** (a), (b) and (c) are trading claims and
+need no new pre-registration — (a) and (b) are already tested and null. (d) is not a claim
+at all in the falsifiable sense: "positioning tells you which way it's going right now" has
+no stated reading rule, no horizon and no failure condition. It cannot be tested as spoken,
+and should not be dressed up as though it had been.
+
+**4. The live facts — checked separately, and this time they hold.** The standing rule here
+is to score the mechanism and the "happening right now" facts apart, because Crown was
+0-for-2 on the live facts in earlier clips. On this one he is **4 for 4**:
+- *"Equal-weighted getting crushed against cap-weighted."* RSP/SPY closed 2026-10-01 at
+  **0.2736 — the 2nd percentile of the past year and the 1st of the past three**, −5.2% over
+  three months. True, and not a mild version of true.
+- *"IWM hit its 200-day and stopped going down."* The Russell sat within **0.13%** of its
+  200-day on 09-28, dipped **0.55% below** on 09-30, and closed back above it (+0.46%) on
+  10-02. True.
+- *"The next catalyst, that was today, non-farm payrolls."* NFP printed **2026-10-02 at
+  12:30 UTC**. True.
+- *"They gap higher."* The Russell closed **+0.72%**, high +1.5%. The CFD shows no *gap*
+  (open 2816.03 against a 2816.08 prior close) because it trades through the release — the
+  gap is real in the ETF and absorbed overnight in the CFD. True in the instrument he was
+  trading; a measurement artefact, not an error.
+
+**5. Verdict and action.**
+- **Nothing to build, and nothing to re-test.** Claim (a) is the exact claim `breadth-narrowing`
+  nulled; re-running it because a clip restated it would be the "test it until it passes"
+  failure. Claim (b) is `priced-in-direction` and `squeeze-fuel` in new words.
+- **The distinction worth keeping.** The trade made money and the story told about *why* is
+  the nulled one. What he actually held was short-dated convexity into a binary event on a
+  beaten-down underlying — a **volatility and skew** structure whose payoff comes from the
+  event's distribution, not from breadth. The breadth narrative is decoration on an options
+  trade. That is the transferable lesson and it is the opposite of the one the clip states.
+- **A barbell is a positioning statement, not a directional one.** Holding the long-term
+  short *and* short-dated upside is not "bullish and bearish at the same time" — it is one
+  position in direction and one in convexity. Said that way it stops sounding paradoxical
+  and starts being checkable.
+- **Display nugget (asked on every clip, per the header).** RSP/SPY at a 1st-percentile
+  reading is a real descriptive fact and it already has its ruling: show it, never alert on
+  it, and read it as *concentration exposure* — at this reading, long the index is long a
+  handful of its largest companies rather than "the market", and an index hedge is hedging
+  direction when the exposure is concentration. No new build; that is `breadth-narrowing`'s
+  `use` line, now with a live example worth remembering.
+- **Open question this does NOT settle**, and the only one here worth a pre-registration if
+  it is ever wanted: whether option-implied *skew* into a scheduled event is informative
+  about the event's realised distribution. The desk now has a live risk reversal from the
+  nightly CME settles capture (`oi_store.riskReversal`), which is the input such a test
+  would need, and no verdict on it.
