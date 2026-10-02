@@ -127,6 +127,51 @@ export function aiCollectSnapshot() {
     }));
   }
 
+  // GEX AND P/C ARE REPORTED AS THE EVIDENCE SUPPORTS, NOT AS FOLKLORE.
+  //
+  // Both of these used to ship a confident sentence into a paid prompt. Corrected
+  // 2026-10-02 against `gex-range` in js/deskEvidence.js (793 NQ days, pre-registered
+  // in 0663f29, event-day confound closed in 0afafbb). Three things the old wording
+  // got wrong, all of them now settled by that study:
+  //
+  //   1. It asserted DIRECTION ("mean-reversion bias", "breakout risk"). The finding
+  //      has NO directional content. G3's wall-magnet direction was separately
+  //      falsified at 48.8% out-of-sample.
+  //   2. It had the asymmetry BACKWARDS. Short-gamma days sit at DR ~1.02 -- the
+  //      usual amount of movement. Long-gamma days sit at ~0.85. The reliable state
+  //      is "long gamma is quiet", not "short gamma is wild".
+  //   3. It was said about EVERY instrument. The result is NQ's; it explicitly does
+  //      not generalise to FX, and the board is mostly FX.
+  //
+  // So the read is scoped by instrument and never promoted to a direction.
+  const NQ_SYMS = new Set(['NAS100', 'NQ', 'USTEC', 'US100', 'NDX']);
+  const FX_RE   = /^[A-Z]{3}(USD|EUR|GBP|JPY|CHF|CAD|AUD|NZD)$/;
+
+  function gexRead(gex, sym) {
+    const state = gex > 0
+      ? 'Positive GEX (dealers long gamma). Where this has been measured, these days are QUIETER than a volatility-matched baseline'
+      : 'Negative GEX (dealers short gamma). Where this has been measured, these days run at ABOUT the normal amount of movement — not wilder';
+    const scope = NQ_SYMS.has(sym)
+      ? 'Validated on this instrument: 793 days, +0.315 vol-matched, 4/4 specifications, 6/6 years, unchanged on event days.'
+      : FX_RE.test(sym)
+        ? 'NOT VALIDATED HERE: the effect was tested on FX and does not generalise. Treat as decoration on this instrument.'
+        : 'UNTESTED on this instrument — validated only on the Nasdaq. Do not lean on it.';
+    return `${state}. RANGE ONLY — this carries no directional information. ${scope}`;
+  }
+
+  // P/C is an interpretation, not a reading, and the data cannot settle it. Open
+  // interest counts a contract once and does not record who opened it, so put-heavy
+  // is equally consistent with puts BOUGHT as hedges and puts SOLD for income; the
+  // commonest institutional options strategy of all -- covered-call overwriting --
+  // lands in totalCallOI from a seller whose upside is capped, not a bull. The 1.3 /
+  // 0.77 cut has no recorded provenance and no entry in the evidence ledger, so the
+  // number is reported and the inference is left to the reader.
+  function pcBias(pc) {
+    if (!Number.isFinite(pc)) return 'n/a';
+    const tilt = pc > 1.3 ? 'put-heavy' : pc < 0.77 ? 'call-heavy' : 'balanced';
+    return `${tilt} — positioning tilt only. Open interest does not record who opened the contract, so this does NOT establish a direction (a sold put is bullish, a sold call is not). Untested on this desk.`;
+  }
+
   try {
     const store = JSON.parse(localStorage.getItem('oi_store') || '{}');
     const inst = store[sym] || null;
@@ -148,14 +193,14 @@ export function aiCollectSnapshot() {
         putWall:     oiFmtStrike(inst.putWall, sym),
         putWallOI:   oiFmtOI(inst.putWallOI),
         pcRatio:     inst.pcRatio?.toFixed(2),
-        pcBias:      inst.pcRatio > 1.3 ? 'BEARISH (put-heavy — market hedged down)' : inst.pcRatio < 0.77 ? 'BULLISH (call-heavy — market positioned up)' : 'NEUTRAL',
+        pcBias:      pcBias(inst.pcRatio),
         totalCallOI: oiFmtOI(inst.totalCallOI),
         totalPutOI:  oiFmtOI(inst.totalPutOI),
         totalCallChg:oiFmtChg(inst.totalCallChg),
         totalPutChg: oiFmtChg(inst.totalPutChg),
         gex:         (gex/1e9).toFixed(2) + 'Bn',
         dex:         inst.exposures?.dex ? inst.exposures.dex.toFixed(0) : 'N/A',
-        gexRead:     gex > 0 ? 'Positive GEX — dealers long gamma, dampening moves, mean-reversion bias' : 'Negative GEX — dealers short gamma, amplifying moves, breakout risk',
+        gexRead:     gexRead(gex, sym),
         gammaFlip:   gammaFlip ? oiFmtStrike(gammaFlip, sym) : 'None detected',
         callWalls:   (inst.callWalls||[]).slice(0, 6).map(w => `${oiFmtStrike(w.strike, sym)} (${oiFmtOI(w.oi)})`),
         putWalls:    (inst.putWalls||[]).slice(0, 6).map(w => `${oiFmtStrike(w.strike, sym)} (${oiFmtOI(w.oi)})`),
