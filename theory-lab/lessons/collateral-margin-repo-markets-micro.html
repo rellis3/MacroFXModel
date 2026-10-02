@@ -222,6 +222,29 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Who is in the repo market</h2>
+      <p class="sl-sub">The anonymous "cash lender" and "cash borrower" have real names, and each has its own constraints.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Money market funds: the lenders</h4><p>Hold investors' cash and lend it overnight against Treasuries. When investors withdraw, they have less to lend.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📑</div><div><h4>Primary dealers: borrowers and middlemen</h4><p>Fund big bond inventories overnight in repo, and pass cash on to leveraged investors.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏛️</div><div><h4>The Fed, at the edges</h4><p>Takes spare cash at a floor rate (the ON RRP) and lends at a ceiling rate (the Standing Repo Facility). See <a href="fed-corridor-iorb-srf-discount-window-micro.html">The Fed's Corridor</a>.</p></div></div>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Mid-month tax date</b>Taxes due; settlement nearby</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Investors</b>Withdraw from money funds</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Money funds</b>Pull cash out of repo</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Bid for scarcer cash</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>SOFR lifts, then settles</div>
+      </div>
+      <p class="sl-p">A calendar effect, not a crisis: on this desk's data, 12 of 15 above-floor SOFR episodes away from month-end fell on the 14th–18th of a month.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Getting this wrong, in practice</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -245,8 +268,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -296,8 +319,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any leveraged position needs a buffer against counterparty default — that buffer is collateral, and it moves according to two distinct rules.</p></div>
@@ -306,6 +329,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A haircut discounts collateral below face value to price in the collateral's own price risk and how long it might take to liquidate — $100 at a 5% haircut counts as $95.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A repo is legally two sales but economically a fully collateralized loan — the price gap between the two legs is the interest, the repo rate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SOFR is computed directly from real overnight Treasury repo data — a concrete, factual bridge to the OIS-discounting machinery in Swap Curves &amp; OIS Discounting.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Money market funds lend, primary dealers borrow, the Fed sits at the edges. Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts: the calendar, not stress.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

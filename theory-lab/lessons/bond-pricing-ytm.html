@@ -37,6 +37,7 @@
       <li>A bond trades at par when its coupon rate equals its YTM, at a premium (above face value) when the coupon rate exceeds YTM, and at a discount (below face value) when YTM exceeds the coupon rate.</li>
       <li>The worked example prices a 5-year, 4% annual-coupon, $1,000 face bond at a 5% YTM and gets \(P \approx \$956.71\) — a discount bond, because the 4% coupon sits below the 5% YTM — then sets up a Newton-Raphson-style iterative search for the YTM implied by an observed market price.</li>
       <li>The interactive chart drags a YTM slider along the price-yield curve for that same bond — the curve visibly bends rather than running straight, the convexity this lesson's follow-up (Duration &amp; Convexity) builds on directly.</li>
+      <li><strong>Current yield ≠ YTM.</strong> Current yield is coupon ÷ price; YTM also counts the pull to par. A $50 coupon on a $1,100, 10-year bond is a 4.55% current yield but about a 3.78% YTM. The published 10-year constant-maturity yield (DGS10) is a YTM-type yield, so coupon ÷ price won't reproduce it.</li>
     </ul>
   </div>
 
@@ -259,6 +260,86 @@
     <p>If a bond's coupon happens to match exactly what the market currently wants, it sells for face value — a fair trade, nothing to make up for. If its coupon is more generous than what's on offer elsewhere, people will pay extra to get it, bidding the price above face value. If its coupon is stingier, buyers only take it at a discount, so the cheap purchase price makes up for the weak coupon.</p>
   </div>
 
+  <h3>Current yield vs. yield to maturity</h3>
+  <p>
+    There is a quicker number that also gets called "the yield": the <strong>current yield</strong>. It is just the
+    annual coupon divided by today's price:
+  </p>
+  <div class="tl-math">
+    \[ \text{Current yield} = \frac{\text{annual coupon}}{P} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>annual coupon</code><span>the cash the bond pays per year, in dollars</span></div>
+    <div class="tl-eq-chip c1"><code>P</code><span>the price paid for the bond today</span></div>
+  </div>
+  <p>
+    Current yield answers a narrow question: how much cash income does this bond pay this year, per dollar spent?
+    It ignores the one cash flow that makes a bond a bond: the face value \(F\) repaid at maturity. Buy a bond
+    above face and you are certain to lose the premium by maturity. Buy below face and you are certain to gain the
+    discount. That steady drift toward face value is the <strong>pull to par</strong>, and YTM includes it while
+    current yield doesn't. A common back-of-envelope approximation shows where it enters:
+  </p>
+  <div class="tl-math">
+    \[ \text{YTM} \approx \frac{C + (F - P)/n}{(F + P)/2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>C</code><span>the annual coupon, the same income current yield counts</span></div>
+    <div class="tl-eq-chip c4"><code>(F − P)/n</code><span>the pull to par, spread over the years left: negative for a premium bond, positive for a discount bond</span></div>
+    <div class="tl-eq-chip c3"><code>(F + P)/2</code><span>the average amount invested over the bond's life</span></div>
+  </div>
+  <p>
+    The exact YTM still comes from solving the pricing formula; the approximation just makes the missing piece
+    visible. The two measures agree only at par, where \(P = F\) and there is no premium or discount to amortise.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A $50 coupon on a $1,100 price is not a 4.5% yield to maturity</h3>
+    <p>
+      A 10-year bond with $1,000 face value pays a $50 annual coupon (a 5% coupon rate) and trades at $1,100.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Current yield</h4>
+          <div class="tl-math">\[ \frac{50}{1{,}100} = 4.55\% \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Yield to maturity</h4>
+          <p>Solve \(1{,}100 = \sum_{t=1}^{10} \frac{50}{(1+y)^t} + \frac{1{,}000}{(1+y)^{10}}\) numerically:</p>
+          <div class="tl-math">\[ \text{YTM} \approx 3.78\% \quad (\text{approximation: } \tfrac{50 + (1{,}000-1{,}100)/10}{(1{,}000+1{,}100)/2} = \tfrac{40}{1{,}050} \approx 3.81\%) \]</div>
+          <p>The buyer collects $50 a year but is certain to lose $100 of premium by maturity, about $10 a year. That is why YTM sits almost 0.8 percentage points below current yield. With semiannual coupons (the US Treasury convention) the YTM is about 3.79%, essentially the same answer.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The mirror image: the same bond at $900</h4>
+          <p>Current yield is \(50/900 = 5.56\%\), but YTM is about 6.38%. Now the pull to par <em>adds</em> $100 of gain, so YTM sits <em>above</em> current yield.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p>
+    This matters for anyone who reads "the 10-year yield" off a data feed. The series most macro desks pull, the
+    10-year constant-maturity Treasury yield (FRED series <strong>DGS10</strong>), is read off the Treasury's par yield
+    curve: it is the yield at which a hypothetical 10-year note would price at par, quoted on a semiannual
+    bond-equivalent basis. That is a <strong>yield-to-maturity</strong> concept. Take an actual 10-year note trading
+    above or below par, divide its coupon by its price, and you will not reproduce DGS10. You'll be off by the
+    pull to par, which for a bond well away from par can be most of a percentage point, as the example shows.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Say you pay $110 for a gift card that will be swapped for exactly $100 at the end, and it pays you $5 of pocket money every year until then. "$5 out of $110" sounds like your whole return, but you've forgotten that you'll lose $10 when the card is swapped back. Current yield only counts the pocket money. Yield to maturity counts the pocket money and the loss at the end.</p>
+  </div>
+
   <h3>Clean price, dirty price, and accrued interest (briefly)</h3>
   <p>
     The pricing formula above assumes you're valuing the bond exactly on a
@@ -291,6 +372,7 @@
     <tr><td>\(n\)</td><td>Number of periods (coupon dates) remaining until maturity.</td></tr>
     <tr><td>\(t\)</td><td>The index of a given period, running from 1 (the next coupon) to \(n\) (maturity).</td></tr>
     <tr><td>\(P_{mkt}\)</td><td>The bond's observed market price — the known quantity used to back out YTM.</td></tr>
+    <tr><td>Current yield</td><td>Annual coupon divided by price. Cash income per dollar invested; ignores the pull to par, so it differs from YTM whenever the bond isn't at par.</td></tr>
     <tr><td>Coupon rate</td><td>\(C/F\) — the coupon expressed as a percentage of face value; compared against YTM to classify par/premium/discount.</td></tr>
   </table></div>
 
@@ -577,6 +659,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Price and yield move in strictly opposite directions.</strong> This falls directly out of the discounting algebra — no exceptions for a plain fixed-coupon bond.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coupon rate vs. YTM tells you par/premium/discount.</strong> Coupon = YTM → par; coupon &gt; YTM → premium; coupon &lt; YTM → discount.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The price-yield relationship is curved, not straight.</strong> That curvature (convexity) is why a duration-only estimate of a price move is an approximation, not exact — the subject of the very next lesson.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Current yield is not YTM.</strong> Coupon ÷ price leaves out the pull to par: $50 on $1,100 is 4.55% current yield but about 3.78% YTM over ten years. DGS10 is a YTM-type yield, so it can't be rebuilt from coupon ÷ price.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>YTM assumes coupons are reinvested at YTM itself.</strong> Real reinvestment happens at whatever rate prevails later — the realized return on a held bond can differ from its quoted YTM.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Clean price ≠ dirty price between coupon dates.</strong> The formula here assumes valuation exactly on a coupon date; real settlement amounts include accrued interest.</span></div>
   </div>
@@ -647,6 +730,15 @@
       jumps mechanically by the coupon amount on every coupon date — a jump
       that has nothing to do with a change in valuation and would make the
       quoted price much harder to read at a glance.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Someone rebuilds "the 10-year yield" by dividing an actual 10-year note's coupon by its price, and gets a number well away from the published DGS10. Why?</summary>
+    <div class="tl-answer">
+      Coupon ÷ price is the current yield, which counts only coupon income. DGS10 is a constant-maturity yield read off
+      the Treasury's par yield curve, a yield-to-maturity concept that also counts the pull to par: the premium a buyer
+      is certain to lose, or the discount they are certain to gain, by maturity. The two agree only for a note trading at
+      par. For a note above par, current yield overstates YTM; below par, it understates it.
     </div>
   </details>
 

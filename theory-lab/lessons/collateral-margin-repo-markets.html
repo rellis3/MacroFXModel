@@ -36,6 +36,7 @@
       <li><strong>Haircuts</strong> discount collateral below its market value to buffer against the collateral's own price volatility and the time it might take to liquidate it in a default — $100 of a volatile bond posted as collateral might count as only $95 of eligible collateral value, a 5% haircut.</li>
       <li>A <strong>repurchase agreement (repo)</strong> is economically a collateralized loan of cash: one party sells a security today with a simultaneous agreement to buy it back later at a slightly higher price — the price difference <em>is</em> the interest, called the repo rate.</li>
       <li><strong>SOFR</strong> — the modern USD reference rate covered in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> — is literally computed from real overnight Treasury repo transaction data, a direct, concrete tie between this lesson and that one.</li>
+      <li><strong>Who's in the market:</strong> money market funds lend the cash, primary dealers borrow it to fund bond inventories, banks lend when it pays, and the Fed stands at both edges. A mid-month tax date pulls cash out of money funds and lifts SOFR. That's a calendar effect, covered in <a href="fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor</a>.</li>
       <li>This is institutional market-structure background — the plumbing underneath leverage and derivatives — not a trading signal, and not a claim about anything built in this repo.</li>
     </ul>
   </div>
@@ -371,6 +372,64 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Who is in the repo market</h2>
+  <p>
+  The worked example above has two anonymous parties, a cash borrower and a cash lender. In the US Treasury repo
+  market those roles are filled by a fairly small cast, and each one comes with its own constraints. Knowing who sits
+  on which side explains most of what moves SOFR from day to day.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">💵</div>
+      <h4>Money market funds: the cash lenders</h4>
+      <p>They hold investors' cash and must keep it safe and available, so they lend it overnight in repo against Treasuries. They have no account at the Fed, so they can't earn interest on reserves. When investors withdraw, funds have less to lend that night.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📑</div>
+      <h4>Primary dealers: the borrowers and middlemen</h4>
+      <p>The securities firms that trade directly with the New York Fed and bid at Treasury auctions. They carry large bond inventories and fund them overnight in repo, which makes them the biggest cash borrowers. They also pass cash on to hedge funds and other leveraged investors.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏦</div>
+      <h4>Banks: lenders when it pays</h4>
+      <p>Banks hold reserves at the Fed and earn interest on them. They lend into repo when the repo rate beats that, after the cost of using their balance sheet. Around month-ends and quarter-ends some shrink their balance sheets for reporting dates, which pulls cash out.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🏛️</div>
+      <h4>The Fed, at the edges</h4>
+      <p>The Fed doesn't set SOFR, but it stands at both edges. At the bottom, its overnight reverse repo facility takes cash from money funds at a fixed rate. At the top, the Standing Repo Facility lends cash against Treasuries at a fixed rate. Banks also have the discount window. The <a href="fed-corridor-iorb-srf-discount-window.html">Fed's Corridor</a> lesson covers each wall.</p>
+    </div>
+  </div>
+
+  <h3>The mid-month chain: a calendar effect, not a crisis</h3>
+  <p>
+  Put those actors together and you can trace why SOFR tends to lift around the middle of the month. Each step is
+  someone meeting a known obligation on a known date:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Mid-month tax date</b>Tax payments fall due; Treasury settlement often lands nearby</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Investors</b>Withdraw from money market funds to pay the bill</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Money market funds</b>Must meet redemptions, so pull cash out of repo</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Primary dealers</b>Still need the same funding, so bid for scarcer cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>SOFR lifts for a day or two, then settles</div>
+  </div>
+  <p>
+  This is plumbing working normally. On this desk's data, 12 of 15 SOFR episodes above the Fed floor away from
+  month-end fell on the 14th–18th of a month, and the study recorded the pattern as a calendar effect rather than
+  stress (a NULL result for SOFR-as-warning). The <a href="fed-corridor-iorb-srf-discount-window.html">Fed's Corridor</a>
+  lesson covers what caps the rise, and what happened in September 2019 when nothing did.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Money funds are like a big shared savings jar that lends cash out every night. On tax day, lots of people take money out of the jar to pay the government, so there's less to lend that night. The bond dealers still need the same amount, so they have to offer a bit more to get it. The next day the money flows back and things calm down.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   <strong>Funding an inventory of securities.</strong> A dealer or bank holding a large book of bonds needs to
@@ -428,18 +487,19 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Initial margin is forward-looking; variation margin is backward-looking.</strong> IM buffers against potential future exposure (sized via SPAN or ISDA SIMM); VM settles the realized mark-to-market change, typically daily.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A haircut discounts collateral below its market value</strong> to buffer against the collateral's own volatility and liquidation time — $100 of a volatile bond at a 5% haircut counts as only $95.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A repo is economically a collateralized loan</strong> structured legally as a sale and a simultaneous agreement to repurchase — the price difference between the two legs is the interest, the repo rate.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SOFR is computed directly from overnight Treasury repo transaction data.</strong> A concrete, factual bridge from this lesson to the OIS-discounting machinery in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Money market funds lend, primary dealers borrow, the Fed sits at the edges.</strong> Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts. On this desk's data that pattern is the calendar, not a stress signal.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The haircut ranges shown are illustrative, not a universal schedule.</strong> Real haircuts vary by counterparty, tenor, rating, and regulatory regime — treat the numbers here as order-of-magnitude, not a precise table.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional plumbing knowledge, not a trading signal.</strong> Nothing in this lesson is a claim about anything built, tested, or traded in this repo.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What is the precise conceptual difference between initial margin and variation margin?</summary>
