@@ -157,6 +157,26 @@ export const CATALOGUE = [
   { id: 'IR3TIB01JPM156N', source: 'fred', group: 'foreign', label: 'Japan 3-month interbank', why: 'JPY funding leg -- the short side of most carry.', readBy: ['carry'], evidence: ['yield-spread-sleeve'] },
   { id: 'IR3TIB01CAM156N', source: 'fred', group: 'foreign', label: 'Canada 3-month interbank', why: 'CAD funding leg for the carry read.', readBy: ['carry'], evidence: ['yield-spread-sleeve'] },
   { id: 'IR3TIB01NZM156N', source: 'fred', group: 'foreign', label: 'New Zealand 3-month interbank', why: 'NZD funding leg -- historically the long side of the classic carry pair.', readBy: ['carry'], evidence: ['yield-spread-sleeve'] },
+
+  // -- Implied vol, which is NOT a FRED series and is why it kept getting missed --------
+  // The catalogue was FRED-shaped and these were invisible in it, so I twice recommended
+  // building an FX implied-vol feed that has been running nightly all along. They are
+  // listed here precisely so the next search for "do we have IV" ends at this file.
+  { id: 'oi_store.ivTermStructure', source: 'cme', group: 'vol', label: 'IV term structure (CME settles)',
+    why: 'THE live implied-vol source. oi_recon/ captures CME QuikStrike settles every night and ivTermStructure() computes a per-expiry curve onto oi_store for 41 instruments, with day-over-day change. Collapse it with constantMaturityIV() for an iv30 comparable with the IV forecast ladder.',
+    readBy: ['volIntelligence', 'morningBrief', 'ivLadderExport', 'oi'], evidence: ['iv-over-rv-wider'],
+    // NOTE: the 2026-09-23 finding that settlement-derived IV beats realized vol 7/7 was
+    // never banked into js/deskEvidence.js -- it exists only as a note. Cited here would
+    // be a ghost id, which the catalogue test correctly refused.
+    trap: 'Quote iv30, NOT the front expiry: IV is per CALENDAR day, so a 1-3 DTE expiry spanning a weekend reads artificially low -- EUR/USD on 2026-10-02 showed a 14.32% front at 1 DTE against an iv30 of 7.46%.' },
+  { id: 'oi_store.riskReversal', source: 'cme', group: 'vol', label: 'Risk reversal (CME settles)',
+    why: 'The FX skew read -- which side the market is paying up to hedge. Present only on days the per-strike chain was captured, not every day.',
+    readBy: ['volIntelligence', 'morningBrief'], evidence: [],
+    trap: 'Positioning and SIZE only. No validated directional read from skew on this desk, and absence on a given day is a capture gap, not a flat market.' },
+  { id: 'js/data/cmeCvolEod.json', source: 'cme', group: 'vol', label: 'CME CVOL (static export)',
+    why: 'ATM, skew and convexity for 7 FX/gold products back to 2016. Useful HISTORY for research (js/fxVolCarryEngine.js builds the VRP backtest on it).',
+    readBy: ['impliedVolCore', 'fxVolCarry'], evidence: [],
+    trap: 'NOT A FEED. A manual parquet conversion (scripts/convertCmeCvol.py), last run 2026-08-21, and CME’s own endpoints 403 so it cannot be automated. For TODAY’s implied vol use oi_store.ivTermStructure above -- the brief was pointed at this file by mistake on 2026-10-02 while a same-day term structure sat beside it.' },
 ];
 
 export const byId = id => CATALOGUE.find(c => c.id === id) ?? null;
