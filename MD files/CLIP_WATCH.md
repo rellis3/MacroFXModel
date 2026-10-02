@@ -426,3 +426,73 @@ measure execution, not after-tax outcome. Nothing here should change.
 **Logged anyway**, because a clip that yields a clean "no" is worth recording — it stops the
 same question being re-asked, and it is the fastest entry in this log by some distance. The
 pass is as valuable when it returns nothing as when it returns a gap.
+
+## 2026-10-02 (7) — Jess Inskip, "Who calls a recession, and what causes one"
+
+> *"The NBER calls the peak, the turning point, and they call the trough... They usually call
+> this in hindsight, four to 21 months from the peak or trough, because they want to be very
+> sure... The technical definition is two quarters of negative GDP. That's not always true
+> though... business investment falls first... then consumers stop spending... inventory
+> increases... layoffs... unemployment leads to less spending. You must look at the totality
+> of the data."*
+
+**1. The claim, stated plainly.**
+- **(a) Who calls it and how**: the NBER dates *turning points* — peaks and troughs — on
+  depth, diffusion and duration, not periods, and **in hindsight**, 4–21 months later.
+- **(b) "Two negative quarters" is shorthand, not the definition**, and it has been wrong in
+  both directions.
+- **(c) A transmission ORDER inside a contraction**: business investment (the volatile
+  component) falls first → consumer spending → inventories build → price cuts → layoffs →
+  unemployment → less spending.
+- **(d) The policy response** — fiscal stimulus or rate cuts — turns the trough.
+
+**2. What's already on this desk — and (a) is the thing I hit from the other side
+yesterday.** The `curve-inversion` pre-registration, written before that study ran, says:
+*"USREC is not [knowable in time]: NBER dates recessions in arrears, typically 6–18 months
+later, so a USREC-based outcome is a retrospective label and can never be a tradeable signal."*
+She says 4–21 months. Same wall, reached independently, and it is the reason that study
+reported its recession leg descriptively and refused to call it tradeable.
+- **The sample problem is worse than it looks, and this clip makes it concrete.** USREC
+  carries **six recessions since 1976** — 1980-02, 1981-08, 1990-08, 2001-04, 2008-01,
+  2020-03 — against the **ten** inversion episodes the curve study found. Any claim of the
+  form "X predicts recessions" is working with six events. That is below this desk's
+  MIN_EVENTS floor on every study it has ever run.
+- **`dr-copper` — NULL**, and it is exactly this clip's family: *"copper falls three months
+  before GDP turns negative, every time."* It fired 5 times against a floor of 6 and the
+  strong form is falsified. The lesson there was **UNTESTABLE ≠ NULL**, and it applies to
+  (c) in full.
+- `nowcast-gap-gdp` (context) and `nowcast-gap-cpi` (null) cover the nowcast-versus-consensus
+  question. Chapter E (Growth) is built on copper and crude; **Chapter F (Labour) is marked
+  unbuilt** for want of data.
+- **The growth stack is almost entirely absent.** `INDPRO`, `PAYEMS`, `UNRATE`, `GDPC1`,
+  `PNFIC1` (business fixed investment) and `USREC` itself are **none of them pulled** —
+  `USREC` exists here only as a scratch cache the curve study wrote yesterday. Only
+  `DGORDER` is catalogued. The desk reads rates, credit, vol and FX in depth and has
+  essentially no view of the real economy.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding throughout, and (c) is
+the valuable part: an *ordering* is more useful than a level because it tells you which
+series to watch first. But see below — it cannot be scored here.
+
+**4. Why (c) cannot be tested on this desk, stated plainly.** The sequence
+investment → consumption → inventories → layoffs would be tested across recessions, and there
+are **six**. Every lead-lag ordering would be fitted on six events, which is how `dr-copper`
+got to "fired 5 times against a floor of 6". It can be **described and watched**; it cannot
+be **scored**, and the honest label for that is UNTESTABLE rather than null. Recording the
+reason now prevents someone running it later and reporting a confident ordering from six
+observations.
+
+**5. Verdict and action.**
+- **Nothing to test. One real gap, and it is a big one**: no real-economy data. If the growth
+  stack is ever wanted, `INDPRO`, `PAYEMS`, `UNRATE` and `USREC` are free, long and monthly,
+  and would build Chapter F — which is currently marked unbuilt for exactly this reason.
+  Monthly and revised, so context only, never a trading input.
+- **A data trap worth recording**: FRED's `USREC` flag is offset from the NBER's announced
+  dates by its own month convention — NBER puts the 2020 peak at February and the trough at
+  April; USREC reads 1 from March through April. Anyone treating the first `USREC=1` month
+  as "the recession started" is a month late. The curve study used a 12/18/24-month window so
+  it is robust to this, but a tighter test would not be.
+- **The strongest line in the clip, and worth stealing for the desk's own voice**: *"Just
+  because there are two negative quarters of GDP does not mean we're in a recession. You must
+  look at the totality of the data."* That is the same instinct as the mirror test and the
+  leave-one-out check — one indicator is never the finding.
