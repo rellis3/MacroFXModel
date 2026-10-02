@@ -288,3 +288,65 @@ describe the **shape** of the vol surface sitting unexamined.
 - **Smaller and free**: add `SKEW` and `VVIX` to the data catalogue. Both are pulled daily,
   neither is documented, and that is exactly the condition that caused three
   already-have-it mistakes earlier today.
+
+## 2026-10-02 (4) — Jess Inskip, "The yield curve tells you what growth is expected"
+
+> *"If there is a slowdown expected, the yield curve will be inverted... The Fed raises
+> interest rates, and that affects the front end of the curve. So their actions are what
+> leads to an inverted yield curve and an expectation of a slowdown in growth... post-Iran
+> conflict, the two-year yield rose more than the ten-year, and that's because short-term
+> inflation expectations rose where long-term did not."*
+
+**1. The claim, stated plainly.** Note carefully what she does and does not say:
+- **(a) The curve ENCODES expectations.** Upward slope = growth expected, inverted =
+  slowdown expected, flat = little growth. She says *expected*, not *will happen*.
+- **(b) The mechanism for term premium**: opportunity cost — with growth expected you could
+  have the capital in equities, so you demand compensation for tying it up.
+- **(c) Price/yield inverse** on the secondary market. Arithmetic, not a claim.
+- **(d) Inversion is CAUSED by the Fed lifting the front end**, not by the long end falling.
+- **(e) Segment mapping**: bills → savings rates, 2–10y → auto loans, 10y → mortgages,
+  20–30y → long bonds.
+
+**2. What's already on this desk.** Tested today, and the distinction between her claim and
+the tested one is the whole entry.
+- **`curve-inversion` — NULL, banked 2026-10-01.** Fifty years of `T10Y2Y`, ten de-clustered
+  inversion episodes. Recession within 24 months followed **6 of 10**, 95% CI **[31%, 83%]**.
+  Forward Nasdaq against a month-matched control: nothing clears at 3, 6 or 12 months. The
+  gate failed on its steepening mirror.
+- **But that nulls the PREDICTIVE version, and she did not make it.** "The curve tells you
+  what is expected" is true essentially by construction — a forward curve *is* the market's
+  expectation, that is what the arithmetic of forward rates means. What was tested and
+  killed is the stronger claim that the expectation is *reliable enough to trade*.
+- **The desk's own numbers sharpen her lesson rather than contradicting it.** Four of ten
+  inversions were followed by **no recession within two years**. So the curve's expectation
+  was simply *wrong* 40% of the time, and that is the most useful thing anyone can know
+  about reading it. **Expectations are a measurement, not a forecast.**
+- Everything else she describes is built: **Chapter A** carries eleven tenors with a
+  level/slope/curvature decomposition and the full surface; **Chapter B** treats the 2-year
+  as a vote on the next meetings; the chain's curve node already distinguishes her (d) from
+  its opposite — *"2-year up, 30-year down → hard flattening"* versus *"2-year down, 30-year
+  up → bear steepening on easing: credibility, not policy, is being priced."*
+- `front-end-shock` (NULL) and `priced-in-direction` (NULL) sit underneath (d).
+- **(e) is on this desk nowhere**, needs no test, and is the most immediately useful thing in
+  the clip for a non-specialist: it turns an abstract curve into four rates a person actually
+  pays.
+
+**3. Trading claim or macro-understanding claim.** Macro-understanding throughout. She is
+careful about it — she teaches what the curve *measures*, and never says to trade the shape.
+Worth noting as a contrast with the Crown clip, which took a nulled relationship and acted on
+it.
+
+**4. Display nugget.** Chapter A already shows the curve, the three factors and the surface.
+What it does not say is the sentence this desk has now earned: **an inverted curve has been
+followed by a recession within two years in 6 of 10 episodes since 1976, on an interval of
+31% to 83%.** That is one line, it is measured, and it belongs beside the curve on the
+chapter page — it converts "the curve is predicting a slowdown" into "the curve is PRICING a
+slowdown, and it has been wrong about that four times in ten."
+
+**5. Verdict and action.**
+- **Nothing to test. It was tested yesterday** and the result is already in the ledger.
+- **The clip's real contribution is pedagogical**, and it is the fourth Jess clip that forms
+  part of one coherent sequence: the chain (how a shock propagates) → investor mood and the
+  quote (why price moves at all) → the VIX (what vol does and does not say) → the curve (what
+  rates encode). That is a course, not four clips.
+- **One line of board copy proposed** (see 4), measured rather than asserted.
