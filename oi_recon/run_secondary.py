@@ -57,6 +57,13 @@ def main() -> None:
     ap.add_argument('--headless', action='store_true')
     ap.add_argument('--chain', action='store_true', help='also the per-strike smile (extra session mint)')
     a = ap.parse_args()
+    # The scheduler redirects stdout to a log file, which Windows opens as cp1252; the
+    # sweep's output carries '·' and replacement chars, and printing them crashed the run
+    # (2026-10-02, after a good capture) before the journal line was written.
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:                                    # noqa: BLE001
+        pass
 
     if a.learn:
         # Interactive: you pick the product, close Chrome. Streams straight to the console.

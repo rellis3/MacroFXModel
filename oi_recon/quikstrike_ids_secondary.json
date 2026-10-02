@@ -1,14 +1,54 @@
 {
   "_note": "SECONDARY nightly pull (run_secondary.py) - commodities, capture-only. Kept OUT of quikstrike_ids.json on purpose: the main sweep pulls every product in that file and ingest.mjs publishes them to oi_store, which the bots read. pid/pf are filled by `python run_secondary.py --learn \"XAG/USD\"` (pick the product by hand, close Chrome). `match` is text the tool header must contain or the pull refuses - a guess until the first real capture confirms the heading; edit it if a product is refused. Sugar is not here: it is an ICE product and QuikStrike (CME) does not carry it.",
-
-  "XAG/USD":    { "pid": null, "pf": null, "match": "Silver" },
-  "XCU/USD":    { "pid": null, "pf": null, "match": "Copper" },
-  "WTICO_USD":  { "pid": null, "pf": null, "match": "Crude" },
-  "NATGAS_USD": { "pid": null, "pf": null, "match": "Natural Gas" },
-  "SOYBN_USD":  { "pid": null, "pf": null, "match": "Soybean" },
-  "CORN_USD":   { "pid": null, "pf": null, "match": "Corn" },
-  "WHEAT_USD":  { "pid": null, "pf": null, "match": "Wheat" },
-  "XPT/USD":    { "pid": null, "pf": null, "match": "Platinum" },
-  "XPD/USD":    { "pid": null, "pf": null, "match": "Palladium" },
-  "BCO_USD":    { "pid": null, "pf": null, "match": "Brent" }
+  "XAG/USD": {
+    "pid": 41,
+    "pf": 6,
+    "match": "Silver"
+  },
+  "XCU/USD": {
+    "pid": 44,
+    "pf": 55,
+    "match": "Copper"
+  },
+  "WTICO_USD": {
+    "pid": 30,
+    "pf": 5,
+    "match": "Crude"
+  },
+  "NATGAS_USD": {
+    "pid": 31,
+    "pf": 15,
+    "match": "EXPIRATION: LN",
+    "_why": "QuikStrike heading for this product names no product (\"SELECT PRODUCT | EXPIRATION: LN1V6\", 2026-10-02); LN is the Henry Hub natural gas options code, so the expiry code is the check."
+  },
+  "SOYBN_USD": {
+    "pid": 25,
+    "pf": 21,
+    "match": "Soybean"
+  },
+  "CORN_USD": {
+    "pid": 23,
+    "pf": 19,
+    "match": "Corn"
+  },
+  "WHEAT_USD": {
+    "pid": 24,
+    "pf": 20,
+    "match": "Wheat"
+  },
+  "XPT/USD": {
+    "pid": 42,
+    "pf": 6,
+    "match": "Platinum"
+  },
+  "XPD/USD": {
+    "pid": 43,
+    "pf": 6,
+    "match": "Palladium"
+  },
+  "BCO_USD": {
+    "pid": 402,
+    "pf": 5,
+    "match": "Brent"
+  }
 }
