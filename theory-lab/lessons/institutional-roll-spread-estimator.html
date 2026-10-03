@@ -17,7 +17,7 @@
   <h1 class="tl-title">Roll's Implicit Spread Estimator</h1>
   <p class="tl-dek">No quotes, no order book, no depth data — just a raw series of trade prices. Roll's 1984 insight is that the bid-ask spread leaves a fingerprint even there: it forces consecutive price changes to bounce against each other, and that bounce alone is enough to back the spread out.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — a classical price-only estimator, verified nowhere in this repo: no file computes a serial covariance of price changes for spread estimation, and this repo's own Market Microstructure lesson never mentions Roll's estimator (it derives Glosten-Milgrom and Kyle's Lambda, both of which assume quotes are visible)</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — a classical price-only estimator, verified nowhere in this repo: no file computes a serial covariance of price changes for spread estimation, and this repo's own Market Microstructure lesson never mentions Roll's estimator (it derives Glosten-Milgrom and Kyle's Lambda, both of which assume quotes are visible)<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="institutional-trade-classification.html">Trade Classification: Lee-Ready &amp; Bulk Volume</a>, <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a></span>
   </div>
@@ -50,9 +50,9 @@
     against adverse selection. That derivation — and Kyle's Lambda alongside
     it — takes for granted that you can actually <em>see</em> the bid and the
     ask being quoted. Checked against that lesson directly: it never mentions
-    Roll's estimator, and neither does anywhere else in this repository — a
+    Roll's estimator<!-- DESK:START -->, and neither does anywhere else in this repository — a
     repo-wide search for a serial-covariance computation on price changes,
-    specifically for the purpose of backing out a spread, turns up nothing.
+    specifically for the purpose of backing out a spread, turns up nothing<!-- DESK:END -->.
     This lesson is new ground, not a restatement of anything already here.
   </p>
   <p>
@@ -646,8 +646,8 @@
   <ul class="tl-refs">
     <li>Richard Roll, <em>"A Simple Implicit Measure of the Effective Bid-Ask Spread in an Efficient Market,"</em> Journal of Finance, 39(4), 1984 — the original derivation covered in full above.</li>
     <li>Shane A. Corwin &amp; Paul Schultz, <em>"A Simple Way to Estimate Bid-Ask Spreads from Daily High and Low Prices,"</em> Journal of Finance, 67(2), 2012 — the high-low range estimator named as Roll's modern, more robust successor.</li>
-    <li><code>theory-lab/lessons/market-microstructure.html</code> in this repo — the Glosten-Milgrom and Kyle's Lambda derivations this lesson's spread notation and adverse-selection framing build on.</li>
-    <li><code>theory-lab/lessons/stationarity-acf-pacf.html</code> in this repo — the autocovariance and lag notation, \(\gamma(k)\), this lesson's \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})\) is a direct application of.</li>
+    <li><code>theory-lab/lessons/market-microstructure.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the Glosten-Milgrom and Kyle's Lambda derivations this lesson's spread notation and adverse-selection framing build on.</li>
+    <li><code>theory-lab/lessons/stationarity-acf-pacf.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the autocovariance and lag notation, \(\gamma(k)\), this lesson's \(\mathrm{Cov}(\Delta P_t,\Delta P_{t-1})\) is a direct application of.</li>
   </ul>
   </details>
 

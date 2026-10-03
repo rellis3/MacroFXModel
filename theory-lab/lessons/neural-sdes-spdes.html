@@ -17,7 +17,7 @@
   <h1 class="tl-title">Neural SDEs &amp; Neural SPDEs</h1>
   <p class="tl-dek">Every model in this sequence hand-specifies μ and σ — a drift and a diffusion someone wrote down because it seemed to describe the world. The last step this curriculum's SDE thread can take: what if a neural network learns μ and σ instead?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — current machine-learning research, not built, tested, or validated anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — current machine-learning research, not built, tested, or validated anywhere in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: Existence &amp; Uniqueness of SDE Solutions, Numerical Schemes: Euler-Maruyama &amp; Milstein</span>
   </div>
@@ -35,7 +35,7 @@
       <li>The idea traces to Tzen &amp; Raginsky (2019) and was formalized as a full generative-modelling framework — "neural SDEs as infinite-dimensional GANs" — by Kidger, Foster, Li &amp; Lyons (2021).</li>
       <li>Naively backpropagating through every simulated Euler-Maruyama step is memory-expensive (it has to store every intermediate state); the fix, the <strong>stochastic adjoint sensitivity method</strong> (Li, Wong, Chen &amp; Duvenaud, 2020), computes gradients by solving a second, backward SDE instead — the direct stochastic analogue of the Neural-ODE adjoint method (Chen et al., 2018).</li>
       <li><strong>Neural SPDEs</strong> generalize this further, to infinite-dimensional, spatio-temporal fields (Salvi, Lemercier &amp; Gerasimovics, 2021) — an implied-volatility <em>surface</em> evolving stochastically over time is exactly the kind of object (a field indexed by strike and tenor, evolving in time) an SPDE models.</li>
-      <li>This is current, active machine-learning research machinery — considerably further from a testable trading signal than anything else in this curriculum. Nothing in this lesson claims it has been built, tested, or shown to produce edge anywhere in this repo.</li>
+      <li>This is current, active machine-learning research machinery — considerably further from a testable trading signal than anything else in this curriculum.<!-- DESK:START --> Nothing in this lesson claims it has been built, tested, or shown to produce edge anywhere in this repo.<!-- DESK:END --></li>
       <li>How it reached trading: deep hedging (Buehler et al., 2019) and, from around 2020, neural SDEs calibrated to option prices brought the idea into quant finance; it is still research, not a desk standard.</li>
     </ul>
   </div>
@@ -59,7 +59,7 @@
     Vasicek, CIR, and Hull-White are decades-old, industry-standard tools.
     What follows is active research, much of it published within the last
     five years, with no established track record as a production trading or
-    pricing tool anywhere, including in this repo.
+    pricing tool anywhere<!-- DESK:START -->, including in this repo<!-- DESK:END -->.
   </p>
 
   <div class="tl-box intuition">
@@ -213,7 +213,7 @@
     factor loadings) evolving independently, a neural SPDE would attempt to
     learn the entire surface's joint stochastic evolution directly, as one
     continuous object. This is a natural extension of the SDE machinery this
-    curriculum has built — but it is also a genuinely advanced, unvalidated-in-this-repo
+    curriculum has built — but it is also a genuinely advanced<!-- DESK:START -->, unvalidated-in-this-repo<!-- DESK:END -->
     research question, not a description of an existing tool. Framing it as
     a natural question worth knowing about is different from framing it as
     something ready to build.
@@ -351,7 +351,7 @@
     and industry-standard. This lesson is a knowledge lesson about what the
     technique <em>is</em> and how it works conceptually — it is explicitly
     <strong>not</strong> a claim that any of this has been built, tested, or
-    shown to produce trading edge anywhere in this repo. Treat the distinction
+    shown to produce trading edge<!-- DESK:START --> anywhere in this repo<!-- DESK:END -->. Treat the distinction
     between "this is a real, interesting piece of machinery" and "this
     machinery has been shown to work here" as load-bearing, not a formality.
   </div>
@@ -418,7 +418,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Tzen &amp; Raginsky (2019) and Kidger, Foster, Li &amp; Lyons (2021) are the foundational references</strong> — the latter framing training as a generator/discriminator (GAN-style) problem over entire simulated paths.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The stochastic adjoint method (Li, Wong, Chen &amp; Duvenaud, 2020) fixes naive backprop's memory cost</strong> by solving a second, backward SDE — the direct stochastic analogue of the Neural-ODE adjoint (Chen et al., 2018).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neural SPDEs (Salvi, Lemercier &amp; Gerasimovics, 2021) generalize this to fields</strong> — a resolution-invariant architecture for learning spatio-temporal dynamics like an evolving implied-volatility surface.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is current ML research machinery, not a tested trading tool anywhere in this repo.</strong> Considerably further from a validated signal than Vasicek, CIR, or Hull-White — a knowledge lesson, explicitly not a built-and-proven claim.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is current ML research machinery, not a tested trading tool<!-- DESK:START --> anywhere in this repo<!-- DESK:END -->.</strong> Considerably further from a validated signal than Vasicek, CIR, or Hull-White — a knowledge lesson, explicitly not a built-and-proven claim.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>More flexibility buys more overfitting risk, not automatically more accuracy.</strong> A neural SDE's close in-sample fit says nothing about out-of-sample generalization without an honest validation split.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>In finance, neural SDEs are still research.</strong> Deep hedging (2019) and neural-SDE calibration to option prices (from around 2020) let data choose the dynamics; no desk standard yet, but a useful check on how much a price depends on the assumed model.</span></div>
   </div>
@@ -449,12 +449,12 @@
       The neural SDE itself (its drift and diffusion networks, simulating paths forward via Euler-Maruyama) plays the role of the generator, producing simulated paths. A separate discriminator network is trained to distinguish those simulated paths from real observed paths/statistics — exactly the generator/discriminator structure of an ordinary GAN, except the generator here produces entire stochastic paths rather than a single static output like an image.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q5. Is anything described in this lesson built, tested, or validated as a trading tool anywhere in this repo?</summary>
     <div class="tl-answer">
       No. This lesson is explicitly a knowledge lesson about current, active machine-learning research machinery — neural SDEs, the stochastic adjoint method, and neural SPDEs — not a claim that any of it has been implemented, tested, or shown to produce trading edge anywhere in this repo. It is considerably further from a testable trading signal than any other model in this five-lesson sequence, including the decades-old, industry-standard Vasicek, CIR, and Hull-White models.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

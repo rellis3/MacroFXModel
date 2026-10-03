@@ -260,7 +260,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Salvi, Lemercier &amp; Gerasimovics (2021)</h4><p>Built a neural SPDE architecture with a specific, genuine property: resolution invariance — trained at one grid resolution, it can be evaluated at a different one without retraining.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Resolution-invariant ≠ accurate</h4><p>That property says nothing about whether the learned dynamics are correct at any given resolution — two separate claims, easy to conflate.</p></div></div>
       </div>
-      <p class="sl-p">Instead of the standard practitioner approach — modelling a surface's parameters (a local-vol grid, a handful of factor loadings) evolving independently — a neural SPDE would attempt to learn the entire surface's joint stochastic evolution directly, as one continuous object. It's a natural extension of everything this category has built — and also a genuinely advanced, unvalidated-in-this-repo research question, not a description of an existing tool.</p>
+      <p class="sl-p">Instead of the standard practitioner approach — modelling a surface's parameters (a local-vol grid, a handful of factor loadings) evolving independently — a neural SPDE would attempt to learn the entire surface's joint stochastic evolution directly, as one continuous object. It's a natural extension of everything this category has built — and also a genuinely advanced<!-- DESK:START -->, unvalidated-in-this-repo<!-- DESK:END --> research question, not a description of an existing tool.</p>
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -270,10 +270,12 @@
         <div class="sl-callout-label">Current research — not a production technique</div>
         <p>Neural SDEs and neural SPDEs are current, active machine-learning research, published mostly within the last five to seven years, with genuine open questions still being worked out in the literature. They are considerably further from a testable trading signal than anything else in this category, including the decades-old, industry-standard Vasicek, CIR, and Hull-White models three lessons prior. They are much harder to fit reliably than a 2–3 parameter classical model, they can overfit and extrapolate implausibly outside their training range (Section 8), and they sacrifice interpretability almost entirely (Section 6) — there is no learned equivalent of "this parameter is the mean-reversion speed."</p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code, 2026-09-04</div>
         <p>The full lesson states there is no built, tested, or validated neural-SDE / neural-SPDE implementation anywhere in this repo. A repo-wide search for neural-SDE, neural-SPDE, torchsde, and learned drift/diffusion code — across every model, bot, and analysis directory, not just Theory Lab — found nothing. That claim checks out as still accurate: this remains a knowledge lesson, not a description of a built tool.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -317,14 +319,14 @@
         <div class="sl-quiz-explain">Flexibility buys fit; it does not buy validated generalization. A hand-specified model's inflexibility is itself a form of regularization that a neural SDE gives up.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Is a neural SDE or neural SPDE built, tested, or validated as a trading tool anywhere in this repo?</h4>
         <button class="sl-quiz-opt" data-correct="true">No — this is a knowledge lesson about research machinery, not a built tool here</button>
         <button class="sl-quiz-opt">Yes, it powers one of the bot directories elsewhere in this repo</button>
         <button class="sl-quiz-opt">Yes, but only in a deprecated module</button>
         <div class="sl-quiz-explain">A repo-wide search found no neural-SDE, neural-SPDE, or learned drift/diffusion implementation anywhere in this repo. This lesson is explicitly a knowledge lesson, not a claim about a built, validated tool.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -336,7 +338,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The appeal is real: no forced fit to a small set of named, tractable templates — potentially capturing dynamics no classical model fits well.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The cost is also real: far harder to fit reliably, prone to overfitting and implausible extrapolation outside the training range, and interpretability is essentially gone.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neural SPDEs extend the same idea to an entire evolving field, like an implied-volatility surface — resolution-invariant is a real property, but it is not the same claim as accurate.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of this is built, tested, or validated as a trading tool anywhere in this repo — verified directly against the current source code, not just repeated from the full lesson.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of this is built, tested, or validated as a trading tool anywhere in this repo — verified directly against the current source code, not just repeated from the full lesson.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: deep hedging (2019) and neural-SDE calibration (from around 2020); still research, not a desk standard.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

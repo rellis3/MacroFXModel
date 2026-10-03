@@ -239,6 +239,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Verified against this repo's actual code</h2>
@@ -247,6 +248,7 @@
         <p><code>pylego/barrier_race.py</code>'s <code>_first_touch()</code> is a genuine upper/lower/vertical triple-barrier walker: a running high/low race between a take-profit price and a stop-loss price, falling back to a <code>'timeout'</code> at <code>max_bars_ahead</code> — reused by <code>AnalogML/ml_walkforward.py</code>, the Volatility Bot's <code>check_barriers()</code>, and the range-line engines. <code>bot/modules/ml_confidence.py</code> is a genuine two-stage architecture: direction is <strong>inherited</strong> from upstream primary modules, while a <strong>separately-trained</strong> XGBoost + LightGBM ensemble (trained on closed-trade <code>outcome_hit_tp</code>/<code>outcome_hit_sl</code> columns) predicts a win-probability. One honest difference from the textbook version: this module only ever scales size <em>down</em> below a 0.5 probability — it never blocks a trade outright the way a classic meta-label filter can.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
@@ -497,7 +499,7 @@
     recompute();
   })();
 
-  // ── Fixed vs triple-barrier label tabs, and worked-walk tabs, are handled by deck.js's generic .sl-tabs wiring ──
+  // ── Fixed vs triple-barrier label tabs, and worked-walk tabs, are handled by the deck's generic .sl-tabs wiring ──
 })();
 </script>
 </body>

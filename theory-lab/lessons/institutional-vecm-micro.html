@@ -244,7 +244,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>Skipping the cointegration test</h4><p>The theorem's guarantee only applies to genuinely cointegrated pairs. Fit this on two series never actually shown to cointegrate and the α's mean nothing.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>No significance check</h4><p>A bigger |α_Y| in one small noisy sample isn't proof Y is "the" follower — the same standard-error caveats that apply to any OLS coefficient apply here too.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Sign convention matters</h4><p>Flip how Z is defined and every sign above flips with it. α_Y&gt;0 and α_X&lt;0 together means the gap gets pushed wider, not corrected — not valid error correction at all.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Dropping lags in a real fit</h4><p>This deck's calculator isolates α·Z for teaching clarity. A genuine fit (like this repo's own <code>fitVECM</code>) keeps the short-run lag terms — omitting them biases the estimated α itself.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Dropping lags in a real fit</h4><p>This deck's calculator isolates α·Z for teaching clarity. A genuine fit<!-- DESK:START --> (like this repo's own <code>fitVECM</code>)<!-- DESK:END --> keeps the short-run lag terms — omitting them biases the estimated α itself.</p></div></div>
       </div>
     </section>
 
@@ -289,14 +289,14 @@
         <div class="sl-quiz-explain">With Z_{t-1}&gt;0, correction needs α_Y≤0 and/or α_X≥0. Here Y is forecast to rise further and X to fall further — the gap widens, not closes — inconsistent with genuine cointegration.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Does this repo have a real, live two-equation VECM system anywhere?</h4>
         <button class="sl-quiz-opt" data-correct="true">No — but it does have a genuine single-equation error-correction model, live in production</button>
         <button class="sl-quiz-opt">Yes, a full jointly-estimated α_Y/α_X system runs in production</button>
         <button class="sl-quiz-opt">No error-correction code of any kind exists in this repo</button>
         <div class="sl-quiz-explain"><code>js/arma.js</code>'s <code>fitVECM</code> is a genuine, live single-equation error-correction regression (wired through <code>computeARMAForecast</code> into several production files) — but it forecasts one series against a price-implied fair value, not a jointly-fitted two-series α_Y/α_X system.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -307,7 +307,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The error-correction term Z_{t-1} is nothing new — it's exactly the Cointegration lesson's own spread, one period lagged and reused as a predictor.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Comparing |α_Y| and |α_X| is the actual payoff: the larger one marks the "follower" doing most of the correcting, the smaller one the relative "anchor."</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Granger Representation Theorem is the formal bridge — cointegration and valid error correction are equivalent, proven by Engle &amp; Granger (1987), cited here rather than re-derived.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo already runs a genuine single-equation version live (<code>js/arma.js</code>'s <code>fitVECM</code>) — the full two-equation system built here goes further than that code does.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo already runs a genuine single-equation version live (<code>js/arma.js</code>'s <code>fitVECM</code>) — the full two-equation system built here goes further than that code does.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>On a desk: Engle-Granger (1987) and Johansen (1991) made the VECM the model for cointegrated prices — the basis of spread forecasts and Hasbrouck's price discovery.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

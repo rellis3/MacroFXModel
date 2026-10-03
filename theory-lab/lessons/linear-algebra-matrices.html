@@ -15,7 +15,7 @@
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Deeper Foundations · Lesson 1 of 4</div>
   <h1 class="tl-title">Linear Algebra &amp; Matrices</h1>
-  <p class="tl-dek">Vectors, matrices, and eigenvectors are not a math-class prerequisite this repo makes you sit through for its own sake — they are the exact vocabulary the PCA, Kalman Filter, and Hidden Markov Model lessons in this Theory Lab quietly assume you already have.</p>
+  <p class="tl-dek">Vectors, matrices, and eigenvectors are not a math-class prerequisite this curriculum makes you sit through for its own sake — they are the exact vocabulary the PCA, Kalman Filter, and Hidden Markov Model lessons in this Theory Lab quietly assume you already have.</p>
   <div class="tl-meta">
     <span class="tl-status concept">DEEPER FOUNDATION — read before PCA, Kalman Filter, or Hidden Markov Models</span>
     <span>~15 min read</span>
@@ -97,7 +97,7 @@
       say. Two equivalent ways to picture it, and you'll want both: as a
       <em>point</em> in space (walk 3 units along one axis, 1 unit along the
       other, and put a dot there), or as an <em>arrow</em> from the origin to
-      that point, carrying both a direction and a length. In this repo, a vector
+      that point, carrying both a direction and a length. In this curriculum, a vector
       might be two FX pairs' daily returns on a single day, a 2-D
       hidden-state estimate in a Kalman filter, or a row of loadings across
       several instruments — different meanings, identical arithmetic.
@@ -597,8 +597,8 @@
       two-thirds of your daily P&amp;L variance from this pair of trades is
       coming from one shared factor (call it "long the dollar bloc"), and only
       about one-third is coming from the pairs actually behaving differently
-      from each other. Using the same effective-bets formula this project already
-      computes for a strategy book
+      from each other. Using the<!-- DESK:START --> same<!-- DESK:END --> effective-bets formula<!-- DESK:START --> this project already
+      computes for a strategy book<!-- DESK:END -->
       (\(\text{effectiveBets} = (\Sigma\lambda)^2/\Sigma\lambda^2\)): \((\Sigma\lambda)^2/\Sigma\lambda^2 = 6^2/(4^2+2^2) = 36/20 = 1.8\).
       Two nominal positions, but only about 1.8 <em>effective</em>, independent
       bets — not the dramatic "really just one big bet" story a much higher
@@ -617,7 +617,7 @@
   <h2>How practitioners actually use this</h2>
   <p>
     Nobody on a trading desk solves a characteristic equation by hand day to
-    day — software libraries (or, in this repo, a hand-rolled numerical routine)
+    day — software libraries<!-- DESK:START --> (or, in this repo, a hand-rolled numerical routine)<!-- DESK:END -->
     do the arithmetic. What the desk-level intuition actually is: <strong>an
     eigenvector of a covariance or correlation matrix is a portfolio</strong> —
     a specific combination of the underlying instruments — and its
@@ -665,7 +665,7 @@
       complex eigenvalues, or eigenvectors that aren't perpendicular, or in
       degenerate cases fewer independent eigenvectors than its dimension.
       Covariance and correlation matrices are always symmetric by construction,
-      so this repo's uses of eigen-decomposition stay in the well-behaved case —
+      so<!-- DESK:START --> this repo's<!-- DESK:END --> uses of eigen-decomposition stay in the well-behaved case —
       but the geometric picture in this lesson (an ellipse, two perpendicular
       axes) is specifically the symmetric-matrix picture, not the fully general
       one.
@@ -700,8 +700,8 @@
       noticeably, even though the eigenvalues themselves barely move). Treat any
       single eigen-decomposition as a snapshot of a particular estimation
       window, not a permanent structural fact about the instruments involved —
-      the same discipline this repo applies to any other rolling-window
-      estimate.
+      the same discipline that applies to any other rolling-window
+      estimate<!-- DESK:START --> in this repo<!-- DESK:END -->.
     </p>
     <p>
       <strong>"Stretch factor" is about the linear map, not about price moving

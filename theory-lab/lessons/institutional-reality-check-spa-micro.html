@@ -251,7 +251,7 @@
           </div>
         </div>
         <button type="button" class="sl-reset-btn" id="pv-reset">Reset to 14 of 5,000</button>
-        <div class="sl-note">p = (1 + count≥observed) / (1 + total) — the Davison–Hinkley "+1" correction, so a p-value is never reported as exactly zero no matter how few (or zero) replicates matched or beat the real statistic. This repo's own block-bootstrap brick (<code>statsCore.js</code>) uses the identical correction.</div>
+        <div class="sl-note">p = (1 + count≥observed) / (1 + total) — the Davison–Hinkley "+1" correction, so a p-value is never reported as exactly zero no matter how few (or zero) replicates matched or beat the real statistic.<!-- DESK:START --> This repo's own block-bootstrap brick (<code>statsCore.js</code>) uses the identical correction.<!-- DESK:END --></div>
       </div>
     </section>
 
@@ -281,6 +281,7 @@
       <div class="sl-quote">No formula can detect a cherry-picked candidate set from the outside — it will happily return a small, confident p-value on the wrong question. This is a discipline problem, identical in spirit to the Deflated Sharpe lesson's warning about undercounting N.</div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What this repo actually has — and doesn't</h2>
@@ -289,6 +290,7 @@
         <p>This repo's <code>statsCore.js</code> ships a real, working stationary (Politis–Romano) block bootstrap, reused across <code>backtestStats.js</code>, <code>scripts/freeze_expectation.mjs</code>, <code>js/volReversionCore.js</code>, and <code>analysis/cot_factor/factor_test.py</code>. Every single one of those points the bootstrap at <strong>ONE</strong> series or statistic at a time. The one place this repo corrects for testing several things at once (<code>volReversionCore.js</code>'s best-of-4-horizons check) uses a parametric Bonferroni adjustment, not a bootstrap of a max statistic. And this repo's own honest self-assessment names the sharper version of this exact problem — "best-of-N ranked on the same data... best of ~600 random configs per pair" — as its single biggest unaddressed risk, proposing purged cross-validation plus a deflated-Sharpe adjustment as the fix. No genuine WRC/SPA-style bootstrap of a full candidate panel exists anywhere in this codebase — the building block (the bootstrap itself) is already here; assembling it into this specific test has not been done.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>

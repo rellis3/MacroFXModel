@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Kalman Smoother &amp; Extended/Unscented Kalman Filters</h1>
   <p class="tl-dek">Two separate upgrades to the plain Kalman filter: a backward pass that uses the whole dataset to sharpen every past estimate, and two ways of handling a genuinely nonlinear state-space model instead of a linear one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: Kalman Filter &amp; Adaptive Relationships, The Particle Filter</span>
   </div>
@@ -497,9 +497,9 @@
       the plain filtered estimate (or, if the relationship is genuinely nonlinear, an EKF/UKF filtered
       estimate) is valid to act on live. Mixing the two up — reporting a smoothed backtest as if it
       represented what a live system could have known in real time — is the single most common way this
-      family of tools gets misused, and it is presented here purely to illustrate the distinction, not as a
+      family of tools gets misused, and it is presented here purely to illustrate the distinction<!-- DESK:START -->, not as a
       claim that either the smoother or either nonlinear filter has been built or validated for any live
-      use in this repo.
+      use in this repo<!-- DESK:END -->.
     </p>
   </div>
 
@@ -592,7 +592,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The UKF samples the true curve at a few sigma points instead of linearizing it</strong>, needing no Jacobian and generally beating the EKF for strongly nonlinear systems.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's EKF and UKF landed within about 0.003 of each other</strong> — close, because a mild curvature over a narrow uncertainty band is still well approximated by a tangent line; the two diverge more as either grows.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A smoothed estimate has lookahead baked in — never valid as a live signal.</strong> The same trap the Hidden Markov Model lesson flags for Viterbi labels applies here identically.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and only needed for genuine nonlinearity.</strong> This repo's existing linear-Gaussian applications (hedge-ratio tracking) are already fully served by the plain Kalman filter — nothing here is built, tested, or validated, and explaining the extensions is not a claim either produces edge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and only needed for genuine nonlinearity.</strong><!-- DESK:START --> This repo's existing linear-Gaussian applications (hedge-ratio tracking) are already fully served by the plain Kalman filter — nothing here is built, tested, or validated, and explaining the extensions is not a claim either produces edge.<!-- DESK:END --></span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Pick the tool by the desk problem.</strong> Prices curved in a hidden factor → EKF or UKF, the usual choice for nonlinear term-structure and volatility models; a historical reconstruction for research → RTS smoother, never a live signal; strongly non-Gaussian states → the particle filter.</span></div>
   </div>
 

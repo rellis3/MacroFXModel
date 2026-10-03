@@ -15,9 +15,9 @@
   <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
   <div class="tl-kicker">Market Microstructure Extensions 1 of 5</div>
   <h1 class="tl-title">Trade Classification: Lee-Ready &amp; Bulk Volume Classification</h1>
-  <p class="tl-dek">A raw trade print is just a price, a size, and a timestamp — nothing on the tape says whether the buyer or the seller was the one who showed up demanding immediacy. Every order-flow signal in this curriculum that needs a <em>signed</em> direction, including this project's own VPIN lesson, is quietly resting on an algorithm that guesses that sign from what little data is actually available.</p>
+  <p class="tl-dek">A raw trade print is just a price, a size, and a timestamp — nothing on the tape says whether the buyer or the seller was the one who showed up demanding immediacy. Every order-flow signal in this curriculum that needs a <em>signed</em> direction, including this curriculum's own VPIN lesson, is quietly resting on an algorithm that guesses that sign from what little data is actually available.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a>, <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a></span>
   </div>
@@ -35,8 +35,8 @@
       <li>The <strong>tick rule</strong> classifies a trade by comparing its price only to the immediately preceding trade's price: higher is a buy, lower is a sell, unchanged inherits the last classified sign. It needs nothing but a price series — and it's noisy precisely because it ignores where the quote actually sat.</li>
       <li>The <strong>quote rule</strong> instead compares the trade's price to the prevailing bid-ask midpoint at the time of the trade: above the midpoint is a buy, below is a sell — but a trade printing exactly at the midpoint leaves the quote rule with nothing to decide.</li>
       <li>The <strong>Lee-Ready algorithm</strong> (1991) uses the quote rule as its primary classifier, applied against the quote in effect some short lag before the trade print, and falls back to the tick rule specifically to break exact-midpoint ties. It is the long-standing academic standard on historical exchange data — and its accuracy has been shown, in published work, to degrade on modern electronic and high-frequency markets.</li>
-      <li><strong>Bulk Volume Classification (BVC)</strong> (Easley, López de Prado &amp; O'Hara, 2012) classifies volume in bulk over a bar rather than trade by trade: buy-fraction \(=\Phi(\Delta P/\sigma_{\Delta P})\), the bar's standardized price change passed through the standard normal CDF. This is exactly the classification step this project's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson already covers as VPIN's basis — this lesson names it explicitly and extends it, rather than re-deriving it from scratch.</li>
-      <li>A repo-wide search turns up zero implementations of Lee-Ready, the tick rule, or the quote rule anywhere in this codebase — unsurprising, since Lee-Ready needs historical quote-timestamp data of a kind FX/OTC trading typically doesn't produce in the same form exchange-listed TAQ data does.</li>
+      <li><strong>Bulk Volume Classification (BVC)</strong> (Easley, López de Prado &amp; O'Hara, 2012) classifies volume in bulk over a bar rather than trade by trade: buy-fraction \(=\Phi(\Delta P/\sigma_{\Delta P})\), the bar's standardized price change passed through the standard normal CDF. This is exactly the classification step this curriculum's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson already covers as VPIN's basis — this lesson names it explicitly and extends it, rather than re-deriving it from scratch.</li>
+      <!-- DESK:START --><li>A repo-wide search turns up zero implementations of Lee-Ready, the tick rule, or the quote rule anywhere in this codebase — unsurprising, since Lee-Ready needs historical quote-timestamp data of a kind FX/OTC trading typically doesn't produce in the same form exchange-listed TAQ data does.</li><!-- DESK:END -->
       <li><strong>How it reached trading:</strong> Lee &amp; Ready (1991) became the default way to sign trades on TAQ data, the data-preparation step underneath order-flow signals, toxicity metrics and transaction-cost analysis.</li>
     </ul>
   </div>
@@ -397,7 +397,7 @@
     trade a buy or a sell," it asks a coarser question about an entire bar or
     bucket of volume at once — <em>given how far the price moved over this
     whole window, what fraction of the volume in it was probably
-    buy-initiated?</em> This is the exact method this project's own
+    buy-initiated?</em> This is the exact method this curriculum's own
     <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp;
     VPIN</a> lesson already introduces as the classification step underneath
     VPIN — this lesson gives that method its own full treatment rather than
@@ -489,7 +489,7 @@
       of a hypothetical 1,000-unit bar all recalculate instantly, using the
       same standard normal CDF the calculator implements from scratch (an
       Abramowitz-Stegun error-function approximation — the same approach
-      this repo's Black-Scholes lesson uses).
+      this curriculum's Black-Scholes lesson uses).
     </p>
     <div class="tl-controls">
       <div class="tl-control">
@@ -517,7 +517,7 @@
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
-    <h3>Why FX/OTC desks lean on BVC, not Lee-Ready — and what this repo's own code actually shows</h3>
+    <h3>Why FX/OTC desks lean on BVC, not Lee-Ready<!-- DESK:START --> — and what this repo's own code actually shows<!-- DESK:END --></h3>
     <p>
       Lee-Ready needs a genuine, correctly time-stamped record of the
       prevailing best bid and best ask <em>at the moment of every single
@@ -535,7 +535,7 @@
       tape, which is precisely why BVC's only-needs-price-and-volume design
       is attractive for FX and other OTC markets specifically.
     </p>
-    <p>
+    <!-- DESK:START --><p>
       This lesson's own factual claims here were checked against this
       codebase directly rather than assumed. A repo-wide search for
       Lee-Ready, tick-rule, and quote-rule implementation code (function
@@ -551,7 +551,7 @@
       per-trade classification," in that lesson's own phrasing — which is
       exactly the connection this lesson has been making explicit throughout
       Section 03.
-    </p>
+    </p><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -620,7 +620,7 @@
       aggregate price move over a bar can come from many small trades all
       pushing one direction, or from a single large trade — BVC produces the
       identical buy/sell split either way, because it never looks below the
-      bar level. This is the exact same caveat this project's VPIN lesson
+      bar level. This is the exact same caveat this curriculum's VPIN lesson
       raises about VPIN's own inputs, because it's the same underlying
       method.
     </p>
@@ -651,9 +651,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Trade classification is inference, not a data field.</strong> No raw trade record says who initiated it — every scheme in this lesson guesses that sign from price and quote data that is actually available.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The tick rule needs only a price series</strong> (uptick=buy, downtick=sell, zero-tick inherits the last sign); <strong>the quote rule needs the prevailing bid-ask midpoint</strong> and is generally the stronger of the two when reliable quote data exists.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Lee-Ready (1991) uses the quote rule as primary, the tick rule only to break exact-midpoint ties</strong> — and published research (Chakrabarty, Li, Nguyen &amp; Van Ness) has shown its accuracy degrades on modern electronic markets, a documented finding, not a hypothetical concern.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bulk Volume Classification splits a whole bar's volume by \(\Phi(\Delta P/\sigma_{\Delta P})\)</strong> — this is the exact method this project's own VPIN lesson already uses as its classification step, made explicit and given its own treatment here.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bulk Volume Classification splits a whole bar's volume by \(\Phi(\Delta P/\sigma_{\Delta P})\)</strong> — this is the exact method this curriculum's own VPIN lesson already uses as its classification step, made explicit and given its own treatment here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>BVC classifies a bar, not a trade</strong> — it cannot distinguish many small informed trades from one large trade producing the identical aggregate price move.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither method is implemented anywhere in this codebase.</strong> A repo-wide search confirms zero Lee-Ready/tick-rule/quote-rule code exists — consistent with FX/OTC trading typically lacking the consolidated, correctly time-stamped quote history Lee-Ready specifically requires.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither method is implemented anywhere in this codebase.</strong> A repo-wide search confirms zero Lee-Ready/tick-rule/quote-rule code exists — consistent with FX/OTC trading typically lacking the consolidated, correctly time-stamped quote history Lee-Ready specifically requires.</span></div><!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is plumbing for every signed-flow signal.</strong> Lee-Ready (1991) has been the default trade-signing rule on TAQ equity data since the 1990s; feeds with an exchange aggressor flag, such as CME futures, make the guess unnecessary.</span></div>
   </div>
 
@@ -710,7 +710,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. This project's own "Order Flow Toxicity & VPIN" lesson already describes a classification method as VPIN's basis. Which one, and how does it differ fundamentally from Lee-Ready?</summary>
+    <summary>Q5. This curriculum's own "Order Flow Toxicity & VPIN" lesson already describes a classification method as VPIN's basis. Which one, and how does it differ fundamentally from Lee-Ready?</summary>
     <div class="tl-answer">
       Bulk Volume Classification (BVC). Lee-Ready classifies each individual
       trade by comparing it to a specific prevailing quote (with the tick
@@ -723,7 +723,7 @@
       a genuine per-trade classifier like Lee-Ready.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. A repo-wide search for Lee-Ready, tick-rule, or quote-rule implementation code in this codebase finds nothing. Why is that an unsurprising finding rather than an oversight?</summary>
     <div class="tl-answer">
       Lee-Ready requires a genuine, correctly time-stamped record of the
@@ -738,13 +738,13 @@
       price-and-volume-only method like BVC is the more natural fit and the
       one this codebase's own VPIN lesson actually leans on.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Charles M. C. Lee &amp; Mark J. Ready, "Inferring Trade Direction from Intraday Data," <em>Journal of Finance</em>, 46(2), 1991 — the original paper introducing the algorithm covered in Section 02, including the quote-rule-primary, tick-rule-tiebreak design and the original five-second lag convention.</li>
-    <li>David Easley, Marcos M. López de Prado &amp; Maureen O'Hara, "Flow Toxicity and Liquidity in a High-Frequency World," <em>Review of Financial Studies</em>, 2012 — introduces Bulk Volume Classification alongside VPIN; the same paper this project's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson cites for BVC.</li>
+    <li>David Easley, Marcos M. López de Prado &amp; Maureen O'Hara, "Flow Toxicity and Liquidity in a High-Frequency World," <em>Review of Financial Studies</em>, 2012 — introduces Bulk Volume Classification alongside VPIN; the same paper this curriculum's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson cites for BVC.</li>
     <li>Bidisha Chakrabarty, Bingguang Li, Vanthuan Nguyen &amp; Robert A. Van Ness, "Trade Classification Algorithms for Electronic Communications Network Trades," <em>Journal of Banking &amp; Finance</em>, 2007 (and related follow-up work by overlapping authors) — the re-examination of Lee-Ready's accuracy on modern electronic/high-frequency market data cited in Section 02's honest-limitations callout.</li>
     <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the foundational text situating trade classification within the broader informed-vs-noise-trader framework this whole curriculum's microstructure lessons build on.</li>
   </ul>
@@ -783,7 +783,7 @@
 <script>
 (function(){
   // Standard normal CDF via the Abramowitz & Stegun erf approximation
-  // (max error ~1.5e-7 — plenty for this calculator), matching this repo's
+  // (max error ~1.5e-7 — plenty for this calculator), matching the
   // Black-Scholes lesson's exact approach for consistency.
   function erf(x){
     var sign = x < 0 ? -1 : 1;

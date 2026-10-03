@@ -250,10 +250,12 @@
         <button type="button" class="sl-reset-btn" id="ito2-reset">Reset to the worked example</button>
         <div class="sl-note" id="ito2-note">At these exact numbers, σ²/2 = 0.02 happens to exactly cancel r = 0.02 — a coincidence of round numbers, not a general rule. Blank or invalid inputs show "—", never NaN.</div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout blue">
         <div class="sl-callout-label">Where this shows up outside the classroom</div>
         <p>This isn't just theoretical: <code>js/gammaGreeks.js</code> elsewhere in this repo computes charm and vanna — real, live Greeks used against options-flow data — from a d₁ built with exactly this <code>(r + 0.5·σ²)</code> term (see its <code>_d1d2</code> helper). The σ²/2 this lesson derives from first principles is the same σ²/2 already running in production code, not a separate academic construct.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="10">
@@ -328,7 +330,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>(dWₜ)² = dt is a quadratic-variation statement about the sum of many squared increments, not a claim about any single random draw.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Itô's Lemma is the same Taylor expansion as ordinary calculus, plus one extra term: df = (f′μ + ½f″σ²)dt + f′σ dWₜ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Applying it to ln Sₜ under GBM derives d(ln Sₜ) = (μ − σ²/2)dt + σ dWₜ — the mechanical, non-arbitrary source of Black-Scholes's σ²/2.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Swapping μ for r produces exactly Black-Scholes's d₂, and shifting by σ√T produces d₁ — the same code path is live today in this repo's own options-Greeks calculator.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Swapping μ for r produces exactly Black-Scholes's d₂, and shifting by σ√T produces d₁<!-- DESK:START --> — the same code path is live today in this repo's own options-Greeks calculator<!-- DESK:END -->.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The correction's sign follows f″, not the log specifically — and it needs a covariance cross-term the moment two correlated processes are involved.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Merton (1969–73) and Black &amp; Scholes (1973) — the step that turns a delta hedge into an option price, and the source of every Greek.</p></div>
       </div>

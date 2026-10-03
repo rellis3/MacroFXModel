@@ -17,7 +17,7 @@
   <h1 class="tl-title">White's Reality Check &amp; Hansen's SPA Test</h1>
   <p class="tl-dek">The Deflated Sharpe Ratio corrects one reported Sharpe for an <em>estimate</em> of how many trials produced it. These two tests skip the estimate entirely — they bootstrap the full return history of every candidate strategy you actually ran, directly against each other.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — this repo's own stationary block bootstrap (<code>statsCore.js</code>) is real, battle-tested machinery, but every use of it in this repo tests ONE strategy/statistic at a time; the one place a best-of-N correction exists (<code>volReversionCore.js</code>, best of 4 horizons) uses a parametric Bonferroni adjustment, not a bootstrap-of-the-max — and a sharper version of this exact problem (best of ~600 configs per pair) is named an unaddressed risk elsewhere in this repo. No White's Reality Check or Hansen's SPA machinery exists anywhere here</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — this repo's own stationary block bootstrap (<code>statsCore.js</code>) is real, battle-tested machinery, but every use of it in this repo tests ONE strategy/statistic at a time; the one place a best-of-N correction exists (<code>volReversionCore.js</code>, best of 4 horizons) uses a parametric Bonferroni adjustment, not a bootstrap-of-the-max — and a sharper version of this exact problem (best of ~600 configs per pair) is named an unaddressed risk elsewhere in this repo. No White's Reality Check or Hansen's SPA machinery exists anywhere here<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a>, <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a></span>
   </div>
@@ -242,7 +242,7 @@
   <div class="tl-math">\[ p_{WRC} = \frac{1 + \#\{b : \bar V^*_b \ge \bar V\}}{1 + B} \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>#{...}</code><span>how many of the B replicates matched or beat the real V̄</span></div>
-    <div class="tl-eq-chip c4"><code>+1 / +1</code><span>the Davison–Hinkley correction — keeps p from reading as exactly 0, the same convention this repo's own block-bootstrap brick (statsCore.js) already uses</span></div>
+    <div class="tl-eq-chip c4"><code>+1 / +1</code><span>the Davison–Hinkley correction — keeps p from reading as exactly 0<!-- DESK:START -->, the same convention this repo's own block-bootstrap brick (statsCore.js) already uses<!-- DESK:END --></span></div>
   </div>
   <p>
     A small \(p_{WRC}\) means the best-of-\(N\) result observed in the real
@@ -586,7 +586,7 @@
       unlikely to be pure best-of-\(N\) luck on <em>this historical sample</em>.
       It says nothing about transaction costs, regime shift, or whether the
       strategy still works on data the whole search never touched at all —
-      this repo's own OOS bar (Lego Principle 5) remains a separate,
+      a genuine out-of-sample bar<!-- DESK:START --> (this repo's own, Lego Principle 5)<!-- DESK:END --> remains a separate,
       still-mandatory hurdle on top of a passed reality check, not a hurdle
       it substitutes for.
     </p>
@@ -598,15 +598,16 @@
       better than nothing," "better than doing nothing active," "better than
       what's already deployed"), and switching the benchmark can flip which
       candidate is even eligible to be the observed maximum. Name the
-      benchmark up front, exactly as this project's own working agreement
-      insists for any claimed improvement.
+      benchmark up front<!-- DESK:START -->, exactly as this project's own working agreement
+      insists for any claimed improvement<!-- DESK:END -->.
     </p>
     <p>
       <strong>Mistaking "not significant" for "definitely fake."</strong> A
       genuinely modest, real edge over a short sample (16 periods, in this
       lesson's own toy panel) can easily fail to clear a bootstrap bar simply
       because there isn't yet enough data for the test to have real
-      statistical power — this is exactly why this repo's own validation rule
+      statistical power — this is exactly why a sound validation rule<!-- DESK:START --> (this
+      repo's own included)<!-- DESK:END -->
       insists on a non-trivial trade count (≥30) before treating an OOS result
       as evidence either way. A null result from a short track record is a
       "not yet distinguishable from noise," not an epitaph.
@@ -629,6 +630,7 @@
     rarely a reason to reach for the older test once SPA is implemented,
     beyond historical continuity or a specific paper's convention.
   </p>
+  <!-- DESK:START -->
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world scenario</div>
@@ -678,6 +680,7 @@
       WRC/SPA-style test of a full candidate panel has not been done.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
