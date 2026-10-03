@@ -10,11 +10,12 @@ import { fileURLToPath } from 'node:url';
 import { stripDesk, deskMarkerProblems } from './deskStrip.js';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'theory-lab');
-// Served only to admins (server.js returns 404 to everyone else), so not checked here.
+// Served only to admins (server.js returns 404 to everyone else), so not checked here;
+// lessons/action-*.html likewise.
 const ADMIN_ONLY = new Set(['market-reading.html', 'capstone-vol.html', 'capstone-macro.html']);
 const pages = [
   ...fs.readdirSync(root).filter(f => f.endsWith('.html') && !ADMIN_ONLY.has(f)),
-  ...fs.readdirSync(path.join(root, 'lessons')).filter(f => f.endsWith('.html')).map(f => 'lessons/' + f),
+  ...fs.readdirSync(path.join(root, 'lessons')).filter(f => f.endsWith('.html') && !f.startsWith('action-')).map(f => 'lessons/' + f),
 ];
 // What counts as the owner's desk, not trading in general.
 const DESK = /\bthis desk\b|\bthe desk['’]s (own|verdicts?|tests?|record|ledger|board|data|systems?|result|finding|prior|pre-?registration)|\bdesk[- ]verdicts?\b|\bdesk (ledger|evidence)\b|\bdesk test\b|\bdesk data\b|data-evidence=|MacroFXModel|desk-verdicts\.json|capstone-board\.json|\.\.\/today\.html|\bour desk\b|\bmy desk\b|\bthis (?:repo|project|codebase)\b|\bthe codebase\b|\bthis project['’]s\b|\bjs\/[\w./-]+\.(?:js|mjs)\b|\b[\w-]+\.py\b|Lego Principle|CLAUDE\.md|\bMEMORY\.md\b/i;

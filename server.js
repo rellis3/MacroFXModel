@@ -34568,8 +34568,9 @@ if (HIDE_DESK_EDUCATION) {
   app.get(EDU_HTML_PAGE_RE, (req, res, next) => {
     if (isEducationAdmin(req)) return next();
     // Pages that are desk material through and through: the drill (the desk's board
-    // history) and the capstone workbenches (the desk's live numbers and verdicts).
-    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro)\.html$/.test(req.path)) {
+    // history), the capstone workbenches (the desk's live numbers and verdicts) and the
+    // owner's "From Analysis to Action" lessons (lessons/action-*).
+    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro|lessons\/action-[^/]+)\.html$/.test(req.path)) {
       return res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
     }
     const file = path.join(__dirname, req.path);
