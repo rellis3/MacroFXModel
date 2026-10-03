@@ -551,9 +551,83 @@ export function evidenceFor(instrument) {
 }
 
 /** Compact text block for an AI prompt. */
+// ─────────────────────────────────────────────────────────────────────────────
+// HOW STRONG IS AN ENTRY, AND HOW MAY IT BE QUOTED
+//
+// WHY THIS EXISTS. On 2026-10-02 I quoted `oi-max-pain` as settled all session --
+// to justify rewriting live code and to tell the owner a live bot's modes were
+// dead. Its entire result text is "Tested properly for the first time 2026-09-10:
+// null.": no sample size, no interval, and a `doc` pointing at a memory note
+// rather than a study. The ledger's `null` covers BOTH that and `news-asymmetry`
+// (656 releases, "Null, and well powered"), and nothing in the data told them
+// apart. The verdict word was doing work the evidence could not support.
+//
+// Prose could not fix this. The owner's objection was exact: every session answers
+// with conviction, and CLAUDE.md gets skimmed. So the fix is not a rule asking
+// anyone to hedge -- it is that THE CONFIDENT PHRASING IS NOT AVAILABLE. Callers
+// do not compose their own wording; they call `citable()` and get a tag that
+// already carries the hedge when the evidence is absent.
+//
+// POWER is opt-IN and deliberately not inferred. An entry is quoted confidently
+// only when someone has READ the study and recorded its n here. Nothing is parsed
+// out of the result prose -- guessing a sample size with a regex is the exact
+// mistake that produced this note (a scan read "5 sessions" and "5 days" as n=5
+// on studies of 84 meetings and 485 trades).
+//
+// An id missing from this map is not a failing entry. It means "nobody has
+// recorded the power yet", and it reads as "single test, power not recorded"
+// until someone does. That default is the safe direction.
+const POWER = {
+  // Verified by reading the entry on 2026-10-03.
+  'gex-range':               { n: '793 NQ days',               note: 'p 0.0008, +0.315 vol-matched, 4/4 specs, 6/6 years, event-day confound closed' },
+  'news-asymmetry':          { n: '656 releases 2016-26',      note: 'the entry states "Null, and well powered"' },
+  'breadth-narrowing':       { n: '35 de-clustered events',    note: '267 controls, 23 years, and the range near-miss dies on its mirror' },
+  'crowded-bond-short-fomc': { n: '84 meetings 2010->',        note: 'CFTC positioning, CI on the consensus-decision cell' },
+  'daily-band-fade':         { n: '485 trades',                note: '25 FX pairs + gold, 2016-2026, costs on, OOS from 2022-06, shuffled-return null' },
+  'curve-inversion':         { n: '10 episodes',               note: '12,581 daily obs collapsed to episodes; leave-one-out passed, the MIRROR killed it' },
+  'priced-in':               { n: '85 FOMC decision days',     note: 'terciles of prior 20-session |d2Y|, four instruments' },
+  'rotation-extreme':        { n: '140 extremes',              note: 'forward 20-session range with CIs' },
+  'cb-tone-direction':       { n: '82 meetings',               note: 'first-30-min reaction vs next-day; priced inside 30 minutes (t 2.04)' },
+  'narrow-day-expansion':    { n: '~2,490 sessions x 8 instruments', note: 'matched days, every CI across zero' },
+  'yield-move-fx-range':     { n: '260 de-clustered setups',   note: 'from 1,915 top-decile DGS10 days, 2010-2026, pre-registered POSITIVE' },
+  'fear-gold':               { n: '58 VIX spikes 2010-2026',   note: 'excess +0.07% [-0.42, +0.30]' },
+  'analogue-weeks':          { n: '400 weeks walk-forward',    note: 'beaten by the unconditional base rate' },
+  'month-end-rebalance':     { n: '229 months 2007-2026',      note: 'quintiles with CIs' },
+  'zone-engine':             { n: '83k trades (M30)',          note: 'negative in both halves; H4 a coin flip' },
+  'funding-stress':          { n: '21 episodes (S2)',          note: 'S1 left 15 episodes and was declared UNTESTABLE against a pre-registered floor of 20' },
+};
+
+const TAG = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
+
+/**
+ * How this entry may be spoken about.
+ *
+ *   tag     what goes in the prompt, hedge included when the power is unrecorded
+ *   strong  true only when someone has read the study and recorded an n
+ *   power   the recorded sample, or null
+ *
+ * Every prompt builder goes through this. A caller that writes its own tag is a
+ * caller that can over-claim, which is the whole thing this prevents.
+ */
+export function citable(e) {
+  const base = TAG[e?.verdict] ?? String(e?.verdict ?? '').toUpperCase();
+  const pw = POWER[e?.id] ?? null;
+  // A `doc` that is a memory note rather than a file is not a study on disk.
+  const docIsStudy = typeof e?.doc === 'string' && !/^\s*memory[:\s]/i.test(e.doc);
+  if (pw) return { tag: `${base}, n=${pw.n}`, strong: true, power: pw, docIsStudy };
+  return {
+    tag: `${base} — single test, power not recorded${docIsStudy ? '' : ', no study doc'}`,
+    strong: false, power: null, docIsStudy,
+  };
+}
+
+/** Ids with no recorded power — the backlog this map is meant to shrink. */
+export function unrecordedPower(list = DESK_EVIDENCE) {
+  return list.filter(e => !POWER[e.id]).map(e => e.id);
+}
+
 export function evidenceForPrompt(list = DESK_EVIDENCE) {
-  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
-  return list.map(e => `- [${tag[e.verdict] ?? e.verdict.toUpperCase()}, ${e.date}] ${e.claim}. ${e.result} USE: ${e.use}`).join('\n');
+  return list.map(e => `- [${citable(e).tag}, ${e.date}] ${e.claim}. ${e.result} USE: ${e.use}`).join('\n');
 }
 
 /**
@@ -570,6 +644,5 @@ export function evidenceForPrompt(list = DESK_EVIDENCE) {
  * one failure mode worse than a long prompt.
  */
 export function evidenceBrief(list = DESK_EVIDENCE) {
-  const tag = { validated: 'VALIDATED', null: 'TESTED NULL', context: 'BASE RATE', underpowered: 'UNDERPOWERED' };
-  return list.map(e => `- [${tag[e.verdict] ?? e.verdict.toUpperCase()}] ${e.claim} -> ${e.use}`).join('\n');
+  return list.map(e => `- [${citable(e).tag}] ${e.claim} -> ${e.use}`).join('\n');
 }
