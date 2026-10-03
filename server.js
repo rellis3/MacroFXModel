@@ -163,6 +163,7 @@ import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageW
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
 import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
+import { stripDesk as _stripDesk } from './js/deskStrip.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
 import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
@@ -673,6 +674,20 @@ function stripMicroEducationUI(html, isHub) {
 // daily reading runs off those and must keep working when this page is down.
 const HIDE_DRILL_PRACTICE = (process.env.HIDE_DRILL_PRACTICE ?? process.env.DRILL_HIDE ?? '0') !== '0';
 const DRILL_PRACTICE_PAGE_RE = /^\/theory-lab\/market-reading\.html$/;
+
+// ── Desk material in the Theory Lab (admin-only) ─────────────────────────────
+// The Theory Lab is shared with other people; the owner's own desk material — its
+// tested verdicts, its own record and systems, its live board data — is wrapped in
+// <!-- DESK:START/END --> in the pages (js/deskStrip.js) and stripped for every
+// education session that is not role=admin. The owner, signed in with
+// EDUCATION_ADMIN_PASSWORD, sees the full curriculum at the same address. The
+// desk-data routes (/theory-lab/desk-verdicts.json, /theory-lab/capstone-board.json)
+// and the drill (Reading the Tape, built from the desk's board) are admin-only too.
+// Not gated on AUTH_ENABLED, like the drill switch: with no passwords configured
+// nobody is admin, so local runs show the shareable version; set
+// HIDE_DESK_EDUCATION=0 to see everything without logging in.
+const HIDE_DESK_EDUCATION = (process.env.HIDE_DESK_EDUCATION ?? '1') !== '0';
+const EDU_HTML_PAGE_RE = /^\/theory-lab\/(?:[^/]+|lessons\/[^/]+)\.html$/;
 const DRILL_HUB_BLOCK_RE = /<!-- DRILL:START -->[\s\S]*?<!-- DRILL:END -->\n?/g;
 
 // ── Institutional Methods (admin-only category set) ─────────────────────────
@@ -34507,6 +34522,53 @@ app.use(requireAuth);
 const HUB_CRUMB_RE = /<div class="tl-crumb">Theory Lab<\/div>/;
 const HUB_CRUMB_WITH_LOGOUT = '<div class="tl-crumb" style="display:flex;justify-content:space-between;align-items:center">Theory Lab<a href="/logout?zone=education" style="color:var(--text3);text-decoration:none;border-bottom:1px dashed var(--border2)">Log out</a></div>';
 
+// The per-request rewrites of a Theory Lab page, in one place so the desk strip below
+// and the micro/institutional/drill handler apply exactly the same ones.
+function educationPageTransforms(req, html, isHub) {
+  const isAdmin = isEducationAdmin(req);
+  const isLessonOrHub = MICRO_LESSON_PAGE_RE.test(req.path);
+
+  if (HIDE_MICRO_EDUCATION && !isAdmin && isLessonOrHub) html = stripMicroEducationUI(html, isHub);
+
+  if (isHub && AUTH_ENABLED && HIDE_INSTITUTIONAL_METHODS && !isAdmin) {
+    html = html.replace(INSTITUTIONAL_HUB_BLOCK_RE, '');
+  }
+
+  // Not gated on AUTH_ENABLED: with no passwords configured isEducationAdmin is
+  // false anyway, so the switch still works locally instead of silently no-opping.
+  // The drill is built from the desk's own board, so the desk switch hides it too.
+  if (isHub && (HIDE_DRILL_PRACTICE || HIDE_DESK_EDUCATION) && !isAdmin) {
+    html = html.replace(DRILL_HUB_BLOCK_RE, '');
+  }
+
+  if (HIDE_DESK_EDUCATION && !isAdmin) html = _stripDesk(html);
+
+  if (isHub && AUTH_ENABLED) {
+    html = html.replace(HUB_CRUMB_RE, HUB_CRUMB_WITH_LOGOUT);
+  }
+  return html;
+}
+
+// Every Theory Lab page for a non-admin reader goes through the same rewrites, so no
+// desk block survives on any page (lessons, visual guides, hub, stories, paths,
+// capstones). Admins fall through to the handlers below / static files unchanged.
+if (HIDE_DESK_EDUCATION) {
+  app.get(EDU_HTML_PAGE_RE, (req, res, next) => {
+    if (isEducationAdmin(req)) return next();
+    // Pages that are desk material through and through: the drill (the desk's board
+    // history) and the capstone workbenches (the desk's live numbers and verdicts).
+    if (/^\/theory-lab\/(?:market-reading|capstone-vol|capstone-macro)\.html$/.test(req.path)) {
+      return res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
+    }
+    const file = path.join(__dirname, req.path);
+    if (!file.startsWith(path.join(__dirname, 'theory-lab') + path.sep)) return next();
+    fs.readFile(file, 'utf8', (err, html) => {
+      if (err) return next();
+      res.type('html').send(educationPageTransforms(req, html, req.path === '/theory-lab/hub.html'));
+    });
+  });
+}
+
 if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
   app.get(MICRO_LESSON_PAGE_RE, (req, res, next) => {
     const isHub = req.path === '/theory-lab/hub.html';
@@ -34517,25 +34579,7 @@ if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
     fs.readFile(path.join(__dirname, req.path), 'utf8', (err, html) => {
       if (err) return next();
 
-      const isAdmin = isEducationAdmin(req);
-
-      if (HIDE_MICRO_EDUCATION && !isAdmin) html = stripMicroEducationUI(html, isHub);
-
-      if (isHub && AUTH_ENABLED && HIDE_INSTITUTIONAL_METHODS && !isAdmin) {
-        html = html.replace(INSTITUTIONAL_HUB_BLOCK_RE, '');
-      }
-
-      // Not gated on AUTH_ENABLED: with no passwords configured isEducationAdmin is
-      // false anyway, so the switch still works locally instead of silently no-opping.
-      if (isHub && HIDE_DRILL_PRACTICE && !isAdmin) {
-        html = html.replace(DRILL_HUB_BLOCK_RE, '');
-      }
-
-      if (isHub && AUTH_ENABLED) {
-        html = html.replace(HUB_CRUMB_RE, HUB_CRUMB_WITH_LOGOUT);
-      }
-
-      res.type('html').send(html);
+      res.type('html').send(educationPageTransforms(req, html, isHub));
     });
   });
 }
@@ -34569,6 +34613,7 @@ if (HIDE_DRILL_PRACTICE) {
 // main-zone; only the requested ids and only the public fields go out -- never
 // the ledger's `doc` paths or its prompt-facing `use` directives.
 app.get('/theory-lab/desk-verdicts.json', (req, res) => {
+  if (HIDE_DESK_EDUCATION && !isEducationAdmin(req)) return res.status(404).json({ error: 'not found' });
   const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
   const entries = {};
   for (const e of _DESK_EVIDENCE) {
@@ -34664,7 +34709,8 @@ app.put('/theory-lab/progress-sync/:code', async (req, res) => {
 // reloading cannot cost anything. Every value carries its own date and the value
 // five observations earlier; anything not cached yet is null and the page falls back
 // to a fill-in template. No series ids, keys or store names go out.
-app.get('/theory-lab/capstone-board.json', async (_req, res) => {
+app.get('/theory-lab/capstone-board.json', async (req, res) => {
+  if (HIDE_DESK_EDUCATION && !isEducationAdmin(req)) return res.status(404).json({ error: 'not found' });
   const last = (arr, back = 0) => {               // arr: [{date, value}] oldest first
     let seen = 0;
     for (let i = (arr?.length ?? 0) - 1; i >= 0; i--) {
