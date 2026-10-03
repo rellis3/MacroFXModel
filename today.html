@@ -8754,6 +8754,14 @@ function booksCardHtml() {
   const DP = { cpi: ['cpi.html', 'CPI / inflation'], employment: ['labor-market.html', 'Labour market'], gdp: ['gdp.html', 'GDP / growth'], pmi: ['ism.html', 'Business activity'] };
   const due = new Map(); for (const e of (events ?? []).filter(e => e.ms > nowMs && e.ms < nowMs + 72 * 3600e3 && (e.impact ?? '').toLowerCase() === 'high')) { const fam = _tlFam(e.event); if (DP[fam] && !due.has(fam)) due.set(fam, e); }
   for (const [fam, e] of due) { const [href, name] = DP[fam]; row(href, '📈', `${name} — due`, `${esc0(e.country)} ${esc0(e.event)} ${new Date(e.ms).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}${e.estimate != null ? ` · ${esc0(e.estimate)} expected` : ''}${nowcastFor(e.country, e.event, e.ms) ? ` · model ${esc0(nowcastFor(e.country, e.event, e.ms).value)}` : ''}`, 'the series, the trend, the last prints'); }
+  // fade vs continue at the lines: the nightly reads, the 3D surfaces, the forward test and the research behind them
+  (() => {
+    const g = _lsReads?.global, c = g?.tags?.counts, cr = g?.crossAsset;
+    row('daily-read.html', '📰', 'Daily Read', c ? `lines: <b>${c.continue ?? 0}</b> CONTINUE · ${c.fair ?? 0} FAIR · <b>${c.exhaust ?? 0}</b> EXHAUST` : 'tomorrow\'s lines tagged, yesterday scored, one lesson', 'are the lines too tight or too wide today — implied vol vs the lines\' own σ, scored every night');
+    row('surface-lab.html', '🧊', 'Surface Lab', cr ? `one trade = <b>${Math.round(cr.pc1 * 100)}%</b> of cross-asset movement · curve ${esc0(g.rates?.regime ?? '–')}` : 'FX as one trade, persistence, vol time, the curve', 'live 3D surfaces in COG\'s style: whole systems at once, rebuilt every 12 h');
+    row('paper-record.html', '📒', 'Rich-Vol Break Record', 'the one rule that passed, forward-tested', 'every break logged with its context (tag, persistence, dollar share) to test what helps');
+    row('exhaustion-surface.html', '🧱', 'Exhaustion research', 'why fade vs continue is decided before the open', 'the line-calibration surface: lines too tight on rich-option days, too wide on cheap ones');
+  })();
   // positioning and walls
   row('oi-dashboard.html', '◆', 'Open interest', 'dealer walls, gamma, the hold calendar per instrument', 'where the options market has drawn its lines');
   row('cot-extremes.html', '🎯', 'COT extremes', 'crowded positioning by currency', 'descriptive — tested here, no directional record');
