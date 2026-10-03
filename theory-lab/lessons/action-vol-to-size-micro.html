@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>From a Volatility Forecast to a Position Size — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .vs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  .vs-table th,.vs-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .vs-table th{color:var(--text3);font-weight:500;font-size:11px}
+  .vs-table td:first-child,.vs-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .vs-steps{font-family:'DM Mono',monospace;font-size:13px;line-height:1.75;color:var(--text2)}
+  .vs-steps b{color:var(--text)}
+  .vs-flag{margin-top:8px;font-size:13px;padding:6px 10px;border-radius:6px;background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)}
+  .vs-flag:empty{display:none}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">From a Volatility Forecast to a Position Size — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Want the multi-day GARCH maths, the full instrument-aware sizer with a lots-versus-volatility chart, and a 6-question self-test?<a href="action-vol-to-size.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 5 of 8</div>
+      <h1 class="sl-h1">From a Volatility Forecast <em>to a Position Size</em></h1>
+      <p class="sl-lede">GARCH says tomorrow's EUR/USD volatility is 0.40%. So what? Here's how that number becomes pips, a stop and a lot size, by two standard routes, and where both go wrong.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">From the Turtles' N to volatility targets</h2>
+      <p class="sl-sub">Turtle rules (1983); RiskMetrics (J.P. Morgan, 1994); GARCH (1986) and HAR (2009) as forecasts; volatility-targeted funds</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>The Turtle rules defined N, an average of the daily true range. Each unit was sized so a one-N move cost 1% of the account, with the stop at 2N. Quiet market, more contracts; wild market, fewer; same dollars at risk.</p>
+        <p>RiskMetrics published a daily volatility for risk limits. GARCH and HAR sharpened the forecast. Managed-futures and risk-parity funds run whole books at a target volatility.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> turn "how much will this move?" into "how many lots?"</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Units first: percent → pips</h2>
+      <div class="sl-row"><div class="sl-box">σ pips = σ% ÷ 100 × price ÷ pip size</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it: EUR/USD at 1.0850</div>
+        <div class="sl-sliderhead"><span>Forecast daily vol</span><span class="sl-live" id="u-sd-val">0.40%</span></div>
+        <input type="range" class="sl-slider" id="u-sd" min="0.1" max="1.5" step="0.01" value="0.40">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">σ in pips</div><div class="sl-calc-result-val" id="u-pips">43.4</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Typical day ≈ 1.6σ (≈ ATR)</div><div class="sl-calc-result-val" id="u-range">69</div></div>
+        </div>
+        <div class="sl-note">A HAR model forecasts <em>variance</em>: 0.16 (%²) → σ = √0.16 = 0.40%. A random walk's expected daily high-to-low is √(8/π)·σ ≈ 1.6σ. If that's far from the ATR, a unit is wrong.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Longer trades: add variances, let shocks fade</h2>
+      <p class="sl-p">GARCH pulls the forecast back toward its long-run level at the rate φ = α + β. Over h days, sum each day's variance.</p>
+      <table class="vs-table">
+        <tr><th>10-day vol, from 0.80% today</th><th>result</th></tr>
+        <tr><td>Naive: √10 × 0.80%</td><td>2.53%</td></tr>
+        <tr><td>GARCH, fading to 0.50% (φ = 0.97)</td><td>2.43%</td></tr>
+        <tr><td>Long-run only: √10 × 0.50%</td><td>1.58%</td></tr>
+      </table>
+      <div class="sl-quote">A one-day σ for a three-week trade puts the stop inside the noise of the holding period. Match the forecast to how long you'll hold.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Two routes to a size</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">A · per-trade risk</span><p>Stop = k·σ (pips). Lots = money at risk ÷ (stop × pip value). Caps the loss <em>if the stop is hit</em>.</p></div>
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">B · volatility target</span><p>Annual σ = daily × √252. Notional = target vol × equity ÷ annual σ, under a leverage cap. Fixes the position's <em>typical swing</em>.</p></div>
+      </div>
+      <div class="sl-callout amber"><div class="sl-callout-label">Use one, not both</div><p>A k·σ stop plus a risk budget that also shrinks with volatility gives size ∝ 1/σ². Volatility doubles and the position quarters.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The sizer</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it: EUR/USD 1.0850, $100,000, $10 per pip per lot</div>
+        <div class="sl-sliderhead"><span>Forecast daily vol</span><span class="sl-live" id="z-sd-val">0.40%</span></div>
+        <input type="range" class="sl-slider" id="z-sd" min="0.05" max="2" step="0.01" value="0.40">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>A · stop multiple k</span><span class="sl-live" id="z-k-val">2.0σ</span></div>
+        <input type="range" class="sl-slider" id="z-k" min="0.5" max="4" step="0.1" value="2">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>A · money at risk</span><span class="sl-live" id="z-r-val">$500</span></div>
+        <input type="range" class="sl-slider" id="z-r" min="100" max="2000" step="50" value="500">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>B · target annual vol</span><span class="sl-live" id="z-tv-val">5.0%</span></div>
+        <input type="range" class="sl-slider" id="z-tv" min="1" max="20" step="0.5" value="5">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>B · leverage cap</span><span class="sl-live" id="z-cap-val">5×</span></div>
+        <input type="range" class="sl-slider" id="z-cap" min="0.5" max="10" step="0.5" value="5">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">A · stop</div><div class="sl-calc-result-val" id="z-stop">87 pips</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">A · lots</div><div class="sl-calc-result-val" id="z-la">0.57</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">B · lots</div><div class="sl-calc-result-val" id="z-lb">0.72</div></div>
+        </div>
+        <div class="sl-calc-steps" id="z-steps"></div>
+        <div class="vs-flag" id="z-flag"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · Worked example</div>
+      <h2 class="sl-h2">HAR forecast → 0.57 lots</h2>
+      <div class="vs-steps">
+        <div>HAR variance <b>0.16</b> → σ = <b>0.40%</b> → 0.0040 × 1.0850 = <b>43.4 pips</b> (1.6σ ≈ 69 ≈ ATR 65 ✓).</div>
+        <div>A: stop 2σ = 86.8 → <b>87 pips</b>; $500 ÷ (87 × $10) = 0.575 → <b>0.57 lots</b> ($495.90).</div>
+        <div>Volatility doubles to 0.80%: stop <b>174 pips</b> → <b>0.28 lots</b> ($487.20). Same budget, half the size.</div>
+        <div>B: 0.40% × √252 = <b>6.35%</b>; 5% × $100,000 ÷ 6.35% = <b>$78,743</b> ÷ $108,500 per lot → <b>0.72 lots</b>.</div>
+      </div>
+      <p class="sl-p">A caps the loss at the stop. B sets a typical yearly swing of about $5,000. Stop-and-target trade → A. Held exposure with no natural stop → B.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Where Kelly fits</h2>
+      <div class="sl-row"><div class="sl-box">Kelly leverage f* = μ / σ² → position vol f*·σ = μ/σ = Sharpe</div></div>
+      <p class="sl-p"><strong>Full Kelly is a volatility target equal to your Sharpe ratio.</strong> An honest Sharpe of 0.5 means 50% volatility at full Kelly, 25% at half. A 5–10% target is a small fraction, on purpose: Sharpe estimates run high, and past Kelly, risk rises while growth falls. More in <a href="kelly-criterion-micro.html">the Kelly guide</a>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">5 February 2018: "Volmageddon"</h2>
+      <p class="sl-p">2017 was one of the calmest years on record for US stocks. Inverse-VIX products had grown large, and positions were sized from a long run of quiet trailing volatility.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">The day</span><p>The VIX more than doubled in one session, its largest one-day percentage rise on record. Credit Suisse's XIV lost almost all its value and was terminated.</p></div>
+        <div class="sl-ccard green"><span class="sl-ctag green">The lesson</span><p>Trailing-vol sizing is largest when the past is calmest, and learns of the shock after it lands. Cap leverage, floor the forecast, check implied.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The chain</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Volatility jumps</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The forecast</b>GARCH / HAR raise σ̂</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · σ̂ → lots</b>Stop = k·σ̂; lots = risk ÷ (stop × pip value), or target ÷ σ̂</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The position</b>Fewer lots, same dollars at risk</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A bad day costs what was planned</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Pace persists.</strong> A slow 15 minutes is followed by a slow hour, a fast one by a fast hour: monotonic in 68 of 68 cells across 17 pairs. That's why a volatility forecast is worth sizing on. Not a direction.</span></div>
+      <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Implied far above realised → wider, not calmer.</strong> Top-decile VIX ÷ realised (88 first days): NAS100 next-5 +0.38 ATR [+0.11, +0.62]; SPX500 next-20 +0.67 [+0.13, +1.21]. A calm trailing forecast can understate.</span></div>
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"Volatility targeting adds return."</strong> Not tested here. Published evidence is mixed: gains in Moreira &amp; Muir (2017), harder to capture out of sample in later work. The risk-control case stands either way.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · Template</div>
+      <h2 class="sl-h2">Before you size</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Forecast + horizon</h4><p>Matched to the holding period.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Units</h4><p>√variance; % → price → pips; × √252, never × 252.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>ATR check</h4><p>1.6σ near the ATR?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>One route</h4><p>A or B, not both.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>Floor + cap</h4><p>Forecast ≥ half long-run; leverage limit; check implied.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">6</div><div><h4>Gap line + Kelly</h4><p>Loss on a jump past the stop; position vol a small fraction of your Sharpe.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>HAR outputs 0.25 (%²). What σ goes into the sizer?</h4>
+        <button class="sl-quiz-opt">0.25%</button>
+        <button class="sl-quiz-opt" data-correct="true">0.50%</button>
+        <button class="sl-quiz-opt">0.0625%</button>
+        <div class="sl-quiz-explain">√0.25 = 0.50%. Using 0.25% halves the stop and doubles the size.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>0.80% daily volatility, annualised?</h4>
+        <button class="sl-quiz-opt">201.6%</button>
+        <button class="sl-quiz-opt" data-correct="true">12.7%</button>
+        <button class="sl-quiz-opt">5.7%</button>
+        <div class="sl-quiz-explain">0.80 × √252 = 12.70%. Variance adds over days; volatility grows with the square root.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Stop at 2σ, and you also halve the risk budget when volatility doubles. Volatility doubles. Size becomes…</h4>
+        <button class="sl-quiz-opt">Half</button>
+        <button class="sl-quiz-opt" data-correct="true">A quarter</button>
+        <button class="sl-quiz-opt">Unchanged</button>
+        <div class="sl-quiz-explain">Wider stop halves it; smaller budget halves it again. Size ∝ 1/σ², usually by accident.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Honest Sharpe 0.4. A 10% volatility target is what fraction of Kelly?</h4>
+        <button class="sl-quiz-opt">Full Kelly</button>
+        <button class="sl-quiz-opt">Half Kelly</button>
+        <button class="sl-quiz-opt" data-correct="true">A quarter Kelly</button>
+        <div class="sl-quiz-explain">Full-Kelly volatility = Sharpe = 40%. 10 ÷ 40 = a quarter.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Units first: σ pips = σ% × price ÷ pip. ATR ≈ 1.6σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>A: stop = k·σ; lots = risk ÷ (stop × pip value). B: notional = target vol × equity ÷ annual σ.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Multi-day: add variances and let shocks fade. One route only.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Full Kelly = a volatility target equal to your Sharpe. Stay well under it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Cap leverage, floor the forecast, check implied. Desk data: high implied over realised was followed by wider ranges. Volatility targeting's return effect is not tested here.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Scoring Your Own Calls</h3>
+        <p>Calibration, the Brier score and reliability diagrams: how to make your decision journal measurable.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-calibration-scoring-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="action-vol-to-size.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="action-edge-after-costs-micro.html">← Previous: Does the Edge Survive Costs?</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  var PRICE = 1.0850, PIP = 0.0001, PV = 10, EQ = 100000, LOT = 100000 * PRICE;
+
+  // Slide 3: units.
+  (function(){
+    function render(){
+      var sd = +$('u-sd').value, pips = sd / 100 * PRICE / PIP;
+      $('u-sd-val').textContent = sd.toFixed(2) + '%';
+      $('u-pips').textContent = pips.toFixed(1);
+      $('u-range').textContent = (Math.sqrt(8 / Math.PI) * pips).toFixed(0);
+    }
+    $('u-sd').addEventListener('input', render); render();
+  })();
+
+  // Slide 6: the sizer.
+  (function(){
+    var ids = ['z-sd', 'z-k', 'z-r', 'z-tv', 'z-cap'];
+    function render(){
+      var sd = +$('z-sd').value, k = +$('z-k').value, risk = +$('z-r').value, tv = +$('z-tv').value, cap = +$('z-cap').value;
+      $('z-sd-val').textContent = sd.toFixed(2) + '%';
+      $('z-k-val').textContent = k.toFixed(1) + 'σ';
+      $('z-r-val').textContent = '$' + risk.toLocaleString('en-US');
+      $('z-tv-val').textContent = tv.toFixed(1) + '%';
+      $('z-cap-val').textContent = cap + '×';
+      var pips = sd / 100 * PRICE / PIP, stop = Math.round(k * pips);
+      var la = stop > 0 ? Math.floor(risk / (stop * PV) * 100 + 1e-9) / 100 : 0;
+      var ann = sd * Math.sqrt(252), notional = tv / ann * EQ, capped = notional > cap * EQ;
+      if (capped) notional = cap * EQ;
+      var lb = Math.floor(notional / LOT * 100 + 1e-9) / 100;
+      $('z-stop').textContent = stop + ' pips';
+      $('z-la').textContent = la.toFixed(2);
+      $('z-lb').textContent = lb.toFixed(2);
+      $('z-steps').innerHTML = '<div>σ = <b>' + pips.toFixed(1) + ' pips</b> · A: loss at stop <b>$' + (la * stop * PV).toFixed(2) + '</b></div>' +
+        '<div>B: annual σ <b>' + ann.toFixed(2) + '%</b> → notional <b>$' + Math.round(notional).toLocaleString('en-US') + '</b> (' + (notional / EQ).toFixed(2) + '×)</div>';
+      $('z-flag').textContent = capped ? 'B hit the leverage cap. Uncapped, this calm forecast would run ' + (tv / ann).toFixed(1) + '× leverage.' : '';
+    }
+    ids.forEach(function(id){ $(id).addEventListener('input', render); });
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

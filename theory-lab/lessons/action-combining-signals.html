@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Combining Signals That Disagree — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .cs-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .cs-table th,.cs-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace;vertical-align:top}
+  .cs-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .cs-table td:first-child,.cs-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  @media (max-width:480px){.cs-table th,.cs-table td{padding:5px 4px;font-size:12px}}
+  .cs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  .cs-svg{width:100%;height:auto;display:block}
+  .cs-sigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  @media (max-width:640px){.cs-sigs{grid-template-columns:1fr}}
+  .cs-sig{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .cs-sig-head{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+  .cs-sig-head .tl-scratch-input{flex:1;min-width:0}
+  .cs-sig select{background:var(--s1);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12.5px;padding:6px 6px;min-height:34px}
+  .cs-sig .tl-control{min-width:0;margin-top:6px}
+  .cs-verdict{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:12px;padding:12px 14px;border-radius:10px;border:1px solid var(--border);background:var(--s2)}
+  .cs-verdict-tag{font-family:'DM Mono',monospace;font-weight:700;font-size:15px;padding:4px 12px;border-radius:20px;border:1px solid}
+  .cs-verdict-tag.long{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+  .cs-verdict-tag.short{color:var(--red);background:var(--red-bg);border-color:var(--red-bd)}
+  .cs-verdict-tag.none{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd)}
+  .cs-verdict-why{font-size:13px;color:var(--text2);flex:1;min-width:200px}
+  .cs-warn{font-size:12px;color:var(--amber);margin-top:8px}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / Combining Signals That Disagree</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 3 of 8</div>
+  <h1 class="tl-title">Combining Signals That Disagree</h1>
+  <p class="tl-dek">Three indicators say long, two say short. The vote says long. The honest answer may be "no view". This lesson turns five readings into one number you can act on, without counting the same opinion three times.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~22 min read</span>
+    <span>Prereqs: <a href="primer-correlation-regression.html">Correlation &amp; Regression</a> (helpful); <a href="action-expected-value.html">Thinking in Expected Value</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-combining-signals-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Correlated signals are not separate votes.</strong> Three trend indicators that move together with correlation 0.8 carry the information of about 1.15 independent signals, not 3: \(N_{\text{eff}} = N/(1+(N-1)\rho)\).</li>
+      <li><strong>Weight by track record, then shrink it.</strong> A measured hit rate or correlation with returns (IC) from a short record is mostly noise. Pull it toward zero by \(\tau^2/(\tau^2 + 1/n)\): with 50 observations you keep about a ninth of it, with 400 about half.</li>
+      <li><strong>The honest combination is a regression, not a vote:</strong> weights \(w = R^{-1}\,\text{IC}\) undo the double-counting. On this lesson's EUR/USD example the vote says long 3–2, the score sum says long, and the correlation-aware, shrunk combination says a 50.6% lean short — no view.</li>
+      <li><strong>"No view" is an output, not a failure.</strong> Write the rule in advance: no trade if the combined score is under one standard deviation, if the expected move does not clear twice the cost, or if none of the signals has a record.</li>
+      <li><strong>The desk's own test:</strong> agreement across three macro domains did <em>not</em> predict forward direction (77 episodes, 2009–2026); two genuinely different yield-spread signals with a 0.30 correlation <em>did</em> combine into a better book than either alone.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    By the time you sit down to decide, the analysis is done. You have a momentum reading, a
+    moving-average cross, a breakout, a yield-spread z-score and a positioning number. Some point
+    one way, some the other. The previous lesson, <a href="action-expected-value.html">Thinking in
+    Expected Value</a>, showed how to turn <em>one</em> view into a probability and a payoff. This
+    one is the step before that: getting from five readings to one view without fooling yourself.
+  </p>
+  <p>
+    The two classic mistakes are mirror images. The first is <strong>counting votes</strong>:
+    three of five say long, so go long — even though the three are the same idea measured three
+    ways. The second is <strong>believing the loudest record</strong>: one indicator had a
+    great last year, so it gets all the weight — even though a year is a few dozen
+    observations. The tools that fix both already live elsewhere in this curriculum:
+    <a href="primer-correlation-regression.html">correlation and regression</a>,
+    <a href="institutional-ledoit-wolf-shrinkage.html">shrinkage</a>,
+    <a href="hierarchical-bayesian-models.html">partial pooling</a> and the
+    <a href="active-portfolio-management.html">fundamental law of active management</a>. Here
+    they are put to work on one decision.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Five friends who all read the same newspaper</h3>
+    <p>
+      You ask five friends whether it will rain. Three say yes. Before you take an umbrella, you
+      notice those three all read the same morning paper, and the paper said "rain likely". That is
+      one opinion repeated three times, not three opinions. The other two friends — one who looked at
+      the sky, one who checked a barometer — are each giving you something new.
+    </p>
+    <p style="margin-bottom:0">
+      Now suppose the barometer friend has been right far more often than the paper over years, and
+      the sky-watcher only started last week. You would lean on the barometer, give the paper about
+      one friend's worth of weight however many people repeat it, and mostly ignore the sky-watcher
+      until he has a record. If, after all that, the evidence points nowhere in particular, the right
+      answer is "I don't know" — and you take the umbrella or not on other grounds.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>From "weigh the indicators in your head" to a formula</h3>
+    <div class="tl-origin-who">Signal combination · into active management via Grinold's fundamental law (1989) and Grinold &amp; Kahn's alpha recipe (1995)</div>
+    <p>For most of trading's history, combining indicators was a judgement call: a discretionary trader looked at the screens and "weighed it all up". The problem was invisible until someone tried to measure it. In 1989 Richard Grinold published the fundamental law of active management: the quality of a strategy grows with the skill of each forecast (its information coefficient, IC) times the square root of <em>breadth</em> — the number of <em>independent</em> bets. The word "independent" carries the whole lesson: ten correlated signals are not ten bets.</p>
+    <p>Grinold and Ronald Kahn's book <em>Active Portfolio Management</em> (1995) turned it into a desk recipe: express every signal as a standardised score, convert it to a forecast as volatility × IC × score, and combine several signals with weights that account for how they correlate. Systematic equity and macro managers built their multi-signal models this way. The underlying idea of blending forecasts rather than picking one goes back to Bates and Granger's 1969 work on combining economic forecasts.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Several readings disagree: what is the one forecast they add up to, and is it strong enough to act on?</dd>
+        <dt>Takes in</dt><dd>Standardised signals with track records and their correlations (<a href="primer-correlation-regression.html">Correlation &amp; Regression</a>, <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Shrinkage</a>).</dd>
+        <dt>Hands on to</dt><dd>A cost check and a size (<a href="action-edge-after-costs.html">Does the Edge Survive Costs?</a>, <a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a>).</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Put every signal on the same scale</h3>
+  <p>
+    A momentum reading in pips, a yield spread in basis points and a positioning number in
+    contracts cannot be added. Convert each to a <strong>score</strong> \(s_i\): how many of its
+    own standard deviations it sits from its usual level, signed so that positive means "long".
+    A score of +1.5 means "unusually bullish for this indicator"; 0 means "nothing to say".
+  </p>
+  <p>
+    Each signal also has a <strong>track record</strong>: its information coefficient
+    \(\text{IC}_i\), the correlation between its past scores and the returns that followed. Real
+    trading signals have small ICs. Practitioners treat something around 0.05 as a good signal and
+    above 0.10 as rare. That smallness is the reason this lesson exists: with ICs this low, how you
+    combine matters as much as what you combine.
+  </p>
+
+  <h3>2. Correlated signals: the effective number</h3>
+  <p>
+    If \(N\) standardised signals all have the same pairwise correlation \(\rho\), the variance of
+    their average is \((1 + (N-1)\rho)/N\). An average of truly independent signals would have
+    variance \(1/N_{\text{eff}}\). Setting the two equal gives the effective number of signals:
+  </p>
+  <div class="tl-math">
+    \[ N_{\text{eff}} = \frac{N}{1 + (N-1)\,\rho} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">N</div><div class="tl-fp-name">What you count</div><div class="tl-fp-desc">The number of indicators on your screen</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">ρ</div><div class="tl-fp-name">How alike they are</div><div class="tl-fp-desc">The average correlation between their scores</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">N<sub>eff</sub></div><div class="tl-fp-name">What you really have</div><div class="tl-fp-desc">Independent opinions' worth — never more than 1/ρ, however many you add</div></div>
+  </div>
+  <p>
+    Three trend indicators with \(\rho = 0.8\): \(N_{\text{eff}} = 3/(1 + 2 \times 0.8) = 3/2.6 =
+    1.15\). Add a fourth and a fifth trend indicator and you reach only \(5/4.2 = 1.19\). As
+    \(N\) grows, \(N_{\text{eff}}\) creeps toward \(1/\rho = 1.25\) and stops. Adding more of the
+    same kind of indicator makes a screen look more convincing without making it more informative.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">How many opinions do you really have?</div>
+    <svg id="ne-svg" class="cs-svg" viewBox="0 0 640 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Effective number of signals against the number of signals, for the chosen correlation. The dashed diagonal shows what you would have if the signals were independent; the curve flattens toward one over the correlation.">
+      <g id="ne-g"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Signals on your screen N</span><span class="tl-live" id="ne-n-val">5</span></div>
+        <input type="range" id="ne-n" min="1" max="20" step="1" value="5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Average correlation ρ</span><span class="tl-live" id="ne-r-val">0.80</span></div>
+        <input type="range" id="ne-r" min="0" max="0.95" step="0.05" value="0.8">
+      </div>
+    </div>
+    <div class="tl-readout" id="ne-readout"></div>
+    <div class="tl-chart-caption">\(N_{\text{eff}} = N/(1+(N-1)\rho)\), exact when every pair has the same correlation and a fair rough guide otherwise. The dashed line is what you would have if the signals were independent. The gap is how much louder the screen sounds than it is.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you ask the same question to three copies of the same parrot, you get three answers but only one parrot's opinion. Counting parrots doesn't help — you need a different animal.</p>
+  </div>
+
+  <h3>3. Combining: let a regression do the counting</h3>
+  <p>
+    Suppose the scores are standardised, \(R\) is the matrix of their correlations with each other,
+    and \(\text{IC}\) is the column of their correlations with the next return. The best linear
+    forecast of the standardised return — what a regression of returns on all the signals at once
+    would give you if it knew the true numbers — is
+  </p>
+  <div class="tl-math">
+    \[ F = \sum_i w_i\,s_i, \qquad w = R^{-1}\,\text{IC}, \qquad \text{IC}_{\text{comb}} = \sqrt{\text{IC}^{\top} R^{-1}\,\text{IC}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>sᵢ</code><span>today's score on signal i, in its own standard deviations</span></div>
+    <div class="tl-eq-chip c2"><code>R⁻¹</code><span>the inverse correlation matrix: the part that stops correlated signals being counted twice</span></div>
+    <div class="tl-eq-chip c3"><code>w</code><span>the weight each signal gets in the combined forecast</span></div>
+    <div class="tl-eq-chip c4"><code>IC_comb</code><span>the skill of the combined forecast: what all the signals together are worth</span></div>
+  </div>
+  <p>
+    Two signals make the point. Each has IC 0.05. If they are independent (\(\rho = 0\)), together
+    they are worth \(0.05\sqrt{2} = 0.071\). If they are correlated at 0.8, together they are worth
+    only \(0.05\sqrt{2/1.8} = 0.053\) — barely more than one. The general two-signal formula is
+    \(\text{IC}_{\text{comb}} = \text{IC}\sqrt{2/(1+\rho)}\).
+  </p>
+  <p>
+    For a family of \(m\) signals with equal ICs and internal correlation \(\rho\), the inverse
+    has a simple effect: each member's weight is its IC divided by \(1 + (m-1)\rho\). That is the
+    same factor as in \(N_{\text{eff}}\). The regression automatically gives a family of three
+    near-copies roughly one signal's worth of influence between them.
+  </p>
+
+  <h3>4. Weight by track record — then shrink it</h3>
+  <p>
+    The ICs you plug in are estimates. A correlation measured on \(n\) independent observations has
+    a standard error of roughly \(1/\sqrt{n}\): with 100 observations, about 0.10 — twice the size
+    of a good signal's true IC. A measured IC of 0.08 from 100 trades is entirely consistent with a
+    true IC of zero. Treat it as a measurement of the truth plus noise, and pull it toward a prior
+    of zero by how noisy it is:
+  </p>
+  <div class="tl-math">
+    \[ \widehat{\text{IC}}^{\,\text{shrunk}}_i = B_i \,\widehat{\text{IC}}_i, \qquad B_i = \frac{\tau^2}{\tau^2 + 1/n_i} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ÎCᵢ</code><span>the IC you measured on signal i's own history</span></div>
+    <div class="tl-eq-chip c2"><code>nᵢ</code><span>how many independent observations that measurement rests on</span></div>
+    <div class="tl-eq-chip c3"><code>τ</code><span>how widely true ICs vary across signals in general (0.05 here)</span></div>
+    <div class="tl-eq-chip c4"><code>Bᵢ</code><span>the share of the measured IC you keep: near 0 for a short record, near 1 for a long one</span></div>
+  </div>
+  <p>
+    With \(\tau = 0.05\) (\(\tau^2 = 0.0025\)): 50 observations keep \(0.0025/0.0225 = 11\%\) of the
+    measured IC, 100 keep 20%, 400 keep 50%, 1,600 keep 80%. This is the same logic as
+    <a href="bayesian-inference.html">Bayesian updating</a> and the James–Stein result discussed in
+    <a href="hierarchical-bayesian-models.html">partial pooling</a>: estimates from little data are
+    pulled hardest toward the prior. An untested indicator (\(n = 0\)) gets weight zero, however
+    convincing its chart looks.
+  </p>
+  <p>
+    Forecasting research has a well-known version of this result, the "forecast combination
+    puzzle": simple equal-weight averages of forecasts often beat combinations whose weights were
+    estimated from data, because the estimated weights carry so much noise. Shrinkage sits between
+    the two — trust the record exactly as much as its length deserves.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A new player scores in their first two games. Exciting — but you wouldn't call them the best player in the league yet. You'd guess they're probably a bit better than average and wait for more games. The fewer games, the more you guess "average".</p>
+  </div>
+
+  <h3>5. From a combined score to a view — or to no view</h3>
+  <p>
+    The combined forecast \(F\) is in standardised-return units, and its own standard deviation is
+    \(\text{IC}_{\text{comb}}\). Three numbers turn it into something you can act on:
+  </p>
+  <div class="tl-math">
+    \[ z = \frac{F}{\text{IC}_{\text{comb}}}, \qquad \mathbb{E}[r] = \sigma\,F, \qquad P(\text{direction right}) = \Phi\!\left(\frac{|F|}{\sqrt{1-\text{IC}_{\text{comb}}^2}}\right) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z</code><span>how unusual today's combined reading is, in its own standard deviations</span></div>
+    <div class="tl-eq-chip c2"><code>σ</code><span>the instrument's volatility over the holding horizon</span></div>
+    <div class="tl-eq-chip c3"><code>E[r]</code><span>the expected move, in return units — what goes into the cost check</span></div>
+    <div class="tl-eq-chip c4"><code>Φ</code><span>the normal CDF: turns the forecast into a probability of being right about direction</span></div>
+  </div>
+  <p>
+    The probability line is sobering. With a combined IC of 0.10 — an excellent set of signals —
+    a two-standard-deviation reading (\(F = 0.20\)) gives \(\Phi(0.20/0.995) = 58\%\). Small
+    edges are the normal case, which is why the next step is a written rule for when the answer is
+    <strong>no view</strong>:
+  </p>
+  <div class="tl-stat-row">
+    <div class="tl-stat amber"><div class="tl-stat-num">|z| &lt; 1</div><div class="tl-stat-label">signals cancel or are weak</div><div class="tl-stat-sub">today's reading is ordinary for this set</div></div>
+    <div class="tl-stat amber"><div class="tl-stat-num">|E[r]| &lt; 2c</div><div class="tl-stat-label">edge under twice the cost</div><div class="tl-stat-sub">see <a href="action-edge-after-costs.html">lesson 4</a></div></div>
+    <div class="tl-stat amber"><div class="tl-stat-num">IC<sub>comb</sub> ≈ 0</div><div class="tl-stat-label">nothing has a record</div><div class="tl-stat-sub">loud is not the same as tested</div></div>
+  </div>
+  <p>
+    The thresholds are a choice, not a law. What matters is choosing them before you look at
+    today's screen, so that "the signals disagree" leads to a pre-agreed answer instead of a story.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(s_i\)</td><td>Score of signal \(i\): its reading in its own standard deviations, positive = long.</td></tr>
+    <tr><td>\(\text{IC}_i\)</td><td>Information coefficient: correlation between signal \(i\)'s past scores and the returns that followed.</td></tr>
+    <tr><td>\(\widehat{\text{IC}}_i\)</td><td>The IC as measured on the signal's own record (an estimate).</td></tr>
+    <tr><td>\(n_i\)</td><td>Number of independent observations behind that measurement.</td></tr>
+    <tr><td>\(\tau\)</td><td>Prior spread of true ICs across signals (0.05 in this lesson).</td></tr>
+    <tr><td>\(B_i\)</td><td>Shrinkage factor \(\tau^2/(\tau^2 + 1/n_i)\): the share of the measured IC kept.</td></tr>
+    <tr><td>\(N,\ N_{\text{eff}}\)</td><td>Number of signals, and the number of independent signals they are worth.</td></tr>
+    <tr><td>\(\rho\)</td><td>Correlation between two signals' scores (or the average across pairs).</td></tr>
+    <tr><td>\(m\)</td><td>Number of signals in one family of near-copies.</td></tr>
+    <tr><td>\(R\)</td><td>Correlation matrix of the signals' scores.</td></tr>
+    <tr><td>\(w_i\)</td><td>Weight of signal \(i\) in the combination, from \(w = R^{-1}\,\text{IC}\).</td></tr>
+    <tr><td>\(F\)</td><td>Combined forecast, in standardised-return units.</td></tr>
+    <tr><td>\(\text{IC}_{\text{comb}}\)</td><td>Skill of the combined forecast, \(\sqrt{\text{IC}^\top R^{-1}\text{IC}}\); also the standard deviation of \(F\).</td></tr>
+    <tr><td>\(z\)</td><td>Today's combined reading in its own standard deviations, \(F/\text{IC}_{\text{comb}}\).</td></tr>
+    <tr><td>\(\sigma\)</td><td>Volatility of the instrument over the holding horizon.</td></tr>
+    <tr><td>\(\mathbb{E}[r]\)</td><td>Expected return over the horizon, \(\sigma F\).</td></tr>
+    <tr><td>\(c\)</td><td>Round-trip trading cost, in return units.</td></tr>
+    <tr><td>\(\Phi\)</td><td>Standard normal cumulative distribution function.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Worked example: five readings on EUR/USD</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three trend signals say long, the rates signal says short</h3>
+    <p>A one-month view on EUR/USD. Monthly volatility \(\sigma = 2.0\%\). Your screen:</p>
+    <div class="cs-scroll">
+    <table class="cs-table">
+      <tr><th>Signal</th><th>Family</th><th>Score s</th><th>Measured IC</th><th>Record n</th></tr>
+      <tr><td>A. 20-day momentum</td><td>Trend</td><td>+1.2</td><td>0.04</td><td>400</td></tr>
+      <tr><td>B. 50/200-day average cross</td><td>Trend</td><td>+1.0</td><td>0.04</td><td>400</td></tr>
+      <tr><td>C. 3-month-high breakout</td><td>Trend</td><td>+1.5</td><td>0.04</td><td>400</td></tr>
+      <tr><td>D. 2-year yield spread z</td><td>Rates</td><td>−1.0</td><td>0.08</td><td>400</td></tr>
+      <tr><td>E. Speculative positioning</td><td>Positioning</td><td>−0.5</td><td>0.06</td><td>50</td></tr>
+    </table>
+    </div>
+    <p>The three trend signals are correlated 0.8 with each other; the families are treated as uncorrelated with each other.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Shrink each record</h4>
+        <p>\(\tau^2 = 0.0025\). For \(n = 400\): \(B = 0.0025/(0.0025 + 0.0025) = 0.5\). For \(n = 50\): \(B = 0.0025/(0.0025+0.02) = 0.111\). Shrunk ICs: trend signals \(0.04 \times 0.5 = 0.020\) each; rates \(0.08 \times 0.5 = 0.040\); positioning \(0.06 \times 0.111 = 0.0067\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Count the trend family once</h4>
+        <p>Three signals at \(\rho = 0.8\) are worth \(N_{\text{eff}} = 3/2.6 = 1.15\). With equal ICs, \(R^{-1}\) gives each \(w = 0.020/2.6 = 0.00769\). Rates and positioning sit in their own families, so their weights are their shrunk ICs: 0.040 and 0.0067.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Combine</h4>
+        <p>\(F = 0.00769 \times (1.2 + 1.0 + 1.5) + 0.040 \times (-1.0) + 0.0067 \times (-0.5) = 0.0285 - 0.0400 - 0.0033 = -0.0149\).</p>
+        <p>Skill of the combination: \(\text{IC}_{\text{comb}}^2 = 3 \times 0.00769 \times 0.020 + 0.040^2 + 0.0067^2 = 0.000462 + 0.0016 + 0.000044 = 0.00211\), so \(\text{IC}_{\text{comb}} = 0.046\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Turn it into a view</h4>
+        <p>\(z = -0.0149/0.046 = -0.32\). Expected move \(\sigma F = 2.0\% \times -0.0149 = -0.030\%\), about 3 pips. Probability the direction is right: \(\Phi(0.0149/\sqrt{1-0.0021}) = \Phi(0.0149) = 50.6\%\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>The output</h4>
+        <p><span class="tl-pill amber">NO VIEW</span> \(|z| = 0.32 &lt; 1\). The screen looked bullish; the evidence, counted honestly, is a coin flip with a faint lean short. Write down "no view, signals cancel", and do not trade EUR/USD on this set this month.</p>
+      </div></div>
+    </div>
+    <p>How the same screen reads under each method:</p>
+    <div class="cs-scroll">
+    <table class="cs-table">
+      <tr><th>Method</th><th>Result</th><th>Says</th></tr>
+      <tr><td>Count the votes</td><td>3 long, 2 short</td><td>Long</td></tr>
+      <tr><td>Add the scores</td><td>+2.2</td><td>Long</td></tr>
+      <tr><td>Weight by shrunk IC, ignore correlation</td><td>F = +0.031</td><td>Long</td></tr>
+      <tr><td>Correct for correlation, don't shrink</td><td>F = −0.053, z = −0.49, IC<sub>comb</sub> 0.109</td><td>No view</td></tr>
+      <tr><td><strong>Shrink and correct for correlation</strong></td><td><strong>F = −0.015, z = −0.32, IC<sub>comb</sub> 0.046</strong></td><td><strong>No view</strong></td></tr>
+    </table>
+    </div>
+    <p style="margin-bottom:0">
+      Ignoring correlation flips the answer to long: the trend family gets counted three times.
+      Skipping the shrinkage keeps the verdict but more than doubles the claimed skill (0.109
+      against 0.046) and hands 50 observations of positioning data real weight. What <em>would</em>
+      make this a trade? Independent agreement. If the yield spread read +1.0 instead of −1.0, the
+      same arithmetic gives \(F = +0.065\), \(z = +1.42\), an expected move of +0.13% and a 52.6%
+      chance of being right — a modest, legitimate long, ready for the cost check in
+      <a href="action-edge-after-costs.html">the next lesson</a>.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive" id="cs-tool">
+    <div class="tl-chart-label">Signal combiner — enter your own screen</div>
+    <p class="tl-hint" style="font-style:normal;font-size:12px;margin:0 0 4px">Rename the signals, put them in families (signals in the same family are treated as near-copies), and set each one's score today, its measured IC and how many observations that IC rests on. Set n to 0 for an indicator with no record.</p>
+    <div class="cs-sigs" id="cs-sigs"></div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation inside a family</span><span class="tl-live" id="cs-rw-val">0.80</span></div>
+        <input type="range" id="cs-rw" min="0" max="0.95" step="0.05" value="0.8">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Correlation between families</span><span class="tl-live" id="cs-rb-val">0.00</span></div>
+        <input type="range" id="cs-rb" min="0" max="0.5" step="0.05" value="0">
+        <div class="tl-hint">Kept at or below the in-family correlation.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility over the horizon σ</span><span class="tl-live" id="cs-sig-val">2.0%</span></div>
+        <input type="range" id="cs-sig" min="0.2" max="6" step="0.1" value="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Round-trip cost c</span><span class="tl-live" id="cs-c-val">0.02%</span></div>
+        <input type="range" id="cs-c" min="0" max="0.3" step="0.01" value="0.02">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Prior spread of true ICs τ</span><span class="tl-live" id="cs-tau-val">0.050</span></div>
+        <input type="range" id="cs-tau" min="0.01" max="0.15" step="0.005" value="0.05">
+        <div class="tl-hint">Smaller τ = more sceptical of every record.</div>
+      </div>
+    </div>
+    <svg id="cs-svg" class="cs-svg" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="For each signal, two diverging bars: its share of the naive score sum, and its share of the honest combined forecast after shrinkage and correlation adjustment. A final row shows the combined direction.">
+      <g id="cs-g"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--text3)"></i>share of the naive sum of scores</span>
+      <span><i style="background:var(--purple)"></i>share of the honest combination</span>
+    </div>
+    <div class="cs-verdict"><span class="cs-verdict-tag none" id="cs-tag">NO VIEW</span><span class="cs-verdict-why" id="cs-why"></span></div>
+    <div class="cs-warn" id="cs-warn"></div>
+    <div class="tl-readout" id="cs-readout"></div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" id="cs-reset">Reset to the EUR/USD example</button>
+      <button type="button" class="tl-btn" id="cs-flip">Flip the rates signal to +1.0</button>
+    </div>
+    <div class="tl-chart-caption">Exact computation in your browser: shrink each IC by \(\tau^2/(\tau^2+1/n)\), build the correlation matrix from the families, solve \(w = R^{-1}\,\text{IC}\), then \(F = \sum w_i s_i\). No view if \(|z| &lt; 1\), if \(|\sigma F| &lt; 2c\), or if the combined IC is under 0.005. Your names, families and numbers are remembered in this browser only.</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Template — copy this</div>
+    <h3>The signal-combination card</h3>
+    <p>Fill this in once per instrument and horizon, before you look at today's readings. Then each day is arithmetic, not a debate.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>List and score</h4>
+        <p>Every signal you look at, each as a score in its own standard deviations, positive = long. If you cannot score it, you cannot combine it — note it as context only.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Group into families</h4>
+        <p>Signals built from the same input (price trend, rates, positioning, value, volatility) go in one family. Check the grouping with a correlation table of past scores, not by name. Write each family's \(N_{\text{eff}}\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Record and shrink</h4>
+        <p>For each signal: measured IC, number of independent observations, shrunk IC. Out-of-sample records only. No record → weight zero.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Write the no-view rule</h4>
+        <p>e.g. "No trade if \(|z| &lt; 1\), or expected move &lt; 2× round-trip cost, or combined IC &lt; 0.02." Fixed before today's numbers.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Daily line</h4>
+        <p>"Combined z = __, expected move = __%, P(direction) = __% → LONG / SHORT / NO VIEW." That line, not the screen, goes into the <a href="action-trade-plan.html">trade plan</a> and the <a href="process-vs-outcome-decision-journals.html">journal</a>.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Five indicators flash at once: three long, two short</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The screen</b>Three trend readings look like three confirmations</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · combining</b>Correlated signals collapse to about one; records are shrunk; the net is weighed against a no-view rule</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The decision</b>A small net view, or a written "no view"</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>No oversized trade built on one idea counted three times</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>When some friends say "go left" and some say "go right", don't just count hands. Ask who actually knows the way, notice which friends are just copying each other, and if it is still a muddle, stay where you are until someone knows.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: "independent" bets that were one bet</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>August 2007: the quant quake</h3>
+    <p>
+      In the week beginning 6 August 2007, a number of large quantitative equity funds — market-neutral
+      strategies built from many signals such as value, momentum and earnings quality — suffered
+      unusually large losses within a few days, while the stock market as a whole moved
+      comparatively little. Each fund had its own models and believed its blend of signals was
+      its own.
+    </p>
+    <p>
+      Amir Khandani and Andrew Lo studied the episode that autumn ("What Happened to the Quants in
+      August 2007?"). Their explanation was that the funds' positions overlapped far more than
+      anyone had appreciated: many had arrived at similar portfolios from similar signals. When one
+      or more large portfolios were unwound quickly, the selling pushed prices against everyone
+      holding the same positions, which forced further selling. A sharp partial rebound followed
+      within days.
+    </p>
+    <p style="margin-bottom:0">
+      This is the effective-number problem at the scale of an industry. Signals that looked like
+      many independent sources of return were, in a crisis, close to one crowded position. The
+      diversification was counted, not measured.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1998: Long-Term Capital Management</h3>
+    <p>
+      LTCM, founded in 1994 by John Meriwether with partners including Myron Scholes and Robert
+      Merton, ran a large book of relative-value trades across many countries and markets — bond
+      spreads, swap spreads, equity pairs, volatility. On paper these were many separate trades with
+      modest correlations to each other, so the fund could use high leverage.
+    </p>
+    <p style="margin-bottom:0">
+      After Russia's default and devaluation in August 1998, investors everywhere rushed toward the
+      most liquid, safest assets at once. Spreads widened across almost all of LTCM's markets
+      together: the trades turned out to share one underlying exposure, to liquidity and credit
+      risk premia. In September 1998 the Federal Reserve Bank of New York organised a recapitalisation
+      of about $3.6 billion by a consortium of banks. The lesson for anyone combining signals or
+      trades: correlations measured in calm periods can understate how much a set of "different"
+      positions is really the same position.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict null" data-evidence="macro-confluence-baa-credit" data-evidence-date="2026-10-03">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>"When several independent macro domains agree, direction follows."</strong> The desk pre-registered exactly this: Fed net-liquidity momentum, the 10-year-minus-2-year curve regime and investment-grade credit stress all +1 or all −1 on the same day, forward direction on EUR/USD, the S&amp;P 500 and gold. With 39 positive- and 38 negative-confluence episodes from 2009 to 2026, it found nothing. One cell looked real — EUR/USD over 20 days after positive confluence, −0.616% [−1.117, −0.080] — but negative confluence pointed the <em>same</em> way (−0.023%), so the "signal" was EUR/USD's long drift lower, not agreement predicting anything. Agreement is not evidence unless the agreeing signals each carry some.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>Two genuinely different signals, combined.</strong> The desk ran its yield-spread mechanism on the 10-year rate differential as well as the 2-year, and checked first that it was a different signal rather than a relabelled one: 15.7% trade overlap and a 0.300 daily-return correlation. The equal-risk combination's Sharpe ratio of 1.15 beat either leg alone (2-year 1.02, 10-year 0.81). This lesson's arithmetic predicts it: for two equal-risk legs, combined Sharpe \(= (S_1+S_2)/\sqrt{2(1+\rho)} = 1.83/\sqrt{2.6} \approx 1.13\). <em>Backtest evidence; not forward-proven.</em></span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> agreement feels like confirmation, and the feeling grows with every
+    extra indicator that agrees. But three readings of the same thing agreeing is what you would
+    see whether or not any of them works. Agreement is only evidence when the signals are
+    different <em>and</em> each one has a record.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧺</div>
+      <h4>Average within a family first</h4>
+      <p>Collapse each family of near-copies into one composite before weighting across families. It avoids the strange weights a full matrix inverse can produce when two members are almost identical.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">⚖️</div>
+      <h4>Shrink toward equal weights</h4>
+      <p>Systematic managers rarely use raw estimated weights. They blend them with equal weights or a prior, for the same reason as the forecast-combination puzzle: estimated weights are noisy (see <a href="regularized-regression-lasso-ridge.html">Ridge &amp; LASSO</a>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧪</div>
+      <h4>Test the combination out of sample</h4>
+      <p>A combination is itself a model, and choosing it from many alternatives is a <a href="multiple-testing.html">multiple-testing</a> problem. Validate the combined score <a href="walk-forward-purged-cv.html">walk-forward</a>, not just each part.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📉</div>
+      <h4>Check correlations in stress</h4>
+      <p>Measure signal and position correlations in bad periods as well as on average. 1998 and 2007 both show correlations jumping toward one when they matter most (see <a href="pca-factors.html">PCA &amp; factor regimes</a>).</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to the desk</div>
+    <h3>The desk combines rarely, and only tested legs</h3>
+    <p style="margin-bottom:0">
+      The one combination the desk runs is the two yield-spread legs above, and it was accepted only
+      after a pre-registered check that the second leg was different. No desk indicator set is
+      currently combined into a single score with the shrinkage and correlation steps shown here;
+      the worked example's numbers are illustrative, not desk measurements.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where combining goes wrong</h3>
+    <p><strong>Counting indicators.</strong> Three ways of measuring trend are one opinion about trend. Count families, not lines on a chart.</p>
+    <p><strong>Trusting a short record.</strong> A 0.08 IC from 50 trades is noise-sized. Shrink it, or give it no weight until it has more.</p>
+    <p><strong>Weights from the same data as the test.</strong> Choosing weights on a sample and reporting the combined score's performance on that sample overstates it, often badly.</p>
+    <p><strong>Calm-period correlations.</strong> Signals and positions that look unrelated on average can move together in a crisis. Check stress periods.</p>
+    <p style="margin-bottom:0"><strong>Treating "no view" as weakness.</strong> A desk that always has a view is either very good or not measuring. Written no-view rules are what make the views it does take mean something.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlated signals are one vote.</strong> \(N_{\text{eff}} = N/(1+(N-1)\rho)\): three at 0.8 are worth 1.15, and no number of them is worth more than \(1/\rho\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Combine by regression, not by vote:</strong> \(w = R^{-1}\,\text{IC}\). In the example it turned "long 3–2" into "no view".</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Shrink every record by its length:</strong> keep \(\tau^2/(\tau^2+1/n)\) of the measured IC — about half at 400 observations, a ninth at 50, nothing at zero.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"No view" is a written output.</strong> Fix the thresholds — combined z, expected move against cost, combined IC — before looking at today's screen.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Desk test, nothing found:</strong> agreement across three macro domains did not predict forward direction (77 episodes, 2009–2026). The desk's test found no edge in agreement itself; that says nothing against combining signals that each have a record.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Held up, in backtest:</strong> two yield-spread legs correlated 0.30 combined to a Sharpe of 1.15, above either alone — diversification works when the signals really are different. Not forward-proven.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. You have four momentum indicators with average pairwise correlation 0.7. How many independent signals are they worth?</summary>
+    <div class="tl-answer">\(N_{\text{eff}} = 4/(1 + 3 \times 0.7) = 4/3.1 = 1.29\). Adding a fifth would give \(5/3.8 = 1.32\); the ceiling is \(1/0.7 = 1.43\).</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Two signals each have IC 0.06. What are they worth combined if their correlation is 0, and if it is 0.5?</summary>
+    <div class="tl-answer">\(\text{IC}_{\text{comb}} = 0.06\sqrt{2/(1+\rho)}\). At \(\rho = 0\): \(0.06 \times 1.414 = 0.085\). At \(\rho = 0.5\): \(0.06 \times \sqrt{1.333} = 0.069\).</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A new indicator shows IC 0.12 over 100 trades. With τ = 0.05, what IC should you use?</summary>
+    <div class="tl-answer">\(B = 0.0025/(0.0025 + 0.01) = 0.2\), so \(0.12 \times 0.2 = 0.024\). The standard error of the measurement (about \(1/\sqrt{100} = 0.10\)) is nearly as large as the measurement itself.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In the worked example, why does ignoring correlation flip the answer from "no view" to "long"?</summary>
+    <div class="tl-answer">Without the correlation step each trend signal keeps its full shrunk IC of 0.020, so the trend family contributes \(0.020 \times 3.7 = 0.074\) against the short side's 0.043: net long. With it, the three share one signal's worth of weight (\(0.020/2.6\) each), contribute 0.028, and the rates signal's −0.040 wins. The difference is the trend idea being counted three times.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Your combined forecast has IC<sub>comb</sub> = 0.08 and today z = 2.5. What is the probability your direction is right, and the expected move if σ = 1.5%?</summary>
+    <div class="tl-answer">\(F = z \times \text{IC}_{\text{comb}} = 0.20\). \(P = \Phi(0.20/\sqrt{1-0.0064}) = \Phi(0.2006) \approx 58\%\). Expected move \(= 1.5\% \times 0.20 = 0.30\%\). A strong reading on a good set of signals is still only a 58/42 bet — which is why sizing and costs matter so much.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. The desk found that agreement across three macro domains did not predict direction. Does that mean combining signals is useless?</summary>
+    <div class="tl-answer">No. It means that this desk's test of <em>agreement among those three domains</em> found no forward edge in direction over 5 and 20 days. Agreement only adds information if the agreeing signals each carry some; the desk's two yield-spread legs, each with a record and correlated only 0.30, did combine into a better book. The lesson is to combine signals with records, weighted for correlation — not to treat agreement itself as a signal.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>J. M. Bates and C. W. J. Granger, "The Combination of Forecasts", <em>Operational Research Quarterly</em>, 1969 — the founding paper on blending forecasts rather than picking one.</li>
+    <li>Robert T. Clemen, "Combining Forecasts: A Review and Annotated Bibliography", <em>International Journal of Forecasting</em>, 1989 — twenty years of evidence that combinations beat their parts.</li>
+    <li>Jeremy Smith and Kenneth F. Wallis, "A Simple Explanation of the Forecast Combination Puzzle", <em>Oxford Bulletin of Economics and Statistics</em>, 2009 — why simple averages often beat estimated weights.</li>
+    <li>Richard C. Grinold, "The Fundamental Law of Active Management", <em>Journal of Portfolio Management</em>, 1989 — skill × √(independent bets).</li>
+    <li>Richard C. Grinold and Ronald N. Kahn, <em>Active Portfolio Management</em>, McGraw-Hill (2nd ed., 1999) — scores, ICs and combining signals into forecasts.</li>
+    <li>Bradley Efron and Carl Morris, "Stein's Paradox in Statistics", <em>Scientific American</em>, 1977 — an accessible account of why shrinking noisy estimates improves them.</li>
+    <li>Amir E. Khandani and Andrew W. Lo, "What Happened to the Quants in August 2007?", 2007 — the crowded-signal account of the quant quake.</li>
+    <li>Roger Lowenstein, <em>When Genius Failed: The Rise and Fall of Long-Term Capital Management</em>, Random House, 2000.</li>
+    <li><a href="active-portfolio-management.html">Active Portfolio Management</a>, <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf Shrinkage</a> and <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a> — the lessons behind the formulas used here.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-expected-value.html">← Thinking in Expected Value</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-edge-after-costs.html">Does the Edge Survive Costs? →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace", SANS = "'DM Sans',sans-serif";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function $(id){ return document.getElementById(id); }
+  function Phi(x){ // Abramowitz-Stegun 7.1.26 erf
+    var s = x < 0 ? -1 : 1, z = Math.abs(x) / Math.SQRT2, t = 1 / (1 + 0.3275911 * z);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+    return 0.5 * (1 + s * y);
+  }
+
+  // ---------- 1. Effective number of signals ----------
+  (function(){
+    var nIn = $('ne-n'), rIn = $('ne-r'), g = $('ne-g');
+    var X0 = 50, X1 = 620, Y0 = 186, Y1 = 14, NMAX = 20, YMAX = 20;
+    function x(n){ return X0 + (X1 - X0) * (n - 1) / (NMAX - 1); }
+    function y(v){ return Y0 - (Y0 - Y1) * v / YMAX; }
+    function render(){
+      var N = parseInt(nIn.value, 10), r = parseFloat(rIn.value);
+      $('ne-n-val').textContent = N; $('ne-r-val').textContent = r.toFixed(2);
+      clear(g);
+      [0, 5, 10, 15, 20].forEach(function(v){
+        g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
+        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 5, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', v));
+      });
+      [1, 5, 10, 15, 20].forEach(function(n){ g.appendChild(el('text', { x: x(n), y: Y0 + 19, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', n)); });
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 38, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'signals on your screen'));
+      g.appendChild(el('path', { d: 'M' + x(1) + ',' + y(1) + ' L' + x(20) + ',' + y(20), fill: 'none' }, 'stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4'));
+      var d = '';
+      for (var n = 1; n <= NMAX; n++){ var ne = n / (1 + (n - 1) * r); d += (n > 1 ? 'L' : 'M') + x(n).toFixed(1) + ',' + y(ne).toFixed(1); }
+      g.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--purple);stroke-width:2.5'));
+      if (r > 0 && 1 / r <= YMAX){
+        g.appendChild(el('line', { x1: X0, x2: X1, y1: y(1 / r), y2: y(1 / r) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3'));
+        g.appendChild(el('text', { x: X1, y: y(1 / r) - 5, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'ceiling 1/ρ = ' + (1 / r).toFixed(2)));
+      }
+      var neN = N / (1 + (N - 1) * r);
+      g.appendChild(el('circle', { cx: x(N), cy: y(neN), r: 5 }, 'fill:var(--amber)'));
+      $('ne-readout').innerHTML = '<b>' + N + '</b> signals at ρ = <b>' + r.toFixed(2) + '</b> are worth <b>' + neN.toFixed(2) + '</b> independent signals' +
+        (N > 1 ? ' — the screen sounds <b>' + (N / neN).toFixed(1) + '×</b> louder than it is.' : '.');
+    }
+    [nIn, rIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // ---------- 2. Signal combiner ----------
+  (function(){
+    var FAMS = ['Trend', 'Rates', 'Positioning', 'Value', 'Volatility', 'Other'];
+    var EXAMPLE = [
+      { name: '20-day momentum', fam: 'Trend', s: 1.2, ic: 0.04, n: 400 },
+      { name: '50/200-day average cross', fam: 'Trend', s: 1.0, ic: 0.04, n: 400 },
+      { name: '3-month-high breakout', fam: 'Trend', s: 1.5, ic: 0.04, n: 400 },
+      { name: '2-year yield spread z', fam: 'Rates', s: -1.0, ic: 0.08, n: 400 },
+      { name: 'Speculative positioning', fam: 'Positioning', s: -0.5, ic: 0.06, n: 50 }
+    ];
+    var KEY = 'tlActionCombiner';
+    var wrap = $('cs-sigs'), rows = [];
+    function build(){
+      EXAMPLE.forEach(function(ex, i){
+        var d = document.createElement('div'); d.className = 'cs-sig';
+        var opts = FAMS.map(function(f){ return '<option value="' + f + '">' + f + '</option>'; }).join('');
+        d.innerHTML =
+          '<div class="cs-sig-head"><input type="text" class="tl-scratch-input" aria-label="Signal ' + (i + 1) + ' name" maxlength="40"><select aria-label="Signal ' + (i + 1) + ' family">' + opts + '</select></div>' +
+          '<div class="tl-control"><div class="tl-control-head"><span>Score today s</span><span class="tl-live"></span></div><input type="range" min="-2.5" max="2.5" step="0.1" aria-label="Signal ' + (i + 1) + ' score"></div>' +
+          '<div class="tl-control"><div class="tl-control-head"><span>Measured IC</span><span class="tl-live"></span></div><input type="range" min="0" max="0.2" step="0.005" aria-label="Signal ' + (i + 1) + ' measured IC"></div>' +
+          '<div class="tl-control"><div class="tl-control-head"><span>Record n (observations)</span><span class="tl-live"></span></div><input type="range" min="0" max="2000" step="10" aria-label="Signal ' + (i + 1) + ' record length"></div>';
+        wrap.appendChild(d);
+        var ranges = d.querySelectorAll('input[type=range]'), lives = d.querySelectorAll('.tl-live');
+        rows.push({ name: d.querySelector('input[type=text]'), fam: d.querySelector('select'), s: ranges[0], ic: ranges[1], n: ranges[2], sv: lives[0], icv: lives[1], nv: lives[2] });
+      });
+    }
+    function setRows(list){
+      list.forEach(function(v, i){ var r = rows[i]; if (!r) return; r.name.value = v.name; r.fam.value = FAMS.indexOf(v.fam) >= 0 ? v.fam : 'Other'; r.s.value = v.s; r.ic.value = v.ic; r.n.value = v.n; });
+    }
+    function save(){
+      try { localStorage.setItem(KEY, JSON.stringify(rows.map(function(r){ return { name: r.name.value, fam: r.fam.value, s: +r.s.value, ic: +r.ic.value, n: +r.n.value }; }))); } catch (e) {}
+    }
+    function solve(A, b){ // Gaussian elimination with partial pivoting
+      var n = b.length, M = A.map(function(row, i){ return row.slice().concat([b[i]]); });
+      for (var c = 0; c < n; c++){
+        var p = c; for (var r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+        var t = M[c]; M[c] = M[p]; M[p] = t;
+        for (var r2 = c + 1; r2 < n; r2++){ var f = M[r2][c] / M[c][c]; for (var k = c; k <= n; k++) M[r2][k] -= f * M[c][k]; }
+      }
+      var x = new Array(n);
+      for (var i = n - 1; i >= 0; i--){ var s = M[i][n]; for (var j = i + 1; j < n; j++) s -= M[i][j] * x[j]; x[i] = s / M[i][i]; }
+      return x;
+    }
+    var rwIn = $('cs-rw'), rbIn = $('cs-rb'), sgIn = $('cs-sig'), cIn = $('cs-c'), tauIn = $('cs-tau');
+    function render(){
+      var rw = parseFloat(rwIn.value), rb = Math.min(parseFloat(rbIn.value), rw);
+      var sigma = parseFloat(sgIn.value) / 100, cost = parseFloat(cIn.value) / 100, tau = parseFloat(tauIn.value);
+      $('cs-rw-val').textContent = rw.toFixed(2); $('cs-rb-val').textContent = rb.toFixed(2) + (parseFloat(rbIn.value) > rw ? ' (capped)' : '');
+      $('cs-sig-val').textContent = (sigma * 100).toFixed(1) + '%'; $('cs-c-val').textContent = (cost * 100).toFixed(2) + '%'; $('cs-tau-val').textContent = tau.toFixed(3);
+      var S = [], IC = [], N = [], F = [], names = [], B = [];
+      rows.forEach(function(r){
+        var s = +r.s.value, ic = +r.ic.value, n = +r.n.value;
+        r.sv.textContent = (s > 0 ? '+' : '') + s.toFixed(1); r.icv.textContent = ic.toFixed(3); r.nv.textContent = n === 0 ? '0 (untested)' : n;
+        var b = n > 0 ? (tau * tau) / (tau * tau + 1 / n) : 0;
+        S.push(s); B.push(b); IC.push(ic * b); N.push(n); F.push(r.fam.value); names.push(r.name.value || 'Signal');
+      });
+      var k = S.length, R = [];
+      for (var i = 0; i < k; i++){ R.push([]); for (var j = 0; j < k; j++) R[i].push(i === j ? 1 : (F[i] === F[j] ? rw : rb)); }
+      var w = solve(R, IC), Fc = 0, ic2 = 0;
+      for (var a = 0; a < k; a++){ Fc += w[a] * S[a]; ic2 += w[a] * IC[a]; }
+      var icc = Math.sqrt(Math.max(ic2, 0)), z = icc > 1e-9 ? Fc / icc : 0, er = sigma * Fc, pr = Phi(Math.abs(Fc) / Math.sqrt(Math.max(1 - icc * icc, 1e-9)));
+      // naive comparisons
+      var votesL = S.filter(function(v){ return v > 0; }).length, votesS = S.filter(function(v){ return v < 0; }).length, sum = S.reduce(function(p, v){ return p + v; }, 0);
+      var noCorr = 0; for (var b2 = 0; b2 < k; b2++) noCorr += IC[b2] * S[b2];
+      // families -> effective count
+      var famCount = {}; F.forEach(function(f){ famCount[f] = (famCount[f] || 0) + 1; });
+      var neff = 0; Object.keys(famCount).forEach(function(f){ var m = famCount[f]; neff += m / (1 + (m - 1) * rw); });
+      // verdict
+      var tag = $('cs-tag'), why = $('cs-why'), cls, txt, reason;
+      if (icc < 0.005){ cls = 'none'; txt = 'NO VIEW'; reason = 'Nothing on this screen has a usable record (combined IC ' + icc.toFixed(3) + '). Loud is not the same as tested.'; }
+      else if (Math.abs(z) < 1){ cls = 'none'; txt = 'NO VIEW'; reason = 'Combined z = ' + z.toFixed(2) + ': the signals cancel or are too weak today (|z| < 1).'; }
+      else if (Math.abs(er) < 2 * cost){ cls = 'none'; txt = 'NO VIEW'; reason = 'Direction is clear (z = ' + z.toFixed(2) + ') but the expected move, ' + (er * 100).toFixed(3) + '%, is under twice the round-trip cost.'; }
+      else { cls = Fc > 0 ? 'long' : 'short'; txt = Fc > 0 ? 'LONG' : 'SHORT'; reason = 'Combined z = ' + z.toFixed(2) + ', expected move ' + (er >= 0 ? '+' : '') + (er * 100).toFixed(3) + '%, ' + (pr * 100).toFixed(1) + '% chance the direction is right. Take it to the cost check and the sizing step.'; }
+      tag.className = 'cs-verdict-tag ' + cls; tag.textContent = txt; why.textContent = reason;
+      var flips = []; for (var c2 = 0; c2 < k; c2++) if (IC[c2] > 1e-9 && w[c2] < -1e-9) flips.push(names[c2]);
+      $('cs-warn').textContent = flips.length ? '⚠ ' + flips.join(', ') + ' gets a weight against its own direction: it is being used to hedge a near-copy in its family. Treat that family as one averaged signal instead.' : '';
+      $('cs-readout').innerHTML =
+        '<div>Vote count: <b>' + votesL + ' long, ' + votesS + ' short</b> · sum of scores <b>' + (sum >= 0 ? '+' : '') + sum.toFixed(1) + '</b> · shrunk-IC weights ignoring correlation: F = <b>' + (noCorr >= 0 ? '+' : '') + noCorr.toFixed(3) + '</b></div>' +
+        '<div>Families: <b>' + Object.keys(famCount).length + '</b> · effective signals <b>' + neff.toFixed(2) + '</b> of ' + k + '</div>' +
+        '<div>Kept of each IC: ' + B.map(function(b, i){ return names[i].split(' ')[0] + ' <b>' + Math.round(b * 100) + '%</b>'; }).join(' · ') + '</div>' +
+        '<div>Honest combination: F = <b>' + (Fc >= 0 ? '+' : '') + Fc.toFixed(4) + '</b> · IC<sub>comb</sub> <b>' + icc.toFixed(3) + '</b> · z <b>' + z.toFixed(2) + '</b> · E[r] <b>' + (er >= 0 ? '+' : '') + (er * 100).toFixed(3) + '%</b> · P(direction right) <b>' + (pr * 100).toFixed(1) + '%</b></div>';
+      draw(names, S, w);
+      save();
+    }
+    function draw(names, S, w){
+      var g = $('cs-g'); clear(g);
+      var k = S.length, CX = 320, HALF = 280, ROW = 66, TOP = 22;
+      var sAbs = S.reduce(function(p, v){ return p + Math.abs(v); }, 0) || 1;
+      var contrib = S.map(function(s, i){ return w[i] * s; });
+      var cAbs = contrib.reduce(function(p, v){ return p + Math.abs(v); }, 0) || 1;
+      var H = TOP + ROW * (k + 1) + 6;
+      $('cs-svg').setAttribute('viewBox', '0 0 640 ' + H);
+      g.appendChild(el('line', { x1: CX, x2: CX, y1: TOP - 4, y2: TOP + ROW * k + 4 }, 'stroke:var(--text3);stroke-width:1'));
+      g.appendChild(el('text', { x: CX - HALF, y: TOP - 2, 'font-size': 15, 'font-family': SANS }, 'fill:var(--red)', '← short'));
+      g.appendChild(el('text', { x: CX + HALF, y: TOP - 2, 'text-anchor': 'end', 'font-size': 15, 'font-family': SANS }, 'fill:var(--green)', 'long →'));
+      for (var i = 0; i < k; i++){
+        var y0 = TOP + ROW * i + 6;
+        g.appendChild(el('text', { x: CX - HALF, y: y0 + 12, 'font-size': 18, 'font-family': SANS }, 'fill:var(--text)', names[i].slice(0, 34)));
+        var a = S[i] / sAbs * HALF, b = contrib[i] / cAbs * HALF;
+        g.appendChild(el('rect', { x: Math.min(CX, CX + a), y: y0 + 22, width: Math.abs(a), height: 9, rx: 2 }, 'fill:var(--text3);opacity:0.7'));
+        g.appendChild(el('rect', { x: Math.min(CX, CX + b), y: y0 + 35, width: Math.abs(b), height: 15, rx: 2 }, 'fill:var(--purple)'));
+        g.appendChild(el('text', { x: b >= 0 ? CX + Math.abs(b) + 5 : CX - Math.abs(b) - 5, y: y0 + 48, 'text-anchor': b >= 0 ? 'start' : 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--purple)', Math.round(contrib[i] / cAbs * 100) + '%'));
+      }
+      var Fc = contrib.reduce(function(p, v){ return p + v; }, 0), yF = TOP + ROW * k + 8;
+      var nf = Fc / cAbs * HALF;
+      g.appendChild(el('text', { x: CX - HALF, y: yF + 14, 'font-size': 18, 'font-weight': 700, 'font-family': SANS }, 'fill:var(--text)', 'Net of the honest combination'));
+      g.appendChild(el('rect', { x: Math.min(CX, CX + nf), y: yF + 24, width: Math.max(Math.abs(nf), 1), height: 16, rx: 2 }, 'fill:' + (Fc >= 0 ? 'var(--green)' : 'var(--red)')));
+      g.appendChild(el('text', { x: nf >= 0 ? CX + Math.abs(nf) + 5 : CX - Math.abs(nf) - 5, y: yF + 37, 'text-anchor': nf >= 0 ? 'start' : 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text2)', (Fc >= 0 ? '+' : '') + Math.round(Fc / cAbs * 100) + '% net'));
+    }
+    build();
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { saved = null; }
+    setRows(Array.isArray(saved) && saved.length === EXAMPLE.length ? saved : EXAMPLE);
+    rows.forEach(function(r){ [r.s, r.ic, r.n].forEach(function(i){ i.addEventListener('input', render); }); r.fam.addEventListener('change', render); r.name.addEventListener('input', render); });
+    [rwIn, rbIn, sgIn, cIn, tauIn].forEach(function(i){ i.addEventListener('input', render); });
+    $('cs-reset').addEventListener('click', function(){ setRows(EXAMPLE); rwIn.value = 0.8; rbIn.value = 0; sgIn.value = 2; cIn.value = 0.02; tauIn.value = 0.05; render(); });
+    $('cs-flip').addEventListener('click', function(){ setRows(EXAMPLE); rows[3].s.value = 1.0; rwIn.value = 0.8; rbIn.value = 0; sgIn.value = 2; cIn.value = 0.02; tauIn.value = 0.05; render(); });
+    render();
+  })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

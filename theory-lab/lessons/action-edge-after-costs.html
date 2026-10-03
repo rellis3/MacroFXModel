@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Does the Edge Survive Costs? — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .ac-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .ac-table th,.ac-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .ac-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .ac-table td:first-child,.ac-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .ac-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .ac-svg{width:100%;height:auto;display:block}
+  .ac-presets{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
+  .ac-verdict{margin-top:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);font-size:14px;line-height:1.5}
+  .ac-verdict strong{display:block;font-size:15px;margin-bottom:2px}
+  .ac-verdict.green{background:var(--green-bg);border-color:var(--green-bd)}
+  .ac-verdict.green strong{color:var(--green)}
+  .ac-verdict.amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+  .ac-verdict.amber strong{color:var(--amber)}
+  .ac-verdict.red{background:var(--red-bg);border-color:var(--red-bd)}
+  .ac-verdict.red strong{color:var(--red)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / Does the Edge Survive Costs?</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 4 of 8</div>
+  <h1 class="tl-title">Does the Edge Survive Costs?</h1>
+  <p class="tl-dek">A backtest can prove an effect is real and still describe a strategy that loses money. This lesson turns a gross edge into a net one — spread, slippage, commission, turnover — and ends with a break-even cost and a yes/no you can act on.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT</span>
+    <span>~20 min read</span>
+    <span>Prereqs: <a href="primer-stats-normal.html">Normal distribution</a>; <a href="sharpe-family-deflated.html">Sharpe ratios</a> (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-edge-after-costs-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Net edge = gross edge − cost per round trip.</strong> The cost is the full spread, slippage on <em>both</em> sides, commission and financing. The gross edge per trade is your <strong>break-even cost</strong>: pay more than that and the strategy loses.</li>
+      <li><strong>Significance is not size.</strong> A t-statistic grows with \(\sqrt{n}\); the edge per trade does not. With 3,000 trades, a 0.9-pip edge is "highly significant" (t = 3.3) — and a 1.3-pip cost turns it into a loser.</li>
+      <li><strong>Turnover multiplies cost.</strong> Cost drag on the annual Sharpe ratio is \((c/\sigma)\sqrt{N}\): the more often you trade, the more of the edge the market keeps.</li>
+      <li><strong>Demand a margin, not a pass.</strong> Ask for gross edge ≥ 2× assumed cost, net t ≥ 2, and still positive at double the cost. Real costs are almost always worse than the backtest assumed.</li>
+      <li><strong>The desk's own record agrees:</strong> with spread/ATR above 0.15, zero of 30 strategy × timeframe cells were profitable (held up); a VWAP-extension fade was positive gross and 3–8× under cost (nothing found).</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The earlier lessons in this category turned an analysis into a plan
+    (<a href="action-trade-plan.html">From a View to a Trade Plan</a>), a probability and a payoff
+    (<a href="action-expected-value.html">Thinking in Expected Value</a>) and one combined view
+    (<a href="action-combining-signals.html">Combining Signals That Disagree</a>). All of that is
+    <em>gross</em>: it describes what the market does, not what you keep. Between the two sit the
+    spread you cross, the price you actually get, the commission, and the cost of holding the
+    position overnight.
+  </p>
+  <p>
+    Costs are the most common reason a sound piece of research never becomes a trade. They are also
+    the easiest thing to get wrong quietly: a backtest that assumes the quoted spread at a quiet hour,
+    fills at the bar's close and no commission will flatter every fast strategy. This lesson gives you
+    the arithmetic, a calculator that produces a verdict, and a card to fill in before any idea goes
+    live. It connects to <a href="execution-algorithms.html">execution algorithms</a> and
+    <a href="market-impact-almgren-chriss.html">market impact</a> (how costs are minimised),
+    <a href="institutional-roll-spread-estimator.html">the Roll spread estimator</a> (how to measure
+    them), and <a href="multiple-testing.html">multiple testing</a> (why a t of 2 is often not enough
+    in the first place).
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A shop that sells at a profit and still goes bust</h3>
+    <p>
+      Picture a stall that buys apples for 10p and sells them for 11p. On paper it makes 1p an apple,
+      every time, without fail — a perfectly real, provable margin. Now add the rent, the card-machine
+      fee and the apples that bruise. If those come to 1.3p an apple, the stall loses money on every
+      sale, and selling <em>more</em> apples makes the loss bigger, not smaller.
+    </p>
+    <p style="margin-bottom:0">
+      A trading edge is the 1p. Costs are the rent. The question is never "is there a margin?" but
+      "is the margin bigger than everything it costs to collect it, with room to spare?" And because
+      the rent is paid per apple, a strategy that trades a lot needs a much bigger margin per trade
+      than one that trades rarely.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Paper returns versus money returns</h3>
+    <div class="tl-origin-who">Implementation shortfall: André Perold, 1988 · optimal execution: Almgren &amp; Chriss, 2000 · anomalies after costs: Novy-Marx &amp; Velikov, 2016</div>
+    <p>For a long time a backtest or a model portfolio was judged on its paper returns: buy at the price on the screen, sell at the price on the screen. Anyone who ran real money knew the two never matched, but there was no standard way to measure the gap.</p>
+    <p>André Perold's 1988 paper gave it a name and a measurement: the <em>implementation shortfall</em>, the difference between the paper portfolio's return and the real one's, broken into spread, market impact, delay and trades that were never filled. Robert Almgren and Neil Chriss (2000) turned the trade-off between trading fast (more impact) and slow (more risk) into an optimisation that execution desks still use. And Robert Novy-Marx and Mihail Velikov (2016) put realistic costs onto dozens of published stock-market anomalies, showing that whether an effect survives depends heavily on how often the strategy has to trade.</p>
+    <p>On a desk today, transaction cost analysis is a routine report: every fill is compared with the price at the moment of decision, and research is expected to show results after costs, not before.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Decide whether an effect that is statistically real is also worth trading, once every cost of collecting it is paid.</dd>
+        <dt>Takes in</dt><dd>A gross edge and its spread of outcomes from an honest backtest (<a href="research-pipeline-hypothesis-to-backtest.html">Hypothesis to Backtest</a>, <a href="walk-forward-purged-cv.html">Walk-Forward CV</a>), and measured costs (<a href="execution-algorithms.html">Execution Algorithms</a>).</dd>
+        <dt>Hands on to</dt><dd>Sizing — only a net edge deserves a position (<a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a>, <a href="kelly-criterion.html">Kelly</a>).</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. What one round trip costs</h3>
+  <p>
+    A <em>round trip</em> is opening and closing one position. Work in the unit the strategy is
+    measured in — pips for FX, ticks or index points for futures, basis points for a portfolio. The
+    cost of one round trip is:
+  </p>
+  <div class="tl-math">
+    \[ c = s + 2\,\ell + m + f \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>s</code><span>the bid–ask spread: you buy at the ask and sell at the bid, so one full spread per round trip</span></div>
+    <div class="tl-eq-chip c2"><code>2ℓ</code><span>slippage on each side: the gap between the price you expected and the price you got</span></div>
+    <div class="tl-eq-chip c3"><code>m</code><span>commission for the round trip, converted into pips</span></div>
+    <div class="tl-eq-chip c4"><code>f</code><span>financing (overnight swap or carry) and any other per-trade cost</span></div>
+  </div>
+  <p>
+    Two traps hide in that line. The spread you pay is the spread <em>when you trade</em> — around
+    data releases, at the roll, or in thin hours it can be several times the headline quote. And
+    slippage is paid twice, on the way in and on the way out; stops in particular tend to fill
+    worse than their level, because they trigger when the market is moving against you.
+  </p>
+
+  <h3>2. Net edge and the break-even cost</h3>
+  <p>
+    Let \(\mu\) be the average gross profit per trade from your backtest. What you keep is
+  </p>
+  <div class="tl-math">
+    \[ \mu_{\text{net}} = \mu - c, \qquad c^{*} = \mu, \qquad \rho = \frac{\mu}{c} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">μ</div><div class="tl-fp-name">Gross edge</div><div class="tl-fp-desc">Average profit per trade before any cost</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">c*</div><div class="tl-fp-name">Break-even cost</div><div class="tl-fp-desc">The most you can pay per round trip and still make nothing: exactly μ</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">ρ = μ / c</div><div class="tl-fp-name">Edge-to-cost ratio</div><div class="tl-fp-desc">Below 1 it loses; near 1 it is fragile; 2 or more leaves room for costs to be worse than assumed</div></div>
+  </div>
+  <p>
+    The break-even cost is the single most useful number in this lesson. It turns "is it profitable?"
+    into a question you can check against a broker's price list: "can I trade this for less than
+    \(c^{*}\) pips a round trip, every time, including the bad fills?"
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You win 9 sweets every 10 games on average, but each game costs 13 sweets to enter. You can win lots of games and still end up with fewer sweets. The most you could pay to play and not lose is 9 sweets — that is the break-even price.</p>
+  </div>
+
+  <h3>3. Real versus tradeable: significance is not size</h3>
+  <p>
+    Suppose the trades' profits have standard deviation \(\sigma\) and you have \(n\) of them. The
+    usual test of "is the average really above zero?" is the t-statistic, and the same formula with
+    the net edge tells you whether the profit survives:
+  </p>
+  <div class="tl-math">
+    \[ t = \frac{\mu}{\sigma/\sqrt{n}}, \qquad t_{\text{net}} = \frac{\mu - c}{\sigma/\sqrt{n}}, \qquad d = \frac{\mu}{\sigma} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ/√n</code><span>the standard error: how much the average would wobble between samples</span></div>
+    <div class="tl-eq-chip c2"><code>t</code><span>how many standard errors the average sits above zero — evidence the effect is real</span></div>
+    <div class="tl-eq-chip c3"><code>t_net</code><span>the same, after costs — evidence the strategy makes money</span></div>
+    <div class="tl-eq-chip c4"><code>d</code><span>effect size: edge per trade in units of the trade's own noise; does not grow with n</span></div>
+  </div>
+  <p>
+    Look at what \(n\) does. Quadruple the number of trades and \(t\) doubles, while the edge per
+    trade \(d\) stays exactly where it was. A huge sample can make a microscopic edge "significant at
+    the 0.1% level". Significance answers <em>is it there?</em>; only the size, compared with the
+    cost, answers <em>is it worth having?</em> Economists Stephen Ziliak and Deirdre McCloskey wrote
+    a whole book on how often the two get confused.
+  </p>
+  <div class="tl-solid red">
+    <strong>The trap:</strong> a t-statistic of 3 on a strategy with 3,000 trades says the edge is very
+    probably not zero. It says nothing about whether it is bigger than 1.3 pips. Those are different
+    questions, and only the second one pays.
+  </div>
+
+  <h3>4. Turnover: why fast strategies need fat edges</h3>
+  <p>
+    If you take \(N\) trades a year and they are roughly independent, the annual Sharpe ratio before
+    and after costs is approximately
+  </p>
+  <div class="tl-math">
+    \[ \text{SR}_{\text{gross}} \approx \frac{\mu}{\sigma}\sqrt{N}, \qquad \text{SR}_{\text{net}} \approx \frac{\mu - c}{\sigma}\sqrt{N}, \qquad \text{drag} = \frac{c}{\sigma}\sqrt{N} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N</code><span>trades per year — turnover</span></div>
+    <div class="tl-eq-chip c2"><code>√N</code><span>more trades average out noise, so Sharpe grows with √N — but so does the cost drag</span></div>
+    <div class="tl-eq-chip c3"><code>drag</code><span>how much annual Sharpe the costs take away</span></div>
+  </div>
+  <p>
+    The cost drag scales with \(\sqrt{N}\) just like the gross Sharpe, so turnover never "averages
+    away" cost. What changes with the holding period is the ratio \(\rho\): a trade held for a day
+    can capture a move of tens of pips while paying the same one-and-a-bit pips of cost as a trade
+    held for five minutes. This is why short-horizon strategies die first. The same idea underlies
+    the spread-to-range rule practitioners use:
+  </p>
+  <div class="tl-math">
+    \[ g = \frac{s}{\text{ATR}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>s</code><span>the spread you pay</span></div>
+    <div class="tl-eq-chip c4"><code>ATR</code><span>average true range of a bar on the timeframe you trade — the size of a typical move</span></div>
+    <div class="tl-eq-chip c2"><code>g</code><span>the share of a typical move the spread eats before you start</span></div>
+  </div>
+  <p>
+    The desk's own test put the line at 0.15 (see the verdict below). It is a necessary check, not a
+    sufficient one — as the worked example shows, a strategy can pass it and still lose to its total
+    cost.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If every bus ride costs £1 and you go one stop, the ride is expensive for how far you went. If you ride to the end of the line, the same £1 takes you much further. Fast trading is lots of one-stop rides.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(c\)</td><td>Cost of one round trip (open and close), in pips or the strategy's own unit.</td></tr>
+    <tr><td>\(s\)</td><td>Bid–ask spread at the time you actually trade.</td></tr>
+    <tr><td>\(\ell\)</td><td>Slippage per side: fill price minus expected price, against you.</td></tr>
+    <tr><td>\(m\)</td><td>Commission per round trip, converted to pips.</td></tr>
+    <tr><td>\(f\)</td><td>Financing (overnight swap) and other per-trade costs.</td></tr>
+    <tr><td>\(\mu\)</td><td>Average gross profit per trade.</td></tr>
+    <tr><td>\(\mu_{\text{net}}\)</td><td>Average net profit per trade, \(\mu - c\).</td></tr>
+    <tr><td>\(c^{*}\)</td><td>Break-even cost per round trip, equal to \(\mu\).</td></tr>
+    <tr><td>\(\rho\)</td><td>Edge-to-cost ratio, \(\mu / c\).</td></tr>
+    <tr><td>\(\sigma\)</td><td>Standard deviation of profit per trade.</td></tr>
+    <tr><td>\(n\)</td><td>Number of trades in the backtest or live record.</td></tr>
+    <tr><td>\(t,\ t_{\text{net}}\)</td><td>t-statistic of the average profit per trade, gross and net.</td></tr>
+    <tr><td>\(d\)</td><td>Effect size per trade, \(\mu/\sigma\).</td></tr>
+    <tr><td>\(N\)</td><td>Trades per year (turnover).</td></tr>
+    <tr><td>SR</td><td>Annual Sharpe ratio: average return over its standard deviation, per year.</td></tr>
+    <tr><td>ATR</td><td>Average true range of one bar on the trading timeframe.</td></tr>
+    <tr><td>\(g\)</td><td>Spread as a share of ATR, \(s/\text{ATR}\).</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The tool: cost break-even calculator</h2>
+  <p>
+    Put in your backtest's gross numbers and your realistic costs. The calculator gives you the
+    break-even cost, the net edge, both t-statistics, the annual Sharpe before and after costs, a
+    double-cost stress test and a verdict. The presets load the three strategies used in the worked
+    example below.
+  </p>
+
+  <div class="tl-chart interactive" id="ac-tool">
+    <div class="tl-chart-label">From gross edge to net edge, per round trip</div>
+    <div class="ac-presets">
+      <button type="button" class="tl-btn" data-preset="fast">Fast EUR/USD fade</button>
+      <button type="button" class="tl-btn" data-preset="filtered">Filtered version</button>
+      <button type="button" class="tl-btn" data-preset="slow">Slow USD/JPY swing</button>
+    </div>
+    <svg id="ac-wf" class="ac-svg" viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Waterfall chart: the gross edge per trade as a bar, then the spread, slippage, commission and financing each taking a step down, ending at the net edge per trade, which is green when positive and red when negative.">
+      <g id="ac-wf-g"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Gross edge per trade μ (pips)</span><span class="tl-live" id="ac-mu-val">0.9</span></div>
+        <input type="range" id="ac-mu" min="0" max="60" step="0.1" value="0.9">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Std dev per trade σ (pips)</span><span class="tl-live" id="ac-sd-val">15</span></div>
+        <input type="range" id="ac-sd" min="1" max="300" step="1" value="15">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trades per year N</span><span class="tl-live" id="ac-N-val">1000</span></div>
+        <input type="range" id="ac-N" min="10" max="3000" step="10" value="1000">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Years of history</span><span class="tl-live" id="ac-Y-val">3</span></div>
+        <input type="range" id="ac-Y" min="1" max="15" step="1" value="3">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spread s (pips)</span><span class="tl-live" id="ac-s-val">0.4</span></div>
+        <input type="range" id="ac-s" min="0" max="5" step="0.1" value="0.4">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Slippage per side ℓ (pips)</span><span class="tl-live" id="ac-l-val">0.2</span></div>
+        <input type="range" id="ac-l" min="0" max="3" step="0.1" value="0.2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Commission per round trip m (pips)</span><span class="tl-live" id="ac-m-val">0.5</span></div>
+        <input type="range" id="ac-m" min="0" max="3" step="0.1" value="0.5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Financing / other per trade f (pips)</span><span class="tl-live" id="ac-f-val">0.0</span></div>
+        <input type="range" id="ac-f" min="0" max="10" step="0.1" value="0">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>ATR of one bar on your timeframe (pips)</span><span class="tl-live" id="ac-atr-val">4</span></div>
+        <input type="range" id="ac-atr" min="1" max="200" step="1" value="4">
+        <div class="tl-hint">Used only for the spread-to-range check.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="ac-readout"></div>
+    <div class="ac-verdict" id="ac-verdict"></div>
+    <svg id="ac-tn" class="ac-svg" viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Line chart of the t-statistic against the number of trades on a log scale, for the gross edge and the net edge. The gross line rises with more trades; the net line rises if the net edge is positive and falls if it is negative. Dashed lines mark t equals 2 and minus 2, and a marker shows the current sample size.">
+      <g id="ac-tn-g"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>gross t</span>
+      <span><i style="background:var(--green)"></i>net t (red when negative)</span>
+      <span><i style="background:var(--amber)"></i>your sample size</span>
+    </div>
+    <div class="tl-chart-caption">The waterfall is per round trip. The lower chart shows how the t-statistic would grow with more trades at the same edge: more data makes a real gross effect ever more "significant" and, when the net edge is negative, makes the loss ever more certain. Annual Sharpe assumes independent trades. Verdict rules: gross t below 2 → not shown to be real yet; net edge ≤ 0 → real but not tradeable; net t below 2 or a loss at double cost → marginal; otherwise tradeable on these assumptions.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Worked example: one signal, three ways to trade it</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>A "significant" EUR/USD fade that cannot pay its way</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>The gross result</h4>
+        <p>An intraday EUR/USD fade, three years out of sample: \(n = 3{,}000\) trades (about 1,000 a year), average gross profit \(\mu = 0.9\) pips, standard deviation \(\sigma = 15\) pips per trade.</p>
+        <p>Standard error \(15/\sqrt{3000} = 0.274\) pips, so \(t = 0.9/0.274 = 3.29\) — a two-sided p-value of about 0.001. Effect size \(d = 0.9/15 = 0.06\): tiny, but very probably real.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>The cost of one round trip</h4>
+        <p>Spread 0.4 pips; slippage 0.2 pips each side, so 0.4; commission $5 a standard lot round trip, which at $10 a pip is 0.5 pips; no overnight financing (flat by the close).</p>
+        <p>\(c = 0.4 + 2(0.2) + 0.5 + 0 = 1.3\) pips.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Net edge, break-even, Sharpe</h4>
+        <p>\(\mu_{\text{net}} = 0.9 - 1.3 = -0.4\) pips a trade. Break-even cost \(c^{*} = 0.9\) pips; \(\rho = 0.9/1.3 = 0.69\). Net \(t = -0.4/0.274 = -1.46\).</p>
+        <p>Per year: 900 pips gross, 1,300 pips of cost, −400 pips net (−$4,000 per standard lot). Annual Sharpe \(0.06\sqrt{1000} = 1.90\) gross becomes \(-0.0267\sqrt{1000} = -0.84\) net — a cost drag of \((1.3/15)\sqrt{1000} = 2.74\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>The spread-to-range check</h4>
+        <p>If a 5-minute bar's ATR is about 4 pips, \(g = 0.4/4 = 0.10\) — inside the 0.15 line. The gate passes and the strategy still loses: the gate looks at the spread alone, and here commission and slippage are two-thirds of the cost.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>The usable output</h4>
+        <p><strong>Verdict: statistically real, economically dead. Do not trade it.</strong> To break even you need all-in costs under 0.9 pips (31% cheaper); to have a 2× margin you need 0.45 pips or less. Neither is credible for a retail-sized account crossing the spread.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <p>The same signal can be traded differently. Here are the three presets side by side:</p>
+  <div class="ac-scroll">
+  <table class="ac-table">
+    <tr><th>Version</th><th>μ</th><th>σ</th><th>N/yr</th><th>n</th><th>c</th><th>gross t</th><th>net t</th><th>ρ</th><th>net SR</th><th>net @ 2c</th></tr>
+    <tr><td>Fast EUR/USD fade</td><td>0.9</td><td>15</td><td>1,000</td><td>3,000</td><td>1.3</td><td>3.29</td><td>−1.46</td><td>0.69</td><td>−0.84</td><td>−1.7</td></tr>
+    <tr><td>Filtered: top 20% of setups</td><td>3.0</td><td>18</td><td>200</td><td>600</td><td>1.3</td><td>4.08</td><td>2.31</td><td>2.31</td><td>1.34</td><td>+0.4</td></tr>
+    <tr><td>Slow USD/JPY daily swing</td><td>40</td><td>200</td><td>40</td><td>200</td><td>3.0</td><td>2.83</td><td>2.62</td><td>13.3</td><td>1.17</td><td>+34</td></tr>
+  </table>
+  </div>
+  <p>
+    The filtered version keeps only the strongest fifth of setups: fewer trades, a bigger edge each,
+    and it clears every bar — just. Doubling its cost leaves 0.4 pips a trade, a net t of 0.54: real
+    money, thin margin. The slow swing trade has the weakest t-statistic of the three and by far the
+    healthiest economics, because 3 pips of cost is small against a 40-pip average. One caution on the
+    filtered row: choosing "the top 20%" after looking at the results is a search, and the
+    <a href="multiple-testing.html">multiple-testing</a> penalty applies. The filter has to be fixed in
+    advance and confirmed on data it was not chosen on.
+  </p>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Template — copy this</div>
+    <h3>The cost check card</h3>
+    <p>Fill this in for any idea before it gets a position size. Each line is a yes/no.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Gross numbers, out of sample</h4>
+        <p>\(\mu\), \(\sigma\), \(n\) and \(N\) per year — from data the idea was not designed on. Gross \(t \ge 2\) (≥ 3 if you tried many variants)?</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Costs at the hour you trade</h4>
+        <p>Spread at your trading times (not the quiet quote), slippage on both sides (stops worse than limits), commission, financing. Write \(c\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Break-even and margin</h4>
+        <p>\(c^{*} = \mu\). Is \(\rho = \mu/c \ge 2\)?</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Net evidence</h4>
+        <p>Net \(t \ge 2\)? Annual net Sharpe worth the risk and the work?</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Stress and gate</h4>
+        <p>Still positive at \(2c\)? Spread/ATR on the trading timeframe ≤ 0.15?</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>After launch</h4>
+        <p>Log every fill against the decision price. After 50 trades, compare realised \(c\) with the assumed one; if it is higher, re-run this card with the real number.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How it goes wrong — and it actually happened</h2>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Start</b>A backtest finds a small, real effect (t ≈ 3)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Turnover</b>It needs ~1,000 trades a year, each crossing the spread</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the break-even cost</b>Gross edge 0.9 pips against a 1.3-pip round trip</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Live</b>Net edge negative; cost drag larger than the gross Sharpe</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A real effect that loses money — slowly and with great statistical confidence</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You find a game you win a tiny bit more often than you lose. But every game has an entry fee. Play once and you barely notice; play a thousand times and the fees add up to more than you won.</p>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Value Line: paper versus reality</h3>
+    <p>
+      For decades the investment research firm Value Line ranked stocks into groups by expected
+      performance, and its top-ranked group did well on paper — well enough to become one of the
+      classic puzzles for believers in efficient markets. Value Line also ran a real fund that traded
+      on its own rankings.
+    </p>
+    <p style="margin-bottom:0">
+      In "The Implementation Shortfall: Paper versus Reality" (1988), André Perold used the gap
+      between the paper record and the fund's real returns as his motivating example: the real fund
+      earned far less than the paper portfolio it was built to follow. The rankings were not wrong;
+      the paper portfolio simply never paid to trade. Spreads, market impact, the delay between
+      signal and order, and trades that were never filled took most of the difference. Perold's
+      measure of that gap — implementation shortfall — is now the standard yardstick for execution.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2016: a cost bill for the anomaly zoo</h3>
+    <p style="margin-bottom:0">
+      By the 2010s academic finance had published hundreds of patterns that seemed to predict stock
+      returns. Robert Novy-Marx and Mihail Velikov's "A Taxonomy of Anomalies and Their Trading Costs"
+      (<em>Review of Financial Studies</em>, 2016) estimated realistic trading costs for dozens of
+      them. The dividing line was turnover: strategies that rebalance slowly mostly kept a meaningful
+      part of their premium after costs, while many that need frequent rebalancing lost most or all of
+      it. They also showed that simple ways of trading less — such as a wider gap between the signal level
+      that triggers a buy and the level that triggers a sale — rescued part of what costs took. The effect being
+      "real" in the data was never the whole question.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>What the desk found when it tested the claims</h2>
+
+  <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>"When the spread is a large fraction of the day's range, no short-horizon edge survives it."</strong> Spread/ATR above 0.15: zero of 30 strategy × timeframe cells profitable. Cost outruns edge as the timeframe speeds up; the crossover is the same across strategies. This is the \(g = s/\text{ATR}\) check in the calculator — a first filter to run before any new intraday idea, though as the worked example shows, passing it does not make a strategy profitable.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="vwap-extension-fade" data-evidence-date="2026-09-01">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>"Price stretched far from VWAP snaps back — fade the extension."</strong> Positive gross across timeframes, but 3–8× under cost; the edge decays as fast as the cost does as the timeframe shortens. In this lesson's terms, \(\rho\) between about 0.13 and 0.33: a gross effect that cannot be traded. It survived as a risk overlay on some strategies, not as an entry.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="daily-band-fade" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>The double-cost stress in practice.</strong> A daily volatility-band fade on 25 FX pairs and gold, pre-registered with costs on: the vol-targeted book (485 trades) made a Sharpe of 0.14 ± 0.30, below a random-entry control's 95th percentile of 0.40, and 0.05 at 2× cost. Whatever was there was not distinguishable from random entries before costs were doubled, and almost nothing was left after.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📒</div>
+      <h4>Costs in the backtest, from day one</h4>
+      <p>Research is run net of costs from the start, with spreads that vary by hour and event, not a single average. A gross-only result is treated as unfinished.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">✖️2</div>
+      <h4>The double-cost test</h4>
+      <p>A strategy that dies when costs double is fragile. Real costs drift up — wider spreads in stress, bigger size, worse fills than the backtest's bar close.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧾</div>
+      <h4>Transaction cost analysis</h4>
+      <p>Every fill is compared with the decision price. Realised cost per trade is tracked and fed back into the break-even calculation (see <a href="execution-algorithms.html">Execution Algorithms</a>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🐢</div>
+      <h4>Trade less, on purpose</h4>
+      <p>Wider rebalance bands, signal thresholds, and holding periods long enough for the move to dwarf the spread. Cutting turnover is often the cheapest edge improvement available.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where cost thinking goes wrong</h3>
+    <p><strong>Counting half the spread.</strong> A round trip crosses the whole spread — half on the way in, half on the way out. Slippage, likewise, is paid on both sides.</p>
+    <p><strong>Using the quiet-hour quote.</strong> Strategies that trade on news, at the open or at the roll pay the spread of those moments, which can be many times the headline figure.</p>
+    <p><strong>Filling at the bar close.</strong> A backtest that enters at the close of the signal bar assumes a price you could not have had. Enter on the next bar's open, plus slippage.</p>
+    <p><strong>Treating significance as size.</strong> A huge \(n\) makes any non-zero edge significant. Compare the edge per trade with the cost per trade, not the p-value with 0.05.</p>
+    <p><strong>Ignoring financing.</strong> A position held overnight pays or earns the swap. On a slow carry-negative trade it can be the biggest cost of all.</p>
+    <p style="margin-bottom:0"><strong>Rescuing a dead strategy by filtering on the results.</strong> Keeping "only the best setups" chosen after the fact raises the gross edge on paper and nowhere else. Fix the filter first, then test it on fresh data.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cost per round trip is \(s + 2\ell + m + f\).</strong> The full spread, slippage on both sides, commission, financing — at the hour you actually trade.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gross edge is your break-even cost.</strong> Pay more per round trip and you lose. Ask for \(\mu/c \ge 2\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Significance is not size.</strong> t grows with \(\sqrt{n}\); the edge per trade does not. A t of 3.3 on a 0.9-pip edge still loses to a 1.3-pip cost.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Turnover is where cost bites.</strong> Cost drag on Sharpe is \((c/\sigma)\sqrt{N}\); slower trades capture bigger moves for the same cost.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Desk test held up:</strong> spread/ATR above 0.15 left zero of 30 strategy × timeframe cells profitable. Run it first — it is necessary, not sufficient.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Desk tests found nothing tradeable</strong> in a VWAP-extension fade (positive gross, 3–8× under cost) or a daily band fade (Sharpe 0.14, 0.05 at 2× cost). That is a verdict on those tests, not on mean reversion as an idea.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Spread 0.6 pips, slippage 0.3 pips a side, commission 0.7 pips a round trip, no financing. What is the cost per round trip?</summary>
+    <div class="tl-answer">\(c = 0.6 + 2(0.3) + 0.7 + 0 = 1.9\) pips. The slippage counts twice: once on entry, once on exit.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A strategy averages 2.5 pips gross a trade. What is its break-even cost, and what is the most you should be paying if you want a 2× margin?</summary>
+    <div class="tl-answer">Break-even \(c^{*} = \mu = 2.5\) pips. A 2× margin (\(\rho = \mu/c \ge 2\)) means \(c \le 1.25\) pips.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A backtest of 10,000 trades shows a gross edge of 0.3 pips with σ = 10 pips. Is the edge real? Is it tradeable at 1 pip a round trip?</summary>
+    <div class="tl-answer">Standard error \(10/\sqrt{10000} = 0.1\), so \(t = 3.0\): very probably real. Net edge \(0.3 - 1 = -0.7\) pips, net \(t = -7\): very certainly a loser. Real and tradeable are different questions.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. You quadruple the number of trades in your sample at the same average edge. What happens to t and to the effect size d?</summary>
+    <div class="tl-answer">\(t = \mu\sqrt{n}/\sigma\) doubles (\(\sqrt{4} = 2\)). The effect size \(d = \mu/\sigma\) does not change at all. More data makes you surer of the edge's size; it does not make the edge bigger.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Two strategies each have μ/σ = 0.05 per trade and c/σ = 0.03. One trades 2,500 times a year, the other 100. What is each one's annual net Sharpe and cost drag?</summary>
+    <div class="tl-answer">Net per-trade ratio \(0.05 - 0.03 = 0.02\). Fast: \(0.02\sqrt{2500} = 1.0\) net, drag \(0.03 \times 50 = 1.5\). Slow: \(0.02 \times 10 = 0.2\) net, drag 0.3. Same ratios, so the faster one has the better Sharpe here — turnover helps when the edge per trade already beats the cost. The catch in practice is that faster trades usually have a <em>smaller</em> edge per trade for the same cost, so \(\rho\) falls as you speed up.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A strategy passes the spread/ATR ≤ 0.15 gate. Can you conclude it survives costs?</summary>
+    <div class="tl-answer">No. The gate looks at the spread alone against the typical move. Commission, slippage on both sides and financing are not in it, and the edge itself may be a small share of the ATR. In the worked example \(g = 0.10\) passed while the total cost was 1.44 times the gross edge. Passing the gate means the idea is not dead on arrival; only the net edge says it is alive.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>André F. Perold, "The Implementation Shortfall: Paper versus Reality", <em>Journal of Portfolio Management</em>, 1988 — the measurement of the gap between paper and real returns.</li>
+    <li>Robert Almgren and Neil Chriss, "Optimal Execution of Portfolio Transactions", <em>Journal of Risk</em>, 2000 — the trade-off between impact cost and timing risk.</li>
+    <li>Robert Novy-Marx and Mihail Velikov, "A Taxonomy of Anomalies and Their Trading Costs", <em>Review of Financial Studies</em>, 2016 — which published effects survive realistic costs, and why turnover decides it.</li>
+    <li>Campbell R. Harvey, Yan Liu and Heqing Zhu, "… and the Cross-Section of Expected Returns", <em>Review of Financial Studies</em>, 2016 — why a t of 2 is too low a bar after many tests.</li>
+    <li>Stephen T. Ziliak and Deirdre N. McCloskey, <em>The Cult of Statistical Significance</em>, University of Michigan Press, 2008 — the long argument that size matters more than significance.</li>
+    <li><a href="execution-algorithms.html">Execution Algorithms</a>, <a href="market-impact-almgren-chriss.html">Market Impact</a>, <a href="institutional-roll-spread-estimator.html">Roll Spread Estimator</a> and <a href="multiple-testing.html">Multiple Testing</a> — the lessons on measuring and reducing cost, and on how high the significance bar should be.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-combining-signals.html">← Combining Signals That Disagree</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace", SANS = "'DM Sans',sans-serif";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function $(id){ return document.getElementById(id); }
+  function fmt(x, d){ var s = Math.abs(x).toFixed(d); return (x < 0 && parseFloat(s) !== 0 ? '−' : '') + s; }
+  function sgn(x, d){ return (x > 0 ? '+' : '') + fmt(x, d); }
+
+  var ids = ['mu', 'sd', 'N', 'Y', 's', 'l', 'm', 'f', 'atr'];
+  var inp = {}; ids.forEach(function(k){ inp[k] = $('ac-' + k); });
+  var PRESETS = {
+    fast:     { mu: 0.9, sd: 15,  N: 1000, Y: 3, s: 0.4, l: 0.2, m: 0.5, f: 0,   atr: 4 },
+    filtered: { mu: 3.0, sd: 18,  N: 200,  Y: 3, s: 0.4, l: 0.2, m: 0.5, f: 0,   atr: 4 },
+    slow:     { mu: 40,  sd: 200, N: 40,   Y: 5, s: 1.0, l: 0.5, m: 0,   f: 1.0, atr: 70 }
+  };
+
+  function v(k){ return parseFloat(inp[k].value); }
+
+  function render(){
+    var mu = v('mu'), sd = v('sd'), N = v('N'), Y = v('Y'), s = v('s'), l = v('l'), m = v('m'), f = v('f'), atr = v('atr');
+    var n = N * Y, c = s + 2 * l + m + f, se = sd / Math.sqrt(n);
+    var net = mu - c, t = mu / se, tnet = net / se, net2 = mu - 2 * c;
+    var srG = mu / sd * Math.sqrt(N), srN = net / sd * Math.sqrt(N), drag = c / sd * Math.sqrt(N);
+    var g = s / atr, rho = c > 0 ? mu / c : Infinity;
+    $('ac-mu-val').textContent = mu.toFixed(1);
+    $('ac-sd-val').textContent = sd.toFixed(0);
+    $('ac-N-val').textContent = N.toFixed(0);
+    $('ac-Y-val').textContent = Y.toFixed(0);
+    $('ac-s-val').textContent = s.toFixed(1);
+    $('ac-l-val').textContent = l.toFixed(1);
+    $('ac-m-val').textContent = m.toFixed(1);
+    $('ac-f-val').textContent = f.toFixed(1);
+    $('ac-atr-val').textContent = atr.toFixed(0);
+
+    // Waterfall
+    var G = $('ac-wf-g'); clear(G);
+    var X0 = 64, X1 = 628, Y0 = 20, Y1 = 196;
+    var top = Math.max(mu, c, 0.1), bot = Math.min(0, net) ;
+    var span = top - bot; top += span * 0.08; bot -= span * (bot < 0 ? 0.12 : 0.02);
+    function y(val){ return Y0 + (Y1 - Y0) * (top - val) / (top - bot); }
+    var steps = [
+      { lab: 'gross', from: 0, to: mu, col: 'var(--blue)' },
+      { lab: 'spread', from: mu, to: mu - s, col: 'var(--red)' },
+      { lab: 'slip ×2', from: mu - s, to: mu - s - 2 * l, col: 'var(--red)' },
+      { lab: 'comm.', from: mu - s - 2 * l, to: mu - s - 2 * l - m, col: 'var(--red)' },
+      { lab: 'financing', from: mu - s - 2 * l - m, to: net, col: 'var(--red)' },
+      { lab: 'net', from: 0, to: net, col: net > 0 ? 'var(--green)' : 'var(--red)' }
+    ];
+    G.appendChild(el('line', { x1: X0, x2: X1, y1: y(0), y2: y(0) }, 'stroke:var(--text3);stroke-width:1'));
+    G.appendChild(el('text', { x: X0 - 6, y: y(0) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', '0'));
+    G.appendChild(el('line', { x1: X0, x2: X1, y1: y(mu), y2: y(mu) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:4,4'));
+    G.appendChild(el('text', { x: X0 - 6, y: y(mu) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', fmt(mu, 1)));
+    var w = (X1 - X0) / steps.length;
+    steps.forEach(function(st, i){
+      var a = y(Math.max(st.from, st.to)), b = y(Math.min(st.from, st.to)), bx = X0 + i * w + 6;
+      G.appendChild(el('rect', { x: bx, y: a, width: w - 12, height: Math.max(b - a, 1), rx: 3 }, 'fill:' + st.col + ';opacity:' + (i === 0 || i === 5 ? 0.9 : 0.6)));
+      if (i > 0 && i < 5){ var nx = X0 + (i + 1) * w + 6; G.appendChild(el('line', { x1: bx + w - 12, x2: nx, y1: y(st.to), y2: y(st.to) }, 'stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3')); }
+      if (i === 0){ G.appendChild(el('line', { x1: bx + w - 12, x2: X0 + w + 6, y1: y(mu), y2: y(mu) }, 'stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3')); }
+      var d = st.to - st.from;
+      var lbl = i === 0 ? fmt(mu, 2) : i === 5 ? sgn(net, 2) : (Math.abs(d) < 0.005 ? '0' : fmt(d, 2));
+      G.appendChild(el('text', { x: bx + (w - 12) / 2, y: Math.max(a - 5, 12), 'text-anchor': 'middle', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text)', lbl));
+      G.appendChild(el('text', { x: bx + (w - 12) / 2, y: Y1 + 18, 'text-anchor': 'middle', 'font-size': 15, 'font-family': SANS }, 'fill:var(--text2)', st.lab));
+    });
+    G.appendChild(el('text', { x: X1, y: 12, 'text-anchor': 'end', 'font-size': 14, 'font-family': SANS }, 'fill:var(--amber)', 'dashed: break-even cost = gross edge'));
+
+    // Readout
+    $('ac-readout').innerHTML =
+      'Cost per round trip <b>' + c.toFixed(2) + '</b> pips · break-even cost <b>' + mu.toFixed(2) + '</b> · edge-to-cost ρ <b>' + (isFinite(rho) ? rho.toFixed(2) : '∞') + '</b><br>' +
+      'Net edge <b>' + sgn(net, 2) + '</b> pips/trade · per year: gross <b>' + fmt(mu * N, 0) + '</b>, cost <b>' + fmt(c * N, 0) + '</b>, net <b>' + sgn(net * N, 0) + '</b> pips<br>' +
+      'n = <b>' + n.toLocaleString() + '</b> trades · gross t <b>' + fmt(t, 2) + '</b> · net t <b>' + fmt(tnet, 2) + '</b> · effect size d <b>' + (mu / sd).toFixed(3) + '</b><br>' +
+      'Annual Sharpe: gross <b>' + fmt(srG, 2) + '</b> → net <b>' + fmt(srN, 2) + '</b> (cost drag ' + drag.toFixed(2) + ') · at 2× cost: net <b>' + sgn(net2, 2) + '</b> pips/trade<br>' +
+      'Spread/ATR <b>' + g.toFixed(3) + '</b> ' + (g > 0.15 ? '— above the 0.15 line' : '— inside the 0.15 line') + ' · total cost/ATR ' + (c / atr).toFixed(3);
+
+    var cls, head, body;
+    if (t < 2){ cls = 'amber'; head = 'Not shown to be real yet'; body = 'Gross t is ' + fmt(t, 2) + ', under 2. Before arguing about costs, the effect itself needs more out-of-sample trades.' + (net <= 0 ? ' And at these costs it would lose money even if it were real.' : ''); }
+    else if (net <= 0){ cls = 'red'; head = 'Statistically real, economically dead'; body = 'The edge is very probably there (t ' + fmt(t, 2) + ') and smaller than its cost. You need all-in costs under ' + mu.toFixed(2) + ' pips to break even, and under ' + (mu / 2).toFixed(2) + ' for a 2× margin. Do not trade it as is.'; }
+    else if (tnet < 2 || net2 <= 0){ cls = 'amber'; head = 'Marginal — thin margin over cost'; body = 'It makes money on these assumptions, but ' + (tnet < 2 ? 'the net t of ' + fmt(tnet, 2) + ' is weak evidence' : '') + (tnet < 2 && net2 <= 0 ? ' and ' : '') + (net2 <= 0 ? 'doubling the cost wipes it out' : '') + '. Cut cost or turnover, or size it small and measure real fills first.'; }
+    else { cls = 'green'; head = 'Tradeable on these assumptions'; body = 'Net t ' + fmt(tnet, 2) + ', still ' + sgn(net2, 2) + ' pips a trade at double the cost, ρ = ' + rho.toFixed(2) + '. Now check the real fills against these costs once it is live.'; }
+    if (g > 0.15) body += ' Warning: spread/ATR is ' + g.toFixed(2) + ', above the 0.15 line where the desk found no short-horizon strategy profitable.';
+    var V = $('ac-verdict'); V.className = 'ac-verdict ' + cls; V.innerHTML = '<strong>' + head + '</strong>' + body;
+
+    // t vs n chart (log x)
+    var T = $('ac-tn-g'); clear(T);
+    var TX0 = 70, TX1 = 620, TY0 = 160, TY1 = 14, NMIN = 30, NMAX = 30000;
+    function tx(nn){ return TX0 + (TX1 - TX0) * (Math.log(nn) - Math.log(NMIN)) / (Math.log(NMAX) - Math.log(NMIN)); }
+    var tvals = [];
+    for (var i = 0; i <= 80; i++){ var nn = NMIN * Math.pow(NMAX / NMIN, i / 80); tvals.push(mu / sd * Math.sqrt(nn), net / sd * Math.sqrt(nn)); }
+    var tmax = Math.max(4, Math.max.apply(null, tvals)), tmin = Math.min(-4, Math.min.apply(null, tvals));
+    tmax = Math.min(tmax, 40); tmin = Math.max(tmin, -40);
+    function ty(tt){ return TY0 - (TY0 - TY1) * (Math.max(tmin, Math.min(tmax, tt)) - tmin) / (tmax - tmin); }
+    [-40, -20, -10, -2, 0, 2, 10, 20, 40].filter(function(tt){ return tt >= tmin && tt <= tmax && (Math.abs(tt) !== 2 || tmax - tmin <= 30); }).forEach(function(tt){
+      T.appendChild(el('line', { x1: TX0, x2: TX1, y1: ty(tt), y2: ty(tt) }, 'stroke:' + (tt === 0 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1' + (Math.abs(tt) === 2 ? ';stroke-dasharray:4,4' : '')));
+      T.appendChild(el('text', { x: TX0 - 6, y: ty(tt) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', 't=' + (tt > 0 ? '+' : tt < 0 ? '−' : '') + Math.abs(tt)));
+    });
+    [100, 1000, 10000].forEach(function(nn){
+      T.appendChild(el('text', { x: tx(nn), y: TY0 + 16, 'text-anchor': 'middle', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', nn.toLocaleString()));
+    });
+    T.appendChild(el('text', { x: (TX0 + TX1) / 2, y: TY0 + 32, 'text-anchor': 'middle', 'font-size': 15, 'font-family': SANS }, 'fill:var(--text2)', 'number of trades n (log scale)'));
+    var dG = '', dN = '';
+    for (var j = 0; j <= 80; j++){
+      var nj = NMIN * Math.pow(NMAX / NMIN, j / 80);
+      dG += (j ? 'L' : 'M') + tx(nj).toFixed(1) + ',' + ty(mu / sd * Math.sqrt(nj)).toFixed(1);
+      dN += (j ? 'L' : 'M') + tx(nj).toFixed(1) + ',' + ty(net / sd * Math.sqrt(nj)).toFixed(1);
+    }
+    T.appendChild(el('path', { d: dG, fill: 'none' }, 'stroke:var(--blue);stroke-width:2.2'));
+    T.appendChild(el('path', { d: dN, fill: 'none' }, 'stroke:' + (net > 0 ? 'var(--green)' : 'var(--red)') + ';stroke-width:2.2'));
+    var cx = tx(Math.min(NMAX, Math.max(NMIN, n)));
+    T.appendChild(el('line', { x1: cx, x2: cx, y1: TY1, y2: TY0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3'));
+    T.appendChild(el('circle', { cx: cx, cy: ty(t), r: 4.5 }, 'fill:var(--blue)'));
+    T.appendChild(el('circle', { cx: cx, cy: ty(tnet), r: 4.5 }, 'fill:' + (net > 0 ? 'var(--green)' : 'var(--red)')));
+    T.appendChild(el('text', { x: cx > 480 ? cx - 6 : cx + 6, y: TY1 + 10, 'text-anchor': cx > 480 ? 'end' : 'start', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'n = ' + n.toLocaleString()));
+  }
+
+  ids.forEach(function(k){ inp[k].addEventListener('input', render); });
+  Array.prototype.forEach.call(document.querySelectorAll('#ac-tool [data-preset]'), function(b){
+    b.addEventListener('click', function(){
+      var p = PRESETS[b.getAttribute('data-preset')];
+      ids.forEach(function(k){ inp[k].value = p[k]; });
+      Array.prototype.forEach.call(document.querySelectorAll('#ac-tool [data-preset]'), function(o){ o.classList.toggle('active', o === b); });
+      render();
+    });
+  });
+  render();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

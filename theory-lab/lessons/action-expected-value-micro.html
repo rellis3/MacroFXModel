@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinking in Expected Value — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .ev-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  .ev-table th,.ev-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .ev-table th{color:var(--text3);font-weight:500;font-size:11px}
+  .ev-table td:first-child,.ev-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .ev-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .ev-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+  .ev-svg{width:100%;height:auto;display:block;touch-action:pan-y}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Thinking in Expected Value — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Want the break-even algebra, the range-to-odds tool, the full EV card template and a 6-question self-test?<a href="action-expected-value.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 2 of 8</div>
+      <h1 class="sl-h1">Thinking in <em>Expected Value</em></h1>
+      <p class="sl-lede">A hit rate on its own tells you almost nothing. Here is the one number that decides whether a trade is worth taking: what it pays on average, after costs. You'll also see how to get a probability out of an analysis that never gives you one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">From the card table to the desk</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Edward Thorp's <em>Beat the Dealer</em> (1962) showed that blackjack's expected value changes from hand to hand, and that a player should bet more exactly when it turns positive. He took the same idea to markets: <em>Beat the Market</em> (1967) and then a hedge fund.</p>
+        <p>Discretionary traders learned it as "expectancy" in R-multiples (profit ÷ initial risk), a vocabulary popularised in the 1990s.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> decide whether a view, at this stop, target and cost, is worth a trade at all.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">40% can beat 70%</h2>
+      <div class="sl-row"><div class="sl-box">E = p·b − (1 − p) − c</div></div>
+      <p class="sl-sub">Measured in R, where 1R is what you lose at the stop. b = average win ÷ average loss. c = cost per trade.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">Trader A · right 70%</span><p>Wins pay 0.4R. E = 0.7×0.4 − 0.3 = <strong>−0.02R</strong>. After a 0.05R cost, −0.07R. Break-even win rate 71.4%.</p></div>
+        <div class="sl-ccard green"><span class="sl-ctag green">Trader B · right 40%</span><p>Wins pay 2R. E = 0.4×2 − 0.6 = <strong>+0.20R</strong>. After a 0.05R cost, +0.15R. Break-even win rate 33.3%.</p></div>
+      </div>
+      <p class="sl-p">What matters is how far your win rate sits above the break-even rate for your payoff, not how high it is.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Try it: your EV</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>EV and break-even</div>
+        <div class="sl-sliderhead"><span>Win rate p</span><span class="sl-live" id="m-p-val">40%</span></div>
+        <input type="range" class="sl-slider" id="m-p" min="5" max="95" step="1" value="40">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Payoff b</span><span class="sl-live" id="m-b-val">2.00</span></div>
+        <input type="range" class="sl-slider" id="m-b" min="0.2" max="5" step="0.05" value="2">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Cost per trade (R)</span><span class="sl-live" id="m-c-val">0.05R</span></div>
+        <input type="range" class="sl-slider" id="m-c" min="0" max="0.3" step="0.01" value="0.05">
+        <div class="ev-btnrow">
+          <button type="button" class="sl-tab" data-m-p="70" data-m-b="0.4">A · 70% / 0.4</button>
+          <button type="button" class="sl-tab" data-m-p="40" data-m-b="2">B · 40% / 2</button>
+          <button type="button" class="sl-tab" data-m-p="29" data-m-b="2.5">No edge · 2.5R</button>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">EV per trade</div><div class="sl-calc-result-val" id="m-e">+0.15R</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Break-even win rate</div><div class="sl-calc-result-val" id="m-be">35.0%</div></div>
+        </div>
+        <div class="ev-wrap"><svg id="m-svg" class="ev-svg" viewBox="0 0 640 110" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bar from 0 to 100 percent win rate, showing the break-even win rate as a line and your win rate as a dot; the gap is your edge."><g id="m-g"></g></svg></div>
+        <div class="sl-note" id="m-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Moving the target doesn't create an edge</h2>
+      <p class="sl-p">In a market with no edge (a driftless random walk), the chance of hitting target T before stop S is</p>
+      <div class="sl-row"><div class="sl-box">P(target first) = S / (S + T) = 1 / (1 + b)</div></div>
+      <p class="sl-p">That is <strong>exactly</strong> the break-even win rate. Every stop and target combination has EV = 0 before costs, and −c after. A 1R target hits 50% of the time, a 3R target 25%, and both average zero.</p>
+      <div class="sl-callout purple"><div class="sl-callout-label">Use it</div><p>S/(S+T) is the base rate for any stop-and-target trade. Your analysis has to beat that number. Picking a different target can't do it for you.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Your analysis didn't give a probability. Build one.</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Base rate</h4><p>No analysis at all: S/(S+T), or the long-run share of up-weeks.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Count</h4><p>Past cases with the same reading, same exits: k wins of n. Use only what was knowable then.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Shrink</h4><p>p̂ = (k + m·p₀) / (n + m). With small n you stay near the base rate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Range → odds</h4><p>Vol forecast σ and target d: P(close beyond) = 1 − Φ(d/σ); P(touch) ≈ twice that.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Try it: shrink a small count</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>How much is "12 of 30" worth?</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label for="s-k">Wins k</label><input class="sl-input" id="s-k" type="number" min="0" value="12" inputmode="numeric"></div>
+          <div class="sl-calc-field"><label for="s-n">Cases n</label><input class="sl-input" id="s-n" type="number" min="1" value="30" inputmode="numeric"></div>
+          <div class="sl-calc-field"><label for="s-p0">Base rate %</label><input class="sl-input" id="s-p0" type="number" min="0" max="100" step="0.1" value="28.6" inputmode="decimal"></div>
+          <div class="sl-calc-field"><label for="s-m">Prior weight m</label><input class="sl-input" id="s-m" type="number" min="0" value="30" inputmode="numeric"></div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Raw count</div><div class="sl-calc-result-val" id="s-raw">40.0%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Shrunk p̂</div><div class="sl-calc-result-val" id="s-hat">34.3%</div></div>
+        </div>
+        <div class="sl-note" id="s-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · Worked example</div>
+      <h2 class="sl-h2">Long EUR/USD 1.0850, stop 1.0810, target 1.0950</h2>
+      <div class="sl-calc-steps">
+        <div>1 · S = 40 pips = 1R, T = 100 pips → <b>b = 2.5</b>; cost 1.5 pips → <b>c = 0.0375R</b></div>
+        <div>2 · Base rate S/(S+T) = 40/140 = <b>28.6%</b></div>
+        <div>3 · Back-check: target first in <b>12 of 30</b> similar cases (40%)</div>
+        <div>4 · Shrink, m = 30: (12 + 8.57)/60 = <b>34.3%</b> (raw SE ±8.9 pts)</div>
+        <div>5 · E = 0.343×2.5 − 0.657 − 0.0375 = <b>+0.16R</b> ≈ 6.5 pips a trade</div>
+        <div>6 · Break-even (1.0375)/3.5 = <b>29.6%</b> → margin 4.6 pts, half an SE</div>
+        <div>7 · Decision: <b>take it, reduced size, log it</b></div>
+      </div>
+      <p class="sl-p">With the raw 40% you'd have believed +0.36R, more than double. Most of the work is in getting the probability right.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">EV is an average. It takes trades to show.</h2>
+      <div class="sl-row"><div class="sl-box">σ per trade = (1 + b)·√(p(1−p)) · trades to tell ≈ (2σ / E)²</div></div>
+      <div class="ev-wrap"><table class="ev-table">
+        <tr><th>Edge</th><th>σ per trade</th><th>Trades to tell</th></tr>
+        <tr><td>Trader B: 40%, 2R → +0.20R</td><td>1.47R</td><td>≈ 216</td></tr>
+        <tr><td>EUR/USD example → +0.16R</td><td>1.66R</td><td>≈ 418</td></tr>
+      </table></div>
+      <p class="sl-p">A real edge can be invisible in your results for months. Decide on the EV you estimated beforehand, not on the last ten trades.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">February 2018: short volatility</h2>
+      <p class="sl-p">Through the calm of 2017, being short volatility, often through notes that rose when the VIX fell, made a little money most days. The hit rate was high and the curve was smooth.</p>
+      <p class="sl-p">On 5 February 2018 the VIX more than doubled in one session. Credit Suisse's XIV note lost more than 90% of its value in a day and was terminated.</p>
+      <div class="sl-callout amber"><div class="sl-callout-label">The EV reading</div><p>Many small wins tell you the win rate. The sign of EV depended on the rare loss: how big it was and how often it came, which was the number nobody had measured well.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where EV sits</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Analysis</b>A view: oversold, cheap, a spread at an extreme</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Probability</b>Base rate, count, shrink</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · expected value</b>p·b − (1−p) − c vs break-even</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Size</b>Bigger with a wide margin, smaller with a thin one</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Judged over hundreds of trades</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>The audited 2-year yield-spread FX sleeve, as EV:</strong> ~109 out-of-sample trades, 63% win, profit factor 2.2. So b ≈ 2.2×0.37/0.63 ≈ 1.29 and E = 0.37×(2.2−1) ≈ 0.44 average losses per trade. That is about 19 points above its ≈44% break-even. <em>Backtest evidence; not forward-proven.</em></span></div>
+      <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10"><span class="sl-stamp-tag">Desk data: base rate</span><span><strong>How far a backtest win rate can fall:</strong> one Fibonacci-level system, 85.7% in backtest, 39.6% live. EV can't be better than its p.</span></div>
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"A wider target makes the trade better."</strong> The maths says that with no edge it doesn't. For a real setup, whether it does has to be measured.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>45% win rate, average win 1.5R, average loss 1R, no cost. EV?</h4>
+        <button class="sl-quiz-opt">−0.10R</button>
+        <button class="sl-quiz-opt" data-correct="true">+0.125R</button>
+        <button class="sl-quiz-opt">+0.45R</button>
+        <div class="sl-quiz-explain">0.45×1.5 − 0.55 = 0.675 − 0.55 = +0.125R. Break-even is 1/2.5 = 40%.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>No-edge market. You move the target from 1R to 3R, same stop. EV before costs?</h4>
+        <button class="sl-quiz-opt">Triples</button>
+        <button class="sl-quiz-opt">Falls</button>
+        <button class="sl-quiz-opt" data-correct="true">Stays at zero</button>
+        <div class="sl-quiz-explain">The hit rate drops from 50% to 25% (S/(S+T)). 0.5×1 − 0.5 = 0 and 0.25×3 − 0.75 = 0.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>A setup "worked 9 of 12 times". Base rate 50%, prior weight 12. What p goes into EV?</h4>
+        <button class="sl-quiz-opt">75%</button>
+        <button class="sl-quiz-opt" data-correct="true">62.5%</button>
+        <button class="sl-quiz-opt">50%</button>
+        <div class="sl-quiz-explain">(9 + 12×0.5)/(12 + 12) = 15/24 = 62.5%. Twelve cases can't pin down 75%.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Weekly σ 1.5%, target 3% away, no drift. Chance of closing the week beyond it?</h4>
+        <button class="sl-quiz-opt" data-correct="true">About 2.3%</button>
+        <button class="sl-quiz-opt">About 16%</button>
+        <button class="sl-quiz-opt">About 33%</button>
+        <div class="sl-quiz-explain">d/σ = 2, and 1 − Φ(2) ≈ 2.3%. Touching it during the week is about twice that, ≈ 4.6%.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>E = p·b − (1−p) − c, in R. A 40% win rate at 2R beats a 70% win rate at 0.4R.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Edge is the gap to break-even, (1+c)/(1+b), not the win rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>With no edge, hit rate = S/(S+T) = break-even. Moving the target changes the hit rate, not EV.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Build p: base rate → count → shrink → range to odds.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>EV needs hundreds of trades to show. Backtest win rates shrink live, as the desk's own records show.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Combining Signals That Disagree</h3>
+        <p>Five indicators into one view without double-counting, and when "no view" is the right answer.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-combining-signals-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="action-expected-value.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="action-trade-plan-micro.html">← Previous: From a View to a Trade Plan</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function fmtR(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'R'; }
+
+  // Slide 4 — EV and break-even.
+  (function(){
+    var pIn = document.getElementById('m-p'), bIn = document.getElementById('m-b'), cIn = document.getElementById('m-c'), g = document.getElementById('m-g');
+    var X0 = 20, X1 = 620;
+    function x(p){ return X0 + (X1 - X0) * p; }
+    function render(){
+      var p = parseFloat(pIn.value) / 100, b = parseFloat(bIn.value), c = parseFloat(cIn.value), q = 1 - p;
+      var E = p * b - q - c, be = Math.min(1, (1 + c) / (1 + b));
+      document.getElementById('m-p-val').textContent = Math.round(p * 100) + '%';
+      document.getElementById('m-b-val').textContent = b.toFixed(2);
+      document.getElementById('m-c-val').textContent = c.toFixed(2) + 'R';
+      document.getElementById('m-e').textContent = fmtR(E);
+      document.getElementById('m-be').textContent = (be * 100).toFixed(1) + '%';
+      clear(g);
+      g.appendChild(el('rect', { x: X0, y: 38, width: x(be) - X0, height: 20, rx: 3 }, 'fill:var(--red);opacity:0.25'));
+      g.appendChild(el('rect', { x: x(be), y: 38, width: X1 - x(be), height: 20, rx: 3 }, 'fill:var(--green);opacity:0.25'));
+      g.appendChild(el('line', { x1: x(be), x2: x(be), y1: 28, y2: 68 }, 'stroke:var(--text);stroke-width:2'));
+      g.appendChild(el('text', { x: Math.min(Math.max(x(be), 130), 510), y: 22, 'text-anchor': 'middle', 'font-size': 22, 'font-family': FONT }, 'fill:var(--text2)', 'break-even ' + (be * 100).toFixed(1) + '%'));
+      g.appendChild(el('circle', { cx: x(p), cy: 48, r: 11 }, 'fill:var(--purple);stroke:var(--panel);stroke-width:2'));
+      g.appendChild(el('text', { x: Math.min(Math.max(x(p), 70), 570), y: 100, 'text-anchor': 'middle', 'font-size': 22, 'font-weight': 600, 'font-family': FONT }, 'fill:var(--purple)', 'you ' + Math.round(p * 100) + '%'));
+      document.getElementById('m-note').textContent = (E > 0 ? 'Edge: ' : 'No edge: ') + 'your win rate is ' + Math.abs((p - be) * 100).toFixed(1) + ' points ' + (p >= be ? 'above' : 'below') + ' break-even. Over 100 trades that is about ' + fmtR(E * 100) + '. A random market would hit this target ' + (100 / (1 + b)).toFixed(1) + '% of the time.';
+    }
+    [pIn, bIn, cIn].forEach(function(i){ i.addEventListener('input', render); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-m-p]'), function(btn){
+      btn.addEventListener('click', function(){ pIn.value = btn.getAttribute('data-m-p'); bIn.value = btn.getAttribute('data-m-b'); render(); });
+    });
+    render();
+  })();
+
+  // Slide 7 — shrink a count toward the base rate.
+  (function(){
+    var ids = ['s-k', 's-n', 's-p0', 's-m'];
+    function num(id){ var v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : 0; }
+    function render(){
+      var n = Math.max(1, Math.round(num('s-n'))), k = Math.min(n, Math.max(0, Math.round(num('s-k')))), p0 = Math.min(100, Math.max(0, num('s-p0'))) / 100, m = Math.max(0, num('s-m'));
+      var raw = k / n, hat = (k + m * p0) / (n + m), se = Math.sqrt(raw * (1 - raw) / n);
+      document.getElementById('s-raw').textContent = (raw * 100).toFixed(1) + '%';
+      document.getElementById('s-hat').textContent = (hat * 100).toFixed(1) + '%';
+      document.getElementById('s-note').textContent = 'The raw ' + (raw * 100).toFixed(1) + '% has a standard error of ±' + (se * 100).toFixed(1) + ' points on ' + n + ' cases. Shrinking keeps ' + (n / (n + m) * 100).toFixed(0) + '% of the weight on your count and ' + (m / (n + m) * 100).toFixed(0) + '% on the base rate. More cases → less shrinkage.';
+    }
+    ids.forEach(function(id){ document.getElementById(id).addEventListener('input', render); });
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

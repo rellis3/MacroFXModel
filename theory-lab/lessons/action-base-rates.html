@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Base Rates First — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .br-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .br-table th,.br-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .br-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .br-table td:first-child,.br-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .br-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .br-svg{width:100%;height:auto;display:block;touch-action:pan-y}
+  .br-card{font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 0;white-space:pre-wrap;word-break:break-word;color:var(--text2)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / Base Rates First</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 7 of 8</div>
+  <h1 class="tl-title">Base Rates First</h1>
+  <p class="tl-dek">Before you ask what is special about this setup, ask how often this kind of thing happens at all. This lesson shows how to pick a reference class, start from its frequency, and then move only as far as the evidence earns. Done properly, it turns "this looks like a turn" into a probability you can price.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~20 min read</span>
+    <span>Prereqs: <a href="bayesian-inference.html">Bayesian inference</a> (helpful); <a href="action-expected-value.html">Thinking in Expected Value</a> (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-base-rates-micro.html">Visual Guide</a>. It covers the same ground as short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Start from the base rate:</strong> how often the outcome happens across a reference class of similar situations, before anything about this case.</li>
+      <li><strong>Then adjust with Bayes, in odds:</strong> posterior odds = prior odds × likelihood ratio. The likelihood ratio is how much more often you'd see this evidence if the outcome is coming than if it isn't.</li>
+      <li><strong>A hit rate means nothing without its base rate.</strong> "Followed by a rally 54% of the time" is no edge at all if rallies follow 54% of all days.</li>
+      <li><strong>Rare events stay rare.</strong> A pattern that shows up before 60% of turns and on 20% of ordinary days moves a 5% base rate to only 13.6%.</li>
+      <li><strong>Pick the reference class with care.</strong> Too broad and it isn't relevant. Too narrow and it's a handful of cases, so shrink those cases toward the broader rate.</li>
+      <li><strong>Desk verdicts:</strong> the desk's own "base rate" results are exactly this method. A rates-pivot signal hit 54.1% against a 54.1% base rate. A post-FOMC dollar drift held 65% against 49% and survived a placebo. "Dr Copper" failed because it had a hit rate with no false-alarm rate.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="action-expected-value.html">Expected value</a> needs a probability, and the honest way to get one
+    starts with a base rate. <a href="action-calibration-scoring.html">Scoring your calls</a> shows how people's
+    probabilities go wrong in practice. The most common reason is that they started from the story instead of
+    the frequency. <a href="bayesian-inference.html">Bayesian inference</a> gives the formal machinery. This
+    lesson is the working habit: name the reference class, look up its rate, write it down, and only then read
+    the chart.
+  </p>
+  <p>
+    It is also the habit behind every honest backtest. A signal's hit rate, a pattern's success rate, or an
+    event's typical reaction is only meaningful next to what happens <em>without</em> the signal. Much of the
+    desk's research comes down to computing that comparison, which is why its ledger has a whole verdict type
+    called "base rate".
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The outside view first, then the inside view</h3>
+    <p>
+      There are two ways to estimate how likely something is. The <em>inside view</em> looks at the case in
+      front of you: the chart, the story, the reasons it should work. The <em>outside view</em> ignores the
+      details and asks how often things like this have worked before. The inside view feels like analysis. The
+      outside view feels like giving up on the details.
+    </p>
+    <p style="margin-bottom:0">
+      Research on forecasting keeps finding that the outside view is the better place to start, and that people
+      skip it. A vivid case crowds out the boring frequency. The fix is mechanical: write the base rate down
+      <em>first</em>, before you look at the specifics. Then let the specifics move you, by an amount you can
+      justify.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Line up the events and count</h3>
+    <div class="tl-origin-who">Base rates · into finance via the event study (Fama, Fisher, Jensen &amp; Roll, 1969); named as the "outside view" by Kahneman &amp; Lovallo (1993)</div>
+    <p>
+      Before 1969, claims about how prices react to news were mostly anecdote. Fama, Fisher, Jensen and Roll
+      changed that with a study of stock splits. They took many split announcements, lined them up on the
+      announcement date, and measured what the average stock did before and after compared with what it would
+      normally have done. That is a base-rate method: define a class of events, count what usually happens, and
+      compare it with what happens anyway. The <em>event study</em> became one of the standard tools of
+      empirical finance and of desk research.
+    </p>
+    <p>
+      Psychology supplied the warning that people skip this step. Kahneman and Tversky's work in the 1970s on
+      "base-rate neglect" showed that people judge probability by how well a case fits a story and largely ignore
+      how common the outcome is. Kahneman and Lovallo (1993) named the remedy the <em>outside view</em>.
+      Superforecasters in Tetlock's forecasting tournaments were later described as starting from it routinely.
+    </p>
+    <p>
+      On a desk, base rates show up as "what usually happens after X" tables: post-event drifts, seasonal
+      profiles, gap-fill rates, the hit rate a random entry would get. They are the yardstick every signal is
+      measured against, and the starting point for every probability that goes into expected value.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Supply the probability before the specifics, and the yardstick any signal's hit rate must beat.</dd>
+        <dt>Takes in</dt><dd>A clean history of the reference class (<a href="point-in-time-data-survivorship-bias.html">point-in-time data</a>) and the update rule (<a href="bayesian-inference.html">Bayesian inference</a>).</dd>
+        <dt>Hands on to</dt><dd>Expected value (<a href="action-expected-value.html">Thinking in EV</a>), signal combination (<a href="action-combining-signals.html">Combining Signals</a>) and the scoring of your probabilities (<a href="action-calibration-scoring.html">Scoring Your Own Calls</a>).</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. A base rate is a frequency in a reference class</h3>
+  <p>
+    Choose a <strong>reference class</strong>: a set of past situations similar enough to today that their
+    outcomes are informative. The base rate is the share where the outcome happened:
+  </p>
+  <div class="tl-math">
+    \[ p_0 = \frac{\#\{\text{cases in the class where the outcome happened}\}}{\#\{\text{cases in the class}\}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p₀</code><span>the base rate, or prior: your probability before today's specifics</span></div>
+    <div class="tl-eq-chip c2"><code>class</code><span>which past cases count as "like this one"; the choice matters most</span></div>
+  </div>
+  <p>
+    Examples: the share of weeks EUR/USD closed higher; the share of Monday gaps that filled the same day; the
+    hit rate a random entry gets with your stop and target, which is \(S/(S+T)\) from the
+    <a href="action-expected-value.html">EV lesson</a>.
+  </p>
+
+  <h3>2. Bayes in words, then in odds</h3>
+  <p>
+    New evidence \(E\) (a pattern, a print, a signal) should move you from \(p_0\) to a posterior. Bayes' rule
+    says by how much:
+  </p>
+  <div class="tl-math">
+    \[ P(H \mid E) = \frac{P(E \mid H)\,P(H)}{P(E \mid H)\,P(H) + P(E \mid \neg H)\,P(\neg H)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P(H)</code><span>the base rate p₀: how often the outcome happens at all</span></div>
+    <div class="tl-eq-chip c2"><code>P(E|H)</code><span>hit rate: how often you see this evidence before the outcome</span></div>
+    <div class="tl-eq-chip c3"><code>P(E|¬H)</code><span>false-alarm rate: how often you see it when the outcome doesn't follow</span></div>
+    <div class="tl-eq-chip c4"><code>P(H|E)</code><span>the posterior: the probability once you've seen the evidence</span></div>
+  </div>
+  <p>The same rule is far easier to use in <strong>odds</strong>, where it becomes one multiplication:</p>
+  <div class="tl-math">
+    \[ \underbrace{\frac{P(H\mid E)}{P(\neg H\mid E)}}_{\text{posterior odds}} \;=\; \underbrace{\frac{P(H)}{P(\neg H)}}_{\text{prior odds}} \;\times\; \underbrace{\frac{P(E\mid H)}{P(E\mid \neg H)}}_{\text{likelihood ratio, LR}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">prior odds</div><div class="tl-fp-name">Where you start</div><div class="tl-fp-desc">The base rate as odds: 20% is 1 to 4</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">LR</div><div class="tl-fp-name">How strong the evidence is</div><div class="tl-fp-desc">Hit rate ÷ false-alarm rate. LR = 1 tells you nothing</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">posterior odds</div><div class="tl-fp-name">Where you end</div><div class="tl-fp-desc">Convert back: odds a:b → probability a/(a+b)</div></div>
+  </div>
+  <p>
+    The odds form makes three things obvious. Evidence with \(\text{LR} = 1\) doesn't move you, however
+    impressive its hit rate looks. Evidence with \(\text{LR} = 3\) triples your odds, which is a big move from
+    1:1 and a small one from 1:19. And a hit rate alone is never enough, because the false-alarm rate is half
+    of the ratio.
+  </p>
+
+  <h3>3. Two worked updates</h3>
+  <p>
+    <strong>The cab problem</strong> (Tversky and Kahneman's classic). 15% of a city's cabs are Blue and 85%
+    Green. A witness says the cab in an accident was Blue, and witnesses identify colours correctly 80% of the
+    time. Most people answer 80%. The base rate says otherwise. Prior odds are 15:85, the LR is 0.8/0.2 = 4, so
+    posterior odds are 60:85 and the probability is \(60/145 = 41\%\). It is still more likely Green.
+  </p>
+  <p>
+    <strong>A trading version.</strong> Define a "turn" as a day that starts a move of a set size. In your
+    history, 5% of days are turns. A reversal pattern appeared before 60% of turns, and also on 20% of ordinary
+    days. Prior odds 5:95 = 1:19. LR = 0.60/0.20 = 3. Posterior odds 3:19, so \(P = 3/22 = 13.6\%\). The
+    pattern nearly tripled the probability, and the day is still about six times more likely <em>not</em> to
+    be a turn. In natural frequencies: of 1,000 days, 50 are turns and 30 of them show the pattern; 950 are
+    not, and 190 of those show it too. Of the 220 days with the pattern, 30 are turns.
+  </p>
+
+  <h3>4. Lift, and the hit rate that is just the base rate</h3>
+  <p>
+    Research write-ups often report a <strong>hit rate</strong> \(P(H \mid E)\) and sometimes a <strong>lift</strong>:
+  </p>
+  <div class="tl-math">
+    \[ \text{lift} = \frac{P(H \mid E)}{P(H)} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>P(H|E)</code><span>what happened after the signal</span></div>
+    <div class="tl-eq-chip c2"><code>P(H)</code><span>what happens anyway</span></div>
+    <div class="tl-eq-chip c3"><code>lift</code><span>1.0 means the signal adds nothing</span></div>
+  </div>
+  <p>
+    A hit rate of 54% with a base rate of 54% has a lift of 1.0, and so does a hit rate of 90% when the base
+    rate is 90%. Always ask for the second number before you react to the first.
+  </p>
+
+  <h3>5. Small reference classes: shrink toward a broader one</h3>
+  <p>
+    The more specific the class ("post-FOMC weeks with a hawkish surprise and the long end already up"), the
+    more relevant it is and the fewer cases it holds. A narrow class with \(k\) hits in \(n\) cases is blended
+    with a broader base rate \(p_0\) worth \(m\) pretend cases:
+  </p>
+  <div class="tl-math">
+    \[ \hat p = \frac{k + m\,p_0}{n + m}, \qquad \text{uncertainty} \approx \sqrt{\frac{\hat p(1-\hat p)}{n + m + 1}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>k / n</code><span>the narrow class's own record</span></div>
+    <div class="tl-eq-chip c2"><code>p₀</code><span>the broader class's rate</span></div>
+    <div class="tl-eq-chip c3"><code>m</code><span>how much you trust the broader class, in cases</span></div>
+    <div class="tl-eq-chip c4"><code>p̂</code><span>the estimate you carry forward, with its standard deviation</span></div>
+  </div>
+  <p>
+    This is the Beta-prior posterior from <a href="bayesian-conjugate-priors.html">Conjugate Priors</a>, and the
+    same shrinkage used in the <a href="action-expected-value.html">EV lesson</a>. It is also the reasoning
+    behind <a href="hierarchical-bayesian-models.html">hierarchical models</a>: small groups borrow strength
+    from the population they belong to.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(H\)</td><td>The outcome you care about (a turn, an up-week, a fill).</td></tr>
+    <tr><td>\(\neg H\)</td><td>The outcome doesn't happen.</td></tr>
+    <tr><td>\(E\)</td><td>The evidence: a signal, pattern, print or analysis reading.</td></tr>
+    <tr><td>\(p_0,\ P(H)\)</td><td>Base rate, or prior: the frequency in the reference class.</td></tr>
+    <tr><td>\(P(E \mid H)\)</td><td>Hit rate (sensitivity): how often the evidence appears before the outcome.</td></tr>
+    <tr><td>\(P(E \mid \neg H)\)</td><td>False-alarm rate: how often it appears when the outcome doesn't follow.</td></tr>
+    <tr><td>LR</td><td>Likelihood ratio, \(P(E\mid H)/P(E\mid\neg H)\).</td></tr>
+    <tr><td>\(P(H \mid E)\)</td><td>Posterior: the probability after the evidence.</td></tr>
+    <tr><td>lift</td><td>\(P(H\mid E)/P(H)\): how much the signal raises the rate above the base rate.</td></tr>
+    <tr><td>\(k,\ n\)</td><td>Hits and cases in a (narrow) reference class.</td></tr>
+    <tr><td>\(m\)</td><td>Prior weight: how many cases the broader base rate is worth.</td></tr>
+    <tr><td>\(\hat p\)</td><td>The shrunk estimate.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Your tool, part 1: the base-rate updater (1,000 days)</div>
+    <div class="br-wrap">
+    <svg id="bu-svg" class="br-svg" viewBox="0 0 640 424" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A grid of 1,000 squares, one per day or case. Purple squares are cases where the outcome happened and the evidence fired; light purple ones are outcomes the evidence missed; amber squares are false alarms; grey squares are quiet days. The posterior is the purple share of all squares that fired.">
+      <g id="bu-g"></g>
+    </svg>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--purple)"></i>outcome + evidence (hit)</span>
+      <span><i style="background:var(--purple);opacity:.3"></i>outcome, evidence missed it</span>
+      <span><i style="background:var(--amber)"></i>evidence, no outcome (false alarm)</span>
+      <span><i style="background:var(--s3)"></i>neither</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Base rate P(H)</span><span class="tl-live" id="bu-p-val">5.0%</span></div>
+        <input type="range" id="bu-p" min="0.5" max="60" step="0.5" value="5">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Hit rate P(E | H)</span><span class="tl-live" id="bu-h-val">60%</span></div>
+        <input type="range" id="bu-h" min="1" max="100" step="1" value="60">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>False-alarm rate P(E | not H)</span><span class="tl-live" id="bu-f-val">20%</span></div>
+        <input type="range" id="bu-f" min="1" max="100" step="1" value="20">
+      </div>
+    </div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" data-bu="5,60,20">Reversal pattern</button>
+      <button type="button" class="tl-btn" data-bu="15,80,20">Cab problem</button>
+      <button type="button" class="tl-btn" data-bu="54,54,54">Hit rate = base rate</button>
+      <button type="button" class="tl-btn" data-bu="2,95,10">Rare event, "95% accurate"</button>
+    </div>
+    <div class="tl-readout" id="bu-readout"></div>
+    <div class="tl-chart-caption">Exact Bayes, with the 1,000 squares as natural frequencies (counts are rounded for the picture, the probability is not). Watch what the base rate does: set the hit rate to 95% and the false-alarm rate to 10%, then slide the base rate from 50% down to 2%. The same "95% accurate" evidence goes from near-certain to more likely wrong than right.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In your class, 2 children have a red bike and 28 have blue bikes. Someone says "I saw a red-ish bike outside, but it was getting dark." Is it a red bike? Probably not. There are so many more blue bikes that even a blue bike seen in the dark is more likely than one of the 2 red ones. Always ask "how many of each are there?" first.</p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Your tool, part 2: a narrow reference class, shrunk toward a broad one</div>
+    <div class="br-wrap">
+    <svg id="sh-svg" class="br-svg" viewBox="0 0 640 172" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A 0 to 100 percent scale showing the broad base rate as a line, the narrow class's raw rate with its 95% interval, and the shrunk estimate with its interval.">
+      <g id="sh-g"></g>
+    </svg>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Cases in the narrow class n</span><span class="tl-live" id="sh-n-val">81</span></div>
+        <input type="range" id="sh-n" min="3" max="400" step="1" value="81">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Hits in the narrow class k</span><span class="tl-live" id="sh-k-val">53</span></div>
+        <input type="range" id="sh-k" min="0" max="81" step="1" value="53">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Broad base rate p₀</span><span class="tl-live" id="sh-p-val">49%</span></div>
+        <input type="range" id="sh-p" min="1" max="99" step="1" value="49">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Weight on the broad rate m (cases)</span><span class="tl-live" id="sh-m-val">20</span></div>
+        <input type="range" id="sh-m" min="0" max="200" step="1" value="20">
+      </div>
+    </div>
+    <div class="tl-readout" id="sh-readout"></div>
+    <div class="tl-chart-caption">The raw interval is the 95% Wilson interval for \(k/n\). The shrunk estimate is the mean of a Beta prior worth \(m\) cases at \(p_0\), updated with \(k\) of \(n\), with a 95% band from its standard deviation. Set n to 8 and the shrunk estimate stays near the base rate. Set n to 400 and it follows the count. The defaults are the worked example below.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Choosing the reference class</h2>
+  <p>Most of the judgement is here. The arithmetic afterwards is easy.</p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔭</div>
+      <h4>Too broad</h4>
+      <p>"All trading days" is large and stable but may not resemble today. Use it as the outer anchor, the rate any narrower class has to beat.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔬</div>
+      <h4>Too narrow</h4>
+      <p>"Hawkish surprise, curve steepening, oil up, a Tuesday" may hold seven cases. Its rate is mostly noise, so shrink it hard toward the broader class.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🪜</div>
+      <h4>Use a ladder of classes</h4>
+      <p>Compute the rate for two or three nested classes. If they agree, you're on firm ground. If the narrowest jumps far away on few cases, believe the broader ones.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧪</div>
+      <h4>Check the class is stable</h4>
+      <p>Split it in halves (first half and second half of the sample). A base rate that differs between halves is describing a regime, not a constant.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Template · copy this</div>
+    <h3>The base-rate card: written before you look at the chart</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>The question, exactly</h4><p>Outcome, horizon and threshold: "EUR/USD higher in 5 sessions", "target before stop", "gap fills today".</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Broad class and its rate</h4><p>The widest sensible class, with \(n\) and its rate. This is \(p_0\).</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>Narrow class and its rate</h4><p>The class most like today, \(k\) of \(n\). Then the shrunk \(\hat p\) and its band. Check both halves of the sample.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>Specific evidence, as a likelihood ratio</h4><p>For each extra fact: hit rate ÷ false-alarm rate, from data. No data means LR = 1. Don't move.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>Final probability, and what it goes to</h4><p>Multiply the odds, convert back, and round to what the sample can support. Hand it to the <a href="action-expected-value.html">EV card</a> and log it for <a href="action-calibration-scoring.html">scoring</a>.</p></div></div>
+    </div>
+    <div class="br-card">BASE-RATE CARD   date ____
+question: ____________________  horizon ____
+broad class: ______________  n=____  rate p0=____%
+narrow class: _____________  k=__ of n=__ (__%)  halves: __% / __%
+shrunk p = (k + m·p0)/(n + m), m=__  → __%  (± __ pts)
+extra evidence           hit rate   false alarm   LR
+  ________________        ___%        ___%       ___
+  ________________        ___%        ___%       ___
+odds: p/(1−p) = ___ × LRs ___ = ___  → final p = ___%
+goes to: EV card / journal      score it on: ____</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Worked example: the dollar after a Fed meeting</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>"The Fed just surprised hawkish. Will the dollar be higher in five sessions?"</h3>
+    <p>The inside view writes itself: hawkish surprise, higher yields, stronger dollar, so call it 80%. Here is the base-rate route, using the desk's own measured frequencies.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>The question, exactly</h4>
+        <p>The dollar basket (against the major pairs) higher over the next five sessions after an FOMC decision. A yes/no outcome with a fixed horizon.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Broad class: any five-session window</h4>
+        <p>On non-FOMC windows the dollar basket rose <strong>49%</strong> of the time. That is \(p_0\), close to a coin.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Narrow class: five sessions after any FOMC meeting</h4>
+        <p>Over 81 meetings, the dollar rose 65% of the time, about 53 of 81 (65.4%). The raw 95% interval is wide: 54.6% to 74.9%. The desk checked it against 10,000 placebo dates and in both halves of the sample, and it held.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Shrink toward the broad rate</h4>
+        <p>With \(m = 20\): \(\hat p = (53 + 20 \times 0.49)/(81 + 20) = 62.8/101 = 62.2\%\), with a 95% band of about 52.8% to 71.6%.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Adjust for today's specifics: "hawkish surprise"</h4>
+        <p>This is where the inside view wants to add 20 points. The evidence says don't. The desk found the post-meeting drift doesn't depend on the meeting's outcome. Its table of hawkish-surprise meetings shows the dollar up 64% five sessions later, with a 95% interval of 43% to 86% on few meetings. That is the same rate as all meetings, so the evidence has an LR of about 1. Odds stay at \(0.622/0.378 = 1.65\), and the probability stays at 62%.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>Round to what the data supports</h4>
+        <p>About <strong>60–65%</strong>, not 80%. That is a lean, not a conviction, and it is a calendar base rate, not a forecast for this particular meeting.</p>
+      </div></div>
+    </div>
+    <p style="margin-top:12px"><strong>The usable output:</strong></p>
+    <div class="br-wrap"><table class="br-table">
+      <tr><th>Step</th><th>Class / evidence</th><th>n</th><th>Rate</th><th>Running p</th></tr>
+      <tr><td>Broad</td><td>any 5-session window</td><td>many</td><td>49%</td><td>49%</td></tr>
+      <tr><td>Narrow</td><td>post-FOMC 5 sessions</td><td>81</td><td>65%</td><td>62% (shrunk, m = 20)</td></tr>
+      <tr><td>Specific</td><td>hawkish surprise</td><td>few</td><td>64% [43, 86]</td><td>62% (LR ≈ 1)</td></tr>
+      <tr><td>Final</td><td colspan="3">"The dollar has risen after about 6 in 10 Fed meetings; today's surprise doesn't change that."</td><td>≈ 62%</td></tr>
+    </table></div>
+    <p style="margin-bottom:0">Fed into the <a href="action-expected-value.html">EV card</a>, 62% is a modest edge on a five-day hold, and its size has to be weighed against costs and the width of that band. The surprise itself, the thing the story leaned on, added nothing.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: the outside view, ignored</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The textbook that took eight years</h3>
+    <p>
+      Daniel Kahneman tells this story about himself in <em>Thinking, Fast and Slow</em> (2011). In the 1970s
+      he was part of a team writing a curriculum and textbook on judgement and decision-making for Israeli high
+      schools. About a year in, he asked each member to estimate privately how long it would take to finish.
+      The estimates clustered around two years.
+    </p>
+    <p>
+      He then asked the team's curriculum expert, Seymour Fox, how long similar teams had taken. Fox's answer,
+      as Kahneman recounts it, was that about 40% of such teams never finished, and that none of those that did
+      finished in less than about seven years. He also judged their own team to be somewhat below average.
+      That was the outside view, and it contradicted everyone's inside view, including Fox's own.
+    </p>
+    <p style="margin-bottom:0">
+      The team carried on as if it hadn't heard. The book was finished about eight years later, by which time
+      the ministry's interest had faded and it was never used. Kahneman's point was that the base rate was
+      available and was asked for and given, and still nobody used it, because the specifics of their own case
+      felt more real than other teams' statistics.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1973: "Tom W." and the stereotype</h3>
+    <p style="margin-bottom:0">
+      In "On the Psychology of Prediction" (1973), Kahneman and Tversky gave participants a short personality
+      sketch of a graduate student, "Tom W.", written to fit the stereotype of a computer-science student, and
+      asked them to rank how likely he was to be in each of several fields. Another group was simply asked what
+      share of graduate students were in each field. The likelihood rankings followed how well Tom fitted the
+      stereotype almost exactly, and the size of the fields made little difference. A sketch of uncertain
+      reliability outweighed the base rates. The trading equivalent is a chart that "looks exactly like" a
+      famous reversal, judged on resemblance rather than on how often that resemblance has been followed by
+      a reversal.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>A vivid setup, with a good story attached</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The default</b>Judge by resemblance: "this looks exactly like a turn"</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · base rate first</b>Name the class, write its frequency down before the chart</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Adjust</b>Multiply the odds by measured likelihood ratios; LR = 1 means don't move</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A probability that can be priced in EV and scored later</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before guessing whether it will rain tomorrow, look at how many days it rained this month. If it rained on 3 days out of 30, start from "probably not", even if the sky looks a bit grey. Grey skies happen a lot without rain.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+  <p>The desk's research is largely base-rate work. Four results show the method from four angles.</p>
+
+  <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>A 54% hit rate that was exactly the base rate.</strong> The claim: a confirmed turn in short-term rates leads the Nasdaq intraday, so you can confirm the pivot and pre-position. The desk tested 2,010 de-clustered events at one hour and found a signed return of −0.005% against a control interval of [−0.021, +0.012]. The test was well powered, so anything tradeable would have shown. The number that makes this lesson's point: a confirmed rates low was followed by an up-move <strong>54.1%</strong> of the time, and the base rate is <strong>54.1%</strong>. The lift is 1.0. On its own, 54% would have looked like an edge.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="post-fomc-usd-drift" data-evidence-date="2026-08-20">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>A base rate that beat its base rate.</strong> The dollar basket over the five sessions after an FOMC meeting: N = 81 meetings, mean +26bp, 65% positive, against non-FOMC windows at −3bp and 49% positive. The event mean sat at the 99.8th percentile of 10,000 placebos, and both halves (2016–20, 2021–26) came in at +26bp. The ledger calls it the one directional base rate here that survived a placebo and two halves. It is to be quoted as a base rate, never as a call on a single meeting, and the meeting's outcome doesn't change it. <em>Not forward-proven.</em></span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="dr-copper" data-evidence-date="2026-09-25">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>A hit rate with no false-alarm rate.</strong> "Copper falls before every recession" is a claim about \(P(E\mid H)\) alone. Tested: 12 of the 14 negative US quarters since 1990 had no 15% copper fall in front of them, so the universal claim fails. At a looser 10% gate the signal fired 22 times with an 82% false-alarm rate and a lift of 1.77. With only 5 signals at the pre-registered gate, whether any weaker lift is real couldn't be tested. Without the denominator, "every single time" says almost nothing.</span>
+  </div>
+
+  <div class="tl-verdict context" data-evidence="fed-two-moves" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>Choosing the right comparison class.</strong> The story: after a Fed decision, the first move is later unwound. Compared with non-FOMC days that had a day-0 move of the same size, the share giving back at least half within 20 sessions was the same (2-year 38% vs 39%, 10-year 50% vs 45%, dollar 48% vs 40%, S&amp;P 500 45% vs 51%). A decision-day move has about even odds of being half-undone within a month, the same as any big day. The reference class that mattered was "big days", not "Fed days".</span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> quoting a hit rate on its own. "Followed by a rally 54% of the time", "preceded every recession", "worked 8 of the last 10": each is one half of a likelihood ratio, or a rate with no base to compare against. The desk's rule is that no hit rate gets quoted without its base rate beside it.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Matched controls</h4>
+      <p>Every event study compares "after the signal" with "after comparable non-signal moments", matched on volatility, time of day or move size. The control is the base rate.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🎲</div>
+      <h4>Placebos</h4>
+      <p>Run the same test on thousands of random dates. If the real result doesn't beat most placebos, the "edge" is the base rate (see <a href="multiple-testing.html">multiple testing</a>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🗂️</div>
+      <h4>A base-rate library</h4>
+      <p>Gap fills, post-event drifts, day-of-week ranges, month-start widening. Kept as tables, quoted as frequencies, used as the starting point for every scenario.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">✍️</div>
+      <h4>Prior first, in writing</h4>
+      <p>Write \(p_0\) in the journal before the analysis. It stops the story from quietly replacing the frequency, and it makes the later <a href="action-calibration-scoring.html">calibration score</a> mean something.</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where base-rate thinking goes wrong</h3>
+    <p><strong>Base-rate neglect.</strong> Judging by how well the case fits the story. The cure is to write \(p_0\) first.</p>
+    <p><strong>Hit rate without false alarms.</strong> \(P(E\mid H)\) is half of the evidence. Without \(P(E\mid\neg H)\) you can't compute an LR.</p>
+    <p><strong>Multiplying correlated evidence.</strong> Multiplying LRs assumes the pieces of evidence are independent. Three momentum indicators are one piece of evidence, not three (<a href="action-combining-signals.html">Combining Signals</a>).</p>
+    <p><strong>A class chosen after seeing the outcome.</strong> Picking the reference class that gives the answer you want is a form of p-hacking. Fix the class before you count.</p>
+    <p style="margin-bottom:0"><strong>A base rate from a different regime.</strong> A rate that differs between halves of the sample describes a period, not a constant. Check stability before you lean on it.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Write the base rate down first,</strong> from a named reference class, before you look at the specifics.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Posterior odds = prior odds × LR,</strong> with LR = hit rate ÷ false-alarm rate. LR = 1 means don't move.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Rare stays rare:</strong> LR 3 on a 5% base rate gives 13.6%. A 15% base rate and an 80% witness give 41%.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Shrink narrow classes</strong> toward broader ones with \((k + m\,p_0)/(n+m)\), and check the class is stable across halves.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The desk's rates-pivot test found nothing:</strong> a 54.1% hit rate against a 54.1% base rate. A hit rate without its base rate can look like an edge and be exactly nothing.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The post-FOMC dollar drift (65% vs 49%) held up in the desk's test,</strong> and it is quoted as a base rate, not a call on any single meeting, and is not forward-proven.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. 10% of days are "trend days". A filter flags 90% of trend days and 10% of other days. A day is flagged. How likely is it to be a trend day?</summary>
+    <div class="tl-answer">Prior odds 1:9. LR = 0.9/0.1 = 9. Posterior odds 9:9 = 1:1, so <strong>50%</strong>. In natural frequencies: of 1,000 days, 100 trend days with 90 flagged; 900 others with 90 flagged. Half of the 180 flags are right.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A research note says "after this signal the index rallied 54% of the time." What do you need before you react?</summary>
+    <div class="tl-answer">The base rate: how often the index rallies over the same horizon without the signal. If that is also about 54%, the lift is 1 and the signal is worthless. This is exactly what the desk found in its rates-pivot test, 54.1% against 54.1%. You'd also want the sample size and an interval.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Your prior that a breakout holds is 20%. A volume condition has LR = 3. What is the posterior?</summary>
+    <div class="tl-answer">Prior odds 1:4. × 3 = 3:4. Probability \(3/7 \approx 42.9\%\). A strong piece of evidence, and the breakout is still more likely to fail than hold.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Two independent pieces of evidence have LRs of 2 and 3, and your prior is 10%. What is the posterior, and what is the catch?</summary>
+    <div class="tl-answer">Prior odds 1:9. × 2 × 3 = 6:9. Probability \(6/15 = 40\%\). The catch is "independent". If the two signals are driven by the same underlying move, multiplying double-counts it, and the true combined LR can be much closer to one of them alone than to their product.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A narrow reference class has 7 hits in 8 cases. The broad class rate is 45%. With m = 10, what probability do you carry forward?</summary>
+    <div class="tl-answer">\(\hat p = (7 + 10 \times 0.45)/(8 + 10) = 11.5/18 \approx 63.9\%\), not 87.5%. Eight cases can't support a near-certain rate. The shrunk value is still well above the broad rate.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. "Copper has fallen before every recession." What one number is missing, and why does it matter?</summary>
+    <div class="tl-answer">The false-alarm rate: how often copper fell <em>without</em> a recession following. "Before every recession" is a hit rate, \(P(E\mid H)\). The likelihood ratio needs \(P(E\mid\neg H)\) too, and a signal that also fires often without a recession has a low LR. In the desk's test the universal claim also failed outright: 12 of 14 negative quarters since 1990 had no 15% copper fall before them.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Daniel Kahneman and Amos Tversky, "On the Psychology of Prediction", <em>Psychological Review</em>, 1973. The Tom W. study and base-rate neglect.</li>
+    <li>Amos Tversky and Daniel Kahneman, "Judgment under Uncertainty: Heuristics and Biases", <em>Science</em>, 1974. Representativeness and insensitivity to prior probabilities.</li>
+    <li>Maya Bar-Hillel, "The Base-Rate Fallacy in Probability Judgments", <em>Acta Psychologica</em>, 1980. When and why people ignore base rates, including the cab problem.</li>
+    <li>Daniel Kahneman and Dan Lovallo, "Timid Choices and Bold Forecasts: A Cognitive Perspective on Risk Taking", <em>Management Science</em>, 1993. Inside view versus outside view.</li>
+    <li>Gerd Gigerenzer and Ulrich Hoffrage, "How to Improve Bayesian Reasoning Without Instruction: Frequency Formats", <em>Psychological Review</em>, 1995. Why natural frequencies make Bayes easy.</li>
+    <li>Eugene Fama, Lawrence Fisher, Michael Jensen and Richard Roll, "The Adjustment of Stock Prices to New Information", <em>International Economic Review</em>, 1969. The first event study.</li>
+    <li>Daniel Kahneman, <em>Thinking, Fast and Slow</em>, 2011. Includes the curriculum story and the outside view.</li>
+    <li>Philip E. Tetlock and Dan Gardner, <em>Superforecasting</em>, 2015. Starting from the outside view as a habit of good forecasters.</li>
+    <li><a href="bayesian-inference.html">Bayesian inference</a>, <a href="bayesian-conjugate-priors.html">Conjugate Priors</a> and <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a>: the formal machinery behind this lesson.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-calibration-scoring.html">← Scoring Your Own Calls</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-edge-decay.html">When an Edge Has Stopped Working →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace", SANS = "'DM Sans',sans-serif";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function pct(v, d){ return (v * 100).toFixed(d === undefined ? 1 : d) + '%'; }
+
+  // ---------- 1. Base-rate updater: 1,000 cells ----------
+  (function(){
+    var pIn = document.getElementById('bu-p'), hIn = document.getElementById('bu-h'), fIn = document.getElementById('bu-f'), g = document.getElementById('bu-g');
+    var COLS = 40, ROWS = 25, CW = 15.5, GAP = 0.6, X0 = (640 - COLS * CW) / 2, Y0 = 6;
+    var cells = [];
+    for (var i = 0; i < COLS * ROWS; i++){
+      var r = Math.floor(i / COLS), c = i % COLS;
+      var rect = el('rect', { x: (X0 + c * CW + GAP).toFixed(1), y: (Y0 + r * CW + GAP).toFixed(1), width: (CW - 2 * GAP).toFixed(1), height: (CW - 2 * GAP).toFixed(1), rx: 2 });
+      g.appendChild(rect); cells.push(rect);
+    }
+    var label = el('text', { x: 320, y: Y0 + ROWS * CW + 22, 'text-anchor': 'middle', 'font-size': 18, 'font-weight': 600, 'font-family': FONT }, 'fill:var(--text)');
+    g.appendChild(label);
+    function render(){
+      var p = parseFloat(pIn.value) / 100, h = parseFloat(hIn.value) / 100, f = parseFloat(fIn.value) / 100;
+      document.getElementById('bu-p-val').textContent = pct(p);
+      document.getElementById('bu-h-val').textContent = pct(h, 0);
+      document.getElementById('bu-f-val').textContent = pct(f, 0);
+      var ev = Math.round(1000 * p), tp = Math.round(ev * h), fn = ev - tp, fp = Math.round((1000 - ev) * f);
+      cells.forEach(function(rect, i){
+        var st;
+        if (i < tp) st = 'fill:var(--purple)';
+        else if (i < tp + fn) st = 'fill:var(--purple);opacity:0.3';
+        else if (i < tp + fn + fp) st = 'fill:var(--amber)';
+        else st = 'fill:var(--s3)';
+        rect.setAttribute('style', st);
+      });
+      var post = p * h / (p * h + (1 - p) * f), lr = h / f, po = p / (1 - p), qo = po * lr;
+      label.textContent = 'flagged: ' + (tp + fp) + ' of 1,000 · real: ' + tp + ' → ' + pct(post);
+      document.getElementById('bu-readout').innerHTML =
+        'Prior odds <b>' + po.toFixed(3) + '</b> (1 : ' + (1 / po).toFixed(1) + ') × LR <b>' + lr.toFixed(2) + '</b> = posterior odds <b>' + qo.toFixed(3) + '</b><br>' +
+        'P(outcome | evidence) = <b>' + pct(post) + '</b> · lift ' + (post / p).toFixed(2) + '× · without the base rate you\'d probably have said <b>' + pct(h, 0) + '</b><br>' +
+        'Of 1,000 cases: ' + ev + ' have the outcome and ' + tp + ' of those show the evidence; ' + (1000 - ev) + ' don\'t and ' + fp + ' of those show it too.' +
+        (Math.abs(lr - 1) < 0.005 ? ' <b>LR = 1: the evidence tells you nothing.</b>' : '');
+    }
+    [pIn, hIn, fIn].forEach(function(i){ i.addEventListener('input', render); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bu]'), function(btn){
+      btn.addEventListener('click', function(){ var v = btn.getAttribute('data-bu').split(','); pIn.value = v[0]; hIn.value = v[1]; fIn.value = v[2]; render(); });
+    });
+    render();
+  })();
+
+  // ---------- 2. Narrow class shrunk toward broad ----------
+  (function(){
+    var nIn = document.getElementById('sh-n'), kIn = document.getElementById('sh-k'), pIn = document.getElementById('sh-p'), mIn = document.getElementById('sh-m'), g = document.getElementById('sh-g');
+    var X0 = 24, X1 = 616;
+    function x(v){ return X0 + (X1 - X0) * v; }
+    function wilson(k, n){ var z = 1.96, ph = k / n, d = 1 + z * z / n, c = (ph + z * z / (2 * n)) / d, hw = z * Math.sqrt(ph * (1 - ph) / n + z * z / (4 * n * n)) / d; return [c - hw, c + hw]; }
+    function band(y, lo, hi, mid, col, name){
+      g.appendChild(el('line', { x1: x(Math.max(0, lo)), x2: x(Math.min(1, hi)), y1: y, y2: y }, 'stroke:' + col + ';stroke-width:6;stroke-linecap:round;opacity:0.45'));
+      g.appendChild(el('circle', { cx: x(mid), cy: y, r: 7 }, 'fill:' + col + ';stroke:var(--s1);stroke-width:2'));
+      g.appendChild(el('text', { x: X0, y: y - 14, 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', name + ': ' + pct(mid) + '  [' + pct(Math.max(0, lo)) + ', ' + pct(Math.min(1, hi)) + ']'));
+    }
+    function render(){
+      var n = parseInt(nIn.value, 10);
+      kIn.max = n; if (parseInt(kIn.value, 10) > n) kIn.value = n;
+      var k = parseInt(kIn.value, 10), p0 = parseFloat(pIn.value) / 100, m = parseFloat(mIn.value);
+      document.getElementById('sh-n-val').textContent = n;
+      document.getElementById('sh-k-val').textContent = k;
+      document.getElementById('sh-p-val').textContent = pct(p0, 0);
+      document.getElementById('sh-m-val').textContent = m;
+      clear(g);
+      [0, 0.25, 0.5, 0.75, 1].forEach(function(v){
+        g.appendChild(el('line', { x1: x(v), x2: x(v), y1: 14, y2: 140 }, 'stroke:var(--border);stroke-width:1'));
+        g.appendChild(el('text', { x: x(v), y: 162, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%'));
+      });
+      g.appendChild(el('line', { x1: x(p0), x2: x(p0), y1: 10, y2: 140 }, 'stroke:var(--blue);stroke-width:2;stroke-dasharray:5,4'));
+      g.appendChild(el('text', { x: x(p0) + (p0 > 0.8 ? -5 : 5), y: 136, 'text-anchor': p0 > 0.8 ? 'end' : 'start', 'font-size': 16, 'font-family': FONT }, 'fill:var(--blue)', 'broad ' + pct(p0, 0)));
+      var w = wilson(k, n);
+      band(42, w[0], w[1], k / n, 'var(--amber)', 'narrow class raw (' + k + '/' + n + ')');
+      var a = k + m * p0, b = n - k + m * (1 - p0), mean = a / (a + b), sd = Math.sqrt(a * b / ((a + b) * (a + b) * (a + b + 1)));
+      band(100, mean - 1.96 * sd, mean + 1.96 * sd, mean, 'var(--purple)', 'shrunk, m = ' + m);
+      document.getElementById('sh-readout').innerHTML =
+        'Raw <b>' + pct(k / n) + '</b> on ' + n + ' cases → shrunk <b>' + pct(mean) + '</b> (±' + (1.96 * sd * 100).toFixed(1) + ' pts) · weight on your class ' + Math.round(100 * n / (n + m)) + '%, on the broad rate ' + Math.round(100 * m / (n + m)) + '%<br>' +
+        'As odds against the broad rate: ' + (mean / (1 - mean)).toFixed(2) + ' vs ' + (p0 / (1 - p0)).toFixed(2) + ' → the narrow class is worth an LR of about <b>' + ((mean / (1 - mean)) / (p0 / (1 - p0))).toFixed(2) + '</b>';
+    }
+    [nIn, kIn, pIn, mIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

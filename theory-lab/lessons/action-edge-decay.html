@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>When an Edge Has Stopped Working — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .ed-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .ed-table th,.ed-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .ed-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .ed-table td:first-child,.ed-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .ed-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .ed-svg{width:100%;height:auto;display:block}
+  .ed-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 14px;margin-top:6px}
+  .ed-inputs label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text2)}
+  .ed-verdict{margin-top:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);font-size:14px;line-height:1.5}
+  .ed-verdict strong{display:block;font-size:15px;margin-bottom:2px}
+  .ed-verdict.green{background:var(--green-bg);border-color:var(--green-bd)}
+  .ed-verdict.green strong{color:var(--green)}
+  .ed-verdict.amber{background:var(--amber-bg);border-color:var(--amber-bd)}
+  .ed-verdict.amber strong{color:var(--amber)}
+  .ed-verdict.red{background:var(--red-bg);border-color:var(--red-bd)}
+  .ed-verdict.red strong{color:var(--red)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / When an Edge Has Stopped Working</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 8 of 8</div>
+  <h1 class="tl-title">When an Edge Has Stopped Working</h1>
+  <p class="tl-dek">Every edge has losing stretches, and some edges really do die. This lesson separates the two with arithmetic you set up in advance — streak odds, a test of the live record, a CUSUM alarm, and an honest count of how many trades it takes — and ends with a decay verdict you can act on.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT</span>
+    <span>~22 min read</span>
+    <span>Prereqs: <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a>; <a href="primer-stats-normal.html">Normal distribution</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-edge-decay-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>A losing streak is weak evidence.</strong> At a tested 55% win rate, a run of 7+ losses turns up somewhere in 180 trades about 31% of the time. Streaks tell you about variance, not about the edge.</li>
+      <li><strong>Test the whole live record against the tested one.</strong> \(z = (W - np_0)/\sqrt{np_0q_0}\). 88 wins from 180 against a tested 55% is \(z = -1.65\): suggestive, not conclusive.</li>
+      <li><strong>Small decays take hundreds of trades to see.</strong> Telling 55% from 50% reliably (5% false alarm, 80% power) needs about 615 trades; 63% from 50% needs about 88. Work this number out <em>before</em> you go live.</li>
+      <li><strong>CUSUM watches trade by trade.</strong> Add a little for each loss, take a little off for each win, never go below zero, and stop at a threshold \(h\) chosen for an acceptable false-alarm rate. With \(h = 3\), false alarms in 300 trades are about 3.5%, and a fall from 55% to 50% is caught within 1,000 trades about 95% of the time.</li>
+      <li><strong>Write the rule first, act on the rule.</strong> Green / amber (half size, review) / red (stop, re-test). Never re-fit the strategy on the live sample to make the alarm go away.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a> showed that a system with a
+    real edge still loses eight in a row and still sits underwater for months — and that people
+    abandon good systems at the bottom. That lesson ended with an instruction: <em>define "broken" in
+    advance</em>. This one builds that definition.
+  </p>
+  <p>
+    The failure runs both ways. Switch off too readily and you abandon every edge in its first
+    ordinary slump. Switch off too reluctantly and you keep paying for an edge that crowding, a new
+    regime or a change in costs has already removed. The tools here are the ones statisticians built
+    for exactly this question — has the process changed, or is this the usual noise? — and they
+    connect to <a href="change-point-detection.html">change-point detection</a> (the general theory),
+    <a href="action-base-rates.html">Base Rates First</a> (how to weigh a live record against a prior),
+    and <a href="action-calibration-scoring.html">Scoring Your Own Calls</a> (the same discipline,
+    applied to forecasts rather than trades).
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A smoke alarm needs a threshold</h3>
+    <p>
+      A smoke alarm that goes off every time you make toast is useless — you take the battery out, and
+      then it misses the real fire. One that only goes off when the kitchen is fully ablaze is useless
+      too. A good alarm is set so false alarms are rare and real fires are caught quickly, and you
+      cannot have both perfectly: lower the threshold and you get more toast alarms; raise it and real
+      fires take longer to notice.
+    </p>
+    <p style="margin-bottom:0">
+      Watching a trading edge is the same problem. Every loss is a little smoke. Most of it is toast.
+      The job is to decide, before any of it happens, how much smoke over how long counts as a fire —
+      and to know how long a real fire would take to set the alarm off.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Is the manager unlucky, or has the skill gone?</h3>
+    <div class="tl-origin-who">CUSUM: E. S. Page, 1954 · sequential testing: Abraham Wald, 1940s · into manager monitoring: Philips, Yashchin &amp; Stein, 2003</div>
+    <p>Allocators and risk managers have always faced the question: a strategy or a manager has had a bad year — fire them, or hold? Comparing annual returns with a benchmark answers it badly. A year is too short to separate skill from luck, and looking again every month quietly raises the chance of a false alarm each time you look.</p>
+    <p>The tools came from industrial quality control, where a factory needs to know as soon as a machine drifts out of tolerance without stopping the line for every odd part: Page's cumulative-sum (CUSUM) chart of 1954, built on Wald's sequential probability ratio test. In 2003 Thomas Philips, Emmanuel Yashchin and David Stein set out a CUSUM scheme for monitoring active managers' excess returns, tuned so that a manager with real skill rarely triggers it while one who has lost it does within a predictable time.</p>
+    <p>The same machinery applies to any trading rule with a tested record: a strategy's live trades are the factory's parts, and the tested win rate or average return is the tolerance.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Decide, on a pre-set rule, whether the live record is still consistent with the tested edge — and cut or stop when it is not.</dd>
+        <dt>Takes in</dt><dd>The tested win rate or average return and its uncertainty (<a href="walk-forward-purged-cv.html">Walk-Forward CV</a>, <a href="bootstrapping-monte-carlo.html">Monte Carlo</a>), and the live trade log.</dd>
+        <dt>Hands on to</dt><dd>Position size and the switch-off decision (<a href="action-vol-to-size.html">From a Volatility Forecast to a Position Size</a>, <a href="kelly-criterion.html">Kelly</a>), and back to research for a re-test (<a href="research-pipeline-hypothesis-to-backtest.html">Hypothesis to Backtest</a>).</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Streaks: compute them, do not read them</h3>
+  <p>
+    With a win rate \(p\) and loss rate \(q = 1 - p\), a run of \(k\) losses starting at one
+    particular trade has probability \(q^k\). The number that matters is the chance of such a run
+    <em>somewhere</em> in \(n\) trades, which comes from the recursion in
+    <a href="drawdowns-risk-of-ruin.html">the drawdowns lesson</a>:
+  </p>
+  <div class="tl-math">
+    \[ P(\text{run} \ge k \text{ in } n) = 1 - a_n, \qquad a_n = \sum_{j=0}^{k-1} p\,q^{j}\,a_{n-j-1}, \quad a_n = 1 \text{ for } n < k \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>aₙ</code><span>chance that n trades contain no losing run of k or more</span></div>
+    <div class="tl-eq-chip c2"><code>p qʲ</code><span>j losses, then the win that ends the run</span></div>
+    <div class="tl-eq-chip c4"><code>1 − aₙ</code><span>chance the run turns up somewhere</span></div>
+  </div>
+  <p>
+    At 55%, a run of 7 starting on one given trade is \(0.45^7 \approx 0.0037\), about 1 in 268. Over
+    180 trades it is 30.6%; over 300 trades, 46.0%. A streak is a fact about the shape of the record,
+    not its average. A system with no edge at all produces streaks of almost the same length.
+  </p>
+
+  <h3>2. The record test: is the live win rate still the tested one?</h3>
+  <p>
+    The question that does carry information is whether the <em>whole</em> live record is consistent
+    with the tested edge. If the tested win rate is \(p_0\) and you have won \(W\) of \(n\) live
+    trades, then under "nothing has changed" \(W\) has mean \(np_0\) and standard deviation
+    \(\sqrt{np_0q_0}\):
+  </p>
+  <div class="tl-math">
+    \[ z = \frac{W - n\,p_0}{\sqrt{n\,p_0\,q_0}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">W − np₀</div><div class="tl-fp-name">The shortfall</div><div class="tl-fp-desc">Wins you have, minus wins the tested edge would expect</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">√(np₀q₀)</div><div class="tl-fp-name">The noise</div><div class="tl-fp-desc">How far luck alone typically moves the win count after n trades</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">z</div><div class="tl-fp-name">The verdict number</div><div class="tl-fp-desc">Below −1.28: 1-in-10 territory. Below −2.33: 1-in-100</div></div>
+  </div>
+  <p>
+    For a strategy measured in R (profit per trade in units of the amount risked) rather than wins,
+    use the average: \(z = (\bar{x} - \mu_0)/(s/\sqrt{n})\), with \(\mu_0\) the tested average and
+    \(s\) the standard deviation of live trades. Either way, the test compares the live record with
+    the <em>tested</em> number, not with zero.
+  </p>
+
+  <h3>3. How many trades before you can tell</h3>
+  <p>
+    Fix the false-alarm rate \(\alpha\) (switching off a healthy edge) and the power \(1-\beta\)
+    (catching a dead one). To tell a tested \(p_0\) from a decayed \(p_1\), you need roughly
+  </p>
+  <div class="tl-math">
+    \[ n \approx \left( \frac{z_{\alpha}\sqrt{p_0q_0} + z_{\beta}\sqrt{p_1q_1}}{p_0 - p_1} \right)^{2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>z_α</code><span>1.645 for a 5% one-sided false-alarm rate</span></div>
+    <div class="tl-eq-chip c2"><code>z_β</code><span>0.842 for 80% power — catching a real decay four times in five</span></div>
+    <div class="tl-eq-chip c3"><code>p₀ − p₁</code><span>the size of the decay; halve it and n roughly quadruples</span></div>
+  </div>
+  <div class="ed-scroll">
+  <table class="ed-table">
+    <tr><th>Tested → decayed</th><th>55% → 50%</th><th>60% → 50%</th><th>63% → 50%</th><th>55% → 52%</th><th>52% → 50%</th></tr>
+    <tr><td>Trades needed</td><td>615</td><td>151</td><td>88</td><td>1,706</td><td>3,861</td></tr>
+  </table>
+  </div>
+  <p>
+    The same arithmetic in R: a fall of 0.1R per trade, when one trade's standard deviation is 1R,
+    needs about \((2.487/0.1)^2 \approx 619\) trades; a fall of 0.2R, about 155. The lesson in the
+    table is uncomfortable and important: <strong>a thin edge decaying a little is, for practical
+    purposes, invisible for a year or more</strong>. If your strategy takes 100 trades a year and its
+    edge is 55% against a 50% break-even, no honest test can tell you within six months that it has
+    died.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Is a coin a tiny bit unfair? Flip it ten times and you cannot tell. Flip it a thousand times and you start to. The smaller the unfairness, the more flips you need — and an edge is just a slightly unfair coin.</p>
+  </div>
+
+  <h3>4. CUSUM: an alarm that watches every trade</h3>
+  <p>
+    Testing the record once a month has a hidden cost: every look is another chance of a false alarm.
+    Page's CUSUM looks after every trade with a known false-alarm rate. For a win/loss record, give each
+    trade a score — the log of how much likelier that outcome is under "decayed" (\(p_1\)) than under
+    "as tested" (\(p_0\)) — and keep a running sum that is never allowed below zero:
+  </p>
+  <div class="tl-math">
+    \[ \lambda_t = \begin{cases} \ln(p_1/p_0) & \text{win} \\ \ln(q_1/q_0) & \text{loss} \end{cases}, \qquad S_t = \max(0,\ S_{t-1} + \lambda_t), \qquad \text{alarm when } S_t \ge h \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>λ</code><span>a win scores negative, a loss positive. For 55% vs 50%: win −0.095, loss +0.105</span></div>
+    <div class="tl-eq-chip c2"><code>max(0, …)</code><span>good runs cannot bank credit forever; the sum forgets old wins, so it reacts to a recent change</span></div>
+    <div class="tl-eq-chip c3"><code>Sₜ</code><span>the evidence that the edge has dropped since the last time the record looked healthy</span></div>
+    <div class="tl-eq-chip c4"><code>h</code><span>the alarm level; higher means fewer false alarms and slower detection</span></div>
+  </div>
+  <p>
+    Set \(p_1\) to the break-even win rate — for a payoff ratio \(b\) (average win ÷ average loss) that
+    is \(1/(1+b)\) — and the CUSUM is asking the question you care about: <em>has this stopped making
+    money?</em> Choosing \(h\) is the smoke-alarm trade-off. Simulated for a tested 55% against a
+    break-even 50% (40,000 paths each, seed 3):
+  </p>
+  <div class="ed-scroll">
+  <table class="ed-table">
+    <tr><th>Threshold h</th><th>2</th><th>3</th><th>4</th><th>5</th></tr>
+    <tr><td>False alarm within 300 trades (edge intact)</td><td>21.1%</td><td>3.5%</td><td>0.5%</td><td>0.05%</td></tr>
+    <tr><td>False alarm within 1,000 trades</td><td>62.9%</td><td>21.2%</td><td>6.1%</td><td>1.7%</td></tr>
+    <tr><td>Decay to 50% caught within 300 trades</td><td>73.3%</td><td>40.0%</td><td>16.5%</td><td>5.1%</td></tr>
+    <tr><td>Decay to 50% caught within 1,000 trades</td><td>99.6%</td><td>95.4%</td><td>86.5%</td><td>73.6%</td></tr>
+    <tr><td>Median trades to alarm, when caught</td><td>194</td><td>339</td><td>475</td><td>589</td></tr>
+  </table>
+  </div>
+  <p>
+    No setting is fast <em>and</em> quiet, because a five-point fall in win rate is small. What the
+    table buys you is honesty: you know, in advance, roughly how long a real decay will take to show
+    and how often a healthy system will trip the alarm anyway.
+  </p>
+
+  <h3>5. One number for the whole record: the likelihood ratio</h3>
+  <p>
+    The CUSUM's running sum is built from a likelihood ratio. Applied to the whole record at once, it
+    says how many times likelier the live record is under "decayed" than under "as tested":
+  </p>
+  <div class="tl-math">
+    \[ \text{LR} = \left(\frac{p_1}{p_0}\right)^{W} \left(\frac{q_1}{q_0}\right)^{n-W} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>W, n − W</code><span>wins and losses in the live record</span></div>
+    <div class="tl-eq-chip c3"><code>LR</code><span>above 1 favours "decayed"; multiply your prior odds by it (Bayes in one line)</span></div>
+  </div>
+  <p>
+    That links straight to <a href="action-base-rates.html">Base Rates First</a>: a strategy that passed
+    an honest out-of-sample test deserves prior odds in its favour, and the live record moves those
+    odds by LR — no more.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(p_0,\ q_0\)</td><td>Tested win rate, and its loss rate \(1-p_0\).</td></tr>
+    <tr><td>\(p_1,\ q_1\)</td><td>The "decayed" win rate you want to detect (often break-even), and \(1-p_1\).</td></tr>
+    <tr><td>\(b\)</td><td>Payoff ratio: average win ÷ average loss. Break-even win rate is \(1/(1+b)\).</td></tr>
+    <tr><td>\(n,\ W\)</td><td>Live trades so far, and how many were wins.</td></tr>
+    <tr><td>\(k\)</td><td>Length of a losing run.</td></tr>
+    <tr><td>\(a_n\)</td><td>Probability that \(n\) trades contain no losing run of \(k\) or more.</td></tr>
+    <tr><td>\(z\)</td><td>Standardised shortfall of the live record against the tested one.</td></tr>
+    <tr><td>\(\bar{x},\ s,\ \mu_0\)</td><td>Live average R per trade, its standard deviation, and the tested average.</td></tr>
+    <tr><td>\(\alpha,\ \beta\)</td><td>False-alarm rate, and the chance of missing a real decay (power is \(1-\beta\)).</td></tr>
+    <tr><td>\(z_\alpha,\ z_\beta\)</td><td>The matching normal quantiles (1.645 and 0.842 for 5% and 80% power).</td></tr>
+    <tr><td>\(\lambda_t\)</td><td>CUSUM score of trade \(t\): log likelihood ratio of its outcome.</td></tr>
+    <tr><td>\(S_t\)</td><td>CUSUM value after trade \(t\).</td></tr>
+    <tr><td>\(h\)</td><td>CUSUM alarm threshold.</td></tr>
+    <tr><td>LR</td><td>Likelihood ratio of the whole live record, decayed versus as tested.</td></tr>
+    <tr><td>R</td><td>Profit or loss of a trade in units of the amount risked on it.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The tools: decay simulator and record checker</h2>
+  <p>
+    The simulator generates one live record from a strategy whose win rate drops at a trade you
+    choose, runs the CUSUM on it, and then repeats that 1,000 times to tell you how often the alarm
+    is false and how long a real decay takes to catch. Set "win rate after the change" equal to the
+    tested rate to see a healthy system's false alarms.
+  </p>
+
+  <div class="tl-chart interactive" id="ed-sim">
+    <div class="tl-chart-label">Decay simulator: equity in R and the CUSUM alarm</div>
+    <svg id="ed-eq" class="ed-svg" viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cumulative profit in R for one simulated live record. A dashed vertical line marks the trade where the win rate changes, and a red dot marks where the CUSUM alarm fired, if it did.">
+      <g id="ed-eq-g"></g>
+    </svg>
+    <svg id="ed-cu" class="ed-svg" viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="The CUSUM value for the same record, never below zero, with a dashed horizontal line at the alarm threshold h.">
+      <g id="ed-cu-g"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>cumulative R</span>
+      <span><i style="background:var(--purple)"></i>CUSUM</span>
+      <span><i style="background:var(--amber)"></i>change point / threshold h</span>
+      <span><i style="background:var(--red)"></i>alarm</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Tested win rate p₀</span><span class="tl-live" id="ed-p0-val">55%</span></div>
+        <input type="range" id="ed-p0" min="35" max="75" step="1" value="55">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Payoff ratio b</span><span class="tl-live" id="ed-b-val">1.00</span></div>
+        <input type="range" id="ed-b" min="0.5" max="3" step="0.05" value="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win rate after the change</span><span class="tl-live" id="ed-pa-val">50%</span></div>
+        <input type="range" id="ed-pa" min="25" max="75" step="1" value="50">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Change happens at trade</span><span class="tl-live" id="ed-tc-val">200</span></div>
+        <input type="range" id="ed-tc" min="0" max="1000" step="10" value="200">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trades shown</span><span class="tl-live" id="ed-n-val">800</span></div>
+        <input type="range" id="ed-n" min="100" max="1500" step="50" value="800">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Alarm threshold h</span><span class="tl-live" id="ed-h-val">3.00</span></div>
+        <input type="range" id="ed-h" min="1" max="8" step="0.25" value="3">
+      </div>
+    </div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" id="ed-reroll">🎲 Re-roll</button>
+      <button type="button" class="tl-btn" id="ed-reset">Reset to seed 10</button>
+      <span class="tl-hint" id="ed-seed">seed 10</span>
+    </div>
+    <div class="tl-readout" id="ed-readout"></div>
+    <div class="tl-chart-caption">Each trade wins \(b\)R with the current win rate and loses 1R otherwise. The CUSUM tests "as tested" (\(p_0\)) against "break-even" (\(p_1 = 1/(1+b)\)). The 1,000-path statistics use the same settings. Try h = 2 with no change and count the false alarms; then a change to 50% at trade 0 and see how long it takes.</div>
+  </div>
+
+  <div class="tl-chart interactive" id="ed-check">
+    <div class="tl-chart-label">Record checker: your live record against your tested edge</div>
+    <div class="ed-inputs">
+      <label>Live trades n<input class="tl-scratch-input" type="number" id="rc-n" min="1" max="100000" step="1" value="180" inputmode="numeric"></label>
+      <label>Of which wins W<input class="tl-scratch-input" type="number" id="rc-w" min="0" max="100000" step="1" value="88" inputmode="numeric"></label>
+      <label>Tested win rate p₀ (%)<input class="tl-scratch-input" type="number" id="rc-p" min="1" max="99" step="0.1" value="55" inputmode="decimal"></label>
+      <label>Payoff ratio b<input class="tl-scratch-input" type="number" id="rc-b" min="0.1" max="10" step="0.05" value="1" inputmode="decimal"></label>
+      <label>Prior odds the edge is intact (x : 1)<input class="tl-scratch-input" type="number" id="rc-o" min="0.1" max="100" step="0.5" value="3" inputmode="decimal"></label>
+    </div>
+    <div class="tl-readout" id="rc-readout"></div>
+    <div class="ed-verdict" id="rc-verdict"></div>
+    <div class="tl-chart-caption">Rules used: z above −1.28 → green (no evidence of decay); between −1.28 and −2.33 → amber (review, half size); at or below −2.33 → red (stop, re-test). "Decayed" means the break-even win rate \(1/(1+b)\). Trades are assumed independent; real losses cluster, so treat every number here as optimistic about how quickly you can tell.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Worked example: a decay verdict</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>180 live trades, 88 wins, and seven losses in a row</h3>
+    <p>A EUR/USD system, tested out of sample at \(p_0 = 55\%\) with average win equal to average loss (\(b = 1\), break-even 50%). Live: 180 trades, 88 wins (48.9%). The first 120 trades went roughly to plan (67 wins); the last 60 have gone badly (21 wins, 39 losses), ending in seven straight losses.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>The streak</h4>
+        <p>\(P(\text{run} \ge 7 \text{ in } 180) = 30.6\%\) at 55%. Roughly one live record in three has one. On its own: not evidence.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>The record</h4>
+        <p>Expected wins \(180 \times 0.55 = 99\); standard deviation \(\sqrt{180 \times 0.55 \times 0.45} = 6.67\). \(z = (88 - 99)/6.67 = -1.65\), a one-sided p of about 0.05. In the amber band.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>How much should that move you?</h4>
+        <p>\(\text{LR} = (0.50/0.55)^{88}(0.50/0.45)^{92} = e^{1.306} = 3.7\): the record is 3.7 times likelier if the edge has gone. Start from even odds and that is a 79% chance the edge has gone. But the system passed an honest out-of-sample test — say prior odds of 3 : 1 that it is real — and the chance it has gone is \( (3.7/3)/(1 + 3.7/3) \approx 55\%\). A coin flip, not a verdict.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Could 180 trades even tell?</h4>
+        <p>Power to detect 55% → 50% at a 5% false-alarm rate with \(n = 180\) is only about 38%. You would need about 615 trades for 80%. The record is suggestive because the test is weak, not because the evidence is clean.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>The CUSUM</h4>
+        <p>With \(h = 3\), tuned to 50%: the bad 60-trade stretch alone adds \(39 \times 0.105 - 21 \times 0.095 = +2.11\). The CUSUM reads at least 2.1 — close to the alarm, not over it.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>The usable output</h4>
+        <p><strong>Decay verdict: AMBER — review.</strong> Halve the size now. Check for a cause you can name: wider spreads or worse fills, a data or code change, a regime the backtest never saw. Keep trading at half size and let the rule decide: <strong>red</strong> (stop and re-test) if the CUSUM reaches 3 or \(z\) falls to −2.33; back to <strong>green</strong> and full size if \(z\) recovers above −1.28.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Template — copy this</div>
+    <h3>The decay review</h3>
+    <p>Fill in the first block before the strategy goes live. Run the second every month, or after any streak that worries you.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Before launch: the reference</h4>
+        <p>Tested \(p_0\) (or average R), payoff \(b\), break-even \(1/(1+b)\), trades per year. From the record checker: trades needed to detect a fall to break-even.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Before launch: the alarm</h4>
+        <p>Choose \(h\) from the simulator for an acceptable false-alarm rate over a year of trades. Write down the streak length you should expect (the drawdowns lesson) so it does not frighten you.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Every trade</h4>
+        <p>Update the CUSUM. If it reaches \(h\): red, stop.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Every month</h4>
+        <p>Record \(z\) and LR. Green above −1.28; amber to −2.33 (half size, review); red below.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>On amber or red: look for a cause</h4>
+        <p>Costs and fills against the backtest's; data or code changes (replay the live period through the backtest); the regime; crowding — is everyone trading this now?</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>Never fix it on the live sample</h4>
+        <p>No re-optimising parameters on the losing stretch. A re-launch needs a fresh out-of-sample test and a fresh entry in this review.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How edges die — and it actually happened</h2>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Cause</b>The edge is published, crowded, or its regime ends</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Live record</b>Gross edge per trade shrinks; costs do not</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the decay test</b>A pre-set CUSUM and record test on live trades, with a known false-alarm rate</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Decision</b>Amber: half size and review. Red: stop and re-test</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Capital stops leaking — without abandoning a sound edge in an ordinary streak</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A fishing spot can stop working because other people found it and caught all the fish. You can't tell from one bad afternoon — fishing is like that. But if you write down every trip, you can see when the good spot has really gone quiet, and move before you waste the whole summer.</p>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>August 2007: the quant quake, and the slow decay before it</h3>
+    <p>
+      In the second week of August 2007 many quantitative long/short equity funds — firms running
+      different models, apparently independently — suffered sudden, severe losses in the same few
+      days, while the broad stock market barely moved. Much of the loss reversed shortly afterwards,
+      but not before some funds had cut positions near the worst point.
+    </p>
+    <p>
+      Amir Khandani and Andrew Lo's study, "What Happened to the Quants in August 2007?", reconstructed
+      the episode with a simple short-term contrarian strategy as a stand-in for the funds' models.
+      Their explanation: many funds held similar positions, and the rapid unwinding of one or more
+      large portfolios pushed prices against all of them at once. They also found something slower:
+      the stand-in strategy's returns had been falling for years before 2007 as more capital pursued
+      similar trades, so that funds needed more leverage to earn the same returns — which made the
+      crowded unwind more violent when it came.
+    </p>
+    <p style="margin-bottom:0">
+      Both kinds of "stopped working" are in this one episode. The gradual erosion was real decay,
+      visible only over years of data. The August losses looked like decay but were a crowding
+      shock, and much of them came back. A rule that only watched the last week would have read the
+      two exactly backwards.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2016: publication as a decay event</h3>
+    <p style="margin-bottom:0">
+      R. David McLean and Jeffrey Pontiff studied 97 published variables that had been shown to
+      predict stock returns ("Does Academic Research Destroy Stock Return Predictability?",
+      <em>Journal of Finance</em>, 2016). They compared each one's returns in the original study's
+      sample, in the period after that sample but before publication, and after publication. Returns
+      were 26% lower out of sample and 58% lower after publication. The authors read the first drop as
+      partly statistical luck in the original studies and the larger post-publication drop as
+      investors trading on what they had read. Edges decay for a reason you can name — someone else
+      found them — and the decay is usually partial, not a switch from on to off.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>What the desk found when it tested the claims</h2>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>"A losing streak or a deep drawdown means the edge has decayed."</strong> Not tested here, and the maths above shows why a streak cannot settle it: an edge and no edge produce streaks of nearly the same length. No strategy on this desk has yet run long enough live to put a CUSUM or record test through a full cycle. The review template above is the procedure the desk would follow.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>The desk's one fully-audited strategy, and how long its decay would take to see.</strong> A slow FX strategy on the US-versus-foreign 2-year yield spread: out of sample 2015–2025 with honest publication lags, ~109 trades, 63% win, profit factor 2.2, every out-of-sample year 2022–2026 positive; paper-traded live since 2026-07. Apply this lesson's formula: telling 63% from a coin-flip 50% (5% false alarm, 80% power) takes about 88 live trades — close to the whole out-of-sample record. With entries this rare, a live decay verdict is a matter of years, not months. Computed here assuming independent trades; <em>backtest evidence, not forward-proven.</em></span>
+  </div>
+
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>Before calling it decay, check the backtest.</strong> One Fibonacci-level system showed an 85.7% win rate in its backtest and 39.6% live; a mean-reversion system's entire edge came from stops that were not live for the first hour after entry. A gap that large from the first live trade is not an edge that decayed — it is an edge that was never there, because the backtest could see something the live system could not. Replay the live period through the backtest first.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Power before launch</h4>
+      <p>Work out how many live trades it would take to see a decay to break-even. If the answer is five years, accept that the live record will not rescue a bad decision — the research has to be right.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🚦</div>
+      <h4>Graded responses</h4>
+      <p>A watch level that cuts size and triggers a review, and a stop level that switches off. Cutting size on amber limits the cost of being wrong in either direction.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔁</div>
+      <h4>Replay the live period</h4>
+      <p>Run the live dates through the backtest engine. If the backtest also loses there, it is the market; if it wins, the gap is execution, data or code — not decay.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🧭</div>
+      <h4>Name the mechanism</h4>
+      <p>Decay has causes: publication, crowding, a regime change, cost changes. A statistical alarm plus a named cause is a much stronger case than either alone (see <a href="change-point-detection.html">change-point detection</a> and <a href="regime-switching-state-space.html">regime switching</a>).</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where decay calls go wrong</h3>
+    <p><strong>Judging by the streak.</strong> The streak is the most vivid part of the record and the least informative. Use the whole record.</p>
+    <p><strong>Testing against zero instead of the tested edge.</strong> "Still profitable" can hide a fall from 60% to 52%. Compare with \(p_0\), and with break-even.</p>
+    <p><strong>Looking every week with a fixed 5% test.</strong> Each look is another chance of a false alarm; after a year of weekly looks a healthy system will very likely "fail" once. Use a CUSUM or a threshold set for repeated looking.</p>
+    <p><strong>Expecting a quick answer.</strong> A 55%-to-50% decay takes hundreds of trades to show. Plan for that rather than deciding on six weeks.</p>
+    <p><strong>Ignoring clustering.</strong> Real losses bunch in bad regimes, so streaks run longer and records wander further than the independent-trade formulas say. Treat the numbers as the optimistic case.</p>
+    <p style="margin-bottom:0"><strong>Re-fitting on the loss.</strong> Changing parameters until the live stretch looks good is in-sample optimisation on the worst sample you have. It resets nothing and guarantees the next decay.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Streaks are not verdicts.</strong> At 55%, a run of 7 appears in 180 trades about 31% of the time, edge or no edge.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Test the whole record against the tested edge:</strong> \(z = (W - np_0)/\sqrt{np_0q_0}\), with LR to say how far it should move your odds.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Know the trades needed in advance.</strong> 55% → 50% needs about 615; 63% → 50% about 88. Small decays are slow to see.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CUSUM watches every trade with a known false-alarm rate.</strong> Choose \(h\) from the trade-off table, not from how you feel.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Grade the response.</strong> Amber halves size and looks for a cause; red stops and sends the idea back to an out-of-sample re-test.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not tested here:</strong> no desk strategy has yet run live long enough for a full decay test; the validated spread sleeve would need about 88 live trades to show a fall to 50%.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A system tested at 60% wins has won 105 of its first 200 live trades. What is z, and which band is it in?</summary>
+    <div class="tl-answer">Expected \(200 \times 0.6 = 120\); standard deviation \(\sqrt{200 \times 0.6 \times 0.4} = 6.93\). \(z = (105 - 120)/6.93 = -2.17\). Amber (between −1.28 and −2.33): half size and review, close to red.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why is "eight losses in a row" weaker evidence of decay than "won 48% of 400 trades against a tested 55%"?</summary>
+    <div class="tl-answer">A long streak is common in long records whether or not there is an edge (at 55%, a run of 8 is about 24% likely in 300 trades). The 400-trade record uses every trade: expected 220, standard deviation 9.95, observed 192, so \(z = -2.81\) — beyond the red line.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. About how many trades do you need to tell a 55% edge from 50% at a 5% false-alarm rate with 80% power? What does that imply for a strategy that trades 100 times a year?</summary>
+    <div class="tl-answer">About 615. At 100 trades a year that is six years. The live record cannot rescue a bad research decision on any useful timescale, so the out-of-sample test before launch carries most of the weight.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In a CUSUM for 55% against 50%, what does one win and one loss do to the score, and why is the sum floored at zero?</summary>
+    <div class="tl-answer">A win adds \(\ln(0.50/0.55) = -0.095\); a loss adds \(\ln(0.50/0.45) = +0.105\). The floor stops a long good stretch from banking so much credit that a later decay takes forever to show. The CUSUM measures evidence of a fall <em>since the record last looked healthy</em>.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. You lower the CUSUM threshold from 4 to 2 to catch decay faster. What do you pay?</summary>
+    <div class="tl-answer">False alarms. For 55% against 50%, the chance a healthy system trips the alarm within 300 trades rises from about 0.5% to about 21%; median time to catch a real decay falls from about 475 to about 194 trades. Faster and quieter cannot both improve.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A strategy's backtest won 80% of trades; live it has won 42% from the very first trade. Decay?</summary>
+    <div class="tl-answer">Almost certainly not. A gap that large from day one points at the backtest: look-ahead, survivorship, fills or stops that could not happen live. Replay the live period through the backtest and audit what it could see at decision time before using any decay test — a decay test assumes the tested number was real.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>E. S. Page, "Continuous Inspection Schemes", <em>Biometrika</em>, 1954 — the original CUSUM.</li>
+    <li>Abraham Wald, <em>Sequential Analysis</em>, Wiley, 1947 — the sequential probability ratio test the CUSUM is built on.</li>
+    <li>Thomas K. Philips, Emmanuel Yashchin and David M. Stein, "Using Statistical Process Control to Monitor Active Managers", <em>Journal of Portfolio Management</em>, 2003 — CUSUM applied to manager performance.</li>
+    <li>Amir E. Khandani and Andrew W. Lo, "What Happened to the Quants in August 2007?", 2007 (later in the <em>Journal of Investment Management</em> and the <em>Journal of Financial Markets</em>) — crowding, unwinds and the slow decline of a contrarian strategy's returns.</li>
+    <li>R. David McLean and Jeffrey Pontiff, "Does Academic Research Destroy Stock Return Predictability?", <em>Journal of Finance</em>, 2016 — how much published effects shrink out of sample and after publication.</li>
+    <li>Michèle Basseville and Igor V. Nikiforov, <em>Detection of Abrupt Changes: Theory and Application</em>, Prentice Hall, 1993 — the standard reference on CUSUM and change detection.</li>
+    <li><a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a>, <a href="change-point-detection.html">Change-Point Detection</a> and <a href="action-base-rates.html">Base Rates First</a> — the streak arithmetic, the general theory, and how to weigh a live record against a prior.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-base-rates.html">← Base Rates First</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-trade-plan.html">Back to the start: From a View to a Trade Plan →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace", SANS = "'DM Sans',sans-serif";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function $(id){ return document.getElementById(id); }
+  function fmt(x, d){ var s = Math.abs(x).toFixed(d); return (x < 0 && parseFloat(s) !== 0 ? '−' : '') + s; }
+  function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function Phi(z){ var t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2); var p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - p : p; }
+  function nNeed(p0, p1){ return Math.pow((1.6449 * Math.sqrt(p0 * (1 - p0)) + 0.8416 * Math.sqrt(p1 * (1 - p1))) / (p0 - p1), 2); }
+  function power(p0, p1, n){ return Phi((Math.abs(p0 - p1) * Math.sqrt(n) - 1.6449 * Math.sqrt(p0 * (1 - p0))) / Math.sqrt(p1 * (1 - p1))); }
+  function pRun(n, k, q){
+    var st = new Float64Array(k), hit = 0; st[0] = 1;
+    for (var t = 0; t < n; t++){
+      var nx = new Float64Array(k);
+      for (var r = 0; r < k; r++){ var v = st[r]; if (!v) continue; nx[0] += v * (1 - q); if (r + 1 >= k) hit += v * q; else nx[r + 1] += v * q; }
+      st = nx;
+    }
+    return hit;
+  }
+
+  // ---------- Decay simulator ----------
+  var S = {}; ['p0', 'b', 'pa', 'tc', 'n', 'h'].forEach(function(k){ S[k] = $('ed-' + k); });
+  var seed = 10;
+  function params(){ return { p0: parseFloat(S.p0.value) / 100, b: parseFloat(S.b.value), pa: parseFloat(S.pa.value) / 100, tc: parseInt(S.tc.value, 10), n: parseInt(S.n.value, 10), h: parseFloat(S.h.value) }; }
+  function runPath(o, rnd, keep){
+    var p1 = 1 / (1 + o.b), wi = Math.log(p1 / o.p0), li = Math.log((1 - p1) / (1 - o.p0));
+    var Sv = 0, eq = 0, alarm = 0, wins = 0, run = 0, longest = 0, eqs = keep ? [0] : null, cus = keep ? [0] : null;
+    for (var t = 1; t <= o.n; t++){
+      var p = t > o.tc ? o.pa : o.p0;
+      if (rnd() < p){ eq += o.b; wins++; Sv = Math.max(0, Sv + wi); run = 0; }
+      else { eq -= 1; Sv = Math.max(0, Sv + li); run++; if (run > longest) longest = run; }
+      if (!alarm && Sv >= o.h) alarm = t;
+      if (keep){ eqs.push(eq); cus.push(Sv); }
+    }
+    return { alarm: alarm, wins: wins, longest: longest, eqs: eqs, cus: cus, eq: eq };
+  }
+  function renderSim(){
+    var o = params();
+    $('ed-p0-val').textContent = Math.round(o.p0 * 100) + '%';
+    $('ed-b-val').textContent = o.b.toFixed(2);
+    $('ed-pa-val').textContent = Math.round(o.pa * 100) + '%';
+    $('ed-tc-val').textContent = o.tc;
+    $('ed-n-val').textContent = o.n;
+    $('ed-h-val').textContent = o.h.toFixed(2);
+    $('ed-seed').textContent = 'seed ' + seed;
+    var p1 = 1 / (1 + o.b);
+    var EQ = $('ed-eq-g'), CU = $('ed-cu-g'); clear(EQ); clear(CU);
+    if (o.p0 <= p1 + 0.005){
+      EQ.appendChild(el('text', { x: 320, y: 100, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--amber)', 'Tested win rate is at or below break-even (' + (p1 * 100).toFixed(1) + '%): no edge to monitor.'));
+      $('ed-readout').innerHTML = 'With payoff <b>' + o.b.toFixed(2) + '</b>, break-even is <b>' + (p1 * 100).toFixed(1) + '%</b>. Raise the tested win rate or the payoff ratio.';
+      return;
+    }
+    var path = runPath(o, mulberry32(seed), true);
+    var X0 = 70, X1 = 624;
+    function px(t){ return X0 + (X1 - X0) * t / o.n; }
+    // equity panel
+    var lo = Math.min.apply(null, path.eqs), hi = Math.max.apply(null, path.eqs); if (hi - lo < 10){ hi += 5; lo -= 5; }
+    var Y0 = 176, Y1 = 12;
+    function py(v){ return Y0 - (Y0 - Y1) * (v - lo) / (hi - lo); }
+    var step = Math.max(1, Math.ceil(Math.abs(hi - lo) / 5 / 10) * 10);
+    for (var gv = Math.ceil(lo / step) * step; gv <= hi; gv += step){
+      EQ.appendChild(el('line', { x1: X0, x2: X1, y1: py(gv), y2: py(gv) }, 'stroke:' + (gv === 0 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1'));
+      EQ.appendChild(el('text', { x: X0 - 6, y: py(gv) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', (gv > 0 ? '+' : gv < 0 ? '−' : '') + Math.abs(gv) + 'R'));
+    }
+    if (o.tc < o.n){
+      EQ.appendChild(el('line', { x1: px(o.tc), x2: px(o.tc), y1: Y1, y2: Y0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
+      EQ.appendChild(el('text', { x: Math.min(px(o.tc) + 5, X1 - 130), y: Y1 + 14, 'font-size': 15, 'font-family': SANS }, 'fill:var(--amber)', 'change → ' + Math.round(o.pa * 100) + '%'));
+    }
+    var d = '';
+    for (var t = 0; t < path.eqs.length; t++) d += (t ? 'L' : 'M') + px(t).toFixed(1) + ',' + py(path.eqs[t]).toFixed(1);
+    EQ.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--blue);stroke-width:1.8'));
+    if (path.alarm) EQ.appendChild(el('circle', { cx: px(path.alarm), cy: py(path.eqs[path.alarm]), r: 5.5 }, 'fill:var(--red)'));
+    [0, 0.25, 0.5, 0.75, 1].forEach(function(f){ EQ.appendChild(el('text', { x: px(o.n * f), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', Math.round(o.n * f))); });
+    // CUSUM panel
+    var cmax = Math.max(o.h * 1.25, Math.max.apply(null, path.cus));
+    var CY0 = 126, CY1 = 10;
+    function cy(v){ return CY0 - (CY0 - CY1) * v / cmax; }
+    CU.appendChild(el('line', { x1: X0, x2: X1, y1: cy(0), y2: cy(0) }, 'stroke:var(--text3);stroke-width:1'));
+    CU.appendChild(el('line', { x1: X0, x2: X1, y1: cy(o.h), y2: cy(o.h) }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,4'));
+    CU.appendChild(el('text', { x: X0 - 6, y: cy(o.h) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'h=' + o.h));
+    CU.appendChild(el('text', { x: X0 - 6, y: cy(0) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', '0'));
+    if (o.tc < o.n) CU.appendChild(el('line', { x1: px(o.tc), x2: px(o.tc), y1: CY1, y2: CY0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
+    var dc = '';
+    for (var u = 0; u < path.cus.length; u++) dc += (u ? 'L' : 'M') + px(u).toFixed(1) + ',' + cy(path.cus[u]).toFixed(1);
+    CU.appendChild(el('path', { d: dc, fill: 'none' }, 'stroke:var(--purple);stroke-width:1.8'));
+    if (path.alarm){
+      CU.appendChild(el('circle', { cx: px(path.alarm), cy: cy(path.cus[path.alarm]), r: 5.5 }, 'fill:var(--red)'));
+      CU.appendChild(el('text', { x: px(path.alarm) > 480 ? px(path.alarm) - 8 : px(path.alarm) + 8, y: CY1 + 14, 'text-anchor': px(path.alarm) > 480 ? 'end' : 'start', 'font-size': 15, 'font-family': FONT }, 'fill:var(--red)', 'alarm at trade ' + path.alarm));
+    }
+    CU.appendChild(el('text', { x: (X0 + X1) / 2, y: CY0 + 18, 'text-anchor': 'middle', 'font-size': 15, 'font-family': SANS }, 'fill:var(--text2)', 'trade number'));
+
+    // 1,000-path statistics
+    var rnd = mulberry32(seed * 7919 + 13), SIMS = 1000, falseA = 0, caught = 0, delays = [], changes = o.tc < o.n && Math.abs(o.pa - o.p0) > 1e-9;
+    for (var s = 0; s < SIMS; s++){
+      var r = runPath(o, rnd, false);
+      if (r.alarm && (!changes || r.alarm <= o.tc)) falseA++;
+      else if (r.alarm){ caught++; delays.push(r.alarm - o.tc); }
+    }
+    delays.sort(function(a, b){ return a - b; });
+    var zEnd = (path.wins - o.n * o.p0) / Math.sqrt(o.n * o.p0 * (1 - o.p0));
+    var line1 = 'This path: ' + (path.alarm ? 'alarm at trade <b>' + path.alarm + '</b>' + (!changes || path.alarm <= o.tc ? ' — <b>a false alarm</b>' + (changes ? ' (before the change)' : ' (nothing changed)') : ' — <b>' + (path.alarm - o.tc) + '</b> trades after the change') : '<b>no alarm</b> in ' + o.n + ' trades') +
+      ' · ended <b>' + (path.eq >= 0 ? '+' : '−') + Math.abs(path.eq).toFixed(1) + 'R</b> · won <b>' + path.wins + '</b> of ' + o.n + ' (z vs tested <b>' + fmt(zEnd, 2) + '</b>) · longest losing run <b>' + path.longest + '</b>';
+    var exp = o.b * o.pa - (1 - o.pa);
+    var line2 = 'CUSUM tests ' + Math.round(o.p0 * 100) + '% against break-even ' + (p1 * 100).toFixed(1) + '%: a win scores <b>' + fmt(Math.log(p1 / o.p0), 3) + '</b>, a loss <b>+' + Math.log((1 - p1) / (1 - o.p0)).toFixed(3) + '</b>. After the change the edge is <b>' + (exp >= 0 ? '+' : '−') + Math.abs(exp).toFixed(2) + 'R</b> a trade.';
+    var line3 = 'Across 1,000 paths: false alarm ' + (changes ? 'before trade ' + o.tc : 'within ' + o.n + ' trades') + ' in <b>' + (falseA / SIMS * 100).toFixed(1) + '%</b>' +
+      (changes ? ' · decay caught by trade ' + o.n + ' in <b>' + (caught / SIMS * 100).toFixed(1) + '%</b>' + (delays.length ? ', median <b>' + delays[delays.length >> 1] + '</b> trades after the change' : '') : ' · no change in this run, so every alarm is false');
+    $('ed-readout').innerHTML = line1 + '<br>' + line2 + '<br>' + line3;
+  }
+  ['p0', 'b', 'pa', 'tc', 'n', 'h'].forEach(function(k){ S[k].addEventListener('input', renderSim); });
+  $('ed-reroll').addEventListener('click', function(){ seed = 1 + Math.floor(Math.random() * 99999); renderSim(); });
+  $('ed-reset').addEventListener('click', function(){ seed = 10; renderSim(); });
+  renderSim();
+
+  // ---------- Record checker ----------
+  var R = {}; ['n', 'w', 'p', 'b', 'o'].forEach(function(k){ R[k] = $('rc-' + k); });
+  function renderCheck(){
+    var n = Math.round(parseFloat(R.n.value)), W = Math.round(parseFloat(R.w.value)), p0 = parseFloat(R.p.value) / 100, b = parseFloat(R.b.value), odds = parseFloat(R.o.value);
+    var V = $('rc-verdict');
+    if (!(n >= 1) || !(W >= 0) || W > n || !(p0 > 0 && p0 < 1) || !(b > 0) || !(odds > 0)){
+      $('rc-readout').innerHTML = 'Enter trades ≥ 1, wins between 0 and trades, a tested win rate between 1% and 99%, and positive payoff and odds.';
+      V.className = 'ed-verdict'; V.innerHTML = ''; return;
+    }
+    var p1 = 1 / (1 + b), q0 = 1 - p0;
+    var z = (W - n * p0) / Math.sqrt(n * p0 * q0), pval = Phi(z);
+    var html = 'Expected wins <b>' + (n * p0).toFixed(1) + '</b> ± <b>' + Math.sqrt(n * p0 * q0).toFixed(2) + '</b> · you have <b>' + W + '</b> (' + (W / n * 100).toFixed(1) + '%) · z <b>' + fmt(z, 2) + '</b> · one-sided p <b>' + pval.toFixed(3) + '</b>';
+    var post = null;
+    if (p0 > p1 + 0.0005){
+      var llr = W * Math.log(p1 / p0) + (n - W) * Math.log((1 - p1) / q0), lr = Math.exp(llr);
+      var po = lr / odds; post = po / (1 + po);
+      var k7 = 7, longP = pRun(n, k7, q0);
+      html += '<br>Break-even win rate <b>' + (p1 * 100).toFixed(1) + '%</b> · LR (decayed vs tested) <b>' + (lr >= 1000 ? lr.toExponential(1) : lr >= 10 ? lr.toFixed(0) : lr.toFixed(2)) + '</b> · with prior odds ' + odds + ' : 1 for the edge, chance it has gone <b>' + (post * 100).toFixed(0) + '%</b>' +
+        '<br>Power to see a fall to break-even at this n: <b>' + (power(p0, p1, n) * 100).toFixed(0) + '%</b> · trades needed for 80%: <b>' + Math.ceil(nNeed(p0, p1)).toLocaleString() + '</b> · chance of a 7+ losing run in ' + n + ' trades if nothing changed: <b>' + (longP * 100).toFixed(1) + '%</b>';
+    } else {
+      html += '<br>Tested win rate is at or below break-even (' + (p1 * 100).toFixed(1) + '%) for this payoff: there was no edge to decay.';
+    }
+    $('rc-readout').innerHTML = html;
+    var cls, head, body;
+    if (z <= -2.33){ cls = 'red'; head = 'RED — decay signal: stop and re-test'; body = 'The live record is more than 2.33 standard deviations below the tested edge. Switch off, replay the live period through the backtest, and look for the cause before any re-launch on fresh data.'; }
+    else if (z <= -1.28){ cls = 'amber'; head = 'AMBER — review, half size'; body = 'Evidence is building but not conclusive. Halve the size, look for a named cause (costs, data, regime, crowding), and keep the CUSUM running.'; }
+    else { cls = 'green'; head = 'GREEN — no evidence of decay'; body = 'The live record is consistent with the tested edge.'; if (p0 > p1 + 0.0005 && n < nNeed(p0, p1)) body += ' But at ' + n + ' trades the test is weak: absence of evidence, not evidence of health.'; }
+    V.className = 'ed-verdict ' + cls; V.innerHTML = '<strong>' + head + '</strong>' + body;
+  }
+  ['n', 'w', 'p', 'b', 'o'].forEach(function(k){ R[k].addEventListener('input', renderCheck); });
+  renderCheck();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

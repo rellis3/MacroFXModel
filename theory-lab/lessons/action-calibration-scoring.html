@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scoring Your Own Calls — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .cb-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .cb-table th,.cb-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace;vertical-align:middle}
+  .cb-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .cb-table td:first-child,.cb-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  @media (max-width:480px){.cb-table th,.cb-table td{padding:5px 4px;font-size:12px}}
+  .cb-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  .cb-svg{width:100%;height:auto;display:block}
+  .cb-rows{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+  .cb-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+  .cb-row-lbl{font-family:'DM Mono',monospace;font-weight:600;color:var(--amber);min-width:74px;font-size:13px}
+  .cb-field{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+  .cb-field input{width:62px;min-height:34px;text-align:center}
+  .cb-qbtn{min-height:36px;min-width:44px;border-radius:8px;border:1px solid var(--border);background:var(--s1);color:var(--text2);font-weight:600;font-size:13px;cursor:pointer;padding:4px 10px;font-family:'DM Sans',sans-serif}
+  .cb-qbtn.yes{color:var(--green);border-color:var(--green-bd)}
+  .cb-qbtn.no{color:var(--red);border-color:var(--red-bd)}
+  .cb-row-out{font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;margin-left:auto}
+  .cb-ok{color:var(--green)}
+  .cb-bad{color:var(--red)}
+  .cb-few{color:var(--amber)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / Scoring Your Own Calls</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 6 of 8</div>
+  <h1 class="tl-title">Scoring Your Own Calls</h1>
+  <p class="tl-dek">"I'm usually right" is a feeling. "My 70% calls come true 55% of the time" is a measurement you can size from. This lesson turns a decision journal into a score: calibration, the Brier score and its three parts, and a reliability chart you fill in yourself.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~22 min read</span>
+    <span>Prereqs: <a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a>; <a href="primer-probability.html">Probability</a> (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-calibration-scoring-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Calibrated means your 70% calls come true about 70% of the time.</strong> Group your calls by the confidence you wrote down and compare with what happened — that is a reliability diagram.</li>
+      <li><strong>The Brier score</strong> \(\frac{1}{N}\sum (f_i - o_i)^2\) grades probability calls: 0 is perfect, always saying 50% scores 0.25, and always quoting the base rate \(\bar o\) scores \(\bar o(1-\bar o)\). That last one is the bar to beat.</li>
+      <li><strong>It splits into three parts:</strong> Brier = reliability (how far your stated numbers are from your hit rates) − resolution (how much your calls separate outcomes from the base rate) + uncertainty (how hard the questions were).</li>
+      <li><strong>Worked example:</strong> 40 calls at an average stated 66.5% came true 55% of the time. Brier 0.2775 against a base-rate score of 0.2475 — worse than saying "55%" every time. The high-confidence calls are 2.4 standard errors short.</li>
+      <li><strong>Why it matters for money:</strong> sizing off your stated 66.5% at even odds gives a Kelly fraction of 33%; your record supports 10%. Uncalibrated confidence is over-betting.</li>
+      <li><strong>The desk's record:</strong> a conviction score that was never scored turned out <em>anti</em>-predictive; and a 54.1% hit rate that looked like an edge matched a 54.1% base rate exactly — zero resolution.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a> asked
+    you to write a confidence on every journal entry before the outcome is known. This lesson is
+    what you do with those numbers once a few dozen outcomes are in. Without scoring, a journal is a
+    diary. With scoring, it answers the one question every other step depends on: when you say
+    70%, is it really 70%?
+  </p>
+  <p>
+    Everything downstream uses that number. <a href="action-expected-value.html">Expected value</a>
+    multiplies by it. <a href="kelly-criterion.html">Kelly sizing</a> is built from it.
+    <a href="action-combining-signals.html">Combining signals</a> produces it. If it is
+    systematically too high — and for most people it is, as
+    <a href="overconfidence-overtrading.html">Overconfidence and Overtrading</a> showed — every one
+    of those steps is quietly wrong in the same direction.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A weather forecaster's homework</h3>
+    <p>
+      A forecaster says "70% chance of rain" on many different days. You cannot grade any one of
+      those days: rain does not prove her right and sunshine does not prove her wrong. But collect
+      every day she said 70%, and count. If it rained on about seven in ten of them, her 70% means
+      70%. If it rained on half of them, her 70% is really 50% with extra confidence painted on.
+    </p>
+    <p style="margin-bottom:0">
+      Do the same for her 30% days, her 90% days and so on, and you get a report card for her
+      <em>numbers</em>, not her luck. There is a second question too: does she ever say anything
+      other than the usual? A forecaster who says "30%" every day in a town where it rains 30% of
+      days is perfectly calibrated and completely useless. Good forecasting is calibrated
+      <em>and</em> willing to say 10% or 90% when the evidence is there.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A way to grade a call that said "70%"</h3>
+    <div class="tl-origin-who">Brier score and calibration · onto trading desks through forecasting tournaments and probability-output models, 2000s–2010s</div>
+    <p>Traders have always been told to keep a journal, and the journal has always had the same flaw: a call that said "probably" cannot be marked right or wrong from one outcome. So it was graded by outcome — the error the previous lessons warned about — or not at all. What a desk lacked was a score for a <em>probability</em> that rewards honesty and punishes overconfidence over many calls.</p>
+    <p>The score existed already. Glenn Brier proposed it in 1950 to grade weather forecasts, and Allan Murphy showed in 1973 how it splits into reliability, resolution and uncertainty. It reached judgement-driven finance through forecasting research: Philip Tetlock's studies of expert prediction (2005) and the Good Judgment Project's results in a US intelligence forecasting tournament (from 2011), both scored with Brier, made "keep score in probabilities" a standard discipline for macro and discretionary analysts. On the systematic side, models that output a probability of an up move or a range expansion are checked with the same reliability diagram and Brier skill score.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Are the probabilities I attach to my calls honest — and do they tell outcomes apart at all?</dd>
+        <dt>Takes in</dt><dd>Calls written with a probability before the outcome (<a href="process-vs-outcome-decision-journals.html">Decision Journals</a>, <a href="action-expected-value.html">Thinking in Expected Value</a>).</dd>
+        <dt>Hands on to</dt><dd>A corrected probability for sizing and for the next call (<a href="kelly-criterion.html">Kelly Criterion</a>, <a href="action-base-rates.html">Base Rates First</a>).</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Write calls that can be scored</h3>
+  <p>
+    A scorable call has four parts: a <strong>yes/no event</strong> ("EUR/USD trades above 1.0920"),
+    a <strong>deadline</strong> ("within 5 sessions"), a <strong>probability</strong> \(f\) written
+    before the outcome, and a rule for what counts as the event happening that leaves no room for
+    argument afterwards. "Bullish euro" cannot be scored. "62% that EUR/USD closes Friday above
+    today's close" can.
+  </p>
+  <p>
+    Phrase each call as the thing you think more likely, so \(f\) runs from 50% to 100%, and round
+    to the nearest 10%. Rounding is not laziness: it puts your calls into a handful of
+    <strong>buckets</strong> (50%, 60%, 70%, 80%, 90%), and buckets are what make calibration
+    measurable. Never write 100%; one wrong call at 100% is an infinitely bad log score and a very
+    bad Brier score.
+  </p>
+
+  <h3>2. Calibration and the reliability diagram</h3>
+  <p>
+    For each bucket \(k\), count the calls \(n_k\) and the ones that came true \(h_k\). The
+    observed frequency is \(\bar o_k = h_k/n_k\). You are calibrated if \(\bar o_k \approx f_k\) in
+    every bucket. Plot \(\bar o_k\) against \(f_k\): calibrated points sit on the diagonal, points
+    <em>below</em> it are overconfidence (said 80%, happened 60%), points above it underconfidence.
+  </p>
+  <p>
+    How close is close enough? If you really are calibrated at \(f_k\), the hit count in a bucket is
+    binomial, so the observed frequency has standard error \(\sqrt{f_k(1-f_k)/n_k}\). Ten calls at
+    70% give a standard error of 14.5 percentage points: anything from about 42% to 98% is
+    consistent with being calibrated. <strong>Calibration needs many calls</strong>, and a bucket
+    with five calls in it is a rumour.
+  </p>
+  <p>
+    A stronger test pools buckets. If you are calibrated, the total hits should be close to the sum
+    of your stated probabilities:
+  </p>
+  <div class="tl-math">
+    \[ z = \frac{\sum_i o_i - \sum_i f_i}{\sqrt{\sum_i f_i(1-f_i)}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Σ oᵢ</code><span>how many of the calls came true</span></div>
+    <div class="tl-eq-chip c2"><code>Σ fᵢ</code><span>how many you said would — the sum of your probabilities</span></div>
+    <div class="tl-eq-chip c3"><code>Σ fᵢ(1−fᵢ)</code><span>the variance of the hit count if your numbers were honest</span></div>
+    <div class="tl-eq-chip c4"><code>z</code><span>below about −2: you are overconfident, beyond reasonable luck</span></div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you say "I'm pretty sure" ten times and you're right only five times, then "pretty sure" really means "50-50" when you say it. Counting lets you find out what your own words mean.</p>
+  </div>
+
+  <h3>3. The Brier score</h3>
+  <div class="tl-math">
+    \[ \text{BS} = \frac{1}{N}\sum_{i=1}^{N} (f_i - o_i)^2 \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">fᵢ</div><div class="tl-fp-name">What you said</div><div class="tl-fp-desc">The probability written before the outcome</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">oᵢ</div><div class="tl-fp-name">What happened</div><div class="tl-fp-desc">1 if the event happened, 0 if not</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">BS</div><div class="tl-fp-name">The score</div><div class="tl-fp-desc">Average squared miss: 0 is perfect, lower is better</div></div>
+  </div>
+  <p>
+    A 70% call that comes true costs \((0.7-1)^2 = 0.09\); one that fails costs \(0.7^2 = 0.49\).
+    Confident misses hurt far more than timid hits help. Two benchmarks matter. Saying 50% on
+    everything scores exactly 0.25. Saying the <strong>base rate</strong> \(\bar o\) — the overall
+    fraction of your calls that come true — on everything scores \(\bar o(1-\bar o)\). That second
+    benchmark is the honest one: it is what you would get with no skill at telling one call from
+    another. The <strong>Brier skill score</strong> measures you against it:
+    \(\text{BSS} = 1 - \text{BS}/(\bar o(1-\bar o))\). Positive means you add something; negative
+    means quoting the base rate every time would have done better.
+  </p>
+  <p>
+    The Brier score is <strong>proper</strong>: if your true chance of being right is \(p\), your
+    expected score \(p(1-f)^2 + (1-p)f^2\) is lowest when you write \(f = p\). The penalty for
+    writing anything else is exactly \((f-p)^2\). You cannot game it by shading your numbers; the
+    best strategy is honesty.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Honesty pays: your expected Brier score against what you write</div>
+    <svg id="pr-svg" class="cb-svg" viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Expected Brier score as a function of the probability you write, for the chosen true hit rate. The curve is a bowl with its lowest point at the true hit rate; a marker shows the score for what you write.">
+      <g id="pr-g"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Your true hit rate p</span><span class="tl-live" id="pr-p-val">55%</span></div>
+        <input type="range" id="pr-p" min="50" max="99" step="1" value="55">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>What you write f</span><span class="tl-live" id="pr-f-val">70%</span></div>
+        <input type="range" id="pr-f" min="50" max="99" step="1" value="70">
+      </div>
+    </div>
+    <div class="tl-readout" id="pr-readout"></div>
+    <div class="tl-chart-caption">Expected Brier \(= p(1-f)^2 + (1-p)f^2\), lowest at \(f = p\). The extra cost of writing \(f\) instead of the truth is \((f-p)^2\) per call — this is the "reliability" part of the score below.</div>
+  </div>
+
+  <h3>4. Three parts: reliability, resolution, uncertainty</h3>
+  <p>
+    When calls are grouped into buckets that each use one probability, the Brier score splits
+    exactly into three parts (Murphy, 1973):
+  </p>
+  <div class="tl-math">
+    \[ \text{BS} = \underbrace{\frac{1}{N}\sum_k n_k (f_k - \bar o_k)^2}_{\text{reliability}} \;-\; \underbrace{\frac{1}{N}\sum_k n_k (\bar o_k - \bar o)^2}_{\text{resolution}} \;+\; \underbrace{\bar o\,(1-\bar o)}_{\text{uncertainty}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>reliability</code><span>how far each bucket's stated number is from its hit rate — want small; it is the calibration error</span></div>
+    <div class="tl-eq-chip c2"><code>resolution</code><span>how much your buckets' hit rates differ from the overall rate — want big; it is discrimination</span></div>
+    <div class="tl-eq-chip c3"><code>uncertainty</code><span>how hard the questions were; depends only on the outcomes, not on you</span></div>
+  </div>
+  <p>
+    The decomposition tells you <em>what kind</em> of bad you are. High reliability error with
+    decent resolution: your ranking is useful but your numbers are inflated — fix it by mapping
+    stated to observed. Low resolution: your 80% calls do no better than your 60% calls — your
+    confidence carries no information and should not drive size, however well calibrated it looks.
+    Since the base-rate forecaster scores exactly the uncertainty term, you beat it only when
+    resolution exceeds the reliability error.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two ways to be a bad guesser: saying "super sure" when you're only a bit sure, and saying "a bit sure" about everything so your guesses never tell anyone anything. The score catches both.</p>
+  </div>
+
+  <p>
+    A last alternative is the <strong>log score</strong>, \(-\ln f\) if right and \(-\ln(1-f)\) if
+    wrong, introduced by I. J. Good in 1952. It is also proper and punishes confident misses much
+    harder: a wrong 99% call costs 4.6 against 0.69 for a wrong 50% call. It connects to the
+    information measures in <a href="entropy-kl-mutual-information.html">Entropy &amp; KL
+    Divergence</a>. Brier is the friendlier choice for a personal journal because one bad call
+    cannot dominate it.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(f_i\)</td><td>Probability written for call \(i\), before the outcome (0.5 to 1 if phrased as the likelier side).</td></tr>
+    <tr><td>\(o_i\)</td><td>Outcome of call \(i\): 1 if it happened, 0 if not.</td></tr>
+    <tr><td>\(N\)</td><td>Number of resolved calls.</td></tr>
+    <tr><td>\(k,\ f_k\)</td><td>A confidence bucket, and the probability it stands for (e.g. 0.7).</td></tr>
+    <tr><td>\(n_k,\ h_k\)</td><td>Calls in bucket \(k\), and how many came true.</td></tr>
+    <tr><td>\(\bar o_k\)</td><td>Observed frequency in bucket \(k\), \(h_k/n_k\).</td></tr>
+    <tr><td>\(\bar o\)</td><td>Base rate: the fraction of all calls that came true.</td></tr>
+    <tr><td>BS</td><td>Brier score, \(\frac{1}{N}\sum (f_i-o_i)^2\).</td></tr>
+    <tr><td>BSS</td><td>Brier skill score against the base rate, \(1 - \text{BS}/(\bar o(1-\bar o))\).</td></tr>
+    <tr><td>\(p\)</td><td>Your true chance of being right on a call.</td></tr>
+    <tr><td>\(z\)</td><td>Hits minus expected hits, in standard errors.</td></tr>
+    <tr><td>\(f^{*}\)</td><td>Kelly fraction \(p - (1-p)/b\) at payoff ratio \(b\).</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Worked example: a quarter of calls, scored</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>40 calls on FX, gold and indices, January to March</h3>
+    <p>Every call was written with a probability and a deadline before the trade. The quarter's tally:</p>
+    <div class="cb-scroll">
+    <table class="cb-table">
+      <tr><th>Said</th><th>Calls n</th><th>Came true h</th><th>Hit rate</th><th>Σ(f − o)²</th></tr>
+      <tr><td>50%</td><td>8</td><td>4</td><td>50.0%</td><td>4×0.25 + 4×0.25 = 2.00</td></tr>
+      <tr><td>60%</td><td>12</td><td>7</td><td>58.3%</td><td>7×0.16 + 5×0.36 = 2.92</td></tr>
+      <tr><td>70%</td><td>10</td><td>6</td><td>60.0%</td><td>6×0.09 + 4×0.49 = 2.50</td></tr>
+      <tr><td>80%</td><td>6</td><td>3</td><td>50.0%</td><td>3×0.04 + 3×0.64 = 2.04</td></tr>
+      <tr><td>90%</td><td>4</td><td>2</td><td>50.0%</td><td>2×0.01 + 2×0.81 = 1.64</td></tr>
+      <tr><td><strong>All</strong></td><td><strong>40</strong></td><td><strong>22</strong></td><td><strong>55.0%</strong></td><td><strong>11.10</strong></td></tr>
+    </table>
+    </div>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Brier score and the benchmark</h4>
+        <p>\(\text{BS} = 11.10/40 = 0.2775\). Base rate \(\bar o = 22/40 = 0.55\), so quoting 55% on every call would have scored \(0.55 \times 0.45 = 0.2475\). Skill: \(1 - 0.2775/0.2475 = -12.1\%\). Worse than the base rate — and worse than saying 50% on everything (0.25).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Reliability (calibration error)</h4>
+        <p>\(\frac{1}{40}[8(0)^2 + 12(0.6-0.583)^2 + 10(0.1)^2 + 6(0.3)^2 + 4(0.4)^2] = \frac{1}{40}[0 + 0.0033 + 0.10 + 0.54 + 0.64] = 1.2833/40 = 0.0321\).</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Resolution (discrimination)</h4>
+        <p>\(\frac{1}{40}[8(0.05)^2 + 12(0.0333)^2 + 10(0.05)^2 + 6(0.05)^2 + 4(0.05)^2] = \frac{1}{40}[0.02 + 0.0133 + 0.025 + 0.015 + 0.01] = 0.0833/40 = 0.0021\).</p>
+        <p>Check: \(0.0321 - 0.0021 + 0.2475 = 0.2775\) ✓. Resolution is tiny: the 90% calls did no better than the 50% calls.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Is it more than bad luck?</h4>
+        <p>All 40 calls: expected hits \(\sum f = 26.6\), variance \(\sum f(1-f) = 8.30\), so \(z = (22 - 26.6)/2.88 = -1.60\) — suggestive, not conclusive. The 70–90% calls pooled: expected 15.4, observed 11, variance 3.42, \(z = -4.4/1.85 = -2.38\). The high-confidence calls are overconfident beyond reasonable luck.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>What it costs in size</h4>
+        <p>At even payoff (\(b = 1\)), Kelly is \(f^{*} = 2p - 1\). Sizing off the average stated 66.5% gives 33%; the record's 55% gives 10%. Betting 3.3× Kelly is past the point where, as <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a> showed, growth turns negative.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>The output: a correction table and a rule</h4>
+        <p>For next quarter, replace each stated number with the bucket's hit rate shrunk toward the 55% base rate by 10 pseudo-calls, \((h_k + 10\,\bar o)/(n_k + 10)\): 50% → 52.8%, 60% → 56.8%, 70% → 57.5%, 80% → 53.1%, 90% → 53.6%. And the rule: <strong>"Until my 80–90% calls beat my 60% calls, they get the same size."</strong></p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-chart interactive" id="cb-tool">
+    <div class="tl-chart-label">Calibration scorer — enter your own calls</div>
+    <p class="tl-hint" style="font-style:normal;font-size:12px;margin:0 0 4px">Phrase every call as the side you think likelier, round its probability to the nearest 10%, and log the outcome with ✓ or ✗ — or type the totals. It starts with the worked example; press Clear to use your own. Your tally is kept in this browser only.</p>
+    <div class="cb-rows" id="cb-rows"></div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" id="cb-example">Load the worked example</button>
+      <button type="button" class="tl-btn" id="cb-clear">Clear all</button>
+    </div>
+    <svg id="cb-svg" class="cb-svg" viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Reliability diagram: observed hit rate against stated probability for each confidence bucket, with the diagonal for perfect calibration, a shaded band showing what luck alone could produce if you were calibrated, and a dashed line at your overall base rate.">
+      <g id="cb-g"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--purple)"></i>your hit rate (dot size = number of calls)</span>
+      <span><i style="background:var(--text3)"></i>perfect calibration</span>
+      <span><i style="background:var(--blue)"></i>95% luck band if calibrated</span>
+      <span><i style="background:var(--amber)"></i>your base rate</span>
+    </div>
+    <div class="tl-stat-row" id="cb-stats"></div>
+    <div class="tl-readout" id="cb-readout"></div>
+    <div class="cb-scroll"><table class="cb-table" id="cb-table"></table></div>
+    <div class="tl-chart-caption">Brier score, Murphy decomposition and the pooled z-test computed exactly from your tally. The band is \(f \pm 1.96\sqrt{f(1-f)/n}\) — a rough guide when a bucket has few calls. "Use next time" is the bucket's hit rate shrunk toward your base rate by 10 pseudo-calls.</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Template — copy this</div>
+    <h3>The scorable call, and the quarterly review</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Before: one line per call</h4>
+        <p>"[Date] — [instrument] — [event, phrased as the likelier side] — by [deadline] — <strong>[50/60/70/80/90]%</strong> — counts as true if [exact rule]." Written before the trade, never edited.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>After: one mark</h4>
+        <p>At the deadline, ✓ or ✗ by the rule — not by whether the trade made money. A stopped-out trade can still be a ✓ call.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Every quarter (or every 40 calls)</h4>
+        <p>Brier score, base-rate score, skill. Reliability diagram. Pooled \(z\) for the 70%+ calls. Reliability vs resolution: is the problem inflated numbers, or numbers that don't separate anything?</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Act on it</h4>
+        <p>Write the correction table. Size from the corrected numbers, not the felt ones. If resolution is near zero, size every call the same until it isn't.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>You write "70%" on a call and size it as a 70% bet</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Memory</b>Hits are remembered as skill, misses as bad luck</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · scoring</b>Brier score and reliability diagram show the 70% calls land 55–60%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The trader</b>Replaces felt confidence with the measured hit rate</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Size matches the edge that exists; over-betting stops</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: people who keep score</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The weather forecasters who mean what they say</h3>
+    <p>
+      Probability forecasting grew up in meteorology, and so did the habit of scoring it. Glenn Brier
+      was a meteorologist at the US Weather Bureau when he proposed his score in 1950. In the 1970s
+      Allan Murphy and Robert Winkler examined the probability-of-precipitation forecasts issued by US
+      National Weather Service forecasters and found them remarkably well calibrated: across the
+      range of stated probabilities, it rained on close to the stated fraction of days.
+    </p>
+    <p style="margin-bottom:0">
+      Part of the reason is that weather forecasters get exactly what this lesson asks for — many
+      similar calls, quick and unambiguous outcomes, and a score kept on every one. The contrast is
+      instructive. Nate Silver's <em>The Signal and the Noise</em> (2012) describes a "wet bias" in
+      some commercial television forecasts, which deliberately overstated the chance of rain because
+      viewers forgive an unneeded umbrella more readily than a soaking. Same science, different
+      incentive, worse calibration.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Tetlock's forecasters and the Good Judgment Project</h3>
+    <p>
+      Over roughly two decades, Philip Tetlock collected probability forecasts from political and
+      economic experts and scored them. His book <em>Expert Political Judgment</em> (2005) reported
+      that, on average, the experts did little better than simple rules of thumb, and that the
+      better forecasters tended to be the ones who drew on many ideas and adjusted rather than those
+      committed to one big theory.
+    </p>
+    <p style="margin-bottom:0">
+      From 2011, Tetlock and Barbara Mellers ran the Good Judgment Project in a forecasting
+      tournament sponsored by IARPA, the US intelligence community's research agency. Thousands of
+      volunteers made probability forecasts on world events, scored with the Brier score. The
+      project's best performers — the "superforecasters" of Tetlock and Dan Gardner's 2015 book —
+      kept outperforming year after year, which is what skill looks like and luck does not. The
+      habits they shared were the ones this lesson builds: precise probabilities, small updates, and
+      keeping score.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>"The confidence on our calls matches our hit rate."</strong> Not tested here. The desk's ledger records whether a <em>signal</em> had an edge; it does not yet hold a Brier score or reliability diagram for the probabilities written on calls. The two results below are the reason to start one.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="conviction-vote" data-evidence-date="2026-07-25">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>"A higher conviction score on an entry means a better trade."</strong> A backtest system's conviction vote, used to grade its own entries, turned out to be <em>anti</em>-predictive of outcome; the system was a net loser (−£38k) on a 30% win rate. Nobody had checked whether high-conviction entries came true more often than low ones until the test was run. That check is a reliability diagram with two buckets. The desk's ruling: never scale size by a score that has not been scored.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>A 54% hit rate that was exactly nothing.</strong> Testing whether a confirmed turn in short-term rates leads the Nasdaq, the desk found that a confirmed rates low is followed by an up-move 54.1% of the time — and the base rate is 54.1%. In this lesson's terms: perfectly calibrated, zero resolution. A call that is right as often as the base rate earns a Brier skill of zero, however good "54%" sounds. Never quote a hit rate without its base rate.</span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> a hit rate on its own tells you nothing. 60% right is skill if the
+    base rate is 45%, and nothing if the base rate is 60%. Score every call against the base rate,
+    and treat any confidence number — yours or a model's — as unproven until a reliability diagram
+    says otherwise.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📓</div>
+      <h4>Probability on every call</h4>
+      <p>Macro and discretionary desks that keep score write a number and a deadline on each idea, then review Brier and calibration per analyst and per type of call. The numbers make "I had a feeling" discussable.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🤖</div>
+      <h4>Calibrate the models too</h4>
+      <p>Any model that outputs a probability — up/down, range expansion, regime — gets a reliability diagram on out-of-sample data and, if needed, a recalibration map, before its output is allowed to set size.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📏</div>
+      <h4>Skill against the base rate</h4>
+      <p>Good desks quote Brier <em>skill</em>, never raw Brier or raw hit rate. Real edges in markets are small: a skill score of a few per cent out of sample is a meaningful result.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>Calibrated p into sizing</h4>
+      <p>Kelly and every expected-value calculation take the calibrated probability, not the felt one — and fractional Kelly on top, because even a calibrated p is estimated (see <a href="kelly-criterion.html">Kelly Criterion</a>).</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to the desk</div>
+    <h3>Brier skill is already the yardstick for model research</h3>
+    <p style="margin-bottom:0">
+      The desk scores some probability models this way. In its research on forecasting FX range
+      expansion, a composite of three market-state measures reached a Brier skill of about +1% out of
+      sample against the base rate — described there as real but modest, and used for sizing and
+      target width rather than direction. That is the scale of a genuine edge. The same scoring has
+      not yet been applied to the probabilities written on the desk's own calls.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where scoring goes wrong</h3>
+    <p><strong>Scoring the P&amp;L, not the call.</strong> A call is ✓ or ✗ by its written rule. A winning trade on a failed call is luck; a losing trade on a correct call is execution or sizing.</p>
+    <p><strong>Judging a bucket of five.</strong> Five calls at 80% that went 3/5 are consistent with being calibrated. Wait for numbers, or pool buckets.</p>
+    <p><strong>Hiding at 50%.</strong> Saying 50–60% on everything keeps calibration perfect and resolution zero. The score rewards the courage to say 80% when you can back it.</p>
+    <p><strong>Editing calls after the fact.</strong> The deadline moved, the level "basically" got hit. The journal must be written before and marked by the rule, or the score measures your memory.</p>
+    <p style="margin-bottom:0"><strong>Ignoring the base rate.</strong> "I'm right 60% of the time" means nothing until you know how often the event happens anyway.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Calibration is countable.</strong> Bucket calls by stated probability; compare each bucket's hit rate with its number. Points below the diagonal are overconfidence.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Brier = reliability − resolution + uncertainty.</strong> Beat the base-rate score \(\bar o(1-\bar o)\), not 0.25.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Honesty is the best policy, mathematically:</strong> the Brier score is proper; writing \(f\) instead of your true \(p\) costs \((f-p)^2\) per call.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Size from the measured number.</strong> Stated 66.5% vs actual 55% is a Kelly fraction of 33% vs 10% at even odds.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It needs many calls.</strong> Ten calls at 70% have a ±28-point luck band. Pool buckets and wait.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Desk tests, nothing found:</strong> an unscored conviction vote turned out anti-predictive; a 54.1% hit rate matched a 54.1% base rate. Those were the desk's tests of those signals — and the reason confidence must be scored before it sets size.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. You make three calls at 80%: two come true, one fails. What is your Brier score?</summary>
+    <div class="tl-answer">Two hits cost \((0.8-1)^2 = 0.04\) each; the miss costs \(0.8^2 = 0.64\). Total 0.72, divided by 3: \(\text{BS} = 0.24\). Just better than always saying 50% (0.25) — and three calls tell you almost nothing about calibration.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. 60% of your calls come true. What Brier score would quoting 60% on every call earn, and why is that the benchmark?</summary>
+    <div class="tl-answer">\(0.6 \times 0.4 = 0.24\). It is what a forecaster with no ability to tell one call from another, but who knows the overall rate, would score. Your skill is how far below 0.24 you get.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Your true hit rate on a type of call is 60%, but you write 75%. How much does that cost per call in expected Brier score?</summary>
+    <div class="tl-answer">\((f - p)^2 = (0.75 - 0.60)^2 = 0.0225\). Expected score at 75% is \(0.6(0.25)^2 + 0.4(0.75)^2 = 0.2625\) against \(0.6(0.4)^2 + 0.4(0.6)^2 = 0.24\) at the honest 60%. The difference is exactly 0.0225.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A forecaster's reliability term is 0.001 and resolution is 0.000. Is she good?</summary>
+    <div class="tl-answer">She is calibrated but useless: her calls do not separate outcomes at all. Her score equals the base-rate score plus a little, so her skill is slightly negative. Calibration is necessary, not sufficient; resolution is what makes calls worth acting on.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Twenty calls at 90%: fifteen came true. Is that evidence of overconfidence?</summary>
+    <div class="tl-answer">Expected 18, variance \(20 \times 0.9 \times 0.1 = 1.8\), standard error 1.34. \(z = (15-18)/1.34 = -2.24\). Yes — beyond what luck usually produces. The calls behave more like 75% calls.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. The desk found a 54.1% hit rate after rates lows against a 54.1% base rate. What is that signal's resolution, and what should its Brier skill be?</summary>
+    <div class="tl-answer">Zero resolution: the signal's hit rate is the base rate, so it separates nothing. Quoting 54.1% when it fires scores exactly what quoting 54.1% always would, so skill is zero (or negative once any miscalibration is added). That is what the desk found in its test of that signal; it says nothing about rates in general.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Glenn W. Brier, "Verification of Forecasts Expressed in Terms of Probability", <em>Monthly Weather Review</em>, 1950 — the Brier score.</li>
+    <li>Allan H. Murphy, "A New Vector Partition of the Probability Score", <em>Journal of Applied Meteorology</em>, 1973 — reliability, resolution, uncertainty.</li>
+    <li>Allan H. Murphy and Robert L. Winkler, "Reliability of Subjective Probability Forecasts of Precipitation and Temperature", <em>Journal of the Royal Statistical Society, Series C (Applied Statistics)</em>, 1977 — calibrated weather forecasters.</li>
+    <li>Sarah Lichtenstein, Baruch Fischhoff and Lawrence D. Phillips, "Calibration of Probabilities: The State of the Art to 1980", in Kahneman, Slovic and Tversky (eds.), <em>Judgment Under Uncertainty: Heuristics and Biases</em>, Cambridge University Press, 1982 — how overconfident people usually are.</li>
+    <li>I. J. Good, "Rational Decisions", <em>Journal of the Royal Statistical Society, Series B</em>, 1952 — the logarithmic score.</li>
+    <li>Tilmann Gneiting and Adrian E. Raftery, "Strictly Proper Scoring Rules, Prediction, and Estimation", <em>Journal of the American Statistical Association</em>, 2007 — why proper scores reward honesty.</li>
+    <li>Philip E. Tetlock, <em>Expert Political Judgment</em>, Princeton University Press, 2005; Philip E. Tetlock and Dan Gardner, <em>Superforecasting</em>, Crown, 2015.</li>
+    <li>Nate Silver, <em>The Signal and the Noise</em>, Penguin Press, 2012 — weather forecasting, calibration and the "wet bias".</li>
+    <li><a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a>, <a href="overconfidence-overtrading.html">Overconfidence and Overtrading</a> and <a href="kelly-criterion.html">Kelly Criterion</a> — the journal, the bias and the sizing this lesson connects.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-vol-to-size.html">← From a Volatility Forecast to a Position Size</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-base-rates.html">Base Rates First →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace", SANS = "'DM Sans',sans-serif";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function $(id){ return document.getElementById(id); }
+
+  // ---------- 1. Propriety: expected Brier vs written f ----------
+  (function(){
+    var pIn = $('pr-p'), fIn = $('pr-f'), g = $('pr-g');
+    var X0 = 56, X1 = 620, Y0 = 190, Y1 = 14, YMAX = 0.5;
+    function x(f){ return X0 + (X1 - X0) * (f - 0.5) / 0.5; }
+    function y(v){ return Y0 - (Y0 - Y1) * Math.min(v, YMAX) / YMAX; }
+    function E(p, f){ return p * (1 - f) * (1 - f) + (1 - p) * f * f; }
+    function render(){
+      var p = parseInt(pIn.value, 10) / 100, f = parseInt(fIn.value, 10) / 100;
+      $('pr-p-val').textContent = Math.round(p * 100) + '%'; $('pr-f-val').textContent = Math.round(f * 100) + '%';
+      clear(g);
+      [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach(function(v){
+        g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
+        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 5, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', v.toFixed(1)));
+      });
+      [0.5, 0.6, 0.7, 0.8, 0.9, 1].forEach(function(v){ g.appendChild(el('text', { x: x(v), y: Y0 + 19, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%')); });
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 38, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'probability you write'));
+      var d = '';
+      for (var i = 0; i <= 100; i++){ var ff = 0.5 + 0.5 * i / 100; d += (i ? 'L' : 'M') + x(ff).toFixed(1) + ',' + y(E(p, ff)).toFixed(1); }
+      g.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--purple);stroke-width:2.5'));
+      g.appendChild(el('line', { x1: x(p), x2: x(p), y1: Y1, y2: Y0 }, 'stroke:var(--green);stroke-width:1;stroke-dasharray:4,3'));
+      g.appendChild(el('circle', { cx: x(p), cy: y(E(p, p)), r: 5 }, 'fill:var(--green)'));
+      g.appendChild(el('text', { x: x(p) + 6, y: Y1 + 10, 'font-size': 15, 'font-family': FONT }, 'fill:var(--green)', 'honest'));
+      g.appendChild(el('circle', { cx: x(f), cy: y(E(p, f)), r: 6 }, 'fill:var(--amber)'));
+      var ef = E(p, f), ep = E(p, p);
+      $('pr-readout').innerHTML = 'True rate <b>' + Math.round(p * 100) + '%</b>, you write <b>' + Math.round(f * 100) + '%</b>: expected Brier <b>' + ef.toFixed(4) + '</b> vs <b>' + ep.toFixed(4) + '</b> if honest. Extra cost per call <b>' + (ef - ep).toFixed(4) + '</b> = (f − p)² = ' + ((f - p) * (f - p)).toFixed(4) + '.';
+    }
+    [pIn, fIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // ---------- 2. Calibration scorer ----------
+  (function(){
+    var BUCKETS = [0.5, 0.6, 0.7, 0.8, 0.9];
+    var EXAMPLE = [{ n: 8, h: 4 }, { n: 12, h: 7 }, { n: 10, h: 6 }, { n: 6, h: 3 }, { n: 4, h: 2 }];
+    var KEY = 'tlActionCalibration';
+    var data = EXAMPLE.map(function(d){ return { n: d.n, h: d.h }; });
+    try { var s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(s) && s.length === BUCKETS.length) data = s.map(function(d){ return { n: Math.max(0, d.n | 0), h: Math.max(0, Math.min(d.n | 0, d.h | 0)) }; }); } catch (e) {}
+    var wrap = $('cb-rows'), ui = [];
+    BUCKETS.forEach(function(f, i){
+      var d = document.createElement('div'); d.className = 'cb-row';
+      d.innerHTML = '<span class="cb-row-lbl">Said ' + Math.round(f * 100) + '%</span>' +
+        '<button type="button" class="cb-qbtn yes" aria-label="Log a ' + Math.round(f * 100) + '% call that came true">✓ +1</button>' +
+        '<button type="button" class="cb-qbtn no" aria-label="Log a ' + Math.round(f * 100) + '% call that did not come true">✗ +1</button>' +
+        '<label class="cb-field">calls <input type="number" class="tl-scratch-input" min="0" max="9999" inputmode="numeric"></label>' +
+        '<label class="cb-field">came true <input type="number" class="tl-scratch-input" min="0" max="9999" inputmode="numeric"></label>' +
+        '<span class="cb-row-out"></span>';
+      wrap.appendChild(d);
+      var b = d.querySelectorAll('button'), inp = d.querySelectorAll('input');
+      var u = { yes: b[0], no: b[1], n: inp[0], h: inp[1], out: d.querySelector('.cb-row-out') };
+      ui.push(u);
+      u.yes.addEventListener('click', function(){ data[i].n++; data[i].h++; sync(); });
+      u.no.addEventListener('click', function(){ data[i].n++; sync(); });
+      u.n.addEventListener('input', function(){ data[i].n = Math.max(0, parseInt(u.n.value, 10) || 0); if (data[i].h > data[i].n) data[i].h = data[i].n; render(); });
+      u.h.addEventListener('input', function(){ data[i].h = Math.max(0, parseInt(u.h.value, 10) || 0); render(); });
+      u.h.addEventListener('change', sync); u.n.addEventListener('change', sync);
+    });
+    function sync(){ data.forEach(function(d, i){ if (d.h > d.n) d.h = d.n; ui[i].n.value = d.n; ui[i].h.value = d.h; }); render(); }
+    function pct(v, dp){ return (v * 100).toFixed(dp === undefined ? 1 : dp) + '%'; }
+    function render(){
+      var N = 0, H = 0, sse = 0, sf = 0, svar = 0, hiF = 0, hiH = 0, hiV = 0;
+      data.forEach(function(d, i){
+        var f = BUCKETS[i], h = Math.min(d.h, d.n);
+        N += d.n; H += h; sse += h * (1 - f) * (1 - f) + (d.n - h) * f * f;
+        sf += d.n * f; svar += d.n * f * (1 - f);
+        if (f >= 0.7){ hiF += d.n * f; hiH += h; hiV += d.n * f * (1 - f); }
+        ui[i].out.textContent = d.n ? h + ' of ' + d.n + ' = ' + pct(h / d.n, 0) : 'no calls';
+      });
+      try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+      var stats = $('cb-stats'), ro = $('cb-readout'), tb = $('cb-table');
+      if (!N){
+        stats.innerHTML = ''; ro.innerHTML = 'No calls yet. Log some with ✓ / ✗, or load the worked example.'; tb.innerHTML = ''; drawDiagram(0, 0); return;
+      }
+      var ob = H / N, bs = sse / N, unc = ob * (1 - ob), rel = 0, res = 0;
+      data.forEach(function(d, i){ if (!d.n) return; var ok = Math.min(d.h, d.n) / d.n; rel += d.n * Math.pow(BUCKETS[i] - ok, 2); res += d.n * Math.pow(ok - ob, 2); });
+      rel /= N; res /= N;
+      var bss = unc > 0 ? 1 - bs / unc : null;
+      var z = svar > 0 ? (H - sf) / Math.sqrt(svar) : 0, zHi = hiV > 0 ? (hiH - hiF) / Math.sqrt(hiV) : null;
+      stats.innerHTML =
+        '<div class="tl-stat purple"><div class="tl-stat-num">' + bs.toFixed(4) + '</div><div class="tl-stat-label">your Brier score</div><div class="tl-stat-sub">' + N + ' calls · lower is better</div></div>' +
+        '<div class="tl-stat blue"><div class="tl-stat-num">' + unc.toFixed(4) + '</div><div class="tl-stat-label">quoting your base rate</div><div class="tl-stat-sub">' + pct(ob) + ' every time</div></div>' +
+        '<div class="tl-stat ' + (bss !== null && bss > 0 ? 'green' : 'amber') + '"><div class="tl-stat-num">' + (bss === null ? '—' : (bss >= 0 ? '+' : '') + (bss * 100).toFixed(1) + '%') + '</div><div class="tl-stat-label">skill vs base rate</div><div class="tl-stat-sub">' + (bss === null ? 'every call went the same way' : bss > 0 ? 'you add something' : 'quoting the base rate beats you') + '</div></div>';
+      var kelly = function(p){ return Math.max(0, 2 * p - 1); };
+      ro.innerHTML =
+        '<div>Reliability (calibration error) <b>' + rel.toFixed(4) + '</b> · resolution <b>' + res.toFixed(4) + '</b> · uncertainty <b>' + unc.toFixed(4) + '</b> → ' + rel.toFixed(4) + ' − ' + res.toFixed(4) + ' + ' + unc.toFixed(4) + ' = <b>' + (rel - res + unc).toFixed(4) + '</b></div>' +
+        '<div>Average stated <b>' + pct(sf / N) + '</b> vs came true <b>' + pct(ob) + '</b> · all calls z = <b>' + z.toFixed(2) + '</b>' + (zHi === null ? '' : ' · 70%+ calls z = <b>' + zHi.toFixed(2) + '</b>') + ' <span style="color:var(--text3)">(below −2: overconfident beyond luck)</span></div>' +
+        '<div>Kelly at even odds: from your stated average <b>' + pct(kelly(sf / N), 0) + '</b>, from your record <b>' + pct(kelly(ob), 0) + '</b></div>' +
+        '<div>' + (rel > res ? 'Your calibration error is larger than your resolution: <b>fix the numbers</b> — use the "next time" column.' : 'Resolution exceeds calibration error: your confidence separates outcomes — keep it honest and keep scoring.') + '</div>';
+      var rows = '<tr><th>Said</th><th>n</th><th>Hit rate</th><th>Luck band</th><th>Reading</th><th>Use next time</th></tr>';
+      data.forEach(function(d, i){
+        var f = BUCKETS[i];
+        if (!d.n){ rows += '<tr><td>' + pct(f, 0) + '</td><td>0</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>'; return; }
+        var ok = Math.min(d.h, d.n) / d.n, hw = 1.96 * Math.sqrt(f * (1 - f) / d.n), lo = Math.max(0, f - hw), hi = Math.min(1, f + hw);
+        var read = ok < lo ? '<span class="cb-bad">overconfident</span>' : ok > hi ? '<span class="cb-bad">underconfident</span>' : hw > 0.15 ? '<span class="cb-few">too few to tell</span>' : '<span class="cb-ok">consistent</span>';
+        var nxt = (Math.min(d.h, d.n) + 10 * ob) / (d.n + 10);
+        rows += '<tr><td>' + pct(f, 0) + '</td><td>' + d.n + '</td><td>' + pct(ok) + '</td><td>' + pct(lo, 0) + '–' + pct(hi, 0) + '</td><td>' + read + '</td><td>' + pct(nxt) + '</td></tr>';
+      });
+      tb.innerHTML = rows;
+      drawDiagram(ob, N);
+    }
+    function drawDiagram(ob, N){
+      var g = $('cb-g'); clear(g);
+      var X0 = 74, X1 = 610, Y0 = 290, Y1 = 14, XLO = 0.4, XHI = 1.0;
+      function x(f){ return X0 + (X1 - X0) * (f - XLO) / (XHI - XLO); }
+      function y(v){ return Y0 - (Y0 - Y1) * v; }
+      [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(function(v){
+        g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
+        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 5, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%'));
+      });
+      BUCKETS.forEach(function(f){ g.appendChild(el('text', { x: x(f), y: Y0 + 19, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(f * 100) + '%')); });
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 38, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'what you said'));
+      g.appendChild(el('text', { x: 12, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS, transform: 'rotate(-90 12 ' + (Y0 + Y1) / 2 + ')' }, 'fill:var(--text2)', 'what happened'));
+      // luck band
+      BUCKETS.forEach(function(f, i){
+        var n = data[i].n; if (!n) return;
+        var hw = 1.96 * Math.sqrt(f * (1 - f) / n), lo = Math.max(0, f - hw), hi = Math.min(1, f + hw);
+        g.appendChild(el('rect', { x: x(f) - 14, y: y(hi), width: 28, height: Math.max(1, y(lo) - y(hi)), rx: 3 }, 'fill:var(--blue);opacity:0.18'));
+      });
+      g.appendChild(el('line', { x1: x(XLO), y1: y(XLO), x2: x(XHI), y2: y(XHI) }, 'stroke:var(--text3);stroke-width:1.2;stroke-dasharray:5,4'));
+      if (N){
+        g.appendChild(el('line', { x1: X0, x2: X1, y1: y(ob), y2: y(ob) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3'));
+        g.appendChild(el('text', { x: X1, y: y(ob) - 5, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'base rate ' + Math.round(ob * 100) + '%'));
+        var pts = [];
+        BUCKETS.forEach(function(f, i){ var d = data[i]; if (d.n) pts.push([x(f), y(Math.min(d.h, d.n) / d.n), d.n]); });
+        if (pts.length > 1) g.appendChild(el('path', { d: pts.map(function(p, i){ return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(''), fill: 'none' }, 'stroke:var(--purple);stroke-width:1.5;opacity:0.7'));
+        pts.forEach(function(p){
+          g.appendChild(el('circle', { cx: p[0], cy: p[1], r: Math.min(13, 4 + Math.sqrt(p[2]) * 1.6) }, 'fill:var(--purple);opacity:0.9'));
+          g.appendChild(el('text', { x: p[0] + 16, y: p[1] + 4, 'font-size': 15, 'font-family': FONT }, 'fill:var(--text2)', 'n=' + p[2]));
+        });
+      } else {
+        g.appendChild(el('text', { x: (X0 + X1) / 2, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', 'font-size': 18, 'font-family': SANS }, 'fill:var(--text3)', 'Log a few calls to see your reliability diagram'));
+      }
+    }
+    $('cb-example').addEventListener('click', function(){ data = EXAMPLE.map(function(d){ return { n: d.n, h: d.h }; }); sync(); });
+    $('cb-clear').addEventListener('click', function(){ data = BUCKETS.map(function(){ return { n: 0, h: 0 }; }); sync(); });
+    sync();
+  })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<!-- DESK:START --><script src="../assets/paths-admin.js" defer></script><!-- DESK:END -->
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

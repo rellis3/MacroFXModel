@@ -7,6 +7,10 @@ import { fileURLToPath } from 'node:url';
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'theory-lab');
 const ctx = { window: {} }; vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/paths-data.js'), 'utf8'), ctx);
 const D = ctx.window.TL_PATHS;
+// The shared file must never name an admin-only lesson; the admin file adds them on top.
+const pub = JSON.stringify(D);
+const adminNamed = /\b(?:institutional|action)-[a-z0-9-]+/.exec(pub);
+vm.runInNewContext(fs.readFileSync(path.join(root, 'assets/paths-admin.js'), 'utf8'), ctx);
 let failures = 0;
 const ok = (n, c, e = '') => { if (!c) { console.log(`  ✗ FAIL ${n}${e ? '  ' + e : ''}`); failures++; } };
 const file = s => path.join(root, 'lessons', s + '.html');
@@ -21,7 +25,10 @@ for (const s of all) {
     ok(`${s} loads paths.js`, /assets\/paths\.js/.test(fs.readFileSync(file(s), 'utf8')));
   }
 }
-ok('no institutional (admin-only) lesson on a public path', ![...all].some(s => s.startsWith('institutional-')));
+ok('no admin-only lesson named in the shared paths-data.js', !adminNamed, adminNamed && adminNamed[0]);
+ok('admin stages add only action-* lessons', D.paths.every(p => p.stages.filter(s => s.admin).every(s => s.lessons.every(l => l.startsWith('action-')))));
+ok('every path gets an admin stage', D.paths.every(p => p.stages.some(s => s.admin)));
+ok('no institutional (admin-only) lesson on a path', ![...all].some(s => s.startsWith('institutional-')));
 for (const p of D.paths) {
   ok(`${p.id}: has a capstone with steps`, p.deliverable && p.deliverable.steps.length >= 3);
   ok(`${p.id}: every stage has lessons`, p.stages.every(s => s.lessons.length));
