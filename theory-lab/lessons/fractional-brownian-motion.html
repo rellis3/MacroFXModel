@@ -42,6 +42,7 @@
       <li>Power-law decay (long memory) vs. exponential decay (short memory, e.g. AR(1)) is a categorical difference, not a matter of degree: \(H<0.5\) is anti-persistent but technically short memory, not "long memory with a minus sign."</li>
       <li>ARFIMA is the discrete-time econometric tool that fits this behavior to real data, via the fractional differencing order \(d = H - 0.5\), so \(d\in(0,0.5)\) corresponds to genuine long memory.</li>
       <li>A good ARFIMA/FIGARCH in-sample fit is a methodological upgrade over misspecified GARCH, not by itself evidence of tradeable edge — that still needs a costed, out-of-sample test.</li>
+      <li><strong>How it reached trading:</strong> Mandelbrot pushed long memory into finance in the 1960s–70s; Lo (1991) found little in returns, but the memory proved real in volatility, leading to FIGARCH, HAR and, from 2014, rough-volatility models.</li>
     </ul>
   </div>
 
@@ -83,6 +84,23 @@
       0 and 1 — is built directly into the process's covariance function, which is the entire mathematical content of
       this lesson.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Does volatility remember?</h3>
+    <div class="tl-origin-who">Long memory · Mandelbrot, 1960s–71 → Lo, 1991 → long memory in volatility, 1990s → rough volatility, 2014–18</div>
+    <p>Benoit Mandelbrot brought scaling and long-range dependence to price data in the 1960s, starting with fat tails in cotton prices (1963), and warned in 1971 that long memory would put a limit on the random-walk model. Early rescaled-range studies seemed to find long memory in stock returns, which would have meant exploitable persistence.</p>
+    <p>Andrew Lo's 1991 modified R/S test, robust to ordinary short-term dependence, found little evidence of it in returns; the memory turned out to be in volatility. Ding, Granger &amp; Engle (1993) found absolute returns autocorrelated over very long lags, which led to long-memory GARCH (FIGARCH, 1996) and to ARFIMA and HAR models of realised volatility. Gatheral, Jaisson &amp; Rosenbaum's "Volatility is rough" (circulated 2014, published 2018) then found log-volatility behaving like fBm with \(H\) near 0.1, the basis of the rough-volatility models now studied and used on equity-derivatives desks.</p>
+    <p>On a desk: testing whether a "persistence" signal is genuine long memory or short-term dependence in disguise, and modelling how volatility shocks decay slowly, by a power law, rather than exponentially.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Is there memory beyond what a short-memory model explains: in returns (rarely) or in volatility (usually)?</dd>
+        <dt>Takes in</dt><dd>\(H\) estimates from <a href="hurst-variance-ratio.html">Hurst &amp; Variance Ratio</a> and the short-memory benchmark in <a href="garch-volatility.html">GARCH</a>.</dd>
+        <dt>Hands on to</dt><dd>Volatility forecasts in <a href="institutional-har-rv.html">HAR-RV</a> and option pricing across <a href="vega-volatility-surface.html">the volatility surface</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -491,6 +509,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's <code>computeHurst</code> is the descriptive statistic, not the generative model.</strong> fBm/ARFIMA is background theory here — not yet fit or wired into any live forecaster.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Anti-persistence (H&lt;0.5) is short memory, not "long memory with a minus sign."</strong> And structural breaks/regime switching can produce an ACF that looks identical to true long memory — check for regime instability first.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good ARFIMA/FIGARCH in-sample fit is a methodological upgrade, not evidence of edge.</strong> It's a better-specified model of volatility's dependence structure — trading on it still needs a real, costed, out-of-sample test.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The long memory is in volatility, not returns.</strong> Lo (1991) found weak evidence in stock returns once short-term dependence is allowed for; absolute returns and realised volatility show it clearly (Ding, Granger &amp; Engle, 1993). Test it, don't assume it.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

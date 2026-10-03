@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full walkthrough — worked MAD example, the Tokyo-lunch case study, and a 5-question self-test?<a href="data-cleaning-outliers-missing-data.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -250,7 +250,40 @@
     </section>
 
     <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">8 December 2005: 610,000 shares at ¥1</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>On J-Com's first day on the Tokyo Stock Exchange, a Mizuho Securities trader meant to sell <strong>1 share at ¥610,000</strong> and entered <strong>610,000 shares at ¥1</strong>, more than forty times the roughly 14,500 shares in issue. The price fell to its daily limit, and a flaw in the exchange's system stopped the cancellation. The trades stood. Mizuho lost roughly ¥40 billion; the exchange's president resigned within weeks. Every print on the tape was accurate.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Order entry</b>610,000 shares at ¥1, not 1 at ¥610,000</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Pre-trade checks</b>Warning overridden; no size bound</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Exchange</b>System flaw blocks the cancel</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · bad print vs. bad trade</b>Flag it, but don't delete it: it happened</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Roughly ¥40 billion lost</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>Not tested here:</strong> that this desk's cleaning choices leave its results unchanged. A fair test re-runs each validated study with the outlier filter on and off, forward-fill vs. flag-and-exclude, and checks removed prints against the venue's cancelled-trade record.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The fat-finger signature assumes the mistake is in the data: one wild tick, then a snap back. At J-Com the mistake was in the order and the data was faithful. An outlier filter answers "is this unusual?"; only the venue's record answers "did this happen?" A size bound (shares traded vs. shares in issue) would have caught it before the fact.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -300,8 +333,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Four distinct failure modes need four distinct fixes — a fat-finger print, a stale quote, a halt, and a genuine gap are not the same problem, even when they all look like "something's wrong with this data."</p></div>
@@ -310,6 +343,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Every missing-data strategy has a real failure case — forward-fill fakes calm, interpolation invents a path, flag-and-exclude shrinks the sample.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Cleaning must be causal — a statistic used to judge whether a point is bad may only use data available up to that point, never data from after it. Full-sample cleaning is a lookahead-bias bug, the same failure mode leakage warnings describe for features.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Log every cleaning decision — an unrecorded fix is indistinguishable from silent corruption once enough time has passed.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>An outlier is not an error: J-Com's 2005 fat finger (610,000 shares at ¥1) was printed accurately and the trades stood, costing roughly ¥40 billion. Flag extremes; remove only what the venue voided. Whether this desk's cleaning choices move its results is untested.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -441,5 +475,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

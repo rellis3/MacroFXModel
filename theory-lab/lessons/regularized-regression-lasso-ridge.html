@@ -37,6 +37,7 @@
       <li>The difference is pure geometry: a circle (L2) almost never touches an elliptical loss contour at an axis point; a diamond (L1) very often does, because its corners <em>are</em> the axis points.</li>
       <li><strong>Elastic Net</strong> (Zou &amp; Hastie, 2005) blends both penalties — LASSO's sparsity plus Ridge's stability when predictors are correlated in groups.</li>
       <li>The worked example fits a toy 3-predictor regression with one real signal, one near-duplicate of it, and one pure noise column: OLS gives unstable, even sign-flipped coefficients; Ridge shrinks all three smoothly; LASSO zeroes the duplicate and the noise column exactly, keeping only the real signal.</li>
+      <li><strong>How it reached trading:</strong> Jorion (1986) and Ledoit &amp; Wolf (2003–04) brought shrinkage to portfolio and covariance estimates, and in the 2010s the LASSO became a standard way to pick from the "factor zoo".</li>
     </ul>
   </div>
 
@@ -103,6 +104,43 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>OLS is a kid packing a suitcase who's been told "bring anything that might be useful" — so they bring everything, including things that don't help at all, and the suitcase is a mess. Ridge is a parent who says "fine, bring it all, but everything gets squeezed smaller." LASSO is a parent who says "no — if it's not actually useful, it's not going in the bag at all."</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Hundreds of predictors, a few decades of returns</h3>
+    <div class="tl-origin-who">Shrinkage · into portfolios with Jorion (1986) and Ledoit &amp; Wolf (2003–04); the LASSO meets the factor zoo in the 2010s</div>
+    <p>
+    Return data is short and noisy, and the candidate predictors keep multiplying.
+    Ordinary least squares with many correlated predictors fits the noise. Goyal &amp;
+    Welch (2008) showed that the classic market-timing regressions mostly failed out of
+    sample, and mean-variance optimisers fed with raw estimates produced extreme, unstable
+    weights. Shrinkage, developed in engineering and statistics (ridge in 1970, the LASSO
+    in 1996), trades a little bias for much less variance.
+    </p>
+    <p>
+    Finance took up the idea in stages. Philippe Jorion (1986) shrank expected
+    returns toward a common mean for portfolio choice. Olivier Ledoit and Michael Wolf
+    (2003–04) shrank the sample covariance matrix toward a structured target, now a
+    standard input to risk models and optimisers. When John Cochrane (2011) called the
+    hundreds of published return predictors a "zoo", the LASSO became a way to tame it:
+    Feng, Giglio &amp; Xiu (2020) used LASSO-based selection to test which factors add
+    anything new, and Kozak, Nagel &amp; Santosh (2020) shrank the whole cross-section of
+    factor weights.
+    </p>
+    <p>
+    On desks, ridge and the LASSO are the default when combining many signals into
+    one forecast, choosing among correlated predictors, or estimating betas and
+    covariances from too little data.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Stop a regression with many correlated predictors from fitting noise: shrink every coefficient (ridge), or set the weak ones to exactly zero (LASSO).</dd>
+        <dt>Takes in</dt><dd>An ordinary regression and its diagnostics, from <a href="primer-correlation-regression.html">correlation and regression</a> and <a href="regression-diagnostics.html">regression diagnostics</a>.</dd>
+        <dt>Hands on to</dt><dd>Signal combination in <a href="factor-based-portfolio-construction.html">factor-based portfolio construction</a>, the covariance version in <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit–Wolf shrinkage</a>, and the nonlinear challenger <a href="gradient-boosting.html">gradient boosting</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -586,6 +624,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example: OLS gave unstable, even sign-flipped coefficients under collinearity; Ridge shrank all three smoothly; LASSO zeroed the redundant and noise predictors exactly.</strong></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Standardize predictors before regularizing, and choose λ only by cross-validation.</strong> Both penalties are scale-dependent, and in-sample fit always favors λ=0 by construction.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>LASSO's selected variables are not a validated causal claim.</strong> Which predictor survives among a correlated group can flip across resamples — treat the selection as informative, not definitive.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>In finance, shrinkage is what makes many-predictor models usable.</strong> It runs from Ledoit–Wolf covariance estimates to LASSO selection from the factor zoo (Feng, Giglio &amp; Xiu, 2020): a little bias in exchange for estimates that hold up out of sample.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -773,5 +812,7 @@
   recompute();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Limit Order Books &amp; Queue Dynamics — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the live VWAP scratchpad, and a 5-question self-test?<a href="limit-order-books.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -246,7 +246,40 @@
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">15 October 2014: the Treasury flash rally</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Yields were already falling after weak US retail sales at 8:30 am. Then, between <strong>9:33 and 9:45</strong>, the 10-year Treasury yield fell about <strong>16 basis points</strong> and came straight back, in the deepest bond market in the world. The joint staff report from five US agencies found <strong>no clear news</strong> in that window. What it did find: very heavy volume, thin resting size at the best prices, bank dealers pulling back, and automated firms trading a lot while showing little size and cancelling fast.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Weak retail sales; yields falling on heavy volume</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Bank dealers</b>Pull back resting orders</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Automated firms</b>Trade a lot, show little size, cancel fast</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>The book · this lesson</b>Thin touch: each market order walks several levels</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>About 16bp down and back in 12 minutes</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where the textbook breaks, and what's untested here</h2>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The worked example treats the book as a fixed photograph. October 2014 showed two things it leaves out. <strong>Volume is not depth</strong>: a market can trade huge size while very little rests at any one price. And resting size is <strong>endogenous</strong>: market makers cancel in response to the very flow about to hit them, so the depth you see isn't the depth left when your order lands.</p>
+      </div>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>"The depth you see is the depth you'll get," and "book imbalance predicts the next move":</strong> not tested on this desk, which has mid-price candles and no order-book data. A fair test needs full depth-of-book data for a liquid futures contract. It would compare displayed size at the touch with size actually filled, by volatility regime and against matched calm periods, and score imbalance calls against the base rate. Everything fixed in advance.</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -296,8 +329,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A book is two ladders of price levels, each holding a strict FIFO queue — a level's size is the sum of many separate orders, not one.</p></div>
@@ -306,6 +339,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Queue position — the ahead-of-you size A — can dominate a passive order's real fill probability, independent of price.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Depth and spread are two different, complementary liquidity measures — a tight spread with thin depth can still be expensive to trade in size.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A book snapshot is a photograph, not a guarantee — resting size can vanish before an order actually reaches it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Volume is not depth. On 15 October 2014 the 10-year yield fell about 16bp and came back within 12 minutes on heavy volume and a thin touch, with no clear news. Whether displayed depth predicts your fill is untested here.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Linear Algebra &amp; Matrices — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="linear-algebra-matrices.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">The risk of a book with hundreds of positions</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Harry Markowitz · 1952 · Litterman &amp; Scheinkman · 1991</strong></p>
+        <p>Portfolio risk depends on how every pair of positions moves together. Markowitz (1952) put that in one covariance matrix: variance = wᵀΣw. Barra's factor models (1970s) shrank it to a few factors.</p>
+        <p>Litterman and Scheinkman (1991) ran PCA on Treasury returns: three eigenvectors, level, slope and curvature, explain almost all curve moves. RiskMetrics (1994) published covariance matrices daily.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Hold many positions and their co-movements in one object, so risk and hedges take a few operations.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A vector is an arrow — or a list of numbers</h2>
       <p class="sl-sub">Two ways to picture the exact same thing: v = (3, 1).</p>
       <div class="sl-card">
@@ -56,8 +69,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Adding and scaling, geometrically</h2>
       <p class="sl-sub">The two operations everything else in this lesson is built from.</p>
       <div class="sl-card">
@@ -100,8 +113,8 @@
       <p class="sl-p">Combining two trades' P&amp;L, or two return series, is vector addition. Sizing a position up or down without changing its direction — long is still long, just bigger or smaller — is scaling. Both are the whole toolkit a matrix will use next.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A matrix is a machine that moves every vector</h2>
       <p class="sl-sub">Not "a table of numbers" — a fixed rule that takes any vector in and hands a new one back.</p>
       <div class="sl-icard-grid">
@@ -118,8 +131,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Chaining two machines — and order matters</h2>
       <p class="sl-sub">MN means "apply N first, then apply M to the result." Compare it with NM.</p>
       <div class="sl-compare">
@@ -135,8 +148,8 @@
       <div class="sl-quote">MN ≠ NM — unlike ordinary numbers, where 3×5 always equals 5×3. "Squish then twist" is a genuinely different motion than "twist then squish," even with the exact same two machines. This is why, in the Kalman Filter lesson, the order a state vector gets multiplied through a transition matrix and an observation matrix is written with care, not treated as interchangeable arithmetic — swapping it is a real bug, not a harmless simplification.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">One direction never rotates. Watch it.</h2>
       <p class="sl-sub">A = [[2, k], [0, 1]]. Drag k and watch the square, and the grey spokes, swing around — while the red arrow never does.</p>
       <div class="sl-card">
@@ -170,8 +183,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">An eigenvector is a direction the matrix respects</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">➡</div><div><h4>Same line, different length</h4><p>Feed the matrix a vector lying exactly along an eigenvector's direction, and the output is a scaled copy of the same vector — longer, shorter, or flipped, but never off that line through the origin.</p></div></div>
@@ -181,8 +194,8 @@
       <div class="sl-quote">A generic 2×2 matrix has at most two such directions. Most matrices that actually arise from real data — in particular, the symmetric matrices that covariance and correlation matrices always are — are guaranteed to have them, with a bonus: those eigenvectors come out mutually perpendicular.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The eigenvalue is the stretch factor — and there's a formula for it</h2>
       <p class="sl-sub">Av = λv rearranges into a plain quadratic in λ.</p>
       <div class="sl-card">
@@ -191,11 +204,11 @@
         <div class="sl-verdict">trace(A) = a + d (sum of the diagonal). det(A) = ad − bc. Solve this ordinary quadratic for λ and you have every eigenvalue A has — up to two of them, for a 2×2 matrix.</div>
         <div class="sl-note">Once a specific λ is known, plug it back into (A − λI)v = 0 and solve that ordinary linear system for v, the matching eigenvector.</div>
       </div>
-      <p class="sl-p">Larger λ means that direction is stretched more — and, in a covariance matrix, accounts for more of the total variance. Section 5's demo had trace = 2+1 = 3 and det = 2(1) − k(0) = 2, giving λ² − 3λ + 2 = 0, which factors to (λ−2)(λ−1) = 0 — exactly the 2 and 1 the slider never moved.</p>
+      <p class="sl-p">Larger λ means that direction is stretched more — and, in a covariance matrix, accounts for more of the total variance. Section 6's demo had trace = 2+1 = 3 and det = 2(1) − k(0) = 2, giving λ² − 3λ + 2 = 0, which factors to (λ−2)(λ−1) = 0 — exactly the 2 and 1 the slider never moved.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Solve any 2×2 matrix's eigenvalues, live</h2>
       <p class="sl-sub">Starts on the worked symmetric example from the full lesson. Edit any entry.</p>
       <div class="sl-card">
@@ -215,8 +228,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why PCA leans on exactly this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Principal components ARE eigenvectors</h4><p>Of a covariance matrix, ranked by their eigenvalues. Largest eigenvalue first means "the direction that explains the most variance, listed first."</p></div></div>
@@ -233,8 +246,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The same machinery, two more names</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Kalman Filter</h4><p>A state vector is repeatedly multiplied through a transition matrix and an observation matrix, and a covariance matrix is propagated through matrix multiplication at every update step — nothing but Av and AB, chained, in a load-bearing order.</p></div></div>
@@ -243,8 +256,8 @@
       <div class="sl-quote">Nobody on a desk solves a characteristic equation by hand day to day — software does the arithmetic. The intuition that survives is: an eigenvector of a covariance matrix is a portfolio, and its eigenvalue is how much of the book's total variance that portfolio accounts for. Rank them by eigenvalue, and you've answered "in the fewest independent moves, what is this basket's risk actually made of?"</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -294,8 +307,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A vector is an arrow (or an ordered list of numbers) — a point in space, or a direction and a length, same thing viewed two ways.</p></div>
@@ -304,6 +317,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>An eigenvector is a direction the matrix only scales, never rotates off — Av = λv — and λ, the eigenvalue, is the amount of stretch. Solve λ² − trace(A)λ + det(A) = 0 to find every eigenvalue a matrix has.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Symmetric matrices — which covariance and correlation matrices always are — are guaranteed real eigenvalues and perpendicular eigenvectors, no extra assumption required.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This vocabulary is the direct prerequisite for PCA (eigenvectors of a correlation matrix), the Kalman Filter (chained matrix multiplication), and Hidden Markov Models (the stationary distribution is the eigenvector for eigenvalue 1).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Portfolio risk is wᵀΣw (Markowitz, 1952); eigenvectors of the yield curve's covariance give level, slope and curvature (Litterman &amp; Scheinkman, 1991).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -333,7 +347,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Section 5 — shear transformation demo: drag k, redraw the transformed
+  // Section 6 — shear transformation demo: drag k, redraw the transformed
   // square, eight sample spokes, and the rotating (λ=1) eigenvector line.
   // The λ=2 eigenvector along the x-axis never moves, so it's drawn static.
   (function(){
@@ -397,7 +411,7 @@
     update();
   })();
 
-  // Section 8 — general 2x2 matrix -> trace, det, eigenvalues (quadratic
+  // Section 9 — general 2x2 matrix -> trace, det, eigenvalues (quadratic
   // formula), eigenvectors, with a defensive path for a negative
   // discriminant (complex eigenvalues, e.g. a pure rotation matrix).
   (function(){

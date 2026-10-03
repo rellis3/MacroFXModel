@@ -36,6 +36,7 @@
       <li><strong>Normal-Normal (known variance):</strong> prior \(\mu \sim N(\mu_0,\sigma_0^2)\), the posterior mean is a <em>precision-weighted average</em> of the prior mean and the sample mean, and posterior precision is just prior precision plus data precision.</li>
       <li>Worked example: starting from a weak belief that "trend days" happen 40% of the time, 10 observed days (3 trend days) then 30 more (9 trend days) narrow the belief's standard deviation from 0.20 → 0.12 → 0.07 — visualized live in the chart below.</li>
       <li>Conjugacy is a mathematical convenience, not a law of nature — most real-world likelihoods have no conjugate prior at all, which is exactly why the next lesson in this trio covers MCMC.</li>
+      <li>How it reached trading: conjugate priors (named by Raiffa &amp; Schlaifer, 1961) give closed-form updates — the algebra inside Black–Litterman and the Kalman filter, and the fastest way to track a live hit rate or mean.</li>
     </ul>
   </div>
 
@@ -86,6 +87,25 @@
       you just update two numbers that describe it, and the curve tightens
       around the truth as more days go by.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Updating a belief every trade, in closed form</h3>
+  <div class="tl-origin-who">Conjugate updating · Raiffa &amp; Schlaifer, 1961; in markets through Black–Litterman (1990–92) and the Kalman filter</div>
+  <p>A desk that wants a live estimate of a strategy's win rate, a mean return or a volatility can't run a numerical integration after every fill. Raiffa and Schlaifer, at Harvard Business School, named and catalogued "natural conjugate" priors in 1961 so that business decisions could be updated by hand: the posterior lands in the same family, and updating is arithmetic on a couple of numbers.</p>
+  <p>That arithmetic is what made Bayesian updating practical in markets. The Black–Litterman posterior is the normal-prior, normal-evidence conjugate case, which is why it has a closed form. The Kalman filter's update step, used for time-varying hedge ratios and betas, is the same Gaussian conjugate algebra run once per bar.</p>
+  <p>On a desk today, conjugate pairs are the fast first answer: Beta-Binomial for a hit rate or the frequency of a trend day, Normal-Normal for a drifting mean, Gamma-type priors for a variance. When a model steps outside these families, MCMC takes over.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Keep a running, uncertainty-aware estimate of a hit rate, mean or volatility that updates instantly as each trade or bar arrives.</dd>
+      <dt>Takes in</dt><dd>Bayes' rule and a likelihood (<a href="bayesian-inference.html">Bayesian Inference</a>).</dd>
+      <dt>Hands on to</dt><dd>Recursive filters and sizing (<a href="kalman-filter.html">Kalman Filter</a>, <a href="kelly-criterion.html">Kelly Criterion</a>), and <a href="mcmc-metropolis-gibbs.html">MCMC</a> when no conjugate form exists.</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -507,6 +527,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A "flat" prior is still an assumption.</strong> Beta(1,1) asserts every rate is equally plausible beforehand — state and justify the chosen prior rather than treating any default as assumption-free.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Conjugacy is the exception, not the rule.</strong> Most real-world likelihoods have no matching conjugate prior at all — that's the entire motivation for MCMC, covered next.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A narrow posterior is not the same as a validated edge.</strong> It quantifies confidence about the observed sample, not about whether that sample generalizes — the honest OOS discipline this curriculum applies everywhere else still applies here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: closed-form updates, every bar.</strong> Raiffa &amp; Schlaifer (1961) built them for hand calculation; in markets the same algebra powers Black–Litterman's posterior and the Kalman filter's update step.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

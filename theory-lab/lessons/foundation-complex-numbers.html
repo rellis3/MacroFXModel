@@ -39,6 +39,7 @@
       <li><strong>Euler's formula</strong>, \(e^{i\theta}=\cos\theta+i\sin\theta\), fuses the natural exponential with sine and cosine into one identity — it can be motivated by plugging \(i\theta\) into the (infinite-series) definition of \(e^x\) and watching it split cleanly into the separate series for \(\cos\theta\) and \(\sin\theta\).</li>
       <li>Setting \(\theta=\pi\) gives <strong>Euler's identity</strong>, \(e^{i\pi}+1=0\) — routinely called the most beautiful equation in mathematics for linking five fundamental constants (\(0,1,e,i,\pi\)) in one line.</li>
       <li>Complex numbers matter in quantitative finance chiefly through <strong>characteristic functions</strong> (used in Fourier-based option pricing) and the <strong>Fourier Transform</strong> itself, both covered properly in later lessons this one sets up.</li>
+      <li><strong>How it reached trading:</strong> through the characteristic function, which let Heston (1993) price options under stochastic volatility and Carr and Madan (1999) price a whole strike grid at once with the fast Fourier transform.</li>
     </ul>
   </div>
 
@@ -112,6 +113,25 @@
       for describing rotation, oscillation, and waves, which is precisely why
       they show up in Fourier analysis and option pricing later on.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing an option when the model has no formula</h3>
+    <div class="tl-origin-who">Characteristic functions · Heston, 1993 — Carr &amp; Madan, 1999</div>
+    <p>Black–Scholes has a closed-form price because its model has a simple, known distribution of returns. Models closer to real markets, with volatility that moves or prices that jump, usually have no usable density, so pricing them meant slow Monte Carlo simulation or numerical PDE solvers: too slow to fit a model to a whole volatility surface every time the market moved.</p>
+    <p>Steven Heston's 1993 stochastic-volatility model sidestepped this. Its characteristic function, \(E[e^{iuX}]\), is known in closed form even though the density is not, and Heston recovered option prices from it by Fourier inversion. In 1999 Peter Carr and Dilip Madan showed how to use the fast Fourier transform to price a whole grid of strikes in one pass.</p>
+    <p>Characteristic-function pricing is now the standard way stochastic-volatility and jump models (Heston, Bates, variance gamma) are calibrated to a quoted surface. The arithmetic is complex in the middle and the price comes out real, the pattern Bombelli first used in 1572 when complex numbers appeared in solving cubic equations.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Carrying the characteristic function \(E[e^{iuX}]\), the form in which models like Heston are solvable, so option prices can be recovered by Fourier inversion when no density formula exists.</dd>
+        <dt>Takes in</dt><dd>\(e\), sine and cosine (<a href="foundation-trig-logs-exponentials.html">Trig, Logs &amp; Exponentials</a>).</dd>
+        <dt>Hands on to</dt><dd>Fourier pricing and stochastic-volatility models (<a href="fft-option-pricing-carr-madan.html">FFT Option Pricing (Carr-Madan)</a>, <a href="heston-model.html">The Heston Model</a>, <a href="fourier-analysis-frequency-domain.html">Fourier Analysis</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -481,6 +501,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Euler's identity, \(e^{i\pi}+1=0\), links five fundamental constants.</strong> A direct consequence of Euler's formula at \(\theta=\pi\), not a separate result.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Complex numbers appear in finance through characteristic functions and the Fourier Transform.</strong> Both are covered properly in later lessons this one exists to prepare for.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An intermediate complex number isn't automatically an error.</strong> Many legitimate pricing calculations pass through complex-valued intermediate steps and arrive at a real final answer — check the final output, not every intermediate one.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Complex numbers price the options that have no formula.</strong> Heston (1993) and Carr–Madan (1999) price from the characteristic function: complex in the middle, real at the end, fast enough to calibrate to a whole surface.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

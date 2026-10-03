@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Collateral, Margin &amp; Repo Markets — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, SPAN/SIMM detail, and a 5-question self-test?<a href="collateral-margin-repo-markets.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -222,6 +222,29 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Who is in the repo market</h2>
+      <p class="sl-sub">The anonymous "cash lender" and "cash borrower" have real names, and each has its own constraints.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">💵</div><div><h4>Money market funds: the lenders</h4><p>Hold investors' cash and lend it overnight against Treasuries. When investors withdraw, they have less to lend.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📑</div><div><h4>Primary dealers: borrowers and middlemen</h4><p>Fund big bond inventories overnight in repo, and pass cash on to leveraged investors.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏛️</div><div><h4>The Fed, at the edges</h4><p>Takes spare cash at a floor rate (the ON RRP) and lends at a ceiling rate (the Standing Repo Facility). See <a href="fed-corridor-iorb-srf-discount-window-micro.html">The Fed's Corridor</a>.</p></div></div>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Mid-month tax date</b>Taxes due; settlement nearby</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Investors</b>Withdraw from money funds</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Money funds</b>Pull cash out of repo</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Bid for scarcer cash</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>SOFR lifts, then settles</div>
+      </div>
+      <p class="sl-p">A calendar effect, not a crisis: on this desk's data, 12 of 15 above-floor SOFR episodes away from month-end fell on the 14th–18th of a month.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Getting this wrong, in practice</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -245,8 +268,41 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">March 2020: the basis trade meets a margin call</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>A popular hedge fund trade going into 2020: buy a Treasury, sell the matching future, collect the tiny gap as they converge. It only pays with leverage, financed in <strong>repo</strong> on a thin haircut, with <strong>initial margin</strong> posted on the future. In mid-March 2020's "dash for cash", investors sold even Treasuries. Volatility jumped, so futures margins rose, variation margin came due daily and repo lenders could tighten haircuts. Funds sold bonds to meet the calls, dealers couldn't absorb them, and Treasury yields <em>rose</em> while stocks fell. From March 15 the Fed bought roughly a trillion dollars of Treasuries within about a month. The BIS called it a <strong>margin spiral</strong> (Schrimpf, Shin and Sushko, 2020).</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Dash for cash</b>Even Treasuries are sold for cash</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Exchange and lenders</b>Must protect themselves as volatility jumps</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · margin and haircuts</b>IM up, VM due daily, haircuts wider: fresh cash needed at once</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Hedge funds</b>Can't fund it, so they sell cash Treasuries</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Yields jump; the Fed buys about $1 trillion</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <div class="sl-stamp null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>funding-stress: the overnight repo rate was not a stress warning.</strong> 2,123 SOFR sessions, 2018-04 to 2026-09. SOFR ≥ 3bp over the floor away from month-end: only 15 episodes (untestable), <strong>12 of 15 on the 14th–18th</strong>. A drawn SRF (21 episodes) was followed by a <em>calmer</em> SPX500 tape, −0.561 ATR [−0.984, −0.181]. March 2020's stress ran through margins and Treasury prices, which an overnight-rate test isn't built to see.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The textbook treats a haircut as a fixed property of the collateral: Treasuries are safe, so it's small. In March 2020 haircuts and margins rose with volatility, exactly when borrowers could least pay. And "sell the collateral near market value" held only because the Fed became the buyer.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -296,8 +352,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any leveraged position needs a buffer against counterparty default — that buffer is collateral, and it moves according to two distinct rules.</p></div>
@@ -306,6 +362,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A haircut discounts collateral below face value to price in the collateral's own price risk and how long it might take to liquidate — $100 at a 5% haircut counts as $95.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A repo is legally two sales but economically a fully collateralized loan — the price gap between the two legs is the interest, the repo rate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SOFR is computed directly from real overnight Treasury repo data — a concrete, factual bridge to the OIS-discounting machinery in Swap Curves &amp; OIS Discounting.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Money market funds lend, primary dealers borrow, the Fed sits at the edges. Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts: the calendar, not stress.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">08</div><p>March 2020: margins and haircuts rose with volatility, the leveraged basis trade sold Treasuries to meet the calls, and the Fed bought about $1 trillion. Haircuts are not fixed. And on this desk's data the overnight rate is not the warning light (funding-stress, NULL).</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -421,5 +479,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

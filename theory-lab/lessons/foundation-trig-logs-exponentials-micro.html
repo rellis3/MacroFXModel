@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Trigonometry, Logs &amp; Exponentials — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, two live calculators, and a 5-question self-test?<a href="foundation-trig-logs-exponentials.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Why desks work in log returns</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>M. F. M. Osborne · 1959 · Black, Scholes &amp; Merton · 1973</strong></p>
+        <p>Up 50% then down 50% leaves you down 25%: simple returns don't add. In 1959 Osborne argued that log prices, not prices, follow a random walk, so log returns are the natural unit.</p>
+        <p>Black–Scholes–Merton (1973) built option pricing on that, discounting with e^(−rT). e itself came from Bernoulli's 1683 question about compounding interest ever more often.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Make returns add across time and put every rate on one compounding basis.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A point walking around a circle</h2>
       <p class="sl-sub">Draw a circle of radius 1 around the origin. Pick an angle θ, swept counterclockwise from 3 o'clock. Sine is the height of the point you land on; cosine is how far sideways it is.</p>
       <div class="sl-card">
@@ -98,8 +111,8 @@
       <p class="sl-p">This is the whole definition — sine and cosine aren't ratios memorized from a right triangle, they're just the coordinates of a point walking around a circle of radius 1. Every trig identity used later in this curriculum ultimately traces back to this picture.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Radians measure the walk, not the wedge</h2>
       <p class="sl-sub">Degrees split a circle into 360 arbitrary pieces — a leftover convention from ancient Babylonian astronomy. Radians measure the actual arc length walked.</p>
       <div class="sl-row">
@@ -119,8 +132,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Walk one full lap, and the wave repeats exactly</h2>
       <p class="sl-sub">Because θ + 2π lands on the same point as θ, sine and cosine repeat their values identically every 2π radians — that's periodicity.</p>
       <div class="sl-card">
@@ -147,8 +160,8 @@
       <div class="sl-quote">This exact repeating property is the whole reason cyclical data — a seasonal effect, an intraday rhythm, a mean-reverting oscillation — is modeled using sine and cosine waves of different frequencies, added together. Decomposing a messy series into a sum of such waves, across many frequencies at once, is what a Fourier transform does — covered properly in a later Signal Processing lesson, built directly on this vocabulary.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">e — the number growth settles on</h2>
       <p class="sl-sub">Compound 100% growth over more and more sub-periods within one unit of time, and the result doesn't run away to infinity — it settles on a specific number.</p>
       <div class="sl-row">
@@ -177,8 +190,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">ln x runs growth backward</h2>
       <p class="sl-sub">The natural logarithm is defined as the exact inverse of e^x — "what power must e be raised to, to get x?"</p>
       <div class="sl-row">
@@ -195,8 +208,8 @@
       <div class="sl-quote">These aren't arbitrary rules to memorize — they fall straight out of the exponent rule e^a·e^b = e^(a+b). Let a = ln x and b = ln y, so x = e^a and y = e^b: then xy = e^a·e^b = e^(a+b), and taking ln of both sides gives ln(xy) = a + b = ln x + ln y. That's the whole derivation of the product rule.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">e^(rt) is compounding pushed to infinity</h2>
       <p class="sl-sub">Compounding a rate r, m times per year, for t years, gives (1 + r/m)^(mt). Push m — the compounding frequency — toward infinity, and the formula settles onto e^(rt). $100 at 8%/year for 10 years, at increasing frequency:</p>
       <div class="sl-card">
@@ -249,8 +262,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Log-returns add up. Simple returns don't.</h2>
       <p class="sl-sub">A simple return is R = (P₁ − P₀)/P₀. A log-return is instead r = ln(P₁/P₀). Chain two periods together and the difference shows up immediately.</p>
       <div class="sl-compare">
@@ -285,8 +298,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Two colleagues, one month, two different numbers</h2>
       <p class="sl-sub">A trader wants a month's performance from 21 daily returns. Two colleagues compute it two different ways.</p>
       <div class="sl-compare">
@@ -310,8 +323,8 @@
       <p class="sl-p">Colleague A's mistake is silently ignoring that gains and losses compound multiplicatively, not additively — the same "+50% then −50% is a real loss, not a wash" trap from the returns primer elsewhere in this curriculum. Colleague B's extra step, converting back at the very end with e^(·) − 1, is just the inverse of how log-returns were defined in the first place.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why desks actually work this way</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">%</div><div><h4>Log-returns are the default for statistics</h4><p>Volatility, correlation, regression on a return series — quant desks default to log-returns specifically because they add across time with no compounding correction.</p></div></div>
@@ -321,8 +334,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">The mistakes worth knowing before you make them</h2>
       <p class="sl-sub">Same underlying math, two very different outcomes depending on whether the habit is in place.</p>
       <div class="sl-compare">
@@ -351,8 +364,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -402,8 +415,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Sine and cosine are coordinates on a unit circle — (cos θ, sin θ) is the point at angle θ, periodic every 2π radians, which is exactly why cyclical data gets modeled with them.</p></div>
@@ -412,6 +425,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>e^(rt) is compounding pushed to infinite frequency — it falls straight out of the limit that defines e itself, not a separate formula to memorize.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Log-returns add exactly across time; simple returns only approximate that, worse the more volatile the series.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A continuously-compounded rate is always a touch smaller than the equivalent simple rate — 5% simple ≈ 4.879% continuous over one year, not interchangeable numbers.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Desks use log returns and e^(−rT) because log returns add across time; Osborne (1959) and Black–Scholes–Merton (1973) made that the standard.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

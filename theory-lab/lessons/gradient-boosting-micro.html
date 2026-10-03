@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Gradient Boosting — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 5-question self-test?<a href="gradient-boosting.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Squeezing the most signal out of a table of features</h2>
+      <p class="sl-sub">Boosted trees · in return prediction (Gu, Kelly &amp; Xiu, 2020) and, with XGBoost (2016) and LightGBM (2017), on quant desks</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Quant data is mostly a table: a row per stock-day, many feature columns. Linear models miss its nonlinear structure, and neural nets are fiddly on it. Boosting adds small trees one at a time, each fixing what the ensemble still gets wrong.</p>
+        <p>It entered finance through credit scoring, then return prediction: Gu, Kelly &amp; Xiu (2020) found boosted trees among the models beating linear regressions on US stocks. XGBoost (2016) and LightGBM (2017) made it fast enough for everyday desk use.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> fit the strongest nonlinear forecast from a feature table, which is also the model most able to fit noise.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Parallel and independent, versus sequential and dependent</h2>
       <p class="sl-sub">Same goal — a model that predicts well on data it hasn't seen — two structurally opposite strategies.</p>
       <div class="sl-compare">
@@ -52,8 +65,8 @@
       <div class="sl-quote">A forest's trees never depend on each other, which is exactly what lets averaging cancel their independent noise — and exactly why the previous lesson's variance floor, ρσ², exists: the trees still all come from the same data. Boosting's trees are <strong>deliberately</strong> dependent — tree 2 cannot even be trained until tree 1's leftover error exists, because that error <em>is</em> tree 2's entire training target.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Four steps, repeated many times</h2>
       <p class="sl-sub">This is the entire algorithm — everything else in this lesson is this loop, run on real numbers.</p>
       <div class="sl-icard-grid">
@@ -68,8 +81,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Watch three rounds happen, on five points</h2>
       <p class="sl-sub">Five training points, targets y = [3, 5, 6, 9, 12] at x = 1…5, shrinkage ν = 0.5. Step through the rounds.</p>
       <div class="sl-card">
@@ -95,8 +108,8 @@
       <p class="sl-p">Notice what never happens: no round ever looks at the original target y again after round 0. Every later tree's entire world is the residual handed to it by the round before — which is exactly why the chain can't be reordered or parallelized the way a forest's trees can.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watching one point converge, round by round</h2>
       <p class="sl-sub">Following the x=5 point (true y=12) through the exact rounds from the previous slide. The gap to the dashed target line is that round's residual.</p>
       <div class="sl-card">
@@ -135,8 +148,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Run one boosting step yourself</h2>
       <p class="sl-sub">Given the current residual's ingredients, compute the updated prediction and the new residual — this is round 1 → round 2 of the example above, at x=5.</p>
       <div class="sl-card">
@@ -162,8 +175,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">More rounds helps — until it starts hurting</h2>
       <p class="sl-sub">Drag the slider. Training error (blue) keeps falling toward zero. Validation error (amber) falls too, but only up to a point — then rises as later rounds start fitting noise.</p>
       <div class="sl-card">
@@ -197,8 +210,8 @@
       <p class="sl-p">This is why "early stopping on a genuine validation set" is standard practice, not an optional extra: with enough rounds and too little shrinkage, boosting can drive <em>training</em> error toward zero exactly the way one unconstrained tree can — a falling training curve alone never tells you which side of that amber line you're on.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nobody trains the raw 2001 algorithm anymore</h2>
       <p class="sl-sub">Three production libraries dominate real-world use — same sequential-correction core, different practical engineering.</p>
       <div class="sl-icard-grid">
@@ -209,8 +222,8 @@
       <div class="sl-quote">All three sit on top of the exact same two ideas from this lesson — a corrective step fit to the leftover error, and a shrinkage rate — without changing that core mechanism. The engineering is about training efficiently and handling messy real tabular data well, not a different underlying algorithm.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Not just a concept in this repo — checked directly</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
@@ -219,8 +232,8 @@
       <p class="sl-p">Worth naming the boundary precisely: the previous lesson's forest and plain decision-tree classes still don't appear anywhere in this codebase — that finding stands. It's specifically <em>gradient-boosted</em> trees, this lesson's subject, that turn out to already be live.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A great knife still needs the right recipe</h2>
       <div class="sl-quote">Being told "this is the best-selling, most versatile kitchen knife in the world" tells you the knife is genuinely great — but nothing about whether it's the right tool for the specific recipe you're making tonight. Gradient boosting being the strongest general-purpose method for tabular data is the "great knife" claim. Whether it actually finds something real and tradeable in one specific set of FX or macro features is a completely separate question, answered only by testing that exact feature set on its own — every single time.</div>
       <div class="sl-callout purple">
@@ -230,8 +243,8 @@
       <p class="sl-p">A powerful algorithm applied to features with no real signal doesn't fail loudly — it overfits noise, and it can do so <strong>more</strong> convincingly than a weaker method would, because it's flexible enough to trace a shape through pure randomness. That is exactly why leakage-free, honest out-of-sample testing gets <em>more</em> important as the method gets stronger, never less.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -281,8 +294,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A forest averages independent, parallel trees to cut variance; boosting chains dependent, sequential trees to cut bias — the structural opposite strategy for the same underlying goal.</p></div>
@@ -291,6 +304,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Shrinkage ν trades more rounds for a more conservative step each round; too many rounds with too little shrinkage overfits, the same way an unconstrained single tree does.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>XGBoost, LightGBM, and CatBoost are the real production implementations — regularization, leaf-wise growth, and careful categorical handling on the same sequential-correction core.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Being the strongest general-purpose method on tabular data is a claim about the method, not about any one specific feature set — that gap is exactly where honest, leakage-free out-of-sample testing earns its keep.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: credit scoring and return prediction (Gu, Kelly &amp; Xiu, 2020), made routine by XGBoost and LightGBM. It is the model that most needs a strict out-of-sample test.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -409,5 +423,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

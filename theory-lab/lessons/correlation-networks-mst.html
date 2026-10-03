@@ -37,6 +37,7 @@
       <li>A worked 5-node example computes all 10 pairwise distances from a plausible correlation matrix, runs Kruskal's algorithm by hand, and produces a 4-edge backbone tree that reveals a hub-and-outlier structure a raw correlation table doesn't show at a glance.</li>
       <li>Mantegna's original 1999 application was a basket of Dow Jones equities; applying the same transform to FX/cross-asset baskets is a natural extension, not one this repo has tested or validated — that's stated plainly throughout this lesson.</li>
       <li>PCA and the MST are different lenses on the exact same correlation matrix: PCA collapses it into a handful of ranked, orthogonal factors; the MST keeps every pairwise relationship intact as a sparse graph — the two aren't competitors, they show different things.</li>
+      <li><strong>Real-world episode:</strong> in March 2020's dash for cash, investors sold even Treasuries and gold, correlations converged, and every distance in the tree shrank at once. On this desk, a day when every index falls is followed by a wider week (<code>breadth-all-down</code>, VALIDATED, range only), not by a predictable direction.</li>
     </ul>
   </div>
 
@@ -395,6 +396,78 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the dash for cash, March 2020</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>When every distance in the tree shrank at once</h3>
+    <p>
+      As COVID-19 spread in late February and March 2020, the outlook for earnings, credit and funding collapsed at
+      the same time. The S&amp;P 500 fell about a third from its February peak to its low on 23 March, and the VIX
+      closed at a record 82.69 on 16 March. Up to that point it looked like an ordinary, if violent, risk-off move.
+    </p>
+    <p>
+      Then the selling spread to the assets meant to hedge it. Leveraged funds faced margin calls and investors pulled
+      money out, and both needed cash, preferably dollars, immediately. So they sold what could still be sold, and that
+      included US Treasuries and gold. For several days in mid-March, long Treasury yields <em>rose</em> while equities
+      fell, gold fell alongside stocks, and the dollar surged. The Federal Reserve cut rates to zero on 15 March, bought
+      Treasuries in very large amounts, widened its dollar swap lines with other central banks, and on 23 March made its
+      asset purchases open-ended. Only after that did the old relationships start to come back.
+    </p>
+    <p style="margin-bottom:0">
+      Put that through Step 1. As pairwise \(\rho_{ij}\) climbs toward 1, every
+      \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) shrinks toward 0. Take the worked example's five currencies: if every correlation
+      had gone to 0.9, every distance would be \(\sqrt{0.2}\approx0.45\), shorter than the tightest calm-market edge,
+      EUR–GBP at 0.63. The hub-and-outlier shape would be gone. The nodes a calm tree kept far away, the diversifiers,
+      are the ones that moved in, at exactly the moment the book needed them to stay away.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Pandemic, March 2020: earnings, credit and funding outlooks collapse together</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Leveraged funds and investors</b>Margin calls and redemptions: forced to raise cash, so they sell what still has a bid, Treasuries and gold included</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>Correlation tree ★ this lesson</b>\(\rho_{ij}\to1\), every \(d_{ij}\) shrinks, the tree collapses toward one cluster</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Diversified books</b>Hedges fall with the risk they hedge; the calm tree's distances were not there when needed</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Federal Reserve</b>Forced to cut to zero, buy Treasuries and open dollar swap lines before relationships return</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: the distance transform and the tree built on it, which in a forced-sale
+    regime report one cluster where the calm-window tree showed a hub, branches and an outlier.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The MST is built from one correlation matrix estimated over a trailing window, so it quietly assumes those
+    correlations hold until the window rolls on. In March 2020 the co-movement came from a common need, cash, that
+    hit every asset in the same week. That is a regime change faster than any window can track. A tree built on
+    January's data described a market that no longer existed by mid-March. This is the "treating the MST as fixed"
+    pitfall in Section 04, shown at full size.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>breadth-all-down: when everything falls together, the next week runs wider, and nothing more.</strong>
+    The tempting claim is that a collapse into one cluster means something big follows. The desk tested the one-day
+    form: all six indices down on one session (<strong>n=1,002 since 2008</strong>), next-5 range
+    <strong>SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]</strong>; two in a row (n=243) +0.55 and
+    +0.35. Direction five sessions later was 58-61% up, the ordinary drift. That makes it a range fact, not a bounce
+    call or a crash call. It is an equity-index breadth test. A cross-asset tree collapsing has not itself been
+    tested here.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="dispersion-crowded-week" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>dispersion-crowded-week: the opposite state is not a warning at a week.</strong> High CBOE
+    dispersion means single stocks are moving far apart while the index stays calm, the spread-out tree rather than
+    the collapsed one. 68 setups 2014-2026, next-5-session range vs control: <strong>SPX500 +0.07 [-0.06, +0.23],
+    NQ +0.07 [-0.03, +0.17]</strong>. Null at five sessions and null on the tail.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this — and where it comes from</h2>
   <p>
     Mantegna introduced this exact distance transform and MST construction
@@ -479,7 +552,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlation needs a transform before it's a distance.</strong> Mantegna's \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) turns "1 = identical" into "0 = zero distance," fixing correlation's backwards direction and satisfying the triangle inequality a proper metric needs.</span></div>
@@ -488,9 +561,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PCA and the MST are complementary, not competing.</strong> PCA collapses a correlation matrix into ranked factors; the MST keeps every pairwise relationship as a sparse graph — different questions, same underlying matrix.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Mantegna's original result is an equities result.</strong> The FX/cross-asset framing in this lesson is a natural, structurally sound extension — it is not a technique this repo has tested or validated in that setting.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A backbone picture is not a backtest.</strong> Seeing which instrument is structurally the outlier is a genuine diversification read, but it says nothing on its own about whether adding that instrument improves risk-adjusted returns.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The calm tree is not the crisis tree.</strong> In March 2020 forced selling pushed correlations toward 1 and the diversifiers moved in. Everything-down days precede a wider week here (SPX500 +0.31 ATR [+0.17, +0.45], <code>breadth-all-down</code>), with direction at the ordinary drift. Range, not a call.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't a raw correlation coefficient be used directly as a graph edge weight representing "distance" or "closeness"?</summary>
@@ -651,5 +725,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

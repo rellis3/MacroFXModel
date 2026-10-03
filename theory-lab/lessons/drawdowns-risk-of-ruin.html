@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drawdowns and Risk of Ruin — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .dd-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .dd-table th,.dd-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .dd-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .dd-table td:first-child,.dd-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .dd-svg{width:100%;height:auto;display:block}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Human Side / Drawdowns and Risk of Ruin</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Human Side · Lesson 5 of 6</div>
+  <h1 class="tl-title">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</h1>
+  <p class="tl-dek">A system with a real edge still loses eight times in a row, still sits underwater for months, and still makes you doubt it at exactly the wrong moment. This lesson does the arithmetic of the bad stretch — so you can tell "normal" from "broken" before you are inside one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~20 min read</span>
+    <span>Prereqs: <a href="kelly-criterion.html">Kelly Criterion</a> (helpful); <a href="bootstrapping-monte-carlo.html">Monte Carlo</a> (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="drawdowns-risk-of-ruin-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Losses are asymmetric.</strong> To recover a drawdown \(d\) you need a gain of \(d/(1-d)\): −20% needs +25%, −50% needs +100%, −75% needs +300%.</li>
+      <li><strong>Losing streaks are normal.</strong> With a 55% win rate, a run of 8 losses has a 1-in-595 chance of starting on any given trade — but it is a 24% chance somewhere in 300 trades and more likely than not by about 750. A run of 6 is more likely than not by 152 trades.</li>
+      <li><strong>The worst drawdown keeps growing with time and with volatility</strong>, even for a system that makes money. The longer you trade, the deeper the deepest hole you will have sat in.</li>
+      <li><strong>Bet size, not win rate, decides ruin.</strong> The same 55% coin-flip edge is comfortable at 1–2% risk per trade and close to a coin toss for halving your account at full Kelly (10%).</li>
+      <li><strong>The human failure is timing:</strong> people judge a system by its recent results, so they abandon it near the bottom of its drawdown — and money tends to arrive after good runs and leave after bad ones.</li>
+      <li><strong>The desk's verdict:</strong> "a deep drawdown means the edge is gone" is <em>untested</em> here; the desk's one validated sleeve (63% win, ~109 trades) should expect a run of 4–5 losses; and the honest flip side, FX trend following, tested <em>null</em> — some drawdowns are no edge at all, and only an out-of-sample test can tell you which.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson, <a href="herding-narratives-bubbles.html">Herding, Narratives and Bubbles</a>,
+    was about how a crowd talks itself into a trade. This one is about how a single person talks
+    themselves <em>out</em> of one. Most good strategies are not killed by the market. They are
+    killed by the person running them, during a losing stretch that was always going to happen,
+    at a moment when the arithmetic says "this is normal" and every instinct says "this is broken".
+  </p>
+  <p>
+    You will meet three pieces of maths here: the recovery asymmetry, the probability of a losing
+    streak, and how the deepest drawdown grows with time and bet size. They connect directly to
+    <a href="kelly-criterion.html">the Kelly Criterion</a> (how much to bet),
+    <a href="bootstrapping-monte-carlo.html">Monte Carlo simulation</a> (how to see a distribution
+    of futures rather than one), and <a href="sharpe-family-deflated.html">Sharpe ratios</a>
+    (which say nothing about how deep the holes along the way will be).
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A loaded coin still lands tails four times in a row</h3>
+    <p>
+      Picture a coin weighted so it lands heads 55 times in 100. You win a pound on heads and lose
+      a pound on tails, so in the long run you win. Flip it a few hundred times and you will
+      still see long stretches of tails. Not because the coin changed — because <em>long
+      sequences of a random thing contain long runs</em>. That is what randomness looks like up
+      close.
+    </p>
+    <p style="margin-bottom:0">
+      Now imagine you cannot see the coin. All you see is your bank balance, which has been
+      falling for a month. Is the coin still loaded, or did someone swap it? The balance alone
+      cannot tell you. This lesson gives you the numbers that say how long a run of tails a
+      loaded coin produces, so you can decide in advance what would actually count as evidence
+      the coin was swapped.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math of the bad stretch</h2>
+
+  <h3>1. Recovery is asymmetric</h3>
+  <p>
+    A drawdown is the fall from the highest point your account has reached (its <em>peak</em>) to
+    where it is now, as a fraction of that peak. If you are down a fraction \(d\), what is left is
+    \(1-d\), and to get back to the peak that remainder has to grow by
+  </p>
+  <div class="tl-math">
+    \[ g = \frac{1}{1-d} - 1 = \frac{d}{1-d} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">d</div><div class="tl-fp-name">The drawdown</div><div class="tl-fp-desc">Fall from the peak, as a fraction of the peak</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">1 − d</div><div class="tl-fp-name">What is left</div><div class="tl-fp-desc">The smaller base any recovery has to grow from</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">g</div><div class="tl-fp-name">The gain needed</div><div class="tl-fp-desc">Always bigger than d — and it explodes as d nears 1</div></div>
+  </div>
+  <table class="dd-table">
+    <tr><th>Drawdown</th><th>−10%</th><th>−20%</th><th>−30%</th><th>−50%</th><th>−75%</th><th>−90%</th></tr>
+    <tr><td>Gain needed to recover</td><td>+11.1%</td><td>+25.0%</td><td>+42.9%</td><td>+100%</td><td>+300%</td><td>+900%</td></tr>
+  </table>
+  <p>
+    Small drawdowns are almost symmetric; big ones are not. That is the first reason a trader's
+    real job is to keep drawdowns in the region where the curve is still flat.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">The recovery curve: gain needed to get back to the peak</div>
+    <svg id="rc-svg" class="dd-svg" viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A curve of the gain needed to recover against drawdown size. It rises slowly at first, reaching 100% at a 50% drawdown, then steeply. A marker follows the slider.">
+      <g id="rc-grid"></g>
+      <path id="rc-path" fill="none" style="stroke:var(--purple);stroke-width:2.5"/>
+      <path d="M60,200 L380,40" fill="none" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"/>
+      <text x="300" y="70" font-size="10" font-family="'DM Sans',sans-serif" style="fill:var(--text3)">if losses were symmetric</text>
+      <line id="rc-v" x1="0" x2="0" y1="20" y2="200" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3"/>
+      <circle id="rc-dot" r="5" cx="0" cy="0" style="fill:var(--amber)"/>
+      <text id="rc-lbl" x="0" y="0" font-size="11" font-family="'DM Mono',monospace" style="fill:var(--amber)"></text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Drawdown</span><span class="tl-live" id="rc-d-val">50%</span></div>
+        <input type="range" id="rc-d" min="1" max="80" step="1" value="50">
+        <div class="tl-hint">Plotted from 0% to 80% drawdown; the vertical axis is capped at 400% gain.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="rc-readout">Down <b>50%</b> → you need <b>+100.0%</b> to get back to the peak.</div>
+    <div class="tl-chart-caption">\(g = d/(1-d)\). The dashed line is what recovery would cost if losses and gains were symmetric. The gap between the two lines is why big drawdowns are so hard to climb out of.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You have 10 sweets and lose half: now you have 5. To get back to 10 you need to <em>double</em> your 5 — winning half of 5 only gets you to 7 and a half. Losing a lot is quick; climbing back is slow.</p>
+  </div>
+
+  <h3>2. Losing streaks: compute them, don't feel them</h3>
+  <p>
+    Suppose each trade is independent, wins with probability \(p\) and loses with probability
+    \(q = 1-p\). The chance that a <em>particular</em> trade starts a run of \(k\) losses is just
+    \(q^k\). With \(p = 0.55\), a run of 8 starting right now has probability
+    \(0.45^8 \approx 0.0017\) — about 1 in 595. That number feels reassuring, and it is the wrong
+    number. You do not care about one particular starting point; you care whether a run of 8
+    happens <em>anywhere</em> in the trades you will take.
+  </p>
+  <p>
+    That is answered exactly by counting the sequences with <em>no</em> run of \(k\). Let \(a_n\)
+    be the probability that \(n\) trades contain no losing run of length \(k\) or more. Every such
+    sequence starts with \(j\) losses (\(0 \le j \le k-1\)), then a win, then a shorter sequence
+    that also has no run:
+  </p>
+  <div class="tl-math">
+    \[ a_n = \sum_{j=0}^{k-1} p\,q^{j}\,a_{n-j-1}, \qquad a_n = 1 \text{ for } n < k, \qquad P(\text{run} \ge k \text{ in } n) = 1 - a_n \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>aₙ</code><span>probability that n trades contain no losing run of k or more</span></div>
+    <div class="tl-eq-chip c2"><code>p q^j</code><span>j losses in a row, then the win that breaks the run</span></div>
+    <div class="tl-eq-chip c3"><code>a(n−j−1)</code><span>the rest of the sequence must also stay clear of a k-run</span></div>
+    <div class="tl-eq-chip c4"><code>1 − aₙ</code><span>the answer you want: a run of k shows up somewhere</span></div>
+  </div>
+  <p>Run that recursion for a 55% win rate and you get:</p>
+  <table class="dd-table">
+    <tr><th>Trades</th><th>run ≥ 5</th><th>run ≥ 6</th><th>run ≥ 7</th><th>run ≥ 8</th><th>run ≥ 10</th><th>expected longest</th></tr>
+    <tr><td>100</td><td>64.7%</td><td>36.3%</td><td>17.9%</td><td>8.4%</td><td>1.7%</td><td>5.3</td></tr>
+    <tr><td>200</td><td>88.0%</td><td>60.2%</td><td>33.4%</td><td>16.5%</td><td>3.5%</td><td>6.1</td></tr>
+    <tr><td>300</td><td>95.9%</td><td>75.2%</td><td>46.0%</td><td>24.0%</td><td>5.3%</td><td>6.6</td></tr>
+    <tr><td>500</td><td>99.5%</td><td>90.3%</td><td>64.4%</td><td>36.9%</td><td>8.8%</td><td>7.3</td></tr>
+    <tr><td>1,000</td><td>100.0%</td><td>99.1%</td><td>87.5%</td><td>60.4%</td><td>17.0%</td><td>8.1</td></tr>
+  </table>
+  <p>
+    Read the 300-trade row. A run of five losses is near-certain, a run of six is three-in-four,
+    and a run of eight is roughly one-in-four. A run of 8 becomes more likely than not at about
+    750 trades. A handy approximation for the longest run you should expect is
+    \(\log_{1/q}(n\,p)\) — about 6.4 for 300 trades at 55%, against the exact 6.6.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Exact losing-streak calculator</div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win rate</span><span class="tl-live" id="sk-p-val">55%</span></div>
+        <input type="range" id="sk-p" min="20" max="80" step="1" value="55">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of trades</span><span class="tl-live" id="sk-n-val">300</span></div>
+        <input type="range" id="sk-n" min="20" max="2000" step="10" value="300">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Losing run of at least</span><span class="tl-live" id="sk-k-val">8</span></div>
+        <input type="range" id="sk-k" min="2" max="20" step="1" value="8">
+      </div>
+    </div>
+    <svg id="sk-svg" class="dd-svg" viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of the probability of at least one losing run of each length from 2 to 20, for the chosen win rate and number of trades. The chosen run length is highlighted.">
+      <g id="sk-bars"></g>
+    </svg>
+    <div class="tl-readout" id="sk-readout"></div>
+    <div class="tl-chart-caption">Each bar is \(1 - a_n\) from the recursion above, computed exactly in your browser (no simulation). Real trades are not perfectly independent — losses often cluster in particular market regimes — which makes long runs <em>more</em> likely than this, not less.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you roll a dice once, getting a six is rare-ish. If you roll it all afternoon, you will definitely see some sixes — and some times when you get three bad rolls in a row. Do anything enough times and the "rare" bad patterns turn up. That is not bad luck being unfair; it is just how lots of rolls behave.</p>
+  </div>
+
+  <h3>3. The deepest drawdown grows with time and volatility</h3>
+  <p>
+    Let \(V_t\) be the account value and \(M_t = \max_{s \le t} V_s\) its running peak. The
+    drawdown at time \(t\) is \(D_t = 1 - V_t/M_t\), and the <strong>maximum drawdown</strong>
+    over a period is the worst of these, \(\text{MDD}_T = \max_{t \le T} D_t\).
+  </p>
+  <div class="tl-math">
+    \[ D_t = 1 - \frac{V_t}{M_t}, \qquad \text{MDD}_T = \max_{t \le T} D_t \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Vₜ</code><span>account value after trade t</span></div>
+    <div class="tl-eq-chip c2"><code>Mₜ</code><span>the highest value reached so far — the peak</span></div>
+    <div class="tl-eq-chip c3"><code>Dₜ</code><span>how far below that peak you are now</span></div>
+    <div class="tl-eq-chip c4"><code>MDD_T</code><span>the worst hole over the whole period</span></div>
+  </div>
+  <p>
+    Because it is a <em>maximum</em>, MDD can only stay the same or get worse as \(T\) grows.
+    For a process with positive drift \(\mu\) and volatility \(\sigma\), Magdon-Ismail and
+    co-authors (2004) showed that the expected maximum drawdown grows roughly like
+    \(\sqrt{T}\) over short horizons and then keeps growing, more slowly — logarithmically — over
+    long ones, with a scale set by \(\sigma^2/\mu\). Double the volatility at the same drift and
+    the typical worst hole gets much deeper; halve the edge and it does too. A positive edge stops
+    the drawdown from growing without limit; it does not stop it growing.
+  </p>
+  <p>
+    The simulation below makes this concrete for a fixed-fraction trader: each trade risks a
+    fraction \(r\) of current equity, wins \(b\,r\) with probability \(p\), and loses \(r\)
+    otherwise. With \(p = 0.55\), \(b = 1\) and 2% risk per trade, across 2,000 simulated
+    traders (seed 42):
+  </p>
+  <table class="dd-table">
+    <tr><th>Trades</th><th>median max DD</th><th>90th pct max DD</th><th>worst of 2,000</th><th>ended below start</th></tr>
+    <tr><td>100</td><td>15.0%</td><td>24.8%</td><td>43.4%</td><td>19.4%</td></tr>
+    <tr><td>300</td><td>21.2%</td><td>31.2%</td><td>56.3%</td><td>5.3%</td></tr>
+    <tr><td>1,000</td><td>29.6%</td><td>41.0%</td><td>69.4%</td><td>0.1%</td></tr>
+  </table>
+  <p>
+    The same edge, the same size: the further you go, the more certain you are to be up — and the
+    deeper the worst hole you will have sat in along the way. One trader in five is still
+    underwater after 100 trades of a genuinely winning system.
+  </p>
+
+  <h3>4. Risk of ruin is a bet-size problem</h3>
+  <p>
+    "Ruin" need not mean zero. For a fixed-fraction trader the account never literally hits
+    zero, but a fall to half is, for most people and most mandates, the end: clients leave,
+    limits trip, the trader quits. So define ruin here as <em>equity touching 50% of its
+    starting value at any point</em>. The edge per trade, in units of the amount risked, is the
+    expectancy \(E = p\,b - q\); the growth-maximising bet is the Kelly fraction:
+  </p>
+  <div class="tl-math">
+    \[ E = p\,b - q, \qquad f^{*} = p - \frac{q}{b} = \frac{E}{b} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>E</code><span>expected profit per trade, in multiples of the amount risked (R)</span></div>
+    <div class="tl-eq-chip c2"><code>b</code><span>payoff ratio: average win divided by average loss</span></div>
+    <div class="tl-eq-chip c3"><code>f*</code><span>Kelly fraction: the share of equity to risk that maximises long-run growth</span></div>
+  </div>
+  <p>
+    For \(p = 0.55\), \(b = 1\): \(E = 0.10R\) and \(f^{*} = 10\%\). Simulating 300 trades at
+    different bet sizes (2,000 traders each, seed 42) shows how the same edge turns from
+    comfortable to dangerous purely through size:
+  </p>
+  <table class="dd-table">
+    <tr><th>Risk per trade</th><th>1%</th><th>2%</th><th>5% (½ Kelly)</th><th>10% (Kelly)</th><th>15%</th><th>20%</th></tr>
+    <tr><td>Median max drawdown</td><td>10.8%</td><td>21.2%</td><td>47.2%</td><td>76.2%</td><td>91.7%</td><td>97.9%</td></tr>
+    <tr><td>Touched −50% at some point</td><td>0.0%</td><td>0.1%</td><td>8.6%</td><td>42.1%</td><td>68.7%</td><td>84.1%</td></tr>
+    <tr><td>Median ending equity (× start)</td><td>1.33</td><td>1.72</td><td>3.08</td><td>4.49</td><td>3.07</td><td>0.96</td></tr>
+  </table>
+  <p>
+    Full Kelly gives the fastest median growth and roughly a four-in-ten chance of being cut in
+    half along the way (in the continuous-time idealisation, the chance of ever falling to a
+    fraction \(x\) of your starting wealth at full Kelly is \(x\) itself — a 50% chance of
+    halving). Beyond Kelly you take more risk for <em>less</em> growth; at twice Kelly the median
+    trader ends roughly where they started. This is why practitioners bet a fraction of Kelly, and
+    why <a href="kelly-criterion.html">the Kelly lesson</a> spends so long on estimation error: if
+    your \(p\) is overstated, your "half Kelly" may really be full Kelly.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(d\)</td><td>Drawdown: fall from the peak, as a fraction of the peak.</td></tr>
+    <tr><td>\(g\)</td><td>Gain needed to recover a drawdown, \(d/(1-d)\).</td></tr>
+    <tr><td>\(p,\ q\)</td><td>Win probability per trade, and loss probability \(q = 1 - p\).</td></tr>
+    <tr><td>\(k\)</td><td>Length of a losing run.</td></tr>
+    <tr><td>\(n\)</td><td>Number of trades.</td></tr>
+    <tr><td>\(a_n\)</td><td>Probability that \(n\) trades contain no losing run of length \(k\) or more.</td></tr>
+    <tr><td>\(V_t,\ M_t\)</td><td>Account value after trade \(t\), and its running peak.</td></tr>
+    <tr><td>\(D_t\)</td><td>Current drawdown, \(1 - V_t/M_t\).</td></tr>
+    <tr><td>MDD</td><td>Maximum drawdown: the worst \(D_t\) over a period.</td></tr>
+    <tr><td>\(T\)</td><td>Length of the period (trades or time).</td></tr>
+    <tr><td>\(\mu,\ \sigma\)</td><td>Drift (average return per period) and volatility of the account.</td></tr>
+    <tr><td>\(r\)</td><td>Fraction of current equity risked per trade.</td></tr>
+    <tr><td>\(b\)</td><td>Payoff ratio: average win divided by average loss.</td></tr>
+    <tr><td>\(E\)</td><td>Expectancy per trade in units of the amount risked, \(pb - q\).</td></tr>
+    <tr><td>\(f^{*}\)</td><td>Kelly fraction, \(p - q/b\).</td></tr>
+    <tr><td>\(x\)</td><td>A fraction of starting wealth (e.g. 0.5 for "cut in half").</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive" id="mc-chart">
+    <div class="tl-chart-label">Monte Carlo: forty traders, one system</div>
+    <svg id="mc-svg" class="dd-svg" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Forty simulated equity curves for the same trading system, on a log scale. Most end above the starting line but every one has drawdowns; the curve with the deepest drawdown is drawn in red and the median-ending curve in blue. A dashed line marks the 50% ruin level.">
+      <g id="mc-grid"></g>
+      <g id="mc-paths"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>median-ending trader</span>
+      <span><i style="background:var(--red)"></i>deepest drawdown of the forty</span>
+      <span><i style="background:var(--text3)"></i>everyone else</span>
+      <span><i style="background:var(--amber)"></i>ruin line (50% of start)</span>
+    </div>
+    <svg id="mc-hist" class="dd-svg" viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Histogram of the maximum drawdown across 1,000 simulated traders, with the median and 90th percentile marked.">
+      <g id="mc-hbars"></g>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win rate p</span><span class="tl-live" id="mc-p-val">55%</span></div>
+        <input type="range" id="mc-p" min="30" max="75" step="1" value="55">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Payoff ratio b (avg win ÷ avg loss)</span><span class="tl-live" id="mc-b-val">1.00</span></div>
+        <input type="range" id="mc-b" min="0.5" max="3" step="0.05" value="1">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Risk per trade r</span><span class="tl-live" id="mc-r-val">2.0%</span></div>
+        <input type="range" id="mc-r" min="0.25" max="25" step="0.25" value="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Number of trades</span><span class="tl-live" id="mc-n-val">300</span></div>
+        <input type="range" id="mc-n" min="50" max="1000" step="10" value="300">
+      </div>
+    </div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" id="mc-reroll">🎲 Re-roll</button>
+      <button type="button" class="tl-btn" id="mc-reset">Reset to seed 42</button>
+      <span class="tl-hint" id="mc-seed">seed 42</span>
+    </div>
+    <div class="tl-readout" id="mc-readout"></div>
+    <div class="tl-chart-caption">
+      Real simulation, seeded so it is reproducible: each trader takes \(n\) independent trades,
+      risking \(r\) of current equity; a win adds \(b\,r\), a loss subtracts \(r\). Forty paths are
+      drawn; the statistics and histogram use 1,000 traders with the same seed. Try the defaults,
+      then push risk to 10% (full Kelly for these numbers) and watch the red path — and the ruin
+      count. Then set win rate to 50% with b = 1: no edge, and the drawdowns look exactly as
+      "normal" as they did with an edge.
+    </div>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Same edge, different size: growth versus risk of ruin</div>
+    <svg id="rk-svg" class="dd-svg" viewBox="0 0 640 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two curves against risk per trade from 0.5% to 25%: the chance of touching 50% of starting equity, rising steadily, and the median ending equity, which rises to a peak near the Kelly fraction and then falls. A vertical line marks the Kelly fraction.">
+      <g id="rk-g"></g>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--red)"></i>chance of touching 50% of start</span>
+      <span><i style="background:var(--green)"></i>median ending equity (right axis)</span>
+      <span><i style="background:var(--purple)"></i>Kelly fraction f*</span>
+      <span><i style="background:var(--amber)"></i>your current risk setting</span>
+    </div>
+    <div class="tl-chart-caption">Uses the win rate, payoff and number of trades from the simulation above (400 traders per bet size, seed 7). Growth peaks near Kelly; ruin keeps climbing. Everything to the right of the purple line is more danger for less reward.</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The psychology: abandoning a system at its low</h2>
+  <p>
+    The maths says drawdowns are normal. The person living through one experiences something
+    else. Three well-documented tendencies line up against them:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">📉</div>
+      <h4>Recency</h4>
+      <p>We weight the last few outcomes far more than the long record. Ten weeks of losses feel like evidence; ten years of backtest feel like a story.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">😣</div>
+      <h4>Loss aversion</h4>
+      <p>Losses hurt roughly twice as much as equal gains please (lesson 1). A drawdown is a long run of the painful kind, and pain asks for action.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔀</div>
+      <h4>Switching to what just worked</h4>
+      <p>The replacement strategy is usually chosen because it did well recently — just as its own good run may be ending.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧾</div>
+      <h4>The behaviour gap</h4>
+      <p>Morningstar's long-running "Mind the Gap" studies have repeatedly found that the average dollar invested in funds earns less than the funds themselves, because money tends to arrive after good runs and leave after bad ones.</p>
+    </div>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>An ordinary losing streak — six or eight in a row</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The account</b>Drawdown deepens; recovery now needs more than the loss</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the drawdown low</b>The trader judges the system by its recent results, not its tested record</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The trader</b>Cuts size or switches off at the bottom; moves to what recently worked</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The loss is locked in; the recovery happens without them</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You plant seeds and water them every day. For two weeks nothing comes up, so you dig them all out and plant different seeds. The first seeds were about to sprout. Most plans that work still have a "nothing is happening" stretch, and the danger is giving up right in the middle of it.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: sound strategies, long droughts</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Value investing's lost decade, roughly 2007–2020</h3>
+    <p>
+      Buying cheap stocks and avoiding expensive ones — the "value" premium — is one of the most
+      studied ideas in finance, documented across decades and countries. Measured by the standard
+      academic value factor (cheap minus expensive stocks, in the Fama–French data), it then went
+      through the longest and deepest drawdown in its recorded history, from around 2007 until late
+      2020, with the sharpest leg in 2018–2020 as large growth and technology companies kept
+      outrunning everything cheap.
+    </p>
+    <p>
+      Through that stretch the arguments that "value is dead" multiplied — some of them serious,
+      about intangible assets and low interest rates. Value managers saw years of outflows and some
+      closed. In mid-2020 AQR's Cliff Asness published a long piece asking, in its title, whether
+      systematic value investing was dead, and concluding that the cheapness of cheap stocks had
+      become extreme rather than that the idea had broken.
+    </p>
+    <p style="margin-bottom:0">
+      Then, from November 2020 — the month the first effective COVID-19 vaccine results were
+      announced — value staged a sharp rebound that ran through 2021 and 2022. Investors who had
+      left near the bottom of the drawdown took the full loss and missed the recovery. That is not
+      proof value will always come back; it is a demonstration that a long, deep drawdown is
+      exactly what a real premium can look like from the inside.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2000: Tiger Management closes near the turn</h3>
+    <p>
+      Julian Robertson's Tiger Management had been one of the most successful hedge funds of the
+      1980s and 1990s, built on buying what it judged undervalued and shorting what it judged
+      overvalued. In the late-1990s technology boom it refused to chase internet stocks, lagged
+      badly, and suffered heavy losses and redemptions.
+    </p>
+    <p style="margin-bottom:0">
+      In late March 2000 Robertson announced he was closing the funds and returning outside
+      capital, saying in effect that he no longer understood the market. The Nasdaq had peaked
+      earlier that same month. Over the following years the technology bubble deflated and the
+      kind of cheap, unloved stocks Tiger favoured did far better. The story is usually told as a
+      lesson about bubbles; it is just as much a lesson about how a long drawdown wears down even
+      a legendary investor's conviction at close to the worst possible moment.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Is a 9-loss streak at trade 220 a reason to stop?</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>What the record says</h4>
+        <p>Your system's tested record: 55% winners, average win equal to average loss (\(b = 1\)), so \(E = 0.55 - 0.45 = 0.10R\) per trade. You risk 2% per trade and plan 300 trades a year.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>What a 9-loss streak costs</h4>
+        <p>\(0.98^9 = 0.834\): a 16.6% drawdown, needing \(0.166/0.834 = 19.9\%\) to recover. Painful, but inside the simulated median <em>maximum</em> drawdown of 21.2% for 300 trades.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>How surprising is it?</h4>
+        <p>From the recursion, a run of 9 or more in 300 trades at 55% has probability 11.5%; within 220 trades it is a little lower. Unusual, not damning: roughly one year in nine you should see one.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>What would actually be evidence?</h4>
+        <p>Not the streak, but the whole record since launch. After 220 trades at a true 55%, the win count has mean 121 and standard deviation \(\sqrt{220 \times 0.55 \times 0.45} \approx 7.4\). If you have won 115 (52%), that is under one standard deviation low — no evidence of anything. If you had won 99 (45%), you would be about three standard deviations low, and that is the kind of number worth stopping for.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Your exercise</div>
+    <h3>Write your drawdown rules before you need them</h3>
+    <p>Do this once, on a calm day, and keep it next to your screen. Use the simulation above with your own numbers.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Your expected losing streak</h4>
+        <p>Enter your win rate and yearly trade count in the streak calculator. Write down the run length that has a 50% chance of appearing this year. When it shows up, you will recognise it as Tuesday, not a crisis.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Your "normal" drawdown</h4>
+        <p>Set the simulator to your win rate, payoff, size and a year of trades. Write down the 90th-percentile maximum drawdown. Anything shallower is normal for your system, by your own numbers.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Size so you can live with that number</h4>
+        <p>If the 90th-percentile drawdown is one you would not sit through, the answer is a smaller \(r\), now — not abandoning the system later. Stay at or below half Kelly, and lower if your win rate is estimated from a short record.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Define "broken" in advance</h4>
+        <p>Pick a statistical test, not a feeling: for example, "live win rate more than 2.5 standard deviations below the tested rate after at least 100 trades", or "drawdown beyond the 99th percentile of the simulation". Write it down. Only that rule gets to switch the system off.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>"A deep drawdown means the edge is gone."</strong> Not tested here, and not testable from a drawdown alone: the simulator shows that a system with no edge and a system with a real one produce drawdowns that look the same for hundreds of trades. What can be tested is the live record against the tested record — win rate and expectancy with an interval — and that is the rule the exercise above asks you to write.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>The desk's one fully-audited strategy, and the streaks it should expect.</strong> A slow FX strategy built on the US-versus-foreign 2-year yield spread: out of sample 2015–2025 with honest publication lags, ~109 trades, 63% win, profit factor 2.2, every out-of-sample year 2022–2026 positive. Apply this lesson's recursion to it: over 109 trades at 63%, a run of 4 losses has a 73.5% chance and a run of 5 a 37.7% chance; the expected longest run is about 4.3. A validated edge with a 63% win rate should still be expected to lose four or five in a row. <em>Backtest evidence, paper-traded since 2026-07 — not forward-proven.</em></span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>The honest flip side: "trend following works on FX".</strong> On an FX-only basket the desk found nothing — verified not to be a bug with an independent rebuild; a broad multi-asset version was modest (about 0.3 out of sample), barely beating buy-and-hold. Some long drawdowns are not a premium waiting to pay; they are no edge at all. The desk concluded that from a test, not from how the drawdown felt.</span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> "stick with it through the drawdown" is only good advice for a system
+    whose edge was established <em>before</em> the drawdown, out of sample, with costs. Applied to a
+    system that never had an edge, the same advice is how small losses become large ones. The
+    discipline is the same in both directions: decide on evidence you wrote down in advance, never
+    on the shape of the last few months.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🎲</div>
+      <h4>Simulate before launch</h4>
+      <p>Run thousands of Monte Carlo or bootstrapped paths from the tested trade list to get the distribution of drawdowns and streaks — not just the backtest's one realised path (see <a href="bootstrapping-monte-carlo.html">Monte Carlo</a>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>Size from the drawdown back</h4>
+      <p>Choose the drawdown the mandate or your nerves can bear, then pick the risk per trade that keeps the 90th or 95th percentile inside it. Fractional Kelly is the ceiling, not the target.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🚦</div>
+      <h4>Pre-committed review triggers</h4>
+      <p>Many funds set a drawdown level that triggers a <em>review</em> and a deeper one that cuts risk. The review asks whether the live record is statistically different from the tested one — not whether it hurts.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⏳</div>
+      <h4>Judge on enough trades</h4>
+      <p>A strategy that trades rarely needs years to show its edge. Know how many trades it takes for the edge to clear noise — and expect to wait that long (see <a href="sharpe-family-deflated.html">Sharpe ratios</a>).</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Drawdown expectations are not yet written down per strategy</h3>
+    <p style="margin-bottom:0">
+      The desk's ledger (<code>js/deskEvidence.js</code>) records whether an edge exists, with win
+      rates and intervals, but no strategy yet carries a pre-computed streak or drawdown envelope of
+      the kind this lesson's exercise produces. The numbers in the validated box above were computed
+      for this lesson, from the ledger's own win rate and trade count, assuming independent trades.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where drawdown thinking goes wrong</h3>
+    <p><strong>Quoting the per-trade odds.</strong> "Eight losses in a row is 1 in 595" is true for one starting point and irrelevant to a year of trading.</p>
+    <p><strong>Treating the backtest's max drawdown as the max.</strong> It is one sample from a distribution — and, because MDD grows with time, a longer live run will usually exceed it.</p>
+    <p><strong>Assuming independence.</strong> Real losses cluster in regimes, so real streaks run longer than the formula. Treat the formula as a floor on what to expect.</p>
+    <p><strong>Sizing at full Kelly on an estimated edge.</strong> An overstated win rate turns full Kelly into over-betting, where growth falls and ruin climbs.</p>
+    <p style="margin-bottom:0"><strong>Using "it's just a drawdown" to excuse a dead system.</strong> Drawdowns do not tell you whether the edge exists. Only the record against a pre-stated test does.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Recovery needs \(d/(1-d)\).</strong> −50% needs +100%; −75% needs +300%. Keep drawdowns where the curve is still flat.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Streaks are normal — compute them.</strong> At 55%, a run of 8 is 1 in 595 from any one trade, 24% in 300 trades and more likely than not by ~750. A run of 6 is more likely than not by 152.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Max drawdown only grows with time,</strong> and scales with volatility relative to edge. Expect live drawdowns to exceed the backtest's.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bet size decides ruin.</strong> Same 55% edge: touching −50% in 300 trades is ~0% at 2% risk, ~9% at half Kelly and ~42% at full Kelly.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: "a deep drawdown means the edge is gone".</strong> A drawdown cannot tell you; a pre-stated test of the live record can.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: trend following on FX.</strong> Some drawdowns are no edge at all — "hold through it" is only right for an edge established out of sample.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Your account is down 40% from its peak. What gain do you need to get back?</summary>
+    <div class="tl-answer">\(g = d/(1-d) = 0.40/0.60 = 66.7\%\). The 60% that is left has to grow by two-thirds.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A colleague says "a run of 8 losses at a 55% win rate is a 1-in-595 event, so my system must be broken." What's wrong?</summary>
+    <div class="tl-answer">\(0.45^8 \approx 1/595\) is the chance that a run of 8 starts at one particular trade. Over many trades there are many starting points. Counted exactly, a run of 8 or more appears somewhere in 300 trades about 24% of the time, and is more likely than not by about 750 trades.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why does a backtest's maximum drawdown understate what you should expect live?</summary>
+    <div class="tl-answer">It is one realised path out of a wide distribution, and maximum drawdown is a running maximum that can only grow as the period lengthens. A long live run usually sets a new, deeper worst. Simulate the distribution and plan for a high percentile, not the backtest's single number.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A system wins 60% with b = 1. What is the Kelly fraction, and roughly what happens if you bet twice that?</summary>
+    <div class="tl-answer">\(f^{*} = p - q/b = 0.60 - 0.40 = 20\%\). At twice Kelly the expected log-growth falls to about zero: the median trader goes nowhere while suffering enormous drawdowns and a high chance of touching half their starting equity.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. After 200 trades a system tested at 55% has won 104 (52%). Is that evidence the edge has gone?</summary>
+    <div class="tl-answer">Expected wins 110, standard deviation \(\sqrt{200 \times 0.55 \times 0.45} \approx 7.0\). 104 is under one standard deviation below — entirely consistent with a 55% system. It is also consistent with a 50% system, which is why short records cannot settle the question in either direction.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Value investing had a historic drawdown from about 2007 to 2020 and then rebounded sharply. What can — and can't — you conclude?</summary>
+    <div class="tl-answer">You can conclude that a long, deep drawdown is compatible with a real premium, and that leaving near the bottom locked in the loss. You cannot conclude that every drawdown recovers: the desk's FX trend-following test is the counter-example, a strategy whose weak results reflected no edge. The difference is evidence established before the drawdown, not the drawdown itself.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Malik Magdon-Ismail, Amir F. Atiya, Amrit Pratap and Yaser S. Abu-Mostafa, "On the Maximum Drawdown of a Brownian Motion", <em>Journal of Applied Probability</em>, 2004 — how expected maximum drawdown grows with time, drift and volatility.</li>
+    <li>Edward O. Thorp, "The Kelly Criterion in Blackjack, Sports Betting, and the Stock Market", 1997 (revised 2006) — Kelly, fractional Kelly and the drawdown properties of each.</li>
+    <li>Leonard C. MacLean, Edward O. Thorp and William T. Ziemba (eds.), <em>The Kelly Capital Growth Investment Criterion</em>, World Scientific, 2011 — the collected literature, including the probability of falling to a fraction of wealth.</li>
+    <li>Mark F. Schilling, "The Longest Run of Heads", <em>The College Mathematics Journal</em>, 1990 — why long runs are more common than intuition says, and the \(\log_{1/q}(np)\) rule of thumb.</li>
+    <li>Clifford Asness, "Is (Systematic) Value Investing Dead?", AQR, 2020 — a practitioner's account from inside value's long drawdown.</li>
+    <li>Morningstar, "Mind the Gap" (annual) — measured investor returns against fund returns.</li>
+    <li><a href="kelly-criterion.html">Kelly Criterion</a>, <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo</a> and <a href="sharpe-family-deflated.html">Sharpe ratios</a> — the sizing, simulation and performance-measurement lessons behind this one.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="herding-narratives-bubbles.html">← Herding, Narratives and Bubbles</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  var FONT = "'DM Mono',monospace";
+
+  // ---------- 1. Recovery curve: g = d/(1-d) ----------
+  (function(){
+    var X0 = 60, X1 = 620, Y0 = 200, Y1 = 20, DMAX = 0.8, GMAX = 4;
+    function x(d){ return X0 + (X1 - X0) * d / DMAX; }
+    function y(g){ return Y0 - (Y0 - Y1) * Math.min(g, GMAX) / GMAX; }
+    var grid = document.getElementById('rc-grid');
+    [0, 1, 2, 3, 4].forEach(function(g){
+      grid.appendChild(el('line', { x1: X0, x2: X1, y1: y(g), y2: y(g) }, 'stroke:var(--border);stroke-width:1'));
+      grid.appendChild(el('text', { x: X0 - 8, y: y(g) + 4, 'text-anchor': 'end', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', '+' + (g * 100) + '%'));
+    });
+    [0, 0.2, 0.4, 0.6, 0.8].forEach(function(d){
+      grid.appendChild(el('text', { x: x(d), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', '−' + Math.round(d * 100) + '%'));
+    });
+    grid.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 32, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text2)', 'drawdown'));
+    var dPath = '';
+    for (var i = 0; i <= 160; i++){ var d = DMAX * i / 160; dPath += (i ? 'L' : 'M') + x(d).toFixed(1) + ',' + y(d / (1 - d)).toFixed(1); }
+    document.getElementById('rc-path').setAttribute('d', dPath);
+    var inp = document.getElementById('rc-d');
+    function render(){
+      var d = parseFloat(inp.value) / 100, g = d / (1 - d);
+      var cx = x(d), cy = y(g);
+      document.getElementById('rc-d-val').textContent = Math.round(d * 100) + '%';
+      var v = document.getElementById('rc-v'); v.setAttribute('x1', cx); v.setAttribute('x2', cx);
+      var dot = document.getElementById('rc-dot'); dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+      var lbl = document.getElementById('rc-lbl');
+      lbl.setAttribute('x', cx > 480 ? cx - 8 : cx + 8); lbl.setAttribute('y', Math.max(cy - 8, 32));
+      lbl.setAttribute('text-anchor', cx > 480 ? 'end' : 'start');
+      lbl.textContent = '+' + (g * 100).toFixed(1) + '%';
+      document.getElementById('rc-readout').innerHTML = 'Down <b>' + Math.round(d * 100) + '%</b> → you need <b>+' + (g * 100).toFixed(1) + '%</b> to get back to the peak.';
+    }
+    inp.addEventListener('input', render);
+    render();
+  })();
+
+  // ---------- 2. Exact losing-streak probability ----------
+  // P(at least one run of >= k losses in n independent trades), loss prob q.
+  // Dynamic programme over the current run length (equivalent to the a_n recursion).
+  function pRun(n, k, q){
+    var st = new Float64Array(k), hit = 0; st[0] = 1;
+    for (var t = 0; t < n; t++){
+      var nx = new Float64Array(k);
+      for (var r = 0; r < k; r++){
+        var v = st[r]; if (!v) continue;
+        nx[0] += v * (1 - q);
+        if (r + 1 >= k) hit += v * q; else nx[r + 1] += v * q;
+      }
+      st = nx;
+    }
+    return hit;
+  }
+  (function(){
+    var pIn = document.getElementById('sk-p'), nIn = document.getElementById('sk-n'), kIn = document.getElementById('sk-k');
+    var bars = document.getElementById('sk-bars');
+    var X0 = 50, X1 = 620, Y0 = 165, Y1 = 15, KMIN = 2, KMAX = 20;
+    function render(){
+      var p = parseFloat(pIn.value) / 100, n = parseInt(nIn.value, 10), k = parseInt(kIn.value, 10), q = 1 - p;
+      document.getElementById('sk-p-val').textContent = Math.round(p * 100) + '%';
+      document.getElementById('sk-n-val').textContent = n;
+      document.getElementById('sk-k-val').textContent = k;
+      clear(bars);
+      [0, 0.5, 1].forEach(function(f){
+        var yy = Y0 - (Y0 - Y1) * f;
+        bars.appendChild(el('line', { x1: X0, x2: X1, y1: yy, y2: yy }, 'stroke:var(--border);stroke-width:1'));
+        bars.appendChild(el('text', { x: X0 - 6, y: yy + 4, 'text-anchor': 'end', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', Math.round(f * 100) + '%'));
+      });
+      var w = (X1 - X0) / (KMAX - KMIN + 1), expected = 0, half = null;
+      for (var kk = KMIN; kk <= KMAX; kk++){
+        var pr = pRun(n, kk, q), h = (Y0 - Y1) * pr, bx = X0 + (kk - KMIN) * w;
+        bars.appendChild(el('rect', { x: bx + 3, y: Y0 - h, width: w - 6, height: Math.max(h, 0.5), rx: 2 }, 'fill:' + (kk === k ? 'var(--amber)' : 'var(--blue)') + ';opacity:' + (kk === k ? 1 : 0.55)));
+        bars.appendChild(el('text', { x: bx + w / 2, y: Y0 + 14, 'text-anchor': 'middle', 'font-size': 9.5, 'font-family': FONT }, 'fill:var(--text3)', kk));
+        if (pr >= 0.5) half = kk;
+      }
+      bars.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 30, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text2)', 'losing run of at least … (trades)'));
+      for (var j = 1; j <= n; j++){ var pj = pRun(n, j, q); if (pj < 1e-7) break; expected += pj; }
+      var single = Math.pow(q, k);
+      document.getElementById('sk-readout').innerHTML =
+        'At a <b>' + Math.round(p * 100) + '%</b> win rate over <b>' + n + '</b> trades: a run of <b>' + k + '+</b> losses appears with probability <b>' + (pRun(n, k, q) * 100).toFixed(1) + '%</b>' +
+        ' (from any one starting trade: 1 in ' + Math.round(1 / single).toLocaleString() + ').<br>Expected longest losing run <b>' + expected.toFixed(1) + '</b>; the longest run you should more likely than not see: <b>' + (half === null ? 'under 2' : half) + '</b>.';
+    }
+    [pIn, nIn, kIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // ---------- 3. Monte Carlo equity curves ----------
+  function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function simulate(o){
+    var rnd = mulberry32(o.seed), res = [], paths = [];
+    for (var s = 0; s < o.sims; s++){
+      var eq = 1, peak = 1, mdd = 0, run = 0, longest = 0, ruined = false, path = s < o.keep ? [1] : null;
+      for (var t = 0; t < o.n; t++){
+        if (rnd() < o.p){ eq *= 1 + o.b * o.r; run = 0; } else { eq *= 1 - o.r; run++; if (run > longest) longest = run; }
+        if (eq > peak) peak = eq;
+        var dd = 1 - eq / peak; if (dd > mdd) mdd = dd;
+        if (eq <= 0.5) ruined = true;
+        if (path) path.push(eq);
+      }
+      res.push({ end: eq, mdd: mdd, longest: longest, ruined: ruined });
+      if (path) paths.push({ path: path, mdd: mdd, end: eq });
+    }
+    return { res: res, paths: paths };
+  }
+  function quant(arr, p){ var a = arr.slice().sort(function(x, y){ return x - y; }); var i = (a.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); }
+
+  var pIn = document.getElementById('mc-p'), bIn = document.getElementById('mc-b'), rIn = document.getElementById('mc-r'), nIn = document.getElementById('mc-n');
+  var seed = 42;
+  function params(){ return { p: parseFloat(pIn.value) / 100, b: parseFloat(bIn.value), r: parseFloat(rIn.value) / 100, n: parseInt(nIn.value, 10) }; }
+
+  function renderMC(){
+    var o = params();
+    document.getElementById('mc-p-val').textContent = Math.round(o.p * 100) + '%';
+    document.getElementById('mc-b-val').textContent = o.b.toFixed(2);
+    document.getElementById('mc-r-val').textContent = (o.r * 100).toFixed(2).replace(/0$/, '') + '%';
+    document.getElementById('mc-n-val').textContent = o.n;
+    document.getElementById('mc-seed').textContent = 'seed ' + seed;
+    var sim = simulate({ p: o.p, b: o.b, r: o.r, n: o.n, sims: 1000, keep: 40, seed: seed });
+
+    // Equity curves, log scale.
+    var X0 = 60, X1 = 620, Y0 = 280, Y1 = 14;
+    var lo = Infinity, hi = -Infinity;
+    sim.paths.forEach(function(pp){ pp.path.forEach(function(v){ var l = Math.log(v); if (l < lo) lo = l; if (l > hi) hi = l; }); });
+    lo = Math.min(lo, Math.log(0.45)); hi = Math.max(hi, Math.log(1.2));
+    function px(t){ return X0 + (X1 - X0) * t / o.n; }
+    function py(v){ return Y0 - (Y0 - Y1) * (Math.log(Math.max(v, 1e-9)) - lo) / (hi - lo); }
+    var grid = document.getElementById('mc-grid'), pg = document.getElementById('mc-paths');
+    clear(grid); clear(pg);
+    var ticks = [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+    ticks.forEach(function(v){
+      var l = Math.log(v); if (l < lo || l > hi) return;
+      grid.appendChild(el('line', { x1: X0, x2: X1, y1: py(v), y2: py(v) }, 'stroke:' + (v === 1 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1'));
+      grid.appendChild(el('text', { x: X0 - 6, y: py(v) + 4, 'text-anchor': 'end', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', v + '×'));
+    });
+    grid.appendChild(el('line', { x1: X0, x2: X1, y1: py(0.5), y2: py(0.5) }, 'stroke:var(--amber);stroke-width:1.2;stroke-dasharray:5,4'));
+    [0, 0.25, 0.5, 0.75, 1].forEach(function(f){
+      grid.appendChild(el('text', { x: px(o.n * f), y: Y0 + 14, 'text-anchor': 'middle', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', Math.round(o.n * f)));
+    });
+    var worst = 0, ends = sim.paths.map(function(pp){ return pp.end; }), medEnd = quant(ends, 0.5), medIdx = 0, best = Infinity;
+    sim.paths.forEach(function(pp, i){
+      if (pp.mdd > sim.paths[worst].mdd) worst = i;
+      var dist = Math.abs(Math.log(pp.end) - Math.log(medEnd)); if (dist < best){ best = dist; medIdx = i; }
+    });
+    function dOf(path){ var step = Math.max(1, Math.floor(path.length / 300)), d = ''; for (var t = 0; t < path.length; t += step) d += (t ? 'L' : 'M') + px(t).toFixed(1) + ',' + py(path[t]).toFixed(1); var L = path.length - 1; d += 'L' + px(L).toFixed(1) + ',' + py(path[L]).toFixed(1); return d; }
+    sim.paths.forEach(function(pp, i){
+      if (i === worst || i === medIdx) return;
+      pg.appendChild(el('path', { d: dOf(pp.path), fill: 'none' }, 'stroke:var(--text3);stroke-width:1;opacity:0.45'));
+    });
+    pg.appendChild(el('path', { d: dOf(sim.paths[medIdx].path), fill: 'none' }, 'stroke:var(--blue);stroke-width:2.2'));
+    pg.appendChild(el('path', { d: dOf(sim.paths[worst].path), fill: 'none' }, 'stroke:var(--red);stroke-width:2.2'));
+
+    // Histogram of max drawdown over 1,000 traders.
+    var mdds = sim.res.map(function(r){ return r.mdd; }), longs = sim.res.map(function(r){ return r.longest; });
+    var hg = document.getElementById('mc-hbars'); clear(hg);
+    var HX0 = 60, HX1 = 620, HY0 = 118, HY1 = 14, NB = 40, counts = new Array(NB).fill(0);
+    mdds.forEach(function(m){ counts[Math.min(NB - 1, Math.floor(m * NB))]++; });
+    var cmax = Math.max.apply(null, counts) || 1, bw = (HX1 - HX0) / NB;
+    counts.forEach(function(c, i){ var h = (HY0 - HY1) * c / cmax; hg.appendChild(el('rect', { x: HX0 + i * bw + 1, y: HY0 - h, width: bw - 2, height: h }, 'fill:var(--purple);opacity:0.6')); });
+    [0, 0.25, 0.5, 0.75, 1].forEach(function(f){ hg.appendChild(el('text', { x: HX0 + (HX1 - HX0) * f, y: HY0 + 14, 'text-anchor': 'middle', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', Math.round(f * 100) + '%')); });
+    hg.appendChild(el('text', { x: HX0 - 6, y: HY1 + 8, 'text-anchor': 'end', 'font-size': 9.5, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text3)', 'traders'));
+    var medDD = quant(mdds, 0.5), p90DD = quant(mdds, 0.9);
+    [[medDD, 'median', 'var(--blue)'], [p90DD, '90th pct', 'var(--red)']].forEach(function(m){
+      var xx = HX0 + (HX1 - HX0) * m[0];
+      hg.appendChild(el('line', { x1: xx, x2: xx, y1: HY1, y2: HY0 }, 'stroke:' + m[2] + ';stroke-width:1.5;stroke-dasharray:3,3'));
+      hg.appendChild(el('text', { x: xx + 4, y: HY1 + 10 + (m[1] === 'median' ? 0 : 12), 'font-size': 10, 'font-family': FONT }, 'fill:' + m[2], m[1] + ' ' + (m[0] * 100).toFixed(1) + '%'));
+    });
+    hg.appendChild(el('text', { x: (HX0 + HX1) / 2, y: HY0 + 28, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text2)', 'maximum drawdown over the run (1,000 traders)'));
+
+    var E = o.p * o.b - (1 - o.p), kelly = o.p - (1 - o.p) / o.b;
+    var ruin = sim.res.filter(function(r){ return r.ruined; }).length / sim.res.length;
+    var below = sim.res.filter(function(r){ return r.end < 1; }).length / sim.res.length;
+    document.getElementById('mc-readout').innerHTML =
+      'Edge per trade <b>' + (E >= 0 ? '+' : '−') + Math.abs(E).toFixed(2) + 'R</b> · Kelly fraction <b>' + (kelly > 0 ? (kelly * 100).toFixed(1) + '%' : 'none (no edge)') + '</b> · you risk <b>' + (o.r / Math.max(kelly, 1e-9) > 50 || kelly <= 0 ? '—' : (o.r / kelly).toFixed(2) + '× Kelly') + '</b><br>' +
+      'Max drawdown: median <b>' + (medDD * 100).toFixed(1) + '%</b>, 90th pct <b>' + (p90DD * 100).toFixed(1) + '%</b>, worst <b>' + (Math.max.apply(null, mdds) * 100).toFixed(1) + '%</b><br>' +
+      'Longest losing run: median <b>' + quant(longs, 0.5) + '</b>, worst <b>' + Math.max.apply(null, longs) + '</b> · touched 50% of start: <b>' + (ruin * 100).toFixed(1) + '%</b> · ended below start: <b>' + (below * 100).toFixed(1) + '%</b><br>' +
+      'Your pre-commitment line: a drawdown shallower than <b>' + (p90DD * 100).toFixed(0) + '%</b> is normal for these settings.';
+  }
+
+  // ---------- 4. Risk vs ruin curve ----------
+  function renderRisk(){
+    var o = params(), g = document.getElementById('rk-g'); clear(g);
+    var X0 = 60, X1 = 580, Y0 = 200, Y1 = 14, RMAX = 0.25, pts = [];
+    for (var i = 1; i <= 25; i++){
+      var r = RMAX * i / 25;
+      var sim = simulate({ p: o.p, b: o.b, r: r, n: o.n, sims: 400, keep: 0, seed: 7 });
+      var ruin = sim.res.filter(function(x){ return x.ruined; }).length / 400;
+      var med = quant(sim.res.map(function(x){ return x.end; }), 0.5);
+      pts.push({ r: r, ruin: ruin, med: med });
+    }
+    var mmax = Math.max(2, Math.max.apply(null, pts.map(function(p){ return p.med; })));
+    function x(r){ return X0 + (X1 - X0) * r / RMAX; }
+    function yr(v){ return Y0 - (Y0 - Y1) * v; }
+    function ym(v){ return Y0 - (Y0 - Y1) * Math.min(v, mmax) / mmax; }
+    [0, 0.25, 0.5, 0.75, 1].forEach(function(f){
+      g.appendChild(el('line', { x1: X0, x2: X1, y1: yr(f), y2: yr(f) }, 'stroke:var(--border);stroke-width:1'));
+      g.appendChild(el('text', { x: X0 - 6, y: yr(f) + 4, 'text-anchor': 'end', 'font-size': 10, 'font-family': FONT }, 'fill:var(--red)', Math.round(f * 100) + '%'));
+      g.appendChild(el('text', { x: X1 + 6, y: yr(f) + 4, 'font-size': 10, 'font-family': FONT }, 'fill:var(--green)', (mmax * f).toFixed(1) + '×'));
+    });
+    [0, 0.05, 0.1, 0.15, 0.2, 0.25].forEach(function(r){ g.appendChild(el('text', { x: x(r), y: Y0 + 14, 'text-anchor': 'middle', 'font-size': 10, 'font-family': FONT }, 'fill:var(--text3)', Math.round(r * 100) + '%')); });
+    g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 30, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif" }, 'fill:var(--text2)', 'risk per trade'));
+    var kelly = o.p - (1 - o.p) / o.b;
+    if (kelly > 0 && kelly <= RMAX){
+      g.appendChild(el('line', { x1: x(kelly), x2: x(kelly), y1: Y1, y2: Y0 }, 'stroke:var(--purple);stroke-width:1.5;stroke-dasharray:4,3'));
+      g.appendChild(el('text', { x: x(kelly) + 4, y: Y1 + 10, 'font-size': 10, 'font-family': FONT }, 'fill:var(--purple)', 'Kelly ' + (kelly * 100).toFixed(1) + '%'));
+    }
+    if (o.r <= RMAX) g.appendChild(el('line', { x1: x(o.r), x2: x(o.r), y1: Y1, y2: Y0 }, 'stroke:var(--amber);stroke-width:1.5'));
+    var d1 = '', d2 = '';
+    pts.forEach(function(p, i){ d1 += (i ? 'L' : 'M') + x(p.r).toFixed(1) + ',' + yr(p.ruin).toFixed(1); d2 += (i ? 'L' : 'M') + x(p.r).toFixed(1) + ',' + ym(p.med).toFixed(1); });
+    g.appendChild(el('path', { d: d1, fill: 'none' }, 'stroke:var(--red);stroke-width:2.2'));
+    g.appendChild(el('path', { d: d2, fill: 'none' }, 'stroke:var(--green);stroke-width:2.2'));
+  }
+
+  var riskTimer = null;
+  function renderAll(){ renderMC(); clearTimeout(riskTimer); riskTimer = setTimeout(renderRisk, 120); }
+  [pIn, bIn, rIn, nIn].forEach(function(i){ i.addEventListener('input', renderAll); });
+  document.getElementById('mc-reroll').addEventListener('click', function(){ seed = 1 + Math.floor(Math.random() * 99999); renderMC(); });
+  document.getElementById('mc-reset').addEventListener('click', function(){ seed = 42; renderMC(); });
+  renderMC(); renderRisk();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

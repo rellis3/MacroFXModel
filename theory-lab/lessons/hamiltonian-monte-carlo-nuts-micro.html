@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Hamiltonian Monte Carlo &amp; NUTS — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the leapfrog math by hand, and a 6-question self-test?<a href="hamiltonian-monte-carlo-nuts.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Bayesian models too big for Gibbs to walk</h2>
+      <p class="sl-sub">Hoffman &amp; Gelman's NUTS (2011–14), via Stan (2012) and PyMC (2016 onward).</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Pool dozens of instruments or model a hidden volatility path, and random-walk samplers crawl — tiny correlated steps, and fits that only look converged.</p>
+        <p>HMC uses the posterior's gradient to travel far per step. NUTS removed its tuning and became the default engine of Stan and PyMC, which is how it entered quant research.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Fit large, correlated Bayesian models quickly — and flag when a fit has failed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A blind random walk gets lost in high dimensions</h2>
       <p class="sl-sub">The previous lesson's random-walk Metropolis-Hastings proposal has a structural weakness baked in from the start.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">In a single dimension with a roughly symmetric target, this blindness barely matters. But real posteriors are rarely one dimension — and once correlation and dimensionality both climb, the walk has nothing to fall back on except taking tinier and tinier steps.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Borrow physics: turn the posterior into a landscape</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The intuition</div>
@@ -60,8 +73,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Follow the gradient: the leapfrog integrator</h2>
       <p class="sl-sub">Hamilton's equations can't be solved exactly for a real posterior, so HMC simulates them numerically, one small step of size ε at a time.</p>
       <div class="sl-icard-grid">
@@ -76,8 +89,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same target, two very different explorations</h2>
       <p class="sl-sub">Both paths below are exploring the same elongated, correlated 2-D posterior. Pick a sampler.</p>
       <div class="sl-card">
@@ -112,8 +125,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">A marble rolling through the energy landscape</h2>
       <p class="sl-sub">The negative log-posterior, drawn as a bowl. A posterior peak sits at the bottom — the lowest potential energy.</p>
       <div class="sl-card">
@@ -136,8 +149,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why this wins: less autocorrelation per unit of compute</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -162,8 +175,8 @@
       <div class="sl-quote">More distance covered per proposal, at a comparably high acceptance rate, means far less autocorrelation between successive samples for the same computational budget — precisely the failure mode Section 1 named as the motivating problem.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The catch: two dials, and getting them wrong is costly</h2>
       <p class="sl-sub">Plain HMC still needs a human to choose the step size ε and the number of leapfrog steps L per trajectory.</p>
       <div class="sl-icard-grid">
@@ -175,8 +188,8 @@
       <p class="sl-p">Worse, the right L isn't a fixed number — it depends on the local curvature of the target, which can vary across the parameter space. Hand-tuning a single L that works everywhere is often impossible.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Step size, live: accurate but slow, or fast but drifting</h2>
       <p class="sl-sub">Same simple target (a 1-D standard-Normal potential, so the exact motion is a clean oscillation). The dashed curve is the true, continuous dynamics; the solid curve is what leapfrog actually computes at the chosen step size.</p>
       <div class="sl-card">
@@ -199,8 +212,8 @@
       <p class="sl-p">Drag toward the small end: the solid curve hugs the dashed one almost exactly, but it took many steps (many gradient evaluations) to get there. Drag toward the large end: far fewer steps, but the solid curve visibly drifts out of phase with the true dynamics — the accumulating discretization error the Metropolis step exists to catch.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The tuning tradeoff, quantified</h2>
       <p class="sl-sub">Trajectory length = step size × number of leapfrog steps (L·ε). Fix a target trajectory length and a step size — how many steps does that take?</p>
       <div class="sl-card">
@@ -223,8 +236,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">NUTS: stop guessing L, detect the U-turn instead</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🌳</div><div><h4>Grows the trajectory automatically</h4><p>Instead of a fixed L, NUTS extends the path outward — forward and backward in simulated time — doubling its length repeatedly, building a tree of candidate states.</p></div></div>
@@ -239,8 +252,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -290,8 +303,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Plain Metropolis-Hastings is direction-blind — it forces tiny steps in high dimensions, producing slow, highly-autocorrelated chains.</p></div>
@@ -300,6 +313,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gradient-informed trajectories cover far more ground per proposal at a comparably high acceptance rate — dramatically less autocorrelation for the same compute.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Plain HMC trades one problem for another: step size ε and trajectory length L now have to be hand-tuned, and getting either wrong wastes compute or degrades mixing.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>NUTS removes L from that list — it grows the trajectory automatically and stops the moment it detects a U-turn, which is why it's the default sampler in Stan and PyMC.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: NUTS became the engine of Stan and PyMC — the practical way to fit large hierarchical and stochastic-volatility models.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

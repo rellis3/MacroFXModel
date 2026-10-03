@@ -36,6 +36,7 @@
       <li>Both methods generalize the classical, univariate rules in <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> (rolling median/MAD thresholds) to <strong>multivariate</strong> anomalies — a point that looks completely normal on every single variable in isolation, but whose <em>combination</em> of variables has never occurred before.</li>
       <li>Anomaly detection is the pointwise, cross-sectional cousin of <a href="change-point-detection.html">Change-Point Detection</a>'s sequential framing: change-point tools ask "has the process shifted, over time"; anomaly detectors ask "is this individual observation unusual, right now, relative to everything else."</li>
       <li><strong>Mandatory honest framing:</strong> an anomaly score flags "this is statistically unusual" — never "this is wrong," and never "this is a trading opportunity." What counts as unusual always needs a human decision about context, and a model trained on one regime will flag an entirely normal but different regime as one long anomaly.</li>
+      <li><strong>How it reached trading:</strong> Single-variable bad-tick filters (e.g. Brownlees &amp; Gallo, 2006) came first; Isolation Forest and autoencoders brought multivariate checks to data quality and trade surveillance.</li>
     </ul>
   </div>
 
@@ -75,6 +76,41 @@
     stays bad at anything unfamiliar — so when a genuinely unusual input comes through, the reconstruction
     comes out noticeably wrong. The size of that mistake is the anomaly score.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A bad tick, a fat finger, or something worse?</h3>
+    <div class="tl-origin-who">Outlier detection · tick-data cleaning (e.g. Brownlees &amp; Gallo, 2006) and surveillance; Isolation Forest (2008) and autoencoders in the 2010s</div>
+    <p>
+    Every market-data feed carries bad prints: misplaced decimals, stale quotes,
+    trades reported out of sequence. Every venue also sees activity that might be a fat
+    finger or manipulation. The first defences were single-variable rules. Brownlees
+    &amp; Gallo (2006), for example, set out a now widely cited filter that drops a tick if
+    it sits too far from a trimmed local mean of its neighbours. Rules like that check one
+    reading at a time, so they miss a tick whose spread, volume and quote rate are each
+    normal but whose combination is not.
+    </p>
+    <p>
+    Multivariate detectors from general data mining fill that gap. Card issuers had
+    used learned fraud scores since the 1990s, and after 2008 Isolation Forest and, in
+    the 2010s, autoencoders spread into financial data-quality checks and trade
+    surveillance, which scans orders for patterns such as spoofing or wash trades.
+    </p>
+    <p>
+    On a desk, these models sit at the front of the pipeline, flagging ticks to
+    clean or investigate before they reach a model or a risk figure. They also run
+    alongside it, as alerts that market conditions no longer look like anything in the
+    training data. They are checks, not signals.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Flag the rows (ticks, trades, days) whose combination of features hasn't been seen before, before they reach a model or a risk number.</dd>
+        <dt>Takes in</dt><dd>Raw feeds from <a href="data-pipeline-raw-to-trading-ready.html">the data pipeline</a>, and the clusters of normal behaviour from <a href="clustering-market-structure.html">clustering</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="data-cleaning-outliers-missing-data.html">Data cleaning</a> for flagged ticks, and <a href="change-point-detection.html">change-point detection</a> when the flags start to cluster in time.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -407,6 +443,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both are genuinely multivariate.</strong> They catch a bad combination of otherwise-individually-normal variables, closing a structural gap a per-series MAD threshold cannot.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An anomaly score is never "this is wrong" or "this is an opportunity."</strong> It is a measure of statistical rarity relative to training data, full stop — every downstream judgment about what "unusual" means here requires a human.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Regime-trained models flag regime shifts as anomalies.</strong> A model fit on one regime cannot tell "genuinely wrong" apart from "a different, legitimate regime it has simply never seen" — both look identical to it.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>On a desk, anomaly detection guards the pipeline.</strong> It catches bad ticks and odd trading activity that one-variable rules miss, before they reach a model or a risk figure. It is a check, not a signal.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

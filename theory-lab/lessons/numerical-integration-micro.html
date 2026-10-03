@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Numerical Integration — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="numerical-integration.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Option prices and tail risk are integrals</h2>
+      <p class="sl-sub">Boyle · 1977 · Paskov &amp; Traub · 1995 · FRTB · 2016</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>An option price is an expected payoff; expected shortfall is a tail average. Boyle (1977) priced options by Monte Carlo, quasi-Monte Carlo (Paskov and Traub, 1995) priced a 360-dimensional mortgage security much faster, and Gauss quadrature became standard for Heston's integrals.</p>
+        <p>Under FRTB (2016), 97.5% expected shortfall replaced 99% VaR, so how the tail is integrated now feeds capital.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> turn an expectation into a number with a known error.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">When calculus runs out of formula</h2>
       <p class="sl-sub">Every price, probability, and expectation below reduces to the same calculus object.</p>
       <div class="sl-icard-grid">
@@ -37,8 +50,8 @@
       <div class="sl-quote">Black-Scholes being a clean algebraic expression is the exception, not the rule — it only happens because the lognormal density and a vanilla payoff are an unusually cooperative pairing. Change either piece and the formula disappears, but the underlying question — "what's the area under this curve" — doesn't.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The trapezoidal rule — straight edges under a curve</h2>
       <p class="sl-sub">Chop the interval into thin strips, replace the curved top of each strip with a straight line, and add up the trapezoids.</p>
       <div class="sl-card">
@@ -70,8 +83,8 @@
       <p class="sl-p">Split [a,b] into n equal strips of width h = (b−a)/n. Within each strip, a straight line connecting the two sample points stands in for the true curve — the strip's area is then exactly a trapezoid's area, average height times width. The trapezoidal rule's error shrinks proportionally to h² (equivalently 1/n²): <strong>doubling the strip count roughly quarters the error.</strong></p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 2, continued</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 3, continued</div>
       <h2 class="sl-h2">Simpson's rule — fitting parabolas instead of lines</h2>
       <p class="sl-sub">One extra point per piece buys a parabola instead of a straight line — and a much better error rate, for free.</p>
       <div class="sl-compare">
@@ -114,8 +127,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Watch the approximation converge</h2>
       <p class="sl-sub">Trapezoidal rule estimating ∫₀¹ φ(z) dz — the standard normal density between 0 and 1. Drag the slider.</p>
       <div class="sl-card">
@@ -138,8 +151,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 3, continued</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 4, continued</div>
       <h2 class="sl-h2">Build your own trapezoidal estimate</h2>
       <p class="sl-sub">Same φ(z) curve. Change the bounds or the strip count — everything recomputes live.</p>
       <div class="sl-card">
@@ -166,8 +179,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same budget, three answers</h2>
       <p class="sl-sub">Same integral, ∫₀¹ φ(z) dz = 0.34134. Same budget: 5 function evaluations. Compare the methods.</p>
       <div class="sl-card">
@@ -193,8 +206,8 @@
       <p class="sl-p">At this low budget and this low dimension (1D), the ranking is clear: Simpson's rule &gt; trapezoidal rule &gt; Monte Carlo, all evaluated the exact same number of times. That ranking is about to flip completely — the next two slides show why.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Grids don't scale — the curse of dimensionality</h2>
       <p class="sl-sub">A d-dimensional grid needs roughly n points along every dimension — nᵈ evaluations in total.</p>
       <div class="sl-icard-grid">
@@ -207,8 +220,8 @@
       <div class="sl-quote">A grid method that works comfortably in 1 or 2 dimensions can look like it should "just scale up" to 3 or 4 — the exponential cost only becomes obvious once someone actually tries to run it, by which point real development time may already be sunk into an approach that has to be thrown out.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Monte Carlo — sampling instead of gridding</h2>
       <p class="sl-p">An expectation E[g(X)] of a function g of a random variable X with density p is itself an integral: E[g(X)] = ∫g(x)p(x)dx. The law of large numbers says averaging many independent draws of g(X) converges to that same expectation — draw N samples from p, evaluate g at each, and average:</p>
       <div class="sl-row">
@@ -239,8 +252,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where practitioners actually reach for each</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Characteristic-function option pricing</h4><p>Heston- and SABR-style models price via a 1D Fourier integral of a characteristic function — routinely evaluated with Simpson's rule or Gauss-Legendre quadrature, never simulation.</p></div></div>
@@ -253,8 +266,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this goes wrong in practice</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>A kink inside a Simpson's panel</h4><p>A digital or barrier payoff's kink breaks the smooth-curvature assumption a parabola fit relies on — the h⁴ advantage can silently degrade back toward, or past, the trapezoidal rate.</p></div></div>
@@ -267,8 +280,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -318,8 +331,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Some integrals — many pricing expectations, especially with exotic payoffs or nonstandard densities — have no closed-form antiderivative and must be estimated numerically.</p></div>
@@ -328,6 +341,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Both are grids, and grids don't scale — a d-dimensional grid needs roughly nᵈ points, the curse of dimensionality that makes them infeasible past 2-3 dimensions.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Monte Carlo replaces the grid with random sampling — its error shrinks at a fixed 1/√N rate, regardless of how many dimensions the problem has.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The trade-off is real: quadrature is faster and far more accurate per point in 1-2 dimensions; Monte Carlo is the only tractable option once dimensionality is genuinely high.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Monte Carlo (Boyle, 1977), quasi-Monte Carlo (Paskov &amp; Traub, 1995) and Gauss quadrature price options; FRTB's expected shortfall (2016) made the tail integral a capital number.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -370,7 +384,7 @@
   }
   function Phi(z){ return 0.5 * (1 + erf(z / Math.SQRT2)); }
 
-  // Slide 5 — interactive slider, trapezoids drawn live under the phi curve.
+  // Slide 6 — interactive slider, trapezoids drawn live under the phi curve.
   (function(){
     var slider = document.getElementById('ni-slider');
     if (!slider) return;
@@ -409,7 +423,7 @@
     update();
   })();
 
-  // Slide 6 — live trapezoidal calculator, with guards against bad input.
+  // Slide 7 — live trapezoidal calculator, with guards against bad input.
   (function(){
     var aInput = document.getElementById('ni2-a');
     if (!aInput) return;

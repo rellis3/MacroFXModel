@@ -38,6 +38,7 @@
       <li>Calmar = CAGR ÷ worst peak-to-trough drawdown, a single realized event rather than an average dispersion statistic — this project's own Calmar calculation takes both as caller-supplied inputs rather than assuming one definition.</li>
       <li>The Deflated Sharpe Ratio corrects a reported Sharpe for how many variations were tried before it was picked: in the lesson's worked example (\(N=50\) trials, \(\sigma_{SR}=0.66\)), pure luck alone is expected to produce a best-of-50 Sharpe of \(SR_0\approx1.50\), so a reported 1.80 only clears that bar by 0.30 — working out to \(DSR\approx0.81\), not the near-100% a naive zero-benchmark test would claim.</li>
       <li>This project's own performance-metrics module already ships the Sharpe-honesty pair (a Sharpe standard-error function and a minimum-track-record-length function) that DSR's non-normality correction reuses, but nothing today tracks the trial count \(N\) behind a reported Sharpe — DSR itself isn't built yet.</li>
+      <li><strong>Real-world episode:</strong> LTCM's smooth, high-return 1995–97 record came from a leveraged short-liquidity book that lost about $4.6 billion in 1998; and this desk's own Fibonacci-level system backtest reported a Sharpe of 18.4 and 85.7% wins against 39.6% live, a ratio computed correctly from fills that could not happen.</li>
     </ul>
   </div>
 
@@ -590,6 +591,94 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: two Sharpe ratios that measured the wrong thing</h2>
+  <p>
+  The real-world scenario above is a ratio inflated by the search behind it. These two were inflated by something DSR cannot
+  see: a sample with no storm in it, and returns no live account could have earned.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Long-Term Capital Management, 1994–1998: the smoothest curve on Wall Street</h3>
+    <p>
+      Long-Term Capital Management opened in 1994, run by John Meriwether with partners who included Myron Scholes and Robert
+      Merton, who shared the 1997 Nobel prize in economics. Its core trades were convergence bets: buy the cheaper of two
+      nearly identical bonds, short the dearer one, and wait for the small gap between them to close. Each gap was tiny, so
+      the fund used heavy leverage, with a balance sheet of the order of 25 times its capital going into 1998.
+    </p>
+    <p>
+      For three years the record looked like Strategy B from the Calmar discussion in Section 02: returns of roughly 40% a
+      year after fees in 1995 and 1996, with low reported volatility. Measured on that sample, a Sharpe ratio, a Sortino ratio
+      and a Calmar ratio would all have looked excellent, because the sample contained no stress.
+    </p>
+    <p style="margin-bottom:0">
+      In August 1998 Russia defaulted on its domestic debt. Investors everywhere ran for the safest, most liquid bonds, and the
+      spreads LTCM was betting would narrow widened instead, across many of its trades at once. At that leverage the losses
+      ran into billions within weeks, and its positions were too large to sell without moving prices further against it. In
+      September 1998 the Federal Reserve Bank of New York brought its creditor banks together, and they put in about
+      <strong>$3.6 billion</strong> to take over the portfolio and wind it down. The fund lost roughly <strong>$4.6
+      billion</strong> in 1998.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link concept"><b style="color:var(--purple)">★ This lesson: the ratio</b>1995–97: high returns, low volatility, no stress in the sample; every ratio said "low risk"</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>LTCM</b>Low measured risk let it run ~25× leverage to make tiny spreads worth trading</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Russia, Aug 1998</b>Default; investors flee to the safest, most liquid bonds</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Spreads</b>Widen together across trades the ratios had treated as separate bets</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>LTCM</b>Margin calls; positions too big to sell without moving prices</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>~$4.6bn lost; creditor banks put in ~$3.6bn to wind it down</div>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened here</div>
+    <h3>This desk, 2026: a Sharpe ratio of 18.4</h3>
+    <p>
+      The desk's own example runs the other way: not a real return stream hiding a tail, but a simulated one that could not
+      have happened. A backtest of a Fibonacci-level vote portfolio, 10,190 trades from mid-2021 to 2026, reported a
+      <strong>Sharpe ratio of 18.4</strong> and an <strong>85.7%</strong> win rate on trades that risked one unit to make
+      about one. The paper-trading bot playing the same game over 90 days won <strong>39.6%</strong> of its 101 trades and
+      lost $13,696 on paper.
+    </p>
+    <p style="margin-bottom:0">
+      The audit found no arithmetic error: seven trades a day at 0.5% risk and 85% wins really does compound like that. The
+      inflation sat upstream, in what counted as a fill and what a fill cost. Its leading explanations: an 8-pip target
+      modelled with no spread paid on either leg, and a limit order counted as filled whenever a bar's range touched it,
+      when in live trading the touches that fill are disproportionately the ones that keep going through the level. No FX
+      strategy sustains 85% wins at one-to-one. The Sharpe of 18.4 was not a measurement of edge; it was the symptom.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A driver with no accidents in three years looks very safe, unless they've only ever driven on sunny days. LTCM's record was three sunny years. And a sky-high video-game score doesn't mean you can drive: the Sharpe of 18.4 came from a pretend game where every order filled perfectly and for free.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+  Every ratio in this lesson is estimated from the sample you have, and assumes that sample is a fair draw of the risks to
+  come: roughly stationary, roughly independent periods, tails that have shown up at least once. LTCM's returns came from
+  being short liquidity, a payoff that stays calm until a flight to quality, and 1995–97 contained none. The skew and
+  kurtosis terms in the DSR denominator cannot repair that: they correct for tails the sample contains, not for tails it has
+  not drawn yet. The Fibonacci-level system case breaks a different assumption, that the returns fed into the ratio are ones a live
+  account could have earned. DSR deflates for the search; it has nothing to say about a fill model.
+  </p>
+
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>backtest-artifacts: a backtest that looks too good has a bug, and the bug is usually in what it was allowed
+    to see.</strong> The Fibonacci-level system: 85.7% backtest win rate vs 39.6% live. One mean-reversion system's entire edge: stops were not live for the first
+    hour after entry. A voting system: a survivorship fix sat on a deeper look-ahead; honest edge 0.23× cost. A volatility tool:
+    95% of "wins" scored before entry. Every live bot on this desk is graded against this list. Read a very high Sharpe as a
+    prompt to audit the engine before anything else.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Sharpe, Sortino and Calmar are reported side by side on essentially every
@@ -699,7 +788,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three ratios, three different questions.</strong> Sharpe divides by total wobble, Sortino by downside-only wobble, Calmar by the single worst realized drawdown — none subsumes the others.</span></div>
@@ -709,9 +798,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A reported Sharpe hides how many variations produced it.</strong> The Deflated Sharpe Ratio benchmarks the reported Sharpe against \(SR_0\), the chance-expected ceiling for a best-of-\(N\) search — not against zero.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Undercounting \(N\) silently inflates DSR.</strong> Informal reruns and "nudge it by feel" iterations count as trials too — leaving them out understates \(SR_0\) and overstates the resulting probability.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A high DSR is not proof, and it isn't a substitute for OOS.</strong> It only corrects for the selection bias of trying \(N\) variations — costs, regime shift, and this repo's own out-of-sample bar (Lego Principle 5) are separate, still-mandatory hurdles.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A Sharpe ratio measures the sample and the fills you assumed, nothing more (backtest-artifacts, CONTEXT).</strong> LTCM's calm 1995–97 contained no flight to quality, and 1998 cost about $4.6 billion. This desk's Fibonacci-level system backtest showed Sharpe 18.4 and 85.7% wins against 39.6% live. DSR corrects for the search, not for a missing tail or an impossible fill.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does annualizing a Sharpe ratio use \(\sqrt{k}\) rather than \(k\) itself?</summary>
@@ -813,6 +903,7 @@
     <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Sharpe Ratio Efficient Frontier"</em>, Journal of Risk, 2012 — the Probabilistic Sharpe Ratio and Minimum Track Record Length, the direct basis for this project's own minimum-track-record-length function.</li>
     <li>David H. Bailey &amp; Marcos López de Prado, <em>"The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality"</em>, Journal of Portfolio Management, 2014 — the primary citation for this lesson's second half: the full DSR derivation, the extreme-value-theory approximation for \(SR_0\), and worked examples of the selection-bias correction.</li>
     <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the broader, more accessible case for why un-deflated backtest metrics systematically mislead, with the same authors' perspective on why this matters beyond the formula itself.</li>
+    <li>Roger Lowenstein, <em>When Genius Failed: The Rise and Fall of Long-Term Capital Management</em> (Random House, 2000) — the narrative history of the fund whose smooth pre-1998 record is this lesson's real-world episode.</li>
   </ul>
   </details>
 
@@ -920,5 +1011,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

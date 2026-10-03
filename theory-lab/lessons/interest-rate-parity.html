@@ -38,6 +38,7 @@
     <li>The worked example prices a 1-year USD/EUR forward at \(S=1.10\), \(r_d=5\%\), \(r_f=3\%\) as \(F^\ast \approx 1.1214\), then shows a hypothetical mispriced forward of 1.15 yielding a riskless $26,818.18 arbitrage on $1,000,000 — the exact trade that keeps CIP pinned in practice.</li>
     <li>Fama (1984) tested UIP's one-for-one prediction and found the regression coefficient is typically negative (Froot &amp; Thaler's 1990 survey reports roughly −0.8, not +1) — the forward premium puzzle: high-yielding currencies have tended to appreciate or hold flat rather than depreciate as UIP predicts, which is the empirical basis of the FX carry trade.</li>
     <li>The JPY/AUD carry-trade scenario shows both sides at once: the interest differential (~4.2pp) was pocketed largely intact through calm 2023–mid-2024 markets, then AUD/JPY fell 10%+ in about two weeks after the BoJ's 31 July 2024 hike — the carry trade is short a fat left tail, not free money.</li>
+    <li><strong>Real-world episode:</strong> in autumn 2008 even covered parity broke. After Lehman, non-US banks scrambled for dollars through FX swaps, nobody had the balance sheet to arbitrage the gap, and it narrowed only once the Fed's swap lines went unlimited in mid-October. The yen carry trade crashed in the same weeks. The desk's own carry test is <code>fx-factor-book-v2</code>, UNDERPOWERED: +0.61 out of sample is 1.5 SE, so it is not an edge.</li>
   </ul>
 </div>
 
@@ -529,6 +530,115 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: autumn 2008, when both parities broke at once</h2>
+  <p>
+    The scenario above shows the uncovered side failing violently in 2024. Autumn 2008 is the harder case,
+    because it broke the side this lesson calls an identity. Covered parity and the carry trade failed in the
+    same weeks, for the same underlying reason: the balance sheet that both of them quietly assume ran out.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>September–October 2008: the dollar shortage and the carry crash</h3>
+    <p>
+      Going into 2008, many banks outside the US held large books of dollar assets, US mortgage securities among
+      them, and funded them short-term in dollar wholesale markets, rolling the borrowing over every few weeks. The
+      BIS later described this as a global <strong>dollar shortage</strong> waiting to happen. When Lehman
+      Brothers failed on 15 September 2008, banks stopped lending unsecured dollars to each other. Non-US banks
+      still had to fund their dollar assets, so they turned to the FX swap market: hand over euros or yen today,
+      receive dollars, and reverse the trade at a forward rate. That is Route 2 of Section 02, run in reverse and
+      run by everyone at once.
+    </p>
+    <p>
+      In the textbook, an arbitrage desk takes the other side the moment the forward drifts from \(F^\ast\). In
+      2008 the desks that would normally do that were the same banks short of dollars and short of balance sheet.
+      So the dollar interest rate implied by FX swaps rose well above the cash dollar rate. Covered parity, the
+      relationship this lesson says holds to a sliver of a basis point, opened gaps many times wider than any normal
+      transaction-cost band in EUR/USD and USD/JPY. Baba &amp; Packer (2009) at the BIS documented the deviations and
+      tied them to dollar funding stress at non-US banks.
+    </p>
+    <p>
+      The gap was closed by a central bank's balance sheet, not a trading desk's. The Federal Reserve had opened
+      dollar <strong>swap lines</strong> with the ECB and the SNB in December 2007. After Lehman it widened them,
+      and in mid-October 2008 it removed the size caps for the ECB, the Bank of England, the SNB and the Bank of
+      Japan. Those central banks then lent dollars to their own banks, and the deviations narrowed. As
+      Du, Tepper &amp; Verdelhan later showed, they never went all the way back to zero.
+    </p>
+    <p style="margin-bottom:0">
+      The uncovered side broke in the same weeks. Yen-funded carry positions, the forward premium puzzle in
+      trade form, were unwound by investors facing losses and margin calls. The yen rose sharply against
+      almost everything, and AUD/JPY, the cross in the scenario above, lost something like 40–50% from its mid-2008
+      high to its late-October low. Years of carry went in a few months. Brunnermeier, Nagel &amp; Pedersen (2008)
+      had already shown the pattern: carry crashes cluster where funding liquidity dries up.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Lehman fails</b>15 Sept 2008: banks stop lending unsecured dollars to each other</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Non-US banks</b>Still have dollar assets to fund, so they must raise dollars through FX swaps</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Arbitrage desks</b>Short of dollars and balance sheet themselves, so nobody takes the other side</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: CIP</b>The swap-implied dollar rate pulls far above the cash rate, and \(F\ne S(1+r_d)/(1+r_f)\)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Forced to lend dollars worldwide through swap lines, uncapped from mid-October</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The gap narrows but never fully closes; yen-funded carry crashes in the same weeks</div>
+  </div>
+  <p>
+    The starred link is this lesson's identity. Every link before it is about <em>who can fund the
+    arbitrage</em>, which is exactly the caveat the CIP section attached to the formula.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>Unlimited balance sheet, and a rate that is really risk-free</h3>
+    <p style="margin-bottom:0">
+      The CIP derivation assumes someone can always borrow at \(r_d\) or \(r_f\) and has unlimited, free balance
+      sheet to run Route 2 at any size. In 2008 the interbank rate stopped being risk-free, because lenders feared
+      their counterparty would fail, and the balance sheet to run the arbitrage disappeared. UIP's risk-neutral
+      investor broke in the same weeks: the carry return turned out to be a crash premium, paid out in exactly the
+      states of the world where funding vanishes.
+    </p>
+  </div>
+
+  <p>
+    The tempting trading claim in this lesson is the carry trade itself: <em>UIP fails, so holding the
+    higher-yielder pays.</em> This desk has tested a carry basket once, and has looked at the yen carry-unwind
+    shape. Neither licenses the claim.
+  </p>
+
+  <div class="tl-verdict underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Underpowered</span>
+    <span><strong>fx-factor-book-v2: the carry basket's Sharpe is not an edge here.</strong> The incumbent carry
+    basket came in at <strong>+0.61 out of sample, which is 1.5 SE</strong> and sits in the 2021-26 rate-divergence
+    era (in-sample <strong>−0.12</strong>). With 5.7 years out of sample on 7 USD crosses the Sharpe SE is
+    <strong>0.41</strong>. The ledger's own instruction: do not cite the carry basket's out-of-sample Sharpe as an
+    edge.</span>
+  </div>
+
+  <div class="tl-verdict context" data-evidence="yen-into-yields" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>yen-into-yields: the carry-unwind shape is too rare to score.</strong> The yen firming while US
+    yields rise: <strong>35 episodes in 18 years</strong>, too few to score. Five sessions later USD/JPY was higher
+    47% of the time, EUR/JPY 62%, AUD/JPY 47%. The shape can be described; nothing can be claimed about the week
+    after.</span>
+  </div>
+
+  <p>
+    One thing these boxes are not: evidence about the desk's validated yield-spread sleeve. That sleeve trades
+    mean-reversion of a z-scored 2-year spread, a different claim from collecting carry, and it is not cited here as
+    carry evidence. Covered parity itself, and the cross-currency basis, are untested on this desk.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The forward rate stays "fair" only because big banks are always ready to fix it when it slips, a bit like a shop that keeps prices in line by buying cheap and selling dear. In 2008 those banks ran out of the money they needed to do the fixing, so the price slipped a long way. It only came back when central banks lent them the money. In the same weeks, everyone who had borrowed cheap yen to buy higher-paying currencies had to pay it back at once, and the yen shot up.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>The FX carry trade</strong> — long a basket of high-yielding
@@ -621,7 +731,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CIP is a no-arbitrage identity, not a forecast.</strong> \(F=S\cdot(1+r_d)/(1+r_f)\) is pinned down today by observable prices and holds to within a sliver of a basis point in liquid G10 pairs.</span></div>
@@ -631,9 +741,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The carry trade is short a fat left tail, not free money.</strong> The AUD/JPY unwind after the BoJ's 31 July 2024 hike erased years of accumulated carry in about two weeks.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A UIP "failure" is not an arbitrage opportunity.</strong> CIP is enforced by riskless arbitrage; a UIP deviation is a risk-bearing bet with a real downside, not a free lunch — and a "peso problem" can make a historical average look cleaner than the true underlying odds.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP, UIP, or a carry signal yet.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Even the identity needs someone to fund it, and carry is not an edge on this desk's data.</strong> In autumn 2008 CIP broke until the Fed's swap lines supplied the dollars arbitrageurs lacked. This desk's carry basket (fx-factor-book-v2, UNDERPOWERED) made +0.61 out of sample, 1.5 SE, with an in-sample of −0.12.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does CIP hold almost exactly while UIP fails empirically — what's actually different about the two claims?</summary>
@@ -812,5 +923,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

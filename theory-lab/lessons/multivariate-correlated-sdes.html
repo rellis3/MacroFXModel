@@ -36,6 +36,7 @@
       <li>The standard practical recipe: given a target correlation matrix \(\rho\), compute its Cholesky factor \(L\) (where \(\rho=LL^T\)), then simulate correlated shocks as \(dW_{\text{correlated}} = L\cdot dW_{\text{independent}}\).</li>
       <li>A real, honestly-run simulation of two correlated GBM processes (representing two FX pairs sharing a common currency) confirms the realized sample correlation converges to the target \(\rho\) as the number of simulated paths grows — with the expected sampling noise at small path counts, shrinking as path count increases.</li>
       <li>Heston's model, covered earlier in this curriculum, is already a live example of this machinery — its price and variance processes are two correlated SDEs linked by a single scalar \(\rho\), the simplest possible (2×2) case of the general Cholesky recipe built here.</li>
+      <li>How it reached trading: from the 1990s, Cholesky-correlated shocks became the standard way to simulate baskets, spreads and portfolio VaR from published covariance matrices (RiskMetrics, 1994), with nearest-correlation repair (Higham, 2002) when the matrix is broken.</li>
     </ul>
   </div>
 
@@ -83,6 +84,23 @@
       \(\Sigma\) or \(L\) is the mixing recipe; the correlated result is
       whatever the mixing recipe was built to produce.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Simulating a basket whose assets move together</h3>
+    <div class="tl-origin-who">Cholesky factor · Monte Carlo VaR and multi-asset pricing from the 1990s</div>
+    <p>A basket option, a spread option, a quanto or a portfolio's VaR depends on how several prices move together, not just on each one alone. Simulating each asset with its own independent shocks gets every single-asset price right and every joint risk wrong.</p>
+    <p>The fix is to factor the correlation matrix as \(LL^T\) and feed independent normals through \(L\). Devised as a surveying shortcut around 1910, the factorisation became routine in finance once J.P. Morgan's RiskMetrics (1994) published daily covariance matrices and banks generated correlated scenarios from them for VaR, and as multi-asset exotics moved to simulation.</p>
+    <p>Desks then met the snag this lesson warns about: correlation matrices pieced together from different sources are often not positive semi-definite, and Cholesky fails. Higham's 2002 paper "Computing the nearest correlation matrix — a problem from finance" came straight from that problem, and nearest-correlation repair is now a standard step before simulation.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Make simulated assets co-move the way the market's correlation matrix says they do.</dd>
+        <dt>Takes in</dt><dd>Correlations from <a href="primer-correlation-regression.html">Correlation &amp; regression</a>, the factorisation from <a href="linear-algebra-matrices.html">Linear algebra &amp; matrices</a>, single-asset paths from <a href="sde-numerical-schemes.html">SDE numerical schemes</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="stress-testing-scenario-analysis.html">Stress testing &amp; scenario analysis</a>, <a href="copulas.html">Copulas</a>, multi-factor <a href="short-rate-models-vasicek-cir-hull-white.html">short-rate models</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -431,6 +449,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Heston's ρ is already this recipe's simplest (2×2) case.</strong> heston-model.html's single scalar ρ is a Cholesky factor, just not named as one there.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Realized correlation converges to target ρ as path count grows, confirmed numerically here.</strong> 0.655 at N=50 paths settling to 0.600–0.606 by N≥5,000 — ordinary Monte Carlo convergence, not a special property of correlated simulation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A fixed ρ is a historical estimate, not a law of nature.</strong> Real correlations shift over time and often spike toward one in a crisis — a static Cholesky-based simulation cannot capture that on its own.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Cholesky is how desks make simulated assets co-move.</strong> It became routine with simulated VaR and multi-asset exotics in the 1990s; a correlation matrix that is not positive semi-definite breaks it, which is why nearest-correlation repair (Higham, 2002) exists.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

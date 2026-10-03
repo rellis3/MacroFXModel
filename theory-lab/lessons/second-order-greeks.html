@@ -37,6 +37,7 @@
       <li><strong>Speed, Color, and Zomma</strong> are gamma's sensitivities to price, time, and vol respectively — genuinely niche in daily practice, but real for very large books or fast-moving vol regimes.</li>
       <li>Vanna and vega are literally the same mixed partial derivative computed two different ways — \(\partial^2C/\partial S\partial\sigma = \partial^2C/\partial\sigma\partial S\) — a non-trivial, testable symmetry (Clairaut's/Schwarz's theorem), not a coincidence of notation.</li>
       <li>Aggregated across open interest, Vanna and Charm exposure generalize dealer-GEX into "vanna flows" and "charm flows" — real, mechanically sound, and typically <em>smaller in dollar magnitude</em> than gamma flows, not a claim that they're separately tradeable on their own.</li>
+      <li><strong>Real-world episode:</strong> on 15 January 2015 the Swiss franc floor went and EUR/CHF gapped by close to 30% in minutes while implied vol jumped from very low levels. Price and vol moved hugely <em>together</em>, so the Vanna and Vomma terms a risk report treats as rounding errors became the P&amp;L, and then the expansion itself stopped meaning anything. The popular claim that vanna/charm flows push prices around options expiry is <strong>untested</strong> here.</li>
     </ul>
   </div>
 
@@ -546,6 +547,97 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: 15 January 2015, when the small terms became the P&amp;L</h2>
+  <p>
+    Honest framing first. "Vanna and charm flows" are mostly a practitioner narrative: there is no well-documented public
+    episode in which they can be shown to have moved a market. What <em>is</em> well documented is a day on which the
+    second-order terms themselves, on an ordinary short-option book, stopped being second order.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>15 January 2015: the Swiss franc floor, seen through a risk report</h3>
+    <p>
+      From September 2011 the Swiss National Bank held a floor at 1.20 francs per euro, promising to buy unlimited euros
+      to defend it. For more than three years EUR/CHF sat just above the line, realised volatility collapsed, and implied
+      volatility on EUR/CHF options fell to very low levels. Selling out-of-the-money EUR/CHF puts, options that pay only
+      if the floor breaks, looked like collecting rent on an event the central bank had promised would not happen.
+    </p>
+    <p>
+      On the morning of 15 January 2015 the SNB removed the floor without warning and cut its deposit rate to −0.75%.
+      EUR/CHF traded as low as about 0.85 within minutes, a fall of close to 30%, before recovering part of the way the
+      same day, and many orders were filled far from where they had been placed. The broker losses (FXCM's rescue loan of
+      about $300 million from Leucadia, the insolvency of Alpari's UK arm) are told in
+      <a href="options-four-positions.html">The Four Option Positions</a>. This lesson's angle is what the Greeks on a
+      short-put book said that morning.
+    </p>
+    <p>
+      A Greek-by-Greek risk report is a Taylor expansion of the book's value:
+    </p>
+    <div class="tl-math">
+      \[ \Delta V \approx \Delta\,dS + \tfrac12\Gamma\,dS^2 + \nu\,d\sigma + \text{Vanna}\,dS\,d\sigma + \tfrac12\text{Vomma}\,d\sigma^2 + \Theta\,dt \]
+    </div>
+    <p>
+      On a normal day \(dS\) and \(d\sigma\) are small, so the cross term \(\text{Vanna}\,dS\,d\sigma\) and the
+      \(\text{Vomma}\,d\sigma^2\) term are tiny next to delta and vega. That is the premise of this lesson's own aggregation
+      section. On 15 January both \(dS\) and \(d\sigma\) were enormous <strong>at the same time</strong>, so their product
+      was not small any more. For a <em>short</em> out-of-the-money put both terms work against the seller: as vol rises,
+      Vanna makes the position's long delta grow while spot is falling, and Vomma makes its short vega grow, so each
+      further vol point costs more than the last. A book hedged flat on delta and vega was, by construction, unhedged
+      against exactly these terms.
+    </p>
+    <p style="margin-bottom:0">
+      Then the move went further than any expansion can follow. Options that were far out of the money at breakfast were
+      deep in the money minutes later, past every strike in between, with no tradeable prices along the way. At that point
+      even the second-order terms describe a market that no longer exists.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>SNB</b>Removes the 1.20 floor without warning; cuts the deposit rate to −0.75%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Spot</b>EUR/CHF gaps toward 0.85 within minutes; many orders find no price in between</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Implied vol</b>Jumps from very low levels as the "impossible" move happens</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ Short-put books · this lesson</b>Vanna: delta grows because vol rose. Vomma: short vega grows as vol rises. The cross terms that were rounding errors become the P&amp;L</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Brokers</b>Client losses exceed deposits; brokers must absorb the shortfall</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>FXCM needs a ~$300m rescue loan; Alpari's UK arm is insolvent</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: Vanna and Vomma, the cross and curvature terms in σ.</p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    Second-order Greeks are coefficients of a Taylor expansion, valid for <strong>small, simultaneous moves</strong> in
+    price, vol and time along <strong>continuous paths</strong> that can be re-hedged. A peg removal moves spot by more
+    than a quarter and vol by multiples in a single repricing. The expansion is then being evaluated far outside the
+    range where it works: the third-order terms this lesson calls niche (Speed, Zomma) are not small, and nothing can be
+    re-hedged in between.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Vanna and charm flows into options expiry: untested here.</strong> The tempting claim is that dealers'
+    vol- and time-driven re-hedging pushes index prices in a predictable direction in the days around monthly expiry. A
+    fair test would need a daily dealer Vanna and Charm exposure series computed point-in-time from that morning's open
+    interest, a pre-registered direction and window (for example, the five sessions into monthly expiry), matched
+    non-expiry weeks with the same volatility as controls, and a held-out period. None of that has been run.</span>
+  </div>
+  <p>
+    The nearest thing the desk has measured is a gamma result, not a vanna or charm one. In its dealer-gamma study
+    (<code>gex-range</code>) the vol-matched range effect was +0.306 on non-event days and +0.306 on event days, with
+    options expiry among the event days, so expiry added nothing to the <em>gamma</em> range effect. That neither supports
+    nor rules out a charm-driven <em>direction</em> into expiry, and it should not be quoted as if it did.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A risk report is like a weather forecast that says "a bit windier, a bit wetter." It works when the weather changes a little. On the day the Swiss franc jumped, the wind and the rain both went off the scale at the same moment, and the bits the forecast normally ignores, like what happens when it's windy <em>and</em> wet, turned out to be the whole story.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <div class="tl-icard-grid">
     <div class="tl-icard">
@@ -601,13 +693,13 @@
       <strong>Treating vanna/charm flows as comparable in size to gamma
       flows.</strong> The toy aggregation above showed roughly $661,000 of
       Vanna-driven flow against roughly $18.5 billion of Gamma-driven flow for
-      comparable open interest — six orders of magnitude apart. Vanna and
+      comparable open interest — roughly 28,000× apart, a little over four orders of magnitude (and quoted per different shocks: a 1-point vol move against a 1% price move). Vanna and
       Charm explain real, distinct flow on days gamma alone can't account
       for, but they are not a comparably sized force in typical markets.
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Second-order Greeks ask how a first-order Greek itself responds to price, vol, or time.</strong> Gamma already asked this for Delta-vs-price; these six extend the same question to every other pair of inputs.</span></div>
@@ -615,11 +707,12 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vanna's two definitions are the same mixed partial derivative, guaranteed equal by Clairaut's/Schwarz's theorem.</strong> Not a coincidence — computing it via Delta's vol-sensitivity or Vega's price-sensitivity must give the same number.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Charm mirrors Gamma's own late-life acceleration.</strong> Both blow up as expiry nears because both are driven by \(T\to0\) — charm flows concentrate in the same final days the dealer-GEX lesson flagged for gamma effects.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Speed, Color, and Zomma are genuinely niche.</strong> Real, correctly derived, and rarely tracked by real desks day to day — don't overstate their practical relevance relative to Vanna and Charm.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna/charm flows are a second-order effect on top of gamma exposure, not a comparably sized force.</strong> The toy example showed roughly six orders of magnitude smaller in dollar terms — this lesson explains the mechanism, it is not a claim of a specific tradeable edge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vanna/charm flows are a second-order effect on top of gamma exposure, not a comparably sized force.</strong> The toy example showed roughly four orders of magnitude (about 28,000×) smaller in dollar terms — this lesson explains the mechanism, it is not a claim of a specific tradeable edge.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every dollar exposure figure here still inherits the dealer-sign assumption from the GEX lesson.</strong> Whether dealers are actually net long or short any given strike remains unverifiable from open interest alone.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Second-order terms matter most exactly when price and vol jump together, and then the expansion fails.</strong> On 15 January 2015 EUR/CHF fell close to 30% in minutes as vol jumped; a delta- and vega-flat short-put book was unhedged against Vanna and Vomma, and then against the gap itself. "Vanna/charm flows into expiry" is untested on this desk.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why are Vanna computed as \(\partial\Delta/\partial\sigma\) and Vanna computed as \(\partial\nu/\partial S\) guaranteed to give the same number, rather than just happening to agree in the worked example?</summary>
@@ -762,5 +855,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

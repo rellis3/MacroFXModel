@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Short-Rate Models: Vasicek, CIR &amp; Hull-White — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, a real simulated chart, and a 5-question self-test?<a href="short-rate-models-vasicek-cir-hull-white.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -227,7 +227,38 @@
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">Eight years below zero, and the way out</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>The ECB went to −0.10% in June 2014 and −0.50% by 2019; the SNB to −0.75% in 2015; the BoJ to −0.1% in 2016. Lognormal (Black) volatility can't price a negative strike, so the market moved to <strong>normal (bp) vol</strong>, the Gaussian view Vasicek takes, and to "shifted" models with a hand-chosen shift. Rates found a soft floor near −0.75% and sat there for years. Then the ECB went from −0.50% (July 2022) to 4.00% (September 2023); the BoJ was last out, in March 2024.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Disinflation</b>Inflation persistently below target</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Central banks</b>Cut below zero, 2014–2016</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson</b>CIR and lognormal can't produce r&lt;0; Vasicek and Hull-White can</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Rates desks</b>Re-quote in normal vol; add a shift</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A soft floor near −0.75%, then a fast exit</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12 · Tested here</div>
+      <h2 class="sl-h2">The verdict, and where the textbook breaks</h2>
+      <p class="sl-sub">The tempting claim: the short rate mean-reverts to b, so fade it when it's far away.</p>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>Not tested on this desk.</strong> A fair test: rolling estimates of a and b, 12-month-ahead forecasts scored out of sample against no-change and the forward curve, across regimes including 2014–2022. Policy rates move in a few long regimes, so expect it to be underpowered.</span>
+      </div>
+      <div class="sl-quote">CIR puts a hard wall at zero; Vasicek puts no wall anywhere. The data had a <strong>soft floor below zero</strong>, set by the cost of holding cash, and a rate that sat pinned for eight years and then rose 4.5 points in fourteen months. Neither boundary, and no constant b, fits that.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -277,8 +308,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Vasicek is Ornstein-Uhlenbeck applied to the short rate — drₜ = a(b−rₜ)dt + σdWₜ, identical math to <code>ou-mean-reversion.html</code>, not re-derived here.</p></div>
@@ -287,6 +318,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>That same σ√rₜ term fails the Lipschitz condition from <code>sde-existence-uniqueness.html</code> — CIR needs the separate Yamada-Watanabe conditions instead.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Hull-White's time-dependent θ(t) is the standard fix for fitting today's entire observed yield curve exactly — one substitution over Vasicek, the rest unchanged.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three run in this repo's actual trading code — they're rates-desk theory, distinct from the FX price range-bias features in <code>js/rangeBiasCore.js</code>.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2014–2022 below zero. Desks moved to normal vol and shifted models, but rates found a soft floor near −0.75% that neither CIR (wall at zero) nor Vasicek (no wall) has. Mean reversion of the short rate as a trade is untested here.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

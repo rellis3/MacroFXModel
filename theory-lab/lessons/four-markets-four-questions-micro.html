@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Four Markets, Four Questions — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local: scenario buttons for the board (not an .sl-tabs group, so deck.js leaves them alone). */
+  .fm-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .fm-note{margin-top:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--amber-bd);background:var(--amber-bg);font-size:13px;color:var(--text2)}
+  .fm-note b{color:var(--amber)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Four Markets, Four Questions — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the yield-split math, a worked day and a 6-question self-test?<a href="four-markets-four-questions.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">How Markets Talk to Each Other · 5 of 5</div>
+      <h1 class="sl-h1">Four Markets, <em>Four Questions</em></h1>
+      <p class="sl-lede">Stocks, Treasuries, options and currencies aren't four votes on "is today good or bad?" Each one answers a <strong>different question</strong>. Ask each its own question, read the answers side by side — and pay most attention when they disagree.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Each market answers its own question</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Equities — mood</h4><p>How do investors feel about growth and future earnings? Can't tell you <em>why</em>.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🏛️</div><div><h4>Treasuries — safety &amp; rate path</h4><p>How much do people want safety, and where are rates heading? Can't separate growth from inflation — unless you split the yield.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Options / VIX — uncertainty</h4><p>How big will the moves be? Never which way.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>FX — whose money?</h4><p>Relative rates and flows: havens (JPY, CHF) vs growth-linked (AUD), and the dollar against everything.</p></div></div>
+      </div>
+      <div class="sl-note">Gold answers several questions at once (rates, dollar, reserves), which is why it's hard to read. Prediction markets quote explicit probabilities, but their macro contracts are thin — a price from a handful of trades isn't a consensus.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">"Yields are up" — growth or inflation? Split it.</h2>
+      <div class="sl-row"><div class="sl-box">10y nominal</div><div class="sl-arrow">≈</div><div class="sl-box green">10y real (TIPS)</div><div class="sl-arrow">+</div><div class="sl-box amber">breakeven inflation</div></div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">|Δreal| ≥ |ΔBEI|</span>
+          <p><strong>Real-rate driven</strong> — growth or the expected policy path is moving the yield.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">|ΔBEI| &gt; |Δreal|</span>
+          <p><strong>Inflation driven</strong> — expected inflation is moving the yield.</p>
+        </div>
+      </div>
+      <p class="sl-p">Example: 10y +15bp, real +3bp → breakeven ≈ +12bp → an inflation story. Only compare legs that printed on the same day.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The board — pick a scenario</h2>
+      <p class="sl-sub">Stylised textbook answers, read at the same moment — not forecasts.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-by-two board of equities, Treasuries, options and FX, each showing its question and its typical answer in the chosen scenario">
+            <g id="mb-panels"></g>
+          </svg>
+        </div>
+        <div class="fm-btns">
+          <button type="button" class="sl-tab active" data-sc="calm">Calm</button>
+          <button type="button" class="sl-tab" data-sc="riskoff">Risk-off</button>
+          <button type="button" class="sl-tab" data-sc="inflation">Inflation scare</button>
+          <button type="button" class="sl-tab" data-sc="growth">Growth scare</button>
+          <button type="button" class="sl-tab" data-sc="liquidity">Liquidity squeeze</button>
+        </div>
+        <div class="fm-note" id="mb-note">—</div>
+        <div class="sl-note">Green = risk-on answer · red = risk-off · amber = breaks the usual pattern · blue = mixed.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Reading one (made-up) day</h2>
+      <p class="sl-sub">S&amp;P −1.8% · 10y +12bp (real +10, BEI +2) · 2y +14bp · VIX 16→21, VIX3M 22 · dollar up broadly, yen flat.</p>
+      <div class="sl-calc-steps" style="font-size:13.5px">
+        <div><b>Equities:</b> mood soured. That's all.</div>
+        <div><b>Treasuries:</b> yields <em>up</em> on a down day → no flight to safety. Real leg dominates, 2y leads → a hawkish rate-path repricing.</div>
+        <div><b>Options:</b> 21/√12 ≈ 6.1% a month — but 21 &lt; 22, still contango; no inversion flag.</div>
+        <div><b>FX:</b> dollar up, yen flat → relative rates, not a haven scramble.</div>
+      </div>
+      <div class="sl-quote">One story: a <strong>rates shock, not a panic</strong>. And stop there — don't forecast the next FX week from it (see Section 8).</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">When the haven gets sold: the chain</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>A sudden global need for cash</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Funds</b>Must meet redemptions: sell what's liquid, incl. Treasuries</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Balance sheets full; can't absorb it</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dollar borrowers</b>Must buy dollars to repay</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Yields up in a crash, dollar up vs everything — the central bank must step in</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · It actually happened</div>
+      <h2 class="sl-h2">Two days the markets disagreed</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Real episodes</div>
+        <div class="sl-tabs" id="story-tabs">
+          <button class="sl-tab active" data-panel="st-1">March 2020</button>
+          <button class="sl-tab" data-panel="st-2">August 2019</button>
+        </div>
+        <div class="sl-panel active" id="st-1">
+          <p class="sl-p" style="margin-top:0">Stocks crashed and the VIX closed at a record 82.69 on 16 March 2020. But for several days the 10-year yield <strong>rose</strong> while stocks fell, and the dollar surged.</p>
+          <div class="sl-verdict">The bond market's "wrong" answer was the right reading: a scramble for cash and dollars, not ordinary risk-off. The Fed's response targeted exactly that — rate cut, Treasury purchases and wider dollar swap lines from 15 March, made open-ended on 23 March. The S&amp;P's closing low came on 23 March.</div>
+        </div>
+        <div class="sl-panel" id="st-2">
+          <p class="sl-p" style="margin-top:0">Mid-August 2019: the 10-year dipped below the 2-year for the first time since 2007, and stocks fell sharply that day.</p>
+          <div class="sl-verdict">Bonds answered "where are rates heading?" — lower — and a recession did follow (NBER peak February 2020, caused by a pandemic). Stocks answered "what are earnings worth?" — and the Nasdaq rose 48.5% over the following year. Each was right about its own question.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Tested: does one market lead another?</h2>
+      <div class="sl-stamp null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>curve-inversion:</strong> TEN episodes since 1976. Recession within 24 months 6 of 10 — 60%, CI [31%, 83%]. Forward Nasdaq +12m +10.5% vs +13.0% control (p=0.33). Steepenings did worse (−1.1%, n=6).</span>
+      </div>
+      <div class="sl-stamp null">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>rates-pivot-lead:</strong> 2,010 de-clustered 2-year pivots: Nasdaq at 1h −0.005% vs control [−0.021, +0.012]. Up-move after a rates low 54.1% — base rate 54.1%.</span>
+      </div>
+      <div class="sl-stamp null">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>front-end-shock:</strong> ~211 2Y shocks per pair. After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR).</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">Tested: what survived is range, inside a market</h2>
+      <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>vix-inversion:</strong> first day VIX &gt; VIX3M → next-5-session range: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero).</span>
+      </div>
+      <div class="sl-stamp validated">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>breadth-all-down:</strong> all six indices down (n=1,002 since 2008) → next-5 range SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]. Direction 58–61% up — the ordinary drift.</span>
+      </div>
+      <div class="sl-stamp context">
+        <span class="sl-stamp-tag">Context</span>
+        <span><strong>stock-bond-flip:</strong> stocks and bonds falling together — 71 episodes since 2008, median 5 sessions; too few clean flips to test what follows.</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">What the desk learned</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Validated — range</span>
+          <p>vix-inversion · mv-vixterm-range · iv-over-rv-wider · breadth-all-down. All read <strong>inside one market</strong>. None says which way.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Null — leads &amp; direction</span>
+          <p>curve-inversion · rates-pivot-lead · front-end-shock · yields-to-fx-direction · fear-gold. All <strong>one market forecasting another</strong>.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Markets talk to each other <strong>at the same moment</strong>, not in a queue. Read all four together to understand today; don't use one to forecast another.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">How to use this on a real screen</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🗂️</div><div><h4>Label the question</h4><p>Next to each market, write the question it answers.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Hunt the disagreement</h4><p>Which market tells a different story — and what would force it to?</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✂️</div><div><h4>Split the yield</h4><p>Real vs breakeven before you call it growth or inflation.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Size for range</h4><p>Use the validated range flags to size, never to pick a side.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Which market answers "how big will the moves be?"</h4>
+        <button class="sl-quiz-opt">Equities</button>
+        <button class="sl-quiz-opt" data-correct="true">Options / the VIX</button>
+        <button class="sl-quiz-opt">FX</button>
+        <div class="sl-quiz-explain">Options price the size of future moves — uncertainty — and say nothing about direction.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Stocks −4% and the 10-year yield is UP. Most likely reading?</h4>
+        <button class="sl-quiz-opt">An ordinary flight to safety</button>
+        <button class="sl-quiz-opt" data-correct="true">Not a normal haven bid — an inflation/rates scare or, at the extreme, a scramble for cash</button>
+        <button class="sl-quiz-opt">A sign stocks will rebound tomorrow</button>
+        <div class="sl-quiz-explain">In ordinary risk-off Treasuries are bought and yields fall. Yields rising in a crash means Treasuries are being sold too — check the split, and remember March 2020.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>"The 2-year just bottomed — buy Nasdaq now." What did this desk find?</h4>
+        <button class="sl-quiz-opt">A 54% edge</button>
+        <button class="sl-quiz-opt" data-correct="true">Null: 54.1% up-moves against a 54.1% base rate</button>
+        <button class="sl-quiz-opt">Validated at the 4-hour horizon</button>
+        <div class="sl-quiz-explain">rates-pivot-lead was null at 1h, 2h and 4h. Rates and equities move in the same bar, not in sequence. Never quote a hit rate without its base rate.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What do the desk's validated cross-market findings have in common?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They're range findings read inside a market — none says which way</button>
+        <button class="sl-quiz-opt">They all predict direction</button>
+        <button class="sl-quiz-opt">They all use the yield curve</button>
+        <div class="sl-quiz-explain">vix-inversion and breadth-all-down widen the expected range; the nulls are the claims that one market forecasts another.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Equities: mood. Treasuries: safety demand and the rate path. Options: uncertainty (size). FX: whose money people want.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Split the yield — nominal ≈ real + breakeven — before calling a move growth or inflation.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Disagreement is the signal. Treasuries sold in a crash = a scramble for cash (March 2020).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Validated: range, read inside a market (VIX inversion, breadth wipe-out). Never direction.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p><strong>Null:</strong> the curve's equity signal, rates leading equities, rate shocks meaning wild FX. Same moment, not a queue.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Sequence complete</div>
+        <h3>How Markets Talk to Each Other</h3>
+        <p>That's the last of five. Go back through the sequence from the start, or return to the hub.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="domino-chain-cross-asset-micro.html">Start of the sequence →</a>
+          <a class="sl-btn ghost" href="yield-curve-growth-expectations-micro.html">← Previous: the yield curve</a>
+          <a class="sl-btn ghost" href="four-markets-four-questions.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4 — four-market board (same data as the full lesson, shorter lines).
+  var g = document.getElementById('mb-panels');
+  if (!g) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var MK = [
+    { key:'eq',  name:'EQUITIES',      q:'Mood about growth?' },
+    { key:'ust', name:'TREASURIES',    q:'Safety? Rate path?' },
+    { key:'vix', name:'OPTIONS / VIX', q:'How uncertain?' },
+    { key:'fx',  name:'FX',            q:'Whose money?' }
+  ];
+  var TONE = { on:'var(--green)', off:'var(--red)', odd:'var(--amber)', mix:'var(--blue)' };
+  var SC = {
+    calm:      { eq:['on','▲','Confident','Indices up'], ust:['mix','◆','No haven bid','Yields steady'], vix:['on','▼','Low','VIX drifts lower'], fx:['on','▲','Risk appetite','JPY, CHF soften'],
+                 note:'<b>No disagreement</b> — the boring case.' },
+    riskoff:   { eq:['off','▼','Fearful','Broad selling'], ust:['off','▼','Safety wanted','Yields fall'], vix:['off','▲','Rising','VIX up'], fx:['off','▲','Havens bid','USD, JPY, CHF up'],
+                 note:'<b>Usually none.</b> Gold up too? Not "fear" — fear-gold is null; look for the rates or dollar leg.' },
+    inflation: { eq:['off','▼','Worried','Rates hit valuations'], ust:['odd','▲','Bonds sold','Breakevens lead'], vix:['off','▲','Up','VIX higher'], fx:['mix','◆','Relative rates','USD firm if hawkish'],
+                 note:'<b>Stocks and bonds fall together</b> — the usual hedge fails (desk: context only).' },
+    growth:    { eq:['off','▼','Earnings fear','Cyclicals lead'], ust:['off','▼','Cuts priced','2Y falls fastest'], vix:['off','▲','Up','VIX higher'], fx:['off','▼','Growth FX sold','AUD down, JPY up'],
+                 note:'<b>Bonds rally for the rate path, not panic</b> — the real yield falls, the front end leads.' },
+    liquidity: { eq:['off','▼','Panic','Everything sold'], ust:['odd','▲','Haven sold','Yields UP in a crash'], vix:['off','▲','Extreme','VIX > VIX3M'], fx:['odd','▲','Dollar scramble','USD up vs all'],
+                 note:'<b>Treasuries break the pattern</b> — yields up while stocks crash: cash, not risk. March 2020.' }
+  };
+  var POS = [[12,12],[328,12],[12,196],[328,196]], W = 300, H = 172;
+  function el(tag, a, t){ var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; return e; }
+  var refs = {};
+  MK.forEach(function(m, i){
+    var x = POS[i][0], y = POS[i][1];
+    var rect = el('rect', {x:x, y:y, width:W, height:H, rx:12, style:'fill:var(--panel2);stroke:var(--border2);stroke-width:1.5'});
+    g.appendChild(rect);
+    g.appendChild(el('text', {x:x+16, y:y+28, 'font-size':13, 'font-weight':700, 'font-family':"'DM Mono',monospace", fill:'var(--text)'}, m.name));
+    g.appendChild(el('text', {x:x+16, y:y+50, 'font-size':13, 'font-style':'italic', fill:'var(--text3)'}, m.q));
+    var circ = el('circle', {cx:x+W-40, cy:y+36, r:22, style:'fill:var(--panel);stroke-width:2'});
+    var glyph = el('text', {x:x+W-40, y:y+44, 'text-anchor':'middle', 'font-size':22, 'font-weight':700}, '');
+    var head = el('text', {x:x+16, y:y+104, 'font-size':21, 'font-weight':700, fill:'var(--text)'}, '');
+    var l1 = el('text', {x:x+16, y:y+136, 'font-size':15, fill:'var(--text2)'}, '');
+    var bar = el('rect', {x:x, y:y+H-6, width:W, height:6, rx:3});
+    [circ, glyph, head, l1, bar].forEach(function(n){ g.appendChild(n); });
+    refs[m.key] = {rect:rect, circ:circ, glyph:glyph, head:head, l1:l1, bar:bar};
+  });
+  var note = document.getElementById('mb-note');
+  function show(name){
+    var s = SC[name];
+    MK.forEach(function(m){
+      var d = s[m.key], r = refs[m.key], c = TONE[d[0]];
+      r.circ.setAttribute('style', 'fill:var(--panel);stroke:' + c + ';stroke-width:2');
+      r.glyph.setAttribute('fill', c); r.glyph.textContent = d[1];
+      r.head.textContent = d[2]; r.l1.textContent = d[3];
+      r.bar.setAttribute('style', 'fill:' + c + ';opacity:.85');
+      r.rect.setAttribute('style', 'fill:var(--panel2);stroke:' + (d[0] === 'odd' ? 'var(--amber)' : 'var(--border2)') + ';stroke-width:' + (d[0] === 'odd' ? 2.5 : 1.5));
+    });
+    note.innerHTML = s.note;
+  }
+  document.querySelectorAll('[data-sc]').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('[data-sc]').forEach(function(o){ o.classList.remove('active'); });
+      b.classList.add('active'); show(b.getAttribute('data-sc'));
+    });
+  });
+  show('calm');
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

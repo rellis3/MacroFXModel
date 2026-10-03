@@ -37,6 +37,7 @@
       <li>Implementation Shortfall (Perold, 1988) is the honest scorecard: the gap between the "paper" decision price and what you actually paid, split into delay cost (drift before you started), market impact cost (the Almgren-Chriss-style concession from your own trading), and opportunity cost (the price of leaving part of the order unfilled).</li>
       <li>Algorithm choice is a real tradeoff, not a preference: urgency (fear of the price drifting away before you're done) pulls toward TWAP/POV/aggressive execution; impact concern (fear of moving the price yourself) pulls toward a slower VWAP-style schedule — the same risk-aversion tradeoff the Almgren-Chriss lesson formalizes with a single parameter \(\lambda\).</li>
       <li>The worked example computes a 4-bucket VWAP-matching share schedule for a 40,000-share order, then separately walks a small trade through all three Implementation Shortfall components in dollars: \$450 delay + \$750 impact + \$300 opportunity = \$1,500 total, on a \$500,000 order.</li>
+      <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash began with a POV algorithm. It sold 75,000 E-mini contracts at 9% of the previous minute's volume, with no price or time limit. Intermediaries passing contracts back and forth inflated the volume, so the algorithm sold faster, and an order that had taken more than five hours before was done in about 20 minutes. On this desk, the cost no schedule can remove, the spread, is <strong>Validated</strong> as decisive (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.</li>
     </ul>
   </div>
 
@@ -565,6 +566,75 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: a POV order in the Flash Crash</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Nine percent of the volume, at any price</h3>
+    <p>
+      On the afternoon of 6 May 2010, with US markets already falling on European debt worries, a large mutual fund
+      complex decided to hedge an equity position by selling <strong>75,000 E-mini S&amp;P 500 futures contracts</strong>,
+      about $4.1 billion. According to the joint SEC/CFTC staff report, it handed the order to an automated sell
+      algorithm set to trade <strong>9% of the volume traded in the previous minute</strong>, "without regard to price or
+      time." In this lesson's notation, that is POV with \(p = 0.09\): \(x_k = 0.09\cdot\text{Vol}_{k-1}^{\text{observed}}\),
+      with no price limit and no deadline.
+    </p>
+    <p>
+      The same trader had sold orders of the same size before. On one of those occasions, the report says, it used a
+      mix of manual and automated execution that took price, time and volume into account, and the sale took more than
+      five hours. This time the algorithm watched only volume, and volume exploded. High-frequency traders and other
+      intermediaries bought the first contracts, then sold them on, increasingly to each other. In one 14-second stretch
+      they traded more than 27,000 contracts while their net position changed by only about 200. Every contract passed
+      around counted as volume, so the algorithm sold faster, which pushed more contracts into the "hot potato", which
+      raised volume again. The 75,000 contracts went through in about <strong>20 minutes</strong>. E-mini buy-side depth
+      fell to less than 1% of its morning level, the contract fell more than 5% in about four and a half minutes, and an
+      automatic five-second trading pause gave buyers the chance to come back.
+    </p>
+    <p style="margin-bottom:0">
+      Score it with the lesson's own framework. On the urgency-versus-impact chart above, a $4.1 billion hedge in a
+      falling, nervous market sits squarely in "high impact concern." That is where a patient, footprint-minimizing
+      schedule belongs. A POV rule with no price limit is not patient. It is exactly as fast as the market's volume, and
+      that afternoon the market's volume was partly the order itself.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Hedger</b>Must sell 75,000 E-mini contracts (about $4.1bn) into a market already falling</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>POV algorithm · this lesson</b>Sells 9% of the previous minute's volume, with no price or time limit</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Intermediaries</b>Buy, then unload to each other: 27,000+ contracts in 14 seconds for a net change of about 200</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>POV algorithm</b>Sees the higher volume, so sells faster: a feedback loop</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Order done in about 20 minutes rather than hours; buy depth under 1% of the morning's; the Flash Crash</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Remember POV's rule from earlier: "drink 10% of however much water everyone else is drinking." Now imagine the "everyone else" is mostly a few kids passing your own spilled water back and forth. The more they pass it around, the more it looks like everyone is drinking, so you drink faster, and spill more. That's what happened to the selling robot in 2010.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    POV's appeal is that observed volume stands in for available liquidity: trade a small share of what everyone else
+    is doing and your order hides inside it. That assumes the volume is <strong>independent of your order</strong>. On 6
+    May 2010 it was not. Much of the volume was the algorithm's own selling, recycled through intermediaries, so the
+    rule that was meant to slow down in thin markets sped up instead. Volume is not liquidity: depth was collapsing
+    while volume soared. This is why practitioners attach a price limit, and often a cap on participation, to a POV order.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>execution-gate: the cost a schedule can't remove decides whether a short-horizon idea lives.</strong>
+    The tempting claim is that clever execution can rescue a thin, fast edge. Slicing manages impact, but it does
+    nothing about the spread, and this desk sends single small orders where the spread is most of the cost. On its data,
+    when the spread is above <strong>0.15 of the day's range (spread/ATR)</strong>, <strong>zero of 30 strategy ×
+    timeframe cells were profitable</strong>. Cost outruns edge as the timeframe speeds up, and the crossover is the same
+    across strategies. Check spread/ATR before any new intraday idea. Above 0.15, no execution schedule will save it.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Algorithm selection on a real execution desk is a genuine decision, made
@@ -651,7 +721,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>TWAP is the simple baseline, not the sophisticated choice.</strong> Equal shares in equal time intervals is predictable but ignores that real trading volume is never uniform through the day.</span></div>
@@ -660,9 +730,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implementation Shortfall is the honest, all-in scorecard.</strong> It splits the gap between decision price and actual cost into delay, market impact, and opportunity cost — three different root causes, not one opaque number.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Algorithm choice is a real tradeoff, not a habit.</strong> Urgency (fear of drift) pulls toward faster, more aggressive execution; impact concern (fear of your own footprint) pulls toward a slower, VWAP-style schedule — the same risk-aversion axis Almgren-Chriss formalizes mathematically.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Matching the VWAP benchmark is not the same as a good price.</strong> A perfectly on-schedule VWAP execution still pays in full for any adverse trend that ran through the whole session — the benchmark measures participation quality, not price quality.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Volume is not liquidity, and POV can feed on itself.</strong> On 6 May 2010 a POV algorithm sold 75,000 E-mini contracts at 9% of volume with no price or time limit. Intermediaries recycling contracts inflated the volume, so it sold faster: about 20 minutes, against more than five hours for a similar order before. And no schedule removes the spread: above spread/ATR 0.15, 0 of 30 cells were profitable here (<code>execution-gate</code>, Validated).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What specific blind spot does VWAP fix relative to TWAP?</summary>
@@ -858,5 +929,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

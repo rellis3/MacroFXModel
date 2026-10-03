@@ -38,6 +38,7 @@
       <li>The Law of Large Numbers guarantees a sample average converges to the true \(E[X]\) as \(n\to\infty\), but says nothing about how close it is at any small, fixed \(n\) — the reasoning behind this repo's "≥30 OOS trades" floor.</li>
       <li>The Central Limit Theorem: the average of many independent copies of <em>any</em> random variable with finite mean/variance approaches a normal distribution as \(n\) grows — even a flat, uniform die roll's average becomes bell-shaped by \(n=30\) — which is why so many aggregated financial quantities look roughly normal even when no individual ingredient is.</li>
       <li>That CLT justification depends on independence, and daily financial returns visibly violate it via volatility clustering — so "assume returns are approximately normal" is a defensible starting point that gets corrected (e.g. by GARCH), not a settled fact.</li>
+      <li><strong>How it reached trading:</strong> Bachelier (1900) priced options as expected payoffs, and Harrison, Kreps and Pliska (1979–81) proved that every arbitrage-free price is a discounted expectation, which is how derivatives are priced today.</li>
     </ul>
   </div>
 
@@ -99,6 +100,25 @@
       but because so many observed quantities are themselves sums of many
       smaller, mostly-independent pieces.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>What is a trade worth before it resolves?</h3>
+    <div class="tl-origin-who">Price as expectation · Bachelier, 1900 — risk-neutral pricing · Harrison, Kreps &amp; Pliska, 1979–81</div>
+    <p>Every trade is a bet on outcomes that have not happened yet. Without probability a trader can list scenarios but cannot put one number on a position, compare two trades or say what an option should cost. (Expectation itself began in 1654, with Pascal and Fermat splitting the stakes of an unfinished game.)</p>
+    <p>Bachelier's 1900 thesis priced options on French government bonds as an expected payoff under a model of price changes. In 1979 Michael Harrison and David Kreps, followed by Harrison and Stanley Pliska in 1981, showed that if there is no arbitrage, every derivative price is a discounted expectation under a "risk-neutral" probability, the framework pricing libraries still use. Breeden and Litzenberger (1978) showed the reverse direction: option prices reveal the probabilities the market implies.</p>
+    <p>On a desk, probability is expected P&amp;L and hit rates in a backtest, the odds of a policy move read off interest-rate futures, and the loss probabilities behind risk limits.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Turning uncertain outcomes into numbers you can act on: the expected value of a trade, the chance of a loss, and the probabilities a market price implies.</dd>
+        <dt>Takes in</dt><dd>Distributions and the normal curve (<a href="primer-stats-normal.html">Statistics &amp; the Normal Distribution</a>).</dd>
+        <dt>Hands on to</dt><dd>Co-movement, pricing measures and sizing (<a href="primer-correlation-regression.html">Correlation &amp; Regression</a>, <a href="girsanov-risk-neutral.html">Girsanov &amp; the Risk-Neutral Measure</a>, <a href="kelly-criterion.html">Kelly Criterion</a>, <a href="bayesian-inference.html">Bayesian Inference</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -684,6 +704,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The CLT explains why sums look normal.</strong> The average of many independent copies of almost any random variable — even a flat die roll — approaches a normal distribution as \(n\) grows, which is why so many aggregated financial quantities look roughly bell-shaped.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CLT's guarantee depends on independence.</strong> Daily financial returns violate it via volatility clustering — big moves cluster in time rather than scattering independently — which is exactly why "assume normal, then correct" (GARCH) is the honest framing, not "assume normal, done."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Variance alone hides skew.</strong> It penalizes upside and downside deviations identically, which understates the risk that actually matters for a strategy with a lopsided return distribution.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>A price is a probability-weighted average.</strong> Bachelier (1900) priced options as expected payoffs; Harrison, Kreps and Pliska (1979–81) showed every arbitrage-free price is a discounted expectation. Expected P&amp;L is the same calculation.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -856,5 +877,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

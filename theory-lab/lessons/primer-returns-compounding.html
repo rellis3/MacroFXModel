@@ -54,6 +54,7 @@
       <li>The page's interactive chart lets you drag an annualized-volatility
       slider and watch the compounded-value line pull away from the fixed
       arithmetic-mean projection as σ²/2 drag grows quadratically with σ.</li>
+      <li><strong>Real-world episode:</strong> daily-reset leveraged and inverse ETFs compound \(\prod(1+kR_t)\), so their drag grows like \(k^2\sigma^2/2\); in a 2009 regulators' example an index rose 2% while its 2× fund fell 6%. On 5 February 2018 the VIX more than doubled and the XIV inverse-VIX note lost over 90% in an evening and was wound up. Whether short-vol carry pays on this desk is untested.</li>
     </ul>
   </div>
 
@@ -473,6 +474,82 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: products that compound every day</h2>
+  <p>
+    The +50% / −50% example above is a toy. There is a whole class of real products whose design makes this lesson's
+    arithmetic their main risk: exchange-traded funds and notes that promise a multiple \(k\) of an index's
+    <em>daily</em> return, and reset every day. Their holders meet volatility drag, and sometimes the −100% floor
+    of simple returns, in their account statements.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2009 to 5 February 2018: from slow decay to a one-day wipe-out</h3>
+    <p>
+      A fund that delivers \(k\) times each day's index return \(R_t\) ends a period at \(\prod_t (1 + kR_t)\) of where it
+      started, not at \(k\) times the index's total return. Run the lesson's own logic through it: an index that rises
+      10% and then falls 9.09% is back where it started, but a 2× daily fund goes \(1.20 \times 0.8182 = 0.982\), and a
+      −1× inverse fund goes \(0.90 \times 1.0909 = 0.982\). Both lose about 1.8% on a flat index. Plugging \(kR_t\) into
+      the drag formula, the product's growth is roughly \(k\bar{R} - k^2\sigma^2/2\): doubling the leverage quadruples
+      the drag.
+    </p>
+    <p>
+      After the 2008 crisis, when these funds had become popular, US regulators spelled this out. In 2009 FINRA
+      reminded brokers that leveraged and inverse ETFs are generally unsuitable for buy-and-hold retail investors, and
+      the SEC and FINRA issued a joint investor alert. Its example: between 1 December 2008 and 30 April 2009 an index
+      gained 2%, while a fund seeking twice its daily return fell 6% and a fund seeking twice the inverse fell 25%.
+    </p>
+    <p style="margin-bottom:0">
+      The extreme case came on 5 February 2018. Inverse-volatility products, which held short positions in
+      short-dated VIX futures, had compounded strongly through the calm of 2017. That afternoon the VIX index more than
+      doubled in a single session, its largest one-day percentage rise on record. Credit Suisse's XIV note, built to
+      return the inverse of a VIX-futures index each day, lost more than 90% of its value in one evening, which
+      triggered a clause letting the issuer redeem it, and it was wound up. A similar ProShares fund survived but later
+      cut its target from −1× to −0.5× the daily index.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Calm, then a jump</b>After a quiet year, VIX more than doubles in one session on 5 February 2018</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Inverse-VIX products</b>Are short VIX futures that have just soared; each must reset its exposure for the next day</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · compounding</b>Wealth is \(\prod(1 + kR_t)\), not \(k\) times the index; one day near −100% leaves almost nothing to compound from</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The issuer</b>A loss that size triggers the note's early-redemption clause</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>XIV is wound up after losing more than 90% in an evening; a rival halves its leverage</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. The years of strong returns before February 2018 and the single bad
+    session are the same arithmetic: a product of daily gross returns, in which no number of good days can rebuild
+    wealth that one day has taken close to zero.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a jar of marbles where every day you add or remove a share of whatever is in the jar. Lots of small good days fill it up nicely. But if one day you have to remove almost every marble, there is hardly anything left to grow from, and even a long run of good days afterwards only grows that tiny pile. A daily-reset fund is that jar, and a big jump day is the day almost every marble goes.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    \(g \approx \bar{R} - \sigma^2/2\) is a second-order approximation that assumes small, roughly continuous
+    period returns, and the \(\sqrt{T}\) rule assumes independent periods. Daily leverage multiplies \(\sigma\) by
+    \(k\), and a single jump day puts \(kR_t\) far outside the small-move zone, where the exact product, and the
+    −100% floor on simple returns, take over: the approximation says "a bit of drag", the product says "gone".
+    Volatility clustering breaks the independence assumption too: the days that hurt arrived together, not spread
+    evenly across the years.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: that selling volatility, or holding an inverse-volatility product, earns a
+    dependable carry.</strong> This desk has no ledger entry on short-volatility returns. A fair test would report the
+    compounded (geometric) return rather than the average daily return, on a sample that includes jump sessions such
+    as 5 February 2018 and March 2020, with each product's daily reset and early-redemption terms applied.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
 
   <div class="tl-icard-grid">
@@ -585,7 +662,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log returns add across time; simple returns don't.</strong> \(\ln(P_2/P_0)=\ln(P_1/P_0)+\ln(P_2/P_1)\) is exact for any size of move, while chaining simple returns picks up a cross term.</span></div>
@@ -595,9 +672,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Drag grows quadratically with σ.</strong> Doubling volatility quadruples the drag (σ², not σ) — which is why two strategies with identical average returns can compound to very different real outcomes.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>√T scaling assumes independence.</strong> Volatility clustering violates it in real markets, and under positive serial correlation, naive √T scaling understates true multi-period risk.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An unlabeled "average return" is ambiguous.</strong> A headline figure that doesn't say arithmetic or geometric should be treated as potentially the more flattering of the two numbers.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>One day near −100% cannot be averaged away.</strong> Daily-reset leveraged and inverse products compound drag of roughly \(k^2\sigma^2/2\), and a single jump day sits outside the \(\sigma^2/2\) approximation: in February 2018 an inverse-VIX note lost more than 90% in an evening and was wound up.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can two return series have the same arithmetic mean but wildly different compounded outcomes?</summary>
@@ -679,7 +757,7 @@
   </ul>
   </details>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>You're ready for Lesson 1</h2>
   <div class="tl-callout">
     That's the full primer sequence. You now have the statistical vocabulary
@@ -835,5 +913,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

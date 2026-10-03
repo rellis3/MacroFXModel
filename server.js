@@ -159,7 +159,7 @@ import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
-import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief } from './js/deskEvidence.js';
+import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
 import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
@@ -34482,6 +34482,21 @@ if (HIDE_DRILL_PRACTICE) {
     res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
   });
 }
+
+// Desk verdicts for Theory Lab lessons. A lesson tags a verdict box with
+// data-evidence="<ledger id>" and theory-lab/assets/verdicts.js asks for those ids
+// here, so a re-run study updates every lesson citing it with no lesson edit.
+// Lives under /theory-lab/ (education zone) because js/deskEvidence.js itself is
+// main-zone; only the requested ids and only the public fields go out -- never
+// the ledger's `doc` paths or its prompt-facing `use` directives.
+app.get('/theory-lab/desk-verdicts.json', (req, res) => {
+  const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
+  const entries = {};
+  for (const e of _DESK_EVIDENCE) {
+    if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
+  }
+  res.set('Cache-Control', 'no-cache').json({ entries });
+});
 
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.

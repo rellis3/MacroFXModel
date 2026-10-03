@@ -46,6 +46,7 @@
         "has a change occurred, and roughly when," typically as a real-time monitor — not "what are all the regimes
         and their transition probabilities," which is what the Hidden Markov Model and regime-switching state-space
         lessons build in full.</li>
+      <li><strong>Real-world episode:</strong> February–March 2020. An offline fit puts the break at February 20–24, a cliff on the chart. An online detector tuned to stay quiet through calm 2019 needed several large days to accumulate, and by February 27 the S&amp;P 500 was already more than 10% off its record. Change points are easy in hindsight and late in real time.</li>
     </ul>
   </div>
 
@@ -378,6 +379,83 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: February–March 2020, a break everyone can see afterwards</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The clearest change point in modern markets, and when a detector could have seen it</h3>
+    <p>
+      On <strong>February 19, 2020</strong> the S&amp;P 500 closed at a record high, and the VIX sat in the
+      low teens. Over the following weekend the coronavirus outbreak in northern Italy made it clear the virus
+      had spread well beyond China. Markets fell hard from Monday, February 24. By February 27 the S&amp;P 500
+      was more than 10% below its record, the fastest correction from an all-time high on record, in six trading
+      days. On March 16 it fell about 12% in a single session and the VIX closed above 82, a record. By March 23
+      the index was roughly a third below its February high.
+    </p>
+    <p>
+      Run any offline method (one that sees the whole year at once) over 2020's daily returns, and it puts a
+      break in volatility, and in the mean, right around February 20–24. On a chart it looks like a cliff. That is
+      the trap. An offline segmentation uses data from <em>after</em> the break to decide where the break was.
+    </p>
+    <p>
+      An online detector, the kind this lesson builds, has to decide on each day using only what has arrived so
+      far. A CUSUM tuned with \(k\) and \(h\) wide enough to stay quiet through calm 2019, when the market had
+      plenty of single bad days that led nowhere, cannot cross \(h\) on the first big down day. It needs several
+      large deviations to accumulate. By the time those had arrived, the index was already in a correction. A
+      BOCPD with a small hazard rate \(H\), the natural choice after a calm year, faces the same thing: its
+      run-length posterior moves toward \(r_t=0\) only as the evidence piles up.
+    </p>
+    <p style="margin-bottom:0">
+      The second change point teaches the same lesson in reverse. The Fed cut rates to near zero on March 15 and
+      announced open-ended asset purchases on March 23, the day of the low, and the S&amp;P 500 was back at a
+      record by <strong>August 18, 2020</strong>. A detector that had finally flagged the crash regime then needed
+      weeks of calmer data before it could flag the recovery.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Virus spreads</b>Late February 2020: outbreaks outside China, starting with northern Italy</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Investors and risk limits</b>Volatility-sized funds and VaR limits must cut exposure as volatility jumps, so they sell into the fall</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The tape</b>S&amp;P 500 down more than 10% in six sessions; −12% on March 16; VIX above 82</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · online detection</b>CUSUM and BOCPD can only flag the break after several large days accumulate; the offline fit places it at the start</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The alarm confirms what the P&amp;L already shows; the hindsight chart makes the break look tradeable</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: the detection delay from the worked example, at market scale. A
+    one-step lag at \(t=9\) for a shift at \(t=8\) becomes several sessions and a double-digit drawdown when
+    each step is a trading day.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A smoke alarm that goes off every time you make toast is useless, so you set it to wait for real smoke. Then when there is a real fire, it waits too, until there's enough smoke. Afterwards, looking at the burnt kitchen, anyone can point to exactly when the fire started. The alarm couldn't.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The textbook detector assumes a clean shift in one parameter (here, the mean) with independent noise before
+    and after, and judges itself by average detection delay. March 2020 shifted the mean and the variance at once,
+    with clustered, correlated days, so a mean-shift CUSUM calibrated on a calm year was watching the wrong
+    statistic with the wrong noise level. And the constant-hazard prior in BOCPD says nothing about the fact that
+    the change, once it came, was violent: the costliest part of the move came inside the detection delay.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: "a change-point alarm gives you time to act on a new regime."</strong> There is no
+    CUSUM on this desk. One of its systems does use a BOCPD change probability as an exit rule, but the desk's
+    evidence ledger holds no test of what followed those alarms, so there is no result to cite. A fair test would run the
+    detector strictly online on daily returns (and on realised volatility) across many years and instruments, with
+    \(k\), \(h\) or \(H\) fixed in advance. It would score each alarm by what happened <em>after</em> it fired,
+    against matched non-alarm days, and count false alarms alongside the hits. Grading it on where an offline fit
+    puts the break would only measure hindsight.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     CUSUM's roots are in industrial statistical process control — is a production line still centered on target —
@@ -448,7 +526,7 @@
     what the new regime actually is, only that something changed and roughly when.
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CUSUM (Page, 1954) is one running accumulator and one threshold.</strong> \(S_t = \max(0, S_{t-1} + (x_t - \mu_0 - k))\), flagging a change the moment \(S_t\) exceeds \(h\).</span></div>
@@ -456,10 +534,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BOCPD (Adams &amp; MacKay, 2007) replaces the single number with a full posterior</strong> over the run length \(r_t\), updated online via a predictive likelihood and a hazard rate \(H\) — a constant \(H\) implies an exponential (geometric) prior on the gap between changepoints.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The central contrast of this lesson:</strong> change-point detection asks a narrower, operational question — has a change occurred, and roughly when — as opposed to the Hidden Markov Model and regime-switching state-space lessons' fuller job of modeling every regime and every transition probability throughout history.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A detected changepoint is a model output, not a certainty.</strong> CUSUM's threshold crossing is a binary call at a chosen bar; BOCPD's posterior is only as honest as its assumed hazard rate and predictive model — both should be treated as probabilistic, especially BOCPD's run-length estimate.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hindsight finds the break; real time finds it late (2020).</strong> An offline fit places the COVID break at February 20–24. An online detector quiet enough for 2019 needed several big days first, and the S&amp;P 500 fell more than 10% in six sessions. Whether an alarm leaves time to act is untested here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only.</strong> Nothing here — CUSUM, BOCPD, or the P&amp;L-monitor scenario — is built, tested, or validated anywhere in this repo. Explaining the mechanism is not a claim that either tool has been shown to add value here.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Write Page's CUSUM formula from memory and name both of its tunable parameters.</summary>

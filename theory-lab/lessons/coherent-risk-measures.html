@@ -37,6 +37,7 @@
       <li>VaR fails exactly one of the four — sub-additivity — and a simple two-position example makes the failure concrete: combining two individually "safe" positions can produce a portfolio VaR that exceeds the sum of the parts.</li>
       <li>CVaR satisfies all four axioms. That single fact is why post-2008 banking regulation shifted its standard tail-risk measure from VaR toward Expected Shortfall.</li>
       <li>Both are quantile-based statistics that get shakier the further into the tail you push them — see <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> for the machinery built to extend them past what a raw sample can support.</li>
+      <li><strong>Real-world episode:</strong> in January 2012 a new VaR model roughly halved the reported risk of JPMorgan's "London Whale" credit book, and no positions were cut. Losses passed $6 billion. A risk measure is only as good as the model under it, coherent or not.</li>
     </ul>
   </div>
 
@@ -375,6 +376,80 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the London Whale, 2012</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>January 2012: a new VaR model, and half the risk disappeared</h3>
+    <p>
+      JPMorgan's Chief Investment Office in London ran a <strong>Synthetic Credit Portfolio</strong>: large
+      positions in credit-derivative indices, which the bank described as a hedge. Through early 2012 the book
+      grew big enough to move the indices it traded, and other traders nicknamed the person running it
+      "the London Whale."
+    </p>
+    <p>
+      In January 2012 the portfolio was over its VaR limit. Late that month the office switched to a new VaR
+      model it had been developing, and the portfolio's reported VaR <strong>roughly halved</strong>. The book
+      was back inside its limit, and not one position had been cut to get there. The bank's own task force
+      later found that the new model ran on spreadsheets filled in by copying and pasting data from one to the
+      next, and that one formula divided by a <em>sum</em> where it should have divided by an <em>average</em>,
+      which muted the volatility the model measured.
+    </p>
+    <p>
+      Losses built from the spring. In May 2012 the bank disclosed them and went back to its old model, under
+      which the first quarter's VaR came out at <strong>roughly double</strong> the figure it had reported.
+      Losses on the portfolio for the year passed <strong>$6 billion</strong>, a US Senate subcommittee
+      investigated, and regulators in the US and the UK fined the bank.
+    </p>
+    <p style="margin-bottom:0">
+      Read it against Section 02. \(\text{VaR}_p\) is one quantile, so the whole gap between "over the limit"
+      and "inside the limit" was one number from one model. Switching that limit to \(\text{CVaR}_p\) would not
+      have saved the bank on its own: the same spreadsheet feeding an Expected Shortfall would have understated
+      that too. Coherence is a property of the formula. It says nothing about the loss distribution you feed it.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Credit book</b>Grows into an index position big enough to move its own market</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Risk limit</b>VaR is over the limit in January 2012: cut positions, or change the measurement</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>VaR model ★ this lesson</b>A new model recomputes the one quantile: reported VaR roughly halves, book back inside the limit</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Traders</b>No limit is forcing them to cut, so the positions stay on</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Losses pass $6 billion; old model restored, first-quarter VaR restated at roughly double</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: a limit written on a single quantile, \(\text{VaR}_p(L)\), with
+    nothing in it describing the tail beyond that point and nothing checking the \(L\) it was computed from.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Your bathroom scale says you're over your weight limit. So you buy a new scale, and it says you weigh half as much. You didn't get any lighter. Later someone finds the new scale was put together wrong. A better kind of scale wouldn't have helped either, if it was put together the same wrong way.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The four Artzner axioms take the loss distribution \(L\) as given, on a fixed and known probability space,
+    as the last pitfall in Section 04 below warns. In 2012 the distribution was itself a model output. It was
+    chosen by the office the limit was meant to constrain, and it was estimated with an error. Sub-additivity,
+    monotonicity and the rest say nothing about a risk measure computed from the wrong \(L\). The model risk
+    sits upstream of any choice between VaR and CVaR.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: "size and limit on Expected Shortfall rather than VaR, and the tail is under
+    control."</strong> This desk has no record of limits or sizing set on either measure, so there is no
+    realised P&amp;L to grade them against. A fair test would forecast daily \(\text{VaR}_{0.95}\) and
+    \(\text{ES}_{0.975}\) for the desk's own strategy P&amp;L, out of sample. It would count VaR exceedances
+    against the expected 5% (a Kupiec-style test) and backtest ES with a test built for it. It would also
+    re-run the same count after any change to the model, because a model change is where 2012 went wrong.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <ul>
     <li>
@@ -446,7 +521,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VaR marks a threshold; CVaR averages the tail beyond it.</strong> That structural difference is the source of everything else in this lesson.</span></div>
@@ -454,10 +529,11 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>VaR fails sub-additivity.</strong> Two individually "safe" defaultable positions can combine into a portfolio whose VaR exceeds the sum of the individual VaRs — the worked example shows $0+$0 → $100. This is not a hypothetical edge case; it's the textbook counterexample for exactly this reason.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>CVaR is coherent — it satisfies all four axioms.</strong> The same worked example shows CVaR holding sub-additivity exactly ($200 ≤ $200), which is why bank regulation moved toward Expected Shortfall after 2008.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Coherence is about aggregation behavior, not estimation quality.</strong> A coherent measure can still be a badly estimated one if the underlying tail data is thin — coherence and estimation accuracy are separate concerns.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A limit is only as honest as the model under it.</strong> In 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion. Coherence would not have caught it, and "ES beats VaR" is untested on this desk.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the theory behind why risk-measure choice matters; it is not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What, precisely, does \(\text{VaR}_{0.99}(L)\) tell you, and what does it explicitly NOT tell you?</summary>
@@ -643,5 +719,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

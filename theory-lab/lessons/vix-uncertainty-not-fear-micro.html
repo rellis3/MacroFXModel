@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The VIX Is an Uncertainty Index — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The VIX Is an Uncertainty Index — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full formula, the worked example and a 6-question self-test?<a href="vix-uncertainty-not-fear.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">How Markets Talk to Each Other · 3 of 5</div>
+      <h1 class="sl-h1">The VIX Is an <em>Uncertainty Index</em>, Not a Fear Gauge</h1>
+      <p class="sl-lede">The VIX is a price for the <strong>size</strong> of the next month's moves — built from puts <em>and</em> calls. It usually jumps when stocks fall, so people call it the fear gauge. But on its own it says nothing about which way the market goes next. Learn to read it as a size and turn it into points.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">What the VIX actually measures</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">The nickname</span>
+          <p>"Fear gauge": a high VIX means the market is scared and about to fall.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">What it is</span>
+          <p>30-day <strong>implied volatility</strong> of the S&amp;P 500 — the market's price for how big moves will be, in either direction.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Think of it as a forecast of <strong>wind speed</strong>, not wind direction. A storm warning tells you to tie things down; it doesn't tell you which way the gusts will blow.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">How it's built: a strip of puts <em>and</em> calls</h2>
+      <p class="sl-sub">Not one option — a whole strip of out-of-the-money S&amp;P options at the two expiries around 30 days.</p>
+      <div class="sl-row"><div class="sl-box">OTM puts below the forward</div><div class="sl-arrow">+</div><div class="sl-box">OTM calls above it</div><div class="sl-arrow">→</div><div class="sl-box amber">expected variance σ²</div><div class="sl-arrow">→</div><div class="sl-box green">VIX = 100 × √σ²</div></div>
+      <p class="sl-p">Each option's price is weighted by ΔK/K² and summed — the same replication that prices a <strong>variance swap</strong>. Variance squares every move, so up and down count the same. Then √ turns it back into a volatility and ×100 quotes it in points: 0.20 → "VIX 20".</p>
+      <div class="sl-note">The 1/K² weighting gives low-strike puts more say per dollar, and puts are usually pricier than calls (skew). That's why downside demand usually <em>drives</em> the VIX even though it <em>measures</em> both sides.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Turn the VIX into an expected move — try it</h2>
+      <p class="sl-sub">σ for a horizon = VIX/100 × √h. Month: ÷√12. Week: ÷√52. Day: ÷√252 ≈ ÷16.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bell curve of expected one-month S&amp;P 500 moves; the shaded band is plus or minus one standard deviation and widens as the VIX rises while staying centred on zero">
+            <line x1="40" y1="195" x2="620" y2="195" style="stroke:var(--border2);stroke-width:1"/>
+            <path id="mx-band" d="" style="fill:var(--blue);fill-opacity:.28;stroke:none"/>
+            <polyline id="mx-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+            <line x1="330" y1="20" x2="330" y2="195" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text x="40" y="212" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">−35%</text>
+            <text x="330" y="212" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0%</text>
+            <text x="620" y="212" text-anchor="end" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">+35%</text>
+            <text x="330" y="227" text-anchor="middle" font-size="10.5" fill="var(--text3)">one-month S&amp;P 500 move</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>VIX level</span><span class="sl-live" id="mx-val">VIX = 20</span></div>
+        <input type="range" class="sl-slider" id="mx-slider" min="9" max="85" step="1" value="20">
+        <div class="sl-calc-steps">
+          <div>1-month 1σ ≈ <b id="mx-m">±5.77%</b> · 1-week ≈ <b id="mx-w">±2.77%</b> · 1-day ≈ <b id="mx-d">±1.26%</b></div>
+          <div>On an index at 5,000: 1-month 1σ ≈ <b id="mx-pts">±289</b> points</div>
+        </div>
+        <div class="sl-note">Drag it up: the bell gets wider and flatter, but its centre never moves off 0%. More VIX = bigger moves, not a different direction.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Worked example: VIX 20, index at 5,000</h2>
+      <div class="sl-calc-steps" style="font-size:14px">
+        <div>Month: 20 ÷ √12 = <b>5.77%</b> → about <b>±289 points</b> (2σ: ±577)</div>
+        <div>Week: 20 ÷ √52 = <b>2.77%</b> → about <b>±139 points</b></div>
+        <div>Day: 20 ÷ √252 = <b>1.26%</b> → about <b>±63 points</b> (rule of 16: 1.25%)</div>
+      </div>
+      <p class="sl-p">Double the VIX to 40 and <strong>every</strong> number doubles — ±11.5% a month, ±2.5% a day. The middle of the bell has not moved.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">A guide, not a promise</div>
+        <p>About one month in three should land <em>outside</em> ±1σ even on a bell curve, real returns have fatter tails, and the VIX includes an insurance premium. Use it for order of magnitude.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">It can rise in a rally</h2>
+      <p class="sl-p">Calls are in the strip. A rush into upside calls — a squeeze, a speculative frenzy, two-sided uncertainty before a big event — lifts implied variance just as a rush into puts does.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Usual day</span>
+          <p>Stocks down, VIX up. Institutions buy puts routinely; demand for crash insurance dominates.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">The tell</span>
+          <p>Stocks up <em>and</em> VIX up. The uncertainty being priced isn't only about a fall.</p>
+        </div>
+      </div>
+      <div class="sl-quote">The "fear" lives in the <strong>skew</strong> — how much more puts cost than calls — not in the VIX level itself.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The term structure: VIX vs VIX3M</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Contango (normal)</span>
+          <p>VIX below VIX3M. Near-term calm, longer-term uncertainty. Most days.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Backwardation (inversion)</span>
+          <p>VIX above VIX3M. The next 30 days are priced as wilder than the next 90 — something is happening now.</p>
+        </div>
+      </div>
+      <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>vix-inversion:</strong> first day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). Range, not direction.</span>
+      </div>
+      <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>mv-vixterm-range</strong>, an independent reproduction: next 20 sessions +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ, 14 de-clustered firings, both halves positive. <strong>Direction is null: 57% up against an 80%+ control.</strong></span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Implied vs realised: "over-insured" doesn't mean calm</h2>
+      <p class="sl-p"><strong>Implied</strong> = what the market pays for (the VIX). <strong>Realised</strong> = what the index actually did. Implied usually sits above realised — the insurance premium. The folk claim: when implied is <em>far</em> above realised, everyone's over-hedged and things will calm down.</p>
+      <div class="sl-stamp validated">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>iv-over-rv-wider — the opposite.</strong> VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range +0.38 ATR [+0.11, +0.62], next-20 +0.56; SPX500 next-20 +0.67 [+0.13, +1.21] (next-5 +0.17, null). Realised catches up to implied.</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The chain: who is forced to do what</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>The next month genuinely gets harder to call</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Hedgers</b>Must protect: buy puts (some buy calls)</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Market makers</b>Short more gamma, must quote higher vol</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Short-vol sellers</b>Marked down, must buy vol back</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A wider range, priced both ways</div>
+      </div>
+      <p class="sl-p">Every link says <em>how big</em>. None says <em>which way</em>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">5 Feb 2018 "Volmageddon" and 5 Aug 2024</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Two real spikes</div>
+        <div class="sl-tabs" id="story-tabs">
+          <button class="sl-tab active" data-panel="st-1">Feb 2018</button>
+          <button class="sl-tab" data-panel="st-2">Aug 2024</button>
+        </div>
+        <div class="sl-panel active" id="st-1">
+          <p class="sl-p" style="margin-top:0">Short-vol products had grown through a calm 2017. They rebalanced daily, so a late rise in VIX futures <strong>forced them to buy</strong> VIX futures into the close.</p>
+          <div class="sl-verdict">On 5 Feb 2018 the S&amp;P fell about 4% and the VIX closed at 37.32 against 17.31 the previous Friday — more than doubling in one session. Overnight the largest inverse-VIX note lost more than 90% of its indicative value; its issuer announced it would terminate the note.</div>
+        </div>
+        <div class="sl-panel" id="st-2">
+          <p class="sl-p" style="margin-top:0">During the yen carry-trade unwind, Japan's Nikkei fell more than 12% on 5 Aug 2024.</p>
+          <div class="sl-verdict">The VIX printed above 65 <strong>intraday</strong> around the US open, then closed near 39 the same day. Part of the spike came from thin, wide option quotes before liquidity returned — an intraday print is a stressed price, not a settled reading.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">The one "fear" test — and it failed</h2>
+      <p class="sl-sub">If the VIX were a fear signal with a direction, the classic fear trade — buy gold — should pay after a spike.</p>
+      <div class="sl-stamp null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>fear-gold:</strong> 58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on: excess -1.19% [-2.30, -0.48]. <strong>No fear bid in gold on average, and a month later gold had lagged its ordinary drift.</strong></span>
+      </div>
+      <div class="sl-quote">Three validated VIX findings, all about <strong>range</strong>. One directional "fear" claim, <strong>null</strong>. Vol tells you about size, never sign.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>The VIX is 20. Roughly what one-month move is one standard deviation?</h4>
+        <button class="sl-quiz-opt">±20%</button>
+        <button class="sl-quiz-opt" data-correct="true">About ±5.8%</button>
+        <button class="sl-quiz-opt">About ±1.25%</button>
+        <div class="sl-quiz-explain">20/√12 ≈ 5.77%. ±20% is the annualised figure; ±1.25% is the one-day move (20/16).</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>The VIX just doubled. What has the market told you?</h4>
+        <button class="sl-quiz-opt">Stocks are about to fall</button>
+        <button class="sl-quiz-opt" data-correct="true">It's paying for moves twice as big, in either direction</button>
+        <button class="sl-quiz-opt">Gold is about to rally</button>
+        <div class="sl-quiz-explain">The VIX is priced from puts and calls and squares the moves; doubling it doubles the expected size and leaves the centre of the bell at zero. "Fear buys gold" was tested here and came back null.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>VIX rises above VIX3M for the first time in months. What did this desk find?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The next week ran wider than matched controls — range, not direction</button>
+        <button class="sl-quiz-opt">Stocks bounced the next week</button>
+        <button class="sl-quiz-opt">Nothing — it was null</button>
+        <div class="sl-quiz-explain">vix-inversion: SPX500 +0.76 ATR, NAS100 +0.82 over the next 5 sessions (86 entries since 2008), reproduced over 20 sessions by mv-vixterm-range — whose direction check was null.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Implied vol is in its top decile relative to realised. Expect…</h4>
+        <button class="sl-quiz-opt">Calmer markets — everyone is over-insured</button>
+        <button class="sl-quiz-opt" data-correct="true">Wider ranges over the coming weeks</button>
+        <button class="sl-quiz-opt">A rally</button>
+        <div class="sl-quiz-explain">iv-over-rv-wider: SPX500 next-20 +0.67 ATR [+0.13, +1.21]; NAS100 next-5 +0.38 [+0.11, +0.62]. Realised caught up to implied.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The VIX is 30-day implied vol from a strip of out-of-the-money puts <em>and</em> calls: 100 × √(expected variance).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>VIX ÷ √12 = a one-month 1σ move; VIX ÷ 16 ≈ a one-day move. VIX 20 ≈ ±5.8% a month.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>It usually rises when stocks fall because of put demand — but it can rise in a rally.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>VIX above VIX3M → a wider week and month (validated twice). Implied far above realised → wider, not calmer (validated).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>"Fear buys gold" is <strong>null</strong>. Vol tells you about size, never sign.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>What the Yield Curve Says About Growth</h3>
+        <p>Options answer "how uncertain?". The bond market answers a different question — what growth and what rate path are expected — and its most famous signal has its own verdict.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="yield-curve-growth-expectations-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="vix-uncertainty-not-fear.html">Read the full VIX lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4 — one-month bell: sigma = VIX/100*sqrt(1/12), in %; fixed ±35% axis.
+  var slider = document.getElementById('mx-slider');
+  if (!slider) return;
+  var curve = document.getElementById('mx-curve'), band = document.getElementById('mx-band');
+  var XC = 330, XR = 290, YB = 195, YT = 26, R = 35;
+  function sig(v, h){ return v*Math.sqrt(h); }
+  function pdf(x, s){ return Math.exp(-0.5*(x/s)*(x/s))/(s*Math.sqrt(2*Math.PI)); }
+  var DMAX = pdf(0, sig(9, 1/12));
+  function px(x){ return XC + x/R*XR; }
+  function py(d){ return YB - d/DMAX*(YB-YT); }
+  function update(){
+    var v = parseFloat(slider.value);
+    var s = sig(v, 1/12);
+    var pts = [], i, x;
+    for (i = 0; i <= 140; i++){ x = -R + 2*R*i/140; pts.push(px(x).toFixed(1)+','+py(pdf(x,s)).toFixed(1)); }
+    curve.setAttribute('points', pts.join(' '));
+    var a = Math.max(-s, -R), b = Math.min(s, R), bp = [];
+    for (i = 0; i <= 60; i++){ x = a + (b-a)*i/60; bp.push(px(x).toFixed(1)+','+py(pdf(x,s)).toFixed(1)); }
+    band.setAttribute('d', 'M'+px(a).toFixed(1)+','+YB+' L'+bp.join(' L')+' L'+px(b).toFixed(1)+','+YB+' Z');
+    document.getElementById('mx-val').textContent = 'VIX = ' + v;
+    document.getElementById('mx-m').textContent = '±' + s.toFixed(2) + '%';
+    document.getElementById('mx-w').textContent = '±' + sig(v, 1/52).toFixed(2) + '%';
+    document.getElementById('mx-d').textContent = '±' + sig(v, 1/252).toFixed(2) + '%';
+    document.getElementById('mx-pts').textContent = '±' + Math.round(5000*s/100).toLocaleString();
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

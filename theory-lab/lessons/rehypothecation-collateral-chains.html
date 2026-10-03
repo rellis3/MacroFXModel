@@ -37,6 +37,7 @@
       <li>A <strong>collateral chain</strong>: the same physical piece of collateral can be re-pledged down a chain of counterparties (A → B → C → D…), each re-use adding a new claim referencing the same underlying asset and, with it, hidden interconnectedness that amplifies contagion if any single link defaults.</li>
       <li>A real collateral re-use chain is a literal, concrete instance of the exposure network <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a> formalizes — its DebtRank distress-propagation algorithm is directly analogous to what happens when one link in a re-use chain fails.</li>
       <li>Stated plainly: this is institutional market-structure and regulatory knowledge relevant to understanding counterparty and systemic risk — not a trading signal, and not a claim about anything built in this repo.</li>
+      <li><strong>Real-world episode:</strong> when MF Global failed on October 31, 2011, after a euro-bond bet drained its cash, customer accounts that were meant to be segregated came up roughly $1.6 billion short, and London customers were caught in a separate UK administration. "My collateral" is a legal claim, and in a run the firm needs cash first.</li>
     </ul>
   </div>
 
@@ -322,6 +323,91 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>It actually happened: MF Global, October 2011</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A futures broker, a euro-bond bet, and a hole in the customer accounts</h3>
+    <p>
+      Section 03 told the Lehman story, where clients' collateral was legally re-used and then caught in an
+      administration. Three years later a second broker failure showed the other half of the same risk: client
+      property that was <em>not</em> supposed to be usable at all ended up gone when the firm ran short of cash.
+    </p>
+    <p>
+      MF Global was one of the largest US futures brokers, run from 2010 by Jon Corzine, a former Goldman Sachs
+      chief executive and New Jersey governor. Under him the firm built a large position, reported at about
+      <strong>$6.3 billion</strong>, in short-dated bonds of Italy, Spain, Belgium, Portugal and Ireland. The
+      bonds were financed with <strong>repo-to-maturity</strong>: repos that ran until the bonds matured, which
+      the accounting of the time let the firm treat as sales, so the positions sat off its balance sheet. The
+      bet was that none of those governments would default before the bonds paid off.
+    </p>
+    <p>
+      None did. But in the autumn of 2011 the euro-area debt crisis deepened, regulators had already pushed the
+      firm to hold more capital against the position, and in late October it reported a quarterly loss and was
+      downgraded by the rating agencies. Counterparties wanted more margin on the bond financing, and customers
+      started moving their accounts elsewhere. Cash was leaving from both ends at once. On
+      <strong>October 31, 2011</strong> MF Global filed for bankruptcy.
+    </p>
+    <p>
+      Then came the shock for its customers. US futures rules require a broker to keep customer funds
+      <strong>segregated</strong>, untouchable for the firm's own business. Yet the trustee found a shortfall in
+      those accounts of roughly <strong>$1.6 billion</strong>. The regulator's later case was that customer money
+      had been used to meet the firm's own liquidity needs in its final days. Customers who traded on foreign
+      exchanges through the firm's London affiliate faced a second problem: their money sat inside a separate UK
+      administration, under UK client-money rules. Commentators at the time pointed straight at the UK's looser
+      rehypothecation regime, the same gap this lesson's Section 04 describes.
+    </p>
+    <p style="margin-bottom:0">
+      The US customers were eventually repaid essentially in full, but only after years of proceedings, during
+      which farmers, small traders and funds had their working capital frozen. The point for this lesson is the
+      one Section 02 makes in the abstract: whether your collateral is "held" or "used" is a legal right on
+      paper. In a run, the firm needs cash today, and client assets are the nearest liquid pool.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Euro debt crisis</b>Doubts about Italy, Spain and others hit the firm's roughly $6.3bn sovereign-bond book</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Counterparties</b>After a reported loss and rating downgrades, must protect themselves, so they demand more margin on the bond financing</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Customers</b>Fear for their accounts, so they move them out, draining more cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · client assets as funding</b>Short of cash, the firm reaches into money that should have been segregated; London customers' assets sit under UK re-use terms</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Bankruptcy on October 31, 2011; a customer shortfall of roughly $1.6bn, untangled across US and UK proceedings over years</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. The client's claim on "its" collateral is only as good as the
+    line between client property and the firm's own funding, and that line is drawn in contracts and ledgers,
+    not in the assets themselves.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You give the school office your lunch money to keep safe, and the rule says they must not spend it. The office runs out of money for its own bills, and on the last day, some of your lunch money gets used to pay them. When the office shuts, the jar is short. You do get it back in the end, but only after a very long wait, and you went hungry in between.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The textbook picture of segregation and re-use assumes the rules are followed and the records are right, so
+    a client's claim can always be traced to a specific asset or a specific counterparty. MF Global broke both
+    assumptions at the moment they mattered: a firm under a run has every incentive to treat the nearest cash as
+    its own, and its books were being reconciled after the fact. The re-use multiplier in Section 05 is measured
+    in calm conditions; in a run, every link in the chain asks for its collateral back on the same day.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: "a broker or dealer in trouble shows up in market prices before it fails, so
+    counterparty stress is something you can trade around."</strong> This desk's funding tests look at system-wide
+    overnight rates, not at one firm's distress, and none of its data samples a broker failure. A fair test
+    would need a list of broker and dealer failures and near-failures dated in advance (Bear Stearns, Lehman,
+    MF Global and the few others), each firm's own stock and credit-default-swap prices in the weeks before, and
+    a matched set of firms that came under similar pressure and survived. With so few failures, it would be
+    underpowered from the start, which is itself the honest answer.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   <strong>Negotiating rehypothecation limits.</strong> Prime brokerage agreements specify a broker's
@@ -386,7 +472,7 @@
     it should not be read as implying otherwise.
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Rehypothecation is the re-use of client collateral by the broker holding it</strong> — re-pledging it onward or lending it out — rather than simply holding it segregated on the client's behalf.</span></div>
@@ -394,10 +480,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SEC Rule 15c3-3 caps U.S. rehypothecation at roughly 140% of a customer's debit balance</strong> — a genuine, quantified regulatory limit that the UK-law practice applied to LBIE did not have an equivalent of at the time.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A collateral chain stacks multiple claims on one physical asset.</strong> Each re-pledge down the chain (A→B→C→D…) creates a new obligation referencing the same underlying collateral — the collateral-velocity/re-use-multiplier concept.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A collateral re-use chain is a literal exposure network</strong> — the exact kind of directed, capital-relevant structure that <a href="systemic-risk-networks.html">Systemic Risk &amp; Financial Contagion Networks</a>'s DebtRank algorithm is built to propagate distress through.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Client-asset rules hold only as well as the books do in a run.</strong> MF Global, 2011: segregated customer accounts roughly $1.6 billion short when the firm failed, repaid essentially in full only years later. Whether counterparty stress is visible early enough to trade around is untested here.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional/regulatory background, not a trading signal.</strong> Stated plainly, not softened — nothing here is a claim about anything built or traded in this repo.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 08</span></div>
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What precisely distinguishes rehypothecation from a broker simply holding a client's collateral in segregated custody?</summary>
@@ -542,5 +629,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

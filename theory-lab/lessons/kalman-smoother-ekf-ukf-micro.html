@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Kalman Smoother &amp; EKF/UKF — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the RTS-smoother chart, and the 6-question self-test?<a href="kalman-smoother-ekf-ukf.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">When prices are curved functions of a hidden state</h2>
+      <p class="sl-sub">Extended &amp; unscented filters, RTS smoother · rates and volatility models, 1990s–2000s</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Option prices, CIR-type yields and regime probabilities are curved functions of a hidden state, so the plain filter's linear algebra breaks. From the 1990s, extended and unscented filters became the usual way to fit nonlinear term-structure and volatility models to market prices.</p>
+        <p>The Rauch–Tung–Striebel smoother answers a research question instead: what was the hidden factor, using data on both sides of each date? So it belongs in post-mortems and factor histories, never in a live signal.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> estimate a hidden factor when prices are nonlinear in it, or reconstruct its path after the fact.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The filter's blind spot: it can't look ahead</h2>
       <p class="sl-sub">Nothing is wrong with the plain Kalman filter — it's doing exactly what a live system should. But "live" has a cost.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">Picture a boat's position, tracked once per radar ping, live, through the night. The crew's 2am estimate could only use pings received by 2am — that's the filter. But a logbook written the next morning has the whole night's pings sitting in front of it. If the 2am position looks inconsistent with where the boat clearly had to be by 4am, the 2am entry deserves revising — using data the crew never had, in hindsight.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The smoother's fix: run the filter forward, then walk it back</h2>
       <p class="sl-sub">The RTS (Rauch–Tung–Striebel) smoother adds one backward pass after the forward filter has already finished.</p>
       <div class="sl-card">
@@ -59,8 +72,8 @@
       <p class="sl-p">The recursion starts from a simple boundary condition: the very last time step has no future left to fold in, so its smoothed estimate is identical to its filtered one — x(T|T). Every step before that pulls partway toward the already-smoothed step just ahead of it, by an amount set by C.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Same eight noisy readings, two different answers</h2>
       <p class="sl-sub">Toggle between the live filter's forward-only estimate and the smoother's whole-dataset estimate, over the same fixed noisy sequence.</p>
       <div class="sl-card">
@@ -107,8 +120,8 @@
       <p class="sl-p">Both lines are computed from the identical eight-step observation sequence, with the same process and observation noise. Nothing about the data changed between the two tabs — only how much of it each estimate was allowed to use.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">By hand: revising yesterday, using what today revealed</h2>
       <p class="sl-sub">Reusing the plain Kalman filter lesson's own two-day hedge-ratio track, unmodified.</p>
       <div class="sl-card">
@@ -132,8 +145,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">EKF: draw a tangent line, then run the same linear math</h2>
       <p class="sl-sub">The Extended Kalman Filter keeps the plain filter's entire predict/update skeleton — it only swaps in a local linear stand-in for a nonlinear f or h.</p>
       <div class="sl-icard-grid">
@@ -145,8 +158,8 @@
       <div class="sl-quote">Imagine predicting a hilly trail using only a ruler laid flat against the ground exactly where you're standing. Right at your feet, the ruler matches the trail perfectly. A few steps ahead, the trail curves away from that flat ruler — maybe it climbs a hill the ruler has no idea is coming. The EKF re-lays that ruler fresh at every single step, so it's never wildly wrong for long — but it can still misjudge how steep the trail gets between one step and the next.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">UKF: send scouts down the real curve instead</h2>
       <p class="sl-sub">The Unscented Kalman Filter keeps the same skeleton too — but replaces the tangent-line step entirely.</p>
       <div class="sl-icard-grid">
@@ -158,8 +171,8 @@
       <div class="sl-quote">Instead of trusting one ruler laid down at your feet, send out three actual scouts to walk the real trail — one right where you're standing, one a bit ahead, one a bit behind — and let each report exactly what they found, hills and all, with no ruler involved. Then average their honest reports. It costs more legwork than reading one ruler, but nobody had to pretend the trail was flat anywhere.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Watch the tangent line peel away</h2>
       <p class="sl-sub">The black curve is a nonlinear observation function. The red dashed line is the EKF's one tangent line, fixed at the center estimate. The purple dots are UKF sigma points — they always sit exactly on the true curve, however much it bends.</p>
       <div class="sl-card">
@@ -184,8 +197,8 @@
       <p class="sl-p">At k = 0 there's nothing to see: a linear h means the EKF's Jacobian is exact everywhere, and EKF, UKF, and the plain Kalman filter all agree perfectly. Drag the slider up and the true curve bends away from that same fixed tangent line — the sigma points, which always sit on the true curve, visibly separate from where the tangent line places them.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try the linearization error yourself</h2>
       <p class="sl-sub">Using h(x) = x² — the same toy nonlinearity as the worked example above. Pick a point x₀ and a nearby offset dx; compare the EKF's linear (Taylor) approximation there against the true function value.</p>
       <div class="sl-card">
@@ -211,8 +224,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">When to reach for each</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">①</div><div><h4>EKF — the default first move</h4><p>Cheapest: one Jacobian per step. Fine when the nonlinearity is mild and f/h are smooth. Can fail — badly, and silently, as an understated P — when curvature is strong relative to the uncertainty band, or when f/h isn't even differentiable (a kink, a discontinuity).</p></div></div>
@@ -222,8 +235,8 @@
       <div class="sl-quote">Escalate in that order. Each step up trades more compute for more fidelity to the true, ugly shape of the problem. Reaching for a full particle swarm to solve a mildly curved, single-humped problem is over-engineering; reaching for one tangent line to solve a genuinely multimodal one will just be wrong.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this actually stands</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">65</div><div><h4>RTS — Rauch, Tung &amp; Striebel, 1965</h4><p>The standard tool whenever a state-space model is fit to historical data for reporting or research, rather than run live.</p></div></div>
@@ -236,8 +249,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -287,8 +300,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The plain Kalman filter is forward-only — each estimate uses only data through that point in time, never anything after it.</p></div>
@@ -297,6 +310,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The UKF skips linearization entirely — it pushes a few deterministic sigma points through the true nonlinear function and reconstructs the mean/variance from where they land.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>EKF is cheaper and the default first move for mild, smooth nonlinearity; UKF costs more but tolerates stronger curvature and needs no Jacobian at all.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>When nonlinearity is severe, or the noise is genuinely non-Gaussian or multimodal, escalate further still — to the particle filter from the previous lesson.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk: EKF/UKF to fit nonlinear rates and volatility models to market prices; the smoother for research reconstruction only, because it looks ahead.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -326,7 +340,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Section 7 — nonlinearity slider: true curve vs EKF's fixed tangent line,
+  // Section 8 — nonlinearity slider: true curve vs EKF's fixed tangent line,
   // with UKF sigma points always sampling the true curve directly.
   (function(){
     var slider = document.getElementById('nl-slider');
@@ -379,7 +393,7 @@
     update();
   })();
 
-  // Section 8 — live linearization-error calculator, h(x) = x^2.
+  // Section 9 — live linearization-error calculator, h(x) = x^2.
   (function(){
     var x0El = document.getElementById('lz-x0');
     if (!x0El) return;

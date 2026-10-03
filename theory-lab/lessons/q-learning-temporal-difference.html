@@ -37,6 +37,7 @@
       <li>SARSA is the on-policy sibling: it bootstraps off \(Q(s',a')\) for the action \(a'\) actually taken, not the best one — the two differ only in that one substitution, with real behavioral consequences.</li>
       <li>Worked example in this lesson: explicit Q-table updates on the same 3-state flat/long/short MDP from the previous lesson, converging (with a constant step size) toward — but not exactly onto — the \(Q^*\) values solved for by hand there.</li>
       <li>Model-free learning removes the previous lesson's biggest limitation (needing \(P\) and \(R\) up front) but trades it for a new one: you need enough sampled experience, and enough exploration, for the estimates to actually converge.</li>
+      <li><strong>How it reached trading:</strong> Moody &amp; Saffell tested it on stock-index allocation in the late 1990s, and Nevmyvaka, Feng &amp; Kearns (2006) used a tabular version on real order-book data to cut execution costs.</li>
     </ul>
   </div>
 
@@ -96,6 +97,46 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Imagine guessing how a road trip will go. Waiting for the whole trip to finish before learning anything is Monte Carlo — accurate, but slow, and one weird detour can throw the whole lesson off. Temporal-difference learning is like updating your guess after every single mile, using your best current guess about the rest of the trip — quicker feedback, even though that guess about "the rest of the trip" is itself still a work in progress.</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Learning a trading rule without a model of the market</h3>
+    <div class="tl-origin-who">Q-learning · tested on trading in the late 1990s (Moody &amp; Saffell); on execution by Nevmyvaka, Feng &amp; Kearns (2006)</div>
+    <p>
+    Dynamic programming needs the transition probabilities written down, and nobody
+    can write down the transition probabilities of a market. Q-learning, which came out of
+    1989 machine-learning research, removes that requirement: it learns the value of each
+    action in each state from a stream of (state, action, reward, next state) records.
+    For a trader, those records are exactly what a fills log or a historical order book
+    contains.
+    </p>
+    <p>
+    John Moody and Matthew Saffell were among the first to test it on markets, in work
+    from the late 1990s published as "Learning to trade via direct reinforcement" (2001).
+    On a stock-index allocation problem they compared a Q-learning trader with a
+    direct policy-learning one, and reported that the direct approach did better. The cleaner success came
+    in execution. Yuriy Nevmyvaka, Yi Feng and Michael Kearns (2006) used a tabular,
+    Q-learning-style method on historical order-book data for NASDAQ stocks. The state was time
+    left, shares left and a few market variables; the action was where to place the limit
+    price. Their learned policies cut trading costs substantially compared with simple
+    submit-and-leave strategies.
+    </p>
+    <p>
+    Today Q-learning-style methods live mainly in execution and market-making research
+    (for example Spooner and colleagues' 2018 market-making agents), and in offline
+    evaluation: estimating what a different rule would have earned from fills logged under
+    the current one. The deep version in the next lessons carries the same update into
+    larger state spaces.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Learn, from logged experience alone, which action (wait, trade, how aggressively) pays off in each state over the rest of the episode.</dd>
+        <dt>Takes in</dt><dd>The state, action and reward framing from <a href="mdp-bellman-equation.html">MDPs and the Bellman equation</a>, and state variables such as spread and queue depth from <a href="limit-order-books.html">limit order books</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="deep-q-networks.html">Deep Q-Networks</a> when the state is too big for a table, and an order-placement policy for <a href="execution-algorithms.html">execution algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -465,6 +506,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SARSA changes exactly one term — the max becomes the actually-taken next action — making it on-policy instead.</strong> It learns the value of the policy actually being followed, exploration and all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A constant learning rate converges to a neighborhood of \(Q^*\), not exactly onto it.</strong> Formal convergence needs a decaying step size satisfying the Robbins-Monro conditions.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Exploration isn't optional — it's part of the convergence guarantee.</strong> Every state-action pair needs to be visited enough for its Q-value to be learned correctly; a purely greedy behavior policy can permanently miss better alternatives.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Its clearest trading use is execution.</strong> Nevmyvaka, Feng &amp; Kearns (2006) learned where to place limit orders from historical order-book data, without a market model. Directional trading results, from Moody &amp; Saffell onward, have been weaker.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

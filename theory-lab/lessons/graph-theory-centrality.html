@@ -37,6 +37,7 @@
       <li>Eigenvector centrality defines importance recursively — a node is important if it's connected to important nodes — solved as the leading eigenvector of \(Ax=\lambda x\); PageRank is its directed, damped cousin.</li>
       <li>On a toy 7-node network built from two triangle-shaped clusters joined by one bridge node, these three measures don't just differ in magnitude, they crown different "most important" nodes — the worked example below computes all three by hand and shows exactly where and why they split.</li>
       <li>None of this is built or used anywhere in this repo yet — it's presented here as background theory that the next two lessons (correlation networks/MST, and systemic-risk networks) build directly on top of.</li>
+      <li><strong>How it reached trading:</strong> Mantegna mapped stock markets as graphs in 1999, and after 2008 network centrality became a systemic-risk tool (Billio et al., 2012; Diebold &amp; Yilmaz, 2014) and a scored category in the Basel method for systemically important banks.</li>
     </ul>
   </div>
 
@@ -104,6 +105,23 @@
       below). Three measures, three different — all legitimate — answers to
       "who matters here."
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Who is central when the system breaks?</h3>
+    <div class="tl-origin-who">Market networks · Mantegna, 1999 → post-2008 connectedness: Billio et al., 2012; Diebold &amp; Yilmaz, 2014</div>
+    <p>Correlation matrices and VaR treat risk position by position, but 2008 showed losses spreading along links between institutions and markets. There was no standard way to ask which node sits at the centre of those links. Rosario Mantegna's 1999 minimum-spanning-tree map of US stocks had already shown that a market could be read as a graph.</p>
+    <p>After the crisis the question became urgent. Billio, Getmansky, Lo &amp; Pelizzon (2012) built Granger-causality networks among hedge funds, banks, brokers and insurers and found the system had become more interconnected in the years before 2008. Diebold &amp; Yilmaz turned forecast-error variance decompositions into a spillover index (2009) and then into weighted, directed networks (2014) whose centralities show who transmits shocks. Regulators followed: interconnectedness is one of the scored categories in the Basel Committee's 2011 method for identifying global systemically important banks.</p>
+    <p>On a desk today: spotting crowded, central assets and counterparties, and seeing which market is transmitting stress in a sell-off.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which node (asset, market or counterparty) sits at the centre of the links, so that a shock there spreads furthest?</dd>
+        <dt>Takes in</dt><dd>Edges from <a href="primer-correlation-regression.html">correlations</a> or directed lead-lag measures such as <a href="transfer-entropy-causality.html">Transfer Entropy</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="correlation-networks-mst.html">Correlation Networks &amp; MST</a> and <a href="systemic-risk-networks.html">Systemic Risk Networks</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -639,6 +657,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Eigenvector centrality is recursive importance</strong> — solved as the leading eigenvector of \(Ax=\lambda x\); PageRank extends it to directed, damped graphs.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The three measures can disagree, and that's the point.</strong> The worked example computed all three exactly and got three different rankings for "most important node" — reporting only one is a choice, and it should be a stated one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built anywhere in this repo.</strong> This is background theory the next two lessons build on directly — it is not itself a claim of trading edge.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Centrality became a risk measure after 2008.</strong> Connectedness networks (Billio et al., 2012; Diebold &amp; Yilmaz, 2014) ask who transmits shocks, but every score is only as meaningful as the edges you chose to draw.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

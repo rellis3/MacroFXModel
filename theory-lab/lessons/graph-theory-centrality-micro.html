@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Graph Theory &amp; Centrality — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the hand-solved eigenvector cubic, and a 5-question self-test?<a href="graph-theory-centrality.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Who is central when the system breaks?</h2>
+      <p class="sl-sub">Market networks · Mantegna, 1999 → post-2008 connectedness: Billio et al., 2012; Diebold &amp; Yilmaz, 2014</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Correlations and VaR treat risk position by position; 2008 showed losses spreading along links. Mantegna (1999) had already mapped US stocks as a minimum spanning tree, showing a market could be read as a graph.</p>
+        <p>After the crisis, Billio et al. (2012) and Diebold &amp; Yilmaz (2009, 2014) built connectedness networks to find who transmits shocks, and the Basel Committee's 2011 method for systemically important banks scores interconnectedness.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> which asset, market or counterparty sits at the centre, so a shock there spreads furthest?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Dots and lines describing almost anything</h2>
       <p class="sl-sub">A graph G = (V, E) is a set of nodes V and a set of edges E connecting pairs of them. That's the whole definition — everything else is what you choose to call a node and an edge.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">The reason this belongs in a finance curriculum: a correlation matrix, an exposure ledger, and a supply-chain map are three completely different-looking spreadsheets. Redraw all three as nodes and edges, and the exact same handful of questions — and the exact same three centrality measures below — apply to every one of them, unchanged.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Four words that do all the work</h2>
       <p class="sl-sub">Degree, path, connected component, weighted — nearly everything downstream is built from these four.</p>
       <div class="sl-icard-grid">
@@ -71,8 +84,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">One small network, used for everything below</h2>
       <p class="sl-sub">Seven currency-bloc nodes: a European trio (EUR, GBP, CHF) and a commodity-bloc trio (AUD, NZD, CAD), each trio fully connected internally, joined by a single bridge node, JPY, which links to exactly one node in each trio.</p>
       <div class="sl-svgwrap">
@@ -111,8 +124,8 @@
       <p class="sl-p">Every one of those numbers under a node — its degree — is also a full row of the adjacency matrix, the grid form of the exact same information: EUR's row has a 1 in the GBP, CHF, and JPY columns and 0s everywhere else. A matrix and this picture are two views of one object, and everything below is computed straight off it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Degree centrality: the popularity count</h2>
       <p class="sl-sub">C_D(v) = deg(v). Normalized to [0,1] by dividing by n − 1, the maximum degree possible in a network of n nodes.</p>
       <div class="sl-card">
@@ -138,8 +151,8 @@
       <p class="sl-p">Degree is cheap, direct, and often a genuinely useful first cut — but it's entirely <strong>local</strong>. It can't tell a node connected to three nobodies from one connected to three of the network's most important members, and it's completely blind to a node's role as a bridge between parts of the network it doesn't directly touch at all. Both of those blind spots get fixed below.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Betweenness centrality: the unavoidable route</h2>
       <p class="sl-sub">For every other pair of nodes s and t, ask what fraction of their shortest paths passes through v — and add that up across every pair.</p>
       <div class="sl-svgwrap">
@@ -161,8 +174,8 @@
       <div class="sl-quote">A node with high betweenness isn't necessarily well-connected itself — it just happens to sit on the route between two otherwise-separate parts of the network. That's a genuinely different kind of "important" than degree measures, and it's exactly the property a risk desk cares about when asking "which single position, if it broke, would cut off information flow between two halves of the book?"</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Eigenvector centrality: important friends make you important</h2>
       <p class="sl-sub">A node's score should be proportional to the sum of its neighbors' scores. For the whole network at once: Ax = λx.</p>
       <div class="sl-icard-grid">
@@ -173,8 +186,8 @@
       <div class="sl-quote">This is the same eigenvector equation as the leading eigenvector in the PCA lesson — solved the same mechanical way, by repeatedly multiplying by a matrix and rescaling — pointed at a completely different question: not "which direction does the data vary most," but "who is important around here." The next slide watches that repeated-multiply-and-rescale process happen, one iteration at a time.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Power iteration: watching importance converge</h2>
       <p class="sl-sub">Start by guessing every node is equally important. Multiply by the adjacency matrix, rescale, repeat. Drag the slider through the iterations.</p>
       <div class="sl-card">
@@ -212,8 +225,8 @@
       <p class="sl-p">Note JPY (purple bar) briefly rivaling EUR/AUD around iteration 2, before settling below them — a real feature of this network's spectrum, not a bug. For comparison, the algebraically exact converged values from the full lesson are EUR = AUD = 1.00, JPY ≈ 0.85, and GBP/CHF/NZD/CAD ≈ 0.74 — watch the bars approach those numbers as k climbs toward 8.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Same network, three different winners</h2>
       <p class="sl-sub">Same seven nodes, same eight edges. Switch measures below and watch which node turns red.</p>
       <div class="sl-card">
@@ -340,8 +353,8 @@
       <p class="sl-p">Degree, betweenness, and eigenvector centrality agree that EUR and AUD matter — but only betweenness notices JPY at all, and only eigenvector centrality ranks JPY above the four peripheral nodes. Three questions, three legitimate, three different rankings.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Disagreement is the point, not a bug</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
@@ -360,8 +373,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🕸️</div><div><h4>Social &amp; web networks</h4><p>PageRank's original application — ranking web pages by the structure of who links to whom, not keyword counting alone.</p></div></div>
@@ -375,8 +388,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -426,8 +439,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A graph is nodes plus edges — the same abstraction fits a correlation matrix, an exposure ledger, or a friendship map without changing the math at all.</p></div>
@@ -436,6 +449,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Betweenness centrality finds bridges — a low-degree node can hold the network's highest betweenness if it's the only route between two clusters.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Eigenvector centrality is recursive importance, solved by power iteration until the scores stop moving; PageRank is its directed, damped cousin.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The three measures can, and often do, disagree about "who matters most" on the exact same network — reporting only one is a choice, and it should be a stated one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Centrality reached markets as a systemic-risk measure after 2008 (Billio et al., 2012; Diebold &amp; Yilmaz, 2014), and it is only as meaningful as the edges you chose to draw.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

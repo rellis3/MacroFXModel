@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Vega &amp; the Volatility Surface — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, the put-call-parity proof, and a 6-question self-test?<a href="vega-volatility-surface.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -301,7 +301,46 @@
     </section>
 
     <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+      <div class="sl-kicker">Section 13 · It actually happened</div>
+      <h2 class="sl-h2">October 1987: insurance that had no vega</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>"Portfolio insurance" replicated puts by selling index futures as prices fell: a delta hedge with <strong>zero vega</strong>. On 19 October 1987 the Dow fell 22.6% and the S&amp;P 500 about 20% in one session; futures traded at a deep discount and prices gapped. The replication fell behind. Real puts gained on price <em>and</em> on implied vol. The skew has been there ever since. In March 2020 the other axis bent: the VIX closed at a record <strong>82.69</strong> on 16 March and the curve stayed inverted for weeks.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Sharp falls the week before</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Portfolio insurers</b>Must sell futures as prices fall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Futures and stocks</b>Deep discount; prices gap</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Option market makers</b>Mark OTM put vol far higher, for good</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A permanent skew</div>
+      </div>
+      <p class="sl-p">★ is this lesson's concept. How much portfolio insurance <em>caused</em> the fall, rather than accompanied it, is still debated; that it couldn't hedge vega is not.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The tempting claim: an inverted term structure says something about the weeks ahead.</p>
+      <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>vix-inversion:</strong> first day of VIX above VIX3M → next-5 range: <strong>SPX500 +0.76 ATR, NAS100 +0.82</strong>, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Median inversion: 1 session.</span>
+      </div>
+      <div class="sl-stamp validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>mv-vixterm-range:</strong> next 20 sessions +0.52 [0.38, 0.88] SPX500, +0.44 [0.26, 0.78] NQ, 14 firings, both halves. <strong>Direction null</strong>: 57% up vs an 80%+ control.</span>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>One constant σ and a continuous path made a replicated put look like a real one. 1987 broke both. And vega is a parallel-shift number: in a crash the put wing moves far more than at-the-money. The skew itself is untested here as a forward signal.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -351,8 +390,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
-      <div class="sl-kicker">Section 14</div>
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 16</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Vega is ν = Sφ(d₁)√T — identical for a call and a put, since put-call parity's right side has no σ term at all.</p></div>
@@ -361,6 +400,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The underlying has exactly zero vega — the single most important practical fact here. Vega can only be hedged with other options, never with the underlying.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Dollar VegaExposure, νₖ×OIₖ×100, concentrates the same way GEX does — heavy OI at a high-vega strike dominates a book's vega risk, but the fix is other options, not the underlying.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own code has real implied-vol/skew data (CME CVOL, tested via fxVolCarryEngine) but no vega Greek or dollar-vega-exposure function — the badge is half-stale, not fully stale.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>October 1987: portfolio insurance replicated puts with futures (zero vega) and failed on a gap; the skew has existed ever since. Desk verdict: an inverted VIX curve is followed by wider ranges (vix-inversion, mv-vixterm-range, validated), never a direction.</p></div>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>
@@ -539,5 +579,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

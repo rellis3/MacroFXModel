@@ -37,6 +37,7 @@
       <li><strong>Monte Carlo integration</strong> is a genuine reframe, not a different idea: instead of a deterministic grid, sample points randomly and average the function's value at them — it estimates the same area under the same curve, just by a different route.</li>
       <li>Deterministic quadrature (trapezoidal, Simpson's) is far more accurate in 1-2 dimensions, but its cost explodes exponentially as dimensions are added — the "curse of dimensionality." Monte Carlo's error shrinks at a fixed \(1/\sqrt{N}\) rate <em>regardless</em> of dimension, which is exactly why high-dimensional option pricing uses simulation, not a grid.</li>
       <li>The worked example integrates the standard normal PDF from 0 to 1 with the trapezoidal rule using only 4 intervals, and checks the answer against the exact value \(\Phi(1)-\Phi(0)\approx0.3413\).</li>
+      <li>How it reached trading: Boyle (1977) priced options by Monte Carlo, quasi-Monte Carlo followed for high-dimensional products (Paskov &amp; Traub, 1995), Gauss quadrature became standard for Heston-type integrals, and expected shortfall under FRTB (2016) made tail integration a capital number.</li>
     </ul>
   </div>
 
@@ -116,6 +117,23 @@
       dimensions the problem has — a genuinely different, and often decisive,
       practical advantage over a fixed grid.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Option prices and tail risk are integrals</h3>
+    <div class="tl-origin-who">Quadrature &amp; Monte Carlo in finance · Boyle, 1977; Paskov &amp; Traub, 1995</div>
+    <p>An option price is an expected payoff, and expected shortfall is an average over the loss tail: both are integrals. Outside the few cases with closed forms, a desk has to compute them numerically, and the method chosen sets both the speed and the error.</p>
+    <p>Phelim Boyle (1977) brought Monte Carlo to option pricing. Paskov and Traub (1995) showed that low-discrepancy (quasi-Monte Carlo) points priced a 360-dimensional mortgage-backed security supplied by Goldman Sachs far faster than ordinary random draws. For one-dimensional pricing integrals such as Heston's, Gauss quadrature, a rule dating from 1814, became the usual choice.</p>
+    <p>The same choice now runs through risk: the Basel market-risk rules (FRTB, 2016) replaced 99% VaR with 97.5% expected shortfall, an integral over the tail, so how the tail is integrated, by scenarios, quadrature or simulation, feeds directly into capital.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Turn an expectation (a price or a tail average) into a number with a known error.</dd>
+        <dt>Takes in</dt><dd>Pricing integrands from <a href="heston-model.html">Heston</a>; distributions from <a href="primer-probability.html">Probability</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="fft-option-pricing-carr-madan.html">Carr-Madan FFT pricing</a>; expected shortfall in <a href="coherent-risk-measures.html">Coherent risk measures</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -589,6 +607,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Deterministic quadrature's cost explodes exponentially with dimension.</strong> The curse of dimensionality — roughly nᵈ evaluations for a d-dimensional grid — makes it infeasible past 2-3 dimensions.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Monte Carlo's 1/√N error rate doesn't depend on dimension at all.</strong> The exact reason high-dimensional option pricing (baskets, path-dependent payoffs) always uses simulation, never a grid.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither method validates the model being integrated against.</strong> Quadrature and Monte Carlo both faithfully compute the integral of whatever density or payoff they're given — garbage in, precisely-computed garbage out.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Prices and expected shortfall are integrals, so the integrator is a risk choice.</strong> Monte Carlo (Boyle, 1977), quasi-Monte Carlo (Paskov &amp; Traub, 1995) and Gauss quadrature price options; since FRTB (2016) the tail integral sets market-risk capital.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

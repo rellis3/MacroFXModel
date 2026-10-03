@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Selling Winners, Holding Losers — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local to this deck: tappable holdings for the portfolio exercise. */
+  .hs-holds{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .hs-hold{background:var(--panel2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.4;padding:10px 12px;text-align:left;cursor:pointer}
+  .hs-hold b{display:block;font-size:13.5px}
+  .hs-hold span{font-family:'DM Mono',monospace;font-size:12px}
+  .hs-hold.sold{border-color:var(--purple);background:var(--purple-bg)}
+  .hs-up{color:var(--green)}
+  .hs-dn{color:var(--red)}
+  @media (max-width:600px){.hs-holds{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Selling Winners, Holding Losers — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Want the full method, the 20-trade self-audit table, and a 6-question self-test?<a href="disposition-effect.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Human Side · Lesson 2 of 6</div>
+      <h1 class="sl-h1">Selling Winners, <em>Holding Losers</em></h1>
+      <p class="sl-lede">The disposition effect: why you cash in what's working and keep what isn't, how it was measured in 10,000 real brokerage accounts, and how to measure it in your own trades.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The S-curve, acted out on a portfolio</h2>
+      <p class="sl-sub">Shefrin and Statman (1985) named it: the disposition to sell winners too early and ride losers too long. Four ingredients:</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">S</div><div><h4>Prospect theory</h4><p>Concave for gains: bank them. Convex for losses: hold and hope.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">£</div><div><h4>Mental accounting</h4><p>Each position is its own little account you want to close in the black.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">↺</div><div><h4>Regret aversion</h4><p>Selling a loser makes "I was wrong" real. Holding keeps the story open.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✋</div><div><h4>Self-control</h4><p>Knowing you should take the loss and doing it are different things.</p></div></div>
+      </div>
+      <div class="sl-quote">The market does not know what you paid. Whether to hold tomorrow depends on the stock's future, not your entry.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">How to measure it: PGR and PLR</h2>
+      <p class="sl-sub">Counting sales fails in a rising market (most positions are winners). Odean compared what was sold with what <em>could</em> have been sold, on each sale day.</p>
+      <div class="sl-row"><div class="sl-box green">PGR = RG ÷ (RG + PG)</div><div class="sl-box amber">PLR = RL ÷ (RL + PL)</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label for="c-rg">Winners sold (RG)</label><input class="sl-input" id="c-rg" type="number" min="0" value="2"></div>
+          <div class="sl-calc-field"><label for="c-pg">Winners held (PG)</label><input class="sl-input" id="c-pg" type="number" min="0" value="3"></div>
+          <div class="sl-calc-field"><label for="c-rl">Losers sold (RL)</label><input class="sl-input" id="c-rl" type="number" min="0" value="0"></div>
+          <div class="sl-calc-field"><label for="c-pl">Losers held (PL)</label><input class="sl-input" id="c-pl" type="number" min="0" value="3"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">PGR</div><div class="sl-calc-result-val" id="c-pgr">0.40</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">PLR</div><div class="sl-calc-result-val" id="c-plr">0.00</div></div>
+        </div>
+        <div class="sl-note" id="c-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">What 10,000 accounts showed</h2>
+      <p class="sl-sub">Odean (1998): a large US discount broker, 1987–1993, every sale day.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">PGR 0.148</span>
+          <p>Of the gains investors could have realised on a sale day, they realised 14.8%.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">PLR 0.098</span>
+          <p>Of the losses they could have realised, only 9.8%. A winner was about 1.5× as likely to be sold.</p>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">And it cost them</div>
+        <p>Over the next year, the <strong>winners they sold beat the losers they kept by about 3.4 percentage points</strong> (returns above the market). The "it's due a bounce" defence did not hold up.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4 · Try it</div>
+      <h2 class="sl-h2">Raise $9,500: tap what you'd sell</h2>
+      <p class="sl-sub">Six made-up holdings. Go with your instinct first, then try the other way.</p>
+      <div class="hs-holds" id="mp-holds"></div>
+      <div class="sl-calc-steps">
+        <div id="mp-cash"></div>
+        <div id="mp-pnl"></div>
+        <div id="mp-ratio"></div>
+        <div id="mp-tax"></div>
+      </div>
+      <div class="sl-svgwrap" style="margin-top:10px">
+        <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Your PGR and PLR bars next to Odean's 0.148 and 0.098">
+          <line x1="40" y1="140" x2="620" y2="140" style="stroke:var(--border2);stroke-width:1"/>
+          <rect x="70" y="121.5" width="60" height="18.5" style="fill:var(--green)"/>
+          <rect x="140" y="127.7" width="60" height="12.3" style="fill:var(--amber)"/>
+          <rect id="mp-bpgr" x="400" y="140" width="60" height="0" style="fill:var(--green)"/>
+          <rect id="mp-bplr" x="470" y="140" width="60" height="0" style="fill:var(--amber)"/>
+          <text id="mp-tpgr" x="430" y="134" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">—</text>
+          <text id="mp-tplr" x="500" y="134" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text2)">—</text>
+          <text x="135" y="160" text-anchor="middle" font-size="11.5" fill="var(--text2)">Odean: PGR · PLR</text>
+          <text x="465" y="160" text-anchor="middle" font-size="11.5" fill="var(--text2)">You: PGR · PLR</text>
+        </svg>
+      </div>
+      <div class="sl-note">Tax at an illustrative flat 20%. Real rules vary by country and holding period.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">It's tax-backwards, too</h2>
+      <p class="sl-sub">Realised gains are taxed; realised losses can offset them. Tax logic says defer gains and take losses. The bias does the opposite.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Instinct</span>
+          <p>Sell Alder + Cedar: $11,400 raised, <strong>+$2,400</strong> realised, <strong>$480</strong> tax at 20%. PGR 0.67, PLR 0.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Tax-aware</span>
+          <p>Sell Birch + Delta: $9,800 raised, <strong>−$3,200</strong> realised, up to <strong>$640</strong> tax saved. PGR 0, PLR 0.67.</p>
+        </div>
+      </div>
+      <div class="sl-quote">In Odean's data the pattern reversed in exactly one month: <strong>December</strong>, the tax-loss-selling month. With a deadline, people took losses readily. It is a choice.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · It actually happened</div>
+      <h2 class="sl-h2">10,000 accounts, seven years</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Terrance Odean took the records of <strong>10,000 randomly chosen accounts</strong> at a US discount broker, 1987–1993: real people, their own money, no advice. He found PGR 0.148 vs PLR 0.098, checked rebalancing and trading costs as innocent explanations (the pattern survived), saw it reverse only in December, and showed the sold winners beat the kept losers by ~3.4 pp the next year.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link concept"><b>★ This lesson · disposition</b>Selling a loser makes the regret real</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Needs cash</b>Must sell; picks winners</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Tax authority</b>Taxes the gain now; no loss to offset</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Portfolio</b>Left holding the laggards</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Sold winners beat kept losers ~3.4 pp</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">Not one dataset, and where it breaks</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">FI</div><div><h4>Finland</h4><p>Grinblatt and Keloharju (2001): the same reluctance to realise losses in national shareholding records.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>The lab</h4><p>Weber and Camerer (1998): it appears even when past prices carry no information.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📰</div><div><h4>Prices</h4><p>Frazzini (2006): prices under-react to news when holders sit on gains or losses.</p></div></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Trimming an oversized winner is risk management; a target set before entry is a plan. PGR/PLR measure a tendency, not one sale. If you hold one position at a time, there are no paper gains or losses to count: compare <strong>days held for losers vs winners</strong> instead.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">What this desk has, and hasn't, tested</h2>
+      <p class="sl-sub">The claim: "cut your losers and let your winners run" beats the reverse.</p>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>No ledger entry measures how the desk's own trades are closed.</strong> The evidence on this deck is from investors in published studies. A desk test would need the closed-trade log with the open positions at each exit, and a pre-registered threshold for what gap counts as a finding.</span>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What professionals do</div>
+        <p><strong>Exits written at entry.</strong> <strong>The fresh-eyes test:</strong> if this were cash, would I buy it today? <strong>Tax-loss harvesting</strong> on purpose. <strong>Audit exits quarterly</strong>, not just entries.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · Exercise</div>
+      <h2 class="sl-h2">Audit your last 20 closed trades</h2>
+      <p class="sl-sub">From your broker history: for each exit, was it a win or a loss, and how many other open positions were up or down at that moment? Add them up.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Your totals</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label for="a-rg">Exits that were wins</label><input class="sl-input" id="a-rg" type="number" min="0" value="12"></div>
+          <div class="sl-calc-field"><label for="a-pg">Other positions in profit, summed</label><input class="sl-input" id="a-pg" type="number" min="0" value="20"></div>
+          <div class="sl-calc-field"><label for="a-rl">Exits that were losses</label><input class="sl-input" id="a-rl" type="number" min="0" value="8"></div>
+          <div class="sl-calc-field"><label for="a-pl">Other positions in loss, summed</label><input class="sl-input" id="a-pl" type="number" min="0" value="20"></div>
+        </div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label for="a-dw">Avg days held, winners</label><input class="sl-input" id="a-dw" type="number" min="0" value="3"></div>
+          <div class="sl-calc-field"><label for="a-dl">Avg days held, losers</label><input class="sl-input" id="a-dl" type="number" min="0" value="9"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>PGR <b id="a-pgr">—</b> · PLR <b id="a-plr">—</b> · PGR ÷ PLR <b id="a-ratio">—</b> (Odean ≈ 1.5×)</div>
+          <div>losers held <b id="a-hold">—</b> as long as winners</div>
+        </div>
+        <div class="sl-note" id="a-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why isn't "I sold more winners than losers" evidence of the disposition effect?</h4>
+        <button class="sl-quiz-opt">Because winners are always the right thing to sell</button>
+        <button class="sl-quiz-opt" data-correct="true">In a rising market most positions are winners; you must compare with what was available to sell</button>
+        <button class="sl-quiz-opt">Because only losses count</button>
+        <div class="sl-quiz-explain">PGR and PLR divide by the winners and losers available on each sale day, so they compare like with like.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>You hold 5 winners and 3 losers and sell 2 winners. PGR and PLR?</h4>
+        <button class="sl-quiz-opt" data-correct="true">PGR 0.40, PLR 0</button>
+        <button class="sl-quiz-opt">PGR 0.67, PLR 0</button>
+        <button class="sl-quiz-opt">PGR 0.25, PLR 0.38</button>
+        <div class="sl-quiz-explain">RG = 2, PG = 3 → 2/5. RL = 0, PL = 3 → 0/3.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In Odean's data, how did the winners sold compare with the losers kept over the next year?</h4>
+        <button class="sl-quiz-opt">The losers bounced back and did better</button>
+        <button class="sl-quiz-opt">No difference</button>
+        <button class="sl-quiz-opt" data-correct="true">The winners sold did better, by about 3.4 percentage points</button>
+        <div class="sl-quiz-explain">The instinct was not just tax-inefficient; it kept the worse stocks.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>You hold one position at a time. What's your disposition fingerprint?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Losing trades held clearly longer than winning ones</button>
+        <button class="sl-quiz-opt">A PGR above 0.148</button>
+        <button class="sl-quiz-opt">A win rate below 50%</button>
+        <div class="sl-quiz-explain">With no other open positions, PGR and PLR can't be computed. Holding time (and average loss vs average win) carries the signal.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The disposition effect is the S-curve on a portfolio: bank gains, avoid booking losses (Shefrin and Statman, 1985).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Measure it with PGR and PLR. Odean's 10,000 accounts: 0.148 vs 0.098.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>It costs twice: sold winners beat kept losers by ~3.4 pp, and selling gains first pays tax early.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>December's reversal shows people can take losses when a deadline makes it salient.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Audit your exits: PGR vs PLR, or days held for losers vs winners.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Desk verdict: untested. No ledger entry measures how the desk's own trades are closed.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Overconfidence and the Cost of Trading Too Much</h3>
+        <p>The same brokerage data has a second lesson: the investors who traded most earned the least.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="overconfidence-overtrading-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="disposition-effect.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="loss-aversion-prospect-theory-micro.html">← Previous: Why a Loss Hurts Twice as Much</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function ratio(a, b){ return (a + b) > 0 ? a / (a + b) : NaN; }
+  function f2(x){ return isNaN(x) ? '—' : x.toFixed(2); }
+  function num(id){ var v = parseFloat(document.getElementById(id).value); return isFinite(v) && v >= 0 ? v : 0; }
+  function money(n){ var r = Math.round(n); return (r < 0 ? '−$' : (r > 0 ? '+$' : '$')) + Math.abs(r).toLocaleString('en-US'); }
+
+  // Slide 3 — PGR/PLR calculator.
+  (function(){
+    var ids = ['c-rg', 'c-pg', 'c-rl', 'c-pl'];
+    if (!document.getElementById('c-rg')) return;
+    function update(){
+      var pgr = ratio(num('c-rg'), num('c-pg')), plr = ratio(num('c-rl'), num('c-pl'));
+      document.getElementById('c-pgr').textContent = f2(pgr);
+      document.getElementById('c-plr').textContent = f2(plr);
+      var note = 'Odean\'s investors averaged PGR 0.148 and PLR 0.098.';
+      if (!isNaN(pgr) && !isNaN(plr)) note = (pgr > plr ? 'Gains realised more readily than losses: the disposition pattern. ' : (pgr < plr ? 'Losses realised more readily than gains: the tax-aware direction. ' : 'Equal: no tilt. ')) + note;
+      document.getElementById('c-note').textContent = note;
+    }
+    ids.forEach(function(id){ document.getElementById(id).addEventListener('input', update); });
+    update();
+  })();
+
+  // Slide 5 — tap-to-sell portfolio.
+  (function(){
+    var wrap = document.getElementById('mp-holds');
+    if (!wrap) return;
+    var TARGET = 9500, TAX = 0.2;
+    var H = [
+      { n: 'Alder Foods',    q: 100, b: 40, p: 52 },
+      { n: 'Birch Tech',     q: 100, b: 80, p: 60 },
+      { n: 'Cedar Energy',   q: 200, b: 25, p: 31 },
+      { n: 'Delta Shipping', q: 100, b: 50, p: 38 },
+      { n: 'Elm Retail',     q: 100, b: 60, p: 66 },
+      { n: 'Fir Pharma',     q: 150, b: 30, p: 24 }
+    ];
+    H.forEach(function(h){
+      h.sold = false;
+      var pnl = (h.p - h.b) * h.q;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hs-hold';
+      btn.innerHTML = '<b>' + h.n + '</b><span>value $' + (h.p * h.q).toLocaleString('en-US') + '</span><br><span class="' + (pnl >= 0 ? 'hs-up' : 'hs-dn') + '">' + money(pnl) + '</span>';
+      btn.addEventListener('click', function(){ h.sold = !h.sold; btn.classList.toggle('sold', h.sold); update(); });
+      wrap.appendChild(btn);
+    });
+    function bar(r, t, val){
+      var hgt = isNaN(val) ? 0 : val * 125;
+      document.getElementById(r).setAttribute('height', hgt.toFixed(1));
+      document.getElementById(r).setAttribute('y', (140 - hgt).toFixed(1));
+      document.getElementById(t).setAttribute('y', (134 - hgt).toFixed(1));
+      document.getElementById(t).textContent = f2(val);
+    }
+    function update(){
+      var raised = 0, real = 0, paper = 0, RG = 0, PG = 0, RL = 0, PL = 0;
+      H.forEach(function(h){
+        var pnl = (h.p - h.b) * h.q;
+        if (h.sold){ raised += h.p * h.q; real += pnl; if (pnl > 0) RG++; else RL++; }
+        else { paper += pnl; if (pnl > 0) PG++; else PL++; }
+      });
+      var any = RG + RL > 0;
+      document.getElementById('mp-cash').innerHTML = 'cash raised <b>$' + raised.toLocaleString('en-US') + '</b> of $9,500' + (raised >= TARGET ? ' ✔' : '');
+      document.getElementById('mp-pnl').innerHTML = 'realised <b>' + money(real) + '</b> · still on paper <b>' + money(paper) + '</b>';
+      var pgr = any ? ratio(RG, PG) : NaN, plr = any ? ratio(RL, PL) : NaN;
+      document.getElementById('mp-ratio').innerHTML = 'PGR <b>' + f2(pgr) + '</b> · PLR <b>' + f2(plr) + '</b>';
+      document.getElementById('mp-tax').innerHTML = !any ? 'tax: nothing realised yet'
+        : (real > 0 ? 'tax due at 20%: <b>$' + Math.round(real * TAX).toLocaleString('en-US') + '</b>'
+        : (real < 0 ? 'tax saved at 20% (against other gains): up to <b>$' + Math.round(-real * TAX).toLocaleString('en-US') + '</b>' : 'no tax either way'));
+      bar('mp-bpgr', 'mp-tpgr', pgr);
+      bar('mp-bplr', 'mp-tplr', plr);
+    }
+    update();
+  })();
+
+  // Slide 10 — self-audit totals.
+  (function(){
+    var ids = ['a-rg', 'a-pg', 'a-rl', 'a-pl', 'a-dw', 'a-dl'];
+    if (!document.getElementById('a-rg')) return;
+    function update(){
+      var pgr = ratio(num('a-rg'), num('a-pg')), plr = ratio(num('a-rl'), num('a-pl'));
+      document.getElementById('a-pgr').textContent = f2(pgr);
+      document.getElementById('a-plr').textContent = f2(plr);
+      var r = (!isNaN(pgr) && !isNaN(plr) && plr > 0) ? pgr / plr : NaN;
+      document.getElementById('a-ratio').textContent = isNaN(r) ? '—' : r.toFixed(2) + '×';
+      var dw = num('a-dw'), dl = num('a-dl');
+      var h = dw > 0 ? dl / dw : NaN;
+      document.getElementById('a-hold').textContent = isNaN(h) ? '—' : h.toFixed(2) + '×';
+      var parts = [];
+      if (!isNaN(r)) parts.push(r > 1.25 ? 'You bank gains more readily than losses.' : (r < 0.8 ? 'You take losses more readily than gains.' : 'No clear PGR/PLR tilt.'));
+      if (!isNaN(h)) parts.push(h > 1.25 ? 'Losers are held noticeably longer.' : (h < 0.8 ? 'Winners are held longer: letting them run.' : 'Holding times are similar.'));
+      parts.push('Twenty trades is a small sample; treat ratios between about 0.8 and 1.25 as no pattern.');
+      document.getElementById('a-note').textContent = parts.join(' ');
+    }
+    ids.forEach(function(id){ document.getElementById(id).addEventListener('input', update); });
+    update();
+  })();
+})();
+</script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

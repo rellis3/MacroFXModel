@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Heston Model — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the semi-closed-form pricing details, and a 6-question self-test?<a href="heston-model.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">After the 1987 crash, a skew that would not go away</h2>
+      <p class="sl-sub">Heston · 1993 · Bates · 1996</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>After October 1987, index puts stayed permanently richer than at-the-money options. Black-Scholes cannot do that, and earlier stochastic-vol models lacked correlation or fast pricing.</p>
+        <p>Heston (1993) correlated CIR's square-root variance with the price and priced through a characteristic function. His title names currency options; Bates (1996) added jumps for Deutsche mark options. It is now a base for many exotics models.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> give spot and volatility joint dynamics that reproduce the smile.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Black-Scholes assumes one volatility. Markets don't cooperate.</h2>
       <p class="sl-sub">Plain Black-Scholes prices every option off a single constant σ, held fixed for the option's entire life.</p>
       <div class="sl-card">
@@ -47,8 +60,8 @@
       <div class="sl-quote">Heston's 1993 fix is, informally, GARCH's own core insight — "variance is itself a process with dynamics, not a fixed input" — carried from discrete-time econometrics into the continuous-time calculus option pricing runs on.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Where the smile actually comes from</h2>
       <p class="sl-sub">Same underlying model, three settings. Watch the curve change shape.</p>
       <div class="sl-card">
@@ -96,8 +109,8 @@
       <p class="sl-p">Two dials, two different jobs: <strong>ξ</strong> (vol-of-vol) controls how much the curve bows into a smile at all; <strong>ρ</strong> (correlation) controls whether that smile tilts into an asymmetric skew. Set both to zero and the curve flattens back to plain Black-Scholes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The fix: stop treating variance as a number. Give it its own life.</h2>
       <p class="sl-sub">Same price equation as Black-Scholes — one swap, inside the volatility term.</p>
       <div class="sl-card">
@@ -113,8 +126,8 @@
       <p class="sl-p">Heston supplies exactly one new equation for v_t, plus one correlation parameter tying it to price. That's the entire model: two coupled stochastic differential equations instead of one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Reading the variance equation, term by term</h2>
       <p class="sl-sub">dv_t = κ(θ − v_t) dt + ξ√v_t dW_t² — four pieces, each with a job.</p>
       <div class="sl-icard-grid">
@@ -126,8 +139,8 @@
       <div class="sl-quote">This is the exact "rubber band" mean-reversion this Theory Lab's Ornstein-Uhlenbeck lesson already covers — <strong>κ(θ − v_t)</strong> here is structurally identical to that lesson's <strong>κ(μ − X_t)</strong>, just pointed at variance instead of a price spread. Heston's only real addition on top of plain OU is the √v_t scaling — this specific variant is called a <strong>CIR process</strong> (Cox-Ingersoll-Ross), the same square-root diffusion originally built for interest rates, another quantity that shouldn't go negative.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The correlation ρ is the whole story behind the smile</h2>
       <p class="sl-sub">Same two SDEs, one setting flipped.</p>
       <div class="sl-compare">
@@ -153,8 +166,8 @@
       <p class="sl-p">Empirically ρ is usually <strong>negative</strong> in equity and FX markets — the "leverage effect," originally explained for equities by falling stock prices mechanically raising a firm's leverage ratio, though the same down-move/vol-spike co-movement shows up broadly in FX too, where no literal corporate leverage mechanism exists.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Drag ρ and watch the smile tilt, live</h2>
       <p class="sl-sub">Vol-of-vol is held fixed here — only the correlation changes.</p>
       <div class="sl-card">
@@ -177,8 +190,8 @@
       <p class="sl-p">Slide ρ toward zero and the curve straightens into a symmetric smile. Push it positive (empirically rare, but mechanically valid) and the tilt flips — now it would be <em>calls</em> pricing richer than puts, because up-moves and vol spikes would be the pair that co-occurs.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How fast does a variance shock actually fade?</h2>
       <p class="sl-sub">The same mean-reversion "rubber band" from the OU lesson has a half-life — the time for half a shock's gap to θ to close.</p>
       <div class="sl-card">
@@ -204,8 +217,8 @@
       <p class="sl-p">This isn't Heston's actual option-pricing formula — it's the deterministic-drift half-life of the mean-reversion term alone, the same ln(2)/κ used for any OU-style "rubber band." It's a fast, honest sanity check on a calibrated κ: does a half-life of 126 days sound like a plausible speed for volatility regimes to fade, or does it imply something absurd?</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Realism isn't free</h2>
       <p class="sl-sub">What Heston costs, compared to what it buys.</p>
       <div class="sl-compare">
@@ -234,8 +247,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Heston isn't the last word, and it isn't free of traps</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">+</div><div><h4>Bates: stochastic vol plus jumps</h4><p>Literally Heston's two SDEs with a Merton-style jump term added to the price process — continuous stochastic vol shapes the smile, discrete jumps cover short-dated tail risk pure diffusion can't reach.</p></div></div>
@@ -249,8 +262,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -300,8 +313,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Black-Scholes assumes one constant σ for every strike and expiry — a real implied-vol surface that slopes and curves is direct evidence that assumption is false.</p></div>
@@ -310,6 +323,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The correlation ρ between price shocks and variance shocks is what turns stochastic vol into a smile: ξ≠0 alone gives symmetric curvature, ρ≠0 tilts it into the asymmetric put-skew markets actually show.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The cost of realism: no simple closed-form price — Heston needs a characteristic-function/Fourier numerical step, and calibration means fitting five parameters (κ,θ,ξ,ρ,v₀), not one.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A tight calibration fit is not a validated trading edge — parameters are a snapshot of today's option surface, not a physical law, and the Feller condition (2κθ≥ξ²) is often violated in practice.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Heston (1993) answered the post-1987 skew, Bates (1996) took it to FX options with jumps, and it now anchors exotics pricing.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -427,5 +441,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

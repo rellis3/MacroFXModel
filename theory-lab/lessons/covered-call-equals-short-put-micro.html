@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Covered Call Is a Short Put — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Covered Call Is a Short Put — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full parity derivation, a Black-Scholes worked example, and a 5-question self-test?<a href="covered-call-equals-short-put.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Options from the Ground Up · Lesson 3 of 3</div>
+      <h1 class="sl-h1">The Covered Call <em>Is a Short Put</em></h1>
+      <p class="sl-lede">One is sold as the conservative income strategy, the other as the risky one. At expiry they are the same position, to the cent. Once you see that, call open interest stops looking like a crowd of bulls.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Two trades, two reputations</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Covered call</span>
+          <p>Own the stock at $100. Sell someone the right to buy it from you at $105. Pocket the premium.</p>
+          <p style="margin-top:8px"><strong>Ends with:</strong> the stock if it's below $105, otherwise $105 cash. That is min(S<sub>T</sub>, 105).</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Cash-secured short put</span>
+          <p>Hold cash that grows to $105. Sell someone the right to sell you the stock at $105. Pocket the premium.</p>
+          <p style="margin-top:8px"><strong>Ends with:</strong> $105 cash if the stock's above $105, otherwise the stock. Also min(S<sub>T</sub>, 105).</p>
+        </div>
+      </div>
+      <div class="sl-quote">Same ending in every possible world. Two things that pay the same in every world <strong>must cost the same today</strong>, or someone collects a free lunch.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Put-call parity says so</h2>
+      <p class="sl-sub">European options, same strike K, same expiry T, no dividends.</p>
+      <div class="sl-row"><div class="sl-box">C − P</div><div class="sl-arrow">=</div><div class="sl-box">S − Ke<sup>−rT</sup></div></div>
+      <p class="sl-p">Rearrange so each side is a strategy someone actually runs:</p>
+      <div class="sl-row"><div class="sl-box green">S − C<br><small>covered call</small></div><div class="sl-arrow">=</div><div class="sl-box amber">Ke<sup>−rT</sup> − P<br><small>cash + short put</small></div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>At expiry</div>
+        <div class="sl-calc-steps">
+          <div>Covered call: S<sub>T</sub> − max(S<sub>T</sub> − K, 0) = <b>min(S<sub>T</sub>, K)</b></div>
+          <div>Short put + cash: K − max(K − S<sub>T</sub>, 0) = <b>min(S<sub>T</sub>, K)</b></div>
+        </div>
+        <div class="sl-note">Exact at expiry. Dividends, financing, taxes and early assignment on American options separate them a little in practice: second-order, not a different risk.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Drag the sliders: the lines never separate</h2>
+      <p class="sl-sub">Profit at expiry. Spot today S = 100, r = 0. C = max(100 − K, 0) + tv and P = max(K − 100, 0) + tv.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit at expiry against stock price. The covered-call line and the short-put line coincide exactly, rising one-for-one below the strike and flat above it. A dashed grey line shows owning the stock alone.">
+            <line x1="60" y1="125" x2="610" y2="125" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="230" style="stroke:var(--border2);stroke-width:1"/>
+            <line id="cc-strike" x1="370" y1="20" x2="370" y2="230" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text id="cc-strike-lbl" x="370" y="244" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K</text>
+            <text x="610" y="262" text-anchor="end" font-size="11" fill="var(--text3)">Stock price at expiry →</text>
+            <text x="54" y="129" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="54" y="34" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">+40</text>
+            <text x="54" y="222" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−40</text>
+            <text x="60" y="244" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">60</text>
+            <text x="610" y="244" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">140</text>
+            <polyline id="cc-stock" points="" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,4"/>
+            <polyline id="cc-cc" points="" style="fill:none;stroke:var(--blue);stroke-width:6;stroke-opacity:.45"/>
+            <polyline id="cc-sp" points="" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:7,5"/>
+            <circle id="cc-be" cx="0" cy="125" r="4" style="fill:var(--red)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Strike K</span><span class="sl-live" id="cc-k-val">K = 105</span></div>
+        <input type="range" class="sl-slider" id="cc-k-slider" min="85" max="120" step="1" value="105">
+        <div class="sl-sliderhead" style="margin-top:12px"><span>Time value in the premium</span><span class="sl-live" id="cc-tv-val">$2.00</span></div>
+        <input type="range" class="sl-slider" id="cc-tv-slider" min="0.5" max="10" step="0.5" value="2">
+        <div class="sl-calc-steps">
+          <div>C = $<b id="cc-c">2.00</b> · P = $<b id="cc-p">7.00</b> · S − C = $<b id="cc-out1">98.00</b> · K − P = $<b id="cc-out2">98.00</b></div>
+          <div>Max profit = $<b id="cc-max">7.00</b> · Breakeven = $<b id="cc-be-val">98.00</b> · Loss at zero = $<b id="cc-zero">98.00</b></div>
+        </div>
+        <div class="sl-note">Blue band = covered call. Amber dashes = cash + short put, drawn on top. Grey dashes = the stock alone. Red dot = breakeven.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Worked example, priced with Black-Scholes</h2>
+      <p class="sl-sub">S = 100, K = 105, r = 4%, σ = 20%, T = 3 months. Call ≈ $2.39, put ≈ $6.35.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Covered call outlay</span>
+          <p>100 − 2.39 = <strong>$97.61</strong></p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Cash + short put outlay</span>
+          <p>105·e<sup>−0.01</sup> − 6.35 ≈ 103.96 − 6.35 = <strong>$97.61</strong></p>
+        </div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Three endings, both strategies</div>
+        <div class="sl-calc-steps">
+          <div>Stock at $130: both hold $105 → <b>+$7.39</b>. Stock alone: +$30. You sold $22.61 of rally.</div>
+          <div>Stock at $100: both hold $100 → <b>+$2.39</b>, the premium.</div>
+          <div>Stock at $80: both hold $80 → <b>−$17.61</b>. Stock alone: −$20. The cushion was $2.39.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">What you give up, what you keep</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Give up</span>
+          <p>Every dollar above the strike. Profit caps at K − S + C however far the stock runs.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Keep</span>
+          <p>The full downside, all the way to zero, less the premium. The premium is a cushion its own size and nothing more.</p>
+        </div>
+      </div>
+      <div class="sl-quote">"Conservative" is only true relative to owning the stock outright, and only by <strong>one premium</strong>. And if a short put frightens you, so should the covered call: same position.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Open interest never records who opened the contract</h2>
+      <p class="sl-sub">Every contract has a buyer and a seller. The count is the same whichever started it.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Put open interest</span>
+          <ul><li>Bought put: bearish bet or hedge</li><li>Sold put: <strong>bullish</strong> (and a covered call by another name)</li></ul>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Call open interest</span>
+          <ul><li>Bought call: bullish bet</li><li>Sold call against stock: <strong>capped upside</strong>, neutral to mildly bullish</li></ul>
+        </div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">The trap</div>
+        <p>Covered-call overwriting is one of the biggest systematic option flows. It piles into <strong>call</strong> open interest from <strong>sellers</strong> who gave up the upside, pushing the put/call ratio down: exactly the signature a naive reading calls "bullish". Without trade side, open interest is a count, not a vote.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">It actually happened: 2022–23</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>By 2022–23 covered-call ETFs were among the most popular US income products, holding tens of billions of dollars between them. A widely held Nasdaq-100 covered-call ETF owns the index and sells at-the-money index calls every month.</p>
+      </div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag red">2022: index down about a third</span>
+          <p>Covered-call funds fell too, by less: the monthly premium cushioned each down-month. Cushioned, not protected.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">2023: index up more than 50%</span>
+          <p>Covered-call funds captured only part of it and trailed by a wide margin. An ATM call each month hands over each up-month's gain above the strike.</p>
+        </div>
+      </div>
+      <p class="sl-p">The same year, desks and the financial press widely argued that all that call selling left dealers long gamma and helped keep index volatility subdued. Argued, not demonstrated, and a claim about range, not direction.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The chain, and what the desk found</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Fund</b>Writes calls on a schedule: income mandate, not a view</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealer</b>Buys them: now long calls, long gamma</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Hedge</b>Must stay delta-neutral: sells rallies, buys dips near the strike</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Hedging leans against moves: the story says damped</div>
+      </div>
+      <div class="sl-stamp validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+        <span class="sl-stamp-tag">Range only</span>
+        <span><strong>gex-range:</strong> the range half is real <strong>on the Nasdaq only</strong>. 793 days of NQ, +0.176 next-day range on short-gamma days (p 0.0008), +0.315 vol-matched. Long gamma is the quiet state (~0.85 vs ~1.02). Does not carry to FX.</span>
+      </div>
+      <div class="sl-stamp null">
+        <span class="sl-stamp-tag">Falsified</span>
+        <span><strong>Direction:</strong> no directional content; wall-magnet direction scored 48.8% out-of-sample vs a 49.9% placebo.</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">The desk's record on the rest</h2>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>Covered calls themselves:</strong> no ledger entry on overwriting flow, and nothing in the live code models it.</span>
+      </div>
+      <div class="sl-stamp context">
+        <span class="sl-stamp-tag">Context</span>
+        <span><strong>Put/call tilt:</strong> reported as positioning only; the desk declines to infer a direction, because open interest doesn't record who opened the contract. Never scored.</span>
+      </div>
+      <div class="sl-stamp null">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>Max-pain pinning (oi-max-pain):</strong> tested 2026-09-10, null. Weakness: no sample size or interval recorded, so it's the weakest null in the ledger: "not shown", not "proven false". A level to know, not a magnet.</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Long stock + a short call at K has the same expiry payoff as…</h4>
+        <button class="sl-quiz-opt" data-correct="true">Cash of K plus a short put at K</button>
+        <button class="sl-quiz-opt">A long put at K</button>
+        <button class="sl-quiz-opt">Cash plus a long call at K</button>
+        <div class="sl-quiz-explain">Both pay min(S<sub>T</sub>, K). Parity: S − C = Ke<sup>−rT</sup> − P.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>S = 100, K = 105, call premium $2.39. Maximum profit on the covered call?</h4>
+        <button class="sl-quiz-opt">Unlimited</button>
+        <button class="sl-quiz-opt" data-correct="true">$7.39</button>
+        <button class="sl-quiz-opt">$2.39</button>
+        <div class="sl-quiz-explain">K − S + C = 105 − 100 + 2.39 = 7.39, reached anywhere at or above $105.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>An income fund sells index calls every month. Its effect on open interest is best read as…</h4>
+        <button class="sl-quiz-opt">Bullish conviction: call-heavy OI</button>
+        <button class="sl-quiz-opt" data-correct="true">Call OI from a seller with capped upside: not a bullish vote</button>
+        <button class="sl-quiz-opt">Bearish: they're selling</button>
+        <div class="sl-quiz-explain">Open interest counts contracts, not who initiated them. The overwriter is neutral to mildly bullish with the upside sold.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What did the desk find about dealer gamma?</h4>
+        <button class="sl-quiz-opt">It predicts direction toward big strikes</button>
+        <button class="sl-quiz-opt" data-correct="true">A range effect on the Nasdaq only; direction falsified</button>
+        <button class="sl-quiz-opt">Nothing at all, anywhere</button>
+        <div class="sl-quiz-explain">Long gamma is quieter than a vol-matched baseline on NQ; it does not carry to FX, and wall-magnet direction scored 48.8% vs a 49.9% placebo.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Long stock + short call ≡ cash + short put: S − C = Ke<sup>−rT</sup> − P, both paying min(S<sub>T</sub>, K).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>You sell the upside above K and keep the whole downside, less one premium.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Open interest never records who opened the contract. A sold put is bullish; a sold call against stock is capped.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gamma's range effect is real on the Nasdaq only; its direction is falsified. Covered calls themselves are untested here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Max-pain pinning came back null, a weak null with no sample size recorded.</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Recognise a covered call and a short put as one position whatever the label, size its real downside, and refuse to read call-heavy or put-heavy open interest as a direction.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Back through the sequence, or on to dealers</div>
+        <h3>Gamma Exposure &amp; Dealer Hedging</h3>
+        <p>How dealer gamma is aggregated from open interest, and why hedging can quiet or stir a tape.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="gamma-exposure-dealer-hedging-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="payoff-shape-vs-greek-signs-micro.html">← Lesson 2</a>
+          <a class="sl-btn ghost" href="options-four-positions-micro.html">← Lesson 1</a>
+          <a class="sl-btn ghost" href="covered-call-equals-short-put.html">Read the full lesson →</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4: covered call vs. cash-secured short put, profit at expiry.
+  // S0 = 100, r = 0, so parity is C - P = S0 - K and both share one time value.
+  var S0 = 100, XMIN = 60, XMAX = 140, YMAX = 45;
+  var XL = 60, XR = 610, YT = 20, YB = 230, Y0 = 125;
+  function px(s){ return XL + (s - XMIN)/(XMAX - XMIN)*(XR - XL); }
+  function py(v){ var c = Math.max(-YMAX, Math.min(YMAX, v)); return Y0 - c/YMAX*(Y0 - YT); }
+
+  var kS = document.getElementById('cc-k-slider');
+  var tS = document.getElementById('cc-tv-slider');
+  if (!kS || !tS) return;
+  var el = function(id){ return document.getElementById(id); };
+
+  function line(fn){
+    var pts = [];
+    for (var s = XMIN; s <= XMAX; s += 0.5) pts.push(px(s).toFixed(1) + ',' + py(fn(s)).toFixed(1));
+    return pts.join(' ');
+  }
+
+  function update(){
+    var K = parseFloat(kS.value), tv = parseFloat(tS.value);
+    var C = Math.max(S0 - K, 0) + tv;
+    var P = Math.max(K - S0, 0) + tv;
+    var ccPnl = function(s){ return s - S0 + C - Math.max(s - K, 0); };
+    var spPnl = function(s){ return P - Math.max(K - s, 0); };
+    var stock = function(s){ return s - S0; };
+    el('cc-cc').setAttribute('points', line(ccPnl));
+    el('cc-sp').setAttribute('points', line(spPnl));
+    el('cc-stock').setAttribute('points', line(stock));
+    var kx = px(K);
+    el('cc-strike').setAttribute('x1', kx); el('cc-strike').setAttribute('x2', kx);
+    el('cc-strike-lbl').setAttribute('x', kx);
+    var be = S0 - C;
+    el('cc-be').setAttribute('cx', px(be)); el('cc-be').setAttribute('cy', py(0));
+    el('cc-k-val').textContent = 'K = ' + K;
+    el('cc-tv-val').textContent = '$' + tv.toFixed(2);
+    el('cc-c').textContent = C.toFixed(2);
+    el('cc-p').textContent = P.toFixed(2);
+    el('cc-out1').textContent = (S0 - C).toFixed(2);
+    el('cc-out2').textContent = (K - P).toFixed(2);
+    el('cc-max').textContent = (K - S0 + C).toFixed(2);
+    el('cc-be-val').textContent = be.toFixed(2);
+    el('cc-zero').textContent = (S0 - C).toFixed(2);
+  }
+  kS.addEventListener('input', update);
+  tS.addEventListener('input', update);
+  update();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

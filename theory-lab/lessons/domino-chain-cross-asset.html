@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Domino Effect — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / The Domino Effect</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 1 of 5</div>
+  <h1 class="tl-title">The Domino Effect: One Shock Through the Whole Board</h1>
+  <p class="tl-dek">A hot inflation number does not hit one market — it knocks over the 2-year, which knocks over the dollar, gold, equities and credit. This lesson walks that chain link by link, shows it biting in real crises, and then shows where this desk tested the popular version and found it does not do what people say.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~20 min read</span>
+    <span>Prereqs: Bond Pricing &amp; YTM, Interest Rate Parity (helpful, not required)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="domino-chain-cross-asset-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>Every macro asset is priced off a few shared inputs — the policy-rate path, inflation expectations, the real yield and the dollar. Move one input and every price built on it has to move. That is the whole "domino effect".</li>
+      <li>The textbook chain for a hot inflation print: <strong>front-end yields up → dollar up → USD/JPY up; real yields up → gold down and equity multiples down; credit spreads wider; volatility up.</strong> Each link is a mechanism someone is <em>forced</em> to act on, not a mood.</li>
+      <li>Which leg moves most tells you which story it is: the 2-year rising more than the 10-year is the signature of a short-run inflation/policy shock rather than a long-run supply or credibility story.</li>
+      <li>Chains can break. In the UK gilt crisis of autumn 2022, yields soared and the currency <em>fell</em> — a credibility shock running the textbook FX link backwards, then amplified by forced selling until the Bank of England stepped in.</li>
+      <li><strong>The desk's verdict:</strong> the chain is real as a description of <em>mechanism</em>, and it mostly happens in the <em>same bar</em>. The timing and tradeability claims built on it — "rates turn first, then equities", "a 2-year shock means a wild FX week", "fear buys gold" — were tested here and came back null.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    Most market commentary is a domino story told after the fact: "oil rose, so
+    inflation expectations rose, so the Fed was priced out, so yields rose, so the
+    dollar strengthened, gold fell and equity multiples compressed." That sentence is
+    a genuinely useful map. Every arrow in it corresponds to a real pricing
+    relationship, and knowing the arrows is what lets you look at a screen full of
+    red and green and say <em>which</em> shock is driving it — and what would have
+    to happen next if your reading is right.
+  </p>
+  <p>
+    But the same sentence quietly smuggles in two further claims that are much
+    weaker: that the dominoes fall <em>in sequence</em> (so you can see the first
+    one tip and trade the later ones), and that the size of the first push tells you
+    how hard the later ones fall. This lesson separates the two. The first half
+    teaches the mechanism, link by link. The second half shows what happened when
+    this desk tested the timing and tradeability claims, and why "the chain is real"
+    and "the chain is a trading signal" are different statements.
+  </p>
+  <p>
+    It builds on <a href="bond-pricing-ytm.html">Bond Pricing &amp; YTM</a> (why yields
+    and prices move inversely), <a href="interest-rate-parity.html">Interest Rate
+    Parity</a> (why rate gaps matter for currencies) and
+    <a href="central-bank-policy.html">Central Bank Policy</a> (what the front end of
+    the curve is forecasting). The next lesson,
+    <a href="investor-mood-forced-selling.html">Mood, the Quote and Forced Selling</a>,
+    picks up the part of the chain that turns a repricing into a rout: people who
+    <em>have</em> to sell.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Everything is priced with the same ruler</h3>
+    <p>
+      Imagine every asset's price is a sum done with the same few numbers: "what will
+      interest rates be?", "how much will prices rise?", "how much is a dollar worth?".
+      A bond is that sum done one way, a share another way, a bar of gold a third way.
+      When a piece of news changes one of those shared numbers, every sum that uses it
+      has to be redone at once — not because traders are copying each other, but
+      because the arithmetic changed underneath all of them.
+    </p>
+    <p style="margin-bottom:0">
+      The domino picture is how you trace <em>which</em> shared number changed. If the
+      2-year yield jumped, the dollar firmed and gold slipped all in the same minute,
+      the shared number was the expected policy rate. If gold rose while the dollar
+      fell and yields barely moved, it was something else. The dominoes are a
+      diagnostic first and a forecast — if at all — a distant second.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The dominoes, one mechanism at a time</h2>
+  <p>
+    Take the canonical shock: a consumer-price print that comes in hotter than
+    expected. Here is who is forced to do what, in the order the textbook tells it.
+  </p>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>CPI prints hot</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Rates traders</b>Price fewer cuts; 2-year yield jumps</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>FX desks</b>Dollar deposits pay more; dollar firms, USD/JPY up</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Gold &amp; equity holders</b>Real yield up raises the cost of holding gold and the discount rate on profits</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Credit spreads widen, volatility rises</div>
+  </div>
+
+  <h3>1. The front end moves first and most</h3>
+  <p>
+    A 2-year government bond's yield is, to a good approximation, the market's
+    average forecast of the central bank's policy rate over the next two years plus a
+    small premium. Hot inflation makes cuts less likely and hikes more likely, so that
+    forecast — and the 2-year yield — reprices within seconds. The 10-year also
+    rises, but it averages over a much longer horizon in which today's inflation
+    print matters less, so it usually rises by less. A price move in a bond follows
+    from the yield move through its duration:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\Delta P}{P} \approx -D\,\Delta y \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>ΔP/P</code><span>the bond's percentage price change</span></div>
+    <div class="tl-eq-chip c2"><code>D</code><span>modified duration — roughly how many years of cash flows are exposed</span></div>
+    <div class="tl-eq-chip c3"><code>Δy</code><span>the yield change, as a decimal (15bp = 0.0015)</span></div>
+  </div>
+  <p>
+    <strong>The diagnostic.</strong> Which end of the curve moves more tells you which
+    story the market is telling. The 2-year rising <em>more</em> than the 10-year (a
+    bear flattening) is the signature of a short-run inflation and policy shock. The
+    10-year rising more (a bear steepening) points at something longer-run: term
+    premium, government borrowing, or doubts about whether the central bank will keep
+    inflation down at all.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The 2-year bond is a bet on what the central bank does next. The 10-year is a bet on the next ten years. A surprise about this month's prices changes the near bet a lot and the far bet only a little — so if the near one jumps more, you know the surprise was about "soon".</p>
+  </div>
+
+  <h3>2. Splitting the yield: real plus expected inflation</h3>
+  <p>
+    Any nominal yield is the sum of two legs that both trade in their own right:
+  </p>
+  <div class="tl-math">
+    \[ y_{\text{nominal}} = r_{\text{real}} + \pi^{e} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>y</code><span>the ordinary bond's yield</span></div>
+    <div class="tl-eq-chip c2"><code>r</code><span>the real yield — paid directly by an inflation-protected bond</span></div>
+    <div class="tl-eq-chip c4"><code>πᵉ</code><span>the breakeven — the inflation rate the market expects on average</span></div>
+  </div>
+  <p>
+    If a hot print lifts nominal yields more than it lifts breakevens, the difference
+    lands in the <strong>real yield</strong>. That is the money-genuinely-got-more-expensive
+    leg, and it is the one gold and long-duration equities answer to. A yield move
+    you have not split this way is half-read: breakevens rising is gold's friend;
+    real yields rising is its enemy.
+  </p>
+
+  <h3>3. The dollar: a higher rate attracts money</h3>
+  <p>
+    If US short rates rise relative to everyone else's, holding dollars pays more
+    than holding yen or euros. Money flows toward the higher rate, and the dollar
+    strengthens. USD/JPY tends to be the most rate-sensitive major, because the gap
+    between US and Japanese rates has been among the widest — the
+    <a href="interest-rate-parity.html">Interest Rate Parity</a> lesson covers why
+    a rate gap must show up either in the spot rate or the forward. Because oil,
+    gold and most commodities are quoted in dollars, a firmer dollar also makes them
+    a little cheaper in dollar terms with nothing having happened to them at all.
+  </p>
+
+  <h3>4. Gold: the cost of holding something that pays nothing</h3>
+  <p>
+    Gold pays no coupon. Holding it costs you the real yield you could have earned
+    in an inflation-protected bond instead. So a higher real yield raises the cost of
+    carrying gold, and gold tends to fall; a firmer dollar adds a second, independent
+    push in the same direction. When gold moves and <em>neither</em> real yields nor
+    the dollar explains it, the buyer is someone who cares about neither — a central
+    bank adding reserves, for instance — and you identify them only by elimination.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Keeping gold in a drawer earns nothing. Keeping money in a safe bond earns interest. When the bond starts paying more, the gold in the drawer looks like a worse deal, so some people swap it — and gold's price slips.</p>
+  </div>
+
+  <h3>5. Equities: profits far away are worth less today</h3>
+  <p>
+    A share is a claim on profits stretching into the future. The simplest way to see
+    why higher yields hurt is the constant-growth valuation (the Gordon growth model):
+  </p>
+  <div class="tl-math">
+    \[ P = \frac{E}{k - g} \quad\Longrightarrow\quad \frac{P}{E} = \frac{1}{k-g}, \qquad k = r_{\text{real}} + \text{ERP} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">E</div><div class="tl-fp-name">Earnings</div><div class="tl-fp-desc">Next year's profit per share — the numerator</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">k</div><div class="tl-fp-name">Discount rate</div><div class="tl-fp-desc">Real yield plus the equity risk premium — what investors demand</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">g</div><div class="tl-fp-name">Growth</div><div class="tl-fp-desc">The long-run rate profits grow at</div></div>
+  </div>
+  <p>
+    Raise \(k\) through the real yield, hold \(E\) and \(g\) fixed, and the multiple
+    \(P/E\) must fall. Because \(k-g\) is a small number, small changes in it move
+    the multiple a lot — and the effect is largest for companies whose profits sit
+    furthest in the future (high \(g\), small \(k-g\)), which is why growth and tech
+    stocks are the most rate-sensitive part of the index.
+  </p>
+
+  <h3>6. Credit and volatility: the last dominoes</h3>
+  <p>
+    Tighter money raises borrowing costs and the odds that weaker companies struggle
+    to refinance. Lenders demand more extra yield over government bonds for the same
+    risk — credit spreads widen. And when bonds and stocks fall together, the usual
+    cushion (bonds rallying when stocks fall) disappears, portfolios lose on both
+    legs, and the price of protection — implied volatility — rises.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(y\)</td><td>Nominal yield on an ordinary government bond.</td></tr>
+    <tr><td>\(r_{\text{real}}\)</td><td>Real yield — the yield on an inflation-protected bond; the true cost of money after inflation.</td></tr>
+    <tr><td>\(\pi^{e}\)</td><td>Breakeven inflation — the gap between nominal and real yields; the market's average inflation expectation.</td></tr>
+    <tr><td>\(D\)</td><td>Modified duration — the percentage price change per unit change in yield.</td></tr>
+    <tr><td>\(\Delta y\)</td><td>A change in yield. 1 basis point (bp) = 0.01% = 0.0001.</td></tr>
+    <tr><td>\(P, E\)</td><td>Share price and next-year earnings per share.</td></tr>
+    <tr><td>\(k\)</td><td>Equity discount rate: real yield plus equity risk premium (ERP).</td></tr>
+    <tr><td>\(g\)</td><td>Long-run growth rate of earnings.</td></tr>
+    <tr><td>ERP</td><td>Equity risk premium — the extra return investors demand for holding shares rather than safe bonds.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Step through the dominoes — pick a starting shock</div>
+    <div class="tl-btnrow" id="dom-scen" style="margin-bottom:10px">
+      <button type="button" class="tl-btn active" data-scen="cpi">Hot CPI print</button>
+      <button type="button" class="tl-btn" data-scen="oil">Oil spike</button>
+      <button type="button" class="tl-btn" data-scen="gilt">UK gilts, Sept 2022</button>
+      <button type="button" class="tl-btn" data-scen="yen">Yen carry, Aug 2024</button>
+    </div>
+    <svg id="dom-svg" viewBox="0 0 680 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A network of market nodes connected by arrows. Pick a starting shock and step through each link; the current link is highlighted and each node shows whether it moved up or down.">
+      <defs>
+        <marker id="dom-ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--border2)"/></marker>
+        <marker id="dom-ah-past" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker>
+        <marker id="dom-ah-cur" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--amber)"/></marker>
+      </defs>
+      <g id="dom-edges"></g>
+      <g id="dom-nodes"></g>
+    </svg>
+    <div class="tl-btnrow" style="margin-top:8px">
+      <button type="button" class="tl-btn" id="dom-prev">← Back</button>
+      <button type="button" class="tl-btn active" id="dom-next">Next domino →</button>
+      <button type="button" class="tl-btn" id="dom-reset">Reset</button>
+    </div>
+    <div class="tl-readout" id="dom-readout" style="margin-top:10px">
+      <div><b id="dom-count">Step 0 of 8</b> · <span id="dom-head">The shock lands.</span> <span class="tl-pill blue" id="dom-tag">Mechanism</span></div>
+      <div id="dom-text" style="margin-top:6px">Press "Next domino" to watch it travel.</div>
+    </div>
+    <div class="tl-chart-caption">
+      Each link is labelled with what this desk found when it tested the claim attached
+      to it: <span class="tl-pill blue">Mechanism</span> (a pricing relationship, not a
+      forecast), <span class="tl-pill red">Tested null here</span>, <span class="tl-pill blue">Context only</span>,
+      <span class="tl-pill amber">Untested here</span>, or <span class="tl-pill red">Link broke</span>
+      (the textbook direction failed in that episode). Notice how many links are
+      mechanisms that hold <em>in the same moment</em> — and how few say anything about
+      what comes next.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: two chains that ran</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>September–October 2022: the UK gilt crisis</h3>
+    <p>
+      On 23 September 2022 the UK government announced a "mini-budget" of large,
+      unfunded tax cuts, without the usual independent fiscal forecast alongside it.
+      Investors demanded far more to hold long-dated UK government bonds (gilts), and
+      long-dated gilt yields rose at a speed rarely seen in a major bond market.
+    </p>
+    <p>
+      The textbook says higher yields should support the currency. Instead sterling
+      <strong>fell</strong>, touching an all-time low against the dollar in early
+      trading on Monday 26 September. That is the first broken domino: when yields
+      rise because investors doubt the government's credibility, the higher yield is
+      a risk premium, not an attraction, and money leaves.
+    </p>
+    <p>
+      Then the forced sellers arrived. Many UK defined-benefit pension schemes used
+      <strong>liability-driven investment (LDI)</strong> funds that hedged their
+      long-dated liabilities with leveraged positions in gilts and interest-rate swaps.
+      As yields jumped, those hedges lost value and counterparties demanded more
+      collateral, fast. To raise cash, LDI funds sold what they could sell quickly —
+      gilts — which pushed yields up further, which triggered more collateral calls.
+      The chain had turned into a loop.
+    </p>
+    <p style="margin-bottom:0">
+      On 28 September the Bank of England announced temporary purchases of long-dated
+      gilts on financial-stability grounds — explicitly to stop the spiral, not to
+      ease monetary policy. The purchases ended on 14 October. The Chancellor was
+      replaced that day, and the Prime Minister resigned on 20 October.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Unfunded fiscal package</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Gilt investors</b>Demand a credibility premium; long yields spike</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>LDI funds</b>Forced to post collateral on leveraged hedges</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>LDI funds</b>Forced to sell gilts for cash — yields up again</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Bank of England</b>Forced to buy long gilts to break the loop</div>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>August 2024: the yen carry unwind</h3>
+    <p>
+      For years, borrowing in yen at near-zero rates and investing the proceeds in
+      higher-yielding assets — the yen carry trade — had paid. At the end of July 2024
+      the Bank of Japan raised rates; days later, on 2 August, a weak US jobs report
+      made US rate cuts look closer. The rate gap that supported the trade was now
+      expected to narrow from <em>both</em> ends, and the yen strengthened sharply.
+    </p>
+    <p style="margin-bottom:0">
+      Positions funded in yen were losing money on the currency alone, and holders cut
+      risk across the board. On Monday 5 August the Nikkei 225 fell more than 12% in a
+      single session, its worst day since 1987, and the VIX briefly traded above 60
+      intraday. Much of the move reversed within days — the Nikkei rebounded sharply
+      the next session. Note the direction: in this chain, <em>US yields falling</em>
+      came with equities falling and the dollar weakening against the yen, the mirror
+      image of the hot-CPI chain above. The same links, run backwards, under leverage.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One hot print, priced through four assets</h3>
+    <p>
+      Illustrative numbers, not a real day. CPI comes in hot. The 2-year yield rises
+      15bp, the 10-year rises 8bp, and the 10-year breakeven rises 3bp.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Read the curve</h4>
+        <p>2-year +15bp versus 10-year +8bp: the front end moved nearly twice as much — a bear flattening, the signature of a short-run policy shock.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Split the 10-year</h4>
+        <p>Nominal +8bp = real + breakeven, and breakeven is +3bp, so the real yield rose <strong>+5bp</strong>. That is the leg gold and equities answer to.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Price the bonds</h4>
+        <p>2-year, duration ≈ 1.9: \(-1.9 \times 0.0015 = -0.29\%\). 10-year, duration ≈ 8: \(-8 \times 0.0008 = -0.64\%\). The 2-year moved more in <em>yield</em>, the 10-year more in <em>price</em> — duration does that.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Price the equity multiple</h4>
+        <p>Start with \(k = 8\%\), \(g = 3\%\): \(P/E = 1/0.05 = 20.0\). Real yield +5bp makes \(k = 8.05\%\): \(P/E = 1/0.0505 = 19.80\). The multiple falls about <strong>1%</strong> with earnings unchanged — numerator down, denominator untouched.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Now raise growth expectations instead</h4>
+        <p>Suppose the same print also nudged \(g\) to 3.05% (strong economy). Then \(k-g\) is unchanged at 5% and the multiple is unchanged. <em>Same yield move, different equity outcome.</em> This is why the equity domino depends on what the yield move means, not just its size.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A CPI morning, read the honest way</h3>
+    <p>
+      CPI prints hot at 8:30 New York time. In the same five minutes the 2-year jumps,
+      USD/JPY pops, gold dips and Nasdaq futures drop. A trader who knows the chain can
+      say immediately <em>what</em> happened: a front-end repricing, splitting mostly
+      into real yields. That is useful — it tells them the move is about the policy
+      path, so the next things to watch are central-bank speakers and the following
+      data, not, say, oil.
+    </p>
+    <p style="margin-bottom:0">
+      What they should <em>not</em> do is treat the 2-year's jump as a head start on
+      the other markets. On this desk's tests, those other markets moved in the same
+      bar, not later; the following week was not wilder in the dollar pairs (it was,
+      if anything, calmer); and there was no lingering "fear bid" in gold to wait for.
+      The chain explains the five minutes. It does not hand you the next five days.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Where the folk chain breaks: what this desk found</h2>
+  <p>
+    The domino story is usually told with a timing claim attached: one market moves
+    first, the others follow, and the follower is the trade. Here is each such claim,
+    tested on this desk's data. The mechanism survives. The timing mostly does not.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"A 2-year shock means a volatile FX week" (<code>front-end-shock</code>, 2026-09-17).</strong> Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero); after a 2Y DOWN shock USD/JPY was marginally wider (+0.33). The hawkish domino was followed by a <em>quieter</em> week in the dollar pairs, the opposite of the story.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"Rates turn first, then equities follow" (<code>rates-pivot-lead</code>, 2026-09-25).</strong> Null on every cell: 2,430 confirmed 2-year pivots, 2,010 de-clustered events at 1h, signed Nasdaq return −0.005% vs control [−0.021, +0.012]; null at 1h, 2h and 4h. A confirmed rates low was followed by an up-move 54.1% of the time — and the base rate is 54.1%. Rates and equities move in the <em>same</em> bar (+0.23 correlation at 15 minutes), not in sequence.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="oil-to-breakevens" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"Fear buys gold" (<code>fear-gold</code>, 2026-09-21).</strong> 58 VIX spikes 2010–2026. Gold five sessions on: +0.42% vs +0.35% ordinary, excess +0.07% [−0.42, +0.30]. Twenty sessions on: +0.01% vs +1.20%, excess −1.19% [−2.30, −0.48]. No fear bid on average, and a month later gold had <em>lagged</em>. If gold is up in a fear week, look for the rates or dollar leg instead.</span>
+  </div>
+
+  <div class="tl-verdict context">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>"Stocks and bonds falling together marks an inflation regime" (<code>stock-bond-flip</code>, 2026-09-17).</strong> Negative 20-day stock/yield correlation: 71 episodes since 2008, median 5 sessions, p75 17; 17% of days. Only 36 clean flips — too few to test what follows. Say how long such episodes typically last; do not claim what comes next.</span>
+  </div>
+
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>"Oil takes time to reach inflation expectations" (<code>oil-to-breakevens</code>, 2026-09-17).</strong> No lag: a 20-day oil move of ±10% is followed by no excess breakeven change at 5, 10 or 20 sessions. Oil and breakevens move in the same window or not at all — this <em>sharpens</em> the oil→breakeven domino rather than killing it, but there is no delay to trade.</span>
+  </div>
+
+  <p>
+    Put together, these say something specific. The dominoes do not fall one after
+    another over hours or days, giving you time to step in front of the later ones.
+    They fall <strong>together</strong>, inside the same bar, because every market is
+    repricing off the same shared input at once. The chain is a way of reading a move
+    that has already happened, and of knowing what would contradict your reading —
+    "if the 2-year stops rising while oil keeps rising, the market is looking through
+    the oil move". It is not a queue.
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> because every domino is a real mechanism, the story
+    <em>feels</em> like it should be tradeable. On this desk, the timing version failed
+    three different ways (daily coupling, 15-minute lags, 15-minute pivots), and the
+    "big rates move → wild FX" version came back backwards. Explaining a move and
+    predicting the next one are different jobs.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🔎</div>
+      <h4>Attribution, not prediction</h4>
+      <p>After a big move, check which shared input moved: front-end yields, real yields, breakevens, the dollar. The one that explains the most assets at once is the story.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📐</div>
+      <h4>Which leg moved more</h4>
+      <p>2-year versus 10-year (or 30-year): front end leading is a policy story, long end leading is supply, term premium or credibility. Split nominal into real plus breakeven before reading gold or growth stocks.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧱</div>
+      <h4>Spot the broken link</h4>
+      <p>An asset moving against its domino (yields up, currency down) is the most informative thing on the screen. In 2022 it said "credibility shock"; that reading was available on day one.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>Look for loops</h4>
+      <p>A chain becomes dangerous when a later domino feeds back into an earlier one — forced gilt sales pushing gilt yields up, vol-targeting selling pushing vol up. The next lesson is about exactly that.</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The chain is on the board; its timing claims are in the ledger</h3>
+    <p style="margin-bottom:0">
+      The desk's chain (<code>js/macroChain.js</code>) already carries most of these
+      links — oil to breakevens, real yields to the dollar, gold and equities — and
+      <code>js/mechanisms.js</code> derives the real-yield split, the gold, dollar and
+      credit links step by step. Every verdict quoted above is an entry in
+      <code>js/deskEvidence.js</code>. Two legs of the folk chain are not on the board
+      at all: priced Fed easing (fed funds futures) and an earnings branch.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the domino story misleads</h3>
+    <p><strong>Treating the chain as a queue.</strong> The links fire together. Waiting for the "later" dominoes usually means arriving after they fell.</p>
+    <p><strong>Reading a yield move without splitting it.</strong> Real yields up and breakevens up mean opposite things for gold. "The 10-year rose" is half a sentence.</p>
+    <p><strong>Assuming fixed directions.</strong> Rates up usually means currency up — unless the rates rise is a credibility premium, as in 2022. Rates down usually means equities up — unless the rates fall is a growth scare, as in August 2024.</p>
+    <p style="margin-bottom:0"><strong>Telling it backwards and calling it a forecast.</strong> Every big day fits a domino story afterwards. Two cases chosen after the outcome is known are an anecdote, not evidence.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Shared inputs, simultaneous repricing.</strong> The dominoes are real because bonds, currencies, gold and equities are all priced off the same rate, inflation and dollar inputs.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Split before you read.</strong> Nominal = real + breakeven, and 2-year versus 10-year tells you whether it is a short-run policy story or a long-run one.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Broken links are the signal.</strong> Yields up with the currency down (UK 2022) told you it was a credibility shock on day one.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: "rates turn first, then equities".</strong> 2,010 events, Nasdaq −0.005% vs control; 54.1% hit rate against a 54.1% base rate. They move in the same bar.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: "a 2-year shock means a volatile FX week".</strong> After hawkish 2-year shocks EUR/USD and GBP/USD ran calmer (−0.34 and −0.28 ATR).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: "fear buys gold".</strong> Excess +0.07% at five sessions, −1.19% at twenty. Look for the rates or dollar leg instead.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Leverage turns a chain into a loop.</strong> Forced sellers (LDI in 2022, carry traders in 2024) are what made those episodes violent — the subject of the next lesson.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. CPI prints hot. The 2-year rises 20bp and the 10-year rises 6bp. What kind of shock does the curve say this is?</summary>
+    <div class="tl-answer">A short-run inflation and policy shock. The front end moving much more than the long end (a bear flattening) means the market repriced the central bank's next moves, not the long-run inflation or supply outlook.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. The 10-year nominal yield rises 10bp and the 10-year breakeven rises 10bp. What happened to the real yield, and what does that mean for gold?</summary>
+    <div class="tl-answer">The real yield is unchanged (10 − 10 = 0). The whole move was inflation expectations, which is gold's friend rather than its enemy — so the "yields up, gold down" domino should not be expected to fire. Splitting the yield is what reveals this.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. With \(k = 7\%\) and \(g = 3\%\), what is \(P/E\)? What is it if the real yield rises 25bp?</summary>
+    <div class="tl-answer">\(P/E = 1/(0.07-0.03) = 25\). With \(k = 7.25\%\): \(1/0.0425 \approx 23.5\), about a 6% fall in the multiple with earnings unchanged. The smaller \(k-g\) is, the more sensitive the multiple.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. In September 2022 UK yields rose sharply and sterling fell. Why did the usual "higher yields, stronger currency" link break?</summary>
+    <div class="tl-answer">The yield rise was a credibility premium — investors demanding compensation for doubts about the government's finances — not an expected higher policy rate that makes the currency more attractive to hold. When yields rise because investors want out, money leaves the currency too.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A colleague says: "The 2-year just broke higher — get short Nasdaq before it catches up." What does this desk's evidence say?</summary>
+    <div class="tl-answer">Tested null (<code>rates-pivot-lead</code>): across 2,010 de-clustered 2-year pivots, the Nasdaq's signed return after the confirmation was −0.005% versus control, with a hit rate equal to the 54.1% base rate. Rates and equities move in the same bar; by the time the 2-year has visibly broken, the Nasdaq has already repriced.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. What turned the gilt sell-off from a chain into a loop?</summary>
+    <div class="tl-answer">Leverage and collateral calls. LDI funds' leveraged hedges lost value as yields rose, forcing them to post collateral, which they raised by selling gilts — pushing yields up further and triggering more calls. A later domino fed back into an earlier one, and only a buyer with no balance-sheet limit (the Bank of England) could break it.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Bank of England, <em>Financial Stability Report</em>, December 2022 — the Bank's account of the LDI episode and why it intervened in the gilt market on financial-stability grounds.</li>
+    <li>Bank for International Settlements, <em>BIS Bulletin</em> on the market turbulence and carry-trade unwind of August 2024 — how leverage in yen-funded positions spread a currency move across asset classes.</li>
+    <li>Myron J. Gordon, <em>The Investment, Financing, and Valuation of the Corporation</em>, 1962 — the constant-growth valuation used for the equity domino.</li>
+    <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; YTM</a> and <a href="duration-convexity.html">Duration &amp; Convexity</a> — the price-yield arithmetic behind the first domino.</li>
+    <li><a href="interest-rate-parity.html">Interest Rate Parity</a> — why a rate gap has to show up in the currency.</li>
+    <li><a href="stress-testing-scenario-analysis.html">Stress Testing &amp; Scenario Analysis</a> — running a single shock through a whole book on purpose.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="investor-mood-forced-selling.html">Mood, the Quote and Forced Selling →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Domino stepper. Each scenario lists nodes (with positions) and an ordered
+  // list of links. Stepping reveals one link at a time; nodes show the
+  // direction they moved once a link reaches them.
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('dom-svg');
+  if (!svg) return;
+  var NODE_FILL = 'var(--s2)';
+  var W = 132, H = 46;
+  var TAGS = {
+    mech: { label: 'Mechanism', cls: 'blue' },
+    nul: { label: 'Tested null here', cls: 'red' },
+    ctx: { label: 'Context only', cls: 'blue' },
+    unt: { label: 'Untested here', cls: 'amber' },
+    broke: { label: 'Link broke', cls: 'red' }
+  };
+  var MARK = { up: '▲ up', down: '▼ down', mixed: '◆ mixed', wider: '▲ wider' };
+  var SCEN = {
+    cpi: {
+      shock: 'Hot CPI print',
+      nodes: [
+        { id: 'shock', label: 'Hot CPI print', x: 78, y: 190 },
+        { id: 'y2', label: '2-year yield', x: 245, y: 90 },
+        { id: 'real', label: 'Real yields', x: 245, y: 230 },
+        { id: 'usd', label: 'US dollar', x: 425, y: 40 },
+        { id: 'jpy', label: 'USD/JPY', x: 600, y: 40 },
+        { id: 'gold', label: 'Gold', x: 425, y: 150 },
+        { id: 'eq', label: 'Equities', x: 425, y: 270 },
+        { id: 'credit', label: 'Credit spreads', x: 600, y: 210 },
+        { id: 'vol', label: 'Volatility', x: 600, y: 340 }
+      ],
+      steps: [
+        { from: 'shock', to: 'y2', dir: 'up', tag: 'mech', head: 'Rates traders price fewer cuts.', text: 'The 2-year is mostly a forecast of the policy rate over two years, so it reprices first and most. If it rises more than the 10-year, the curve is telling you this is a short-run policy story.' },
+        { from: 'y2', to: 'usd', dir: 'up', tag: 'nul', head: 'Higher US rates pull money into dollars.', text: 'Mechanism holds in the same bar. Tested here as a forecast: "Forward coupling null; the relationship is real only in the same bar" (yields-to-fx-direction). Never write that a yield move implies where a pair goes next.' },
+        { from: 'usd', to: 'jpy', dir: 'up', tag: 'nul', head: 'USD/JPY, the most rate-sensitive major, pops.', text: 'front-end-shock: null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After 2Y UP shocks, EUR/USD and GBP/USD ran CALMER the next week (−0.34 and −0.28 ATR). The hawkish domino did not mean a volatile FX week.' },
+        { from: 'y2', to: 'real', dir: 'up', bend: 0, tag: 'mech', head: 'The rise spreads along the curve into real yields.', text: 'Nominal = real + breakeven. Whatever the breakeven does not absorb shows up as a higher real yield: money genuinely got more expensive.' },
+        { from: 'real', to: 'gold', dir: 'down', tag: 'ctx', head: 'Holding gold costs more.', text: 'Gold pays nothing, so a higher real yield raises its carrying cost. But which-gold (context): rates drove gold in only 19% of rolling windows, the dollar 18%, both 16%, neither 45%. And fear-gold tested null: no fear bid on average.' },
+        { from: 'real', to: 'eq', dir: 'down', tag: 'nul', head: 'Future profits are discounted harder.', text: 'P/E = 1/(k − g): raise k, the multiple falls, most for long-duration growth stocks. rates-pivot-lead tested null: rates and equities move in the SAME bar, not in sequence — a 54.1% hit rate against a 54.1% base rate.' },
+        { from: 'eq', to: 'credit', dir: 'wider', tag: 'ctx', head: 'Lenders demand more for the same risk.', text: 'Tighter money raises refinancing risk for weaker borrowers; spreads widen. The equity–credit ordering holds here as a description, not as a validated forward signal.' },
+        { from: 'eq', to: 'vol', dir: 'up', tag: 'ctx', head: 'Stocks and bonds fall together; protection gets dearer.', text: 'With bonds no longer cushioning equities, portfolios lose on both legs and implied vol rises. stock-bond-flip (context): 71 such episodes since 2008, median 5 sessions, p75 17. Too few clean flips to test what follows.' }
+      ]
+    },
+    oil: {
+      nodes: [
+        { id: 'shock', label: 'Oil spike', x: 78, y: 190 },
+        { id: 'be', label: 'Breakevens', x: 250, y: 90 },
+        { id: 'y2', label: '2-year yield', x: 250, y: 280 },
+        { id: 'curve', label: 'Curve (2s10s)', x: 600, y: 340 },
+        { id: 'usd', label: 'US dollar', x: 430, y: 60 },
+        { id: 'gold', label: 'Gold', x: 600, y: 140 },
+        { id: 'eq', label: 'Equity multiples', x: 430, y: 220 }
+      ],
+      steps: [
+        { from: 'shock', to: 'be', dir: 'up', tag: 'nul', head: 'Petrol is in the CPI basket; inflation expectations rise.', text: 'oil-to-breakevens tested null on the LAG: oil and breakevens move in the same window or not at all. A quiet breakeven beside a big oil move is the bond market disagreeing, not "not yet".' },
+        { from: 'be', to: 'y2', dir: 'up', tag: 'unt', head: 'Easing bets collapse.', text: 'If the oil move is believed, cuts get priced out and the front end rises. Priced Fed easing (fed funds futures) is not on this desk, so this link is untested here.' },
+        { from: 'y2', to: 'curve', dir: 'mixed', tag: 'mech', head: 'Read which end moved more.', text: '2-year up more than 10-year: the market reads oil as a short-run inflation shock. If the 2-year stops rising while oil keeps rising, it is looking through the oil move — shift focus elsewhere.' },
+        { from: 'y2', to: 'usd', dir: 'up', tag: 'nul', head: 'The dollar firms on the rate gap.', text: 'Same-bar mechanism; as a forecast of the next move, tested null (yields-to-fx-direction).' },
+        { from: 'be', to: 'gold', dir: 'mixed', tag: 'ctx', head: 'Gold gets two opposite pushes.', text: 'Breakevens up is gold’s friend; real yields and the dollar up are its enemies. Which wins varies — in 45% of rolling windows neither rates nor the dollar explained gold (which-gold, context).' },
+        { from: 'y2', to: 'eq', dir: 'down', tag: 'nul', head: 'Multiples compress.', text: 'Price falls while earnings estimates may even rise: the multiple compresses from the numerator. rates-pivot-lead: the equity move arrives in the same bar as the rates move, not after it.' }
+      ]
+    },
+    gilt: {
+      nodes: [
+        { id: 'shock', label: 'Unfunded budget', x: 78, y: 200 },
+        { id: 'long', label: 'Long gilt yields', x: 255, y: 110 },
+        { id: 'ldi', label: 'LDI collateral calls', x: 450, y: 110 },
+        { id: 'sales', label: 'Forced gilt sales', x: 450, y: 270 },
+        { id: 'gbp', label: 'Sterling', x: 255, y: 320 },
+        { id: 'boe', label: 'Bank of England', x: 605, y: 30 }
+      ],
+      steps: [
+        { from: 'shock', to: 'long', dir: 'up', tag: 'mech', head: '23 Sept 2022: investors demand a credibility premium.', text: 'Large unfunded tax cuts, announced without the usual independent forecast. Long-dated gilt yields rise at a pace rarely seen in a major bond market.' },
+        { from: 'shock', to: 'gbp', dir: 'down', tag: 'broke', head: 'The textbook FX link runs backwards.', text: 'Higher yields should support a currency. Sterling FELL, to an all-time low against the dollar on 26 September. A yield rise driven by doubt is a risk premium, not an attraction.' },
+        { from: 'long', to: 'ldi', dir: 'up', tag: 'mech', head: 'Leveraged hedges lose value.', text: 'Pension LDI funds hedged long-dated liabilities with leveraged gilt and swap positions. As yields jumped, counterparties demanded more collateral — fast.' },
+        { from: 'ldi', to: 'sales', dir: 'up', tag: 'mech', head: 'Sell what can be sold today.', text: 'To raise cash in hours, not weeks, funds sold their most liquid holding: gilts. Price-insensitive selling, forced by collateral calls, not by a view.' },
+        { from: 'sales', to: 'long', dir: 'up', bend: 40, tag: 'mech', head: 'The chain becomes a loop.', text: 'Forced selling pushes yields up further, which triggers more collateral calls, which forces more selling. Nothing inside the loop can stop it.' },
+        { from: 'boe', to: 'long', dir: 'down', bend: 30, tag: 'mech', head: '28 Sept: a buyer with no balance-sheet limit.', text: 'The Bank of England announces temporary purchases of long-dated gilts on financial-stability grounds, to break the spiral rather than to ease policy. Purchases end on 14 October.' }
+      ]
+    },
+    yen: {
+      nodes: [
+        { id: 'shock', label: 'BoJ hike + soft US jobs', x: 85, y: 190 },
+        { id: 'jpy', label: 'USD/JPY', x: 265, y: 100 },
+        { id: 'carry', label: 'Yen-funded carry', x: 450, y: 100 },
+        { id: 'eq', label: 'Equities', x: 450, y: 270 },
+        { id: 'vol', label: 'Volatility', x: 610, y: 190 }
+      ],
+      steps: [
+        { from: 'shock', to: 'jpy', dir: 'down', tag: 'mech', head: 'The rate gap narrows from both ends.', text: 'End of July 2024: the Bank of Japan raises rates. 2 August: a weak US jobs report makes US cuts look closer. The yen strengthens sharply — USD/JPY falls.' },
+        { from: 'jpy', to: 'carry', dir: 'down', tag: 'ctx', head: 'Borrowed yen gets more expensive to repay.', text: 'Positions funded in yen lose on the currency alone. yen-into-yields (context): this shape has occurred in only 35 episodes in 18 years — too few to score what follows.' },
+        { from: 'carry', to: 'eq', dir: 'down', tag: 'unt', head: 'Cut risk everywhere, sell what is liquid.', text: '5 August 2024: the Nikkei 225 falls more than 12% in a day, its worst since 1987. The selling is forced de-risking, not a fresh view on earnings.' },
+        { from: 'eq', to: 'vol', dir: 'up', tag: 'mech', head: 'Protection is bid.', text: 'The VIX briefly trades above 60 intraday. Implied vol jumps as everyone reaches for hedges at once.' },
+        { from: 'vol', to: 'eq', dir: 'down', bend: 60, tag: 'unt', head: 'Vol-targeting feeds back.', text: 'Funds that size positions by recent volatility must cut exposure as vol rises — more selling. Then the loop runs out: much of the move reversed within days, and the Nikkei rebounded sharply the next session.' }
+      ]
+    }
+  };
+
+  var scenKey = 'cpi', cur = -1;
+  var gEdges = document.getElementById('dom-edges');
+  var gNodes = document.getElementById('dom-nodes');
+  var countEl = document.getElementById('dom-count');
+  var headEl = document.getElementById('dom-head');
+  var textEl = document.getElementById('dom-text');
+  var tagEl = document.getElementById('dom-tag');
+
+  function el(name, attrs){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function nodeById(s, id){
+    for (var i=0;i<s.nodes.length;i++) if (s.nodes[i].id === id) return s.nodes[i];
+    return null;
+  }
+  // Point on the node's rectangle border (plus a small gap) in the direction of (tx,ty).
+  function clip(n, tx, ty, gap){
+    var dx = tx - n.x, dy = ty - n.y;
+    var tX = dx === 0 ? Infinity : (W/2 + gap)/Math.abs(dx);
+    var tY = dy === 0 ? Infinity : (H/2 + gap)/Math.abs(dy);
+    var t = Math.min(tX, tY);
+    return [n.x + dx*t, n.y + dy*t];
+  }
+  function edgePath(a, b, bend){
+    var mx = (a.x + b.x)/2, my = (a.y + b.y)/2;
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var cx = mx + (-dy/len)*bend, cy = my + (dx/len)*bend;
+    var p0 = clip(a, cx, cy, 2), p1 = clip(b, cx, cy, 5);
+    return 'M' + p0[0].toFixed(1) + ',' + p0[1].toFixed(1) + ' Q' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' ' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1);
+  }
+
+  function render(){
+    var s = SCEN[scenKey];
+    while (gEdges.firstChild) gEdges.removeChild(gEdges.firstChild);
+    while (gNodes.firstChild) gNodes.removeChild(gNodes.firstChild);
+    var reached = { shock: true }, markOf = {}, curTo = null;
+    s.steps.forEach(function(st, i){
+      var a = nodeById(s, st.from), b = nodeById(s, st.to);
+      var state = i < cur ? 'past' : (i === cur ? 'cur' : 'dim');
+      var stroke = state === 'past' ? 'var(--blue)' : (state === 'cur' ? 'var(--amber)' : 'var(--border2)');
+      var p = el('path', { d: edgePath(a, b, st.bend || 0), 'marker-end': 'url(#dom-ah-' + state + ')' });
+      p.setAttribute('style', 'fill:none;stroke:' + stroke + ';stroke-width:' + (state === 'cur' ? 3 : 1.6) + (state === 'dim' ? ';stroke-dasharray:4,4' : ''));
+      gEdges.appendChild(p);
+      if (i <= cur){ reached[st.from] = true; reached[st.to] = true; markOf[st.to] = st.dir; }
+      if (i === cur) curTo = st.to;
+    });
+    s.nodes.forEach(function(n){
+      var on = !!reached[n.id];
+      var isShock = n.id === 'shock';
+      var stroke = n.id === curTo ? 'var(--amber)' : (isShock ? 'var(--red)' : (on ? 'var(--blue)' : 'var(--border2)'));
+      var g = el('g', {});
+      var r = el('rect', { x: n.x - W/2, y: n.y - H/2, width: W, height: H, rx: 8 });
+      r.setAttribute('style', 'fill:' + NODE_FILL + ';stroke:' + stroke + ';stroke-width:' + (n.id === curTo ? 2.5 : 1.3) + ';opacity:' + (on ? 1 : 0.55));
+      g.appendChild(r);
+      var t1 = el('text', { x: n.x, y: n.y - 3, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 600, 'font-family': "'DM Sans',sans-serif" });
+      t1.setAttribute('style', 'fill:var(--text);opacity:' + (on ? 1 : 0.6));
+      t1.textContent = n.label;
+      g.appendChild(t1);
+      var m = markOf[n.id];
+      var t2 = el('text', { x: n.x, y: n.y + 14, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Mono',monospace" });
+      var col = isShock ? 'var(--red)' : (m === 'down' ? 'var(--red)' : (m === 'mixed' ? 'var(--amber)' : (m ? 'var(--green)' : 'var(--text3)')));
+      t2.setAttribute('style', 'fill:' + col);
+      t2.textContent = isShock ? 'the shock' : (m ? MARK[m] : '—');
+      g.appendChild(t2);
+      gNodes.appendChild(g);
+    });
+    countEl.textContent = 'Step ' + (cur + 1) + ' of ' + s.steps.length;
+    if (cur < 0){
+      headEl.textContent = 'The shock lands: ' + nodeById(s, 'shock').label + '.';
+      textEl.textContent = 'Press "Next domino" to watch it travel, one link at a time.';
+      tagEl.textContent = TAGS.mech.label; tagEl.className = 'tl-pill blue';
+    } else {
+      var st = s.steps[cur];
+      headEl.textContent = st.head;
+      textEl.textContent = st.text;
+      tagEl.textContent = TAGS[st.tag].label;
+      tagEl.className = 'tl-pill ' + TAGS[st.tag].cls;
+    }
+    document.getElementById('dom-prev').disabled = cur < 0;
+    document.getElementById('dom-next').disabled = cur >= s.steps.length - 1;
+  }
+
+  document.getElementById('dom-next').addEventListener('click', function(){
+    if (cur < SCEN[scenKey].steps.length - 1){ cur++; render(); }
+  });
+  document.getElementById('dom-prev').addEventListener('click', function(){
+    if (cur >= 0){ cur--; render(); }
+  });
+  document.getElementById('dom-reset').addEventListener('click', function(){ cur = -1; render(); });
+  var scenBtns = Array.prototype.slice.call(document.querySelectorAll('#dom-scen .tl-btn'));
+  scenBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      scenBtns.forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      scenKey = b.getAttribute('data-scen'); cur = -1; render();
+    });
+  });
+  render();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

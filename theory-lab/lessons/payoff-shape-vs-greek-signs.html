@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Same Greeks, Different Risk — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: side-by-side Greek table under the overlay chart. */
+  .sgdr-table{width:100%;border-collapse:collapse;font-family:'DM Mono',monospace;font-size:12px;margin-top:10px}
+  .sgdr-table th,.sgdr-table td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;color:var(--text2)}
+  .sgdr-table th:first-child,.sgdr-table td:first-child{text-align:left}
+  .sgdr-table th{color:var(--text3);font-weight:500}
+  .sgdr-table td b{color:var(--text)}
+  .sgdr-same{color:var(--green)}
+  .sgdr-diff{color:var(--red)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options from the Ground Up / Same Greeks, Different Risk</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options from the Ground Up · Lesson 2 of 3</div>
+  <h1 class="tl-title">Same Greeks, Different Risk</h1>
+  <p class="tl-dek">A short put and a short call carry the same signs on gamma, theta and vega — yet one can lose at most the strike and the other can lose without limit. The Greeks are local slopes; the payoff is the whole road, cliff included.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~16 min read</span>
+    <span>Prereqs: <a href="options-four-positions.html">The Four Option Positions</a>, <a href="theta-decay.html">Theta Decay</a>, <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="payoff-shape-vs-greek-signs-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Short put and short call are both short gamma, long theta, short vega.</strong> At the same strike their gamma and vega are not just the same sign — they are the <em>same number</em>.</li>
+      <li><strong>Their worst cases are nothing alike.</strong> Short put: strike − premium (97.80 on a 100 strike). Short call: unlimited.</li>
+      <li>The reason is put-call parity: <strong>short call = short put + short forward.</strong> The forward has no gamma, no vega and almost no theta, so the Greeks can't see it — but it is a straight line with no floor, and it carries the whole unlimited tail.</li>
+      <li>Greeks are a Taylor expansion around today's price. For a ±50 move on a 30-day ATM option, the Greek estimate says −113 and −111; the true losses are −47.8 and −47.6. Local slopes are not a map of the tails.</li>
+      <li>Far in the money the short call's gamma and vega go to <em>zero</em> — the Greeks fall silent exactly where the loss is largest.</li>
+      <li><strong>Desk verdict on the dealer-level version ("short gamma amplifies"):</strong> range-only, Nasdaq-only, and the reliable state is long gamma being <em>quiet</em>. Direction from gamma is falsified, and it does not carry to FX.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    <a href="options-four-positions.html">The Four Option Positions</a> put short put and short
+    call on the same diagonal of the 2×2: both sellers, both collecting premium, both with the
+    same three Greek signs. A reference card that only carries signs makes them look like the
+    same risk. They are not, and no Greek on the card tells you which one you are holding.
+    Since <em>size</em> is set by the worst case, this is the gap that matters most for anyone
+    who actually sells options.
+  </p>
+  <p>
+    It also matters one level up. A dealer book that has sold a lot of options is "short gamma"
+    — the aggregated version of this lesson, and the mechanism behind every GEX number on a
+    screen (see <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging
+    Flows</a>). "Short gamma" is a statement about the local slope of the book. It says nothing
+    about whether the book's tail is bounded, and as Section 04 shows, the desk's own test of
+    what dealer gamma predicts lands much more narrowly than the folk version.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two cars with the same speedometer reading, on different roads</h3>
+    <p>
+      Greeks are like a car's dashboard: speed (delta), how fast speed is changing (gamma), fuel
+      burned per hour (theta). Two cars can show identical dashboards at this instant. One is on
+      a road that ends at a wall a known distance away — it can only travel so far. The other is
+      on a road that ends at a cliff edge with no bottom. The dashboard describes <em>right
+      now</em>. It cannot tell you what is at the end of the road.
+    </p>
+    <p style="margin-bottom:0">
+      A short put is the first car: the underlying can fall only to zero, so the loss stops at
+      the strike minus the premium. A short call is the second: there is no ceiling on price, so
+      there is no floor on the loss. Same dashboard, different roads.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You and your friend each promise something for £2. You promise to buy a toy for £100 if your friend wants to sell it — the worst that can happen is the toy becomes worthless and you lose about £98. Your friend promises to sell a toy for £100 if someone wants to buy it — but they don't own one, and if toys suddenly cost £1,000 they have to buy one at that price and hand it over. Same £2, same kind of promise, very different worst day.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. The payoffs at expiry</h3>
+  <p>With strike \(K\), premiums \(p_P\) (put) and \(p_C\) (call), and \(S_T \ge 0\) the price at expiry:</p>
+  <div class="tl-math">
+    \[ \text{Short put: } p_P - \max(K - S_T, 0) \;\ge\; p_P - K \qquad \text{Short call: } p_C - \max(S_T - K, 0) \;\to\; -\infty \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p_P − K</code><span>the short put's floor, hit at S_T = 0 — a price cannot go below zero</span></div>
+    <div class="tl-eq-chip c4"><code>−∞</code><span>the short call has no floor: S_T has no ceiling</span></div>
+  </div>
+
+  <h3>2. Put-call parity: the two shorts differ by a forward</h3>
+  <p>Rearranging parity, \(C - P = S - Ke^{-r\tau}\), and negating both sides:</p>
+  <div class="tl-math">
+    \[ \underbrace{-C}_{\text{short call}} = \underbrace{-P}_{\text{short put}} \;-\; \underbrace{\big(S - Ke^{-r\tau}\big)}_{\text{short forward}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp amber"><div class="tl-fp-term">−P</div><div class="tl-fp-name">The convexity</div><div class="tl-fp-desc">Short gamma, short vega, long theta — and a bounded tail</div></div>
+    <div class="tl-fp blue"><div class="tl-fp-term">−(S − Ke<sup>−rτ</sup>)</div><div class="tl-fp-name">The straight line</div><div class="tl-fp-desc">Zero gamma, zero vega, tiny theta — and an unbounded tail</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">−C</div><div class="tl-fp-name">The sum</div><div class="tl-fp-desc">Same convexity Greeks as the short put; delta lower by exactly 1</div></div>
+  </div>
+  <p>
+    Differentiate each piece. The forward \(S - Ke^{-r\tau}\) has delta 1, gamma 0, vega 0, and
+    theta \(-rKe^{-r\tau}\) (a financing drip). So:
+  </p>
+  <div class="tl-math">
+    \[ \Gamma_{\text{sc}} = \Gamma_{\text{sp}},\quad \nu_{\text{sc}} = \nu_{\text{sp}},\quad \Delta_{\text{sc}} = \Delta_{\text{sp}} - 1,\quad \Theta_{\text{sc}} = \Theta_{\text{sp}} + rKe^{-r\tau} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>Γ, ν equal</code><span>not merely the same sign — the same number</span></div>
+    <div class="tl-eq-chip c1"><code>Δ − 1</code><span>the forward shifts direction by one full unit</span></div>
+    <div class="tl-eq-chip c3"><code>+rKe⁻ʳᵗ</code><span>a small financing term, per year</span></div>
+  </div>
+  <p>
+    Every Greek that describes <em>curvature, time and volatility</em> is identical between the
+    two. The whole difference in their tails lives inside a straight line — and a straight line
+    is the one shape whose risk the second-order Greeks literally cannot register.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A short call is a short put with a "bet the price goes down" glued on. That glued-on bet is a perfectly straight ramp — no bends — and the bend-detectors (gamma, vega) can't see straight ramps at all. But the ramp goes up forever, and that's where the never-ending loss comes from.</p>
+  </div>
+
+  <h3>3. Greeks are a Taylor expansion — local by construction</h3>
+  <p>The Greeks are the coefficients of a Taylor expansion of the position's value around today's price, time and volatility:</p>
+  <div class="tl-math">
+    \[ \delta V \approx \Delta\,\delta S + \tfrac12\Gamma\,(\delta S)^2 + \Theta\,\delta t + \nu\,\delta\sigma \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Δ δS</code><span>first-order: the tangent line</span></div>
+    <div class="tl-eq-chip c2"><code>½Γ(δS)²</code><span>second-order: the bend, assumed constant</span></div>
+    <div class="tl-eq-chip c3"><code>Θ δt, ν δσ</code><span>time and volatility, holding everything else fixed</span></div>
+  </div>
+  <p>
+    It is accurate for <em>small</em> \(\delta S\). Gamma itself changes as price moves (that is
+    what <a href="second-order-greeks.html">speed and the other second-order Greeks</a> measure),
+    so for a big move the quadratic overshoots or undershoots the real curve. And as a short
+    call goes deep in the money its gamma and vega shrink towards zero: the Greeks report a
+    calm, nearly linear position at exactly the moment its loss is largest and still growing
+    one-for-one with price.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(S,\ S_T,\ K\)</td><td>Underlying price now, at expiry, and the strike.</td></tr>
+    <tr><td>\(C,\ P\)</td><td>Call and put prices; \(p_C,\ p_P\) the premiums collected when selling them.</td></tr>
+    <tr><td>\(\tau,\ r,\ \sigma\)</td><td>Time to expiry (years), risk-free rate, volatility.</td></tr>
+    <tr><td>\(\Delta,\ \Gamma,\ \Theta,\ \nu\)</td><td>Delta, gamma, theta, vega. Subscripts sc / sp = short call / short put.</td></tr>
+    <tr><td>\(\delta S,\ \delta t,\ \delta\sigma\)</td><td>Small changes in price, time and volatility.</td></tr>
+    <tr><td>\(\delta V\)</td><td>The resulting change in the position's value.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Short put vs short call, strike 100 — identical local Greeks, diverging losses</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Expiry profit and loss of a short put and a short call at strike 100 against underlying price from 0 to 250. The short put's loss flattens at minus 97.8 at zero; the short call's loss keeps falling to minus 147.6 at 250. Dashed curves show today's value with 30 days left. A slider moves a marker along both.">
+      <defs><clipPath id="sg-clip"><rect x="60" y="20" width="550" height="240"/></clipPath></defs>
+      <line x1="60" y1="46.7" x2="610" y2="46.7" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="280" y1="20" x2="280" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="177.1" x2="610" y2="177.1" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:4,4;opacity:.6"/>
+      <text x="606" y="172" text-anchor="end" font-size="9.5" fill="var(--amber)">short put floor −97.80</text>
+      <text x="335" y="290" text-anchor="middle" font-size="11" fill="var(--text3)">Underlying price →</text>
+      <text x="20" y="140" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 20 140)">P&amp;L per unit</text>
+      <text x="60" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="170" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">50</text>
+      <text x="280" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">K=100</text>
+      <text x="390" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">150</text>
+      <text x="500" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">200</text>
+      <text x="610" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">250</text>
+      <text x="52" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">+20</text>
+      <text x="52" y="51" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="52" y="157" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−80</text>
+      <text x="52" y="264" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−160</text>
+      <g clip-path="url(#sg-clip)">
+        <polyline id="sg-put-today" points="" style="fill:none;stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,4;opacity:.8"/>
+        <polyline id="sg-call-today" points="" style="fill:none;stroke:var(--red);stroke-width:1.5;stroke-dasharray:5,4;opacity:.8"/>
+        <polyline id="sg-put" points="" style="fill:none;stroke:var(--amber);stroke-width:3"/>
+        <polyline id="sg-call" points="" style="fill:none;stroke:var(--red);stroke-width:3"/>
+      </g>
+      <line id="sg-mark" x1="280" y1="20" x2="280" y2="260" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <circle id="sg-dot-put" cx="280" cy="46.7" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+      <circle id="sg-dot-call" cx="280" cy="46.7" r="5" style="fill:var(--red);stroke:var(--s1);stroke-width:1.5"/>
+    </svg>
+    <div class="tl-legend"><span><i style="background:var(--amber)"></i>Short put</span><span><i style="background:var(--red)"></i>Short call</span><span>solid = at expiry · dashed = today, 30 days left</span></div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Underlying price</span><span class="tl-live" id="sg-s-val">S = 100</span></div>
+        <input type="range" id="sg-s" min="1" max="250" step="1" value="100">
+        <div class="tl-hint">K = 100, σ = 20%, r = 2%, 30 days to expiry. Premiums collected: put 2.20, call 2.37. Greeks below are for the position valued today at this price.</div>
+      </div>
+    </div>
+    <table class="sgdr-table" aria-live="polite">
+      <tr><th></th><th>Short put</th><th>Short call</th><th>Same sign?</th></tr>
+      <tr><td>Δ</td><td id="sg-dp">—</td><td id="sg-dc">—</td><td id="sg-sd">—</td></tr>
+      <tr><td>Γ</td><td id="sg-gp">—</td><td id="sg-gc">—</td><td id="sg-sg">—</td></tr>
+      <tr><td>Θ / day</td><td id="sg-tp">—</td><td id="sg-tc">—</td><td id="sg-st">—</td></tr>
+      <tr><td>ν / vol pt</td><td id="sg-vp">—</td><td id="sg-vc">—</td><td id="sg-sv">—</td></tr>
+      <tr><td>P&amp;L at expiry</td><td id="sg-ep">—</td><td id="sg-ec">—</td><td id="sg-se">—</td></tr>
+      <tr><td>Worst case</td><td><b>−97.80</b></td><td><b>unlimited</b></td><td class="sgdr-diff">✗</td></tr>
+    </table>
+    <div class="tl-chart-caption">
+      Computed live from Black-Scholes. Slide anywhere: gamma, theta and vega keep the same sign on both rows (gamma and vega are literally equal), yet the expiry lines split. Left of the strike the put's loss bends flat at −97.80; right of the strike the call's loss keeps falling one-for-one. Past about 140 the short call's gamma and vega read almost zero — the Greeks go quiet while the loss keeps growing.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Two shorts, 30 days, strike 100 — local twins, global strangers</h3>
+    <p>\(S = K = 100\), \(\sigma = 20\%\), \(r = 2\%\), \(\tau = 30/365\). Sell one put for 2.20 and one call for 2.37.</p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The Greeks today</h4>
+          <p>
+            Short put: Δ = +0.477, Γ = −0.0695, Θ = +0.0353/day, ν = −0.114 per vol point.<br>
+            Short call: Δ = −0.523, Γ = −0.0695, Θ = +0.0408/day, ν = −0.114 per vol point.<br>
+            Gamma and vega identical. Deltas differ by exactly 1.000. Thetas differ by 0.0055/day = \(rKe^{-r\tau}/365\). ✓ parity.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>A ±50 move, Greeks vs reality</h4>
+          <p>
+            Taylor estimate, short call, +50: \(-0.523(50) - \tfrac12(0.0695)(50^2) = -26.1 - 86.9 = -113.0\).<br>
+            Taylor estimate, short put, −50: \(+0.477(-50) - 86.9 = -110.7\).<br>
+            True losses (repriced with 30 days left): <strong>−47.80</strong> and <strong>−47.63</strong>. The quadratic overshoots by more than double, because gamma collapses once the option is deep in the money. Locally the two shorts are mirror images; the Taylor estimate can't separate them.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>A 100-point move — where they part</h4>
+          <p>
+            Fall to 0: short put loses 97.80 at expiry — and that is the most it can ever lose.<br>
+            Rise to 200: short call loses 97.80 — and at 300 it loses 197.80, at 500 it loses 397.80. Nothing in step 1's Greeks predicted this; the difference is the short forward from Section 02, a straight line the second-order Greeks cannot see.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>When the call side had no ceiling</h2>
+  <p>
+    Unbounded loss forces a particular sequence of actions on whoever is short the upside —
+    whether short a call or short the stock itself, since below the strike a deep-ITM short call
+    behaves exactly like short stock. Each step is something an actor is <em>forced</em> to do:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>News shrinks the shares actually available to trade, or a buying wave hits</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Call writers / dealers</b>Delta of the short call heads toward −1 (that's gamma); to stay hedged they must <em>buy</em> the underlying into the rise</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Short sellers</b>Margin calls grow with price; lenders can recall borrowed shares; they must buy to close</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The market</b>Forced buyers meet a thin supply of sellers; price rises further</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Loss grows with no floor until positions are closed — at the worst prices</div>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>October 2008: Volkswagen, briefly the world's most valuable company</h3>
+    <p>
+      On Sunday 26 October 2008, Porsche disclosed that it controlled about 74% of Volkswagen's
+      ordinary shares — roughly 43% held outright and most of the rest through cash-settled
+      options. The state of Lower Saxony held about another 20%. That left only a few percent of
+      the shares freely tradable, while a large number of shares had been sold short by funds
+      betting the price would fall.
+    </p>
+    <p>
+      The short sellers needed to buy shares back, and there were far too few to go round. Over
+      the next two trading days VW's share price rose roughly fivefold, trading above €1,000
+      intraday on 28 October and making Volkswagen, for a brief moment, the most valuable listed
+      company in the world by market capitalisation. The squeeze eased after Porsche said it
+      would release some of its position to provide liquidity. For anyone short the upside —
+      short shares, or short calls — there had been no level at which the loss was
+      contractually capped.
+    </p>
+    <p style="margin-bottom:0">
+      January 2021 replayed the pattern in GameStop. A wave of retail buying, much of it through
+      short-dated call options, met heavy short interest; the share price multiplied many times
+      within weeks. Melvin Capital, a fund that had been short the stock, needed an emergency
+      capital infusion of about $2.75 billion from Citadel and Point72, and several brokers
+      restricted buying in the stock on 28 January. Neither episode involved anyone being wrong
+      about delta on a Monday morning. Both were about a payoff with no ceiling.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Two "equivalent" premium-selling trades on a risk report</h3>
+    <p>
+      A risk report shows two positions on the same index, each selling one-month at-the-money
+      options for about 2% of notional: one sells puts, one sells calls. The Greek columns read
+      the same — short gamma, long theta, short vega, the same gamma and vega figures, deltas
+      that differ by one. A manager who sizes both by the Greek report allocates them the same
+      risk.
+    </p>
+    <p style="margin-bottom:0">
+      The stress column tells a different story. "Index −50%": the put seller loses about 48%
+      of notional and no more can be lost below zero. "Index +50%": the call seller loses about
+      the same — and "+100%", "+200%" keep adding a full point of loss for every point of rally.
+      The honest sizing rule is the one the Greek report cannot carry: <strong>size each short by
+      its stressed loss, not its local Greeks</strong>, and recognise that a short call's stress
+      scenario has to be chosen, because the contract itself never supplies a worst case.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The dealer-level version: what "short gamma" does and doesn't predict</h2>
+  <p>
+    Aggregate every option a dealer has sold and you get the book-level gamma that
+    <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure</a> builds into GEX. The folk
+    reading follows straight from this lesson's chain: when dealers are short gamma, their hedging
+    buys rallies and sells dips, amplifying moves; when long gamma, they lean against moves and
+    damp them. People then often take a further step — "short gamma means a breakout is coming",
+    "long gamma means price will mean-revert to a level". This lesson has a precise warning for
+    that step: gamma is a <em>local</em> slope. It speaks to how much hedging flow a move of a
+    given size triggers, not to which way the next move goes.
+  </p>
+  <p>That is exactly where the desk's own test landed:</p>
+
+  <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+    <span class="tl-verdict-tag">Validated — range only</span>
+    <span><strong>Tested here (pre-registered, 793 days of Nasdaq futures):</strong> next-day realised range against a same-trailing-vol Brownian baseline is <strong>+0.176 higher on short-gamma days (p 0.0008)</strong>, rising to <strong>+0.315</strong> when matched on trailing vol. Positive in 4 of 4 specifications and 6 of 6 usable years; FOMC/CPI/NFP/opex days contribute nothing extra (+0.306 vs +0.306). <strong>The asymmetry runs the other way from the folk version:</strong> short-gamma days sit at a range ratio of about 1.02 — essentially ordinary — while long-gamma days sit near 0.85. The reliable state is "long gamma is quiet", not "short gamma is wild".</span>
+  </div>
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Falsified — direction</span>
+    <span><strong>Gamma carries no directional content.</strong> The adjacent wall-magnet direction claim was falsified separately at 48.8% out-of-sample against a 49.9% placebo. And the range effect <strong>does not generalise to FX</strong> — it was tested there and does not carry.</span>
+  </div>
+  <p>
+    Read alongside this lesson, that result is close to what the mathematics would lead you to
+    expect. Gamma measures how sharply hedging needs change as price moves, so it is plausible it
+    says something about <em>how far</em> price travels. It has no term for <em>which way</em>
+    — exactly as a short put and a short call share a gamma figure while pointing in opposite
+    directions.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge red">🧨</div>
+      <h4>Stress tables beside Greek tables</h4>
+      <p>Risk reports carry scenario P&amp;L at large shocks (±10%, ±25%, vol up 20 points) next to the Greeks, because the Greeks are a Taylor expansion and stress P&amp;L is a full reprice.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🛡️</div>
+      <h4>Capping the uncapped side</h4>
+      <p>Call sellers commonly buy a further-out call (a call spread) or hold the underlying (a covered call), turning an unbounded tail into a bounded one at the cost of some premium.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📐</div>
+      <h4>Higher-order Greeks for the bend</h4>
+      <p>Speed, vanna and volga track how gamma and vega themselves move — the next layer of the Taylor expansion (see <a href="second-order-greeks.html">Second-Order Greeks</a>). They improve the local picture; they still don't replace a full reprice.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📊</div>
+      <h4>GEX as a range read</h4>
+      <p>On this desk's evidence, dealer gamma belongs in a statement about expected range on the Nasdaq — "quieter than a vol-matched baseline" when long — and never in a statement about direction.</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The ledger entry this lesson relies on</h3>
+    <p style="margin-bottom:0">
+      The verdict above is the <code>gex-range</code> entry in <code>js/deskEvidence.js</code>.
+      The AI prompt's gamma wording was corrected to the range-only reading on 2026-10-02;
+      <code>js/levelExpectation.js</code> still splits Reject from Break on the gamma sign and
+      has not been re-scored against this result — the open item.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where same-signs gets mistaken for same-risk</h3>
+    <p><strong>"Same Greeks, same risk."</strong> Short put and short call at one strike have <em>identical</em> gamma and vega. Their worst cases are 97.80 and unlimited. Greeks are slopes at a point, not a description of the tail.</p>
+    <p><strong>"Gamma near zero means the position is safe."</strong> A deep in-the-money short call has gamma and vega near zero and is losing one-for-one with every rally. Low gamma means <em>linear</em>, not <em>small</em>.</p>
+    <p><strong>"The Taylor estimate is conservative."</strong> In the worked example it overstated a 50-point loss by more than double; in other configurations (a jump through a strike from just outside it) it understates. It is not reliably either.</p>
+    <p><strong>"Bounded means small."</strong> The short put's loss is bounded at 97.80 for 2.20 collected — about 44 times the premium. Bounded is a property of the shape, not a statement about comfort.</p>
+    <p style="margin-bottom:0"><strong>"Short gamma means a breakout is coming."</strong> The desk's test found short-gamma days are essentially ordinary in range, long-gamma days are the quiet ones, and gamma carries no direction. On FX it carries nothing.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Same signs, even same numbers.</strong> Short put and short call at one strike share gamma and vega exactly; theta differs by \(rKe^{-r\tau}\); delta by exactly 1.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short call = short put + short forward.</strong> The forward is a straight line — invisible to gamma and vega — and it carries the entire unbounded tail.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Greeks are local; payoffs are global.</strong> Size shorts by stressed loss, not by Greek columns.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Validated on the Nasdaq: dealer gamma says something about range.</strong> +0.176 (p 0.0008) wider on short-gamma days vs a Brownian baseline, +0.315 vol-matched, 793 days — with long gamma (≈0.85) the informative, quiet state.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Low gamma is not low risk.</strong> Deep in the money, the short call's Greeks go quiet while its loss runs one-for-one.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Falsified: gamma as a direction signal.</strong> The adjacent wall-magnet direction test scored 48.8% out-of-sample against a 49.9% placebo.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Does not carry to FX.</strong> The range result is Nasdaq-only; on FX, say nothing from GEX.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Name the three Greeks whose signs a short put and short call share, and the one they don't.</summary>
+    <div class="tl-answer">Both are short gamma (Γ &lt; 0), long theta (Θ &gt; 0 in the normal case) and short vega (ν &lt; 0). Delta differs: the short put is positive delta (bullish), the short call negative delta (bearish).</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Use put-call parity to show the two shorts have identical gamma.</summary>
+    <div class="tl-answer">\(-C = -P - (S - Ke^{-r\tau})\). The bracket is linear in \(S\), so \(\partial^2/\partial S^2\) of it is zero. Differentiating twice: \(-\Gamma_C = -\Gamma_P\), i.e. the short call and short put have the same gamma. The same argument with \(\partial/\partial\sigma\) gives equal vega.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. K = 100, put premium 2.20, call premium 2.37. What is each short's worst case at expiry?</summary>
+    <div class="tl-answer">Short put: \(2.20 - 100 = -97.80\), reached at \(S_T = 0\). Short call: unbounded — at \(S_T = 300\) it is \(2.37 - 200 = -197.63\), and it keeps falling with price.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why did the Taylor estimate say −113 for a +50 move on the short call, when the true loss was −47.8?</summary>
+    <div class="tl-answer">The estimate \(\Delta\delta S + \tfrac12\Gamma\delta S^2\) assumes gamma stays at its at-the-money value (0.0695) across the whole move. In reality gamma collapses as the call goes deep in the money and delta saturates at −1, so the true loss is roughly linear past the strike. The Greeks are a local expansion; a 50-point move on a 30-day option is not local.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. What did the desk find when it tested "dealer short gamma amplifies moves"?</summary>
+    <div class="tl-answer">On 793 days of Nasdaq futures, short-gamma days had +0.176 wider next-day range than a Brownian baseline (p 0.0008), +0.315 vol-matched — a real range effect. But short-gamma days are essentially ordinary (≈1.02); the informative state is long gamma being quiet (≈0.85). Gamma carries no direction (the wall-magnet direction test: 48.8% vs a 49.9% placebo), and the effect does not carry to FX.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. In the VW squeeze, which of the four option positions was exposed in the same way as the short sellers, and why?</summary>
+    <div class="tl-answer">The short call. Deep in the money, a short call's delta approaches −1 and it behaves like short stock: every euro of rally is a euro of loss, with no contractual cap. Short put holders, by contrast, would have been exposed only to a fall, which is bounded at zero.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — put-call parity and the Taylor-expansion view of the Greeks.</li>
+    <li>Nassim Nicholas Taleb, <em>Dynamic Hedging</em>, Wiley, 1997 — the practitioner classic on why local Greeks mislead about the tails of an options book.</li>
+    <li>Porsche SE, press release of 26 October 2008 on its Volkswagen position — the primary source for the VW story above.</li>
+    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> — how book-level short gamma is aggregated into GEX.</li>
+    <li><a href="second-order-greeks.html">Second-Order Greeks</a> and <a href="theta-decay.html">Theta Decay</a> — the next terms of the expansion, and the theta–gamma trade-off a short option collects.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="options-four-positions.html">← The Four Option Positions</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="covered-call-equals-short-put.html">The Covered Call Is a Short Put →</a>
+  </div>
+</div>
+<script>
+(function(){
+  function erf(x){
+    var sign = x < 0 ? -1 : 1; x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    return sign*(1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x));
+  }
+  function N(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function n(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+  // Black-Scholes European call/put, no dividends. theta per day, vega per vol point.
+  function bs(type, S, K, r, sig, T){
+    var sq = Math.sqrt(T), d1 = (Math.log(S/K) + (r + sig*sig/2)*T)/(sig*sq), d2 = d1 - sig*sq;
+    var disc = K*Math.exp(-r*T), g = n(d1)/(S*sig*sq), v = S*n(d1)*sq/100, decay = -S*n(d1)*sig/(2*sq);
+    if (type === 'call') return { price: S*N(d1) - disc*N(d2), delta: N(d1), gamma: g, theta: (decay - r*disc*N(d2))/365, vega: v };
+    return { price: disc*N(-d2) - S*N(-d1), delta: N(d1) - 1, gamma: g, theta: (decay + r*disc*N(-d2))/365, vega: v };
+  }
+  var K = 100, R = 0.02, SIG = 0.20, T = 30/365;
+  var pP = bs('put', 100, K, R, SIG, T).price, pC = bs('call', 100, K, R, SIG, T).price;
+  var slider = document.getElementById('sg-s');
+  if (!slider) return;
+  var X0 = 60, X1 = 610, SMAX = 250, YTOP = 20, PTOP = 20, SCALE = 240/180;
+  function sx(s){ return X0 + s/SMAX*(X1-X0); }
+  function py(p){ return YTOP + (PTOP - p)*SCALE; }
+  function clampY(y){ return Math.max(20, Math.min(260, y)); }
+
+  (function build(){
+    var a=[], b=[], c=[], d=[];
+    for (var i=0;i<=250;i++){
+      var s = i === 0 ? 0.01 : i;
+      var x = sx(i).toFixed(1);
+      a.push(x+','+py(pP - Math.max(K-i,0)).toFixed(1));
+      b.push(x+','+py(pC - Math.max(i-K,0)).toFixed(1));
+      c.push(x+','+py(-(bs('put', s, K, R, SIG, T).price - pP)).toFixed(1));
+      d.push(x+','+py(-(bs('call', s, K, R, SIG, T).price - pC)).toFixed(1));
+    }
+    document.getElementById('sg-put').setAttribute('points', a.join(' '));
+    document.getElementById('sg-call').setAttribute('points', b.join(' '));
+    document.getElementById('sg-put-today').setAttribute('points', c.join(' '));
+    document.getElementById('sg-call-today').setAttribute('points', d.join(' '));
+  })();
+
+  function f(x, dp){ var v = x.toFixed(dp); if (parseFloat(v) === 0) v = (0).toFixed(dp); return (x > 0 && parseFloat(v) !== 0 ? '+' : '') + v; }
+  function same(a, b){
+    var sa = Math.abs(a) < 1e-7 ? 0 : Math.sign(a), sb = Math.abs(b) < 1e-7 ? 0 : Math.sign(b);
+    return sa === sb ? '<span class="sgdr-same">✓ same</span>' : '<span class="sgdr-diff">✗ opposite</span>';
+  }
+  function set(id, html){ document.getElementById(id).innerHTML = html; }
+  function update(){
+    var s = parseFloat(slider.value);
+    var P = bs('put', s, K, R, SIG, T), C = bs('call', s, K, R, SIG, T);
+    var sp = { d: -P.delta, g: -P.gamma, t: -P.theta, v: -P.vega }, sc = { d: -C.delta, g: -C.gamma, t: -C.theta, v: -C.vega };
+    var ep = pP - Math.max(K-s,0), ec = pC - Math.max(s-K,0);
+    set('sg-s-val', 'S = ' + s);
+    set('sg-dp', '<b>'+f(sp.d,3)+'</b>'); set('sg-dc', '<b>'+f(sc.d,3)+'</b>'); set('sg-sd', same(sp.d, sc.d));
+    set('sg-gp', '<b>'+f(sp.g,4)+'</b>'); set('sg-gc', '<b>'+f(sc.g,4)+'</b>'); set('sg-sg', same(sp.g, sc.g) + (Math.abs(sp.g) < 0.0005 ? ' (≈0)' : ''));
+    set('sg-tp', '<b>'+f(sp.t,4)+'</b>'); set('sg-tc', '<b>'+f(sc.t,4)+'</b>'); set('sg-st', same(sp.t, sc.t));
+    set('sg-vp', '<b>'+f(sp.v,3)+'</b>'); set('sg-vc', '<b>'+f(sc.v,3)+'</b>'); set('sg-sv', same(sp.v, sc.v) + (Math.abs(sp.v) < 0.0005 ? ' (≈0)' : ''));
+    set('sg-ep', '<b>'+f(ep,2)+'</b>'); set('sg-ec', '<b>'+f(ec,2)+'</b>');
+    set('sg-se', Math.abs(ep-ec) < 0.5 ? '<span class="sgdr-same">≈ equal</span>' : '<span class="sgdr-diff">gap ' + Math.abs(ep-ec).toFixed(2) + '</span>');
+    var x = sx(s);
+    var m = document.getElementById('sg-mark'); m.setAttribute('x1', x); m.setAttribute('x2', x);
+    var dp = document.getElementById('sg-dot-put'), dc = document.getElementById('sg-dot-call');
+    dp.setAttribute('cx', x); dp.setAttribute('cy', clampY(py(ep)));
+    dc.setAttribute('cx', x); dc.setAttribute('cy', clampY(py(ec)));
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

@@ -989,7 +989,7 @@ than the catalogue, since the catalogue is now known to be incomplete.**
 **(a) A precision note on the series the desk reads most.** Her worked example computes
 coupon ÷ price — **current yield**. `DGS10` is a constant-maturity **yield to maturity**,
 which also amortises the pull-to-par of the premium or discount over the remaining life.
-They are not the same number: $50 on $1,100 is 4.55% current yield but roughly 3.9% YTM on a
+They are not the same number: $50 on $1,100 is 4.55% current yield but roughly 3.8% YTM (3.78% annual-pay) on a
 ten-year. Nothing here is wrong for teaching the inverse relationship, but **`DGS10` is the
 single most-read series on this desk**, and anyone reconstructing it as coupon-over-price
 will not reproduce it. Worth having written down once.

@@ -37,6 +37,7 @@
       <li>The forward rate between two zero-rate maturities follows directly from a no-arbitrage identity: \((1+z_2)^2 = (1+z_1)(1+f_{1,2})\) — investing for 2 years directly must equal investing for 1 year and then rolling over into a locked-in 1-year rate.</li>
       <li>The worked example bootstraps a 3-point zero curve from three hypothetical par bonds (1-year at 3.00%, 2-year at 3.50%, 3-year at 4.00%, all annual coupons, face 100) and gets \(z_1=3.00\%\), \(z_2\approx3.51\%\), \(z_3\approx4.03\%\) — then computes the 1-year-forward-in-1-year rate as \(f_{1,2}\approx4.02\%\) and the 1-year-forward-in-2-years rate as \(f_{2,3}\approx5.07\%\).</li>
       <li>Because the par/zero curve here is upward sloping, every forward rate sits above the corresponding spot rate for that horizon — forwards embed the market's expectation (under a pure-expectations reading, a simplification covered in the pitfalls) that future short rates will be higher than today's.</li>
+      <li><strong>Real-world episode:</strong> March 2020. In the dash for cash, off-the-run Treasuries cheapened against near-identical on-the-run bonds as dealer balance sheets filled, so the bootstrap's inputs no longer agreed on one curve until the Fed bought without limit. The inversion-as-recession-signal claim from Section 04 tested <strong>NULL</strong> on this desk (<code>curve-inversion</code>).</li>
     </ul>
   </div>
 
@@ -436,6 +437,86 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: March 2020, when near-identical bonds stopped agreeing</h2>
+  <p>
+    Bootstrapping assumes every input price sits on one true zero curve. For a few weeks in March 2020, the
+    deepest bond market in the world did not have one.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2020: the dash for cash</h3>
+    <p>
+      As the Covid-19 shock spread in early March 2020, investors around the world wanted cash and sold
+      whatever they could sell fastest. That included US Treasuries. Foreign official holders, mutual funds
+      meeting redemptions, and leveraged hedge funds unwinding "basis trades" (long cash Treasuries, short
+      Treasury futures) all sold at once. For several days in mid-March, Treasury yields rose while stocks
+      fell. That is the opposite of the usual flight to safety.
+    </p>
+    <p>
+      Dealers, who stand between buyers and sellers, ran out of balance sheet to absorb the flow. Bid-ask
+      spreads widened sharply, and older <strong>off-the-run</strong> issues cheapened against the newest
+      <strong>on-the-run</strong> bonds of almost the same maturity. In this lesson's terms, two bonds with
+      nearly identical cash flows were being priced off different curves. Researchers have long used the
+      scatter of individual bond yields around a smooth fitted curve as a gauge of illiquidity (Hu, Pan and
+      Wang, 2013). In March 2020 that scatter widened as the off-the-runs cheapened.
+    </p>
+    <p style="margin-bottom:0">
+      The Fed cut rates to near zero on March 15 and announced at least $500 billion of Treasury purchases.
+      On March 23 it dropped the limit and said it would buy in the amounts needed. On April 1 it temporarily
+      excluded Treasuries and reserves from banks' supplementary leverage ratio, which freed dealer balance
+      sheet. Market functioning recovered over the following weeks. The cost: leveraged relative-value funds
+      were forced out at the worst prices, and the Fed's balance sheet grew by more than a trillion dollars in
+      about a month.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Covid, March 2020</b>Investors everywhere want cash, now</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Sellers</b>Foreign official holders, funds meeting redemptions and levered basis traders all sell Treasuries together</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Balance sheets full, so they widen bid-ask and absorb less</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the bootstrap</b>Off-the-runs cheapen against on-the-runs. The inputs no longer lie on one curve, so the \(z_t\) you solve depend on which bonds you feed in, and a bad short input carries outward</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Buys Treasuries without limit (23 Mar) and loosens the leverage ratio (1 Apr)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Functioning restored within weeks; the curve became one curve again</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> Bootstrapping assumes the law of one price: every input
+    is a clean, tradeable price, and two bonds with the same cash flows are worth the same. What enforces that
+    is arbitrage, and arbitrage needs balance sheet. When dealers' balance sheets filled up, nothing forced
+    near-identical bonds back together, and "the" zero curve stopped being unique. The sequential solve still
+    worked. Its inputs disagreed.
+  </p>
+
+  <p>
+    The tempting claim in this lesson is the one in Section 04: an inverted curve, short rates above long
+    rates, is a recession warning, so expect weaker risk assets. The recession of 2020 is the one the August
+    2019 inversion is often credited with calling. This desk tested the claim over fifty years.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>curve-inversion: the inversion is not a tradeable signal.</strong> 12,581 daily 10y–2y
+    observations from 1976-06 collapse to <strong>ten inversion episodes</strong>. A recession followed within
+    24 months in <strong>6 of 10 (60%, 95% CI [31%, 83%])</strong>, an interval that contains a coin flip;
+    within 12 months, 3 of 10. Forward Nasdaq at +12 months: +10.5% after inversions vs +13.0% for a
+    month-matched control (p=0.33). The mirror killed it: steepening episodes returned −1.1% at +12m (n=6),
+    worse than inversions. <strong>2019-08 is the case to remember: right about the recession, and +48.5% on the
+    Nasdaq over the following year.</strong></span>
+  </div>
+  <p>
+    Note what the result does not say. It doesn't say the curve's shape is meaningless: the recession
+    association may be reported, with its denominator. It says the folk version reverses the conditional.
+    Recessions are usually preceded by inversions; inversions are followed by recessions 6 times in 10, and
+    the equity read never separated from a matched control.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>Every discounting and swap-pricing system on a rates desk is
@@ -526,7 +607,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Par, spot, and forward rates are three different things.</strong> A par rate is a par bond's blended YTM; a spot (zero) rate is the true rate for one single cash flow at one maturity; a forward rate is implied, today, between two future dates.</span></div>
@@ -536,9 +617,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A bond's own YTM is not the right discount rate for someone else's cash flow.</strong> Even a par bond's zero rate came out slightly different from its own coupon/par yield in the worked example (3.51% zero vs. 3.50% par).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A forward rate is a no-arbitrage identity, not a forecast.</strong> It says nothing, on its own, about what the market actually expects to happen to rates — the same covered-vs-uncovered distinction this curriculum's interest rate parity lesson draws for currencies applies here too.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An error at the short end propagates through the whole curve.</strong> Bootstrapping's sequential dependency means a bad short-maturity input corrupts every zero rate solved after it, not just the short end.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An inverted curve is not a tradeable signal on this desk's data (curve-inversion, NULL).</strong> 6 of 10 inversions since 1976 were followed by recession within 24 months (95% CI 31%–83%), forward equities never separated from a matched control, and the August 2019 inversion was followed by +48.5% on the Nasdaq. And March 2020 showed the bootstrap's own premise, one curve under every bond, can fail when dealer balance sheets fill up.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't you just use a 5-year bond's YTM as "the" discount rate for a 5-year cash flow from some other source?</summary>
@@ -760,5 +842,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

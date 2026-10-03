@@ -36,6 +36,7 @@
       <li>The resulting shrinkage estimator is the same precision-weighted average from the Normal-Normal conjugacy lesson, applied per group: \(\hat\theta_j = B_j\,\bar{y}_j + (1-B_j)\,\mu\), where \(B_j\) grows toward 1 as that group's own sample size grows.</li>
       <li>Worked example: five strategies with wildly different trade counts (5 to 50 trades) and raw Sharpe estimates get pulled toward a common grand mean by very different amounts — the smallest samples move the most.</li>
       <li>This is the same idea behind the James-Stein estimator's famous, provable result: shrinking several noisy estimates toward each other, even when the underlying things being estimated have nothing to do with one another, reduces total estimation error.</li>
+      <li>How it reached trading: Vasicek's 1973 beta shrinkage and Jorion's 1986 Bayes-Stein expected returns brought pooling into finance; hierarchical models now rate many short, noisy track records at once.</li>
     </ul>
   </div>
 
@@ -92,6 +93,25 @@
       partial pooling formalizes — not as a vague gut instinct, but as an
       exact, computable weighted average.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Hundreds of instruments, a few years of data each</h3>
+  <div class="tl-origin-who">Cross-sectional shrinkage · Vasicek, 1973 (betas); Jorion, 1986 (expected returns); hierarchical fund-alpha models by the 2000s</div>
+  <p>A desk covering many stocks, currency pairs or strategies faces the same problem in every one: short, noisy histories. Estimated one at a time, betas, alphas and Sharpe ratios come out too extreme — the best-looking performers are partly lucky and the worst partly unlucky.</p>
+  <p>Finance met the fix early. Oldrich Vasicek (1973) shrank each stock's estimated beta toward the cross-sectional average, a Bayesian pooling idea; adjusted betas that pull raw estimates toward 1 became a standard data-vendor output. Philippe Jorion (1986) applied Bayes-Stein shrinkage to expected returns for international portfolios, and by the 2000s hierarchical models were being used to judge mutual-fund alphas by learning across funds (Jones &amp; Shanken, 2005).</p>
+  <p>On a desk today, partial pooling is how you rate many short track records at once, estimate volatility or carry for a thinly traded pair from its peers, and stop a portfolio from loading up on whichever instrument had the luckiest sample.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Estimate each instrument's beta, edge or volatility by borrowing strength from the group, so short noisy histories don't produce extreme numbers.</dd>
+      <dt>Takes in</dt><dd>Priors and a sampler (<a href="bayesian-conjugate-priors.html">Conjugate Priors</a>, <a href="mcmc-metropolis-gibbs.html">MCMC</a>, <a href="hamiltonian-monte-carlo-nuts.html">HMC &amp; NUTS</a>).</dd>
+      <dt>Hands on to</dt><dd>Ranking and allocation (<a href="sharpe-family-deflated.html">Sharpe Family &amp; Deflated Sharpe</a>, <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -476,6 +496,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Pooling assumes the groups actually share structure.</strong> Shrinking unrelated strategies toward each other's mean can make estimates worse, not better — the grouping choice is itself a modeling assumption.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Point-estimating μ and τ² understates uncertainty.</strong> A fully Bayesian treatment puts its own prior on the hyperparameters rather than plugging in a single estimated value, as this lesson's worked example simplifies to for clarity.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A shrunk estimate is a better point estimate, not a validated forecast.</strong> It still needs the same true OOS proof this curriculum demands everywhere else before it justifies real capital allocation.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: pooling short histories.</strong> Vasicek (1973) shrank betas toward the cross-section and Jorion (1986) shrank expected returns; hierarchical models extend the same idea to many instruments or managers with little data each.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

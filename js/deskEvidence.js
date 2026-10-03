@@ -536,6 +536,27 @@ export const DESK_EVIDENCE = [
   },
 ];
 
+// The Theory Lab is the shareable zone; the ledger is written for the desk. Strip what
+// only makes sense (or should only be seen) inside it: internal system names, repo file
+// paths and commit hashes. Used by server.js's /theory-lab/desk-verdicts.json; js/lessonEvidence.test.mjs checks
+// every lesson-cited entry comes out clean.
+export function lessonSafe(text) {
+  return String(text)
+    .replace(/\s+in\s+(?:\S+\s)?\S*\/\S+\.(?:csv|json|parquet)\b/g, '')
+    .replace(/\s*\((?:[\w./-]+\/)?[\w.-]+\.(?:js|mjs|py|md|csv|json)\b[^)]*\)/g, '')
+    .replace(/\b(?:[\w-]+\/)*[\w.-]+\.(?:js|mjs|py|md|csv|json)\b/g, 'an internal tool')
+    .replace(/\s*\((?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\)/g, '')
+    .replace(/\s+in (?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/g, '')
+    .replace(/\bQMR's\b/g, "one mean-reversion system's").replace(/\bQMR\b/g, 'a mean-reversion system')
+    .replace(/\b[Tt]he vote atlas\b/g, 'A voting system').replace(/\bvote atlas\b/gi, 'voting system')
+    .replace(/\bFib Atlas\b/g, 'A Fibonacci-level system')
+    .replace(/\b[Tt]he backtestSystem bot\b/g, 'A backtest system').replace(/\bbacktestSystem( bot)?\b/g, 'a backtest system')
+    .replace(/\blevelExpectation\b/g, 'the level-expectation logic')
+    .replace(/\bicEdge\b/g, 'IC edge').replace(/\bpoolConsistency\b/g, 'pool consistency')
+    .replace(/\bdDR\b/g, 'range-ratio change')
+    .replace(/\b[Tt]he vol CLI\b/g, 'A volatility tool').replace(/\bvol CLI\b/g, 'volatility tool');
+}
+
 /** The entries relevant to one instrument (validated ones with that instrument listed), plus every null. */
 /**
  * The same instrument under two names. The board calls gold GOLD; one entry scopes itself

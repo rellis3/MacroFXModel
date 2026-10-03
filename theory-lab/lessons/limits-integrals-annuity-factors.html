@@ -38,6 +38,7 @@
       <li>The <strong>annuity factor</strong> is derived properly from scratch: starting at the finite geometric series \(A(n,y)=\sum_{t=1}^n(1+y)^{-t}\), multiplying by \((1+y)\), subtracting, and solving gives the closed form \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) — algebra, not an assertion.</li>
       <li>Two limits sit inside that one formula: letting \(n\to\infty\) gives the perpetuity value \(A\to1/y\); letting the compounding frequency \(m\to\infty\) within a period recovers continuous compounding and connects the annuity factor directly to \(e^{-rt}\).</li>
       <li>Duration, DV01, and the instantaneous forward rate \(f(t)=\frac{d}{dt}[t\cdot r(t)]\) are all, without exception, a derivative or a limit wearing a trading-desk name — not a separate piece of fixed-income folklore.</li>
+      <li><strong>How it reached trading:</strong> de Witt priced Dutch annuities as sums of discounted payments in 1671, and the same annuity factor now sets par swap rates, swap PV01s and level mortgage payments.</li>
     </ul>
   </div>
 
@@ -120,6 +121,25 @@
       stops after a fixed number of years, but which the perpetuity case
       pushes to literally infinitely many terms, another limit entirely.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing a stream of payments in one number</h3>
+    <div class="tl-origin-who">Annuity factor · Johan de Witt, 1671 — swap annuity (PV01), standard as the swap market grew from the 1980s</div>
+    <p>Bonds, mortgages and swaps all pay a series of fixed amounts. Discounting each payment separately works but hides the structure; what a trader needs is one factor that converts "this much per period" into a value today, and back again.</p>
+    <p>Johan de Witt valued Dutch government life annuities in 1671 as sums of discounted payments weighted by survival chances, and Halley's 1693 life table put that on firmer data. In the modern rates market the same sum, the annuity factor \(\sum_i \delta_i P(0,t_i)\), sets the par swap rate, measures a swap's sensitivity to its fixed rate (its PV01) and multiplies Black's formula when swaptions are priced. A level-payment mortgage, the form that spread in the US from the 1930s, sets each payment as the principal divided by the annuity factor.</p>
+    <p>The integral version, \(\int_0^T e^{-rt}\,dt\), values continuous cash flows and carry, and the perpetuity limit \(1/r\) is the quick sanity check on any long-dated value.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Collapsing a stream of fixed payments into one discount-weighted factor, which turns a fixed rate into a value and a value into a fixed rate.</dd>
+        <dt>Takes in</dt><dd>Discounting and limits (<a href="time-value-of-money.html">Time Value of Money</a>, <a href="calculus-for-finance.html">Calculus for Finance</a>).</dd>
+        <dt>Hands on to</dt><dd>Bonds, swaps and rate risk (<a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>, <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>, <a href="duration-convexity.html">Duration &amp; Convexity</a>, <a href="short-rate-models-vasicek-cir-hull-white.html">Short-Rate Models</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -687,6 +707,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The annuity factor is a finite geometric series, derived not asserted.</strong> \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) comes from the standard "multiply, subtract, solve" trick — the same one that sums any geometric series.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two limits sit inside that one formula.</strong> \(n\to\infty\) gives the perpetuity value \(1/y\); compounding frequency \(m\to\infty\) recovers continuous compounding and connects directly to \(e^{-rt}\).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Duration is a local, first-order approximation.</strong> It degrades for large yield moves without a convexity correction, and gets silently distorted by day-count/compounding convention mismatches or by confusing Macaulay with modified duration.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The annuity factor turns a rate into a value and back.</strong> de Witt summed discounted payments in 1671; today the same factor sets par swap rates, swap PV01s, swaption prices and mortgage payments.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

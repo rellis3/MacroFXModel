@@ -36,6 +36,7 @@
       <li>That single fact is written as the identity \((dW_t)^2 = dt\) (a quadratic-variation statement about the aggregate, not any one random draw), and it forces an extra term into the Taylor expansion that ordinary calculus is entitled to drop — this extra term is Itô's Lemma.</li>
       <li>Applying Itô's Lemma to \(\ln S_t\) under geometric Brownian motion makes every \(S_t\) cancel and leaves \(d(\ln S_t) = (\mu - \sigma^2/2)\,dt + \sigma\,dW_t\) — the mechanical, non-arbitrary origin of the \((r\pm\sigma^2/2)\) terms inside Black-Scholes's \(d_1\)/\(d_2\), which that lesson simply asserted.</li>
       <li>The same \(\sigma^2/2\) correction also appears informally elsewhere in this curriculum (volatility drag in the Kelly Criterion and Returns &amp; Compounding lessons) — three independent appearances of one underlying piece of mathematics.</li>
+      <li>How it reached trading: Merton's continuous-time work (1969–73) and Black &amp; Scholes (1973) made Itô's lemma the step that turns a continuously rebalanced hedge into an option price, and it is still where every Greek comes from.</li>
     </ul>
   </div>
 
@@ -101,6 +102,23 @@
       and a Brownian-motion-style path, both zoomed in progressively — watch
       what happens to each.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A hedge you can only derive with the right chain rule</h3>
+    <div class="tl-origin-who">Itô calculus · Merton, 1969–73; Black &amp; Scholes, 1973</div>
+    <p>Before 1969, option and warrant models (Sprenkle, 1961; Samuelson, 1965) needed an expected return on the stock and a discount rate for the option, and nobody could observe either. Without a calculus for random paths there was no exact way to say how an option's value changes over one small step of a random price, so there was no exact hedge.</p>
+    <p>Robert Merton brought Itô's calculus into finance in his continuous-time portfolio papers from 1969, and by 1973 used it to derive option prices from a continuously rebalanced hedge. Black and Scholes published their formula the same year, the year the Chicago Board Options Exchange opened. Itô's lemma is the step that shows the right delta cancels the random \(dW\) term of stock and option together, leaving a riskless portfolio and therefore a price.</p>
+    <p>On a desk it is still where every Greek comes from. Delta, gamma and theta are the three terms of Itô's lemma inside the Black-Scholes PDE, and the daily trade-off of an options book (earn theta, pay for gamma, or the reverse) is the \(\tfrac12\sigma^2\) correction read as money.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How does a function of a random price (an option, a log price, a P&amp;L) move when the price moves?</dd>
+        <dt>Takes in</dt><dd>A price model and its log returns from <a href="primer-returns-compounding.html">Returns &amp; Compounding</a>; the ordinary chain rule from <a href="calculus-for-finance.html">Calculus for Finance</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="black-scholes.html">Black-Scholes</a> (the hedge and the PDE), <a href="girsanov-risk-neutral.html">Girsanov &amp; risk-neutral pricing</a>, <a href="theta-decay.html">Theta decay</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -691,6 +709,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The same σ²/2 term appears three times in this curriculum</strong> — Black-Scholes's \(d_1\)/\(d_2\), Kelly Criterion's volatility drag, and Returns &amp; Compounding's log-return approximation — one piece of mathematics, not three coincidences.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>σ²/2 shrinks the drift of the log, not the mean of the price.</strong> \(E[S_T]\) under GBM is unaffected by σ — the gap exists because \(E[e^X]\ne e^{E[X]}\) (Jensen's inequality), not because volatility literally destroys expected value.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The single-variable formula doesn't cover correlated processes.</strong> A basket, spread, or ratio of two correlated underlyings needs the multivariate Itô-Doeblin form with a covariance cross-term — using the plain version silently drops correlation risk.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>It reached trading as a hedging argument.</strong> Merton (1969–73) and Black &amp; Scholes (1973) used Itô's lemma to cancel an option's random term with a delta hedge; the theta-versus-gamma trade-off on every options book is the same σ²/2 term.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -37,6 +37,7 @@
       <li>That same \(\sigma\sqrt{r_t}\) term violates the Lipschitz condition from <code>sde-existence-uniqueness.html</code>, needing the more careful Yamada-Watanabe existence argument flagged there.</li>
       <li><strong>Hull-White</strong> extends Vasicek with a time-dependent drift level, \(dr_t=[\theta(t)-a\,r_t]dt+\sigma\,dW_t\), calibrated so the model exactly reproduces today's observed yield curve — the standard fix for the fact that constant-parameter Vasicek/CIR generally cannot.</li>
       <li>A real simulation in this lesson, using parameters where Vasicek visibly dips negative, confirms CIR stays strictly positive over the identical horizon under a Feller condition that is comfortably satisfied.</li>
+      <li><strong>Real-world episode:</strong> eight years below zero (2014–2022). Desks moved to normal-volatility quoting and hand-chosen "shifted" models because lognormal and CIR-style models cannot produce a negative rate. But rates found a soft floor around −0.75% that none of these models has, then the exit came fast. Whether the short rate's mean reversion is tradeable is <em>untested</em> on this desk.</li>
     </ul>
   </div>
 
@@ -365,6 +366,75 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: eight years below zero, and the way out</h2>
+  <p>
+    The scenario above is the moment rates crossed zero. What followed was longer and stranger: rates did not
+    just go negative, they stayed just below zero for years.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2014–2024: a floor that wasn't at zero</h3>
+    <p>
+      The European Central Bank cut its deposit rate to −0.10% in June 2014, the first of the major central
+      banks to go below zero, and took it in steps to −0.50% by September 2019. Denmark had gone negative in
+      2012; Switzerland and Sweden followed in 2015; the Bank of Japan introduced −0.1% in 2016. Overnight
+      money-market rates and short swap rates in those currencies fixed below zero, and by 2019 Germany's
+      10-year government bond yielded less than nothing.
+    </p>
+    <p>
+      For rates desks, the first casualty was the quoting convention. Swaptions and caps had long been quoted
+      in lognormal (Black) volatility, which assumes rates stay positive. A lognormal model has no answer for a
+      strike at −0.25%, and as rates approach zero its volatility numbers blow up. The market moved to quoting
+      <strong>normal</strong> (Bachelier, basis-point) volatility, which is the Gaussian view of rates that
+      Vasicek and Hull-White take. It also patched lognormal-style models with a fixed shift, so that a
+      "shifted" model allows rates down to minus the shift. The shift is a number someone chooses; it is not
+      estimated from anything.
+    </p>
+    <p style="margin-bottom:0">
+      What none of the models had was the shape the data actually showed. Rates went below zero, but not far
+      below: the deepest major policy rates were around −0.75%, because past some point savers and banks would
+      rather hold cash. And they sat there, barely moving, for years. Then the exit came quickly. The ECB raised
+      its deposit rate from −0.50% to zero in July 2022 and kept going, to 4.00% by September 2023. The Swiss
+      National Bank left negative rates in September 2022. The Bank of Japan, the last, ended them in March 2024.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Post-crisis disinflation</b>Inflation runs persistently below target in the euro area, Switzerland and Japan</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Central banks</b>Cut below zero: ECB −0.10% (2014), SNB −0.75% (2015), BoJ −0.1% (2016)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Money markets</b>Overnight and short swap rates fix below zero; some government bonds yield below zero</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the boundary</b>CIR's \(\sigma\sqrt{r_t}\) and lognormal models cannot produce \(r_t&lt;0\); Vasicek and Hull-White can</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Rates desks</b>Forced to re-quote volatility in normal (bp) terms and patch lognormal models with a hand-chosen shift</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Rates pinned just below zero for years, a soft floor no model here has, then a fast exit (2022–2024)</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> Each model in this lesson builds its boundary into the
+    diffusion term. CIR's \(\sigma\sqrt{r_t}\) puts a hard wall at zero. Vasicek's constant \(\sigma\) puts no wall
+    anywhere, so it gives real probability to −3%. The data had a soft floor somewhere below zero, set by the
+    cost of holding cash, with volatility that collapsed near that floor and came back when policy moved.
+    Constant-parameter mean reversion toward a single \(b\) also fits badly when a rate sits pinned for eight
+    years and then rises 4.5 percentage points in fourteen months.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Untested here: "the short rate mean-reverts to \(b\), so fade it when it is far away."</strong>
+    It is the claim Vasicek invites, and no entry in this desk's ledger tests it. The desk's mean-reversion
+    results are about a yield spread between countries and about FX crosses, which are different objects and are
+    not borrowed here. A fair test would estimate \(a\) and \(b\) on rolling windows of a short rate, forecast it
+    twelve months ahead, and score the forecasts out of sample against a no-change forecast and against the
+    forward curve, across regimes including 2014–2022. Policy rates move in a handful of long regimes, so the
+    effective sample is a few cycles: expect the test to be underpowered before running it.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <div class="tl-icard-grid">
     <div class="tl-icard">
@@ -427,7 +497,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vasicek is Ornstein-Uhlenbeck applied to the short rate.</strong> Identical math to ou-mean-reversion.html — dr_t=a(b−r_t)dt+σdW_t, not re-derived here.</span></div>
@@ -436,9 +506,10 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>CIR's σ√r_t violates the Lipschitz condition at r_t=0.</strong> The standard existence theorem from sde-existence-uniqueness.html does not cover it — CIR needs the separate Yamada-Watanabe conditions instead.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hull-White's time-dependent θ(t) is the standard fix for fitting today's observed yield curve exactly.</strong> One substitution over Vasicek's constant ab — the rest of the model is unchanged.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A naive CIR discretization can go negative even when Feller holds theoretically.</strong> Full-truncation or reflection schemes are standard practical fixes, needed regardless of the theoretical condition.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real rates had a soft floor below zero, which none of these models has.</strong> The ECB deposit rate stayed below zero from 2014 to 2022, the deepest major policy rates reached about −0.75%, and the market moved to normal-vol quoting and hand-chosen shifts. CIR's wall at zero and Vasicek's unbounded tail were both wrong about the floor. Mean reversion of the short rate as a trade is untested on this desk.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. How does the Vasicek short-rate model relate to the Ornstein-Uhlenbeck process covered elsewhere in this curriculum?</summary>

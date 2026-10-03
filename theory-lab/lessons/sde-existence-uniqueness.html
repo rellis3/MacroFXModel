@@ -36,6 +36,7 @@
       <li>Geometric Brownian motion's coefficients, \(\mu(x)=\mu x\) and \(\sigma(x)=\sigma x\), satisfy both conditions cleanly on any bounded region — but the honest full argument on all of \(\mathbb{R}\) needs slightly more care than a naive "it's globally Lipschitz" claim, because the Lipschitz constant these coefficients produce grows with the size of the region.</li>
       <li>A coefficient that <strong>violates</strong> the Lipschitz condition — \(\sigma(x)=\sigma\sqrt{|x|}\), the square-root diffusion behind the CIR short-rate model — needs a separate, weaker set of conditions (Yamada-Watanabe, 1971) to guarantee existence and uniqueness at all.</li>
       <li>Violating the <em>growth</em> condition instead is worse than a technical inconvenience: a deterministic illustration, \(dX/dt=X^2\), shows a solution that exists only up to a finite time and then diverges — there is no solution at all beyond that point, for any method.</li>
+      <li>How it reached trading: it became a desk question with the square-root models, CIR (1985) and Heston (1993), whose rates or variances can touch zero; whether a fitted model is well-posed (the Feller condition) decides how it can be simulated.</li>
     </ul>
   </div>
 
@@ -105,6 +106,23 @@
       existence-and-uniqueness theorem below is the direct stochastic-calculus
       analogue of Picard-Lindelöf, adapted to control both terms at once.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Will this model even produce a price?</h3>
+    <div class="tl-origin-who">Well-posed models · a live desk question since CIR (1985) and Heston (1993)</div>
+    <p>A pricing model is an SDE a desk will simulate, calibrate and hedge with. If the equation has no solution, or more than one, the Monte Carlo prices it produces are noise. For Black-Scholes and Vasicek (1977) the question never arises: their coefficients are as tame as Itô's 1951 conditions require.</p>
+    <p>It became a practical question with the square-root diffusions: the Cox, Ingersoll &amp; Ross short-rate model (1985) and Heston's variance (1993). Their volatility is not Lipschitz at zero, and the theory that covers them (Yamada &amp; Watanabe, 1971, with Feller's 1951 boundary condition) is what tells a desk whether the rate or the variance can hit zero. Heston parameters fitted to equity and FX smiles often break the Feller condition, which is why dedicated simulation schemes such as Andersen's (2008) exist.</p>
+    <p>On a desk it is a pre-flight check. Before a new model is used, model validation asks whether it is well-posed, whether it stays positive, and whether its moments can explode (Andersen &amp; Piterbarg, 2007).</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Does this model define one well-behaved path for each draw of noise, so that its prices and hedges mean something?</dd>
+        <dt>Takes in</dt><dd>Candidate models from <a href="short-rate-models-vasicek-cir-hull-white.html">Short-rate models</a> and <a href="heston-model.html">the Heston model</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="sde-numerical-schemes.html">SDE numerical schemes</a>, which simulate the model once it passes.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -483,6 +501,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The "GBM is globally Lipschitz" claim needs a caveat on all of ℝ.</strong> The fully rigorous argument pairs local Lipschitz behaviour with a separate non-explosion check, not a single global-K claim asserted without qualification.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CIR-style square-root diffusion σ(x)=σ√|x| fails Lipschitz at x=0.</strong> It needs the weaker Yamada-Watanabe conditions instead — a failed Lipschitz check doesn't mean the model is broken, it means a different theorem applies.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Violating linear growth can mean no solution exists at all past some finite time</strong> — not a simulation inconvenience. dX/dt=X² with X(0)=1 has no solution whatsoever past t=1, for any method.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Well-posedness is a model-validation check, not just a theorem.</strong> CIR (1985) and Heston (1993) are square-root diffusions outside the basic Lipschitz conditions; Yamada &amp; Watanabe and Feller's condition say whether they stay well-behaved, and fitted Heston parameters often fail Feller's test.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

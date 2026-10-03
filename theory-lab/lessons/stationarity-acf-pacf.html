@@ -38,6 +38,7 @@
       <li>The PACF at lag \(k\) strips out that indirect chain, measuring only what lag \(k\) adds beyond what closer lags already explain — which is exactly what lets it identify an AR model's order \(p\).</li>
       <li>The Box-Jenkins signature of an AR(\(p\)) process: the ACF decays gradually (never cleanly stops) while the PACF cuts off sharply after lag \(p\) — for AR(1) specifically, PACF is large at lag 1 and near-zero from lag 2 on, even though the ACF stays visibly nonzero for several more lags.</li>
       <li>Practically, reading where the PACF cuts off tells you how far back a series' own history is genuinely informative — a principled alternative to guessing a lookback window or grid-searching one.</li>
+      <li>How it reached trading: Granger &amp; Newbold's 1974 spurious-regression warning and Dickey &amp; Fuller's 1979 unit-root test made "is it stationary?" the first question a desk asks before trading a spread or fitting a forecast model.</li>
     </ul>
   </div>
 
@@ -100,6 +101,25 @@
       everything the more distant one had to offer. That's exactly the
       distinction this lesson formalizes.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>A spread that might never come back</h3>
+  <div class="tl-origin-who">Unit-root testing · Granger &amp; Newbold, 1974; Dickey &amp; Fuller, 1979 — then every relative-value and macro desk</div>
+  <p>Before the 1970s, a trader or economist who regressed one trending price on another usually got an impressive fit — a high R², a large t-statistic — and took it as a relationship. Clive Granger and Paul Newbold showed in 1974, by simulation, that regressions between two completely independent random walks routinely look that significant. Yule had warned of "nonsense correlations" in 1926; Granger and Newbold made the warning impossible to ignore for anyone working with prices.</p>
+  <p>David Dickey and Wayne Fuller supplied the test in 1979: does a series have a unit root (shocks never fade) or does it revert? Nelson and Plosser (1982) then found that many US macro and price series could not reject a unit root. Engle and Granger's 1987 cointegration framework built directly on this — a spread between two prices is tradable only if the spread itself passes a stationarity test — and that became the statistical basis of pairs and relative-value trading.</p>
+  <p>On a desk today the checks come first: an ADF or KPSS test before trading a spread or regressing one market on another, and the ACF/PACF to see how long a shock persists, what lookback a signal deserves, and whether a forecast model's residuals are still hiding structure.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage on">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Is this series stable enough through time to model or trade — and how far back does its memory actually reach?</dd>
+      <dt>Takes in</dt><dd>Clean price and return series (<a href="data-cleaning-outliers-missing-data.html">Data Cleaning</a>, <a href="primer-returns-compounding.html">Returns &amp; Compounding</a>).</dd>
+      <dt>Hands on to</dt><dd>Model identification and spread trading (<a href="arima-var.html">ARIMA &amp; VAR</a>, <a href="cointegration.html">Cointegration</a>, <a href="ou-mean-reversion.html">OU Mean Reversion</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -567,6 +587,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A slowly-decaying ACF is the cheap first-pass unit-root tell.</strong> Still elevated 20-30 lags out means run a formal test (ADF) before trusting anything downstream.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Many lags at once is a multiple-comparisons problem.</strong> About 1 in 20 lags clears a 5% significance band by chance alone, even for genuine white noise — a single isolated spike is weak evidence.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real market series rarely show the clean textbook cutoff.</strong> Expect a fade into the noise band, not a hard stop — use the shapes as a strong heuristic, not literal proof of an exact model order.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: test before you trade a spread.</strong> Granger &amp; Newbold (1974) showed regressions between unrelated random walks look highly significant; Dickey–Fuller (1979) supplied the unit-root test that cointegration-based pairs and relative-value trading are built on.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -710,5 +731,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

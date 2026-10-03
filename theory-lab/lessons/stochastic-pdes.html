@@ -37,6 +37,7 @@
       <li>The <strong>HJM/Musiela SPDE</strong> models an entire forward interest-rate curve \(f(t,x)\) at once; the Vasicek, CIR and Hull-White short-rate models in <code>short-rate-models-vasicek-cir-hull-white.html</code> are each the finite-dimensional special case of tracking only the single point \(x=0\) of that curve.</li>
       <li>The <strong>Zakai equation</strong> is the specific linear SPDE the unnormalized conditional density in continuous-time nonlinear filtering literally evolves by — the Kalman filter (<code>kalman-smoother-ekf-ukf.html</code>) is its exact closed-form solution in the linear-Gaussian case, and the particle filter (<code>particle-filter.html</code>) is a Monte Carlo method for solving it approximately in general.</li>
       <li><strong>Say this plainly:</strong> full SPDE machinery is genuinely rare outside specialist term-structure modelling and academic filtering research — most practitioners work with the finite-dimensional simplifications this curriculum already covers in detail. This lesson explains the general, rigorous object those simplifications are simplifications <em>of</em>, not a claim that full SPDE machinery belongs on a desk.</li>
+      <li>How it reached trading: Heath, Jarrow &amp; Morton (1992) modelled the whole forward curve, Musiela (1993) wrote it as an SPDE, and its LIBOR-market-model descendant (1997) became a standard for swaptions and exotic rates.</li>
     </ul>
   </div>
 
@@ -97,6 +98,23 @@
       and infinite dimensions is precisely why the machinery below needs more
       care than the vector-SDE case already built in this sequence.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Moving the whole yield curve at once</h3>
+    <div class="tl-origin-who">Forward-curve dynamics · Heath, Jarrow &amp; Morton, 1992; Musiela's SPDE form, 1993</div>
+    <p>Early term-structure models (Vasicek, 1977; Cox, Ingersoll &amp; Ross, 1985) modelled one short rate and derived the rest of the curve from it. They could not match today's curve exactly, and with one factor every point on the curve moved in lockstep, which is no use to a desk hedging a curve steepener.</p>
+    <p>Heath, Jarrow and Morton (1992) took the whole observed forward curve as the starting point and modelled how every forward rate moves, with the drifts pinned down by no-arbitrage. Marek Musiela (1993) rewrote it in time-to-maturity, which turns HJM into one stochastic PDE for the curve; the same line of work produced the LIBOR market model (Brace, Gatarek &amp; Musiela, 1997), long a standard for swaptions and exotic rates. Much of the SPDE theory itself was built in physics and filtering; the forward curve is its main use in finance.</p>
+    <p>On a rates desk the forward-curve view underlies how curve risk is bucketed, how level, slope and curvature factors are simulated, and how callable and Bermudan rate products are priced.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How does a whole curve, not one number, evolve over time without creating arbitrage?</dd>
+        <dt>Takes in</dt><dd>Today's curve from <a href="yield-curve-construction.html">Bootstrapping the yield curve</a>; the one-point special case in <a href="short-rate-models-vasicek-cir-hull-white.html">Short-rate models</a>; density evolution from <a href="fokker-planck-equation.html">Fokker-Planck</a>.</dd>
+        <dt>Hands on to</dt><dd>Curve factors in <a href="pca-factors.html">PCA &amp; factor regimes</a>; learned curve dynamics in <a href="neural-sdes-spdes.html">Neural SDEs &amp; SPDEs</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -680,6 +698,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The HJM/Musiela SPDE models the whole forward curve at once; Vasicek/CIR/Hull-White are its x=0-only special case.</strong> Confirmed concretely: discretizing the SPDE and keeping only one tenor point collapses it to a Hull-White-shaped equation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Zakai equation is the SPDE the unnormalized filtering density literally solves.</strong> The Kalman filter is its exact solution in the linear-Gaussian case; the particle filter is a Monte Carlo approximation of it in general.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Full SPDE implementation is genuinely rare outside specialist curve modelling and academic filtering research.</strong> Most practitioners use the finite-dimensional simplifications this curriculum already covers — this lesson explains what those tools are simplifications of, not a case for building the general machinery here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>In finance, an SPDE is a moving yield curve.</strong> HJM (1992) evolves every forward rate from today's curve; Musiela's 1993 form makes it one SPDE, and the LIBOR market model (1997) carried it onto rates desks.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

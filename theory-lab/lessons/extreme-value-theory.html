@@ -38,6 +38,7 @@
       <li>The Generalized Pareto Distribution (GPD) is the shape those exceedances converge to (Balkema-de Haan-Pickands theorem); its shape parameter \(\xi\) tells you whether the tail is heavy/Pareto-type (\(\xi>0\)), exponential (\(\xi=0\)), or bounded (\(\xi<0\)).</li>
       <li>A fitted GPD lets you extrapolate VaR/CVaR past what the raw sample supports — but that's a modeling assumption, not a measurement, and it's unverifiable at the exact quantile you're extrapolating to.</li>
       <li>This project's own empirical risk statistics already ship the honest half (historical VaR/CVaR, skew/kurtosis); the GPD/POT layer is deliberately not built here because most strategies' trade counts are far too small to fit \(\xi\) reliably.</li>
+      <li><strong>Real-world episode:</strong> on 19 October 1987 the S&amp;P 500 fell about 20% in one session, on the order of twenty standard deviations for a market whose daily moves were then around 1%, and the Dow's 22.6% fall nearly doubled the worst days of 1929. A heavy tail (\(\xi&gt;0\)) makes such a day rare but possible; a normal makes it impossible. Whether a GPD tail estimate is breached at its advertised rate out of sample is <strong>untested here</strong>, and "something follows a rare move" is tested null (<code>mv-extreme-forward</code>).</li>
     </ul>
   </div>
 
@@ -512,6 +513,77 @@
   </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 19 October 1987, the day a normal curve forbids</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>One session that nearly doubled the worst days of 1929</h3>
+    <p>
+      On Monday 19 October 1987 the S&amp;P 500 fell about <strong>20%</strong> in a single session and the Dow Jones
+      Industrial Average fell <strong>22.6%</strong>. Before that day, the Dow's worst sessions of the modern era were the October 1929 crash days, falls of
+      about 12–13%. So 1987 was not a slightly worse version of the worst day anyone remembered. It nearly doubled it.
+    </p>
+    <p>
+      Now scale it the way a risk model would. US index daily moves in the years before had a standard deviation of
+      roughly 1%, so a 20% fall was on the order of <strong>twenty standard deviations</strong>. Under a normal
+      distribution the probability of that is so small that it should not happen once in any span of history you care to
+      name. A normal model calibrated on the years before would not have called it unlikely. It would have called it
+      impossible, which is the worst kind of wrong for anyone sizing leverage.
+    </p>
+    <p style="margin-bottom:0">
+      Nor did it arrive alone. The week before had already been heavy: the Dow fell about 4.6% on Friday 16 October. The
+      sessions after swung violently in both directions, including a Dow rise of about 10% on 21 October. The extremes
+      came as a cluster around one event, not as independent draws spread through time. The mechanism behind the day
+      (portfolio insurers forced by their own hedges to sell futures into the fall, and exchange order handling that
+      could not keep up) is told in the <a href="black-scholes.html">Black-Scholes-Merton</a> lesson.
+    </p>
+  </div>
+
+  <p>The causal chain, link by link. The starred link is this lesson's concept.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>A week of heavy falls; Dow about −4.6% on Friday 16 October</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Portfolio insurers</b>Their hedging rules force them to sell index futures as prices fall</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Exchanges</b>Order flow overwhelms the systems; many stocks open late and prices gap</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ The tail (\(\xi&gt;0\))</b>One exceedance far beyond anything in the sample; a normal fit has no mass out there at all</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>S&amp;P about −20% in a day, then violent swings both ways: extremes in a cluster</div>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The normal model breaks first, because its tails are far too thin. EVT does better, since a heavy tail gives such a
+    day a small but non-zero probability. But 1987 also strains two of EVT's own assumptions. Exceedances are not
+    independent: they came in a cluster around one event. And the shape fitted near the threshold need not hold further
+    out, because at crisis scale a different mechanism (forced, price-insensitive selling into broken market plumbing)
+    switched on. That is the "structural break" the worked example warns no 90th–99th percentile data can reveal.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Untested here: that a GPD-extrapolated VaR is breached at the rate it advertises.</strong> This is the
+    claim that would make EVT tradable for sizing. A fair test would need decades of daily index data including 1987,
+    2008 and 2020; rolling peaks-over-threshold fits using only data available at the time, with exceedances declustered;
+    then a count of how often next-day losses breached the 99.5% and 99.9% estimates against the advertised 0.5% and
+    0.1%, with a coverage test, and the same count for plain historical VaR as the baseline. The desk has not run it.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="mv-extreme-forward" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>mv-extreme-forward: a rare move is a measurement, not a forecast.</strong> The adjacent temptation after a
+    tail day is to read it as a signal: "when a market makes a rare move against its own history, something follows."
+    Pre-registered and tested here: range <strong>+0.15 [−0.04, 0.40]</strong> on SPX500 and +0.15 [−0.15, 0.44] on NQ on
+    15 firings, direction 73% up against a 79% control. Nothing followed beyond the ordinary.</span>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a ruler that says the tallest wave possible is 5 metres, and one day a 20-metre wave hits. The ruler wasn't a bit off; it was the wrong kind of ruler. EVT is a better ruler for giant waves. It says "big ones are rare, but they happen." It still can't tell you the day one will come, and big waves tend to come in groups, not one at a time.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   EVT shows up in a fairly specific, disciplined set of roles in real risk management — it is a
@@ -603,7 +675,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Historical VaR/CVaR break down far in the tail.</strong> Beyond roughly the 99.5th percentile they're really just reporting the identity of your worst day or two, not a stable estimate.</span></div>
@@ -613,9 +685,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The empirical half is already a real, tested piece of this project's own risk tooling.</strong> This project's own empirical risk statistics already ship the honest, assumption-free version of this lesson's core question today.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The GPD/POT layer is deliberately not built here.</strong> Most strategies' trade counts (often under 1,000, some under 100) are far too small to fit ξ reliably — building it now would hide a data-point problem behind fancier math.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Report both numbers together, not one alone.</strong> The gap between the empirical and EVT-extrapolated estimate is itself information about how much you're relying on the model.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A "20-sigma day" is a statement about the model, not the market.</strong> 19 October 1987 (S&amp;P about −20%) was impossible under a normal and merely rare under a heavy tail. It also arrived in a cluster and came from a crisis-only mechanism, which strains EVT's own assumptions. GPD tail calibration out of sample is untested here; "something follows a rare move" is null (<code>mv-extreme-forward</code>).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't you reliably estimate a 1-in-2,000-day VaR from two years (about 500 days) of daily data using the plain historical (empirical quantile) method?</summary>
@@ -702,7 +775,7 @@
   </ul>
   </details>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>You've finished the Theory Lab curriculum</h2>
   <div class="tl-callout">
   That's fourteen lessons — Efficient Markets to Multiple Testing to Hidden Markov Models to, now, the
@@ -752,5 +825,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

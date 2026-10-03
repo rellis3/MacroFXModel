@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Clustering for Market Structure — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, MathJax notation, and a 6-question self-test?<a href="clustering-market-structure.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Which assets really move together?</h2>
+      <p class="sl-sub">Correlation clustering · Mantegna (1999); into portfolio construction with López de Prado's HRP (2016)</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Traders grouped assets by label: sector, country, asset class. Labels can be wrong about co-movement. In 1999 physicist Rosario Mantegna turned stock correlations into distances and built a tree of US stocks that recovered industry groups from prices alone.</p>
+        <p>López de Prado's Hierarchical Risk Parity (2016) used the same correlation tree to allocate risk. Desks also cluster for risk buckets, pair shortlists and regime labels.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> group assets or dates by how they actually behave, not by their labels.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">No labels, no answer key — that's the whole point</h2>
       <p class="sl-sub">Every regression or classifier elsewhere in this curriculum is supervised. Clustering is a different kind of question entirely.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">Both honest facts belong in the same sentence: clustering is a real, useful way to discover structure, and its output is never proof of anything on its own. Every result needs an independent sanity check against evidence the clustering never saw.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The one building block underneath both methods</h2>
       <p class="sl-sub">"How alike are two points?" is answered the same way everywhere below: ordinary Euclidean distance. Edit either point, live.</p>
       <div class="sl-card">
@@ -62,8 +75,8 @@
       <p class="sl-p">This one quantity — squared distance, most of the time — is what "closest centroid" means to k-means and what "closest cluster" means to hierarchical clustering's linkage rule. Everything downstream is built on top of it, which is also exactly why unscaled features quietly wreck both methods: a feature with a bigger raw range dominates this calculation regardless of whether it's actually more informative.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">k-Means: commit to k, then loop</h2>
       <p class="sl-sub">MacQueen (1967) named it; the iterative version almost everyone actually runs is Lloyd's algorithm (1957/1982).</p>
       <div class="sl-icard-grid">
@@ -78,8 +91,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch it self-correct from a bad start</h2>
       <p class="sl-sub">Six points, two obvious groups: {A,B,C} near the origin, {D,E,F} far away. Start both centroids deliberately inside the wrong group.</p>
       <div class="sl-card">
@@ -156,8 +169,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Choose k, watch the whole map redraw</h2>
       <p class="sl-sub">Twelve points, three visually obvious blobs. Drag k and a real assign/update loop re-runs from scratch, live.</p>
       <div class="sl-card">
@@ -190,8 +203,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Picking k is a judgment call, not a calculation</h2>
       <p class="sl-sub">Minimizing error alone would always push k toward the largest value available — at k=n, error hits exactly zero. Two heuristics try to find a defensible k instead.</p>
       <div class="sl-compare">
@@ -210,8 +223,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Hierarchical clustering: build the whole tree first</h2>
       <p class="sl-sub">No k to guess upfront — every level of grouping gets built at once, from the bottom.</p>
       <div class="sl-icard-grid">
@@ -223,8 +236,8 @@
       <p class="sl-p">Nothing here has to be decided before the algorithm runs — that's the entire trade against k-means. The cost is that building the full tree is more expensive, and — same as k-means — the choice of linkage rule changes the answer.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Cut the tree wherever you like, after the fact</h2>
       <p class="sl-sub">Six currency pairs, already merged into a dendrogram by single linkage. Drag the cut height and watch the cluster count change.</p>
       <div class="sl-card">
@@ -275,8 +288,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The linkage rule changes the tree it builds</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⊂</div><div><h4>Single linkage</h4><p>Distance between the single closest pair, one point from each cluster. Even one close pair triggers a merge — can produce long, straggly clusters.</p></div></div>
@@ -286,8 +299,8 @@
       <div class="sl-quote">The same six points can produce a meaningfully different dendrogram depending on which rule is used. "A" dendrogram is not "the" dendrogram — the choice should be stated and justified, not left as an unexamined default.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">This is the Hierarchical Risk Parity tree, generalized</h2>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Explicit connection to an earlier lesson</div>
@@ -306,8 +319,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where this actually shows up on a desk</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Regime discovery</h4><p>Build a daily feature vector — realized vol, trend strength, cross-asset correlation — with no "regime" label attached to any day, and let clustering surface which days behave alike.</p></div></div>
@@ -321,8 +334,8 @@
       <div class="sl-quote">A regime map that survives an independent check — does the "stressed" cluster line up with dates already known to be volatile from other evidence? — is a genuine discovery. A regime map only ever checked against the clustering that produced it is not evidence of anything; it's the algorithm confirming its own output.</div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -372,8 +385,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Clustering is unsupervised — there's no labeled target, only the question "which of these look alike?" — and its output is never self-validating.</p></div>
@@ -382,6 +395,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Both methods measure distance directly, so unscaled features silently distort every decision either one makes — the same standardization discipline other methods in this curriculum require.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This generalizes the earlier Hierarchical Risk Parity lesson's own dendrogram machinery — the same tree-building tool, pointed at regimes, instruments, or signals instead of portfolio weight.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every clustering result needs an independent sanity check against real domain knowledge before it's trusted as a finding, not just an algorithm's own internal metric agreeing with itself.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Mantegna's 1999 correlation tree of US stocks, then Hierarchical Risk Parity (2016), which allocates risk along the same tree.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

@@ -36,6 +36,7 @@
       <li><strong>Self-attention</strong> applies this within a single sequence (queries, keys, and values all come from the same input); <strong>multi-head attention</strong> runs several attention computations in parallel with different learned projections, so different heads can specialize in different kinds of relationships between positions.</li>
       <li>The direct cost of "everyone looks at everyone" is an \(n\times n\) attention matrix — \(O(n^2)\) time and memory in sequence length \(n\). Time-series-specific architectures like the <strong>Temporal Fusion Transformer</strong> (Lim et al., 2021) and <strong>Informer</strong> (Zhou et al., 2021) exist specifically to make long-sequence forecasting tractable despite this cost.</li>
       <li><strong>Mandatory honest framing:</strong> transformers are now the dominant architecture for large-scale sequence modeling, but they need substantially more data and compute than LSTMs to realize that advantage. For shorter, lower-data time series — which most individual market series genuinely are — the benefit over a well-tuned classical or LSTM approach is not guaranteed and must be tested empirically, not assumed from the model's reputation in NLP or vision.</li>
+      <li><strong>How it reached trading:</strong> It reached markets through text first: FinBERT (2019–23) read filings and earnings calls better than finance word lists, and time-series variants followed.</li>
     </ul>
   </div>
 
@@ -94,6 +95,41 @@
       value — exactly the "everyone speaks, weighted by relevance" picture,
       made numeric.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Reading the filings, and weighting the right days</h3>
+    <div class="tl-origin-who">Transformers · into finance through text first (FinBERT, 2019–23), then time series</div>
+    <p>
+    Before transformers, turning text into a trading signal mostly meant counting
+    words. Loughran &amp; McDonald (2011) showed that general-purpose word lists misread
+    finance (a "liability" is not bad news on a balance sheet) and built finance-specific
+    ones, but a word count still cannot read "not as strong as expected". Attention, built
+    in 2017 for machine translation, reads each word in the context of all the others.
+    </p>
+    <p>
+    Finance adopted it through text. Dogu Araci's FinBERT (2019) tuned Google's BERT
+    for financial sentiment, and Allen Huang, Hui Wang and Yi Yang's FinBERT (published
+    2023) was trained on filings, analyst reports and earnings-call transcripts and
+    classified finance sentiment better than the dictionaries. Bloomberg trained its own
+    finance language model, BloombergGPT, in 2023. On the time-series side, forecasting
+    variants such as the Temporal Fusion Transformer (2021) show which past days and
+    which inputs a forecast relied on.
+    </p>
+    <p>
+    On a desk today, transformers mostly turn news, filings and earnings calls into
+    scores that feed signals. On short price series their record is contested, and a
+    tuned LSTM or linear model is still the benchmark to beat.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Decide which inputs matter for this prediction (which words in a transcript, which past days in a window) and weight them accordingly.</dd>
+        <dt>Takes in</dt><dd>Raw text or a lookback window of features; the sequence model it competes with is the <a href="recurrent-networks-lstm-gru.html">LSTM/GRU</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="nlp-trading-signals-sentiment.html">NLP trading signals and sentiment</a>, tested against simpler baselines such as <a href="regularized-regression-lasso-ridge.html">ridge/LASSO</a> using <a href="walk-forward-purged-cv.html">walk-forward validation</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -507,6 +543,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Full attention costs \(O(n^2)\) in sequence length.</strong> The Temporal Fusion Transformer and Informer exist specifically to make long financial or macro sequences tractable despite this cost.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A transformer's dominance in NLP and vision is not evidence it will beat a well-tuned LSTM or classical model on a short, noisy market series.</strong> Transformers need substantially more data and compute to realize their advantage — test empirically, every time, rather than assuming from reputation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A causal attention mask is mandatory for forecasting.</strong> Without one, a model can trivially attend to future positions, producing backtest results that are pure look-ahead leakage rather than a genuine forecasting result.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>On a desk, transformers earn their keep on text.</strong> FinBERT and its successors turn news, filings and earnings calls into sentiment scores. On short, noisy price series their edge over an LSTM or a linear model is still unproven.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -45,6 +45,7 @@
       <li>The Gaussian copula has zero tail dependence (\(\lambda_L=0\)) for any correlation below 1, meaning extreme joint crashes become asymptotically independent events; the Clayton copula is built to have nonzero, asymmetric lower-tail dependence (\(\lambda_L=2^{-1/\theta}\), \(\lambda_U=0\)) that matches "crash together, don't necessarily rally together."</li>
       <li>Two dependence structures tuned to the same Kendall's \(\tau=0.40\) can imply wildly different joint-crash probabilities — asymptotically 0% (Gaussian) versus roughly 60% (Clayton) — while reporting an identical correlation-ish headline number.</li>
       <li>The Gaussian copula's industry-wide use in CDO pricing (David X. Li, 2000), fit mostly on calm historical data, understated real mortgage-default tail dependence and is a widely documented factor in how badly those tranches performed once the 2007-2008 crisis hit.</li>
+      <li><strong>Real-world episode:</strong> the super-senior CDO tranche lost money only if most of a pool defaulted together, so a zero-tail-dependence model priced it as near riskless. When US house prices fell nationwide, banks holding it wrote down tens of billions. Tail dependence on this desk's own instruments is untested.</li>
     </ul>
   </div>
 
@@ -587,6 +588,76 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the super-senior tranche, 2007–08</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The safest slice was the one that needed everything to default together</h3>
+    <p>
+      A CDO pools many loans or bonds and slices the losses. The bottom slice takes the first defaults, the slices
+      above it take losses only once everything beneath them is gone, and the top, <strong>"super-senior"</strong>
+      slice loses money only if a large share of the pool defaults <em>at the same time</em>. Its price is therefore a
+      direct bet on the joint lower tail, the corner this lesson's worked example measured. Under a Gaussian copula with
+      a moderate correlation, \(\lambda_L=0\): mass simultaneous default is close to impossible, so the super-senior slice
+      looked close to riskless. It paid a thin spread, and the banks that built CDOs often kept that slice or bought
+      protection on it from insurers.
+    </p>
+    <p>
+      The model's misfit was visible before the crisis. Dealers quoted tranches on the standard credit indices by their
+      <strong>implied correlation</strong>, and the junior and senior tranches of the <em>same</em> pool implied
+      <em>different</em> correlations. A single Gaussian copula cannot produce that pattern if it describes the pool
+      correctly. The market worked around it by quoting a separate correlation for each tranche rather than replacing
+      the model.
+    </p>
+    <p>
+      Then US house prices fell nationwide, a common shock to every region at once that had rarely appeared in the
+      history the correlation assumptions were calibrated on. Mortgage defaults rose together, the lower slices of
+      mortgage bonds inside CDOs were wiped out together, and losses reached the super-senior slices that the models had
+      treated as safe. Rating agencies downgraded top-rated CDO tranches in large numbers through 2007 and 2008. UBS,
+      Merrill Lynch and Citigroup took write-downs running to tens of billions of dollars, much of it on super-senior CDO
+      positions they had kept, and the chief executives of Merrill Lynch and Citigroup left in late 2007.
+    </p>
+    <p style="margin-bottom:0">
+      Section 04 below states the general lesson about calm-data calibration. The super-senior slice is where it bit
+      hardest, because that slice's value depended on almost nothing <em>except</em> the joint lower tail.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>US house prices fall nationwide: one common factor hits every region</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Borrowers</b>Mortgage defaults rise together across loans and regions</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Mortgage bonds in CDOs</b>The slices taking first losses are wiped out at once, so losses climb the structure</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>Gaussian copula ★ this lesson</b>\(\lambda_L=0\) had priced "most of the pool defaults together" as near-impossible: super-senior marked near riskless</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Banks holding super-senior</b>Forced to write down tens of billions; mass downgrades of top-rated tranches</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: a dependence structure with zero tail dependence, used to price the
+    one instrument whose value depended on the tail and almost nothing else.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The convenient version uses one Gaussian copula with one flat \(\rho\) for the whole pool, calibrated on data from
+    calm years. Three of those assumptions failed. The joint tail was thicker than \(\lambda_L=0\) allows. One
+    \(\rho\) could not even fit the tranches of a single pool at the same time. And the stress state, a nationwide
+    house-price fall, was barely in the calibration sample, so no fitting method could have recovered it from that data.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: "this desk's instruments crash together more often than their correlation
+    implies."</strong> No copula has been fitted on this desk's data. A fair test would fit a Gaussian and a
+    tail-dependent copula (Clayton or Student-t) to each pair on a calm window and freeze both. It would then count joint
+    worst-1% days in later windows that include a stress episode such as March 2020, and compare each model's predicted
+    count with a test pre-registered before the count is run. Expect few joint tail days, so the power has to be
+    stated up front.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Copulas show up wherever a joint model is needed but the honest
@@ -726,7 +797,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Correlation only sees the average, roughly-linear relationship.</strong> It cannot tell you whether two series crash together far more often than that correlation number would ever suggest.</span></div>
@@ -735,10 +806,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Clayton copula is built for crash clustering.</strong> Nonzero lower-tail dependence, zero upper-tail dependence — "crash together, don't necessarily rally together."</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Same headline number, very different tail risk.</strong> Two structures tuned to identical Kendall's τ=0.40 can imply 0% versus roughly 60% joint-crash probability.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The 2008 Gaussian-copula/CDO history is a real cautionary tale.</strong> A thin-tailed model fit on calm historical data understated mortgage-default tail dependence at systemic scale.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The "safest" slice was a pure bet on the joint tail.</strong> Super-senior CDO tranches looked near riskless under \(\lambda_L=0\). The model's misfit was already visible in tranche-by-tranche implied correlations, and the losses ran to tens of billions. Whether this desk's own pairs are tail-dependent is untested.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a flagged gap, not a built or validated tool.</strong> This repo has no copula implementation yet — any future module needs real crisis-period data and full OOS validation before it informs sizing.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can two variable pairs have the exact same Pearson correlation but very different "crash together" behavior?</summary>
@@ -929,5 +1001,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

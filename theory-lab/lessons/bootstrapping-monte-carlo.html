@@ -38,6 +38,7 @@
       <li>Monte Carlo simulation is a different move: fit a parametric model (GARCH, GBM) to the data and generate brand-new synthetic paths from it, rather than resampling real observations.</li>
       <li>Both tools only describe what's plausible given what you already have — the one sample, or a model fitted to that sample — never what would happen against market conditions that sample never contained.</li>
       <li>As this project's own working philosophy states: "Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
+      <li>How it reached trading: Boyle (1977) brought Monte Carlo into option pricing, and Brock, Lakonishok &amp; LeBaron (1992) and White's Reality Check (2000) made the bootstrap the standard way to test trading rules and put error bars on backtests.</li>
     </ul>
   </div>
 
@@ -107,6 +108,25 @@
       model built from that sample — never what would happen against a market
       condition that sample never contained.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>One backtest, one path — how lucky was it?</h3>
+  <div class="tl-origin-who">Monte Carlo into option pricing: Boyle, 1977 · bootstrap into trading-rule tests: Brock, Lakonishok &amp; LeBaron, 1992; White, 2000</div>
+  <p>A backtest is a single path through history. Its Sharpe ratio and maximum drawdown have no tidy standard-error formula, and an option whose payoff depends on the whole price path has no closed-form price. For both, traders needed a way to generate many plausible alternative paths.</p>
+  <p>Phelim Boyle (1977) brought Monte Carlo simulation into option pricing; it is now how desks value path-dependent exotics and run Monte Carlo VaR. Efron's 1979 bootstrap reached trading research when Brock, Lakonishok and LeBaron (1992) resampled returns to test whether technical trading rules beat what random-walk and GARCH-type null models produce. Sullivan, Timmermann and White (1999) and White's Reality Check (2000) extended it with block resampling to test the best of many rules after the search.</p>
+  <p>On a desk today the bootstrap puts confidence intervals on a strategy's Sharpe and drawdown, and Monte Carlo generates the stress paths behind risk limits and option prices.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Put error bars on numbers with no formula — a Sharpe ratio, a max drawdown, a VaR, an exotic's price — by resampling or simulating many paths.</dd>
+      <dt>Takes in</dt><dd>A strategy's out-of-sample returns or a fitted price model (<a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged CV</a>, <a href="garch-volatility.html">GARCH</a>).</dd>
+      <dt>Hands on to</dt><dd>Data-snooping tests and risk limits (<a href="institutional-reality-check-spa.html">Reality Check &amp; SPA</a>, <a href="sharpe-family-deflated.html">Deflated Sharpe</a>, <a href="drawdowns-risk-of-ruin.html">Drawdowns &amp; Risk of Ruin</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -634,6 +654,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither tool can leave the sample it started from.</strong> Both describe what's plausible given what you already have — never what would happen under conditions that sample never contained.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A narrow bootstrap interval is not robustness evidence.</strong> It proves the sample is internally consistent, not that the underlying signal generalizes — conflating the two is a documented, easy way backtests mislead their own authors.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation is the tool that actually tests generalization.</strong> It splits real history into a fitting period and a genuinely separate later testing period the signal never touched — bootstrapping and Monte Carlo cannot substitute for that, no matter how many replicates are run.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: error bars on a single backtest.</strong> Monte Carlo prices path-dependent options (Boyle, 1977); the bootstrap tests trading rules (Brock, Lakonishok &amp; LeBaron, 1992; White, 2000) and sizes the luck in a Sharpe or drawdown.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -829,5 +850,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

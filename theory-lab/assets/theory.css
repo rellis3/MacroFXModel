@@ -73,7 +73,7 @@ details.tl-section-collapse[open] summary{margin-bottom:10px}
 
 /* math */
 .tl-math{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px 18px;margin:14px 0;overflow-x:auto;text-align:center}
-.tl-symbols{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:4px 16px;margin:14px 0}
+.tl-symbols{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:4px 16px;margin:14px 0;overflow-x:auto}
 .tl-symbols table{width:100%;border-collapse:collapse}
 .tl-symbols td{padding:8px 6px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:top}
 .tl-symbols tr:last-child td{border-bottom:none}
@@ -389,3 +389,95 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
   .tl-tts-select{font-size:11px;padding:6px}
 }
 .tl-eli5 p+p{margin-top:8px}
+
+/* ── Story layer ───────────────────────────────────────────────────────────
+   .tl-chain — a causal transmission chain: shock → link → link → outcome.
+   Each link names the actor and what it is forced to do. Wraps on a phone.
+   .tl-verdict — the desk's own tested verdict on a claim, stamped beside it.
+   Variants mirror js/deskEvidence.js verdicts: validated / null / context /
+   underpowered / untested. Never soften a null into anything greener. */
+.tl-chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;margin:18px 0;padding:14px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl)}
+.tl-chain-link{flex:1 1 130px;background:var(--s2);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;font-size:12.5px;line-height:1.5;color:var(--text2)}
+.tl-chain-link b{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:3px}
+.tl-chain-link.shock{border-color:var(--red-bd);background:var(--red-bg)}
+.tl-chain-link.shock b{color:var(--red)}
+.tl-chain-link.end{border-color:var(--amber-bd);background:var(--amber-bg)}
+.tl-chain-link.end b{color:var(--amber)}
+.tl-chain-arrow{flex:0 0 auto;align-self:center;color:var(--text3);font-size:15px}
+.tl-verdict{display:flex;gap:12px;align-items:flex-start;margin:16px 0;padding:12px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--s1);font-size:13px;line-height:1.6;color:var(--text2)}
+.tl-verdict-tag{flex:0 0 auto;font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:20px;border:1px solid}
+.tl-verdict strong{color:var(--text)}
+.tl-verdict.validated .tl-verdict-tag{color:var(--green);background:var(--green-bg);border-color:var(--green-bd)}
+.tl-verdict.null .tl-verdict-tag{color:var(--red);background:var(--red-bg);border-color:var(--red-bd)}
+.tl-verdict.context .tl-verdict-tag{color:var(--blue);background:var(--blue-bg);border-color:var(--blue-bd)}
+.tl-verdict.underpowered .tl-verdict-tag,.tl-verdict.untested .tl-verdict-tag{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd)}
+.tl-story{border-left:3px solid var(--amber);background:var(--s1);border-radius:0 var(--rl) var(--rl) 0;padding:16px 18px;margin:20px 0}
+.tl-story-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber);margin-bottom:6px}
+.tl-story h3{font-size:16px;margin:0 0 8px}
+.tl-story p{font-size:14px;color:var(--text2);margin:0 0 10px}
+@media (max-width:600px){.tl-chain{flex-direction:column}.tl-chain-arrow{transform:rotate(90deg)}}
+/* Live-ledger additions injected by assets/verdicts.js. */
+.tl-verdict-updated{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);border-radius:var(--r);padding:6px 10px;margin-bottom:8px;font-size:12px;font-weight:600}
+.tl-verdict-ledger{margin-top:8px;font-size:12px}
+.tl-verdict-ledger summary{cursor:pointer;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px}
+.tl-verdict-ledger p{margin:6px 0 0;color:var(--text2);line-height:1.55}
+/* The link in a .tl-chain that IS the lesson's own concept (label it "★ This lesson · …"). */
+.tl-chain-link.concept{border:2px solid var(--purple);background:var(--purple-bg)}
+.tl-chain-link.concept b{color:var(--purple)}
+/* .tl-origin — "Where this came from": the people and the problem behind an idea.
+   For maths-heavy lessons where a market episode would be forced. */
+.tl-origin{border-left:3px solid var(--purple);background:var(--s1);border-radius:0 var(--rl) var(--rl) 0;padding:16px 18px;margin:20px 0}
+.tl-origin-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:6px}
+.tl-origin h3{font-size:16px;margin:0 0 8px}
+.tl-origin p{font-size:14px;color:var(--text2);margin:0 0 10px}
+.tl-origin-who{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text3);margin-bottom:8px}
+/* Learning paths — the per-lesson bar (assets/paths.js) and paths.html. */
+.tl-pathbar{background:var(--s1);border:1px solid var(--blue-bd);border-radius:var(--rl);padding:14px 16px;margin:26px 0 14px;font-size:13px}
+.tl-pathbar-k{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-bottom:4px}
+.tl-pathbar-stage{color:var(--text2);margin-bottom:8px}
+.tl-pathbar-meter,.tp-meter{display:block;height:4px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.tl-pathbar-meter i,.tp-meter i{display:block;height:100%;background:var(--green)}
+.tl-pathbar-nav{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tl-pathbar-nav a{font-weight:600;text-decoration:none;max-width:100%}
+.tl-pathbar-also{margin-top:8px;font-size:12px;color:var(--text3)}
+.tp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0}
+.tp-card{display:flex;flex-direction:column;gap:6px;text-align:left;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:16px;color:var(--text);font-family:inherit;cursor:pointer}
+.tp-card:hover{border-color:var(--blue)}
+.tp-card.on{border-color:var(--green-bd);box-shadow:inset 0 0 0 1px var(--green-bd)}
+.tp-icon{font-size:24px}
+.tp-name{font-size:16px;font-weight:700}
+.tp-who{font-size:12.5px;color:var(--text2);line-height:1.5}
+.tp-goal{font-size:12.5px;color:var(--text2)}
+.tp-goal b{color:var(--amber)}
+.tp-count{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:-4px}
+.tp-cta{font-size:12px;font-weight:700;color:var(--blue);margin-top:auto}
+.tp-card.on .tp-cta{color:var(--green)}
+.tp-detail h2{margin:26px 0 12px}
+.tp-stage{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:12px 16px;margin:10px 0}
+.tp-stage-h{display:flex;gap:10px;align-items:baseline;font-weight:700;font-size:14px}
+.tp-stage-h span{font-family:'DM Mono',monospace;font-size:10.5px;color:var(--blue);text-transform:uppercase;letter-spacing:.06em}
+.tp-stage-h em{margin-left:auto;font-style:normal;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+.tp-stage ol{margin:8px 0 0;padding-left:22px}
+.tp-stage li{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid var(--border);font-size:13.5px}
+.tp-stage li span{color:var(--text3);font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap}
+.tp-stage li.done span{color:var(--green)}
+.tp-stage li.started span{color:var(--amber)}
+.tp-deliv{border:1px solid var(--amber-bd);background:var(--amber-bg);border-radius:var(--rl);padding:16px 18px;margin:18px 0}
+.tp-deliv-k{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--amber)}
+.tp-deliv h3{margin:6px 0}
+.tp-deliv p{color:var(--text2);font-size:14px}
+.tp-deliv ol{padding-left:20px}
+.tp-deliv li{margin:8px 0;font-size:13.5px}
+.tp-deliv li a{display:block;font-size:12px;margin-left:24px;text-decoration:none}
+.tp-foot,.tp-hint{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace}
+.tp-stage li a{text-decoration:none}
+/* .tl-role — "Its job in the analysis": where a tool sits in the trading pipeline.
+   Six stages; the lesson's stage(s) get .on. Sits inside or right after .tl-origin. */
+.tl-role{margin:12px 0 4px}
+.tl-role-stages{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.tl-role-stage{flex:1 1 70px;text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:6px 4px;border-radius:6px;border:1px solid var(--border);color:var(--text3);background:var(--s2)}
+.tl-role-stage.on{color:var(--purple);border-color:var(--purple-bd);background:var(--purple-bg)}
+.tl-role dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 12px;margin:0;font-size:13px}
+.tl-role dt{color:var(--text3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+.tl-role dd{margin:0;color:var(--text2)}
+@media (max-width:600px){.tl-role dl{grid-template-columns:1fr}.tl-role dt{padding-top:6px}}

@@ -38,6 +38,7 @@
     <li>The <strong>real exchange rate</strong> (\(S \times P_{\text{foreign}}/P_{\text{domestic}}\)) is the practical "cheap or expensive" gauge: if PPP held exactly it would be constant, but in practice it wanders for years above or below its own average.</li>
     <li>PPP deviations are real but close so slowly — Rogoff's "PPP puzzle" finds half-lives of roughly three to five years — that it is a hopeless short-run timing signal; a "20% undervalued" reading can widen for years before it narrows.</li>
     <li>This repo has no PPP-based signal or CPI/price-level data pipeline today — it's a stated gap, not a built brick.</li>
+    <li><strong>Real-world episode:</strong> in 2022–24 the yen was deeply cheap on PPP, with Japanese inflation below US inflation, and it kept falling: USD/JPY passed 160 in 2024 as the Fed–BoJ rate gap overpowered the price gap. The desk's nearest test of "far from fair value reverts" is <code>residual-reversion-fx</code>, NULL.</li>
   </ul>
 </div>
 
@@ -386,6 +387,106 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the cheapest yen in half a century</h2>
+  <p>
+    The scenario above asks what a "20% undervalued" reading licenses a trader to do. Japan in 2022–24 is the
+    real-world answer, at a scale bigger than the hypothetical. The yen looked deeply cheap on every PPP measure,
+    and it kept getting cheaper for more than two years.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2022–2024: relative PPP pointed one way, the yen went the other</h3>
+    <p>
+      Run relative PPP from Section 02 on Japan against the US in this period. US inflation peaked at 9.1% in June
+      2022. Japanese inflation also rose, but stayed well below the US rate. Taking the US as domestic,
+      \(\pi_{\text{domestic}} - \pi_{\text{foreign}}\) was positive, so relative PPP said the dollar should
+      weaken and the yen <em>gain</em> to keep relative prices steady. The yen fell instead. USD/JPY went from around 115 at the start of 2022 to near 152 that
+      October, and in 2024 it passed 160, the weakest yen against the dollar since the mid-1980s.
+    </p>
+    <p>
+      The driver was the interest-rate gap from the previous lesson, not the price gap. The Fed raised its policy rate
+      from near zero in March 2022 to 5.25–5.50% by July 2023. The Bank of Japan kept its short rate at −0.1% and held
+      down 10-year yields with yield-curve control. It did not end negative rates until March 2024. Holding dollars
+      paid far more than holding yen, and capital followed the yield.
+    </p>
+    <p>
+      So the real exchange rate from Section 02 sank. The yen's real effective exchange rate, as compiled by the
+      BIS, fell to levels widely reported as the weakest in more than fifty years. The yen ranked among the most
+      undervalued major currencies on <em>The Economist</em>'s Big Mac index. Foreign tourists poured into a Japan
+      that had become cheap for them. That is the goods-and-services arbitrage PPP relies on, actually happening,
+      and it was nowhere near large enough to turn the currency.
+    </p>
+    <p style="margin-bottom:0">
+      Japan's Ministry of Finance bought yen in the market in autumn 2022, its first yen-buying intervention since
+      1998, and intervened again in 2024. The interventions slowed the fall without reversing the trend. When the yen
+      finally bounced hard in mid-2024, the trigger was a Bank of Japan hike and the carry-trade unwind described in
+      <a href="interest-rate-parity.html">Interest Rate Parity</a>. It was not PPP finally being "right". Anyone who
+      bought the yen in 2022 because it was "20% cheap" sat through a much cheaper yen first.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>US inflation surge</b>US CPI peaks at 9.1% in June 2022</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Forced to hike fast, from near zero to 5.25–5.50% by July 2023</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Bank of Japan</b>Keeps rates negative and caps yields until March 2024</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Investors</b>Paid to hold dollars and fund in yen, so they sell yen</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: real exchange rate</b>Yen falls despite lower Japanese inflation; real rate sinks to a multi-decade low</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Ministry of Finance</b>Forced to buy yen in 2022 and 2024; slows the fall, cannot reverse it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The PPP gap persists for years; the 2024 bounce comes from rates, not prices</div>
+  </div>
+  <p>
+    The starred link is the real exchange rate from Section 02. It did what the lesson says it can do: it wandered
+    far from fair value and stayed there.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>Goods arbitrage is not what sets the exchange rate</h3>
+    <p style="margin-bottom:0">
+      PPP assumes trade in goods is the force that pins the currency. Over a two- or three-year horizon, capital
+      chasing an interest-rate gap was far larger and far faster. Much of what made Japan cheap was non-tradeable
+      services, which only arbitrage when people physically travel to buy them. The pull toward PPP was real but
+      slow, and a rate differential overpowered it for as long as the differential lasted.
+    </p>
+  </div>
+
+  <p>
+    The tempting trading claim in this lesson is <em>a currency far from fair value will revert, so trade the
+    gap.</em> This desk has not built a PPP model, because there is no CPI pipeline. It has tested the same claim with
+    a different fair value, and tested reversion bands on crosses that ought to revert.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="residual-reversion-fx" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>residual-reversion-fx: price minus a macro fair value does not revert tradeably.</strong> The fair
+    value here is an OLS macro model, not PPP; the claim has the same shape. Across 6 instruments only
+    <strong>1/6 (EURUSD)</strong> cleared both a real icEdge and an above-coin-flip hit rate, which the pool reads as
+    chance level (mean icEdge <strong>−0.030</strong>, mean hit rate <strong>0.485</strong>). USDJPY showed a positive
+    icEdge but a below-50% hit rate, which is internally inconsistent rather than evidence.</span>
+  </div>
+
+  <div class="tl-verdict underpowered" data-evidence="ou-bands-fx-crosses" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Underpowered</span>
+    <span><strong>ou-bands-fx-crosses: reversion that starts but rarely finishes.</strong> On four G10 crosses, only
+    22 out-of-sample trades, against a floor of 30. Of <strong>68</strong> closed trades, <strong>46 (68%)</strong>
+    ended on the 3-half-life time stop and only <strong>4 (6%)</strong> reached the target. They mostly drift part of
+    the way back, which is PPP's slow clock in miniature.</span>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>For two years, Japan was on sale. A hotel room or a bowl of ramen cost a visitor far less than the same thing at home, so the "cheap-o-meter" said the yen should go up. It went down instead, because savers could earn much more interest by holding dollars, and that pull was stronger than any number of tourists buying cheap ramen. Being cheap doesn't make something stop getting cheaper.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PPP is the Law of One Price, scaled up.</strong> An identical basket should cost the same in every currency, or the exchange rate should move until it does.</span></div>
@@ -395,9 +496,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A PPP deviation can widen before it narrows.</strong> There's no mechanism that stops an undervalued currency from becoming more undervalued next month or next year.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PPP's usefulness is horizon-conditional.</strong> Nearly useless for a trading-horizon decision; a genuinely relevant input for a multi-year strategic hedge or allocation decision.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no PPP module today.</strong> No CPI data pipeline, no real-exchange-rate computation — a stated gap, not a built brick.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Cheap" kept getting cheaper, and fair-value reversion is null on this desk's data.</strong> The yen sank to a multi-decade real low in 2022–24 while relative PPP pointed the other way. residual-reversion-fx (NULL): only 1/6 instruments cleared both bars, mean hit rate 0.485. PPP itself is untested here.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is relative PPP more useful in practice than absolute PPP?</summary>
@@ -516,5 +618,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

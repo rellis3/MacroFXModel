@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Calculus for Finance — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, MathJax notation, and a 6-question self-test?<a href="calculus-for-finance.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Hedging something that never stops moving</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Robert Merton · 1969–71 · Black, Scholes &amp; Merton · 1973</strong></p>
+        <p>Ordinary calculus assumes smooth paths; prices jiggle at every scale. Merton (1969–71) brought Itô's stochastic calculus (1940s probability theory) into finance, and in 1973 it gave the option price.</p>
+        <p>The key: for a random path the second-order Taylor term doesn't vanish. That is σ²/2, behind volatility drag, gamma P&amp;L and convexity.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Say how a value changes for a small move, to first and second order.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Average speed vs. the speedometer, right now</h2>
       <p class="sl-sub">Drag the slider. As the second point slides toward the first, the secant line rotates into the tangent line.</p>
       <div class="sl-card">
@@ -50,8 +63,8 @@
       <p class="sl-p">Slide h all the way down and the two points merge into one: the line stops being a secant connecting two points and becomes the <strong>tangent</strong> — the single line that just grazes the curve at that instant. Formally, average rate of change is rise over run, [f(x+h) − f(x)] / h. The derivative is what that ratio approaches as h shrinks all the way to zero: f′(x) = lim(h→0) [f(x+h) − f(x)] / h. A fixed, non-zero h always gives an approximation; only the limit gives the exact instantaneous value.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">One derivative, worked in full: d/dx(x²) = 2x</h2>
       <p class="sl-sub">Every step of the algebra, so nothing is taken on faith.</p>
       <div class="sl-card">
@@ -83,8 +96,8 @@
       <p class="sl-p">This same limit machinery generalizes into rules you'd otherwise memorize by rote: for f(x) = xⁿ, the derivative is always nxⁿ⁻¹ (here, n=2 gives 2x¹ = 2x). A constant added anywhere contributes nothing, because it cancels in the subtraction step exactly like x² did above. Every "differentiation rule" is this same four-step limit, done once in general instead of by hand each time.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The integral: area you don't have to add up by hand</h2>
       <p class="sl-sub">A different question: not "how fast is f changing," but "how much area sits under the curve?"</p>
       <div class="sl-svgwrap">
@@ -110,17 +123,17 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The speedometer and the odometer are mirror images</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Derivative — the speedometer</span>
-          <p>Tells you your speed <em>right now</em>. Given a distance-traveled function, the derivative reads off the instantaneous rate at any instant — the tangent-line slope from Section 1.</p>
+          <p>Tells you your speed <em>right now</em>. Given a distance-traveled function, the derivative reads off the instantaneous rate at any instant — the tangent-line slope from Section 2.</p>
         </div>
         <div class="sl-ccard neutral">
           <span class="sl-ctag blue">Integral — the odometer</span>
-          <p>Tells you total distance <em>so far</em>. Given a speed function, the integral accumulates every instant of speed into a running total — the shaded area from Section 3.</p>
+          <p>Tells you total distance <em>so far</em>. Given a speed function, the integral accumulates every instant of speed into a running total — the shaded area from Section 4.</p>
         </div>
       </div>
       <p class="sl-p">The mirror relationship isn't a coincidence — it's a theorem. The <strong>Fundamental Theorem of Calculus</strong> says differentiation and integration are exact inverses: if F is any antiderivative of f (meaning F′(x) = f(x)), the definite integral collapses to plain subtraction.</p>
@@ -131,21 +144,21 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Taylor series: guessing a function from one point alone</h2>
       <p class="sl-sub">If all you know is a function's value and its rate(s) of change at one point x, how good a guess can you make nearby?</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">0</div><div><h4>Zeroth order — f(x)</h4><p>The flat guess: assume nothing changes at all. f(x+h) ≈ f(x). Fine only if the function barely moves.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>First order — f(x) + f′(x)h</h4><p>Add the tangent-line rise: today's value, plus slope times step size. This is exactly the tangent line from Section 1, extended a finite distance h.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>First order — f(x) + f′(x)h</h4><p>Add the tangent-line rise: today's value, plus slope times step size. This is exactly the tangent line from Section 2, extended a finite distance h.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Second order — + ½f″(x)h²</h4><p>Correct for the curve bending away from that straight tangent line. f″(x), the derivative of the derivative, measures exactly how fast the slope itself is changing.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">…</div><div><h4>Higher orders exist too</h4><p>A full Taylor series keeps adding terms (f‴(x)h³/6, and on) for an ever-closer match. Finance almost always stops at second order — accurate enough for small moves, far simpler than carrying more.</p></div></div>
       </div>
       <div class="sl-quote">f(x+h) ≈ f(x) + f′(x)h + ½f″(x)h² — each added term is a correction for exactly what the previous term missed. This second-order version is the workhorse used throughout the rest of this curriculum.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where the σ²/2 shape actually comes from</h2>
       <p class="sl-sub">Expand f(x) = ln(1+x) around x = 0 using the second-order Taylor formula. Three numbers are needed.</p>
       <div class="sl-card">
@@ -159,8 +172,8 @@
       <p class="sl-p">Relabel the step h as a per-period return R, and this is exactly the shortcut used — without derivation — back in the Returns primer: <strong>ln(1+R) ≈ R − R²/2</strong>. It isn't a separate finance approximation someone invented; it's the general-purpose Taylor formula with three specific numbers dropped in. The minus-one-half is not a design choice — it falls straight out of f″(0) = −1 for this particular function.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Same shape, twice: volatility drag and Kelly</h2>
       <p class="sl-sub">Average the identity ln(1+R) ≈ R − R²/2 across many periods and the σ²/2 term in the Kelly lesson falls out directly.</p>
       <div class="sl-row"><div class="sl-box">avg[ln(1+R)]</div><div class="sl-arrow">=</div><div class="sl-box">g</div><div class="sl-arrow">≈</div><div class="sl-box">avg[R] − avg[R²]/2</div></div>
@@ -189,8 +202,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Derivatives you're already trading with</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Delta is dC/dS</h4><p>An option's delta is literally the first-order Taylor term of its price function with respect to the underlying — read off a risk screen instead of derived from a limit by hand.</p></div></div>
@@ -204,8 +217,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -255,8 +268,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A derivative is the tangent-line slope — the limit of a secant line's average rate of change as the gap between two points shrinks to zero.</p></div>
@@ -265,6 +278,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>ln(1+R) ≈ R − R²/2 and g ≈ μ − σ²/2 are the identical second-order Taylor expansion of ln(1+x), applied once per period and once again after averaging — not two separate finance shortcuts.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Delta and gamma are literally Taylor terms — delta is the first-order derivative of an option's price with respect to the underlying, gamma is the second-order curvature correction.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every Taylor approximation is local — accurate near the expansion point, and increasingly wrong the larger the step, exactly as the worked example's error growth showed.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Merton (1969–71) brought Itô's calculus to finance; the surviving second-order Taylor term (σ²/2) drives volatility drag, gamma P&amp;L and Black–Scholes–Merton.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

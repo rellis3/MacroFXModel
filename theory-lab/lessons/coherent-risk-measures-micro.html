@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Coherent Risk Measures — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">17</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, MathJax, and a 6-question self-test?<a href="coherent-risk-measures.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -300,7 +300,40 @@
     </section>
 
     <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+      <div class="sl-kicker">Section 13 · It actually happened</div>
+      <h2 class="sl-h2">The London Whale, 2012: half the risk, gone overnight</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>JPMorgan's Chief Investment Office ran a credit-index book big enough to move its own market. In January 2012 it was over its VaR limit. Late that month a new VaR model went live and the reported VaR <strong>roughly halved</strong>, with no position cut. The bank's own task force later found the model ran on copy-and-paste spreadsheets, and one formula divided by a sum instead of an average. In May the bank went back to the old model, and first-quarter VaR came out at <strong>roughly double</strong> what it had reported. Losses for the year passed <strong>$6 billion</strong>.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Credit book</b>Grows big enough to move the indices it trades</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Risk limit</b>VaR is over the limit: cut, or re-measure</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>VaR model ★ this lesson</b>New model, one quantile: reported VaR roughly halves</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Traders</b>No limit forces a cut, so the positions stay on</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Losses over $6 billion; VaR restated at roughly double</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
+      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>"Limit on Expected Shortfall instead of VaR, and the tail is under control"</strong> is not tested here: no limits or sizing on this desk run on either measure. A fair test would forecast daily VaR₉₅ and ES₉₇.₅ out of sample on the desk's own P&amp;L, count exceedances, and re-run the count after every model change.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The four axioms take the loss distribution as given and known. In 2012 it was a model output, chosen by the office the limit was meant to constrain, and built with an error. A CVaR computed from the same spreadsheet would have been understated too. Coherence describes the formula, not the inputs, so model risk sits upstream of the VaR-versus-CVaR choice.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -350,8 +383,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
-      <div class="sl-kicker">Section 14</div>
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 16</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>VaR marks a threshold; CVaR averages everything beyond it — that structural difference explains everything else in this deck.</p></div>
@@ -360,6 +393,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>CVaR is coherent — same example, CVaR sums exactly ($200 ≤ $200), which is why post-2008 regulation (FRTB) shifted capital requirements from VaR toward Expected Shortfall.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The failure needs a lumpy, tail-heavy distribution — smooth unimodal losses or perfectly correlated positions usually don't trigger it; defaults, jumps, and options are where it bites.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Coherence ≠ good estimation — a coherent formula fed a thin tail sample is still an unstable number; see Extreme Value Theory for the machinery built to stabilize it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>A limit is only as honest as the model under it: in 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion. "ES beats VaR" is untested on this desk.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -560,5 +594,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

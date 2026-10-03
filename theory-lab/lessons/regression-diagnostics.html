@@ -38,6 +38,7 @@
     <li>Durbin-Watson compares squared consecutive-residual changes to total residual variance; \(DW \approx 2\) means no lag-1 autocorrelation, toward 0 means positive autocorrelation, toward 4 means negative.</li>
     <li>The worked scenario: an FX yield-spread regression shows a p-value of 0.01, but its residuals give \(DW = 0.6\) (implying \(\hat\rho \approx 0.7\)); with ~500 daily observations that corresponds to an effective sample size of only \(n_{eff}\approx 88\), and correcting for that (e.g. Newey-West/HAC standard errors) pushes the "significant" result back toward noise.</li>
     <li>Passing all three diagnostics only certifies that the in-sample significance claim is honestly computed — it says nothing about out-of-sample durability (Lego Principle 5 still applies).</li>
+    <li>How it reached trading: White (1980), Hansen &amp; Hodrick (1980, on forward FX rates) and Newey &amp; West (1987) gave standard errors that survive clustered volatility and overlapping returns — now the default in return-predictability regressions.</li>
   </ul>
 </div>
 
@@ -150,6 +151,25 @@
       after fitting the line really is noise, and not a second signal the
       inference machinery is silently mistaking for confidence.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>A t-statistic of 3 that isn't</h3>
+  <div class="tl-origin-who">Robust standard errors · White, 1980; Hansen &amp; Hodrick, 1980; Newey &amp; West, 1987 — standard in return-predictability work</div>
+  <p>Regress next month's return on a signal and the textbook standard errors assume errors that are independent with constant variance. Financial returns violate both: volatility clusters, and when the forecast horizon is longer than the sampling interval — a 3-month return measured every month — consecutive errors overlap and are strongly correlated. The t-statistic then overstates the evidence, sometimes by a lot.</p>
+  <p>The fixes came from econometrics around 1980 and went straight into finance. Halbert White (1980) gave standard errors robust to changing variance. Lars Hansen and Robert Hodrick (1980), testing whether forward exchange rates predict future spot rates, built standard errors for overlapping forecast horizons; Whitney Newey and Kenneth West (1987) gave a general version robust to both problems. Newey-West standard errors became standard in return-predictability and factor regressions.</p>
+  <p>On a desk today, residual checks — autocorrelation, heteroskedasticity, a few dominant outliers — come before any regression-based edge is believed, and the p-value reported is the robust one, not the default.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Decide whether a regression's coefficients and p-values can be trusted before the edge goes anywhere near capital.</dd>
+      <dt>Takes in</dt><dd>A fitted regression (<a href="primer-correlation-regression.html">Correlation &amp; Regression</a>).</dd>
+      <dt>Hands on to</dt><dd>Model choice and honest validation (<a href="model-selection-aic-bic.html">AIC &amp; BIC</a>, <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged CV</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -651,6 +671,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: DW=0.6 implies ρ̂≈0.7</strong>, shrinking an effective sample of ~500 days to ~88 — enough to push a 0.01 p-value back toward noise once corrected.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A failure doesn't kill the coefficient — it means fix the inference.</strong> Recompute with HAC/Newey-West or robust standard errors rather than discarding \(\hat\beta\).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing all three is not out-of-sample evidence.</strong> Clean diagnostics only certify the in-sample significance claim is honestly computed — Lego Principle 5 still applies.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: robust errors for return regressions.</strong> Overlapping horizons and clustered volatility inflate t-statistics; White, Hansen–Hodrick (forward FX) and Newey–West gave the corrections finance now uses by default.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

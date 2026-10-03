@@ -37,6 +37,7 @@
       <li><strong>Survivorship bias</strong>, precisely defined: a database that only contains entities that still exist today silently excludes the failures, biasing any backtest run on it optimistically. Quantified for mutual funds by Elton, Gruber &amp; Blake (1996).</li>
       <li>This lesson is the <strong>fuller, operational treatment</strong> — <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> introduces point-in-time computability briefly, from the angle of what one feature needs; this lesson covers what the underlying data infrastructure itself has to guarantee for that to even be possible.</li>
       <li>Point-in-time datasets are an established, real industry and academic practice — not an exotic or hypothetical concern.</li>
+      <li><strong>Real-world episode:</strong> in 1992 Brown, Goetzmann, Ibbotson &amp; Ross showed that a survivors-only fund database can manufacture apparent "hot hands" persistence among managers with no skill at all. On this desk, a level-touch study's Sharpe 5.36 turned out to be the same kind of filter, and the honest re-test was null (<code>level-touch</code>).</li>
     </ul>
   </div>
 
@@ -256,6 +257,86 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: the "hot hands" a database could manufacture</h2>
+  <p>
+    The worked example above treats survivorship as a bias in a <em>level</em>: drop the losers and the average rises
+    from 4.2% to 9%. Elton, Gruber &amp; Blake measured that level bias. Four years earlier, a different group asked a
+    harder question: can a survivors-only database invent a <em>relationship</em> that isn't there at all?
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1992: persistence with no skill in it</h3>
+    <p>
+      By the early 1990s a question with real money attached was being argued in the journals: do mutual funds that
+      beat their peers in one period tend to beat them again in the next? If they do, picking last year's winners is a
+      strategy. Several studies of that era reported that past winners did tend to keep winning, at least over short
+      horizons, and the idea of the "hot hand" fund manager took hold.
+    </p>
+    <p>
+      Stephen Brown, William Goetzmann, Roger Ibbotson and Stephen Ross ("Survivorship Bias in Performance Studies",
+      <em>Review of Financial Studies</em>, 1992) asked how much of that a survivors-only database could produce on its
+      own. They simulated managers with <strong>no skill at all</strong>, only different levels of risk, and applied
+      one realistic rule: a fund whose cumulative performance falls far enough is closed and drops out of the
+      database. Then they ran the standard persistence test on whoever was left.
+    </p>
+    <p>
+      The test found persistence. The reason is the filter. A high-risk manager produces extreme results in both
+      directions. The ones who drew bad results were removed, so the high-risk managers still in the database are
+      mostly the ones who drew good results, and they keep showing up near the top. Nothing about any manager's
+      ability carried from one period to the next; the database's membership rule did. Later work on databases that
+      kept the dead funds, most prominently Carhart (1997), found that much of the apparent persistence among winners
+      was explained by common factors and costs, with the clearest persistence at the bottom: the worst funds kept
+      doing badly.
+    </p>
+    <p style="margin-bottom:0">
+      What it cost was not one firm's loss but a decade of confident conclusions about skill drawn from a dataset that
+      had already decided, by its construction, who would look skilled.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Managers</b>Run portfolios with very different levels of risk; none has an edge</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Fund sponsors</b>Must close or merge funds after poor cumulative returns, so the bad draws leave</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · survivorship</b>The database keeps only live funds: membership is filtered on the very outcome being studied</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Researchers</b>Rank the survivors on past returns and test whether the ranking repeats</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Apparent "hot hands" persistence, produced by the filter rather than by skill</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. Note that no single number in the database was wrong, and no
+    revision or publication lag was involved. The bias lives in which rows exist, which is exactly the
+    "include the delisted" card in the next section.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a coin-flipping contest where anyone who loses three times in a row is sent home. After a while, everyone still in the room has a great record, and if you ask them to flip again they look like they're on a lucky streak. They aren't special; the rule just sent everyone else home. That's how a list of "funds still open" can make luck look like talent.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The standard telling, including this lesson's worked example, treats survivorship as an optimistic shift in an
+    average that you can correct by adding the missing failures back. That quietly assumes the missing rows are the
+    only damage. Brown, Goetzmann, Ibbotson and Ross showed the filter also manufactures structure: because survival
+    depends on cumulative results, and risk differs across entities, the survivors carry a spurious link between
+    past and future performance. Any test of persistence, momentum or "levels that hold" run on a filtered sample
+    inherits that link, even when the average looks reasonable.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="level-touch" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>level-touch: the desk's own survivorship episode.</strong> The claim was that price reacts at
+    pre-drawn levels, so touches bounce or break in a usable way. <strong>The original Sharpe 5.36 came from a
+    survivorship filter: only touches that later "held" were counted.</strong> A barrier-free re-test with paired
+    controls at random non-level prices found the level increment over a random price was zero or negative. Same
+    mechanism as 1992: the sample was chosen by the outcome it was meant to predict.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Point-in-time datasets — archives that preserve every historical vintage of a series with its true
@@ -306,7 +387,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time correctness is an operational property of the data store, not just a feature-construction rule.</strong> Immutable dated snapshots, revision tracking, and publication-lag tagging all have to exist before a feature can even attempt to be point-in-time computable.</span></div>
@@ -315,9 +396,10 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Survivorship bias is not a random omission — it's a systematic, quantified overstatement.</strong> Elton, Gruber &amp; Blake (1996) measured this directly for mutual funds: a survivors-only database overstates true average historical performance.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time datasets are established, real infrastructure.</strong> Academic and institutional finance research commonly relies on vendor databases built specifically to preserve historical vintages and publication dates.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson is the fuller treatment of a topic <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> only introduces briefly.</strong> That lesson covers what a feature needs; this one covers what the data layer underneath has to guarantee.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Survivorship can manufacture a pattern, not just inflate an average (level-touch, NULL).</strong> A survivors-only sample can show persistence where there is no skill (Brown, Goetzmann, Ibbotson &amp; Ross, 1992). On this desk, a Sharpe 5.36 level strategy counted only touches that later "held"; the barrier-free re-test found the level adds zero or less over a random price.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is a single mutable "current value" table fundamentally incompatible with point-in-time correctness?</summary>
@@ -414,5 +496,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

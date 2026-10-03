@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">GARCH &amp; Volatility Clustering — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="garch-volatility.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -269,7 +269,42 @@
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">March 2020: clustering at full strength</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>On 19 February 2020 the S&amp;P 500 closed at a record high with the VIX in the mid-teens. Five weeks later it was about 34% lower. The big days came in clumps, of <strong>both signs</strong>: −7.6% on 9 March, −9.5% on the 12th, <strong>+9.3%</strong> on the 13th, −12% on the 16th, +9% on the 24th. Circuit breakers halted trading on four days in two weeks, and on 16 March the VIX closed at a record <strong>82.69</strong>. Volatility then stayed elevated for months.</p>
+      </div>
+      <p class="sl-p">The starred link is this lesson's concept: yesterday's squared shock feeds today's variance.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Virus spreads outside China</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Vol-target funds</b>Realised σ jumps; rules force them to sell</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Quote wider and smaller</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Clustering</b>αε² + βσ²: big days of either sign raise σ</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Four circuit-breaker days; VIX 82.69</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The claim: the pace of the market persists. A fast stretch is followed by more fast stretches.</p>
+      <div class="sl-stamp validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>tape-speed-persistence:</strong> a slow 15-minute approach is followed by a slow hour, a fast one by a fast hour. Next-hour dwell monotonic in <strong>68 of 68 cells across 17 pairs</strong>, the same at random prices. A property of the tape. Pace, never direction.</span>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>GARCH learns only from past returns, so it can't see the first shock coming: February's calm gave a calm forecast. And plain GARCH(1,1) with normal shocks is symmetric and thin-tailed. March's days were too big for normal draws even around a raised σ, which is why desks use Student-t or asymmetric variants.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -319,8 +354,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Volatility clusters — big moves of either sign follow big moves, calm follows calm — even though the direction of the next move stays close to unpredictable.</p></div>
@@ -328,6 +363,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>α+β is the persistence — the day-over-day decay rate of a shock's excess over normal — and it must stay under 1 or the model isn't valid.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The long-run variance is ω/(1−α−β); the half-life of a shock is ln(0.5)/ln(α+β).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This project already runs GARCH(1,1) in production — α=0.06, β=0.91 — as one of three sigma estimators, applied to the index asset class alongside HV20 (commodity) and Yang-Zhang (FX).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>March 2020: a calm February, then ±9–12% S&amp;P days back to back and a record VIX of 82.69. GARCH tracks a storm once it starts; it can't see one coming. Desk test: the pace of the tape persists intraday (tape-speed-persistence, VALIDATED).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -471,5 +507,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

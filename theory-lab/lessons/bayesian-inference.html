@@ -38,6 +38,7 @@
       <li>The interactive chart's sliders default to a 20% prior and 80% classifier accuracy, reproducing that same 50% posterior; drag them to see how a rarer prior or a weaker classifier pulls the posterior around.</li>
       <li>A Bayes factor of 4 (0.80/0.20) is what actually separates the 20% prior from the 50% posterior here — "substantial" evidence on Jeffreys' scale, real but not decisive.</li>
       <li>Bayesian updating is flagged here as a genuine, unbuilt alternative to this project's own fixed weighted scoring sum — a design hypothesis, not a validated improvement.</li>
+      <li>How it reached trading: Black and Litterman at Goldman Sachs (1990–92) used Bayes' rule to blend a manager's views with the market's equilibrium, and the same update now drives how desks revise beliefs about edges and regimes.</li>
     </ul>
   </div>
 
@@ -93,6 +94,25 @@
       classifier or filter is implicitly supposed to be doing every time new
       data arrives.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Expected returns too noisy to plug in</h3>
+  <div class="tl-origin-who">Bayes' rule · into portfolio practice via Black &amp; Litterman, Goldman Sachs, 1990–92</div>
+  <p>Mean-variance optimisation needs an expected return for every asset, and a few years of data estimate those means very badly. Fed raw historical averages, an optimiser produces extreme, unstable portfolios that swing with every new month of data. The estimation-risk literature of the 1970s and 1980s (Klein &amp; Bawa 1976, Jorion 1986) showed that treating the unknown means as uncertain — a Bayesian move — gives more sensible weights.</p>
+  <p>Fischer Black and Robert Litterman made it a desk tool at Goldman Sachs. Their model (published 1990–92) starts from a prior that the market's own equilibrium weights imply, then updates it with the manager's views, each weighted by how confident the manager is. The posterior is a blend: no view, you hold the market; a strong view, you tilt toward it. It became one of the standard ways asset managers turn opinions into portfolio weights.</p>
+  <p>The same update runs through a modern desk: revising a signal's hit rate as trades come in, a regime probability as a new print lands, or an edge's credibility after a run of losses. Each piece of evidence moves the belief by an amount set by how informative it is.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>How much should this new piece of evidence move my belief about an edge, a regime or an expected return?</dd>
+      <dt>Takes in</dt><dd>Probabilities and likelihoods (<a href="primer-probability.html">Probability</a>).</dd>
+      <dt>Hands on to</dt><dd>Closed-form updating and portfolio blending (<a href="bayesian-conjugate-priors.html">Conjugate Priors</a>, <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -615,6 +635,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Bayes factor isolates what the evidence itself is worth,</strong> separate from the prior — 1–3 is barely worth mentioning, 3–10 "substantial," 10–30 "strong," 100+ "decisive" (Jeffreys' scale).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Bayesian and frequentist statistics disagree on what "probability" even means,</strong> not just on formulas — degree of belief about a single case, versus long-run frequency over repeated trials.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A Bayesian confluence score is a hypothesis, not a result.</strong> It isn't built or validated in this repo — and it must beat the incumbent additive score OOS, not just sound more principled, before it would replace anything live.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: blending views with the market.</strong> Raw expected returns are too noisy for an optimiser; Black–Litterman (1990–92) treated the market as the prior and views as evidence — the template for every belief update on a desk.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -844,5 +865,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

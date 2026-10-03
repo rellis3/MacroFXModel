@@ -35,6 +35,7 @@
     <li>This file's own worked numbers: with \(V_H=101\), \(V_L=99\), a spread of 0.60 at \(\alpha=0.3\) doubles to 1.20 at \(\alpha=0.6\), exactly tracking the formula, with the midpoint pinned at 100.00 both times.</li>
     <li>Kyle's Lambda extends the same logic to order size: \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\); the worked example runs the same 500-unit order through \(\sigma_u=100\) (liquid, \(\lambda=0.01\), $5 impact) versus \(\sigma_u=20\) (thin, \(\lambda=0.05\), $25 impact) — a five-fold cost difference from liquidity alone.</li>
     <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — connecting directly to this project's own empirical test of whether reported edge survives progressively more realistic fills.</li>
+    <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash. When liquidity providers could no longer tell why prices were falling, they did what Glosten-Milgrom says a market maker must when \(\alpha\) jumps: they widened to the edge or left. \(\sigma_u\) collapsed, \(\lambda\) became enormous for a few minutes, and some stocks traded at a penny. The desk's verdict on the spread as a real cost is <strong>Validated</strong> (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.</li>
   </ul>
 </div>
 
@@ -527,6 +528,83 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the Flash Crash, 6 May 2010</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Twenty minutes in which the market makers left</h3>
+    <p>
+      US markets were already nervous and falling on 6 May 2010, with the European sovereign-debt crisis in the
+      headlines. At 2:32 pm Eastern, a large fundamental trader (a mutual fund complex, hedging an equity position)
+      started selling <strong>75,000 E-mini S&amp;P 500 futures contracts</strong>, about $4.1 billion of exposure,
+      through an algorithm that sold a fixed share of recent volume without regard to price or time.
+    </p>
+    <p>
+      High-frequency traders and other intermediaries bought the first of those contracts, then, holding inventory
+      they did not want, sold it back. They increasingly sold to each other. The joint SEC/CFTC staff report calls this
+      "hot potato" trading: in one 14-second window, high-frequency traders traded more than 27,000 contracts, about
+      49% of all volume, while adding only about 200 contracts to their net position. Volume was huge. Real buying
+      interest was not. Buy-side depth in the E-mini fell to about $58 million, <strong>less than 1% of its level that
+      morning</strong>, and the contract fell more than 5% in about four and a half minutes. At 2:45:28 the exchange's automatic stop logic
+      paused E-mini trading for five seconds. Sellers thinned out, buyers came in, and prices started to recover.
+    </p>
+    <p>
+      In individual stocks it was worse. Many liquidity providers paused or pulled out. In interviews afterwards they
+      cited doubts about whether their own data feeds were accurate and fear of trading into an event they did not
+      understand. With them gone, the only orders left in some books were <strong>stub quotes</strong>: placeholder bids
+      at a penny and offers at $100,000, posted to meet quoting obligations and never meant to be hit. Market
+      sell orders then hit them. Accenture traded at one cent. More than 20,000 trades in over 300 securities executed
+      more than 60% away from their 2:40 pm prices, and the exchanges later cancelled those trades. The Dow fell nearly
+      1,000 points intraday and then recovered most of it within about twenty minutes. Afterwards the SEC banned stub quotes and
+      introduced single-stock circuit breakers.
+    </p>
+    <p style="margin-bottom:0">
+      Run it through this lesson's two formulas. In Glosten-Milgrom terms, a market maker who suddenly cannot tell
+      <em>why</em> prices are falling has to assume \(\alpha\) is high, so the zero-profit spread \(\alpha(V_H-V_L)\)
+      blows out; with prices swinging that hard, \(V_H-V_L\) widened too. In Kyle's terms, \(\sigma_u\), the ordinary two-way
+      flow that absorbs an order, fell close to zero, so \(\lambda=\sigma_v/(2\sigma_u)\) became enormous. The worked
+      example's five-fold gap between a liquid and a thin session ($5 against $25 for the same 500 units) assumes the
+      thin session still has someone in it. For a few minutes, some books had nobody but the stub quotes.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Fundamental seller</b>Sells 75,000 E-mini contracts through an algorithm keyed to volume, not price</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Intermediaries</b>Absorb the first wave, then must unload it: "hot potato" selling inflates volume without adding buyers</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Futures book</b>Buy-side depth falls to under 1% of the morning's; the E-mini drops more than 5% in under five minutes</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>Market makers · this lesson</b>Can't tell informed from noise flow, so \(\alpha\) is high and \(\sigma_u\) is gone: they widen to the edge or pull quotes</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Market orders hit stub quotes: trades at $0.01 and $100,000; more than 20,000 later cancelled</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a shop whose shopkeepers suddenly can't tell whether their customers know something they don't. The safe thing for them to do is close the till. Then the only "price" left on the shelf is a silly placeholder tag, a penny or a hundred thousand dollars, and anyone who insists on trading right now pays it. That's what happened to some stocks for a few minutes in May 2010.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    Both models assume liquidity is always there. Glosten-Milgrom's market maker always quotes, competing down to
+    zero expected profit. Kyle's \(\sigma_u\) is a fixed, exogenous amount of noise trading. On 6 May 2010 neither held.
+    Market makers can simply leave, and the noise-trading depth that sets \(\lambda\) is <em>endogenous</em>: it disappears
+    exactly when a large one-sided order needs it most. The straight line \(\Delta p=\lambda Q\) also assumes a smooth book.
+    A book with nothing between the last real bid and a one-cent stub turns impact into a jump, not a slope.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>execution-gate: the spread is a real cost, and it decides whether a short-horizon idea survives.</strong>
+    The tempting claim is that the spread is a small fee you can ignore on a quick trade. On this desk's data, when the
+    spread is above <strong>0.15 of the day's range (spread/ATR)</strong>, <strong>zero of 30 strategy × timeframe cells
+    were profitable</strong>. Cost outruns edge as the timeframe speeds up, and the crossover is the same across
+    strategies. This tests the ordinary quoted spread on normal days. It says nothing about size-driven impact or a
+    Flash-Crash-style withdrawal, which this desk, trading single small orders, has never measured.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Nobody at a real trading desk solves the Glosten-Milgrom Bayesian update
@@ -660,7 +738,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The spread exists because of adverse selection, not as a fee.</strong> \(\text{Spread}=\alpha(V_H-V_L)\) — the exact gap a competitive market maker needs to quote so that profits from noise traders offset expected losses to informed traders, leaving zero expected profit.</span></div>
@@ -670,9 +748,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — this project's own house rules and existing fill-realism research were already correct, this lesson just supplies the citation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) is not a fixed constant of an instrument.</strong> It depends on time-varying fundamental uncertainty and time-varying noise-trading depth — the same pair has a low \(\lambda\) at London/NY overlap and a high \(\lambda\) at a thin session transition. A single "typical slippage" number applied at every hour throws that away.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Price impact is not purely linear or purely permanent in reality.</strong> Kyle's straight-line \(\Delta p=\lambda Q\) is a tractable first-order approximation; empirical impact grows sub-linearly at large size (closer to a square-root law), and real trades also carry temporary impact that partially reverts, on top of the model's permanent component.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Liquidity is not a constant; it leaves when you need it.</strong> Both models hold \(\sigma_u\) and the market maker's willingness to quote fixed. On 6 May 2010 market makers pulled out, E-mini buy depth fell below 1% of the morning's, and stocks traded at stub quotes of $0.01. On normal days the spread alone already kills short-horizon ideas above spread/ATR 0.15 (<code>execution-gate</code>, Validated: 0 of 30 cells profitable).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a market maker widen the bid-ask spread when they believe a larger fraction of incoming order flow is informed rather than noise?</summary>
@@ -865,5 +944,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

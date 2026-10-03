@@ -38,6 +38,7 @@
       <li>The worked example solves <code>A = [[3,1],[1,3]]</code>: the characteristic equation <code>&#955;&#178; - 6&#955; + 8 = 0</code> factors to eigenvalues <strong>&#955;&#8321; = 4</strong> (eigenvector <code>(1,1)</code>) and <strong>&#955;&#8322; = 2</strong> (eigenvector <code>(1,-1)</code>), which come out perpendicular because <code>A</code> is symmetric.</li>
       <li>Reframed as a two-FX-pair covariance matrix (correlation &#8776; 0.33), those eigenvalues split the book's total variance (trace = 6) into 66.7% shared-direction and 33.3% divergence-direction, giving 1.8 effective independent bets via <code>(&#931;&#955;)&#178;/&#931;&#955;&#178; = 36/20</code>.</li>
       <li>This vocabulary is the direct prerequisite for three other Theory Lab lessons: PCA (eigenvectors of a correlation matrix), the Kalman Filter (chained matrix multiplication), and Hidden Markov Models (the stationary distribution is the eigenvector with eigenvalue 1).</li>
+      <li><strong>How it reached trading:</strong> Markowitz (1952) made the covariance matrix the core of portfolio risk, and Litterman and Scheinkman (1991) used its eigenvectors to show that three factors drive the yield curve.</li>
     </ul>
   </div>
 
@@ -124,6 +125,25 @@
       eigenvalue. That's the whole punchline of this lesson, arrived at
       properly below.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>The risk of a book with hundreds of positions</h3>
+    <div class="tl-origin-who">Covariance matrices · Markowitz, 1952 — Barra factor models, 1970s — yield-curve PCA · Litterman &amp; Scheinkman, 1991</div>
+    <p>Portfolio risk depends on how every pair of positions moves together. With hundreds of positions that is tens of thousands of numbers, and without matrix methods there is no practical way to combine them, or to see that most of the movement comes from a few common drivers.</p>
+    <p>Markowitz's 1952 portfolio theory put the covariance matrix at the centre: portfolio variance is \(w^\top \Sigma w\). Barr Rosenberg's factor risk models of the 1970s (the Barra models) shrank the problem by explaining returns with a handful of factors. In 1991 Robert Litterman and José Scheinkman ran principal component analysis on Treasury returns and found that three eigenvectors, level, slope and curvature, explain almost all of the yield curve's moves. J.P. Morgan's RiskMetrics (1994) then published daily covariance matrices for the industry.</p>
+    <p>A desk's risk report is matrix algebra: exposures times a covariance matrix, factor models, PCA of curves and currencies, and the matrix updates inside a Kalman filter.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Holding many positions and their co-movements in one object, so portfolio risk, hedges and common factors come out of a few operations.</dd>
+        <dt>Takes in</dt><dd>Correlations and regression slopes (<a href="primer-correlation-regression.html">Correlation &amp; Regression</a>).</dd>
+        <dt>Hands on to</dt><dd>Factors, risk models and filters (<a href="pca-factors.html">PCA &amp; Factor Regimes</a>, <a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a>, <a href="kalman-filter.html">Kalman Filter</a>, <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -705,6 +725,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This vocabulary is the direct prerequisite for PCA, the Kalman Filter, and Hidden Markov Models.</strong> "Eigenvector of the correlation matrix," "propagate the covariance matrix," and "stationary distribution" are all instances of the same small set of ideas covered here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An eigen-decomposition is a snapshot, not a permanent structural fact.</strong> It describes one rolling estimation window and can shift — sometimes sharply — when two eigenvalues are close together, even if the eigenvalues themselves barely move.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Non-square matrices have no eigenvectors in this sense.</strong> \(Av = \lambda v\) requires \(Av\) and \(v\) to live in the same space; singular value decomposition (SVD) is the generalization for non-square matrices, out of scope here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Portfolio risk is matrix algebra.</strong> Markowitz (1952) wrote it as \(w^\top \Sigma w\); Litterman and Scheinkman (1991) found the yield curve's level, slope and curvature as eigenvectors. Risk models and PCA run on this vocabulary.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

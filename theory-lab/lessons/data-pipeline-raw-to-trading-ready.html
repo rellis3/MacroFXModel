@@ -36,6 +36,7 @@
       <li><strong>Bar construction</strong> is a separate, foundational choice inside "ingestion": how raw ticks get grouped into the bars a strategy actually sees. Time bars, tick bars, volume bars, and dollar bars are the four standard sampling clocks (Marcos López de Prado, <em>Advances in Financial Machine Learning</em>, Wiley 2018, Chapter 2).</li>
       <li><strong>Time bars — the default almost everyone starts with — have a known statistical weakness:</strong> sampling at a fixed wall-clock interval oversamples quiet periods and undersamples bursts of activity, producing returns that are further from IID/Gaussian than volume- or dollar-bar sampling.</li>
       <li>This category covers the <em>data layer underneath a feature</em> — ingesting, cleaning, and architecting the raw series itself, before any feature gets computed from it. <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> covers the layer built <em>on top</em> of clean data — this lesson and its category are what has to be true first.</li>
+      <li><strong>Real-world episode:</strong> in the 6 May 2010 Flash Crash, firms' own data-integrity checks paused their trading, Accenture printed at one cent, and after the close the venues cancelled over 20,000 trades more than 60% from the 2:40 p.m. price. The "raw" record changed after capture. Whether this desk's historical bars match what its live feed showed is untested.</li>
     </ul>
   </div>
 
@@ -367,6 +368,75 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: the afternoon the official tape changed after the close</h2>
+  <p>
+    The six-stage map treats the raw record as fixed the moment it is captured, and validation as a quiet back-office
+    step that flags problems for later. On one afternoon in 2010 validation was a live market actor, and the
+    authoritative record of what traded was rewritten hours after the fact.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>6 May 2010: the Flash Crash</h3>
+    <p>
+      The afternoon was already nervous, with European debt worries in the headlines. According to the joint SEC–CFTC
+      staff report published that September, a large fund began selling <strong>75,000 E-mini S&amp;P 500 futures
+      contracts</strong>, worth about $4.1 billion, through an algorithm that targeted a share of trading volume
+      without regard to price or time. Liquidity thinned, and within minutes the Dow Jones Industrial Average fell
+      close to 1,000 points, about 9%, before recovering most of the drop in roughly half an hour.
+    </p>
+    <p>
+      The report also described what happened inside trading firms' own pipelines. Many liquidity providers ran
+      automated integrity checks on the data they were receiving; when prices and feeds stopped looking consistent,
+      those checks paused their trading, and their quotes left the market. With real bids gone, market orders reached
+      placeholder "stub" quotes far from any sensible price. Accenture, a large and liquid stock, traded at one cent.
+    </p>
+    <p style="margin-bottom:0">
+      After the close the exchanges and FINRA cancelled trades executed more than 60% away from each stock's price at
+      2:40 p.m.: over 20,000 trades in more than 300 securities. So two versions of 6 May exist: the raw tape as it was
+      printed, and the corrected tape with those trades removed. Single-stock circuit breakers and a ban on stub quotes
+      followed later that year. Which version of the afternoon a dataset holds today depends on when it was built and
+      whether its pipeline applied the cancellations as a separate, dated step.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Sell program</b>A large E-mini sell algorithm meets a thinning market</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Liquidity providers</b>Their own data-integrity checks flag inconsistent feeds, so many pause and pull quotes</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Order books</b>Market orders reach stub quotes; Accenture trades at one cent</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · capture, then clean</b>The raw prints are captured; hours later the venues cancel trades more than 60% from the 2:40 p.m. price, a correction that did not exist at capture</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Two records of the same afternoon; datasets disagree depending on when and how they were built</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. "Ingestion should capture, not correct" is what makes the afternoon
+    recoverable: a pipeline that kept the raw prints and applied the venues' cancellations as a logged step can serve
+    either version, and say which one a backtest used.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The map assumes the stages are passive and in order: capture fixes the truth, and validation and cleaning
+    only ever look backwards at it. On 6 May both assumptions failed. Firms' validation stages were part of the
+    market, and their pauses helped remove the liquidity whose absence made the prints extreme. And the cleaning
+    stage needed information, the venues' cancellation decisions, that arrived after the close, so "clean as of the
+    close" and "clean as of the next morning" are different datasets. A one-minute time bar built from the raw tape
+    for that afternoon contains a range no one could have traded at the size a backtest assumes.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: that the historical bars this desk backtests on match what its live feed showed at
+    the time.</strong> The ledger has no entry on data-pipeline parity. A fair test would record the live feed's bars as
+    they form, fetch the same window from the historical source days later, and count the bars whose open, high, low or
+    close differ, with the size of each difference, before trusting any short-horizon backtest built on the
+    historical copy.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Institutional data-engineering teams treat the pipeline in this lesson as infrastructure, not a
@@ -392,7 +462,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Six stages, in order: ingestion → validation → cleaning → normalization → storage → point-in-time serving.</strong> Each closes a specific way the earlier stages leave the data still unfit to build a strategy on.</span></div>
@@ -401,9 +471,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Time bars oversample quiet periods and undersample bursts.</strong> This is a documented statistical weakness, not a stylistic preference — it pushes returns further from IID/Gaussian than volume- or dollar-bar sampling would.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This category is the layer beneath feature engineering.</strong> <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> assumes the data is already clean — this category is what makes that assumption true.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is a map, not a deep-dive.</strong> Cleaning, normalization, point-in-time serving, and storage each get their own full lesson next in this category.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The official record can change after you captured it.</strong> On 6 May 2010 the venues cancelled over 20,000 trades after the close. Capture the raw prints, apply corrections as a separate, dated step, and record which version a backtest used.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Name the six pipeline stages in order and state, in one sentence each, what each stage is responsible for.</summary>
@@ -502,5 +573,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

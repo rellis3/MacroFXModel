@@ -36,6 +36,7 @@
       <li>The <strong>Fundamental Law of Active Management</strong>, \(IR \approx IC \times \sqrt{BR}\), says a modest edge repeated across many <em>independent</em> bets compounds into a strong aggregate Information Ratio — the same logic that makes a diversified portfolio's Sharpe ratio beat any single position's. The trap: breadth (\(BR\)) means independent bets, and correlated bets are not independent bets, no matter how many trade tickets they generate.</li>
       <li><strong>Active Share</strong> (Cremers &amp; Petajisto) measures how different a portfolio's <em>holdings</em> are from its benchmark's; <strong>tracking error</strong> measures how different its <em>returns</em> have been. These are not the same axis, and a portfolio can score high on one and low on the other — the mismatch is often the most useful diagnostic in the whole lesson.</li>
       <li>The mandatory honest caveat: before costs, the average actively-managed dollar's return <em>must</em> equal the market's return, because active managers collectively hold the market portfolio — a pure accounting identity (Sharpe, 1991), not a claim about anyone's skill. After costs, the average active dollar underperforms. Everything else here is about finding the manager on the right side of that split, not proof that doing so is easy.</li>
+      <li><strong>Real-world episode:</strong> in the August 2007 "quant quake", quant equity funds with thousands of positions each found their books overlapped, so one fund's forced unwind made every "independent" bet lose at once and effective breadth collapsed toward one. On this desk's seven USD crosses, breadth is too thin to detect a realistic edge (underpowered).</li>
     </ul>
   </div>
 
@@ -467,6 +468,91 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: August 2007, when a thousand bets turned out to be one</h2>
+  <p>
+    The breadth trap above is usually told as a small-scale mistake: one manager counting five correlated currency
+    positions as five bets. In August 2007 it happened at the scale of an industry, to funds that held thousands of
+    positions each and had built their whole case on \(\sqrt{BR}\).
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The quant quake: maximum breadth on paper, one bet in practice</h3>
+    <p>
+      By 2007, quantitative long/short equity funds were the purest commercial application of the Fundamental Law.
+      Their pitch was exactly \(IR \approx IC \times \sqrt{BR}\): a small edge per stock (an \(IC\) in the range this
+      lesson calls genuinely good), applied across thousands of names, long the ones the model liked and short the ones
+      it didn't, with market beta hedged out. On paper the breadth was enormous, so a modest per-stock edge was supposed
+      to compound into a steady, high Information Ratio.
+    </p>
+    <p>
+      The problem was that many of these funds ranked stocks on similar ideas: value, momentum, earnings quality,
+      short-term reversal. So their books overlapped. In the week of 6 August 2007, with subprime losses spreading
+      through credit markets, many of them suffered sudden, severe losses over a few days, losses that had little to do
+      with the direction of the broad market. Goldman Sachs's Global Equity Opportunities fund was reported to have lost
+      more than 30% in about a week, and Goldman and outside investors put roughly $3 billion into it in mid-August.
+      Goldman's finance chief described the moves as 25-standard-deviation events, several days in a row.
+    </p>
+    <p>
+      The best-documented account, by Amir Khandani and Andrew Lo, offers a hypothesis rather than a proven fact: at
+      least one large fund unwound a quant equity book quickly, probably to raise cash or cut risk after losses
+      elsewhere. Its selling pushed down the stocks that similar funds were long and pushed up the ones they were
+      short. Those funds took losses, hit their own risk limits, and had to sell the same positions too. Prices
+      rebounded sharply on Friday 10 August, after many had already cut. (The same week, told as a mean-reversion
+      story, is in <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck &amp; Mean Reversion</a>.)
+    </p>
+    <p style="margin-bottom:0">
+      What it cost, in this lesson's terms: thousands of positions that were supposed to be independent draws of a
+      small edge turned out to share one hidden factor, "what crowded quant funds own." For a few days the \(IC\) on
+      that whole book was sharply negative <em>at the same time on every name</em>, which is precisely what independent
+      bets are never supposed to do. Effective breadth collapsed toward one.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock · credit turmoil</b>Subprime losses spread; a large fund (hypothesised) needs cash or less risk</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>That fund</b>Forced to unwind its most liquid book fast: a quant long/short equity portfolio</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · breadth</b>Other quant funds held overlapping longs and shorts, so thousands of "independent" bets were one crowded bet</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Their risk managers</b>Losses hit limits, so they were forced to cut the same positions, deepening the move</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Days of severe losses, a sharp rebound on 10 August, and many funds out before it</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. \(BR\) is a count of <em>independent</em> bets, and independence was
+    measured on calm data inside each fund. Nobody's risk model held the one factor that tied all the funds together:
+    each other.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Lots of kids each flipped a thousand slightly lucky coins and felt very safe, because a thousand coins can't all land wrong at once. But they had all borrowed their coins from the same box, and when one kid had to give his back in a hurry, everyone's coins started landing wrong together. A thousand coins from one box is really one coin.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The Fundamental Law assumes the bets are independent and that \(IC\) is a stable property of the forecaster. August
+    2007 broke both. Correlation between positions was estimated within each fund, on history in which the crowding
+    factor rarely moved, and it went close to one across funds once forced selling started. And \(IC\) is not stationary:
+    in a liquidation the same signal that earned a small positive edge for years turned sharply negative on every name at
+    once. A related long-run fact sits under this lesson's zero-sum floor: S&amp;P's SPIVA scorecards have shown for
+    years that most actively managed US equity funds trail their benchmark over long horizons after fees, which is
+    Sharpe's arithmetic showing up in the data.
+  </p>
+
+  <div class="tl-verdict underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Underpowered</span>
+    <span><strong>fx-factor-book-v2: on seven USD crosses, breadth is too thin to prove a realistic edge either way.</strong>
+    The desk ran six quant-desk overlays on its G10 trend and carry baskets: two runs of the frozen spec, 8 of 8
+    primaries within noise, largest improvement +0.26 Sharpe against a Bonferroni bar of +1.04. <strong>5.7 years out
+    of sample on 7 USD crosses gives a Sharpe SE of 0.41 and a minimum detectable improvement of about +1.4</strong>,
+    while the literature sizes these overlays at +0.1 to +0.3. This is the Fundamental Law read backwards: with this
+    little breadth, a genuinely good \(IC\) cannot be told apart from zero in any realistic history.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Institutional manager selection teams use \(IR\), \(IC\) and Active Share
@@ -552,7 +638,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>IR is Sharpe's benchmark-relative cousin.</strong> \(IR=\alpha/\omega\) measures skill at beating a specific benchmark using tracking error as the denominator, not skill at beating cash using total volatility.</span></div>
@@ -561,10 +647,11 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Breadth means independent bets, not trade count.</strong> Correlated positions inflate \(BR\) and make a target \(IR\) look far more achievable than the manager's true opportunity set supports — the single most common misapplication of this formula.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Active Share (holdings) and tracking error (returns) are different axes and can diverge.</strong> Low Active Share plus high tracking error is a classic closet-indexing signature that a returns-only review misses entirely.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The zero-sum floor is an accounting identity, not an opinion.</strong> Before costs the average active dollar equals the market; after costs it must underperform (Sharpe, 1991) — every tool in this lesson is about finding the exception, not proof that exceptions are common.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Crowding turns breadth into one bet (August 2007).</strong> Quant equity funds with thousands of positions each held overlapping books; when one large unwind started, the "independent" bets all lost together. On this desk's seven USD crosses, breadth is so thin that a realistic improvement can't be detected at all (fx-factor-book-v2, UNDERPOWERED: minimum detectable +1.4 Sharpe vs a realistic +0.1 to +0.3).</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> No manager, forecast series, or portfolio here has an \(IR\), \(IC\), breadth, or Active Share number actually computed against real data.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. How does the Information Ratio differ from the Sharpe ratio — both in what goes in the numerator and what goes in the denominator?</summary>
@@ -669,5 +756,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

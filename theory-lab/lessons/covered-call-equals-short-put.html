@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Covered Call Is a Short Put — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options from the Ground Up / The Covered Call Is a Short Put</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options from the Ground Up · Lesson 3 of 3</div>
+  <h1 class="tl-title">The Covered Call Is a Short Put</h1>
+  <p class="tl-dek">Owning a stock and selling a call against it is sold as the "conservative" income strategy; selling a naked put is sold as the risky one. At expiry they are the same position, to the cent — and once you see that, call open interest stops looking like a crowd of bulls.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~16 min read</span>
+    <span>Prereqs: The Four Option Positions, Same Greeks, Different Risk, Black-Scholes-Merton</span>
+  </div>
+
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="covered-call-equals-short-put-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Long stock + short call ≡ short put + cash</strong> (same strike, same expiry). Put-call parity, \(S - C = Ke^{-rT} - P\), says the two cost the same today; at expiry both pay exactly \(\min(S_T, K)\).</li>
+      <li>What you <strong>give up</strong>: everything above the strike. What you <strong>keep</strong>: the whole downside, cushioned only by the premium. "Conservative" means "slightly less bad than owning the stock outright", by the size of the premium.</li>
+      <li>The interactive chart overlays the two P&amp;L lines: drag strike and premium and they never separate.</li>
+      <li><strong>The open-interest angle:</strong> covered-call overwriting is one of the largest systematic option flows, and it lands in <em>call</em> open interest from a <em>seller</em> with capped upside. Open interest never records who opened a contract, so call-heavy OI is not evidence of bulls, and put-heavy OI is not evidence of bears (a sold put is bullish).</li>
+      <li>The textbook chain says the fund's sold calls leave dealers long gamma near the strike, and that their hedging damps moves. The desk tested the gamma part: the <strong>range</strong> half is real on the Nasdaq only; the <strong>direction</strong> half is falsified. Max-pain pinning came back <strong>null</strong>, and the desk keeps no entry on covered calls themselves.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The first two lessons in this sequence built the four basic positions
+    (<a href="options-four-positions.html">The Four Option Positions</a>) and then
+    showed that two positions can share every Greek sign and still carry
+    completely different risk
+    (<a href="payoff-shape-vs-greek-signs.html">Payoff Shape vs. Greek
+    Signs</a>). This lesson is the mirror image of that one: two strategies
+    that are usually taught separately, with different names, different
+    reputations and different marketing, which are in fact <strong>the same
+    payoff</strong>.
+  </p>
+  <p>
+    The covered call (own the stock, sell a call above the price) is pitched
+    to retirement savers as a conservative way to "get paid while you wait."
+    The short put (sell someone the right to put the stock to you at a lower
+    price) is often pitched as aggressive or even reckless. Put-call parity,
+    a no-arbitrage identity that predates Black-Scholes, says they cannot
+    differ by more than financing and dividends. Seeing that one fact clearly
+    does two jobs. It tells you what you actually own when you write a
+    covered call, and it explains why <strong>open interest cannot be read
+    as a vote</strong>: the most popular institutional options strategy
+    produces exactly the call-heavy open interest that a naive reader would
+    call bullish, from a seller who has deliberately given up the upside.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two doors into the same room</h3>
+    <p>
+      Picture the covered-call writer. They own a share at $100 and sell
+      someone the right to buy it from them at $105. If the stock finishes
+      above $105, the share gets called away and they end up with $105 in
+      cash. If it finishes below, they keep the share, worth whatever it's
+      worth. Either way they ended with <em>the smaller of the stock price and
+      $105</em>, plus the premium they pocketed.
+    </p>
+    <p style="margin-bottom:0">
+      Now picture the put writer. They hold enough cash to buy the stock at
+      $105 and sell someone the right to sell it to them at $105. If the stock
+      finishes above $105, nobody puts anything to them and they keep $105 in
+      cash. If it finishes below, they're forced to pay $105 for a share worth
+      less, so they end up holding the share. Again: <em>the smaller of the
+      stock price and $105</em>, plus a premium. Same ending in every possible
+      world. And when two things pay the same in every world, they must cost
+      the same today, or someone collects a free lunch.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Put-call parity</h3>
+  <p>
+    For a European call and put on the same non-dividend stock, with the same
+    strike \(K\) and expiry \(T\), no-arbitrage forces:
+  </p>
+  <div class="tl-math">
+    \[ C - P = S - Ke^{-rT} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>C − P</code><span>long call, short put: a synthetic long forward</span></div>
+    <div class="tl-eq-chip c2"><code>S − Ke⁻ʳᵀ</code><span>own the stock, borrow the present value of the strike</span></div>
+  </div>
+  <p>
+    Rearrange it so each side is a strategy someone actually runs:
+  </p>
+  <div class="tl-math">
+    \[ \underbrace{S - C}_{\text{covered call}} = \underbrace{Ke^{-rT} - P}_{\text{cash + short put}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">S − C</div>
+      <div class="tl-fp-name">Covered call</div>
+      <div class="tl-fp-desc">Buy the stock, sell a call: your net outlay today</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">Ke⁻ʳᵀ − P</div>
+      <div class="tl-fp-name">Cash-secured short put</div>
+      <div class="tl-fp-desc">Park the discounted strike in bills, sell a put: your net outlay today</div>
+    </div>
+    <div class="tl-fp purple">
+      <div class="tl-fp-term">=</div>
+      <div class="tl-fp-name">No free lunch</div>
+      <div class="tl-fp-desc">Same payoff in every state, so the same price, or arbitrageurs close the gap</div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Two shopping baskets. Basket one: a share, minus a "you can buy my share at $105" ticket that you sold. Basket two: a jar of cash that grows to $105, minus a "you can make me buy a share at $105" ticket that you sold. The baskets end up with exactly the same thing inside, whatever the stock does, so they have to cost the same at the till.</p>
+  </div>
+
+  <h3>2. The payoffs at expiry are identical</h3>
+  <p>Covered call at expiry: the share, minus what the call holder takes off you.</p>
+  <div class="tl-math">
+    \[ S_T - \max(S_T - K,\,0) = \min(S_T,\,K) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S_T</code><span>the share you own</span></div>
+    <div class="tl-eq-chip c4"><code>− max(S_T − K, 0)</code><span>the call you sold: you hand over everything above K</span></div>
+  </div>
+  <p>Cash-secured short put at expiry: the cash (grown to \(K\)), minus what the put holder takes off you.</p>
+  <div class="tl-math">
+    \[ K - \max(K - S_T,\,0) = \min(S_T,\,K) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>K</code><span>the cash, grown at the risk-free rate</span></div>
+    <div class="tl-eq-chip c3"><code>− max(K − S_T, 0)</code><span>the put you sold: you absorb everything below K</span></div>
+  </div>
+  <p>
+    Both equal \(\min(S_T, K)\). Both took in a premium today. Parity says the
+    net outlays (\(S - C\) and \(Ke^{-rT} - P\)) are equal, so their
+    profit-and-loss lines are the same line. Not "similar". The same.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(S\)</td><td>The stock price today.</td></tr>
+    <tr><td>\(S_T\)</td><td>The stock price at expiry.</td></tr>
+    <tr><td>\(K\)</td><td>The strike, shared by the call and the put.</td></tr>
+    <tr><td>\(C, P\)</td><td>Today's premium for the call and the put at that strike and expiry.</td></tr>
+    <tr><td>\(r\)</td><td>The continuously compounded risk-free rate.</td></tr>
+    <tr><td>\(T\)</td><td>Time to expiry, in years.</td></tr>
+    <tr><td>\(Ke^{-rT}\)</td><td>The strike discounted to today: the cash that grows into exactly \(K\) by expiry.</td></tr>
+    <tr><td>\(\max(x,0)\)</td><td>"x if positive, else zero": the payoff of a long option.</td></tr>
+    <tr><td>\(\min(S_T,K)\)</td><td>The smaller of the expiry price and the strike: what both strategies hold at expiry.</td></tr>
+  </table></div>
+
+  <div class="tl-solid blue">
+    <strong>Where "identical" stops:</strong> the equivalence is exact at
+    expiry for European options on the same strike with no dividends. In
+    practice dividends (the stock holder collects them; the put writer
+    doesn't), financing, taxes, and early assignment on American options
+    separate the two a little. They are second-order differences, not a
+    different risk profile.
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Covered call vs. cash-secured short put: profit at expiry</div>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit at expiry against the stock price at expiry. The covered-call line and the short-put line are drawn on top of each other and coincide exactly: rising one-for-one below the strike, then flat above it. A dashed grey line shows owning the stock alone for comparison, which keeps rising above the strike.">
+      <line x1="60" y1="140" x2="610" y2="140" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <line id="cc-strike" x1="370" y1="20" x2="370" y2="260" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <text id="cc-strike-lbl" x="370" y="276" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">K</text>
+      <text x="610" y="292" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Stock price at expiry →</text>
+      <text x="18" y="140" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 18 140)">Profit at expiry ($)</text>
+      <text x="54" y="144" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="54" y="37" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">+40</text>
+      <text x="54" y="250" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−40</text>
+      <text x="60" y="276" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">60</text>
+      <text x="335" y="276" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">100</text>
+      <text x="610" y="276" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">140</text>
+      <polyline id="cc-stock" points="" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <polyline id="cc-cc" points="" style="fill:none;stroke:var(--blue);stroke-width:6;stroke-opacity:.45"/>
+      <polyline id="cc-sp" points="" style="fill:none;stroke:var(--amber);stroke-width:2;stroke-dasharray:7,5"/>
+      <circle id="cc-be" cx="0" cy="140" r="4" style="fill:var(--red)"/>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Strike \(K\)</span><span class="tl-live" id="cc-k-val">K = 105</span></div>
+        <input type="range" id="cc-k-slider" min="85" max="120" step="1" value="105">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Time value in the premium</span><span class="tl-live" id="cc-tv-val">$2.00</span></div>
+        <input type="range" id="cc-tv-slider" min="0.5" max="10" step="0.5" value="2">
+        <div class="tl-hint">Spot today S = 100 and r = 0 here, so parity reads C − P = S − K exactly. Each premium is intrinsic value plus this shared time value: C = max(100 − K, 0) + tv and P = max(K − 100, 0) + tv (with r = 0, a call and a put on one strike carry identical time value — that is parity again).</div>
+      </div>
+    </div>
+    <div class="tl-readout">Call premium C = $<b id="cc-c">2.00</b> · Put premium P = $<b id="cc-p">7.00</b> · Outlay S − C = $<b id="cc-out1">98.00</b> · K − P = $<b id="cc-out2">98.00</b></div>
+    <div class="tl-readout">Max profit (S<sub>T</sub> ≥ K) = $<b id="cc-max">7.00</b> · Breakeven S<sub>T</sub> = $<b id="cc-be-val">98.00</b> · Loss if the stock goes to zero = $<b id="cc-zero">98.00</b></div>
+    <div class="tl-legend">
+      <span><i style="background:var(--blue)"></i>Covered call (long stock + short call)</span>
+      <span><i style="background:var(--amber)"></i>Cash + short put (dashed, drawn on top)</span>
+      <span><i style="background:var(--text3)"></i>Stock alone</span>
+    </div>
+    <div class="tl-chart-caption">
+      The amber dashed line sits exactly inside the blue band at every strike and every premium: the two strategies are one line. The grey dashed line is owning the stock outright. To the right of the strike, the gap between grey and blue is the upside you sold. To the left, blue sits above grey by exactly the premium, and that thin cushion is the only protection there is. The red dot is breakeven, \(S - C\).
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three months, a $105 strike, priced with Black-Scholes</h3>
+    <p>
+      \(S = 100\), \(K = 105\), \(r = 4\%\), \(\sigma = 20\%\), \(T = 0.25\)y.
+      The <a href="black-scholes.html">Black-Scholes</a> formula gives a call
+      worth about <strong>$2.39</strong> and a put worth about
+      <strong>$6.35</strong>.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>Covered call outlay</h4>
+          <p>Buy the share for $100, sell the call for $2.39: \(S - C = 100 - 2.39 = 97.61\).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Cash-secured short put outlay</h4>
+          <p>Put \(Ke^{-rT} = 105\,e^{-0.01} \approx 103.96\) in bills, sell the put for $6.35: \(103.96 - 6.35 \approx 97.61\). Same number, as parity promised.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Three possible endings</h4>
+          <p>Stock at <strong>$130</strong>: both hold $105, profit \(105 - 97.61 = +\$7.39\). The stock alone made +$30, so $22.61 of rally was sold.<br>
+          Stock at <strong>$100</strong>: both hold $100, profit \(+\$2.39\), the call premium.<br>
+          Stock at <strong>$80</strong>: both hold $80, loss \(80 - 97.61 = -\$17.61\). The stock alone lost $20; the cushion was $2.39.</p>
+        </div>
+      </div>
+    </div>
+    <p style="margin-bottom:0">
+      The best case is +7.4% in three months and is reached at any price above
+      $105. The worst case is the whole outlay, $97.61, if the stock goes to
+      zero. That asymmetry is the trade.
+    </p>
+  </div>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card amber">
+      <h4>What you give up</h4>
+      <p>Every dollar above the strike. Profit is capped at \(K - S + C\) no matter how far the stock runs. In a sharp rally the covered-call writer watches the stock leave without them, and if they roll the call up to stay in, they buy back the old call at a loss each time.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>What you keep</h4>
+      <p>The full downside, all the way to zero, less the premium. The premium is a cushion the size of the premium and nothing more. "Conservative" is only true relative to owning the stock outright, and only by that one premium.</p>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Selling a covered call is like renting out your bike's top speed. Someone pays you a little now, and in return, if the bike would have gone really fast, they get the fast part. If the bike crashes, though, it's still your bike and your crash. The rent you collected only pays for a plaster.</p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Same strategy, two sales pitches</h3>
+    <p style="margin-bottom:0">
+      An investor holds a broad equity fund and is offered two products: an
+      "equity income" fund that writes monthly calls on the index, marketed as
+      lower-risk; and a "put-writing" fund that sells monthly index puts
+      against Treasury bills, which sounds racier. If both write at the same
+      strike and tenor, put-call parity says they hold the same exposure, up to
+      dividends and fees. The useful question is not which one sounds safer
+      but which strike each sells and how the premium compares with the upside
+      it gives away. A fund that sells at-the-money calls every month
+      gives away every up-month above the strike and keeps every down-month.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The OI angle: open interest never records who opened the contract</h2>
+  <p>
+    An open-interest number is a count of contracts outstanding. Every
+    contract has a buyer and a seller, and the count is the same whichever of
+    them started the trade. So the instrument does not tell you the opinion:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>One put, two meanings</h4>
+      <p>A <strong>bought</strong> put is a bearish bet or a hedge. A <strong>sold</strong> put is a bullish trade: the seller wins if the stock stays up. Both add one contract to put open interest.</p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>One call, two meanings</h4>
+      <p>A <strong>bought</strong> call is a bullish bet. A call <strong>sold</strong> against stock is a covered call: the seller is neutral to mildly bullish with the upside capped. Both add one contract to call open interest.</p>
+    </div>
+  </div>
+  <p>
+    Covered-call overwriting is one of the largest and most mechanical option
+    flows there is. Income funds and institutional overwriting programmes sell
+    calls on a schedule, month after month, regardless of view. That flow piles
+    into <strong>call</strong> open interest from a <strong>seller</strong>
+    whose upside is capped by construction. It pushes the put/call
+    open-interest ratio down, which is exactly the signature a naive reading
+    calls "bullish, the market is positioned up." Put-heavy open interest has
+    the same problem in the other direction, because a sold put is the
+    covered call by another name, and it is bullish.
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> reading call-heavy open interest as bullish
+    conviction. The most popular institutional options strategy produces
+    exactly that signature from sellers who gave up the upside. Without the
+    side of each trade (who initiated, and whether it opened or closed a
+    position), open interest is a count, not a vote.
+  </div>
+
+  <h3>The chain the textbook tells</h3>
+  <p>
+    Here is the mechanism usually attached to heavy overwriting, with what each
+    actor is forced to do:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Fund</b>Writes calls on a schedule against stock it owns: income mandate, not a view</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealer</b>Buys those calls to make the market, and is now long calls: long gamma</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Hedge</b>Must stay delta-neutral: sells stock as price rises toward the strike, buys as it falls</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Hedging leans against moves near the strike; the story says moves are damped</div>
+  </div>
+  <p>
+    The first three links are mechanics: if a dealer is long the calls and
+    hedges, it trades against the move. Whether that hedging is big enough to
+    change how far the index travels is an empirical question, and this desk
+    has tested the gamma part of it.
+  </p>
+  <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+    <span class="tl-verdict-tag">Range only</span>
+    <span><strong>Tested here (gex-range):</strong> the <strong>range</strong> half is real <strong>on the Nasdaq only</strong>. 793 days of NQ: next-day realised range against a same-trailing-vol Brownian baseline is +0.176 higher on short-gamma days (p 0.0008), +0.315 matched on trailing vol; positive in 4 of 4 specifications and 6 of 6 usable years. The reliable state is "long gamma is quiet" (range ratio ~0.85 versus ~1.02 on short-gamma days). It does <strong>not</strong> generalise to FX.</span>
+  </div>
+  <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Falsified</span>
+    <span><strong>Direction:</strong> the gamma sign carries no directional content, and the adjacent "walls pull price toward them" direction was falsified at 48.8% out-of-sample against a 49.9% placebo. Long gamma near a big call strike can mean a quieter tape; it does not tell you which way.</span>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2023: the income funds that sold the rally</h3>
+    <p>
+      By 2022–23, covered-call ETFs had become some of the most popular income
+      products in the US, collectively holding tens of billions of dollars.
+      Some of them are simple to describe: a widely held Nasdaq-100 covered-call
+      ETF owns the index and sells at-the-money index calls every month.
+    </p>
+    <p>
+      In 2022 the Nasdaq-100 fell by roughly a third. Covered-call funds on it
+      fell too, by less, because the monthly premium cushioned each down-month.
+      Cushioned, not protected: the full downside, less premium.
+    </p>
+    <p>
+      In 2023 the Nasdaq-100 rose more than 50%. Covered-call funds on the
+      same index captured only part of that, and trailed it by a wide margin. An at-the-money call written each month hands over everything
+      above that month's starting level, so in a market that goes up most
+      months, the fund keeps the premium and gives away the trend. Both years
+      are the payoff diagram above, played out month by month.
+    </p>
+    <p style="margin-bottom:0">
+      The same year produced a much-aired argument on trading desks and in the
+      financial press: that the sheer volume of systematic call selling was
+      leaving dealers long gamma and helping keep index volatility subdued
+      during the rally. That is the chain above. It was argued, not
+      demonstrated, and it is a statement about <em>range</em>, not
+      direction.
+    </p>
+  </div>
+
+  <h3>What the desk's own record says</h3>
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Covered calls themselves:</strong> the desk's evidence ledger holds no entry on overwriting flow, and nothing in the live code models it. Whether call overwriting measurably damps the index is not tested here.</span>
+  </div>
+  <div class="tl-verdict context">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>Put/call tilt:</strong> the desk reports whether open interest is put-heavy or call-heavy as a positioning tilt only, and explicitly declines to infer a direction from it, because open interest does not record who opened the contract (a sold put is bullish, a sold call is not). That inference has never been scored.</span>
+  </div>
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>Pinning to max pain (oi-max-pain):</strong> "price pins to options max pain into expiry" was tested on 2026-09-10 and came back null; the publish-lag timing risk, DTE, gamma, sign convention and spot basis were all checked. The honest weakness: the entry records <strong>no sample size and no interval</strong>, which makes it the weakest null in the ledger. Read it as "not shown", not "proven false". Max pain is a level to know about, not a magnet.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📈</div>
+      <h4>Buy-write benchmarks</h4>
+      <p>Index providers publish buy-write indices (the best known writes one-month at-the-money calls on the S&amp;P 500) so overwriting funds can be judged against the strategy rather than against the plain index it will lag in strong rallies.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔁</div>
+      <h4>Choosing the side by cost</h4>
+      <p>Because the two are equivalent, desks pick whichever leg is cheaper to run: the put version needs no stock and no borrow, while the covered call keeps the dividends and voting rights.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎚️</div>
+      <h4>Strike selection</h4>
+      <p>A lower strike pays more premium and caps sooner; a higher strike keeps more upside for less income. That is the moneyness trade-off, the same for the put writer at the same strike.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔎</div>
+      <h4>Reading the chain honestly</h4>
+      <p>Before reading a big call strike as bullish conviction, ask who sells calls there on a schedule. A large overwriting programme can explain a call wall with no bulls involved.</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Prompt wording fixed; flow not modelled</h3>
+    <p style="margin-bottom:0">
+      The AI prompt in <code>js/ai.js</code> once labelled a low put/call ratio
+      "BULLISH (call-heavy — market positioned up)". It now reports the tilt
+      and states that open interest cannot establish direction. The ratio comes
+      from pure open interest (no trade side), so overwriting flow is
+      indistinguishable from call buying in this data. Gamma verdicts are in
+      <code>js/deskEvidence.js</code> (<code>gex-range</code>,
+      <code>oi-max-pain</code>).
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the covered call gets misread</h3>
+    <p>
+      <strong>"It's conservative."</strong> Relative to the stock alone, by the
+      size of one premium. The maximum loss is still nearly the whole stock
+      position.
+    </p>
+    <p>
+      <strong>"The premium is free income."</strong> It is the price of the
+      upside you sold. Over a strong year the upside given away can dwarf the
+      premiums collected.
+    </p>
+    <p>
+      <strong>"Short puts are dangerous, covered calls are safe."</strong> At
+      the same strike and expiry they are the same position. If one frightens
+      you, so should the other.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>"Call-heavy open interest means the market is bullish."</strong>
+      Open interest carries no side. Systematic call sellers create call-heavy
+      open interest with capped upside, and put sellers create put-heavy open
+      interest while being bullish.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long stock + short call ≡ cash + short put.</strong> Put-call parity, \(S - C = Ke^{-rT} - P\): same cost today, same \(\min(S_T,K)\) at expiry, one P&amp;L line.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>You sell the upside and keep the downside.</strong> Profit caps at \(K - S + C\); losses run to zero less the premium.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Open interest never records who opened the contract.</strong> A sold put is bullish; a sold call against stock is capped. Call-heavy open interest is not a crowd of bulls.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The equivalence is exact only at expiry, same strike, European, no dividends.</strong> Dividends, financing, taxes and early assignment separate them a little in practice.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">◆</span><span><strong>Gamma's range effect is real on the Nasdaq only.</strong> Long gamma is the quiet state (range ratio ~0.85); it does not carry to FX. Overwriting itself is untested here.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gamma direction is falsified.</strong> Wall-magnet direction scored 48.8% out-of-sample against a 49.9% placebo. Never read a call wall or a gamma sign as a direction.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Max-pain pinning: null.</strong> Tested 2026-09-10, no effect found, though the entry records no sample size, so it is a weak null. Max pain is a level to know, not a magnet.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Show that long stock plus a short call at strike \(K\) has the same payoff at expiry as cash of \(K\) plus a short put at \(K\).</summary>
+    <div class="tl-answer">
+      Covered call: \(S_T - \max(S_T-K,0)\). If \(S_T \ge K\) this is \(K\);
+      if \(S_T &lt; K\) it is \(S_T\). So it equals \(\min(S_T,K)\). Short put
+      with cash: \(K - \max(K-S_T,0)\). If \(S_T \ge K\) this is \(K\); if
+      \(S_T &lt; K\) it is \(S_T\). Also \(\min(S_T,K)\). Same payoff in every
+      state, so by no-arbitrage the same cost today: \(S - C = Ke^{-rT} - P\).
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Using the worked example (\(S=100\), \(K=105\), call $2.39), what is the covered call's maximum profit, its breakeven, and its loss if the stock halves?</summary>
+    <div class="tl-answer">
+      Outlay \(100 - 2.39 = 97.61\). Maximum profit \(105 - 97.61 = \$7.39\),
+      reached at any price at or above $105. Breakeven at \(S_T = \$97.61\).
+      If the stock halves to $50, the position is worth $50, a loss of
+      \(\$47.61\) against $50 for the stock alone: the premium saved $2.39.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. A large income fund sells calls on an index every month. What does that do to the index's put/call open-interest ratio, and why is reading the result as "bullish" wrong?</summary>
+    <div class="tl-answer">
+      It adds to call open interest, lowering the put/call ratio. Read
+      naively, a low ratio looks call-heavy and bullish. But the calls were
+      opened by a seller who owns the stock and has capped their upside;
+      their stance is neutral to mildly bullish with no participation above
+      the strike. Open interest counts contracts, not who initiated them, so
+      it cannot separate this from speculative call buying.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is a sold put bullish, and what does that imply for reading put-heavy open interest?</summary>
+    <div class="tl-answer">
+      The put seller keeps the premium if the stock stays above the strike
+      and loses if it falls: they want the stock to hold up. And by parity a
+      cash-secured short put is a covered call. Put-heavy open interest is
+      therefore consistent with bearish hedgers buying puts or bullish
+      sellers writing them; without the trade side, the data cannot tell
+      which.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Walk the chain from "a fund writes calls" to "moves are damped". Which part did the desk find real, and which part failed?</summary>
+    <div class="tl-answer">
+      The fund sells calls; a dealer buys them and is long gamma; to stay
+      delta-neutral the dealer sells into rallies and buys dips near the
+      strike, leaning against moves. Tested on gamma generally (not on
+      overwriting itself): the range half holds on the Nasdaq only, with long
+      gamma the quiet state (range ratio ~0.85), and does not carry to FX.
+      The directional half is falsified: wall-magnet direction scored 48.8%
+      out-of-sample against a 49.9% placebo. So "quieter" is supported on
+      one index; "pinned toward the strike" or any direction is not.
+    </div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li><a href="options-four-positions.html">The Four Option Positions</a> and <a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk</a> — lessons 1 and 2 of this sequence.</li>
+    <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — prices the call and put in the worked example; also covers intrinsic vs. extrinsic value.</li>
+    <li><a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a> and <a href="open-interest-walls-max-pain.html">Open Interest Walls, Max Pain &amp; Squeeze Trading</a> — the dealer-hedging and open-interest material this lesson's OI section builds on.</li>
+    <li>Hans R. Stoll, "The Relationship Between Put and Call Option Prices," <em>Journal of Finance</em>, 1969 — the classic statement of put-call parity.</li>
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — standard treatment of parity, covered calls and protective puts.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="payoff-shape-vs-greek-signs.html">← Same Greeks, Different Risk</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Covered call vs. cash-secured short put, profit at expiry. S0 = 100, r = 0,
+  // so parity is C - P = S0 - K and both premiums share one time value.
+  var S0 = 100, XMIN = 60, XMAX = 140, YMAX = 45;
+  var XL = 60, XR = 610, YT = 20, YB = 260, Y0 = 140;
+  function px(s){ return XL + (s - XMIN)/(XMAX - XMIN)*(XR - XL); }
+  function py(v){ var c = Math.max(-YMAX, Math.min(YMAX, v)); return Y0 - c/YMAX*(Y0 - YT); }
+
+  var kS = document.getElementById('cc-k-slider');
+  var tS = document.getElementById('cc-tv-slider');
+  if (!kS || !tS) return;
+  var el = function(id){ return document.getElementById(id); };
+
+  function line(fn){
+    var pts = [];
+    for (var s = XMIN; s <= XMAX; s += 0.5) pts.push(px(s).toFixed(1) + ',' + py(fn(s)).toFixed(1));
+    return pts.join(' ');
+  }
+
+  function update(){
+    var K = parseFloat(kS.value), tv = parseFloat(tS.value);
+    var C = Math.max(S0 - K, 0) + tv;
+    var P = Math.max(K - S0, 0) + tv;
+    var ccPnl = function(s){ return s - S0 + C - Math.max(s - K, 0); };   // long stock + short call
+    var spPnl = function(s){ return P - Math.max(K - s, 0); };            // cash K (r=0) + short put
+    var stock = function(s){ return s - S0; };
+    el('cc-cc').setAttribute('points', line(ccPnl));
+    el('cc-sp').setAttribute('points', line(spPnl));
+    el('cc-stock').setAttribute('points', line(stock));
+    var kx = px(K);
+    el('cc-strike').setAttribute('x1', kx); el('cc-strike').setAttribute('x2', kx);
+    el('cc-strike-lbl').setAttribute('x', kx);
+    var be = S0 - C;
+    el('cc-be').setAttribute('cx', px(be)); el('cc-be').setAttribute('cy', py(0));
+    el('cc-k-val').textContent = 'K = ' + K;
+    el('cc-tv-val').textContent = '$' + tv.toFixed(2);
+    el('cc-c').textContent = C.toFixed(2);
+    el('cc-p').textContent = P.toFixed(2);
+    el('cc-out1').textContent = (S0 - C).toFixed(2);
+    el('cc-out2').textContent = (K - P).toFixed(2);
+    el('cc-max').textContent = (K - S0 + C).toFixed(2);
+    el('cc-be-val').textContent = be.toFixed(2);
+    el('cc-zero').textContent = (S0 - C).toFixed(2);
+  }
+  kS.addEventListener('input', update);
+  tS.addEventListener('input', update);
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

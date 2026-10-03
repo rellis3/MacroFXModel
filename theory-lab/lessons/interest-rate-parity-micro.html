@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Interest Rate Parity — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the UIP/forward-premium-puzzle evidence, and a 6-question self-test?<a href="interest-rate-parity.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -202,7 +202,45 @@
     </section>
 
     <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">Autumn 2008: the week the identity broke</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>After Lehman failed on 15 September 2008, banks stopped lending unsecured dollars to each other. Non-US banks still had dollar assets to fund, so they all raised dollars through FX swaps at once. The banks that would normally arbitrage the gap were short of dollars and balance sheet too. The dollar rate implied by swaps rose well above the cash rate, and CIP deviations in EUR/USD and USD/JPY ran many times wider than any normal cost band. The gap narrowed only after the Fed made its dollar swap lines with the ECB, BoE, SNB and BoJ unlimited in mid-October. In the same weeks the yen carry trade crashed: AUD/JPY lost something like 40–50% from its mid-2008 high.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Lehman fails</b>Unsecured dollar lending stops</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Non-US banks</b>Must raise dollars via FX swaps</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Arbitrage desks</b>No balance sheet to take the other side</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson: CIP</b>Swap-implied rate pulls away from cash; the identity breaks</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>The Fed</b>Uncapped swap lines; the gap narrows, never fully closes</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The tempting claim: UIP fails, so holding the higher-yielder pays.</p>
+      <div class="sl-stamp underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
+        <span class="sl-stamp-tag">Underpowered</span>
+        <span><strong>fx-factor-book-v2:</strong> the carry basket made <strong>+0.61 out of sample, which is 1.5 SE</strong>, inside the 2021-26 rate-divergence era (in-sample <strong>−0.12</strong>). Sharpe SE <strong>0.41</strong>. Not an edge.</span>
+      </div>
+      <div class="sl-stamp context" data-evidence="yen-into-yields" data-evidence-date="2026-09-18">
+        <span class="sl-stamp-tag">Context</span>
+        <span><strong>yen-into-yields:</strong> the carry-unwind shape, <strong>35 episodes in 18 years</strong>, too few to score. AUD/JPY higher five sessions later 47%.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>CIP assumes someone can always borrow at a truly risk-free rate and has unlimited, free balance sheet to run the round trip. In 2008 neither held. UIP assumes a risk-neutral investor; the carry crash showed the "free" yield pickup is a premium for crashing in exactly the moments funding disappears.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -252,8 +290,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>CIP is a no-arbitrage identity, not a forecast — F = S×(1+r_d)/(1+r_f) is pinned down today by three observable prices, with nobody's expectations involved anywhere.</p></div>
@@ -262,6 +300,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Forward points are the market's day-to-day quote of this exact identity — the same F − S gap this deck's calculator computes, updated live as spot and rates move.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Real CIP deviations are small, persistent, and about funding cost, not free lunches — the cross-currency basis reflects post-2008 balance-sheet constraints, and it's watched as a funding-stress signal in its own right.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Covered arbitrage and the carry trade are not the same claim — one is riskless and identity-enforced; the other drops the hedge and bears real, sometimes brutal, currency risk (the full lesson's subject).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, autumn 2008: after Lehman, dollar funding vanished, nobody could arbitrage the gap, and CIP broke until the Fed's uncapped swap lines arrived. Carry crashed in the same weeks. The desk's carry test is UNDERPOWERED (+0.61 OOS, 1.5 SE): not an edge.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -348,5 +387,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

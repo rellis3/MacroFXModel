@@ -38,6 +38,7 @@
       <li>A component's loadings (the entries of its eigenvector, one per instrument) show which pairs actually make up that shared factor — a large loading means that instrument drives the component; a near-zero loading means it barely participates.</li>
       <li>This repo is partially built here already: this project already computes the eigenvalues of a correlation matrix (feeding an "effective number of bets" metric in this project's own diversification research), but it deliberately doesn't return the eigenvectors/loadings — the "which instruments drive PC1" piece this lesson covers is not yet built.</li>
       <li>PCA is a descriptive/risk-visibility tool, not a trading signal by itself — correlation structure (and PC1 dominance) shifts across regimes, famously spiking toward 1 in a crisis, so any rule built on top of it needs its own OOS validation.</li>
+      <li><strong>Real-world episode:</strong> March 2020's dash for cash. Firms and funds sold whatever was liquid to raise dollars, even Treasuries and gold, and almost every currency fell against the dollar at once. The basket collapsed onto one factor just when diversification was needed. This desk's PCA audit of its spread sleeves (<code>spread-sleeve-factor-audit</code>) found ~55% of raw risk was unpaid factor risk, with a correction that leaves the relative-value reading unconfirmed.</li>
     </ul>
   </div>
 
@@ -594,6 +595,92 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: March 2020, when correlations went to one</h2>
+  <p>
+    The caveat later in this lesson, that correlations "tend to spike toward 1 in a crisis", is easy to nod
+    along to. In March 2020 it showed up across almost every market in the space of two weeks.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2020: the dash for cash</h3>
+    <p>
+      As COVID-19 spread and lockdowns began, the S&amp;P 500 fell about 34% from its 19 February peak to its
+      23 March low, and the VIX closed at a record 82.69 on 16 March. What made the middle of March unusual was
+      <em>what</em> got sold. Firms, funds and foreign borrowers all needed dollars at once, to meet margin
+      calls, redemptions and dollar debts. They sold whatever they could sell quickly, including assets that
+      normally rally in a panic. For several days long-dated US Treasury yields <em>rose</em> during an equity
+      crash, and gold fell too.
+    </p>
+    <p>
+      In FX, the dollar rose sharply against almost every other currency at the same time. In the language of
+      this lesson, a basket of pairs that normally carries several distinct stories (a euro story, a
+      commodity-bloc story, a yen story) collapsed onto one factor: the dollar. That is what a dominant PC1
+      looks like. A large \(\lambda_1\) share, and an "effective number of bets" close to one, arrived exactly
+      when diversification was supposed to help.
+    </p>
+    <p style="margin-bottom:0">
+      The Federal Reserve cut rates to zero on 15 March and widened its dollar swap lines with other central
+      banks on 15 and 19 March, so they could lend dollars on to their own banks. On 23 March it announced
+      open-ended asset purchases and new credit facilities. The dollar squeeze eased after that, and with it
+      the one-factor market.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Pandemic shock</b>Lockdowns begin; S&amp;P 500 about −34% peak to trough</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Firms, funds, foreign borrowers</b>Need dollars now for margin calls, redemptions and dollar debts, so they sell whatever is liquid, even Treasuries and gold</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The dollar</b>Rises sharply against nearly every currency at once</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · λ₁ / Σλ</b>Pairs that looked like separate bets load on one factor. EVR₁ jumps and the effective number of bets falls, just when diversification is needed</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Risk-targeting investors</b>Models that size by recent volatility and correlation now show far more risk, so they are forced to cut exposure, adding to the selling</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Fed cuts to zero, widens dollar swap lines, then open-ended purchases on 23 March; the squeeze eases</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> PCA summarises one covariance matrix for the whole
+    window, as if the structure inside it were constant. A PCA fitted on the calm months before March 2020
+    described a market with several factors, and that market disappeared in days. Correlation is also an
+    <em>average</em> linear co-movement. Assets tend to fall together more tightly than they rise together, so a
+    calm-period eigenvalue spectrum overstates how many independent bets you hold in the tail, which is when it
+    matters most.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Most days the fireflies drift in a few different directions, so you need a few camera angles to see them all. In March 2020 something scared all of them at once and they flew the same way. One camera angle showed everything. If you'd thought you were watching several separate swarms, you found out you were really watching one.</p>
+  </div>
+
+  <p>
+    The tempting trading claim: <em>strip out the dominant factors with PCA, and what's left is a cleaner,
+    diversified bet.</em> This desk ran exactly that audit on its spread sleeves, and separately tested what
+    follows a day when everything falls together.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>spread-sleeve-factor-audit: are the yield-spread sleeves a disguised dollar bet?</strong> Currency-space
+    PCA, K=2 by noise band, a factor-neutral book, costs on every leg including hedges. Neutralising
+    <strong>raised</strong> out-of-sample Sharpe (2Y 1.02→1.33, 10Y 0.58→1.01, combined 0.98→1.36) while cutting OOS vol
+    about 60–65% (2Y 14.1%→5.1%). <strong>About 55% of the raw book's risk was factor risk that did not pay.</strong>
+    Read it with its own caveats: in-sample is weak for every version, the OOS strength sits in the 2022–24
+    rate-divergence cycle, and a <strong>correction dated 2026-09-22</strong> notes the PC-only hedge can leave net USD
+    in the book. Until a hedge that also zeroes net USD is run, the relative-value claim is unconfirmed.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>breadth-all-down: the nearest thing this desk has tested to a one-factor day.</strong> All six
+    indices close down on one session (<strong>n=1,002 since 2008</strong>): the next five sessions run wider, SPX500
+    <strong>+0.31 ATR [+0.17, +0.45]</strong>, NAS100 +0.26 [+0.15, +0.38]. Two in a row (n=243): +0.55 and +0.35. Direction
+    five sessions later is 58–61% up, the ordinary drift. A range fact, not a bounce call.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     In FX and rates specifically, running PCA across the G10 majors (or across
@@ -697,7 +784,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A basket of correlated pairs often really is one bet.</strong> If PC1 explains 72% of variance, most of what moves your book on any given day is a single shared factor wearing several costumes.</span></div>
@@ -706,9 +793,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has eigenvalues, not eigenvectors, yet.</strong> This project's own eigenvalue computation feeds "effective number of bets" but deliberately doesn't return loadings — the "which instruments drive PC1" piece is a documented, unbuilt extension.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Factor structure shifts across regimes.</strong> Correlations — and PC1 dominance — famously spike toward 1 in a crisis; a PCA fit on calm markets can describe a very different structure than one fit during stress.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>PCA is descriptive, not causal, and not a forecast.</strong> High loadings tell you co-movement, not why, and don't predict tomorrow's structure — any trading rule built on top still needs its own honest OOS validation.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Diversification measured in calm markets disappears when it's needed.</strong> In March 2020's dash for cash, currencies collapsed onto one dollar factor and even Treasuries and gold were sold. On this desk, PCA-neutralising the spread sleeves raised OOS Sharpe and showed ~55% of raw risk was unpaid factor risk, but a 2026-09-22 correction leaves the relative-value reading unconfirmed until net USD is also hedged.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. If PC1 explains 70% of the variance across your FX basket, what does that imply about the diversification benefit of holding all those pairs at once?</summary>
@@ -891,5 +979,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

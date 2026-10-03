@@ -36,6 +36,7 @@
       <li>Markowitz's optimizer is extremely sensitive to the expected-return inputs specifically (far more than to the covariance matrix) — small forecast nudges can flip "optimal" weights into extreme long/short corner solutions, the "error-maximization" flaw that kept it from being used naively for decades.</li>
       <li>Black-Litterman fixes this by starting from a market-equilibrium prior \(\Pi = \delta\Sigma w_{mkt}\) and Bayesian-blending it with a handful of confidence-weighted investor views, rather than asking for a precise forecast for every instrument.</li>
       <li>Nothing in this repo currently runs either optimizer — every strategy here is single-instrument; this is the theory a future multi-instrument portfolio-construction layer, built on this project's own existing covariance machinery, would sit on.</li>
+      <li><strong>Real-world episode:</strong> for two decades managers who fed real forecasts into a mean-variance optimiser got extreme, unstable weights, the error maximisation Michaud named in 1989. Black and Litterman built their fix at Goldman around 1990–92 for clients who had hit that wall, and later studies found equal weights hard to beat out of sample. Optimiser versus equal weights is untested on this desk.</li>
     </ul>
   </div>
 
@@ -672,6 +673,80 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the optimiser nobody would trade, and the fix built at Goldman</h2>
+  <p>
+    Step 4 calls error-maximisation "the single most cited practical criticism" of mean-variance optimisation. It
+    earned that status in real portfolios, over roughly two decades, and Black-Litterman was born as a direct response
+    to clients who had run into it.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>From Markowitz's frontier to a trading desk's waste-paper basket</h3>
+    <p>
+      Markowitz's 1952 framework was taught everywhere by the 1980s, and computers had made the optimisation cheap. Yet
+      the portfolio managers who tried it on real forecasts kept getting the same result: large long and short positions
+      in a few assets, weights that jumped when a forecast moved slightly, and allocations no investment committee would
+      sign. Richard Michaud's 1989 paper gave the pattern its name: an optimiser fed estimates <em>maximises the
+      errors</em>, piling into exactly the assets whose expected returns happen to be overestimated. Chopra and Ziemba
+      (1993) then measured the asymmetry this lesson's Step 4 describes: for a typical investor, errors in expected
+      returns mattered roughly ten times as much as errors in variances.
+    </p>
+    <p>
+      At Goldman Sachs around 1990, Fischer Black and Robert Litterman were working with clients who managed global bond
+      and currency portfolios and kept hitting this wall. Their fix, first published as a Goldman research paper in 1990
+      and then as "Global Portfolio Optimization" in the <em>Financial Analysts Journal</em> in 1992, was the one built
+      in Step 5: stop asking the manager for an expected return on every asset, start from the returns that make the
+      market's own holdings optimal, and move away from that only where the manager states a view and a confidence.
+      Their paper sets the problem out directly, contrasting the extreme portfolios that unconstrained optimisation on
+      naive return estimates produces with the far more balanced equilibrium-anchored version.
+    </p>
+    <p style="margin-bottom:0">
+      The verdict from outside Goldman was blunter still. DeMiguel, Garlappi and Uppal (2009) ran fourteen
+      optimisation-based models against the naive rule of equal weights across seven datasets, and none of them
+      consistently beat \(1/N\) out of sample. By their estimate, the estimation window needed for sample-based
+      mean-variance to beat \(1/N\) with 25 assets ran to thousands of months of data, far more history than any market
+      has.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock · real forecasts</b>Managers feed noisy expected returns into a frictionless optimiser</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · error maximisation</b>Treating every \(E[R_i]\) as exact, the optimiser concentrates in the assets whose errors look most favourable: extreme long/short corners</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Investment committees</b>Refuse to trade the raw output; forced to override with caps, constraints or judgement</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Black &amp; Litterman, Goldman</b>Re-anchor the inputs on market equilibrium \(\Pi\), with views blended by confidence</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Naive mean-variance largely abandoned in practice; 1/N proves hard to beat out of sample</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. The optimiser did exactly what Step 3 asks of it. The failure was in
+    treating estimates as facts, and Black-Litterman's contribution was to give the optimiser a sensible answer for every
+    asset the manager had no real view on.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The frontier is derived as if \(E[R]\) and \(\Sigma\) were known. In practice they are estimated, and the optimiser
+    has no term for estimation error, so it treats its own noise as signal. The more assets, the worse it gets: the
+    number of inputs grows with \(N^2\) while the history to estimate them does not. Black-Litterman repairs the input
+    side, but it inherits the same single-period, frictionless setting and still needs a stated confidence that nobody
+    measures directly.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: "a mean-variance or Black-Litterman allocation across this desk's sleeves beats
+    equal weights or equal risk out of sample."</strong> No optimiser has been run against those baselines on this
+    desk's data. A fair test would follow DeMiguel, Garlappi and Uppal: estimate on a rolling window with no look-ahead,
+    rebalance on a fixed calendar with costs, and compare out-of-sample Sharpe, turnover and drawdown against \(1/N\)
+    and an equal-risk book. With only a few sleeves and a few years of overlap, the comparison is likely to be too
+    noisy to separate the methods, which should be stated before it is run.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     In institutional asset management, essentially nobody runs unconstrained
@@ -784,7 +859,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Portfolio variance is a quadratic form, \(w^\top \Sigma w\), not a weighted average.</strong> The cross-covariance terms are exactly where diversification benefit — or its absence — actually lives.</span></div>
@@ -794,9 +869,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Nobody runs unconstrained naive Markowitz in practice.</strong> Real desks use Black-Litterman or similar shrinkage, hard position/turnover constraints, or skip expected returns entirely with risk-parity/min-variance-only portfolios.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built in this repo yet.</strong> Every strategy here is single-instrument; a portfolio-construction layer would be genuinely new infrastructure, not a quick extension of the existing diversification tooling.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Black-Litterman moderates the optimizer's instability — it does not validate the view.</strong> A confidently-stated but wrong view still pulls the posterior in the wrong direction; the model just prevents that pull from becoming an absurd position size.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Naive mean-variance failed in real portfolios, not just on paper.</strong> Michaud (1989) named error maximisation, Chopra &amp; Ziemba (1993) found errors in means about ten times as costly as errors in variances, Black-Litterman was built at Goldman for clients who had hit the wall, and DeMiguel et al. (2009) found none of fourteen optimisers consistently beat 1/N. Untested on this desk.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does portfolio variance, \(w^\top \Sigma w\), depend on more than just each instrument's own variance and its weight?</summary>
@@ -1012,5 +1088,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

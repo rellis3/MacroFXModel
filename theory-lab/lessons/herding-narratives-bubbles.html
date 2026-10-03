@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Herding, Narratives and Bubbles — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Human Side / Herding, Narratives and Bubbles</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Human Side · Lesson 4 of 6</div>
+  <h1 class="tl-title">Herding, Narratives and Bubbles</h1>
+  <p class="tl-dek">Following the crowd is often perfectly rational for each person. That's exactly why a whole market can end up confidently wrong: everyone copies everyone, and nobody's own information gets counted. Add a good story and some leverage, and you have the recipe for a bubble, and for the misery of being right too early.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~22 min read</span>
+    <span>Prereqs: <a href="primer-probability.html">Probability</a>, <a href="bayesian-inference.html">Bayesian Inference</a> (helpful, not required)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="herding-narratives-bubbles-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Information cascades</strong> (Bikhchandani, Hirshleifer &amp; Welch, 1992): once the first two or three people lean one way, it becomes rational for everyone after them to copy and ignore their own information. The crowd stops learning.</li>
+      <li><strong>The cost is computable.</strong> With private signals that are right 70% of the time, a copying crowd settles on the wrong answer about <strong>15%</strong> of the time. The same 20 people voting independently would be wrong about <strong>3%</strong> of the time.</li>
+      <li><strong>Narratives are how cascades spread</strong> (Shiller): stories spread from person to person like a contagion, and in a boom the story ("a new era") replaces the cash flows as the reason to buy.</li>
+      <li><strong>Minsky's stages</strong>, popularised by Kindleberger: displacement → boom → euphoria → profit-taking → panic. Leverage turns a story into forced buying on the way up and forced selling on the way down.</li>
+      <li><strong>Being early is the same as being wrong, for a while.</strong> The Nasdaq nearly quadrupled after the December 1996 "irrational exuberance" warning, peaked in March 2000, then fell about 78% by October 2002. Some of the best-known sceptics gave up before the top.</li>
+      <li><strong>Desk verdicts:</strong> the classic "crowding" warnings are not timing signals. Narrow leadership (breadth-narrowing) is null on direction and range. A crowded market (dispersion-crowded-week) is null for the following week. And a crowd starting to unwind precedes a <em>calmer</em> week, the reverse of "the break is starting" (dispersion-reset).</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="overconfidence-overtrading.html">previous lesson</a> was about one person being too sure of their
+    own information. Herding is the mirror image: people <em>discarding</em> their own information because the
+    crowd seems to know better. Both are expensive, and they combine. A trader can be overconfident about the
+    crowd's story without having checked any of it.
+  </p>
+  <p>
+    It matters for markets in particular because prices are the crowd's decisions, published live. The
+    <a href="emh.html">efficient-markets</a> argument assumes those prices pool everyone's independent information.
+    A cascade breaks that assumption. Prices can then be very confident and very wrong at the same time. That is
+    also why the <a href="investor-mood-forced-selling.html">forced-selling</a> and <a href="domino-chain-cross-asset.html">domino-chain</a>
+    lessons keep finding the same pattern: the herd builds positions slowly on the way up and unwinds them all at
+    once on the way down.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Two empty restaurants</h3>
+    <p>
+      You arrive in a new town and see two restaurants side by side. Your guidebook mildly prefers B. But A has
+      three tables of diners and B is empty. You reason, quite sensibly, that those diners probably knew something,
+      so you go into A. The next couple arrive. Their guidebook also mildly prefers B, but now A has four tables.
+      They go to A too.
+    </p>
+    <p style="margin-bottom:0">
+      Here is the catch. After you, every new diner's choice tells the street <em>nothing</em>, because everyone
+      would have chosen A whatever their own guidebook said. A busy restaurant can be full of people who each
+      privately thought the other one was better. The first two or three diners decided for everyone, and they may
+      simply have been unlucky. That is an information cascade, and the example is the one Bikhchandani, Hirshleifer
+      and Welch used themselves.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If the first two kids in the line pick the red slide, everyone else picks red too, because "they must know something". Even kids who heard the blue slide is more fun go red. So the whole line can end up on the worse slide just because of the first two kids.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    The cascade model is small enough to solve by hand. It uses one idea from Bayes' rule and one result about
+    random walks.
+  </p>
+
+  <h3>1. The set-up</h3>
+  <p>
+    The world is in one of two states: the asset is <strong>Good</strong> or <strong>Bad</strong>, equally likely
+    to start with. People decide one at a time whether to buy (bet Good) or pass (bet Bad). Each person gets a
+    private signal that points to the true state with probability \(p &gt; \tfrac12\), and to the wrong one with
+    probability \(q = 1-p\). Nobody can see anyone else's signal. Everyone can see what everyone before them
+    <em>did</em>.
+  </p>
+
+  <h3>2. What one signal is worth</h3>
+  <p>
+    By Bayes' rule, each independent signal multiplies the odds of Good by \(p/q\) if it says Good, or by \(q/p\) if
+    it says Bad. So only the <em>net</em> count matters. If the public can infer \(d\) more Good signals than Bad
+    from earlier actions, and your own signal is \(s = +1\) (Good) or \(-1\) (Bad), then:
+  </p>
+  <div class="tl-math">
+    \[ \frac{\Pr(\text{Good}\mid \text{info})}{\Pr(\text{Bad}\mid \text{info})} = \left(\frac{p}{q}\right)^{d+s} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p/q</code><span>how much one signal moves the odds; 0.7/0.3 ≈ 2.33</span></div>
+    <div class="tl-eq-chip c2"><code>d</code><span>net Good-minus-Bad signals the crowd's earlier actions revealed</span></div>
+    <div class="tl-eq-chip c3"><code>s</code><span>your own private signal, +1 or −1</span></div>
+  </div>
+
+  <h3>3. The moment a cascade starts</h3>
+  <p>
+    You buy if the odds are above 1, meaning \(d + s &gt; 0\). (If they are exactly even, assume you follow your own
+    signal.) While \(|d| \le 1\), your own signal decides, so your action reveals it and \(d\) moves by one.
+    But once \(d \ge 2\), even a Bad signal leaves \(d + s \ge 1\). You buy whatever you saw.
+  </p>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">|d| ≤ 1</div><div class="tl-fp-name">Learning</div><div class="tl-fp-desc">Everyone acts on their own signal, so every action adds information.</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">|d| = 2</div><div class="tl-fp-name">Cascade</div><div class="tl-fp-desc">Everyone copies. Actions reveal nothing new, so d stops moving.</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">for ever</div><div class="tl-fp-name">Locked in</div><div class="tl-fp-desc">Until a public shock, all later private information is thrown away.</div></div>
+  </div>
+  <p>
+    The cascade locks itself in. Once it starts, each new action is uninformative, so \(d\) never changes again.
+    Nothing irrational happened. Every single person used Bayes' rule correctly.
+  </p>
+
+  <h3>4. How often the crowd locks onto the wrong answer</h3>
+  <p>
+    Before a cascade, \(d\) is a random walk: +1 with probability \(p\) (if the truth is Good), −1 with probability
+    \(q\), starting at 0 and stopping at +2 or −2. The standard gambler's-ruin result gives the chance of hitting
+    −2 first, which is the chance the crowd cascades onto the <strong>wrong</strong> answer:
+  </p>
+  <div class="tl-math">
+    \[ \Pr(\text{wrong cascade}) = \frac{q^2}{p^2 + q^2}, \qquad \mathbb{E}[\text{people before it starts}] = \frac{2}{p^2+q^2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>q²/(p²+q²)</code><span>the first two revealed signals both wrong, out of the first two that agree</span></div>
+    <div class="tl-eq-chip c4"><code>2/(p²+q²)</code><span>the expected number of people whose choices settle the outcome for everyone</span></div>
+  </div>
+  <p>
+    You can see it directly. The first two signals agree with probability \(p^2 + q^2\), and when they do, the
+    cascade starts. When they disagree, \(d\) is back at 0 and the process restarts. So it comes down to which comes
+    first, two right signals in a row or two wrong ones: \(p^2\) against \(q^2\). At \(p = 0.7\) that is
+    \(0.09/0.58 \approx 15.5\%\), and the outcome is usually settled within the first three or four people
+    (\(2/0.58 \approx 3.4\)).
+  </p>
+  <p>
+    Compare that with 20 people who each act on their own signal and take a majority vote. That group is wrong only
+    about <strong>3.3%</strong> of the time at \(p = 0.7\). Copying, which is rational for each person, makes the
+    group about <strong>five times</strong> more likely to be wrong. The crowd ends up holding the information of
+    about two people instead of twenty.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(p\)</td><td>Accuracy of each private signal: the chance it points to the true state.</td></tr>
+    <tr><td>\(q\)</td><td>\(1-p\), the chance a private signal is wrong.</td></tr>
+    <tr><td>\(s\)</td><td>Your own private signal: +1 for Good, −1 for Bad.</td></tr>
+    <tr><td>\(d\)</td><td>Net count of Good-minus-Bad signals revealed by earlier people's actions.</td></tr>
+    <tr><td>\(\Pr(\cdot\mid\text{info})\)</td><td>Probability after seeing your signal and everyone's earlier actions.</td></tr>
+    <tr><td>\(\mathbb{E}[\cdot]\)</td><td>Expected value: the long-run average.</td></tr>
+  </table></div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Each kid has a little hint that's right most of the time. If they all just used their own hints and voted, they'd almost always pick the right slide. But because they copy the first two kids, they only end up using two hints, and two hints are wrong much more often than twenty.</p>
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Information cascade: 20 people, one at a time</div>
+    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Twenty people shown left to right in two rows of ten, each with their private signal as a small inner dot and their action as the outer colour; a dashed outline marks people who ignored their own signal because a cascade had started">
+      <text x="20" y="22" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Truth: the asset is Good. Outer ring = what each person did · inner dot = what their own signal said.</text>
+      <g id="hc-agents"></g>
+      <text id="hc-status" x="20" y="236" font-size="12" font-family="'DM Sans',sans-serif" fill="var(--text2)"></text>
+    </svg>
+    <div class="tl-legend">
+      <span><i style="background:var(--green)"></i>Bought (Good)</span>
+      <span><i style="background:var(--red)"></i>Passed (Bad)</span>
+      <span><i style="background:transparent;border:1.5px dashed var(--amber)"></i>Ignored own signal (in a cascade)</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Signal accuracy p</span><span class="tl-live" id="hc-p-val">0.70</span></div>
+        <input type="range" id="hc-p" min="0.51" max="0.95" step="0.01" value="0.70">
+        <div class="tl-hint">How often each person's private signal points the right way.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Run</span></div>
+        <div class="tl-btnrow">
+          <button type="button" class="tl-btn active" id="hc-new">New crowd</button>
+          <button type="button" class="tl-btn" id="hc-many">Run 5,000 crowds</button>
+        </div>
+      </div>
+    </div>
+    <div class="tl-readout" id="hc-readout"></div>
+    <div class="tl-chart-caption">
+      Each person uses Bayes' rule correctly: they act on their own signal unless the net count revealed by
+      earlier actions is already two or more, in which case they copy. Press "New crowd" a few times at
+      \(p = 0.6\) and you'll see whole rows go red while most of the inner dots are green. "Run 5,000 crowds"
+      compares the simulated wrong-herd rate with \(q^2/(p^2+q^2)\) and with a 20-person independent majority vote.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>p = 0.6: the first two people decide for everyone</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>Person 1</h4><p>Signal Bad (a 40% chance even though the truth is Good). With \(d = 0\), they follow it and pass. The public now infers \(d = -1\).</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Person 2</h4><p>Signal Bad again (another 40%). \(d + s = -2\): pass. Now \(d = -2\). This pair of events has probability \(0.4^2 = 0.16\).</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>Person 3</h4><p>Signal Good. Odds \(= 1.5^{-2+1} = 0.67\), below 1, so they pass anyway. Their Good signal is lost. On average, 60% of everyone after them holds a Good signal and passes.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>Overall</h4><p>\(\Pr(\text{wrong cascade}) = 0.16/(0.36+0.16) = 30.8\%\). An independent 20-person vote at \(p = 0.6\) is wrong about 18.6% of the time.</p></div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>From cascades to bubbles: stories, stages and leverage</h2>
+
+  <h3>Narratives: the medium the cascade travels through</h3>
+  <p>
+    The cascade model has people watching actions. Real markets also have <em>stories</em>. Robert Shiller's
+    <em>Irrational Exuberance</em> (first published in March 2000, the month the Nasdaq peaked) and his later
+    <em>Narrative Economics</em> (2019) argue that popular stories spread like epidemics. They pass from person to
+    person, peak, and fade, and they move spending and investing as they go. A good market story is simple, has a
+    hero or a villain, and gives you a reason the old rules don't apply ("the internet changes everything", "the
+    hedge funds are trapped"). A rising price is also the most convincing evidence a story can have, and that
+    creates a feedback loop: price up → story more believable → more buyers → price up.
+  </p>
+
+  <h3>Minsky's stages</h3>
+  <p>
+    Hyman Minsky's financial-instability hypothesis says that stability itself breeds instability. Calm years make
+    borrowing look safe, and the borrowing then makes the system fragile. Charles Kindleberger's <em>Manias, Panics,
+    and Crashes</em> (1978) turned Minsky's ideas into a sequence that fits a long list of historical manias:
+  </p>
+  <div class="tl-chart">
+    <div class="tl-chart-label">Minsky–Kindleberger stages (an illustrative shape, not data)</div>
+    <svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A schematic bubble shape rising slowly through displacement and boom, steeply through euphoria, rolling over in profit-taking and collapsing in panic below the starting level's trend">
+      <line x1="40" y1="215" x2="610" y2="215" style="stroke:var(--text3);stroke-width:1"/>
+      <path d="M40,200 C110,196 150,186 200,170 C250,154 290,120 330,80 C350,58 365,40 385,38 C405,37 420,55 440,80 C470,120 500,175 540,190 C565,198 590,196 610,192" style="fill:none;stroke:var(--purple);stroke-width:2.5"/>
+      <line x1="40" y1="200" x2="610" y2="178" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4"/>
+      <text x="612" y="174" text-anchor="end" font-size="9.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">trend of fundamentals</text>
+      <text x="70" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--blue)">Displacement</text>
+      <text x="200" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--green)">Boom</text>
+      <text x="330" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--amber)">Euphoria</text>
+      <text x="430" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--amber)">Profit-taking</text>
+      <text x="540" y="235" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--red)">Panic</text>
+      <text x="262" y="96" text-anchor="end" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text2)">"this time is different"</text>
+      <text x="395" y="28" text-anchor="middle" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text2)">sceptics give up</text>
+      <text x="505" y="150" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text2)">forced selling</text>
+    </svg>
+    <div class="tl-chart-caption">
+      <strong>Displacement:</strong> a real innovation or policy change creates genuine profit opportunities.
+      <strong>Boom:</strong> credit expands, prices rise, the story spreads. <strong>Euphoria:</strong> buying because
+      prices are rising; valuation is dismissed. <strong>Profit-taking:</strong> insiders and early buyers sell; the
+      market stalls. <strong>Panic:</strong> the same leverage that forced buying now forces selling. The shape is
+      schematic. Real episodes vary a great deal in timing and size.
+    </div>
+  </div>
+
+  <h3>Why being early is the same as being wrong, for a while</h3>
+  <p>
+    If bubbles are visible, why doesn't smart money short them flat? Shleifer and Vishny's "The Limits of Arbitrage"
+    (1997) gives the answer. Professional money is managed for clients who judge it on recent results. A manager who
+    bets against a mispricing that then gets <em>worse</em> shows losses, and clients pull their money at exactly the
+    moment the bet is most attractive. De Long, Shleifer, Summers and Waldmann (1990) call this <em>noise-trader
+    risk</em>: the crowd can push prices further from value before they come back, and you have to survive that.
+    A short seller also faces margin calls and potentially unlimited losses. The line usually attributed to Keynes,
+    that markets can stay irrational longer than you can stay solvent, is probably not something he actually
+    said. The idea itself is exactly what Shleifer and Vishny formalised.
+  </p>
+  <p>
+    So rational professionals often <em>ride</em> a bubble instead of fighting it. Brunnermeier and Nagel (2004)
+    found that hedge funds as a group were heavily invested in technology stocks during the late-1990s run-up, and
+    on the whole cut back before the collapse rather than shorting it on the way up.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A great story makes everyone want the toy, so the price goes up, which makes the story sound even truer. The grown-up who says "that toy isn't worth it" is right in the end. But if everyone keeps buying for another year, that grown-up has to keep paying while they wait, and some of them run out of pocket money first.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1996–2002: the dot-com bubble, and the sceptics who were right too early</h3>
+    <p>
+      On 5 December 1996 Federal Reserve Chairman Alan Greenspan asked in a speech how we would know when
+      "irrational exuberance" had unduly escalated asset values. Markets wobbled for a day. The Nasdaq Composite then
+      <strong>nearly quadrupled</strong> over the next three-plus years. The story was a real displacement (the
+      internet really did change everything) stretched into a valuation rule. Profits were said not to matter yet;
+      "eyeballs" and growth did. Companies with little revenue listed and doubled on their first day.
+    </p>
+    <p>
+      The sceptics paid for being early. Julian Robertson's Tiger Management, one of the most successful hedge funds
+      of the 1990s, was a value investor that would not buy the technology story. After heavy losses and client
+      withdrawals, Robertson announced at the end of March 2000 that he was closing the funds. That was within weeks
+      of the top. Fighting the bubble had been a bad trade for years. The analysis was right; the timing was what
+      cost him.
+    </p>
+    <p style="margin-bottom:0">
+      The Nasdaq Composite closed at its peak, <strong>5,048.62</strong>, on <strong>10 March 2000</strong>. By
+      <strong>9 October 2002</strong> it closed at <strong>1,114.11</strong>, a fall of about <strong>78%</strong>.
+      Many of the story stocks went to zero; Pets.com listed in February 2000 and was liquidating by November. The
+      index didn't close above its 2000 peak again until <strong>2015</strong>. The displacement was real, and the
+      internet did go on to change everything. The prices had simply run years ahead of it.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>January 2021: GameStop and a narrative with a villain</h3>
+    <p>
+      GameStop was a struggling video-game retailer, and a large share of its stock had been sold short by hedge
+      funds. On the Reddit forum r/wallstreetbets a story spread fast. It had a clear villain (the short sellers), a
+      mechanism anyone could follow (if enough people buy, the shorts are forced to buy back and the price spikes),
+      and a sense of belonging. The stock had ended 2020 under $20 (before its 2022 stock split). In late January 2021
+      it went nearly vertical, touching an intraday high of about <strong>$483</strong> on <strong>28 January</strong>.
+    </p>
+    <p style="margin-bottom:0">
+      Melvin Capital, one of the best-known short sellers, took a <strong>$2.75 billion</strong> injection from
+      Citadel and Point72 on 25 January after heavy losses, and closed in 2022. On 28 January Robinhood and other
+      brokers restricted buying in the stock as their own clearing-collateral demands jumped. Within weeks the
+      price had fallen back most of the way, leaving the late buyers, recruited by the story at the top, with the
+      losses. Both sides learned the lesson of this page. The shorts were early-and-wrong long enough to be forced
+      out, and the herd was right about the squeeze and wrong about the price.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Displacement</b>A real new thing: the internet, or a heavily shorted stock</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · Herding</b>Each buyer reads earlier buyers as information; private doubts go silent; a story spreads</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Sceptics</b>Shorts are margin-called; value managers lose clients; forced to buy back or close</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Leveraged buyers</b>Bought late on margin; when price stalls, forced to sell into it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Nasdaq −78% (2000–02); GameStop gave back most of its spike within weeks</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: herding is what lets a price run far from what the private information supports, in both directions.</p>
+
+  <h3>What the desk found</h3>
+  <p>
+    The folk claim this lesson is about: "you can see the herd crowding in, and that tells you a break is
+    coming." The desk can't test whether a bubble exists. That needs a fair value nobody agrees on. But it has
+    tested the three most common crowding warnings as timing signals.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="breadth-narrowing" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>breadth-narrowing: narrow leadership, with a few giants carrying the index, is not a signal to act on.</strong>
+    23 years, <strong>35</strong> de-clustered narrowing events against 267 controls. Direction at 20 days
+    <strong>−0.5% [−2.70, +1.57]</strong>; range +0.37 [−0.10, +0.85]; no reversion of the spread and no continuation
+    of the rotation. The range near-miss dies on its mirror: extreme <em>broadening</em> raises forward range just as
+    much (+0.28). Narrowing is real and worth showing as a description of concentration. It is not a timing signal.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="dispersion-crowded-week" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>dispersion-crowded-week: a crowded market is not followed by a wild week.</strong> 68 setups
+    2014–2026 with dispersion high and rising. Next-5-session range against controls: SPX500
+    <strong>+0.07 [−0.06, +0.23]</strong>, NQ <strong>+0.07 [−0.03, +0.17]</strong>; the chance of a big day was
+    33% against 30% for controls. A secondary 20-session window ran wider (+0.23 [+0.04, +0.51], +0.21 [+0.08, +0.38]),
+    but it sits in the late half of the sample and rests on a small count.</span>
+  </div>
+
+  <div class="tl-verdict validated" data-evidence="dispersion-reset" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>dispersion-reset: when the crowd starts to unwind, the next week is <em>calmer</em>, the reverse
+    of "the break is starting".</strong> Pre-registered with the opposite expectation. The 31 crowded-and-falling setups
+    (n = 26 in the tested arm, against a floor of 25) preceded a calmer week: SPX500 <strong>−0.122 [−0.190, −0.005]</strong>, NQ
+    <strong>−0.083 [−0.151, −0.008]</strong>. Crowded-and-<em>still-rising</em> is the wide tape. Direction was null
+    in both arms. The sample is thin, so this informs an expected range and is not a trigger.</span>
+  </div>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Can a bubble's top be timed?</strong> Nothing here tests it, and the honest base rate from history
+    is discouraging. Tiger closed within weeks of the 2000 top after years of being right on valuation, and the
+    desk's own crowding measures don't time the turn. What the evidence supports is positioning (know how
+    concentrated your exposure is), not timing.</span>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>People say "when everyone crowds onto one side of the boat, it's about to tip". The desk checked. Crowding didn't tell you <em>when</em> it would tip. And when people started moving back, the boat usually got steadier, not wobblier.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧭</div>
+      <h4>Ask what you know that the last buyer didn't</h4>
+      <p>If the honest answer is "nothing, but it keeps going up", you're in a cascade. Your trade adds no information, and you're relying on the people ahead of you having been right.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>Size to survive being early</h4>
+      <p>If you fade a crowd, assume the move against you can double before it turns. Size so that you are not forced out. Most famous "right but early" losses were sizing failures. The view was fine.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📖</div>
+      <h4>Separate the displacement from the price</h4>
+      <p>The internet was real; Nasdaq 5,000 in 2000 was not. Write down the story and what it would have to deliver, in earnings or cash flows, to justify today's price. Then judge the two separately.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧺</div>
+      <h4>Measure concentration, not mood</h4>
+      <p>When an index is carried by a handful of names, "long the index" means long those names. Treat that as a fact about your exposure. The desk's null says it isn't a timing signal.</p>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Self-audit · the narrative check</div>
+    <h3>Before you join (or fight) a crowded trade</h3>
+    <ul>
+      <li><strong>The thesis without the price.</strong> Can I state why this should go up (or down) in one sentence that doesn't mention it already going up?</li>
+      <li><strong>My own signal.</strong> What did I see myself, before I knew what everyone else was doing? Write that down separately from what I've heard.</li>
+      <li><strong>The marginal buyer.</strong> Who buys from here, and with what money? If the answer is "people who haven't heard the story yet", the cascade is near its end.</li>
+      <li><strong>The forced seller.</strong> Who holds this on leverage or margin, and what price forces them out?</li>
+      <li><strong>Survival.</strong> If I'm right but early by six months and the move against me doubles first, am I still in the trade?</li>
+    </ul>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Breadth and dispersion shown as descriptions, never as alarms</h3>
+    <p style="margin-bottom:0">
+      The desk tracks index breadth (equal-weight against cap-weight), dispersion across single stocks, and
+      rotation between sectors. Each was tested as a crowding warning, and each is displayed as a description of
+      the market's structure rather than an alert, because the tests said so. The only crowding result that passed
+      runs in the opposite direction to the folk story, and it is used for an expected-range read, not a trade.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where people get this wrong</h3>
+    <ul>
+      <li><strong>Calling everything a bubble.</strong> Some rapid rises are justified by a real displacement. "It went up a lot" is not evidence of a bubble.</li>
+      <li><strong>Confusing "the herd is wrong" with "the herd is about to be shown wrong".</strong> The first can be true for years. That's the whole lesson of Tiger in 2000.</li>
+      <li><strong>Treating contrarianism as a strategy.</strong> Doing the opposite of the crowd is just copying in reverse. You still haven't used your own information.</li>
+      <li><strong>Using a crowding gauge as a trigger.</strong> Tested here: narrowing, crowding and unwinding do not time the turn, and unwinding points to calmer, not wilder.</li>
+      <li><strong>Forgetting that cascades are fragile.</strong> Because a cascade rests on very little information, a small public piece of news can flip it. That fragility is why bubbles end suddenly, and why you can't tell in advance which piece of news will do it.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Herding can be rational for each person and still wrong for the group.</strong> Once revealed signals net to two, everyone copies, and later private information is thrown away.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The cost is computable:</strong> \(\Pr(\text{wrong cascade}) = q^2/(p^2+q^2)\). At \(p = 0.7\) that is 15.5%, against 3.3% for 20 independent votes.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Narratives carry the cascade; leverage powers the stages.</strong> Displacement → boom → euphoria → profit-taking → panic. The leverage that forces buying on the way up forces selling on the way down.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Being early is the same as being wrong, for a while.</strong> The Nasdaq nearly quadrupled after the 1996 warning, then fell about 78% from March 2000 to October 2002. Tiger closed within weeks of the top.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Crowding warnings don't time the turn (breadth-narrowing, dispersion-crowded-week: null).</strong> Narrow leadership: direction −0.5% [−2.70, +1.57] at 20 days, and broadening does the same to range. Crowded market: next week +0.07, interval across zero.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"The crowd is unwinding, the break has started" is falsified in sign (dispersion-reset).</strong> Crowded-and-normalising preceded a <em>calmer</em> week (SPX500 −0.122). Direction was null throughout.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. In the cascade model, why does person 3 ignore a Good signal when the first two people both passed?</summary>
+    <div class="tl-answer">The first two actions revealed two Bad signals, so \(d = -2\). Adding person 3's Good signal gives \(d + s = -1\), and the odds \((p/q)^{-1}\) are below 1. Bayes' rule says pass. Their action is now the same whatever they saw, so it reveals nothing, and \(d\) stays at −2 for everyone after them.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Compute the chance of a wrong cascade at p = 0.8, and compare it with an independent 20-person vote.</summary>
+    <div class="tl-answer">\(q^2/(p^2+q^2) = 0.04/(0.64+0.04) \approx 5.9\%\). A 20-person independent majority vote at \(p = 0.8\) is wrong only about 0.2% of the time. Copying throws away almost all of the crowd's information, even when signals are good.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why can't professional arbitrageurs simply short a bubble flat?</summary>
+    <div class="tl-answer">Limits of arbitrage (Shleifer &amp; Vishny, 1997): they manage other people's money, and clients judge them on recent results. A mispricing that widens shows up as losses, clients withdraw, margin calls arrive, and the arbitrageur may be forced out before prices return to value. Noise-trader risk (De Long et al., 1990) means that widening is a real risk, not a theoretical one. Tiger's closure in March 2000 is the textbook case.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A colleague says "the index is being carried by five stocks, so a correction is coming". What does the desk's evidence say?</summary>
+    <div class="tl-answer">Tested null (breadth-narrowing): across 35 events in 23 years, direction at 20 days was −0.5% with an interval of [−2.70, +1.57], and range was not reliably wider. Extreme broadening raised range just as much. The useful reading is about exposure (long the index means long those five stocks), not timing.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. Why do bubbles tend to end suddenly rather than deflate gently?</summary>
+    <div class="tl-answer">Partly fragility: a cascade rests on the information of only the first few people, so a small piece of public news can flip it. Partly leverage: in Minsky's stages, the borrowing that fuelled the boom forces selling once prices stall, and forced sellers don't wait for value. The two together make the down-leg much faster than the up-leg.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Is "doing the opposite of the crowd" a cure for herding?</summary>
+    <div class="tl-answer">No. It still bases your decision on other people's actions rather than your own information, just with the sign flipped. The cure is to write down your own signal first, independently, and size so that being early can't force you out.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Sushil Bikhchandani, David Hirshleifer &amp; Ivo Welch, "A Theory of Fads, Fashion, Custom, and Cultural Change as Informational Cascades", <em>Journal of Political Economy</em> 100(5), 1992. The model in Section 02.</li>
+    <li>Abhijit V. Banerjee, "A Simple Model of Herd Behavior", <em>Quarterly Journal of Economics</em> 107(3), 1992. The same idea, developed at the same time.</li>
+    <li>Lisa R. Anderson &amp; Charles A. Holt, "Information Cascades in the Laboratory", <em>American Economic Review</em> 87(5), 1997. Cascades appear with real people drawing from urns.</li>
+    <li>Robert J. Shiller, <em>Irrational Exuberance</em>, Princeton University Press, 2000 (later editions 2005, 2015).</li>
+    <li>Robert J. Shiller, <em>Narrative Economics: How Stories Go Viral and Drive Major Economic Events</em>, Princeton University Press, 2019.</li>
+    <li>Hyman P. Minsky, <em>Stabilizing an Unstable Economy</em>, Yale University Press, 1986.</li>
+    <li>Charles P. Kindleberger, <em>Manias, Panics, and Crashes: A History of Financial Crises</em>, 1978 (later editions with Robert Z. Aliber).</li>
+    <li>Andrei Shleifer &amp; Robert W. Vishny, "The Limits of Arbitrage", <em>Journal of Finance</em> 52(1), 1997.</li>
+    <li>J. Bradford De Long, Andrei Shleifer, Lawrence H. Summers &amp; Robert J. Waldmann, "Noise Trader Risk in Financial Markets", <em>Journal of Political Economy</em> 98(4), 1990.</li>
+    <li>Markus K. Brunnermeier &amp; Stefan Nagel, "Hedge Funds and the Technology Bubble", <em>Journal of Finance</em> 59(5), 2004.</li>
+    <li>In this curriculum: <a href="investor-mood-forced-selling.html">Investor Mood &amp; Forced Selling</a>, <a href="nlp-trading-signals-sentiment.html">NLP &amp; Sentiment Signals</a> (measuring narratives), <a href="emh.html">Efficient Markets</a>.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="overconfidence-overtrading.html">← Overconfidence and the Cost of Trading Too Much</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin →</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Information cascade (Bikhchandani-Hirshleifer-Welch). Truth = Good.
+  // Each agent: private signal correct w.p. p. Public net count d of revealed signals.
+  // If |d| >= 2: copy (cascade, action uninformative). Else act on own signal (ties -> own), d += s.
+  var N = 20;
+  var pEl = document.getElementById('hc-p');
+  if (!pEl) return;
+  var g = document.getElementById('hc-agents');
+  var status = document.getElementById('hc-status');
+  var readout = document.getElementById('hc-readout');
+  var NS = 'http://www.w3.org/2000/svg';
+
+  function runCrowd(p){
+    var d = 0, out = [];
+    for (var i = 0; i < N; i++){
+      var s = Math.random() < p ? 1 : -1;
+      var cascade = Math.abs(d) >= 2;
+      var a = cascade ? (d > 0 ? 1 : -1) : s;
+      if (!cascade) d += s;
+      out.push({ s: s, a: a, cascade: cascade, ignored: cascade && a !== s });
+    }
+    return out;
+  }
+  function el(tag, attrs){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function draw(crowd){
+    while (g.firstChild) g.removeChild(g.firstChild);
+    var firstCascade = -1;
+    crowd.forEach(function(ag, i){
+      if (ag.cascade && firstCascade < 0) firstCascade = i;
+      var row = Math.floor(i / 10), col = i % 10;
+      var cx = 58 + col * 58, cy = 70 + row * 92;
+      g.appendChild(el('circle', { cx: cx, cy: cy, r: 20, style: 'fill:' + (ag.a > 0 ? 'var(--green)' : 'var(--red)') + ';opacity:.85' }));
+      g.appendChild(el('circle', { cx: cx, cy: cy, r: 7, style: 'fill:' + (ag.s > 0 ? 'var(--green)' : 'var(--red)') + ';stroke:var(--s1);stroke-width:2' }));
+      if (ag.cascade) g.appendChild(el('circle', { cx: cx, cy: cy, r: 25, style: 'fill:none;stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3' }));
+      var t = el('text', { x: cx, y: cy + 38, 'text-anchor': 'middle', 'font-size': '10', 'font-family': "'DM Mono',monospace", fill: 'var(--text3)' });
+      t.textContent = '#' + (i + 1);
+      g.appendChild(t);
+    });
+    var ignored = crowd.filter(function(a){ return a.ignored; }).length;
+    var goodSignals = crowd.filter(function(a){ return a.s > 0; }).length;
+    var last = crowd[N - 1].a;
+    status.textContent = (firstCascade < 0 ? 'No cascade formed in 20 people.' : 'Cascade from person #' + (firstCascade + 1) + ' onward. ') +
+      'Herd ends on ' + (last > 0 ? 'Good (right)' : 'Bad (wrong)') + '. ' + goodSignals + ' of 20 private signals said Good; ' + ignored + ' people ignored theirs.';
+  }
+  function binomMajorityWrong(p){
+    // P(fewer than half of N independent signals correct), ties split 50/50.
+    var q = 1 - p, s = 0, c = 1;
+    for (var k = 0; k <= N; k++){
+      if (k > 0) c = c * (N - k + 1) / k;
+      var pk = c * Math.pow(p, k) * Math.pow(q, N - k);
+      if (k < N / 2) s += pk; else if (k === N / 2) s += 0.5 * pk;
+    }
+    return s;
+  }
+  function theory(p){ var q = 1 - p; return q * q / (p * p + q * q); }
+  function setLabel(){ document.getElementById('hc-p-val').textContent = parseFloat(pEl.value).toFixed(2); }
+  function fresh(){
+    var p = parseFloat(pEl.value);
+    setLabel();
+    draw(runCrowd(p));
+    readout.innerHTML = 'Theory at p = ' + p.toFixed(2) + ': wrong cascade <b>' + (theory(p) * 100).toFixed(1) + '%</b> · 20 independent votes wrong <b>' + (binomMajorityWrong(p) * 100).toFixed(1) + '%</b> · expected people before lock-in <b>' + (2 / (p * p + (1 - p) * (1 - p))).toFixed(1) + '</b>';
+  }
+  function many(){
+    var p = parseFloat(pEl.value), R = 5000, wrong = 0, ign = 0;
+    for (var r = 0; r < R; r++){
+      var c = runCrowd(p);
+      if (c[N - 1].a < 0) wrong++;
+      for (var i = 0; i < N; i++) if (c[i].ignored) ign++;
+    }
+    readout.innerHTML = '5,000 simulated crowds at p = ' + p.toFixed(2) + ': herd ended wrong <b>' + (wrong / R * 100).toFixed(1) + '%</b> (theory ' + (theory(p) * 100).toFixed(1) + '%) · 20 independent votes wrong <b>' + (binomMajorityWrong(p) * 100).toFixed(1) + '%</b> · people per crowd who ignored their own signal <b>' + (ign / R).toFixed(1) + '</b>';
+  }
+  pEl.addEventListener('input', fresh);
+  document.getElementById('hc-new').addEventListener('click', fresh);
+  document.getElementById('hc-many').addEventListener('click', many);
+  fresh();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

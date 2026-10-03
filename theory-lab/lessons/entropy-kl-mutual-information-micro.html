@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Entropy, KL Divergence &amp; Mutual Information — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live KL/MI calculators, and a 6-question self-test?<a href="entropy-kl-mutual-information.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Pricing an edge in bits</h2>
+      <p class="sl-sub">Kelly, 1956 → Thorp, 1960s; relative entropy in option pricing, 1990s</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>In 1956 John Kelly, a Bell Labs colleague of Shannon's, showed that the best long-run growth rate from betting on a noisy tip equals the tip's information rate, in Shannon's bits. Edward Thorp took the rule to blackjack, then to warrant and convertible arbitrage from 1969.</p>
+        <p>In the 1990s KL divergence entered option pricing (Stutzer, 1996; Avellaneda and co-authors, 1997): pick the risk-neutral distribution closest to a prior that still matches market prices. Today MI ranks nonlinear features and KL flags distribution shifts.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how much does this variable tell us, beyond linear correlation, and has the distribution changed?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Correlation only sees straight lines</h2>
       <p class="sl-sub">Two very different tools for the same question: "does knowing one variable tell me anything about the other?"</p>
       <div class="sl-compare">
@@ -50,8 +63,8 @@
       <div class="sl-quote">A regression-only view of the world reports "no relationship" in exactly the cases where the relationship is real but curved, cyclical, or threshold-based — precisely the kind of structure that shows up in volatility responding to the <strong>size</strong> of a move rather than its sign. This deck builds the tool that catches it.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Entropy: the price of not knowing yet</h2>
       <p class="sl-sub">Shannon entropy H(X) = −Σ p(x)·log₂p(x) — a single number for "how surprised will I be, on average, before I find out?"</p>
       <div class="sl-icard-grid">
@@ -63,8 +76,8 @@
       <p class="sl-p">Using log base 2 makes the unit a <strong>bit</strong> — a fair coin flip carries exactly 1 bit of entropy, the most uncertainty a single yes/no outcome can hold. That's the benchmark the next slide's curve is built around.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The coin-flip entropy curve</h2>
       <p class="sl-sub">Drag the slider to change the coin's bias. Watch the marker ride the curve — and watch entropy peak exactly at p = 0.5.</p>
       <div class="sl-card">
@@ -90,8 +103,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Compute entropy yourself</h2>
       <p class="sl-sub">Enter any 3-outcome distribution. The probabilities must sum to 1 — everything else is guarded.</p>
       <div class="sl-card">
@@ -117,8 +130,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">KL divergence: the cost of the wrong model</h2>
       <p class="sl-sub">D<sub>KL</sub>(P‖Q) = Σ p(x)·log₂(p(x)/q(x)) — the extra bits wasted describing data from the true distribution P using a model Q instead.</p>
       <div class="sl-card">
@@ -137,8 +150,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">See the asymmetry yourself</h2>
       <p class="sl-sub">Starts on the worked-example coins. Edit either probability and both directions recompute instantly.</p>
       <div class="sl-card">
@@ -162,8 +175,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Mutual information: built from both</h2>
       <p class="sl-sub">The two-variable version of the KL question: how different is the real joint distribution from what it would look like if X and Y were independent?</p>
       <div class="sl-card">
@@ -191,8 +204,8 @@
       <div class="sl-note">This is the Y=X² worked example, proved on the next two slides. Y's circle sits entirely inside X's because H(Y|X)=0 — Y is a deterministic function of X, so nothing about Y is left unexplained.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A relationship correlation catches — and one it doesn't</h2>
       <p class="sl-sub">Same two-variable setup, two very different underlying rules.</p>
       <div class="sl-card">
@@ -253,8 +266,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The Y = X² proof, in numbers</h2>
       <p class="sl-sub">X takes values {−2,−1,0,1,2}, each with probability ⅕. Y = X² exactly — deterministic, so every number below is exact and checkable by hand.</p>
       <div class="sl-icard-grid">
@@ -266,8 +279,8 @@
       <div class="sl-quote">This is not a subtle statistical artifact — it is the defining example of why <strong>"uncorrelated" must never be read as "unrelated."</strong> Mutual information is the tool that tells the two apart.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Cross-entropy loss</h4><p>Training a classifier by minimizing cross-entropy is, up to a constant, exactly minimizing D<sub>KL</sub>(P<sub>data</sub>‖Q<sub>model</sub>).</p></div></div>
@@ -277,8 +290,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Reality check: is this built in this repo?</h2>
       <p class="sl-sub">The full lesson's status line was checked against the actual current codebase before this deck repeated it.</p>
       <div class="sl-callout amber">
@@ -301,8 +314,8 @@
       <p class="sl-p">Nothing here is silently corrected or silently lost — both the original claim and the current reality are shown side by side, exactly as this repo's factual-grounding standard requires.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where this goes wrong in practice</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Zero probability, undefined KL divergence</h4><p>If q(x)=0 where p(x)&gt;0, D<sub>KL</sub>(P‖Q) is technically infinite. A model with a hard zero anywhere in its support needs smoothing before KL against real data is computable at all.</p></div></div>
@@ -312,8 +325,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -363,8 +376,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
-      <div class="sl-kicker">Section 14</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Entropy H(X) = −Σp(x)log₂p(x) measures expected surprise in bits — 1 bit at its peak for a fair coin, falling to 0 bits for a certain outcome.</p></div>
@@ -373,6 +386,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Mutual information I(X;Y) = D<sub>KL</sub>(P(X,Y)‖P(X)P(Y)) = H(X) − H(X|Y) — built directly from entropy and KL divergence.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Unlike KL divergence, mutual information IS symmetric (I(X;Y) = I(Y;X)) and always ≥ 0, zero exactly when X and Y are independent.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Correlation only catches straight lines and can be exactly zero even for a perfectly deterministic nonlinear relationship (Y=X²) — mutual information catches this because it makes no linearity assumption at all.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Information theory reached markets through Kelly (1956) and Thorp's betting and trading; on a desk today MI ranks nonlinear features and KL divergence flags a shifted return distribution.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

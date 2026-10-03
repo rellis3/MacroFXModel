@@ -38,6 +38,7 @@
       <li>VAR is the orthogonal generalization: instead of one series on its own lags, it regresses a whole system of series (e.g. the DE–US yield spread and EUR/USD) each on lagged values of itself <em>and</em> every other series, so it can reveal bidirectional feedback a single "Y on lagged X" regression can never see.</li>
       <li>Granger causality tests whether one series's lags significantly improve forecasting another beyond its own history — it is explicitly a statistical/predictive claim, <strong>not</strong> true structural causation, since an unobserved common driver can produce the same result.</li>
       <li>The lesson's running example — does the yield spread lead EUR/USD, or the reverse — is this repo's own prior lead-lag case study formalized as a testable VAR/Granger question; no such fit has actually been run in this repo yet.</li>
+      <li>How it reached trading: Box–Jenkins (1970) and Sims' VARs (1980) became the forecasting workhorses of central banks and macro desks, while Meese &amp; Rogoff (1983) showed how hard it is to beat a random walk in FX.</li>
     </ul>
   </div>
 
@@ -112,6 +113,25 @@
       alone cannot do — it can only ever look for the one arrow it was told to
       look for.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Beating the random walk — or finding out you can't</h3>
+  <div class="tl-origin-who">Box &amp; Jenkins, 1970 · Sims, 1980 · Bayesian VARs at the Minneapolis Fed (Litterman, 1980s) · Meese &amp; Rogoff, 1983 for FX</div>
+  <p>Rates, FX and macro desks need forecasts of variables that feed into each other: a policy rate moves a yield spread, which moves a currency. Before the 1970s the main tools were large structural models — hard to estimate and frequently beaten by naive forecasts. Box and Jenkins' 1970 recipe, built for industrial forecasting and control, gave forecasters a disciplined single-series alternative.</p>
+  <p>Christopher Sims' 1980 VAR let a small set of variables explain each other without the "incredible" restrictions of big models, and its impulse responses showed how a shock spreads through the system. Robert Litterman's Bayesian VARs at the Federal Reserve Bank of Minneapolis became a working forecasting tool in the 1980s, and VARs are now standard at central banks. Meese and Rogoff (1983) set the bar for FX: out of sample, structural and time-series exchange-rate models — VARs included — did not beat a random walk.</p>
+  <p>On a desk today, ARIMA is the benchmark any forecast must beat, and VARs map how a rate differential, inflation surprise or risk shock feeds into a currency over the following weeks.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Turn a series' own past — and the pasts of the variables it moves with — into a forecast and an impulse response showing how a shock spreads.</dd>
+      <dt>Takes in</dt><dd>Stationary series and a lag order (<a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>, <a href="model-selection-aic-bic.html">AIC &amp; BIC</a>).</dd>
+      <dt>Hands on to</dt><dd>Lead-lag tests, long-run links and volatility (<a href="institutional-granger-causality.html">Granger Causality</a>, <a href="institutional-vecm.html">VECM</a>, <a href="garch-volatility.html">GARCH</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-chart">
@@ -664,6 +684,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Granger causality is a statistical claim, not a structural one.</strong> It means "X's lags improve forecasting Y" — not "X makes Y happen." An unobserved common driver can produce the same result with no real causal link.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>VAR parameter count grows as \(k^2 \times p\).</strong> Adding series to "see more of the system" is not free — it squares the parameter growth, a fast route to overfitting on the modest sample sizes daily FX/macro data provides.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this has actually been fitted in this repo yet.</strong> The yield-spread/EUR-USD lead-lag question is currently a narrated, qualitative case study — a real VAR/Granger fit with an honest OOS split is a research candidate, not a shipped result.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: the benchmark forecast and the shock map.</strong> Box–Jenkins and Sims' VARs became standard at central banks and macro desks; Meese &amp; Rogoff (1983) is the reminder that FX forecasts must beat a random walk out of sample.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
