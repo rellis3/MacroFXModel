@@ -26042,6 +26042,17 @@ const paperRecord = createPaperRecord({
     if (!fc || fc.session_date !== date) return null;
     return fc.instruments?.[_PR_FC_NAME[sym] ?? sym]?.ladder?.event_tag ?? null;
   },
+  // surfaceLab is created further down this file; this only runs inside a tick, after module init.
+  getContext: async (sym, dir) => {
+    const R = await surfaceLab.todayReads(); if (!R) return null;
+    const P = R.pair?.persistence?.[sym], tag = R.pair?.tagsToday?.[sym] ?? null;
+    const ccy = /^[A-Z]{6}$/.test(sym) && sym.includes('USD') ? (sym.startsWith('USD') ? sym.slice(3) : sym.slice(0, 3)) : null;
+    const cf = ccy ? R.currency?.factors?.byCcy?.[ccy] : null;
+    return { at: new Date().toISOString(), tag: tag?.tag ?? null, tagRatio: tag?.ratio ?? null,
+      vr: P?.byHorizon ? Object.fromEntries(Object.entries(P.byHorizon).map(([h, o]) => [h, o.state])) : null, vr4h: P?.vr4h ?? null,
+      dollarShare: cf?.dollarShare ?? null, fxPc1: R.global?.fxConcentration?.pc1 ?? null, crossPc1: R.global?.crossAsset?.pc1 ?? null,
+      clock: R.pair?.clock?.[sym] ? { tau: R.pair.clock[sym].tau, pace: R.pair.clock[sym].pace } : null, dir };
+  },
 });
 paperRecord.mount(app);
 svcInterval('paperRecord', () => svcRun('paperRecord', () => paperRecord.tick('scheduled')), 5 * 60_000);

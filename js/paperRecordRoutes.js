@@ -32,7 +32,11 @@ function lowerBound(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { con
 
 // liveEventTag(sym, date) -> 'FOMC'|'NFP'|'CPI'|'high'|'holiday'|'none'|null: the site's own vol-forecast event tag for that
 // London day (server.js passes one reading forecastState). Recorded per day on first use so re-scoring never changes it.
-export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, liveEventTag = () => null }) {
+// getContext(sym) (optional): the Daily Read / Surface Lab reads for this instrument at the moment a break is first
+// seen — line tag (IV ÷ the lines' σ), extending/giving back by horizon, dollar share, FX and cross-asset one-trade share,
+// market clock. Stored once on the trade as `ctx`, never updated, so the record is a forward test of whether these reads
+// separate good breaks from bad (forge/TAG_X_PERSISTENCE_PREREG.md). It never changes which trades are taken.
+export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetch, log = console, liveEventTag = () => null, getContext = async () => null }) {
   const dayCache = new Map();               // `${key}|${date}` -> v4Days day (ladder + static lines), built once per day
   let running = false, last = null;
 
@@ -123,7 +127,11 @@ export function createPaperRecord({ kv, getFastLive, liveCache, fetchImpl = fetc
         let t = day.trades.find(x => x.inst === inst.key && x.line === b.line);
         if (!t) { const h1 = h1TrendState(packed, b.signalTime);
           t = { inst: inst.key, line: b.line, dir: b.dir, level: +b.level.toFixed(6), entry: b.entry, signalTime: b.signalTime, entryTime: b.entryTime,
-                h1Trend: h1, h1Rel: h1 == null ? null : h1 === 0 ? 'neutral' : h1 * b.dir > 0 ? 'with' : 'counter' }; day.trades.push(t); note(store, `${date} ${inst.sym} break of ${b.line} ${b.dir > 0 ? 'up' : 'down'} at ${b.entry}`); }
+                h1Trend: h1, h1Rel: h1 == null ? null : h1 === 0 ? 'neutral' : h1 * b.dir > 0 ? 'with' : 'counter' };
+          // Context only for breaks first seen live (within 30 min of the signal); a late or backfilled trade gets none,
+          // because the reads would be from after the entry.
+          if (Date.now() / 1000 - b.signalTime <= 1800) { try { t.ctx = await getContext(inst.sym, b.dir); } catch { t.ctx = null; } }
+          day.trades.push(t); note(store, `${date} ${inst.sym} break of ${b.line} ${b.dir > 0 ? 'up' : 'down'} at ${b.entry}`); }
         if (t.done) continue;
         Object.assign(t, scoreTrade(d, bars, b, costPx, final));
         if (final) t.done = true;
