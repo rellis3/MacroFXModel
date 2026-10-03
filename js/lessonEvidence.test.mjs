@@ -38,7 +38,7 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.html')))
 for (const id of cited) {
   const e = byId.get(id); if (!e) continue;
   const shown = lessonSafe(e.claim) + ' ' + lessonSafe(e.result);
-  const hit = shown.match(LEAK);
+  const hit = shown.match(LEAK) || shown.match(/\b[a-z]+[A-Z][A-Za-z]*\b|\b[a-z]+_[a-z_]+\b/); // + code identifiers (camelCase / snake_case)
   ok(`${id}: nothing internal reaches the lesson page`, !hit, hit ? `"${hit[0]}"` : '');
 }
 console.log(`  ${tags} tagged verdict boxes, ${stale} written against an older ledger entry`);

@@ -550,6 +550,10 @@ export function lessonSafe(text) {
     .replace(/\bQMR's\b/g, "one mean-reversion system's").replace(/\bQMR\b/g, 'a mean-reversion system')
     .replace(/\b[Tt]he vote atlas\b/g, 'A voting system').replace(/\bvote atlas\b/gi, 'voting system')
     .replace(/\bFib Atlas\b/g, 'A Fibonacci-level system')
+    .replace(/\b[Tt]he backtestSystem bot\b/g, 'A backtest system').replace(/\bbacktestSystem( bot)?\b/g, 'a backtest system')
+    .replace(/\blevelExpectation\b/g, 'the level-expectation logic')
+    .replace(/\bicEdge\b/g, 'IC edge').replace(/\bpoolConsistency\b/g, 'pool consistency')
+    .replace(/\bdDR\b/g, 'range-ratio change')
     .replace(/\b[Tt]he vol CLI\b/g, 'A volatility tool').replace(/\bvol CLI\b/g, 'volatility tool');
 }
 
