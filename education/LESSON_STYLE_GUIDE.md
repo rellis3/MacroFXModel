@@ -417,6 +417,22 @@ leaves the authored box untouched. `untested` boxes carry no `data-evidence`.
 carries a date, and that its page loads the script; it also lists boxes written
 against an older entry so the prose can be refreshed.
 
+### 5.17 Where this came from — `.tl-origin`
+
+For maths/ML lessons where a market episode would be forced: the people, the
+problem they were actually trying to solve, and the twist. Real, documented
+history only.
+
+```html
+<div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>A navigation problem on the way to the Moon</h3>
+  <div class="tl-origin-who">Rudolf Kálmán · 1960 · NASA Ames / Apollo</div>
+  <p>...</p>
+</div>
+```
+Slides: `.sl-origin` + `.sl-origin-label` (deck.css).
+
 ---
 
 ## 6. Color system — what each color means
