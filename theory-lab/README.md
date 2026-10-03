@@ -69,7 +69,7 @@ markup, the house content order, and a verification checklist.
 
 ## Curriculum map
 
-- **Stories** (`stories.html`) — the episode-first way in: 25 real episodes
+- **Stories** (`stories.html`) — the episode-first way in: 38 real episodes
   (Black Monday to the 2024 yen carry unwind), each with its causal chain
   and a link to every lesson section that tells it. Built from the lessons'
   own `.tl-story` boxes, which carry stable `id="story-N"` anchors.

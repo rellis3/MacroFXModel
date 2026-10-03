@@ -37,10 +37,26 @@
     <div class="tl-kicker">Start from what happened</div>
     <h1>Stories</h1>
     <p>Every idea in this lab was learned the hard way by somebody. This page starts from the events instead of the equations: a crash, a squeeze, a bank run, a model that broke. Each one links straight to the lessons that tell it, and each lesson tells it from its own angle: the same March 2020 is a lesson in forced selling, in volatility clustering, in correlation, and in what the Fed does when it decides to.</p>
-    <p class="st-stats">25 episodes · 67 lesson sections · 50 lessons</p>
+    <p class="st-stats">38 episodes · 101 lesson sections · 79 lessons</p>
   </div>
-  <div class="st-bar" role="group" aria-label="Filter by theme"><button type="button" class="st-chip on" data-theme="all">All</button><button type="button" class="st-chip" data-theme="crash">Crashes &amp; squeezes</button><button type="button" class="st-chip" data-theme="plumbing">Plumbing &amp; funding</button><button type="button" class="st-chip" data-theme="cb">Central banks &amp; rates</button><button type="button" class="st-chip" data-theme="models">Models that broke</button><button type="button" class="st-chip" data-theme="research">Research honesty</button></div>
+  <div class="st-bar" role="group" aria-label="Filter by theme"><button type="button" class="st-chip on" data-theme="all">All</button><button type="button" class="st-chip" data-theme="crash">Crashes &amp; squeezes</button><button type="button" class="st-chip" data-theme="plumbing">Plumbing &amp; funding</button><button type="button" class="st-chip" data-theme="cb">Central banks &amp; rates</button><button type="button" class="st-chip" data-theme="models">Models that broke</button><button type="button" class="st-chip" data-theme="research">Research honesty</button><button type="button" class="st-chip" data-theme="human">The human side</button></div>
   <div class="st-timeline">
+  <article class="st-card" id="markowitz" data-theme="models">
+    <div class="st-when">1952–1992<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">From the efficient frontier to the waste-paper basket</h2>
+    <p class="st-what">Markowitz&#x27;s mean-variance optimisation won a Nobel Prize, but fed with estimated returns it produced extreme, unstable portfolios that practitioners threw away. At Goldman Sachs, Black and Litterman built a way to start from the market and tilt it with views.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Theory</b>Optimal portfolios</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Practice</b>Estimation error is maximised</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Black-Litterman</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/markowitz-black-litterman.html#story-1">Markowitz &amp; Black-Litterman</a><span class="st-angle">error maximisation, and the fix</span></li></ul>
+  </article>
+  <article class="st-card" id="realtime" data-theme="cb">
+    <div class="st-when">1970s–2020<span class="st-theme">Central banks &amp; rates</span></div>
+    <h2 class="st-title">Reading the economy in real time</h2>
+    <p class="st-what">Policy is set on the newest data point, which is the least reliable one. In the 1970s, real-time estimates of the output gap were badly wrong and later revised away. Recession-dating models that look brilliant on revised data often called turns much later when run live.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Data</b>The latest point is noisy</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Model</b>Fits it anyway</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Policy on a number that later changes</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/trend-cycle-filters.html#story-1">Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</a><span class="st-angle">the end-point problem</span></li><li><a href="lessons/regime-switching-state-space.html#story-1">Regime-Switching State Space Models</a><span class="st-angle">hidden regimes, and charts that look too good</span></li></ul>
+  </article>
   <article class="st-card" id="1987" data-theme="crash">
     <div class="st-when">19 October 1987<span class="st-theme">Crashes &amp; squeezes</span></div>
     <h2 class="st-title">Black Monday and portfolio insurance</h2>
@@ -49,21 +65,61 @@
     <div class="st-told">Told in 3 lessons</div>
     <ul class="st-lessons"><li><a href="lessons/black-scholes.html#story-1">Black-Scholes-Merton Option Pricing</a><span class="st-angle">continuous hedging assumed a market that is always there</span></li><li><a href="lessons/vega-volatility-surface.html#story-1">Vega &amp; the Volatility Surface</a><span class="st-angle">why out-of-the-money puts have cost more ever since</span></li><li><a href="lessons/extreme-value-theory.html#story-1">Extreme Value Theory &amp; Tail Risk</a><span class="st-angle">a day that &quot;should&quot; never happen under normal tails</span></li></ul>
   </article>
+  <article class="st-card" id="households" data-theme="human">
+    <div class="st-when">1987–1996<span class="st-theme">The human side</span></div>
+    <h2 class="st-title">What real investors actually did</h2>
+    <p class="st-what">Brokerage records from tens of thousands of households turned behavioural theory into measurement. Investors sold winners far more readily than losers, and the winners they sold went on to beat the losers they kept. The households that traded most earned the least. Boston condo owners facing a loss asked more and waited longer.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Investor</b>Anchors on the purchase price</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Decisions</b>Sell winners, keep losers, trade often</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Lower returns, higher taxes and costs</div></div>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/disposition-effect.html#story-1">Selling Winners, Holding Losers</a><span class="st-angle">selling winners, holding losers</span></li><li><a href="lessons/overconfidence-overtrading.html#story-1">Overconfidence and the Cost of Trading Too Much</a><span class="st-angle">the ones who traded most earned least</span></li><li><a href="lessons/loss-aversion-prospect-theory.html#story-2">Why a Loss Hurts Twice as Much</a><span class="st-angle">sellers who would not sell below what they paid</span></li></ul>
+  </article>
+  <article class="st-card" id="barings" data-theme="human">
+    <div class="st-when">1992 – February 1995<span class="st-theme">The human side</span></div>
+    <h2 class="st-title">Barings and account 88888</h2>
+    <p class="st-what">A young trader in Singapore hid his losses in an error account and, rather than take them, kept doubling the bet that would win them back: short options on the Nikkei, long futures. The Kobe earthquake in January 1995 moved the market against him. The losses, about £827m, broke Britain&#x27;s oldest merchant bank, which was sold for £1.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Trader</b>Refuses to take a loss</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Bets</b>Doubled to get back to even</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link shock"><b>Shock</b>The Kobe earthquake</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A 233-year-old bank sold for £1</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/loss-aversion-prospect-theory.html#story-1">Why a Loss Hurts Twice as Much</a><span class="st-angle">why a loss you refuse to take keeps growing</span></li></ul>
+  </article>
+  <article class="st-card" id="data-lies" data-theme="research">
+    <div class="st-when">1992–2013<span class="st-theme">Research honesty</span></div>
+    <h2 class="st-title">Data that lied</h2>
+    <p class="st-what">A fund database that kept only surviving funds showed managers with a &quot;hot hand&quot; that came from who was left in the data, not from skill. Years later, a widely cited result on debt and growth changed sign once outsiders rebuilt it from the spreadsheet.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Dataset</b>Filtered or unreproducible</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Result</b>Looks real</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Disappears when checked</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/point-in-time-data-survivorship-bias.html#story-1">Point-in-Time Data &amp; Survivorship Bias</a><span class="st-angle">survivorship manufactures skill</span></li><li><a href="lessons/feature-engineering-leakage-reproducibility.html#story-1">Feature Engineering, Leakage &amp; Reproducibility</a><span class="st-angle">a number nobody could re-run</span></li></ul>
+  </article>
+  <article class="st-card" id="dotcom" data-theme="human">
+    <div class="st-when">1996–2002<span class="st-theme">The human side</span></div>
+    <h2 class="st-title">The dot-com boom and bust</h2>
+    <p class="st-what">A new technology, a compelling story and cheap online trading drew millions in. The Nasdaq peaked on 10 March 2000 and fell about 78% by October 2002. Sceptics were right but early: a famous value fund closed in March 2000, the month of the peak, after years of being wrong in public.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Story</b>A new era</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Crowd</b>Each buyer follows the last</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Sceptics</b>Forced out before the turn</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A 78% fall</div></div>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/herding-narratives-bubbles.html#story-1">Herding, Narratives and Bubbles</a><span class="st-angle">information cascades and a story everyone told</span></li><li><a href="lessons/drawdowns-risk-of-ruin.html#story-2">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a><span class="st-angle">right too early is wrong for a while</span></li><li><a href="lessons/overconfidence-overtrading.html#story-2">Overconfidence and the Cost of Trading Too Much</a><span class="st-angle">doing well, then trading more</span></li></ul>
+  </article>
   <article class="st-card" id="ltcm" data-theme="models">
     <div class="st-when">August–September 1998<span class="st-theme">Models that broke</span></div>
     <h2 class="st-title">Long-Term Capital Management</h2>
     <p class="st-what">A fund run by some of the best-credentialed people in finance made small, carefully measured bets that related prices would converge, levered roughly 25 times. After Russia defaulted, everyone wanted the safe, liquid side of every trade at once. The spreads widened instead of converging, the fund lost about $4.6bn in under four months, and 14 firms put in $3.6bn to wind it down.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Russia defaults</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Investors</b>Flee to the most liquid assets</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Convergence trades</b>Spreads widen, not narrow</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Leverage turns a loss into a rescue</div></div>
-    <div class="st-told">Told in 3 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/cointegration.html#story-1">Cointegration &amp; Statistical Arbitrage</a><span class="st-angle">&quot;bounded in the long run&quot; is not &quot;bounded this month&quot;</span></li><li><a href="lessons/sharpe-family-deflated.html#story-1">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a><span class="st-angle">the smoothest return stream on Wall Street, right up to the end</span></li><li><a href="lessons/kelly-criterion.html#story-1">The Kelly Criterion &amp; Position Sizing</a><span class="st-angle">an edge sized on calm-year volatility</span></li></ul>
+    <div class="st-told">Told in 4 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/cointegration.html#story-1">Cointegration &amp; Statistical Arbitrage</a><span class="st-angle">&quot;bounded in the long run&quot; is not &quot;bounded this month&quot;</span></li><li><a href="lessons/sharpe-family-deflated.html#story-1">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a><span class="st-angle">the smoothest return stream on Wall Street, right up to the end</span></li><li><a href="lessons/kelly-criterion.html#story-1">The Kelly Criterion &amp; Position Sizing</a><span class="st-angle">an edge sized on calm-year volatility</span></li><li><a href="lessons/merton-portfolio-problem.html#story-1">Merton&#x27;s Continuous-Time Portfolio Problem</a><span class="st-angle">a constant fraction, held at 25 to 1</span></li></ul>
+  </article>
+  <article class="st-card" id="mizuho" data-theme="models">
+    <div class="st-when">8 December 2005<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">610,000 shares at ¥1</h2>
+    <p class="st-what">A trader at Mizuho meant to sell one share of a newly listed company at ¥610,000 and instead entered 610,000 shares at ¥1, many times the shares that existed. The order could not be cancelled in time. The print on the tape was real, not a bad tick, which is exactly what makes cleaning data hard.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Error</b>Price and quantity swapped</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Exchange</b>The order executes</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A real trade that looks like bad data</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/data-cleaning-outliers-missing-data.html#story-1">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a><span class="st-angle">flag it, but do not delete it</span></li></ul>
   </article>
   <article class="st-card" id="quant-quake" data-theme="models">
     <div class="st-when">7–10 August 2007<span class="st-theme">Models that broke</span></div>
     <h2 class="st-title">The quant quake</h2>
     <p class="st-what">For three days, crowded statistical-arbitrage books lost money on the very trades designed to profit from prices snapping back. The leading explanation (Khandani &amp; Lo) is that one or more large funds were forced to unwind, and every similar book was holding the same positions.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Losses elsewhere force a large unwind</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Crowded books</b>Everyone holds the same positions</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Mean reversion</b>Runs backwards for three days</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Losses, then a sharp snap back</div></div>
-    <div class="st-told">Told in 1 lesson</div>
-    <ul class="st-lessons"><li><a href="lessons/ou-mean-reversion.html#story-1">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a><span class="st-angle">what θ(μ − X) looks like when the sellers are forced</span></li></ul>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/ou-mean-reversion.html#story-1">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a><span class="st-angle">what θ(μ − X) looks like when the sellers are forced</span></li><li><a href="lessons/active-portfolio-management.html#story-1">Active Portfolio Management</a><span class="st-angle">thousands of &quot;independent&quot; bets that were one crowded bet</span></li></ul>
   </article>
   <article class="st-card" id="cdo" data-theme="models">
     <div class="st-when">2007–2008<span class="st-theme">Models that broke</span></div>
@@ -73,21 +129,45 @@
     <div class="st-told">Told in 1 lesson</div>
     <ul class="st-lessons"><li><a href="lessons/copulas.html#story-1">Copulas — Modeling Dependence Beyond Correlation</a><span class="st-angle">zero tail dependence, priced as if it were a fact</span></li></ul>
   </article>
+  <article class="st-card" id="value-winter" data-theme="models">
+    <div class="st-when">2007–2020<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">The value winter</h2>
+    <p class="st-what">Buying cheap stocks was the best-documented premium in finance. Then it lagged for most of a decade and a half, with its worst stretch in 2018–2020, long enough for many investors to give up. It rebounded sharply after the vaccine news in November 2020.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Factor</b>A premium that should pay</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Years</b>It doesn&#x27;t</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Investors</b>Give up near the bottom</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>The rebound arrives without them</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/factor-based-portfolio-construction.html#story-1">Factor-Based Portfolio Construction</a><span class="st-angle">a factor book holding exactly what it meant to</span></li><li><a href="lessons/drawdowns-risk-of-ruin.html#story-1">Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned</a><span class="st-angle">why sound systems get abandoned</span></li></ul>
+  </article>
   <article class="st-card" id="2008" data-theme="plumbing">
     <div class="st-when">September–October 2008<span class="st-theme">Plumbing &amp; funding</span></div>
     <h2 class="st-title">Lehman, AIG and the dollar shortage</h2>
     <p class="st-what">When Lehman failed, banks stopped lending to each other. AIG had sold the same credit protection to much of the system and could not meet the collateral calls. Outside the US, banks that had funded dollar assets short-term found no dollars, the arbitrage that normally ties FX swaps to interest rates broke, and carry trades crashed.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Lehman fails</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Banks</b>Hoard cash and dollars</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>AIG and FX swaps</b>Collateral calls; covered parity breaks</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Bailouts, unlimited swap lines, QE</div></div>
-    <div class="st-told">Told in 5 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/systemic-risk-networks.html#story-1">Systemic Risk &amp; Financial Contagion Networks</a><span class="st-angle">one node wired into everyone</span></li><li><a href="lessons/interest-rate-parity.html#story-1">Interest Rate Parity — Covered vs. Uncovered</a><span class="st-angle">when an arbitrage needs a balance sheet nobody has</span></li><li><a href="lessons/payoff-shape-vs-greek-signs.html#story-1">Same Greeks, Different Risk</a><span class="st-angle">a short squeeze in the same weeks</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-1">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">the Fed&#x27;s answer</span></li><li><a href="lessons/swap-curves-ois.html#story-1">Swap Curves &amp; OIS Discounting</a><span class="st-angle">LIBOR, the rate that was a survey</span></li></ul>
+    <div class="st-told">Told in 8 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/systemic-risk-networks.html#story-1">Systemic Risk &amp; Financial Contagion Networks</a><span class="st-angle">one node wired into everyone</span></li><li><a href="lessons/interest-rate-parity.html#story-1">Interest Rate Parity — Covered vs. Uncovered</a><span class="st-angle">when an arbitrage needs a balance sheet nobody has</span></li><li><a href="lessons/payoff-shape-vs-greek-signs.html#story-1">Same Greeks, Different Risk</a><span class="st-angle">a short squeeze in the same weeks</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-1">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">the Fed&#x27;s answer</span></li><li><a href="lessons/swap-curves-ois.html#story-1">Swap Curves &amp; OIS Discounting</a><span class="st-angle">LIBOR, the rate that was a survey</span></li><li><a href="lessons/alpha-beta-separation.html#story-1">Alpha vs. Beta Separation</a><span class="st-angle">portable alpha: the beta and the &quot;alpha&quot; lost together</span></li><li><a href="lessons/hierarchical-risk-parity.html#story-1">Hierarchical Risk Parity</a><span class="st-angle">the correlation matrix splits into blocs</span></li><li><a href="lessons/quantile-regression.html#story-1">Quantile Regression</a><span class="st-angle">growth-at-risk: the downside moved, the middle barely did</span></li></ul>
   </article>
   <article class="st-card" id="flash-2010" data-theme="crash">
     <div class="st-when">6 May 2010<span class="st-theme">Crashes &amp; squeezes</span></div>
     <h2 class="st-title">The Flash Crash</h2>
     <p class="st-what">A single large sell order, run by an algorithm that targeted 9% of recent volume with no price or time limit, met a market where liquidity providers were stepping back. High-frequency traders passed contracts back and forth; volume rose, so the algorithm sold faster. Some stocks printed at a penny before most of it reversed within about twenty minutes.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Trigger</b>A 75,000-contract sell order</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Market makers</b>Widen or pull their quotes</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>The algorithm</b>More volume, so it sells faster</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A crash and recovery inside half an hour</div></div>
-    <div class="st-told">Told in 3 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/execution-algorithms.html#story-1">Execution Algorithms: TWAP, VWAP, POV, IS</a><span class="st-angle">a POV algorithm in a thinning market</span></li><li><a href="lessons/market-microstructure.html#story-1">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a><span class="st-angle">what happens when the people who quote stop quoting</span></li><li><a href="lessons/vpin-order-flow-toxicity.html#story-1">Order Flow Toxicity &amp; VPIN</a><span class="st-angle">was the flow &quot;toxic&quot;, and did anyone know?</span></li></ul>
+    <div class="st-told">Told in 4 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/execution-algorithms.html#story-1">Execution Algorithms: TWAP, VWAP, POV, IS</a><span class="st-angle">a POV algorithm in a thinning market</span></li><li><a href="lessons/market-microstructure.html#story-1">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a><span class="st-angle">what happens when the people who quote stop quoting</span></li><li><a href="lessons/vpin-order-flow-toxicity.html#story-1">Order Flow Toxicity &amp; VPIN</a><span class="st-angle">was the flow &quot;toxic&quot;, and did anyone know?</span></li><li><a href="lessons/data-pipeline-raw-to-trading-ready.html#story-1">The Data Pipeline: Raw Feeds to Trading-Ready Data</a><span class="st-angle">what the tape recorded, and which trades were cancelled</span></li></ul>
+  </article>
+  <article class="st-card" id="twitter" data-theme="research">
+    <div class="st-when">2010–2017<span class="st-theme">Research honesty</span></div>
+    <h2 class="st-title">Twitter mood and the Dow</h2>
+    <p class="st-what">A paper reported that the mood of tweets predicted the Dow&#x27;s daily direction with 87.6% accuracy. A fund was launched on the idea and did not last. A careful replication later could not reproduce the result.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Paper</b>A striking accuracy</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Fund</b>Trades it</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>The replication fails</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/nlp-trading-signals-sentiment.html#story-1">NLP for Trading Signals: Sentiment, Embeddings &amp; FinBERT</a><span class="st-angle">turning text into a number, honestly</span></li></ul>
+  </article>
+  <article class="st-card" id="mf-global" data-theme="plumbing">
+    <div class="st-when">October 2011<span class="st-theme">Plumbing &amp; funding</span></div>
+    <h2 class="st-title">MF Global</h2>
+    <p class="st-what">A futures broker made a large leveraged bet on European government bonds. As margin calls and downgrades arrived, it ran out of cash, and when it collapsed, money that should have been held for customers was missing.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Broker</b>Big bond bet, financed short</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link shock"><b>Shock</b>Margin calls and downgrades</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Collapse, with a hole in customer funds</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/rehypothecation-collateral-chains.html#story-1">Rehypothecation &amp; Collateral Chains</a><span class="st-angle">client assets used as funding</span></li></ul>
   </article>
   <article class="st-card" id="whale" data-theme="models">
     <div class="st-when">2012<span class="st-theme">Models that broke</span></div>
@@ -104,6 +184,14 @@
     <div class="tl-chain"><div class="tl-chain-link"><b>ECB</b>Commits without limit</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Markets</b>Believe it</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Spreads compress with no purchases</div></div>
     <div class="st-told">Told in 1 lesson</div>
     <ul class="st-lessons"><li><a href="lessons/central-bank-policy.html#story-1">Central Bank Policy</a><span class="st-angle">a reaction function, not a rate move</span></li></ul>
+  </article>
+  <article class="st-card" id="knight" data-theme="models">
+    <div class="st-when">1 August 2012<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">Knight Capital: 45 minutes</h2>
+    <p class="st-what">A software release reached seven of eight servers. On the eighth, a reused flag woke up old, retired code, which began sending orders it was never meant to send. In about 45 minutes the firm lost more than $440m and needed a rescue.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Deployment</b>Seven of eight servers</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Old code</b>Wakes up on the eighth</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>$440m+ lost in under an hour</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/data-architecture-storage-versioning.html#story-1">Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</a><span class="st-angle">one flag, two meanings: versioning matters</span></li></ul>
   </article>
   <article class="st-card" id="taper" data-theme="cb">
     <div class="st-when">May–September 2013<span class="st-theme">Central banks &amp; rates</span></div>
@@ -137,13 +225,21 @@
     <div class="st-told">Told in 4 lessons</div>
     <ul class="st-lessons"><li><a href="lessons/merton-jump-diffusion.html#story-1">The Merton Jump-Diffusion Model</a><span class="st-angle">a jump, not a diffusion</span></li><li><a href="lessons/options-four-positions.html#story-1">The Four Option Positions</a><span class="st-angle">what &quot;obligation&quot; means for an option seller</span></li><li><a href="lessons/second-order-greeks.html#story-1">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a><span class="st-angle">when the second-order terms stop being small</span></li><li><a href="lessons/central-bank-policy.html#story-2">Central Bank Policy</a><span class="st-angle">action against the words</span></li></ul>
   </article>
+  <article class="st-card" id="superbowl" data-theme="human">
+    <div class="st-when">1 February 2015<span class="st-theme">The human side</span></div>
+    <h2 class="st-title">&quot;The worst call in Super Bowl history&quot;</h2>
+    <p class="st-what">With seconds left and the ball a yard from the end zone, Seattle threw a pass instead of running. It was intercepted and they lost. The call was universally condemned, but a decent case can be made that it was reasonable and simply turned out badly: the classic example of judging a decision by its result.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Decision</b>Reasonable, given what was known</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link shock"><b>Outcome</b>Bad luck</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Verdict</b>Judged on the result alone</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/process-vs-outcome-decision-journals.html#story-1">Judge the Decision, Not the Result</a><span class="st-angle">judge the decision, not the result</span></li></ul>
+  </article>
   <article class="st-card" id="volmageddon" data-theme="crash">
     <div class="st-when">5 February 2018<span class="st-theme">Crashes &amp; squeezes</span></div>
     <h2 class="st-title">Volmageddon</h2>
     <p class="st-what">Products that paid investors for selling volatility had to buy VIX futures when volatility rose, by their own rulebook, and they had to do it into the close. On a day when the VIX roughly doubled, that buying fed the move. The largest inverse-VIX note lost most of its value and was terminated.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Volatility jumps</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Short-vol funds</b>Must buy VIX futures, by rule</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>VIX futures</b>Squeezed into the close</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Products wiped out overnight</div></div>
-    <div class="st-told">Told in 2 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/gamma-exposure-dealer-hedging.html#story-1">Gamma Exposure &amp; Dealer Hedging Flows</a><span class="st-angle">short gamma by construction</span></li><li><a href="lessons/vix-uncertainty-not-fear.html#story-1">The VIX Is an Uncertainty Index, Not a Fear Gauge</a><span class="st-angle">what the VIX measures, and who was short it</span></li></ul>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/gamma-exposure-dealer-hedging.html#story-1">Gamma Exposure &amp; Dealer Hedging Flows</a><span class="st-angle">short gamma by construction</span></li><li><a href="lessons/vix-uncertainty-not-fear.html#story-1">The VIX Is an Uncertainty Index, Not a Fear Gauge</a><span class="st-angle">what the VIX measures, and who was short it</span></li><li><a href="lessons/primer-returns-compounding.html#story-1">Returns, Log-Returns &amp; Compounding</a><span class="st-angle">volatility decay, then a one-day wipe-out</span></li></ul>
   </article>
   <article class="st-card" id="optionsellers" data-theme="crash">
     <div class="st-when">November 2018<span class="st-theme">Crashes &amp; squeezes</span></div>
@@ -166,16 +262,24 @@
     <h2 class="st-title">The dash for cash</h2>
     <p class="st-what">As the pandemic shut economies, everyone needed cash at once. Investors sold what they could, not what they wanted to: even Treasuries and gold fell for a time. Correlations went to one, volatility clustered into a run of ±10% days, the VIX closed at a record, and the Fed bought &quot;in the amounts needed&quot;.</p>
     <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Economies shut</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Everyone</b>Needs cash now</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Forced sellers</b>Sell the liquid things</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Correlations to one; the Fed buys without limit</div></div>
-    <div class="st-told">Told in 9 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/investor-mood-forced-selling.html#story-1">Mood, the Quote and Forced Selling</a><span class="st-angle">sell what you can, not what you want</span></li><li><a href="lessons/garch-volatility.html#story-1">GARCH &amp; Volatility Clustering</a><span class="st-angle">volatility clustering</span></li><li><a href="lessons/pca-factors.html#story-1">Principal Component Analysis &amp; Factor Regimes</a><span class="st-angle">one factor explains everything</span></li><li><a href="lessons/correlation-networks-mst.html#story-1">Correlation Networks &amp; Minimum Spanning Trees</a><span class="st-angle">the correlation tree collapses</span></li><li><a href="lessons/yield-curve-construction.html#story-1">Bootstrapping the Yield Curve</a><span class="st-angle">the curve stops fitting</span></li><li><a href="lessons/tail-risk-hedging-convexity.html#story-1">Tail Risk Hedging &amp; Portfolio Convexity</a><span class="st-angle">years of bleed, weeks of payoff</span></li><li><a href="lessons/vega-volatility-surface.html#story-2">Vega &amp; the Volatility Surface</a><span class="st-angle">the term structure inverts</span></li><li><a href="lessons/four-markets-four-questions.html#story-1">Four Markets, Four Questions</a><span class="st-angle">which market was right</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-4">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">QE without limit</span></li></ul>
+    <div class="st-told">Told in 13 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/investor-mood-forced-selling.html#story-1">Mood, the Quote and Forced Selling</a><span class="st-angle">sell what you can, not what you want</span></li><li><a href="lessons/garch-volatility.html#story-1">GARCH &amp; Volatility Clustering</a><span class="st-angle">volatility clustering</span></li><li><a href="lessons/pca-factors.html#story-1">Principal Component Analysis &amp; Factor Regimes</a><span class="st-angle">one factor explains everything</span></li><li><a href="lessons/correlation-networks-mst.html#story-1">Correlation Networks &amp; Minimum Spanning Trees</a><span class="st-angle">the correlation tree collapses</span></li><li><a href="lessons/yield-curve-construction.html#story-1">Bootstrapping the Yield Curve</a><span class="st-angle">the curve stops fitting</span></li><li><a href="lessons/tail-risk-hedging-convexity.html#story-1">Tail Risk Hedging &amp; Portfolio Convexity</a><span class="st-angle">years of bleed, weeks of payoff</span></li><li><a href="lessons/vega-volatility-surface.html#story-2">Vega &amp; the Volatility Surface</a><span class="st-angle">the term structure inverts</span></li><li><a href="lessons/four-markets-four-questions.html#story-1">Four Markets, Four Questions</a><span class="st-angle">which market was right</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-4">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">QE without limit</span></li><li><a href="lessons/risk-parity-erc.html#story-1">Risk Parity &amp; Equal Risk Contribution</a><span class="st-angle">risk-based sizing forced to sell</span></li><li><a href="lessons/cornish-fisher-expansion.html#story-1">Cornish-Fisher Expansion</a><span class="st-angle">VaR built on a calm window</span></li><li><a href="lessons/change-point-detection.html#story-1">Change-Point Detection</a><span class="st-angle">obvious afterwards, late in real time</span></li><li><a href="lessons/collateral-margin-repo-markets.html#story-1">Collateral, Margin &amp; Repo Markets</a><span class="st-angle">the Treasury basis trade unwinds</span></li></ul>
+  </article>
+  <article class="st-card" id="wti" data-theme="crash">
+    <div class="st-when">20 April 2020<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">Oil below zero</h2>
+    <p class="st-what">With storage full and the May contract about to expire, holders of WTI futures had to get out or take delivery of oil they had nowhere to put. The contract settled at −$37.63 while the next month traded around $20. Any price series that splices contracts together had to decide what that day looked like.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Storage runs out</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Holders</b>Must sell or take delivery</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A negative price, and a data problem</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/corporate-actions-series-continuity.html#story-1">Corporate Actions &amp; Series Continuity</a><span class="st-angle">the roll rule decides what history shows</span></li></ul>
   </article>
   <article class="st-card" id="gme" data-theme="crash">
     <div class="st-when">January 2021<span class="st-theme">Crashes &amp; squeezes</span></div>
     <h2 class="st-title">GameStop</h2>
     <p class="st-what">Retail call buying and a heavily shorted stock produced one of the most famous squeezes in market history. A popular story said dealers hedging the calls drove it; the SEC staff report found short covering was only a small part of the buying, and how much was &quot;gamma&quot; remains contested.</p>
     <div class="tl-chain"><div class="tl-chain-link"><b>Retail</b>Buys calls and stock</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Dealers and shorts</b>Hedge and cover</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A squeeze, and a contested story</div></div>
-    <div class="st-told">Told in 1 lesson</div>
-    <ul class="st-lessons"><li><a href="lessons/open-interest-walls-max-pain.html#story-1">Open Interest Walls, Max Pain &amp; Squeeze Trading</a><span class="st-angle">walls as fuel, and why the story is disputed</span></li></ul>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/open-interest-walls-max-pain.html#story-1">Open Interest Walls, Max Pain &amp; Squeeze Trading</a><span class="st-angle">walls as fuel, and why the story is disputed</span></li><li><a href="lessons/herding-narratives-bubbles.html#story-2">Herding, Narratives and Bubbles</a><span class="st-angle">a narrative with a villain</span></li></ul>
   </article>
   <article class="st-card" id="archegos" data-theme="crash">
     <div class="st-when">March 2021<span class="st-theme">Crashes &amp; squeezes</span></div>
@@ -190,8 +294,8 @@
     <h2 class="st-title">Transitory, then the fastest hikes in four decades</h2>
     <p class="st-what">Inflation was called transitory while policy stayed near zero, far below what a standard Taylor rule prescribed. Then the Fed hiked at the fastest pace in four decades. Stocks and bonds fell together, the curve inverted for the longest stretch in decades, and the yen slid to multi-decade lows.</p>
     <div class="tl-chain"><div class="tl-chain-link"><b>Inflation</b>Runs hot</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Fed</b>Late, then fast</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Bonds and stocks</b>Fall together</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A long inversion, a weak yen, no recession (yet)</div></div>
-    <div class="st-told">Told in 8 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/taylor-rule.html#story-1">The Taylor Rule</a><span class="st-angle">the Taylor gap</span></li><li><a href="lessons/hidden-markov-models.html#story-1">Hidden Markov Models &amp; Regime Detection</a><span class="st-angle">a regime the training window never saw</span></li><li><a href="lessons/nelson-siegel-svensson.html#story-1">Curve Fitting: Nelson-Siegel &amp; Svensson</a><span class="st-angle">the factors move</span></li><li><a href="lessons/yield-curve-growth-expectations.html#story-2">What the Yield Curve Says About Growth</a><span class="st-angle">the textbook signal that waited</span></li><li><a href="lessons/purchasing-power-parity.html#story-1">Purchasing Power Parity</a><span class="st-angle">PPP vs the rate gap</span></li><li><a href="lessons/hurst-variance-ratio.html#story-1">The Hurst Exponent &amp; Variance Ratio Test</a><span class="st-angle">trend followers&#x27; good year</span></li><li><a href="lessons/duration-convexity.html#story-1">Duration &amp; Convexity</a><span class="st-angle">the bonds bought before it</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-5">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">quantitative tightening</span></li></ul>
+    <div class="st-told">Told in 9 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/taylor-rule.html#story-1">The Taylor Rule</a><span class="st-angle">the Taylor gap</span></li><li><a href="lessons/hidden-markov-models.html#story-1">Hidden Markov Models &amp; Regime Detection</a><span class="st-angle">a regime the training window never saw</span></li><li><a href="lessons/nelson-siegel-svensson.html#story-1">Curve Fitting: Nelson-Siegel &amp; Svensson</a><span class="st-angle">the factors move</span></li><li><a href="lessons/yield-curve-growth-expectations.html#story-2">What the Yield Curve Says About Growth</a><span class="st-angle">the textbook signal that waited</span></li><li><a href="lessons/purchasing-power-parity.html#story-1">Purchasing Power Parity</a><span class="st-angle">PPP vs the rate gap</span></li><li><a href="lessons/hurst-variance-ratio.html#story-1">The Hurst Exponent &amp; Variance Ratio Test</a><span class="st-angle">trend followers&#x27; good year</span></li><li><a href="lessons/duration-convexity.html#story-1">Duration &amp; Convexity</a><span class="st-angle">the bonds bought before it</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-5">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">quantitative tightening</span></li><li><a href="lessons/bond-pricing-ytm.html#story-1">Bond Pricing &amp; Yield to Maturity</a><span class="st-angle">the cash flows didn&#x27;t change; the discount rate did</span></li></ul>
   </article>
   <article class="st-card" id="ldi" data-theme="plumbing">
     <div class="st-when">September–October 2022<span class="st-theme">Plumbing &amp; funding</span></div>
@@ -238,8 +342,8 @@
     <h2 class="st-title">This desk&#x27;s own record</h2>
     <p class="st-what">The desk tests the claims it is tempted to trade on, and writes down its prior before it looks. A rates signal that &quot;led&quot; the Nasdaq 54% of the time was exactly the base rate. A backtest with a Sharpe of 18.4 had leaked. A pre-registered prior about funding stress was beaten by a framing from a teaching video. These are the honest results, in the open.</p>
     <div class="tl-chain"><div class="tl-chain-link"><b>Hypothesis</b>Written down first</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Test</b>Against a matched base rate</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Most claims fail, and that is the point</div></div>
-    <div class="st-told">Told in 5 lessons</div>
-    <ul class="st-lessons"><li><a href="lessons/multiple-testing.html#story-2">Multiple Testing &amp; the Look-Elsewhere Effect</a><span class="st-angle">a hit rate that was the base rate</span></li><li><a href="lessons/sharpe-family-deflated.html#story-2">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a><span class="st-angle">a ratio too good to be true</span></li><li><a href="lessons/walk-forward-purged-cv.html#story-1">Walk-Forward &amp; Purged Cross-Validation</a><span class="st-angle">where each backtest leaked</span></li><li><a href="lessons/emh.html#story-2">The Efficient Market Hypothesis</a><span class="st-angle">&quot;it&#x27;s priced in&quot;, tested two ways</span></li><li><a href="lessons/research-pipeline-hypothesis-to-backtest.html#story-2">The Research Pipeline: Hypothesis to Honest Backtest</a><span class="st-angle">a prior that lost, recorded honestly</span></li></ul>
+    <div class="st-told">Told in 6 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/multiple-testing.html#story-2">Multiple Testing &amp; the Look-Elsewhere Effect</a><span class="st-angle">a hit rate that was the base rate</span></li><li><a href="lessons/sharpe-family-deflated.html#story-2">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a><span class="st-angle">a ratio too good to be true</span></li><li><a href="lessons/walk-forward-purged-cv.html#story-1">Walk-Forward &amp; Purged Cross-Validation</a><span class="st-angle">where each backtest leaked</span></li><li><a href="lessons/emh.html#story-2">The Efficient Market Hypothesis</a><span class="st-angle">&quot;it&#x27;s priced in&quot;, tested two ways</span></li><li><a href="lessons/research-pipeline-hypothesis-to-backtest.html#story-2">The Research Pipeline: Hypothesis to Honest Backtest</a><span class="st-angle">a prior that lost, recorded honestly</span></li><li><a href="lessons/process-vs-outcome-decision-journals.html#story-2">Judge the Decision, Not the Result</a><span class="st-angle">a prior written down first, and beaten</span></li></ul>
   </article>
   </div>
   <div class="tl-footer-nav"><a href="hub.html">← Theory Lab hub</a></div>
