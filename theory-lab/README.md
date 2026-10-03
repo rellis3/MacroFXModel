@@ -51,7 +51,8 @@ Material about the owner's own desk and codebase sits inside
 `<!-- DESK:START -->…<!-- DESK:END -->` markers. The education **admin**
 login sees everything; every other reader (and anyone not logged in) gets
 the same pages with that material stripped server-side, and the capstone
-workbenches, Reading the Tape and the desk-verdict/capstone-board feeds
+workbenches, Reading the Tape, the desk-verdict/capstone-board feeds and the
+`/education/` notes folder
 return 404. Set `HIDE_DESK_EDUCATION=0` to serve everything to everyone.
 Details in the style guide (§5.18).
 
