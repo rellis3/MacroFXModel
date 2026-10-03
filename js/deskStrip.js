@@ -15,8 +15,12 @@ export function stripDesk(html) {
   if (out === src) return out;
   // Removing a desk-only section or quiz question would leave gaps ("Section 05" then
   // "Section 07", "Q4" then "Q6"), so renumber what is left, in the page's own format.
-  let sec = 0, q = 0;
+  let sec = 0, q = 0, kick = 0, dq = 0, rc = 0;
   return out
+    .replace(/(<div class="sl-quiz-num">Question )(\d+)/g, (m, a) => a + (++dq))
+    .replace(/(<div class="sl-recap-num">)(\d+)(<\/div>)/g, (m, a, n, b) => a + String(++rc).padStart(n.length, '0') + b)
+    // Visual guides: "Section N" kickers count the slides after the title slide.
+    .replace(/(<div class="sl-kicker">Section )(\d+)/g, (m, a) => a + (++kick))
     .replace(/(<div class="tl-section-mark"><span>Section )(\d+)(<\/span>)/g,
       (m, a, n, b) => a + String(++sec).padStart(n.length, '0') + b)
     .replace(/(<summary>Q)(\d+)(\.)/g, (m, a, n, b) => a + (++q) + b);

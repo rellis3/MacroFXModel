@@ -2,7 +2,8 @@
 // A non-admin reader is served stripDesk(page). This checks every Theory Lab page:
 // markers pair up, the stripped page is still well-formed, and nothing that is about
 // THIS desk (its verdicts, its tests, its systems, its live data) survives the strip.
-// Generic trading language ("a desk", "desks commonly…") is fine and not matched.
+// Generic trading language ("a desk", "desks commonly…") is fine and not matched, and so
+// is "repo" in the money-market sense; "this repo" (the codebase) and its files are not.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +17,7 @@ const pages = [
   ...fs.readdirSync(path.join(root, 'lessons')).filter(f => f.endsWith('.html')).map(f => 'lessons/' + f),
 ];
 // What counts as the owner's desk, not trading in general.
-const DESK = /\bthis desk\b|\bthe desk['’]s (own|verdicts?|tests?|record|ledger|board|data|systems?|result|finding|prior|pre-?registration)|\bdesk[- ]verdicts?\b|\bdesk (ledger|evidence)\b|\bdesk test\b|\bdesk data\b|data-evidence=|MacroFXModel|desk-verdicts\.json|capstone-board\.json|\.\.\/today\.html|\bour desk\b|\bmy desk\b/i;
+const DESK = /\bthis desk\b|\bthe desk['’]s (own|verdicts?|tests?|record|ledger|board|data|systems?|result|finding|prior|pre-?registration)|\bdesk[- ]verdicts?\b|\bdesk (ledger|evidence)\b|\bdesk test\b|\bdesk data\b|data-evidence=|MacroFXModel|desk-verdicts\.json|capstone-board\.json|\.\.\/today\.html|\bour desk\b|\bmy desk\b|\bthis (?:repo|project|codebase)\b|\bthe codebase\b|\bthis project['’]s\b|\bjs\/[\w./-]+\.(?:js|mjs)\b|\b[\w-]+\.py\b|Lego Principle|CLAUDE\.md|\bMEMORY\.md\b/i;
 const TAGS = ['div', 'section', 'details', 'summary', 'ul', 'ol', 'li', 'p', 'table', 'tr', 'td', 'svg', 'span', 'a', 'h2', 'h3'];
 let failures = 0, leaks = 0;
 const fail = (m) => { console.log('  ✗ FAIL ' + m); failures++; };
