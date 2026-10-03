@@ -39,6 +39,7 @@
       <li>The Granger Representation Theorem (Engle &amp; Granger, 1987) is the formal bridge: any genuinely cointegrated pair <em>must</em> admit an error-correction representation of this form, and conversely a valid error-correction model implies cointegration — cited here as a given result, not re-derived.</li>
       <li>A small worked example continues the Cointegration lesson's own AUD/USD-vs-NZD/USD numbers (\(\hat\beta \approx 1.10\)) forward one step: given \(Z_{t-1}=0.0050\) and fitted \(\alpha_Y=-0.35\), \(\alpha_X=0.15\), the model forecasts \(\Delta Y_t = -0.00175\), \(\Delta X_t = +0.00075\) — AUD/USD is forecast to do roughly 2.3× more of the correcting than NZD/USD.</li>
       <li>This repo's dashboard already runs a genuine, single-equation version of exactly this regression (<code>js/arma.js</code>'s <code>fitVECM</code>) — the two-equation system built out fully here is new, but the underlying mechanism is not hypothetical; it's live code.</li>
+      <li><strong>How it reached trading:</strong> Engle &amp; Granger (1987) and Johansen (1991) gave cointegrated markets their error-correction model, and Hasbrouck (1995) built price discovery on it.</li>
     </ul>
   </div>
 
@@ -112,6 +113,23 @@
       turns "these two things have an equilibrium" into "here is a genuine
       forecasting model of their next move."
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>When two prices drift apart, who closes the gap?</h3>
+    <div class="tl-origin-who">VECM · Engle &amp; Granger, 1987; Johansen, 1991 — cointegrated markets</div>
+    <p>Two prices tied together, such as futures and spot, an ETF and its basket, or two points on a curve, wander individually but cannot drift apart forever. Differencing them to make them stationary throws away exactly the long-run tie a relative-value trader cares about.</p>
+    <p>Robert Engle and Clive Granger's "Co-integration and Error Correction" (<em>Econometrica</em>, 1987) showed cointegrated series always have an error-correction form, and Søren Johansen's maximum-likelihood method (1988, 1991) extended it to systems of several prices. Engle and Granger shared the 2003 Nobel prize. In market microstructure, Joel Hasbrouck's 1995 information-share measure is built on a VECM of the same asset trading in several venues.</p>
+    <p>Today a VECM is how a desk models a cointegrated pair or basket: how fast the spread closes, and which leg does the moving. It sits behind spot–futures and cross-venue price-discovery studies and the spread forecasts used in relative-value trading.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>When two linked prices move apart, how fast does the gap close and which of them does the moving?</dd>
+        <dt>Takes in</dt><dd>A cointegrating spread from <a href="cointegration.html">cointegration</a>, short-run dynamics from <a href="arima-var.html">VAR</a>, and the lead-lag view of <a href="institutional-granger-causality.html">Granger causality</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="institutional-hasbrouck-information-share.html">Hasbrouck information share</a> for price discovery, and the spread entry and exit logic of <a href="ou-mean-reversion.html">OU mean reversion</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -553,6 +571,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Granger Representation Theorem is the formal bridge.</strong> Cointegration and a valid error-correction representation are equivalent — proven by Engle &amp; Granger (1987) — and at least one of \(\alpha_Y, \alpha_X\) must be nonzero for a genuinely cointegrated pair.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Short-run lag terms are just ARIMA/VAR, deliberately not re-derived here.</strong> They matter for a real fit (dropping them biases \(\alpha\)) even though this lesson's teaching tools isolate the error-correction term alone for clarity.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already runs a real, single-equation version.</strong> <code>js/arma.js</code>'s <code>fitVECM</code> is live in production dashboards — verified, not hypothetical — though the full two-equation \(\alpha_Y\)/\(\alpha_X\) system built here goes further than that code does.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it says which leg closes the spread.</strong> Engle &amp; Granger (1987) and Johansen (1991) made error correction the standard model for cointegrated prices; it drives relative-value spread forecasts and, via Hasbrouck (1995), price-discovery measures.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

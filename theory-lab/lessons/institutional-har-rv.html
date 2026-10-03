@@ -37,6 +37,7 @@
       <li>Contrast with the previous lesson: GARCH(1,1) forecasts variance from <em>one</em> noisy observation (yesterday's squared return) fed through a recursive filter; HAR-RV forecasts it directly from realized variance itself — a well-measured quantity, used as both target and regressor. When genuine intraday data exists, that's usually a meaningfully better forecast — not because the model is fancier (it's simpler: OLS versus GARCH's nonlinear MLE), but because the input is measured better.</li>
       <li>This repo genuinely runs Corsi's exact daily/weekly/monthly OLS regression, live, every day, for every tracked instrument — as a shadow/challenger forecast that is actively benchmarked against the incumbent estimators, not (yet) the estimator that sets any asset class's live trading bands. The full finding, with file and function names, is in Section 06.</li>
       <li>HAR-RV is not a free upgrade over GARCH or a range-based estimator: it needs a genuine intraday-derived RV series to be the model the literature actually validated. Feed it a single-observation daily proxy instead and you've quietly rebuilt something else.</li>
+      <li><strong>How it reached trading:</strong> Corsi (published 2009) replaced long-memory machinery with three OLS terms, and HAR-RV became the workhorse benchmark for forecasting realised vol against implied.</li>
     </ul>
   </div>
 
@@ -112,6 +113,23 @@
       slow-decaying volatility memory about as well as models built
       specifically to have that property from the ground up.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A volatility forecast with months of memory, fitted by OLS</h3>
+    <div class="tl-origin-who">HAR-RV · Corsi, circulated mid-2000s, published 2009</div>
+    <p>Once intraday data made realised variance measurable (Andersen &amp; Bollerslev, 1998, on Deutsche mark–dollar quotes), its slow, long-memory decay was obvious. GARCH's geometric decay underfitted it, and the fractionally integrated models that fitted it properly were awkward to estimate and maintain.</p>
+    <p>Fulvio Corsi's "A Simple Approximate Long-Memory Model of Realized Volatility" (circulated as a working paper, then <em>Journal of Financial Econometrics</em>, 2009) replaced that machinery with an OLS regression on daily, weekly and monthly averages of realised variance, motivated by traders operating at different horizons. It forecast about as well and was easy to estimate, extend and explain.</p>
+    <p>It became the workhorse benchmark of realised-volatility forecasting; later variants add jumps (Andersen, Bollerslev &amp; Diebold, 2007) or measurement error (HARQ, 2016). On a desk it supplies the realised-vol forecast compared with implied vol in variance and volatility trading, and the forecast behind volatility targeting and risk limits.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What will realised volatility be over the next day to month, given how volatile the last day, week and month have been?</dd>
+        <dt>Takes in</dt><dd>A realised-variance series, or a bar-based proxy from <a href="institutional-garman-klass-yang-zhang.html">Garman–Klass / Yang–Zhang</a>; the model it challenges is <a href="garch-volatility.html">GARCH</a>.</dd>
+        <dt>Hands on to</dt><dd>A forecast to set against implied variance (<a href="institutional-breeden-litzenberger-variance-swaps.html">variance swaps</a>), and the jump split of <a href="institutional-bipower-variation.html">bipower variation</a> for the HAR-with-jumps extension.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -661,6 +679,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>HAR-RV beats GARCH by having a better-measured input, not a fancier model.</strong> GARCH's nonlinear recursive filter is mathematically the more intricate of the two; HAR-RV's edge, where it has one, is entirely in what it's allowed to see.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo genuinely implements Corsi's exact model and runs it live, daily, for every instrument</strong> — as a benchmarked shadow forecast (<code>f.har</code>) and a genuine-intraday variant for indices, not (yet) as any asset class's primary live σ.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>HAR-RV is not a free upgrade without real intraday data.</strong> Fed a single-observation daily proxy instead of true RV, it quietly stops being the model the literature validated — this project's own code documents exactly that failure mode for index volatility.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the realised-vol forecast set against implied.</strong> Corsi's HAR-RV (2009) is the workhorse benchmark in realised-volatility forecasting, used for volatility targeting, risk limits and judging whether implied vol is rich or cheap.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 09</span></div>

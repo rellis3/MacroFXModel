@@ -37,6 +37,7 @@
       <li><strong>Rogers-Satchell (1991)</strong>, \(\sigma^2_{RS} = \ln(H/C)\ln(H/O) + \ln(L/C)\ln(L/O)\), is drift-independent — unlike Parkinson and Garman-Klass, it stays unbiased even when the price trends hard through the day.</li>
       <li><strong>Yang-Zhang (2000)</strong> combines an overnight (close-to-open) variance term, an open-close term, and Rogers-Satchell, weighted to minimize total estimator variance — unbiased under both drift and opening jumps, and the most complete of the four.</li>
       <li>This repo doesn't just explain these — Yang-Zhang is the actual production volatility input driving the live FX/gold daily-range forecaster (<code>js/volForecast.js</code>), Garman-Klass is the realized-variance "truth" a separate forecast benchmark scores against, and Parkinson drives a live trending/choppy regime classifier. Grounded in the repo's own code below, not asserted.</li>
+      <li><strong>How it reached trading:</strong> Parkinson and Garman &amp; Klass (1980) squeezed more volatility out of the daily bar, Yang &amp; Zhang (2000) fixed the overnight gap, and they remain the standard estimators wherever a desk has bars rather than ticks.</li>
     </ul>
   </div>
 
@@ -96,6 +97,23 @@
       directly, for every single day, which is exactly why it needs so much
       less data to arrive at the same answer.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>More volatility out of the same daily bar</h3>
+    <div class="tl-origin-who">Range-based volatility · Parkinson; Garman &amp; Klass, 1980 → Yang &amp; Zhang, 2000</div>
+    <p>For decades the only cheap, universal price record was the daily bar: open, high, low, close. Close-to-close volatility throws three of those four numbers away, so it needs a long window to be precise, and a long window reacts slowly to a regime change.</p>
+    <p>Michael Parkinson (1980) showed the high–low range alone estimates volatility several times more efficiently; Mark Garman and Michael Klass (1980), writing with options pricing in mind, added the open and close. Rogers &amp; Satchell (1991) removed the drift bias, and Dennis Yang and Qiang Zhang (2000) added the overnight gap, which matters for markets that close or, like FX, pause over the weekend.</p>
+    <p>These estimators are now standard wherever a desk has bars but not ticks: realised-versus-implied checks on option books, volatility targeting and position sizing, stop and barrier widths, and as the realised-vol input to longer-horizon forecasting models.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How volatile is this market right now, measured as precisely as daily OHLC bars allow?</dd>
+        <dt>Takes in</dt><dd>Daily open, high, low and close prices, turned into <a href="primer-returns-compounding.html">log returns</a>.</dd>
+        <dt>Hands on to</dt><dd>Forecasting models such as <a href="garch-volatility.html">GARCH</a> and <a href="institutional-har-rv.html">HAR-RV</a>, and volatility-scaled barriers in <a href="institutional-triple-barrier-labeling.html">triple-barrier labelling</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -603,6 +621,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Yang-Zhang is unbiased under both drift and opening jumps</strong> — the two failure modes that individually break Parkinson and Garman-Klass, respectively.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson's own Monte Carlo check recovered ~5x (Parkinson) and ~7.8x (Garman-Klass) efficiency gains over close-close vol</strong> — closely matching the textbook figures, not just citing them.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Genuinely built here, not just explained:</strong> Yang-Zhang is this repo's live production volatility estimator; Garman-Klass, Parkinson, and Rogers-Satchell are each doing real, distinct jobs elsewhere in the codebase.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the volatility input when you have bars, not ticks.</strong> Parkinson and Garman &amp; Klass (1980) through Yang &amp; Zhang (2000) feed realised-versus-implied checks, volatility targeting, position sizing and stop widths.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

@@ -37,6 +37,7 @@
       <li>That "exactly, by construction" is the whole character difference from Heston/SABR: local vol is a <strong>calibration device</strong>, not a tested behavioral model — it can't fail to fit today's surface, the same way a spline through a set of points can't fail to pass through them. Heston/SABR are <strong>parametric models</strong> that impose an assumed dynamic and can be, and are, checked against how the surface actually moves.</li>
       <li>The standard critique: local vol fits today's snapshot perfectly but its own implied dynamics for how the smile should evolve going forward are widely considered unrealistic — typically too flat, relative to what markets actually show later. That mismatch is the main reason practitioners lean on stochastic-vol models, or hybrid <strong>stochastic-local-vol (SLV)</strong> constructions, rather than trading off a pure local-vol model's forward behavior.</li>
       <li>Computing the formula from real, noisy, discretely-quoted market data is a genuinely hard numerical problem in its own right — raw finite differences on noisy prices blow up — which is why production local-vol construction always fits a smooth surface first (a spline, or a parametric smile model like SABR) and differentiates <em>that</em>, never the raw quotes.</li>
+      <li><strong>How it reached trading:</strong> Dupire and Derman &amp; Kani published it in 1994 so exotics could be priced consistently with every vanilla; it is still the calibration anchor on equity exotics desks, often inside local-stochastic-vol hybrids.</li>
     </ul>
   </div>
 
@@ -99,6 +100,23 @@
       the map, read the corresponding setting off the table, done. One source
       of not-knowing, not two.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing an exotic that agrees with every vanilla</h3>
+    <div class="tl-origin-who">Local volatility · Dupire; Derman &amp; Kani, 1994 — equity exotics desks</div>
+    <p>Once the post-1987 smile appeared, an exotics trader faced an awkward choice: a barrier or cliquet priced with one flat Black–Scholes vol was inconsistent with the very vanilla options used to hedge it, and there was no single model that matched every strike and maturity at once.</p>
+    <p>In 1994 three papers solved it in the same year: Bruno Dupire's "Pricing with a Smile" (<em>Risk</em>) gave the continuous formula; Emanuel Derman and Iraj Kani's "Riding on a Smile" (<em>Risk</em>), from Goldman Sachs, built the same idea as an implied binomial tree; Mark Rubinstein's "Implied Binomial Trees" (<em>Journal of Finance</em>) did it for a single maturity. For the first time an exotic could be priced in a model that reprices the whole vanilla surface by construction.</p>
+    <p>Local volatility became the default calibration engine on equity exotics desks. Its known weakness, unrealistic forward-smile dynamics (Hagan et al., "Managing Smile Risk", 2002), pushed many desks, especially in FX barriers, to local-stochastic-volatility hybrids that keep Dupire's exact fit as the anchor.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What single volatility function reproduces every quoted vanilla, so an exotic can be priced and hedged consistently with them?</dd>
+        <dt>Takes in</dt><dd>A smooth, arbitrage-free <a href="vega-volatility-surface.html">implied-volatility surface</a>, often fitted first with <a href="sabr-model.html">SABR</a>; the same second strike-derivative as <a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden–Litzenberger</a>.</dd>
+        <dt>Hands on to</dt><dd>Exotic pricing and smile-consistent hedge ratios (<a href="second-order-greeks.html">second-order Greeks</a>), and the stochastic-vol models such as <a href="heston-model.html">Heston</a> that local-stochastic hybrids blend it with.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -733,6 +751,7 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Local vol's own implied forward-smile dynamics are widely considered unrealistic — typically too flat.</strong> This, not any fitting failure, is the main reason practitioners lean on stochastic-vol models or stochastic-local-vol (SLV) hybrids.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Raw, noisy market quotes cannot be differentiated directly.</strong> A smoothing or parametric-fitting step (a spline, or a SABR-style smile fit) has to come first — naive finite differences on real data are numerically unstable, especially in the denominator's second derivative.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no Dupire or local-vol implementation of any kind.</strong> The only "local vol" hits in the codebase are an unrelated ATR-bucketing label and the Lee-Mykland jump detector's rolling realized-vol window — not this lesson's model.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the calibration anchor for exotics.</strong> Dupire and Derman &amp; Kani (both <em>Risk</em>, 1994) gave exotics desks one model that reprices every vanilla; its flat forward-smile dynamics are why FX and equity desks now often run local-stochastic-vol hybrids around it.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

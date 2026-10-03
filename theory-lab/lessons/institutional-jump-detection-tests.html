@@ -37,6 +37,7 @@
       <li>Intraday volatility has a well-documented <strong>U-shape</strong> — busy at the open and close, quiet mid-session. A plain Lee-Mykland test, applied without adjustment, systematically over-flags ordinary open/close moves as jumps and under-flags genuine mid-session jumps, because its local-vol yardstick blends the whole day together.</li>
       <li><strong>Boudt-Croux-Laurent (2011)</strong> fixes this by estimating a per-time-of-day volatility factor and dividing every return by its own time-of-day's typical size <em>before</em> applying the Lee-Mykland statistic — de-seasonalizing volatility before testing for jumps.</li>
       <li>This repo's own detector implements both pieces, is consumed by two downstream modules, and its own unit test shows the periodicity correction collapsing a diurnal false-positive count from 1,020 to 3 on synthetic pure-diffusion data. The findings it produces are about volatility <em>regime</em>, not direction — see the repo callout for the honest specifics.</li>
+      <li><strong>How it reached trading:</strong> Lee &amp; Mykland (2008) moved jump testing from the day to the individual return, so jumps can be tied to announcements, stripped from vol inputs and counted for jump-diffusion models.</li>
     </ul>
   </div>
 
@@ -94,6 +95,23 @@
       yardstick that ignores it makes precisely that mistake, for precisely
       that reason.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Timestamping the jump, not just the day</h3>
+    <div class="tl-origin-who">Jump tests · Barndorff-Nielsen &amp; Shephard, 2006 → Lee &amp; Mykland, 2008</div>
+    <p>A day-level test (Barndorff-Nielsen &amp; Shephard, 2006, comparing realised and bipower variation) can say a session contained a jump, but not when. To link a jump to a data release, clean it out of a volatility estimate, or study how prices react, a trader needs the specific return.</p>
+    <p>Suzanne Lee and Per Mykland's "Jumps in Financial Markets: A New Nonparametric Test and Jump Dynamics" (<em>Review of Financial Studies</em>, 2008) tested each intraday return against a local, jump-robust volatility estimate, with critical values from the distribution of a maximum. Lee (2012) used such tests to tie jumps to scheduled macro announcements, and Boudt, Croux &amp; Laurent (2011) adjusted them for the intraday volatility U-shape.</p>
+    <p>On desks and in research these tests are used to tag announcement jumps in event studies, to strip jumps from realised-vol inputs, and to estimate how often and how large jumps are for jump-diffusion option models.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which specific returns were jumps, and at what time?</dd>
+        <dt>Takes in</dt><dd>Intraday returns and a local, jump-robust volatility estimate from <a href="institutional-bipower-variation.html">bipower variation</a>.</dd>
+        <dt>Hands on to</dt><dd>Cleaner realised-vol inputs for <a href="institutional-har-rv.html">HAR-RV</a>, jump intensity and size for <a href="merton-jump-diffusion.html">Merton</a> and <a href="institutional-bates-model.html">Bates</a>, and outlier handling in <a href="data-cleaning-outliers-missing-data.html">data cleaning</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -519,6 +537,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Boudt-Croux-Laurent fixes this by deseasonalizing first:</strong> divide each return by its own time-of-day's typical size, then apply Lee-Mykland's machinery to the deseasonalized series.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's own detector implements both pieces, honestly</strong> — a Tier-1 brick consumed by two downstream modules, with a self-test that shows the correction collapsing 1,020 diurnal false positives to 3.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither test explains WHY a flagged return jumped,</strong> and neither transfers across sampling frequencies without recalibrating K, n, and the critical value from scratch.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it timestamps jumps.</strong> Lee &amp; Mykland (2008) and the intraday-periodicity fix of Boudt, Croux &amp; Laurent (2011) let a desk tie jumps to announcements, clean them from vol estimates, and calibrate jump-diffusion option models.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 10</span></div>
