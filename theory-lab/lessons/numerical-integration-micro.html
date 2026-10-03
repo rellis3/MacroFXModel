@@ -262,7 +262,7 @@
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Real-world scenario</div>
-        <p>A 7-underlying basket call is a genuinely 7-dimensional pricing integral. A grid at 15 points per dimension needs 15⁷ ≈ 170 billion evaluations — impossible. Drawing 1 million joint samples of the 7 underlyings and averaging the payoff costs exactly 1 million evaluations, dimension irrelevant — the standard reason this desk reaches for simulation, not a grid. Halving that Monte Carlo error needs 4 million draws instead of 1 million: a real, but polynomial, cost — nothing like the grid's exponential wall.</p>
+        <p>A 7-underlying basket call is a genuinely 7-dimensional pricing integral. A grid at 15 points per dimension needs 15⁷ ≈ 170 billion evaluations — impossible. Drawing 1 million joint samples of the 7 underlyings and averaging the payoff costs exactly 1 million evaluations, dimension irrelevant — the standard reason a desk reaches for simulation, not a grid. Halving that Monte Carlo error needs 4 million draws instead of 1 million: a real, but polynomial, cost — nothing like the grid's exponential wall.</p>
       </div>
     </section>
 
@@ -274,10 +274,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Underestimating the curse until it's too late</h4><p>A grid that works at 1-2 dimensions looks like it should scale — the exponential wall only becomes obvious once someone tries to actually run it at 5 or 7.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Treating one Monte Carlo run as the whole story</h4><p>1/√N is an average-case statement about repeated sampling. A single run at finite N still carries real sampling noise — reporting a point estimate without its standard error overstates precision.</p></div></div>
       </div>
+<!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying — checked against this repo's actual code</div>
         <p>The full lesson flags numerical integration as a concept not built or tested in this repo — that check still holds: no trapezoidal-rule, Simpson's-rule, or general quadrature code exists anywhere in this codebase today. This repo's <code>js/backtestStats.js</code> does have real, live Monte Carlo tooling, but it's a different application of the idea: it shuffles trade order (and bootstraps trades with replacement) to estimate path-dependent drawdown risk, not to evaluate an arbitrary integral. That's consistent with how this deck frames it — the same random-sampling machinery, one layer more fundamental here than in that resampling use case.</p>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

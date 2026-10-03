@@ -45,6 +45,17 @@ Building or restyling a lesson? See
 every component in `assets/theory.css`, when to use it, copy-pasteable
 markup, the house content order, and a verification checklist.
 
+## Sharing: the desk-only layer
+
+Material about the owner's own desk and codebase sits inside
+`<!-- DESK:START -->…<!-- DESK:END -->` markers. The education **admin**
+login sees everything; every other reader (and anyone not logged in) gets
+the same pages with that material stripped server-side, and the capstone
+workbenches, Reading the Tape, the desk-verdict/capstone-board feeds and the
+`/education/` notes folder
+return 404. Set `HIDE_DESK_EDUCATION=0` to serve everything to everyone.
+Details in the style guide (§5.18).
+
 ## What every lesson page contains
 
 - Plain-English intuition before any math.
@@ -69,6 +80,9 @@ markup, the house content order, and a verification checklist.
 
 ## Curriculum map
 
+- **Start here** (`start.html`) — the newcomer's page: how a lesson is laid
+  out and where to begin by background. Visual-guide sentences sit inside
+  `<!-- MICRO:START -->…<!-- MICRO:END -->` and go when visual guides are hidden.
 - **Stories** (`stories.html`) — the episode-first way in: 38 real episodes
   (Black Monday to the 2024 yen carry unwind), each with its causal chain
   and a link to every lesson section that tells it. Built from the lessons'

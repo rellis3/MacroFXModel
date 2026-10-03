@@ -17,7 +17,7 @@
   <h1 class="tl-title">Regime-Switching State Space Models</h1>
   <p class="tl-dek">Fusing the Hidden Markov Model's discrete hidden regime with the Kalman filter's continuous hidden state — and the approximation, Kim's filter, that makes tracking both at once computationally possible at all.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: Hidden Markov Models &amp; Regime Detection, Kalman Filter &amp; Adaptive Relationships</span>
   </div>
@@ -366,8 +366,8 @@
       pair governs the continuous tracking at any moment, rather than forcing one fixed \(Q\) to serve both
       calm and crisis conditions equally badly. This is presented purely as an illustration of what the
       fused model is <em>for</em> — it is explicitly not a claim that this specific setup has been built,
-      backtested, or shown to outperform either a plain Kalman filter or a hand-set regime rule in this
-      repo. It is also worth flagging plainly that this model multiplies the Kalman filter lesson's own
+      backtested, or shown to outperform either a plain Kalman filter or a hand-set regime rule<!-- DESK:START --> in this
+      repo<!-- DESK:END -->. It is also worth flagging plainly that this model multiplies the Kalman filter lesson's own
       \(Q\)/\(R\)-tuning caution across every one of its \(N\) regimes at once, rather than resolving it.
     </p>
   </div>
@@ -440,8 +440,9 @@
     first-release readings.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="regime-divergence-fx" data-evidence-date="2026-09-20">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>regime-divergence-fx: knowing the regime did not move the currency.</strong> The tempting trading
     use of a regime model is that when two economies sit in different growth/inflation regimes, their currency pair
     runs wider or tilts. This desk labelled the regimes per currency (USD, GBP, EUR, CAD), 2008–2026. Diverging vs
@@ -449,6 +450,7 @@
     −0.11pp; return differences all through zero. The labels are not a Markov-switching filter, but the lesson is
     the same: a regime call describes the backdrop; it is not a trade.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -504,9 +506,9 @@
     <p>
       <strong>Reaching for this model because it's more general, not because the data demands it.</strong>
       A model that can represent more possibilities is not automatically a better one — it is automatically
-      a <em>more overfittable</em> one. Per this project's working discipline, added complexity has to earn
+      a <em>more overfittable</em> one. Added complexity has to earn
       its place with real out-of-sample evidence beating a simpler incumbent (a plain Kalman filter, or a
-      hand-set regime rule), not merely with theoretical elegance.
+      hand-set regime rule), not merely with theoretical elegance<!-- DESK:START --> — per this project's working discipline<!-- DESK:END -->.
     </p>
   </div>
 
@@ -526,8 +528,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kim's filter (1994) collapses \(N^2\) branches back to \(N\) every step</strong> via moment matching — a weighted mean plus a law-of-total-variance-style weighted variance-of-means term — keeping the computation linear in \(T\) instead of exponential.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's collapsed variance (0.0130) exceeded both input branches' own variances</strong> (0.004, 0.010) — the concrete, quantifiable cost of forcing two disagreeing Gaussians into one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Kim's filter is an approximation, not an exact answer.</strong> It loses real information whenever regime-conditional branches genuinely disagree — the worse the disagreement, the more it costs.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A regime call describes the backdrop; it is not a trade.</strong> Markov-switching models dated the 2008 and 2020 recessions ahead of the NBER, but only filtered, first-release readings count. On this desk's data, diverging growth/inflation regimes did not widen or tilt the pair (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and the most parameter-heavy of the three in this category.</strong> Nothing here is built, tested, or validated in this repo. Explaining the fusion is not a claim it produces edge — and its parameter count compounds the overfitting risk already flagged separately in the Hidden Markov Model and Kalman filter lessons.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A regime call describes the backdrop; it is not a trade.</strong> Markov-switching models dated the 2008 and 2020 recessions ahead of the NBER, but only filtered, first-release readings count.<!-- DESK:START --> On this desk's data, diverging growth/inflation regimes did not widen or tilt the pair (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and the most parameter-heavy of the three in this category.</strong><!-- DESK:START --> Nothing here is built, tested, or validated in this repo.<!-- DESK:END --> Explaining the fusion is not a claim it produces edge — and its parameter count compounds the overfitting risk already flagged separately in the Hidden Markov Model and Kalman filter lessons.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -592,7 +594,7 @@
       on top of the transition matrix, a real overfitting risk relative to typical sample sizes. Second,
       even the standard estimation method (Kim's filter) is only an approximation, not an exact
       likelihood — so both the model's added complexity and its estimation method carry costs that a
-      simpler incumbent doesn't, and per this project's working discipline, that complexity needs genuine
+      simpler incumbent doesn't, and<!-- DESK:START --> per this project's working discipline,<!-- DESK:END --> that complexity needs genuine
       out-of-sample evidence before it earns a place over something simpler.
     </div>
   </details>

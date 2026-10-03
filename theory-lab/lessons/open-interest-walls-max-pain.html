@@ -17,7 +17,7 @@
   <h1 class="tl-title">Open Interest Walls, Max Pain &amp; Squeeze Trading</h1>
   <p class="tl-dek">The dealer-hedging mechanism from the previous lesson, applied to a real open-interest ladder — call walls, put walls, max pain, and the genuine (and honestly incomplete) economic logic behind why price is said to gravitate toward it.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
@@ -37,7 +37,7 @@
       <li>The worked example computes total pain by hand at four candidate strikes on a small seven-strike chain and finds the minimum away from both the call wall and the put wall — the max-pain strike is rarely one of the outlier walls themselves.</li>
       <li>The put/call open-interest ratio and OI skew are simple aggregate summaries of the same chain — cheap, useful context, and no more predictive than any other positioning snapshot on their own.</li>
       <li>A wall is a snapshot, not a fixed target: open interest opens and closes continuously, so a wall that held yesterday can be materially weaker — or already gone — by the next test.</li>
-      <li><strong>Real-world episode:</strong> in January 2021 GameStop's call chain was overrun and rebuilt higher within days, and the stock went from under $20 to an intraday $483. Whether dealer hedging of those calls (a "gamma squeeze") drove it is contested. Tested here: price does <strong>not</strong> pin to max pain (<code>oi-max-pain</code>, NULL), and walls as range fences are still untested.</li>
+      <li><strong>Real-world episode:</strong> in January 2021 GameStop's call chain was overrun and rebuilt higher within days, and the stock went from under $20 to an intraday $483. Whether dealer hedging of those calls (a "gamma squeeze") drove it is contested.<!-- DESK:START --> Tested here: price does <strong>not</strong> pin to max pain (<code>oi-max-pain</code>, NULL), and walls as range fences are still untested.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -520,26 +520,32 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     the afternoon. That is the "live snapshot" pitfall below, at its most extreme.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>oi-max-pain: price does not pin to max pain into expiry.</strong> Tested properly for the first time
     2026-09-10: <strong>null</strong>. The OI publish-lag timing risk was tested directly and survives; DTE, gamma, sign
     convention and spot basis were all verified. Max pain is a level to know about, not a magnet.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Walls as range fences: not yet tested here (queued).</strong> The tempting read is that price stays
     between the put wall and the call wall while both stand. A fair test would compute the walls point-in-time from that
     morning's open interest, count how often the session stays inside them, and compare that with randomly placed bands
     of the same width under matched volatility, with the rule fixed before looking.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <p>
     One neighbouring result already constrains the wall story. The desk's dealer-gamma study (<code>gex-range</code>)
     tested whether walls pull price toward them, and that directional layer was <strong>falsified at 48.8%
     out-of-sample against a 49.9% placebo</strong>. Walls and max pain describe where positions sit. On this desk's
     data, neither has shown that it moves price.
   </p>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -619,7 +625,7 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walls and max pain sketch a range, not a certainty.</strong> The worked example's 240–260 range with a mild pull toward 250 is a read of one snapshot, not a forecast.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A wall is a live snapshot, not a fixed structural level.</strong> It weakens or vanishes as positions close — re-check it every session, never assume it persists.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Headline OI overstates true mechanical strength whenever non-hedging participants hold a meaningful share of it</strong> — and that share is never directly observable.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Price does not pin to max pain on this desk's data (oi-max-pain, NULL),</strong> and the wall-magnet direction was falsified at 48.8% against a 49.9% placebo. GameStop in January 2021 shows the other face: walls overrun and rebuilt higher within days. Whether dealer hedging of them drove the squeeze is contested, not settled.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><!-- DESK:START --><strong>Price does not pin to max pain on this desk's data (oi-max-pain, NULL),</strong> and the wall-magnet direction was falsified at 48.8% against a 49.9% placebo. <!-- DESK:END -->Walls can also fail the other way: GameStop in January 2021 saw them overrun and rebuilt higher within days. Whether dealer hedging of them drove the squeeze is contested, not settled.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

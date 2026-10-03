@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Factor, Marginal &amp; Component VaR — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-factor-marginal-component-var.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Which position is eating the risk budget?</h2>
+      <p class="sl-sub">Risk decomposition · RiskMetrics era, mid-1990s → risk budgeting on every desk</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>After RiskMetrics (1994) and the 1996 Basel amendment made firm-wide VaR routine, banks needed to know which desk or position drove it. A total alone cannot say.</p>
+        <p>Litterman's 1996 "hot spots" and Garman's marginal and component VaR split the total into parts that add up exactly. Risk reports and risk budgets have used that split since.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how much of total risk does each position or factor contribute, and what would one more unit of it add?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One aggregate number can't say "why"</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The gap a single VaR figure leaves open</div>
@@ -49,8 +62,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Marginal VaR — a sensitivity, not yet an attribution</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Assuming normal returns</div>
@@ -72,8 +85,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Component VaR — Euler's theorem makes it exact</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The key fact: VaR_p is homogeneous of degree 1</div>
@@ -95,8 +108,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag position weights, watch the components stack — live</h2>
       <p class="sl-sub">Fixed volatilities (2% / 1.5% / 3%) and correlations (ρ_AB=0.3, ρ_AC=−0.2, ρ_BC=0.1), 95% confidence. Only the three weights move.</p>
       <div class="sl-card">
@@ -126,8 +139,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Factor VaR — the same logic, one level up</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>A linear factor model</div>
@@ -149,8 +162,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Full calculator — any weights, vols, correlations</h2>
       <p class="sl-sub">Starts on the worked-example numbers from the full lesson. Change anything, live.</p>
       <div class="sl-card">
@@ -184,8 +197,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Risk budgeting</h4><p>Allocate a total VaR budget across strategies, then monitor each one's live Component VaR share against its budgeted slice.</p></div></div>
@@ -195,8 +208,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Where this clean result quietly breaks down</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Needs normal (or elliptical) returns</h4><p>Under genuine fat tails, VaR is no longer a clean multiple of σ_p — Marginal/Component VaR must be estimated by simulation instead of read off a formula.</p></div></div>
@@ -206,8 +219,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -266,14 +279,15 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Marginal VaR is a per-unit sensitivity: z_p(Σw)_i/σ_p. Component VaR (w_i × Marginal VaR_i) turns it into a full, exact attribution.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Euler's homogeneous function theorem is why the components sum EXACTLY to total portfolio VaR — no residual, no approximation, under the normal-returns assumption.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Factor VaR applies the identical logic to x = B′w instead of w — attributing risk across a handful of common factors plus one honest specific-risk bucket.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A Component VaR can be negative — a real diversifier, not an error. And the clean closed form depends on normal/elliptical returns and a well-specified factor model; both are checkable assumptions, not guarantees.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>On a desk this is the risk-budget breakdown: contributions that add up exactly to total VaR, used to set limits by desk, position and factor.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

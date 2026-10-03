@@ -17,7 +17,7 @@
   <h1 class="tl-title">White's Reality Check &amp; Hansen's SPA Test</h1>
   <p class="tl-dek">The Deflated Sharpe Ratio corrects one reported Sharpe for an <em>estimate</em> of how many trials produced it. These two tests skip the estimate entirely — they bootstrap the full return history of every candidate strategy you actually ran, directly against each other.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — this repo's own stationary block bootstrap (<code>statsCore.js</code>) is real, battle-tested machinery, but every use of it in this repo tests ONE strategy/statistic at a time; the one place a best-of-N correction exists (<code>volReversionCore.js</code>, best of 4 horizons) uses a parametric Bonferroni adjustment, not a bootstrap-of-the-max — and a sharper version of this exact problem (best of ~600 configs per pair) is named an unaddressed risk elsewhere in this repo. No White's Reality Check or Hansen's SPA machinery exists anywhere here</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — this repo's own stationary block bootstrap (<code>statsCore.js</code>) is real, battle-tested machinery, but every use of it in this repo tests ONE strategy/statistic at a time; the one place a best-of-N correction exists (<code>volReversionCore.js</code>, best of 4 horizons) uses a parametric Bonferroni adjustment, not a bootstrap-of-the-max — and a sharper version of this exact problem (best of ~600 configs per pair) is named an unaddressed risk elsewhere in this repo. No White's Reality Check or Hansen's SPA machinery exists anywhere here<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="sharpe-family-deflated.html">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a>, <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo Simulation</a></span>
   </div>
@@ -36,6 +36,7 @@
       <li>WRC has a known weakness: throwing a pile of obviously-bad candidates into the test widens its bootstrap null more than necessary, costing real statistical power. Hansen's SPA test (2005) fixes exactly that — studentizing each candidate by its own bootstrap-estimated spread, and stopping a clearly-inferior candidate from acting like it "could have won" in the bootstrap world — and is the field's preferred modern successor to WRC, not a rival idea.</li>
       <li>In this lesson's worked panel of 5 toy strategies, one strategy's raw Sharpe (0.93) looks almost as strong as the genuine edge's (1.19) purely because it happened to realize very low variance — its actual mean edge is a third the size, and a bootstrap test shows it is nowhere close to distinguishable from noise (\(p\approx0.24\)), while the genuine edge survives comfortably.</li>
       <li>Like the Deflated Sharpe Ratio, both tests are only as honest as the declared candidate set — quietly running 50 variants and only submitting the best 5 to the test defeats the entire exercise, and no formula catches that; it is a discipline problem, not a statistical one.</li>
+      <li><strong>How it reached trading:</strong> White's Reality Check (2000) and Hansen's SPA test (2005) were built for trading-rule data-snooping (Sullivan, Timmermann &amp; White tested about 7,800 technical rules), and they are how a team tests whether the best backtest is more than luck.</li>
     </ul>
   </div>
 
@@ -121,6 +122,23 @@
       most, once the also-rans are stopped from padding the comparison" —
       which is a more sensitive, harder-to-fool test of the exact same claim.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Is the best backtest just the luckiest?</h3>
+    <div class="tl-origin-who">Data-snooping tests · White, 2000; Hansen, 2005 → trading-rule research</div>
+    <p>Researchers test hundreds of trading rules on the same history and report the best one. Its backtest looks impressive, but the best of many noisy tries will always look good; before these tests there was no standard way to ask whether the winner beat the benchmark once the search itself was accounted for.</p>
+    <p>Halbert White's Reality Check (published in <em>Econometrica</em> in 2000) bootstrapped the whole set of tried rules. Sullivan, Timmermann &amp; White (1999) applied it to about 7,800 technical trading rules on a century of Dow Jones data and found the best rule's apparent edge did not survive out of sample. Peter Hansen's SPA test (2005) made the check more powerful by not letting obviously bad rules widen the null.</p>
+    <p>Today these tests, alongside deflated Sharpe ratios and false-discovery controls, are how a quant research team decides whether the best of many backtests is worth putting capital behind.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>After trying many strategies, does the winner really beat the benchmark, or is it just the luckiest draw?</dd>
+        <dt>Takes in</dt><dd>A panel of candidate-strategy returns from walk-forward backtests (<a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged CV</a>) and the block bootstrap of <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo</a>.</dd>
+        <dt>Hands on to</dt><dd>The survivors go to <a href="sharpe-family-deflated.html">the Deflated Sharpe Ratio</a> and <a href="multiple-testing.html">Multiple Testing</a> checks, then on to sizing with the <a href="kelly-criterion.html">Kelly Criterion</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -224,7 +242,7 @@
   <div class="tl-math">\[ p_{WRC} = \frac{1 + \#\{b : \bar V^*_b \ge \bar V\}}{1 + B} \]</div>
   <div class="tl-eq-break">
     <div class="tl-eq-chip c1"><code>#{...}</code><span>how many of the B replicates matched or beat the real V̄</span></div>
-    <div class="tl-eq-chip c4"><code>+1 / +1</code><span>the Davison–Hinkley correction — keeps p from reading as exactly 0, the same convention this repo's own block-bootstrap brick (statsCore.js) already uses</span></div>
+    <div class="tl-eq-chip c4"><code>+1 / +1</code><span>the Davison–Hinkley correction — keeps p from reading as exactly 0<!-- DESK:START -->, the same convention this repo's own block-bootstrap brick (statsCore.js) already uses<!-- DESK:END --></span></div>
   </div>
   <p>
     A small \(p_{WRC}\) means the best-of-\(N\) result observed in the real
@@ -568,7 +586,7 @@
       unlikely to be pure best-of-\(N\) luck on <em>this historical sample</em>.
       It says nothing about transaction costs, regime shift, or whether the
       strategy still works on data the whole search never touched at all —
-      this repo's own OOS bar (Lego Principle 5) remains a separate,
+      a genuine out-of-sample bar<!-- DESK:START --> (this repo's own, Lego Principle 5)<!-- DESK:END --> remains a separate,
       still-mandatory hurdle on top of a passed reality check, not a hurdle
       it substitutes for.
     </p>
@@ -580,15 +598,16 @@
       better than nothing," "better than doing nothing active," "better than
       what's already deployed"), and switching the benchmark can flip which
       candidate is even eligible to be the observed maximum. Name the
-      benchmark up front, exactly as this project's own working agreement
-      insists for any claimed improvement.
+      benchmark up front<!-- DESK:START -->, exactly as this project's own working agreement
+      insists for any claimed improvement<!-- DESK:END -->.
     </p>
     <p>
       <strong>Mistaking "not significant" for "definitely fake."</strong> A
       genuinely modest, real edge over a short sample (16 periods, in this
       lesson's own toy panel) can easily fail to clear a bootstrap bar simply
       because there isn't yet enough data for the test to have real
-      statistical power — this is exactly why this repo's own validation rule
+      statistical power — this is exactly why a sound validation rule<!-- DESK:START --> (this
+      repo's own included)<!-- DESK:END -->
       insists on a non-trivial trade count (≥30) before treating an OOS result
       as evidence either way. A null result from a short track record is a
       "not yet distinguishable from noise," not an epitaph.
@@ -611,6 +630,7 @@
     rarely a reason to reach for the older test once SPA is implemented,
     beyond historical continuity or a specific paper's convention.
   </p>
+  <!-- DESK:START -->
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world scenario</div>
@@ -660,6 +680,7 @@
       WRC/SPA-style test of a full candidate panel has not been done.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
@@ -671,6 +692,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hansen's SPA test studentizes and stops clearly-inferior candidates from padding the null,</strong> recovering power on the same data — the field's preferred modern successor, not a rival method.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An impressive raw Sharpe is not the same claim as a statistically real edge.</strong> This lesson's worked example shows a noise strategy's Sharpe (0.93) looking nearly as good as a real edge's (1.19) while its own mean fails the bootstrap test outright (\(p\approx0.24\)).</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Both tests are worthless on a dishonestly curated candidate set.</strong> Submitting only the best-looking survivors of a larger, undisclosed search defeats the entire method — no formula can detect it after the fact.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the gate against data-snooping.</strong> Since Sullivan, Timmermann &amp; White (1999) found that the best of about 7,800 technical rules on the Dow did not keep its edge in later data, the best backtest of many has to beat a bootstrap of all the rules tried before it gets capital.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

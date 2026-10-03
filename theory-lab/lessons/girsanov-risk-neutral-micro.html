@@ -250,10 +250,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">🔄</div><div><h4>Calibration works backwards through ℚ</h4><p>Backing out implied volatility from a traded price infers a parameter of ℚ, not ℙ — why implied and realized volatility are related but distinct.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>Risk management switches back to ℙ</h4><p>VaR, stress tests, and real-world scenario probabilities are computed under the actual estimated measure — "how bad could this get" is a ℙ-question.</p></div></div>
       </div>
-      <div class="sl-callout green">
+      <!-- DESK:START --><div class="sl-callout green">
         <div class="sl-callout-label">Verified in this codebase</div>
         <p>This repo's own dealer-positioning greeks (<code>js/gammaGreeks.js</code>) compute Black-Scholes d₁/d₂, vanna, and charm using the risk-free rate r as the drift term in the formula — never an estimated real-world μ. It's a small, concrete instance of the exact same ℚ-pricing convention this lesson derives, already sitting in production code rather than only in the theory.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">

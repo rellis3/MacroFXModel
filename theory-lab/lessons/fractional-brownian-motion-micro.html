@@ -216,7 +216,7 @@
       <div class="sl-quote">A researcher who estimates H ≈ 0.85 on a volatility series is, via d = H − 0.5, looking at d ≈ 0.35 in ARFIMA terms — comfortably inside the stationary-and-invertible range d ∈ (−0.5, 0.5). Run the other direction just as easily: an ARFIMA fit reporting <strong>d̂ = 0.4</strong> is reporting <strong>H ≈ 0.9</strong>, very strong persistence, in exactly the language the Hurst lesson's R/S regression would have used.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this lives — and doesn't — in this repo</h2>
       <p class="sl-p"><code>js/rangeBiasCore.js</code> has a real, working <code>computeHurst</code> (R/S on closes) and a <code>featureHurst</code> wrapper — the same log-log regression Section 3's power law describes, gated at H &lt; 0.45 (fade) / H &gt; 0.55 (follow), exactly as the Hurst lesson covers. That part of this lesson's foundation is real, tested code, not a hypothetical.</p>
@@ -224,7 +224,7 @@
         <div class="sl-callout-label">Verified against the current source, 2026-09-03</div>
         <p><strong>featureHurst is not currently wired into the live conviction score.</strong> The repo's own code comments (rangeBiasCore.js) record that it was dropped from <code>computeRangeBiasServer</code> on 2026-07-25: benchmarked out-of-sample across 10 instruments it showed no usable predictive relationship, and it read H ≈ 0.88 (trending) on every instrument in the trending bucket with zero exceptions — an unconditional conflict vote, not noise. The function itself is kept, still runs, and still backs <code>hurstBench.js</code>'s research benchmark — it just no longer votes on a live entry. Separately, and unlike computeHurst, <strong>fractional Brownian motion and ARFIMA/FIGARCH are not implemented anywhere in this codebase</strong> — a repo-wide search finds no fBm, ARFIMA, or FIGARCH code at all. Both facts are consistent with the full lesson's own framing: this is background theory, not a live forecaster.</p>
       </div>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
@@ -278,14 +278,14 @@
         <div class="sl-quiz-explain">d = H − 0.5, so d=0 means H=0.5: no fractional differencing needed, and the model is just an ordinary stationary ARMA process — the discrete-time mirror of fBm's own reduction to Brownian motion.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>In this repo today, does featureHurst (built on computeHurst's R/S analysis) vote on live trade entries?</h4>
         <button class="sl-quiz-opt">Yes — it's one of the core features in the conviction score</button>
         <button class="sl-quiz-opt" data-correct="true">No — it was dropped from the live score on 2026-07-25, though the function is kept for research</button>
         <button class="sl-quiz-opt">No — it was never actually implemented</button>
         <div class="sl-quiz-explain">js/rangeBiasCore.js's own comments record the drop: out-of-sample across 10 instruments it showed no usable predictive relationship and voted an unconditional conflict on every trending-bucket instrument. computeHurst/featureHurst still exist and still back hurstBench.js — they just don't vote live anymore.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -297,12 +297,12 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>"Long memory" is a precise, checkable property — Σ|γ(k)|=∞ — not a vague "somewhat persistent." It holds for fractional Gaussian noise exactly when H≥0.5; H&lt;0.5 is real correlation but technically short memory.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>No finite-order ARMA model can ever have true long memory — exponential decay is always absolutely summable, however many lags are added. Only a power-law-decaying process like fBm/fGn crosses that line.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>ARFIMA is the discrete-time tool practitioners actually fit — fractional differencing order d=H−0.5, so d∈(0,0.5) is genuine long memory, fit with ordinary econometric tools (MLE, GPH) and no continuous-time machinery required.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>In this repo today, computeHurst/featureHurst exist and still run for research/benchmarking, but were dropped from the live conviction score on 2026-07-25; fBm and ARFIMA remain background theory, not implemented in any live forecaster.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>In this repo today, computeHurst/featureHurst exist and still run for research/benchmarking, but were dropped from the live conviction score on 2026-07-25; fBm and ARFIMA remain background theory, not implemented in any live forecaster.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Long memory reached finance through Mandelbrot, but Lo (1991) found little in returns; it lives in volatility, which is where FIGARCH, HAR and rough-volatility models use it.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Read H as a parameter of an actual generating process instead of a bare regression slope. Tell genuine long memory apart from a bigger, more-heavily-lagged AR/ARMA model dressed up to look persistent. Recognize when a residual ACF that refuses to decay past lag 40–60 is the empirical signature calling for ARFIMA or FIGARCH — while remembering, per this repo's own history with featureHurst, that a mathematically sound diagnostic still has to earn its place with real out-of-sample evidence.</p>
+        <p>Read H as a parameter of an actual generating process instead of a bare regression slope. Tell genuine long memory apart from a bigger, more-heavily-lagged AR/ARMA model dressed up to look persistent. Recognize when a residual ACF that refuses to decay past lag 40–60 is the empirical signature calling for ARFIMA or FIGARCH — while remembering<!-- DESK:START -->, per this repo's own history with featureHurst,<!-- DESK:END --> that a mathematically sound diagnostic still has to earn its place with real out-of-sample evidence.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

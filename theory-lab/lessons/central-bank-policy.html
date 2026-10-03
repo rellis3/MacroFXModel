@@ -39,7 +39,7 @@
       <li>The single most important practical fact in this lesson: it is the <strong>hawkish or dovish surprise relative to what was already priced</strong> — not the absolute hawkish/dovish stance itself — that moves a currency. A "hawkish hold" can rally a currency the market expected to be cut.</li>
       <li>When both mandate halves point the same way (inflation and unemployment both say "tighten," or both say "ease"), the committee acts decisively. When they conflict — the <strong>stagflation trap</strong>, both inflation and unemployment rising together — the committee fractures, the dot plot goes mixed, and guidance turns vague and data-dependent.</li>
       <li>The Taylor Rule lesson elsewhere in this curriculum formalizes the same reasoning as an equation; this lesson is the qualitative vocabulary layer underneath it — how the committee actually talks and votes before any of that gets reduced to a number.</li>
-      <li><strong>Real-world episodes:</strong> Draghi's "whatever it takes" (July 2012) repriced euro-area bonds with no action behind it; the SNB's removal of its 1.20 EUR/CHF floor (15 January 2015) was a near-unpriced surprise that sent the pair below 0.90 within minutes. On this desk's data the size of a surprise widens the range (<code>surprise-size</code>, VALIDATED), but the statement's tone gives no next-day direction (<code>cb-tone-direction</code>, NULL).</li>
+      <li><strong>Real-world episodes:</strong> Draghi's "whatever it takes" (July 2012) repriced euro-area bonds with no action behind it; the SNB's removal of its 1.20 EUR/CHF floor (15 January 2015) was a near-unpriced surprise that sent the pair below 0.90 within minutes.<!-- DESK:START --> On this desk's data the size of a surprise widens the range (<code>surprise-size</code>, VALIDATED), but the statement's tone gives no next-day direction (<code>cb-tone-direction</code>, NULL).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -528,41 +528,51 @@
     </p>
   </div>
 
+  <!-- DESK:START -->
   <p>
     The tempting trading claim in this lesson is <em>the surprise, or the tone, tells you which way the currency goes
     next.</em> This desk has tested three versions of it on central-bank decision days, almost all of them ordinary. None
     contains a 2015-style break.
   </p>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="surprise-size" data-evidence-date="2026-09-17">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>surprise-size: the size of a surprise widens the session, and says nothing about direction.</strong>
     For rate decisions: EUR/USD <strong>+0.38 ATR</strong> on the day and <strong>+0.51</strong> on big surprises,
     GBP/USD +0.38 the session after, USD/JPY +0.24. The ledger's own use: scale the expected range, never a
     direction.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="cb-tone-direction" data-evidence-date="2026-08-20">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>cb-tone-direction: the statement's tone is priced in half an hour.</strong> N=82 FOMC meetings.
     First-30-minute reaction vs next-day dollar: sign agreement <strong>46%</strong>, t = 0.32. Lexicon
     Δhawkishness vs next day: t = −0.75, though it <em>is</em> priced inside 30 minutes (t = 2.04). Do not carry the
     tone forward as a next-day lean.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="priced-in" data-evidence-date="2026-09-17">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>priced-in: prior repricing does not make decision day calmer.</strong> 85 FOMC decision days since
     2016. Decision-day range is about <strong>1.3 ATR</strong> on EUR/USD, USD/JPY, gold and SPX500 whether the prior
     20-session move in the 2-year was in the bottom tercile (&lt;5bp) or the top (&gt;16bp). Differences −0.11 to
     +0.07, intervals across zero.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <p>
     Read together: the surprise is real and it moves the <em>range</em>, which is this lesson's claim. What the
     surprise or the tone does <em>not</em> give you, on this desk's data, is the next day's direction, and "it was
     already priced" did not make a Fed day any quieter.
   </p>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -655,7 +665,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It's the surprise, not the stance, that moves price.</strong> A hawkish hold can rally a currency the market expected to be cut; a hike can weaken one if the market expected more.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dot plot has a documented weak predictive track record.</strong> Dots are revised almost every meeting and have repeatedly missed the eventual path — read it as current opinion, not a promise.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A reaction-function shift is a different, bigger event than reacting within an unchanged one.</strong> The same-looking hawkish move can mean the committee is simply following the data, or that it re-weighted the mandate itself — the second is the more violent repricing.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The surprise sizes the range, not the direction.</strong> surprise-size is VALIDATED as a range effect (EUR/USD +0.38 ATR on rate-decision days). The tone is NULL as a next-day lean (cb-tone-direction: sign agreement 46%, t = 0.32), and prior repricing did not calm decision day (priced-in, NULL). And a fully priced promise, like the SNB floor, can gap rather than reprice.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The surprise sizes the range, not the direction.</strong><!-- DESK:START --> surprise-size is VALIDATED as a range effect (EUR/USD +0.38 ATR on rate-decision days). The tone is NULL as a next-day lean (cb-tone-direction: sign agreement 46%, t = 0.32), and prior repricing did not calm decision day (priced-in, NULL).<!-- DESK:END --> And a fully priced promise, like the SNB floor, can gap rather than reprice.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

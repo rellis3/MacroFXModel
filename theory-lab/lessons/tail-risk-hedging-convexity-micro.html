@@ -225,7 +225,7 @@
         <div class="sl-callout-label">The cost-of-carry tradeoff</div>
         <p>If the calm period runs long enough, or the eventual crash is smaller than assumed, the cumulative drag can exceed whatever the hedge eventually pays out. That's the actual insurance-premium mechanism working as intended — which is why these programs are sized as a small, deliberate, budgeted cost rather than adopted on a promise that they'll "pay for themselves" on a fixed schedule.</p>
       </div>
-      <div class="sl-note">Nothing on this slide, or anywhere in this deck, describes a tail-hedge overlay that's actually built or backtested in this repo — checked directly against the current codebase before writing this. It's a framework for reasoning about convexity, not a validated trading edge.</div>
+      <!-- DESK:START --><div class="sl-note">Nothing on this slide, or anywhere in this deck, describes a tail-hedge overlay that's actually built or backtested in this repo — checked directly against the current codebase before writing this. It's a framework for reasoning about convexity, not a validated trading edge.</div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="11">
@@ -262,12 +262,14 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what the desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting cheap alternative to buying puts: "fear buys gold".</p>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>fear-gold:</strong> 58 VIX spikes, 2010-2026. Five sessions on, excess <strong>+0.07% [-0.42, +0.30]</strong>; twenty sessions on, excess <strong>-1.19% [-2.30, -0.48]</strong>. No fear bid, and gold lags a month later.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The calm-year and crash-year table fixes the hedge payoff to the index move; in 2020 much of it came from implied vol jumping (vega). Linear hedges assume their correlation with stocks holds in a crisis, and under forced selling it didn't. An option's payoff is set by contract, so it doesn't need correlation to hold.</p>
@@ -335,7 +337,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Tail hedging is a deliberate trade: giving up some expected return (an ongoing premium, paid mostly in calm years) to buy positive convexity — crash protection — on purpose.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The breakeven math is scale-free: how rare a crash needs to be for a hedge to pay off on average depends on the payout multiple, not the absolute size of the premium.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The hardest part is organizational, not mathematical — a hedge that "isn't working" for years is often working exactly as designed, and cutting it right before the tail event is the most common way these programs fail.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>March 2020: years of put premium bleed, then a 34% fall and a record VIX of 82.69 in which long puts paid on price and vol, while gold and Treasuries fell for a time. Gold is not a fear hedge here (fear-gold, NULL).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>March 2020: years of put premium bleed, then a 34% fall and a record VIX of 82.69 in which long puts paid on price and vol, while gold and Treasuries fell for a time.<!-- DESK:START --> Gold is not a fear hedge here (fear-gold, NULL).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

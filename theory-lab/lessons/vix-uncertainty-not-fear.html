@@ -23,7 +23,7 @@
   <h1 class="tl-title">The VIX Is an Uncertainty Index, Not a Fear Gauge</h1>
   <p class="tl-dek">The VIX is a price, not a mood. It's built from puts <em>and</em> calls, it measures how big the next month's moves are expected to be, and on its own it says nothing about which way they'll go. Read it as a size, convert it into points, and you'll stop being fooled by the nickname.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Vega &amp; the Volatility Surface (helpful, not required)</span>
   </div>
@@ -39,8 +39,8 @@
       <li><strong>What it is:</strong> the VIX is the 30-day implied volatility of the S&amp;P 500, computed from the prices of a whole strip of out-of-the-money puts <em>and</em> calls — a variance-swap-style number: the square root of the market's expected variance, times 100.</li>
       <li><strong>How to read it:</strong> divide by \(\sqrt{12}\) for a one-month, one-standard-deviation move. A VIX of 20 ≈ ±5.8% over the next month; divide by about 16 for a day (≈ ±1.25%).</li>
       <li><strong>Why "fear gauge" misleads:</strong> it prices uncertainty in <em>both</em> directions. It usually rises when stocks fall only because people pay up for crash protection — it can, and sometimes does, rise in a rally.</li>
-      <li><strong>The shape matters:</strong> normally the VIX sits below the 3-month VIX3M (contango). When the 30-day climbs above it (backwardation), near-term uncertainty is being priced above the longer horizon — and this desk found the following week runs <em>wider</em>.</li>
-      <li><strong>The desk's verdicts are all about size:</strong> <code>vix-inversion</code>, <code>mv-vixterm-range</code> and <code>iv-over-rv-wider</code> are validated <em>range</em> findings; <code>fear-gold</code> — "fear buys gold" — is <strong>null</strong>. Vol tells you about size, never sign.</li>
+      <li><strong>The shape matters:</strong> normally the VIX sits below the 3-month VIX3M (contango). When the 30-day climbs above it (backwardation), near-term uncertainty is being priced above the longer horizon<!-- DESK:START --> — and this desk found the following week runs <em>wider</em><!-- DESK:END -->.</li>
+      <!-- DESK:START --><li><strong>The desk's verdicts are all about size:</strong> <code>vix-inversion</code>, <code>mv-vixterm-range</code> and <code>iv-over-rv-wider</code> are validated <em>range</em> findings; <code>fear-gold</code> — "fear buys gold" — is <strong>null</strong>. Vol tells you about size, never sign.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -255,7 +255,7 @@
     </div>
     <div class="tl-compare-card amber">
       <h4>Backwardation — VIX above VIX3M (inversion)</h4>
-      <p>The next 30 days are priced as more uncertain than the next 90. Something is happening <em>now</em>. On this desk's data such inversions are brief — the median lasts one session.</p>
+      <p>The next 30 days are priced as more uncertain than the next 90. Something is happening <em>now</em>.<!-- DESK:START --> On this desk's data such inversions are brief — the median lasts one session.<!-- DESK:END --></p>
     </div>
   </div>
   <p>
@@ -266,8 +266,8 @@
     insurance premium for bearing crash risk, the well-documented
     <em>variance risk premium</em>. The folk extension is that when implied
     is <em>very</em> far above realised, the market is "over-insured" and
-    will calm down. This desk tested exactly that, and found the opposite
-    (Section 05).
+    will calm down.<!-- DESK:START --> This desk tested exactly that, and found the opposite
+    (Section 05).<!-- DESK:END -->
   </p>
 
   <div class="tl-symbols"><table>
@@ -282,7 +282,7 @@
     <tr><td>\(F\)</td><td>The forward index level implied by option prices.</td></tr>
     <tr><td>\(Q(K_i)\)</td><td>Mid price of the out-of-the-money option at \(K_i\).</td></tr>
     <tr><td>\(R\)</td><td>Risk-free rate to that expiry.</td></tr>
-    <tr><td>ATR</td><td>Average True Range — the desk's yardstick for "how wide was the range".</td></tr>
+    <tr><td>ATR</td><td>Average True Range — a common yardstick for "how wide was the range".</td></tr>
   </table></div>
 
   <div class="tl-box example">
@@ -392,7 +392,7 @@
     <div class="tl-icard">
       <div class="tl-icon-badge purple">⚖️</div>
       <h4>Implied vs realised</h4>
-      <p>Option traders compare what they're paying (implied) with what they're getting (realised). The gap is the insurance premium — but an extreme gap has, on this desk's data, preceded <em>wider</em> ranges, not calmer ones.</p>
+      <p>Option traders compare what they're paying (implied) with what they're getting (realised). The gap is the insurance premium<!-- DESK:START --> — but an extreme gap has, on this desk's data, preceded <em>wider</em> ranges, not calmer ones<!-- DESK:END -->.</p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge green">🔀</div>
@@ -401,38 +401,47 @@
     </div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+<!-- DESK:START -->  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>What this desk found when it tested it</h2>
   <p>
     Four verdicts from the desk's ledger bear directly on the VIX. Three are
     validated, and every one of them is a <em>range</em> finding. The fourth —
     the one that treats the VIX as a fear signal with a direction — is null.
-  </p>
+  </p><!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). <em>Range, not direction. Applies on the first day of an inversion; the effect on later days of a long inversion was not tested.</em></span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>An inverted VIX curve → a wider month, reproduced independently</strong> (<code>mv-vixterm-range</code>). Pre-registered: the range ratio over the next 20 sessions is +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ against a matched control, on 14 de-clustered firings (8% of sessions). Holds in both halves of the sample (+0.70 early, +0.35 late), so it is not one episode. <strong>Direction is null: 57% up against an 80%+ control.</strong> It independently reproduces the VIX-inversion result from a different harness — the main reason to believe it.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>"Implied far above realised means over-insured, it'll calm down" — the opposite</strong> (<code>iv-over-rv-wider</code>). VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range +0.38 ATR [+0.11, +0.62], next-20 +0.56; SPX500 next-20 +0.67 [+0.13, +1.21] (next-5 +0.17, null). Realised catches up to implied. <em>A reason to expect wider indices over the coming weeks, not calmer ones. Range, not direction.</em></span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>"Fear buys gold"</strong> (<code>fear-gold</code>). 58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on +0.42% vs +0.35% ordinary: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on +0.01% vs +1.20%: excess -1.19% [-2.30, -0.48]. Spiked then gave back half by day 20: 24% of spikes; the rest never spiked. <em>No fear bid in gold on average, and a month after a fear spike gold has lagged its ordinary drift.</em></span>
   </div>
+  <!-- DESK:END -->
 
-  <div class="tl-solid blue">
+<!-- DESK:START -->  <div class="tl-solid blue">
     <strong>The house rule these four verdicts add up to:</strong> volatility tells you about <em>size</em>, never about <em>sign</em>. Every validated VIX finding here widens the expected range; none of them says which way. The one test that read the VIX as a directional fear signal — fear buys gold — failed.
-  </div>
+  </div><!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -440,16 +449,17 @@
       The four verdicts above are entries in <code>js/deskEvidence.js</code>, the ledger the board and briefs read before writing any prose about volatility. The VIX and VIX3M levels and their inversion flag are on the board today. Cboe's SKEW and VVIX series are pulled daily but are <strong>not yet tested</strong> or catalogued — so nothing on this page claims anything about them beyond their definition.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
     <div class="tl-box-label">Common pitfalls</div>
     <ul>
-      <li><strong>"VIX is high, so stocks will fall."</strong> The VIX is priced from both sides. A high reading says moves will be bigger; it is silent on direction, and this desk's own direction checks came back null.</li>
+      <li><strong>"VIX is high, so stocks will fall."</strong> The VIX is priced from both sides. A high reading says moves will be bigger; it is silent on direction<!-- DESK:START -->, and this desk's own direction checks came back null<!-- DESK:END -->.</li>
       <li><strong>Treating the 1σ move as a cap.</strong> About one month in three should land outside ±1σ even under a bell curve, and real returns have fatter tails than a bell curve.</li>
       <li><strong>Quoting an intraday spike as "the VIX".</strong> Intraday prints in a thin market can be lifted by wide option quotes; check the close and VIX3M before reading anything into it.</li>
       <li><strong>Buying "VIX" and expecting the index.</strong> You can't buy the index itself; VIX futures and the products built on them roll along the term structure, and in normal contango that roll is a steady cost.</li>
-      <li><strong>"Over-insured means it'll calm down."</strong> Tested here: an extreme implied-over-realised ratio preceded <em>wider</em> ranges.</li>
+      <!-- DESK:START --><li><strong>"Over-insured means it'll calm down."</strong> Tested here: an extreme implied-over-realised ratio preceded <em>wider</em> ranges.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -458,9 +468,9 @@
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The VIX is 30-day implied vol from a strip of puts and calls.</strong> It's the square root of the market's expected variance, times 100 — a price for size.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VIX ÷ √12 is a one-month 1σ move.</strong> VIX 20 ≈ ±5.8% a month; VIX ÷ 16 ≈ the daily move.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted VIX curve means a wider coming week and month</strong> — validated twice here, from two harnesses. Range, not direction.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implied far above realised preceded wider ranges, not calmer ones.</strong> Realised catches up to implied.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Fear buys gold" is null.</strong> After 58 VIX spikes gold showed no excess at five sessions (+0.07% [-0.42, +0.30]) and lagged by 1.19% at twenty.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted VIX curve means a wider coming week and month</strong> — validated twice here, from two harnesses. Range, not direction.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implied far above realised preceded wider ranges, not calmer ones.</strong> Realised catches up to implied.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Fear buys gold" is null.</strong> After 58 VIX spikes gold showed no excess at five sessions (+0.07% [-0.42, +0.30]) and lagged by 1.19% at twenty.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The bell curve is a guide, not a promise.</strong> Real returns are fat-tailed, the VIX includes an insurance premium, and intraday prints can mislead.</span></div>
   </div>
 
@@ -478,14 +488,14 @@
     <summary>Q3. Stocks are up 1.5% today and the VIX is also up. Is that possible, and what might it mean?</summary>
     <div class="tl-answer">Yes. Calls are part of the VIX strip; heavy demand for upside calls, or genuine two-sided uncertainty, lifts implied variance. It suggests the uncertainty being priced isn't only about a fall — the market is paying for bigger moves, possibly in the direction it's already going.</div>
   </details>
-  <details class="tl-quiz">
+<!-- DESK:START -->  <details class="tl-quiz">
     <summary>Q4. What does "VIX above VIX3M" mean, and what did this desk find follows it?</summary>
     <div class="tl-answer">Backwardation: the next 30 days are priced as more uncertain than the next 3 months — something is happening now. On the first day of an inversion, the next 5 sessions ran wider than matched controls (SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43; 86 entries since 2008). The finding is about range, not direction.</div>
-  </details>
-  <details class="tl-quiz">
+  </details><!-- DESK:END -->
+<!-- DESK:START -->  <details class="tl-quiz">
     <summary>Q5. A colleague says: "Implied vol is way above realised — everyone's over-hedged, so expect things to calm down." What does this desk's evidence say?</summary>
     <div class="tl-answer">The opposite. With VIX ÷ 20-session realised SPX vol in the top decile (88 first days since 2010), the following 20 sessions ran wider: SPX500 +0.67 ATR [+0.13, +1.21], NAS100 +0.56. Realised volatility caught up to implied rather than implied falling back.</div>
-  </details>
+  </details><!-- DESK:END -->
   <details class="tl-quiz">
     <summary>Q6. Why did the February 2018 VIX spike feed on itself?</summary>
     <div class="tl-answer">Short-vol exchange-traded products rebalanced daily, so when VIX futures rose they were forced to buy VIX futures to keep their exposure on target. That forced buying pushed volatility higher still, which hit their value further — until the largest inverse-VIX note lost more than 90% of its indicative value overnight and its issuer terminated it.</div>

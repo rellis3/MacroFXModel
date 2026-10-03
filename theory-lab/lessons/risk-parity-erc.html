@@ -17,7 +17,7 @@
   <h1 class="tl-title">Risk Parity &amp; Equal Risk Contribution</h1>
   <p class="tl-dek">Markowitz needs a return forecast for every asset, and that forecast is the least reliable number in the whole model. Risk parity's answer is blunt and elegant: stop forecasting returns at all — allocate so every asset contributes the same slice of total risk instead.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — theory only, no multi-instrument allocator built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT — theory only<!-- DESK:START -->, no multi-instrument allocator built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Markowitz &amp; Black-Litterman</span>
   </div>
@@ -36,7 +36,7 @@
       <li>Define each asset's risk contribution \(RC_i = w_i (\Sigma w)_i / \sigma_p\) — its weight times its marginal contribution to portfolio variance, normalized so all \(RC_i\) sum to the portfolio's total volatility \(\sigma_p\).</li>
       <li>The Equal Risk Contribution (ERC) portfolio solves for weights such that \(RC_i = RC_j\) for every pair of assets, subject to the weights summing to 1.</li>
       <li>Worked case: when every pairwise correlation is the same number, the ERC solution reduces exactly to inverse-volatility weighting, \(w_i \propto 1/\sigma_i\) — derived explicitly below. The general case, with a real, uneven correlation structure, has no such closed form and needs numerical solving.</li>
-      <li><strong>Real-world episode:</strong> in March 2020 volatility jumped everywhere and stocks and Treasuries fell together for days, so the levered bond sleeve's risk contribution ballooned and risk-parity and vol-target rules forced funds to cut exposure into the fall. On this desk, an equal-risk blend of two spread sleeves beat either alone in backtest (validated).</li>
+      <li><strong>Real-world episode:</strong> in March 2020 volatility jumped everywhere and stocks and Treasuries fell together for days, so the levered bond sleeve's risk contribution ballooned and risk-parity and vol-target rules forced funds to cut exposure into the fall.<!-- DESK:START --> On this desk, an equal-risk blend of two spread sleeves beat either alone in backtest (validated).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -60,8 +60,8 @@
     showed) is the one piece of the model that <em>can</em> be estimated with
     reasonable stability. Whether that trade is a good one depends entirely
     on how much genuine signal was in the expected-return forecasts being
-    discarded — a question this lesson does not resolve, and this repo has
-    not tested.
+    discarded — a question this lesson does not resolve<!-- DESK:START -->, and this repo has
+    not tested<!-- DESK:END -->.
   </p>
 
   <div class="tl-box intuition">
@@ -553,8 +553,9 @@
     similar rules, so their de-levering is itself a market event.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>multi-spread-sleeve: an equal-risk combination of two diversifying sleeves beat either one alone, in
     backtest.</strong> With two return streams, ERC is exactly inverse-vol weighting. The desk combined its 2Y and 10Y
     yield-spread FX sleeves that way: <strong>15.7% trade overlap, 0.300 daily-return correlation, equal-risk combined
@@ -562,6 +563,7 @@
     only, not forward-proven, and a 0.30 correlation measured on ordinary days is exactly the kind of number March 2020
     shows can move when it matters.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -670,8 +672,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Under uniform pairwise correlation, ERC reduces exactly to inverse-volatility weighting</strong>, \(w_i \propto 1/\sigma_i\) — derived, not asserted, above.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The general case needs numerical solving.</strong> Real correlation matrices are never uniform, so production ERC allocators solve an iterative, nonlinear system — there is no closed-form shortcut once correlations differ pair to pair.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Dropping expected returns is a real cost.</strong> Risk parity has no mechanism for expressing a genuine view that one asset's expected return is better than another's — it sizes by risk alone, full stop.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> Every strategy here is single-instrument; this lesson is the theory behind a multi-instrument allocator this repo has not built, tested, or run out-of-sample.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>ERC is exact for the \(\Sigma\) you feed it, not for the one that arrives (March 2020).</strong> Volatility jumped everywhere and stocks and Treasuries fell together for days, so risk-parity and vol-target funds were forced to de-lever into the fall. On this desk, an equal-risk blend of two spread sleeves (0.300 correlation) reached Sharpe 1.15 vs 1.02 and 0.81 alone: backtest only, validated.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> Every strategy here is single-instrument; this lesson is the theory behind a multi-instrument allocator this repo has not built, tested, or run out-of-sample.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>ERC is exact for the \(\Sigma\) you feed it, not for the one that arrives (March 2020).</strong> Volatility jumped everywhere and stocks and Treasuries fell together for days, so risk-parity and vol-target funds were forced to de-lever into the fall.<!-- DESK:START --> On this desk, an equal-risk blend of two spread sleeves (0.300 correlation) reached Sharpe 1.15 vs 1.02 and 0.81 alone: backtest only, validated.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Gamma Exposure &amp; Dealer Hedging Flows</h1>
   <p class="tl-dek">Gamma is a second derivative of an option-pricing formula — but aggregated across an entire open-interest book, it becomes a real, mechanical forecast of how much buying or selling pressure dealer hedging will inject into a market, and where that pressure runs out.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Black-Scholes-Merton Option Pricing</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Short dealer gamma means hedging flow has the <strong>same</strong> sign as the price move (buy as it rises, sell as it falls) — destabilizing. Long dealer gamma means hedging flow has the <strong>opposite</strong> sign — stabilizing, mean-reverting.</li>
       <li>The worked example shows ATM gamma roughly doubling from 30 to 7 days to expiry, then more than doubling again into the final day — the numeric substance behind "gamma effects intensify near expiry."</li>
       <li>A "wall" isn't sellers pushing back — it's the point where the hedging <em>demand</em> that was fuelling a move disappears because the hedge is already complete. When a wall breaks instead, that same mechanism reverses into a squeeze.</li>
-      <li><strong>Real-world episode:</strong> on 5 February 2018 inverse-VIX products, short gamma by their own daily rebalancing rule, had to buy VIX futures into a VIX jump of about 115%. XIV lost more than 90% and was terminated. Tested here (<code>gex-range</code>, validated on the Nasdaq only): short-gamma days are only ordinary (~1.02× a Brownian baseline), long-gamma days are quiet (~0.85×). Range only, no direction, nothing on FX.</li>
+      <li><strong>Real-world episode:</strong> on 5 February 2018 inverse-VIX products, short gamma by their own daily rebalancing rule, had to buy VIX futures into a VIX jump of about 115%. XIV lost more than 90% and was terminated.<!-- DESK:START --> Tested here (<code>gex-range</code>, validated on the Nasdaq only): short-gamma days are only ordinary (~1.02× a Brownian baseline), long-gamma days are quiet (~0.85×). Range only, no direction, nothing on FX.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -653,14 +653,17 @@
     just getting a little bigger.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>gex-range: the range half is real on the Nasdaq; the direction half is not.</strong> On 793 days of NQ,
     next-day realised range against a same-trailing-vol Brownian baseline was <strong>+0.176 higher on short-gamma days
     (p 0.0008)</strong>, rising to <strong>+0.315</strong> matched on trailing vol. But the asymmetry runs the other way
     from the folk version: short-gamma days sit at DR ~1.02, essentially Brownian, while <strong>long-gamma days sit at
     ~0.85</strong>. Long gamma is quiet; short gamma is ordinary, not wild.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <p>
     The same ledger entry adds two limits that matter for anyone reading a GEX chart. It <strong>does not generalise to
     FX</strong>, and it <strong>carries no direction</strong>: the adjacent "walls are magnets" test was falsified at
@@ -669,10 +672,11 @@
     predates that test.) February 2018 does not contradict it. That was not an ordinary short-gamma day; it was a
     rulebook forcing a whole market's worth of same-sign hedging into one window.
   </p>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>Imagine a rule that says: whenever umbrellas get more expensive, you must buy more umbrellas before the shop shuts. On a stormy day, everyone with that rule is in the shop at closing time at once, and the price shoots up even more. That was February 2018. When the desk tested ordinary days, though, the "must buy as it rises" crowd didn't make markets wild; it was the opposite crowd that reliably made them calm.</p>
+    <p>Imagine a rule that says: whenever umbrellas get more expensive, you must buy more umbrellas before the shop shuts. On a stormy day, everyone with that rule is in the shop at closing time at once, and the price shoots up even more. That was February 2018.<!-- DESK:START --> When the desk tested ordinary days, though, the "must buy as it rises" crowd didn't make markets wild; it was the opposite crowd that reliably made them calm.<!-- DESK:END --></p>
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
@@ -746,7 +750,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma amplifies, long gamma dampens — derived, not asserted.</strong> The sign of dealer gamma flips the sign of the required hedge trade relative to the price move itself.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dealer's sign is an assumption layered on top of raw OI, not an observed fact.</strong> Every GEX figure and gamma-flip estimate inherits this uncertainty.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Whether apparent "pinning" is active trading or a pure hedging byproduct is genuinely unsettled.</strong> Don't treat either explanation as the proven one.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>On this desk's data, long gamma is quiet and short gamma is ordinary (gex-range, Nasdaq only).</strong> Short-gamma days run at ~1.02 of a Brownian baseline, long-gamma days at ~0.85; no direction, nothing on FX. February 2018's blow-up came from rules that batched short-gamma hedging into one window at the close, not from continuous textbook hedging.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>On this desk's data, long gamma is quiet and short gamma is ordinary (gex-range, Nasdaq only).</strong> Short-gamma days run at ~1.02 of a Brownian baseline, long-gamma days at ~0.85; no direction, nothing on FX. February 2018's blow-up came from rules that batched short-gamma hedging into one window at the close, not from continuous textbook hedging.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

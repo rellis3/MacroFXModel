@@ -17,7 +17,7 @@
   <h1 class="tl-title">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</h1>
   <p class="tl-dek">Asking "what happens if X" only gets you scenarios you thought to ask about — asking "what would have to happen for me to lose $Y" can surface the concentration risk you didn't know to look for.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a risk-management framework; no stress-testing pipeline is built in this repo</span>
+    <span class="tl-status concept">CONCEPT — explains a risk-management framework<!-- DESK:START -->; no stress-testing pipeline is built in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures</a> and <a href="extreme-value-theory.html">Extreme Value Theory</a> help but aren't required</span>
   </div>
@@ -36,7 +36,7 @@
       <li><strong>Reverse stress testing</strong> flips the question: instead of "what's my loss under scenario X," it asks "what scenario would cause an unacceptable loss of $Y," solving backward from the loss threshold to the shock.</li>
       <li>Reverse stress tests are especially good at surfacing hidden concentration — positions that look diversified on the surface (different asset classes, different desks) but load on the same underlying factor once you solve for what would actually break the portfolio.</li>
       <li>Both forward-looking methods carry an honest limitation: historical scenarios are anchored to what already happened, and the next crisis rarely repeats the last one's exact shape; Monte Carlo scenarios are only as good as the correlation/distribution assumptions feeding them.</li>
-      <li><strong>Real-world episode:</strong> in September 2022 UK pension schemes' LDI funds held collateral buffers sized to past gilt moves. The mini-budget produced a bigger one, forced selling made it bigger still, and the Bank of England had to buy long gilts to stop the loop. On this desk, reading history forward as a forecast tested null (<code>analogue-weeks</code>).</li>
+      <li><strong>Real-world episode:</strong> in September 2022 UK pension schemes' LDI funds held collateral buffers sized to past gilt moves. The mini-budget produced a bigger one, forced selling made it bigger still, and the Bank of England had to buy long gilts to stop the loop.<!-- DESK:START --> On this desk, reading history forward as a forecast tested null (<code>analogue-weeks</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -386,8 +386,9 @@
     anchored to the largest moves in the record, and the record was beaten.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="analogue-weeks" data-evidence-date="2026-09-20">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>analogue-weeks: history replays a loss; it does not forecast the next move.</strong> The tempting
     trading extension of historical replay is to find the past weeks that look most like this one and trade what
     followed them. Walk-forward over 400 weeks, the ten nearest weeks across 21 series were <strong>right 75% of the
@@ -395,6 +396,7 @@
     larger than the unconditional median on all three. Use replay to size a loss if a shock recurs, never as a
     lean on what comes next.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -475,8 +477,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Reverse stress testing solves backward from an unacceptable loss.</strong> It routinely surfaces hidden concentration — the worked example's two "different" strategies sharing one real risk factor is the textbook illustration.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Historical scenarios are anchored to the past, honestly.</strong> The next crisis rarely repeats the last one's exact shape — surviving a replayed 2008 is not evidence of surviving whatever comes next.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Monte Carlo stress is only as good as its assumptions.</strong> An understated stress correlation or shock size produces a reassuring number for the wrong reason.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A buffer sized to history fails on the move history hasn't produced, and forced selling makes the shock feed on itself.</strong> UK LDI, September 2022. Reading history forward does not help either: analogue weeks were right 75% of the time on the S&amp;P against an unconditional 76% (<code>analogue-weeks</code>, NULL).</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or run in this repo.</strong> This lesson explains the three techniques conceptually; it is not a claim that any stress-testing pipeline exists or has been validated on this project's actual portfolios.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A buffer sized to history fails on the move history hasn't produced, and forced selling makes the shock feed on itself.</strong> UK LDI, September 2022.<!-- DESK:START --> Reading history forward does not help either: analogue weeks were right 75% of the time on the S&amp;P against an unconditional 76% (<code>analogue-weeks</code>, NULL).<!-- DESK:END --></span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or run in this repo.</strong> This lesson explains the three techniques conceptually; it is not a claim that any stress-testing pipeline exists or has been validated on this project's actual portfolios.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

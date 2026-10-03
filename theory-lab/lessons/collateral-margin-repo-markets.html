@@ -17,7 +17,7 @@
   <h1 class="tl-title">Collateral, Margin &amp; Repo Markets</h1>
   <p class="tl-dek">Every leveraged position and every derivatives trade rests on a layer of plumbing most people never see: collateral posted as a buffer, discounted for its own riskiness, and lent overnight through a market that is quietly one of the largest and most important in the global financial system.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — institutional market-structure background, not a claim about anything built or traded in this repo</span>
+    <span class="tl-status concept">CONCEPT — institutional market-structure background<!-- DESK:START -->, not a claim about anything built or traded in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none — self-contained</span>
   </div>
@@ -37,7 +37,7 @@
       <li>A <strong>repurchase agreement (repo)</strong> is economically a collateralized loan of cash: one party sells a security today with a simultaneous agreement to buy it back later at a slightly higher price — the price difference <em>is</em> the interest, called the repo rate.</li>
       <li><strong>SOFR</strong> — the modern USD reference rate covered in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> — is literally computed from real overnight Treasury repo transaction data, a direct, concrete tie between this lesson and that one.</li>
       <li><strong>Who's in the market:</strong> money market funds lend the cash, primary dealers borrow it to fund bond inventories, banks lend when it pays, and the Fed stands at both edges. A mid-month tax date pulls cash out of money funds and lifts SOFR. That's a calendar effect, covered in <a href="fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor</a>.</li>
-      <li>This is institutional market-structure background — the plumbing underneath leverage and derivatives — not a trading signal, and not a claim about anything built in this repo.</li>
+      <li>This is institutional market-structure background — the plumbing underneath leverage and derivatives — not a trading signal<!-- DESK:START -->, and not a claim about anything built in this repo<!-- DESK:END -->.</li>
       <li><strong>Real-world episode:</strong> in March 2020's dash for cash, exchanges raised futures margins and repo lenders tightened haircuts just as volatility jumped. Hedge funds in the leveraged Treasury basis trade had to sell bonds to meet the calls, Treasury yields rose while stocks fell, and the Fed bought roughly a trillion dollars of Treasuries within about a month. A margin spiral, run through this lesson's machinery.</li>
     </ul>
   </div>
@@ -419,9 +419,9 @@
     <div class="tl-chain-link end"><b>Outcome</b>SOFR lifts for a day or two, then settles</div>
   </div>
   <p>
-  This is plumbing working normally. On this desk's data, 12 of 15 SOFR episodes above the Fed floor away from
+  This is plumbing working normally.<!-- DESK:START --> On this desk's data, 12 of 15 SOFR episodes above the Fed floor away from
   month-end fell on the 14th–18th of a month, and the study recorded the pattern as a calendar effect rather than
-  stress (a NULL result for SOFR-as-warning). The <a href="fed-corridor-iorb-srf-discount-window.html">Fed's Corridor</a>
+  stress (a NULL result for SOFR-as-warning).<!-- DESK:END --> The <a href="fed-corridor-iorb-srf-discount-window.html">Fed's Corridor</a>
   lesson covers what caps the rise, and what happened in September 2019 when nothing did.
   </p>
 
@@ -500,8 +500,9 @@
     protect was itself moving.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>funding-stress: on this desk's data, the overnight repo rate was not a stress warning.</strong> The
     tempting read of this lesson is "watch repo rates; when funding gets expensive, trouble follows". Tested on 2,123
     SOFR sessions, 2018-04 to 2026-09. SOFR ≥ 3bp over the floor away from month-end left just 15 episodes, too few
@@ -510,6 +511,7 @@
     667 of 2,123 sessions (31%). March 2020's stress ran through margins and Treasury prices; a test on the overnight
     rate alone is not built to see that.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
@@ -576,10 +578,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A haircut discounts collateral below its market value</strong> to buffer against the collateral's own volatility and liquidation time — $100 of a volatile bond at a 5% haircut counts as only $95.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A repo is economically a collateralized loan</strong> structured legally as a sale and a simultaneous agreement to repurchase — the price difference between the two legs is the interest, the repo rate.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SOFR is computed directly from overnight Treasury repo transaction data.</strong> A concrete, factual bridge from this lesson to the OIS-discounting machinery in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Money market funds lend, primary dealers borrow, the Fed sits at the edges.</strong> Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts. On this desk's data that pattern is the calendar, not a stress signal.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Money market funds lend, primary dealers borrow, the Fed sits at the edges.</strong> Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts.<!-- DESK:START --> On this desk's data that pattern is the calendar, not a stress signal.<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The haircut ranges shown are illustrative, not a universal schedule.</strong> Real haircuts vary by counterparty, tenor, rating, and regulatory regime — treat the numbers here as order-of-magnitude, not a precise table.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Haircuts and margins are not fixed; they rise with volatility (March 2020).</strong> The leveraged basis trade had to sell Treasuries to meet margin calls, a margin spiral the Fed stopped by buying roughly a trillion dollars of Treasuries. On this desk's data the overnight rate is not the warning light either (funding-stress, NULL: 12 of 15 episodes on the 14th–18th).</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional plumbing knowledge, not a trading signal.</strong> Nothing in this lesson is a claim about anything built, tested, or traded in this repo.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Haircuts and margins are not fixed; they rise with volatility (March 2020).</strong> The leveraged basis trade had to sell Treasuries to meet margin calls, a margin spiral the Fed stopped by buying roughly a trillion dollars of Treasuries.<!-- DESK:START --> On this desk's data the overnight rate is not the warning light either (funding-stress, NULL: 12 of 15 episodes on the 14th–18th).<!-- DESK:END --></span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional plumbing knowledge, not a trading signal.</strong><!-- DESK:START --> Nothing in this lesson is a claim about anything built, tested, or traded in this repo.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 09</span></div>

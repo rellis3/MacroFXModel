@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Market Microstructure Invariance — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="institutional-kyle-obizhaeva-invariance.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Pricing a big order in a name with little history</h2>
+      <p class="sl-sub">Market microstructure invariance · Kyle &amp; Obizhaeva, 2016 → pre-trade cost and bet-size scaling across assets</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Impact models had to be calibrated asset by asset, impossible for thin or new names. Kyle &amp; Obizhaeva (2016) scaled everything by price × volume × volatility.</p>
+        <p>Tested on US equity portfolio-transition orders and later E-mini futures, it is used to carry pre-trade cost and bet-size estimates across assets.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> how big is this order relative to the market's normal bet, and what should it cost?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The wrong ruler makes every market look unique</h2>
       <p class="sl-sub">A bowling ball in a bathtub, a pebble in a swimming pool — splash height alone tells you almost nothing.</p>
       <div class="sl-card">
@@ -45,8 +58,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A "bet" measured in risk transferred</h2>
       <p class="sl-sub">Not shares. Not even dollars. Dollars of risk.</p>
       <div class="sl-row">
@@ -67,8 +80,8 @@
       <p class="sl-p">$10,000 in a sleepy savings account and $10,000 on a single spin of roulette are the same size in dollars — not remotely the same size in risk. Two bets with identical L put an identical amount of genuine price risk on the table, whatever their share counts or underlying instruments.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">W: how much risk a market moves per day</h2>
       <p class="sl-sub">The mirror image of L, applied to the market's total daily volume instead of one trade.</p>
       <div class="sl-row">
@@ -87,8 +100,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Typical bet size scales as W^(2/3), not W</h2>
       <p class="sl-sub">Sub-linear, concave — the same qualitative shape as the square-root law of impact, applied to a different quantity.</p>
       <div class="sl-card">
@@ -129,8 +142,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Worked example: 1,042× apart in activity, 103× apart in typical bet size</h2>
       <p class="sl-sub">Asset A — mega-cap: P=$150, V=50M shares, 25% annualized vol. Asset B — small-cap: P=$20, V=200K shares, 45% annualized vol.</p>
       <div class="sl-card">
@@ -157,8 +170,8 @@
       <p class="sl-p">Even at the <strong>same</strong> percentage of ADV (1%), the square-root law alone says the small-cap costs roughly 1.8× more than the mega-cap (28.3 bps vs. 15.7 bps). Invariance adds a further insight: a rational bet-sizer wouldn't actually trade the same percentage of ADV in both — the invariance-implied "typical" bet is a much smaller share of Asset B's volume than of Asset A's, precisely because a "typical" bet occupies the same statistical position in each market's own distribution.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The full hypothesis: one shared distribution, not just one center</h2>
       <p class="sl-sub">z = L / W^(2/3) — a specific bet's size, standardized by its own market's activity.</p>
       <div class="sl-compare">
@@ -185,8 +198,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Compute your own bet's standardized size</h2>
       <p class="sl-sub">Same formulas as the full lesson's calculator — change any input, live.</p>
       <div class="sl-card">
@@ -210,8 +223,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners use this — and where it breaks</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Cross-asset cost prediction</h4><p>Given only price, volume, and volatility, invariance implies an expected order-size distribution and cost profile with no name-specific trading history required.</p></div></div>
@@ -224,8 +237,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -275,8 +288,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Measuring in the wrong unit makes markets look falsely unique — raw share counts and dollar sizes hide a shared pattern that shows up once bet size is L = Q·P·σ.</p></div>
@@ -284,6 +297,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Typical bet size scales as W^(2/3), not W — a 1,000× activity gap implies only roughly a 100× gap in typical bet size.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The full hypothesis is stronger than the scaling law alone: the entire distribution of standardized size z = L/W^(2/3) is claimed to be shared across assets, venues, and eras.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This extends Kyle's (1985) single-asset Lambda into a cross-sectional theory — and it's an empirical regularity with real scatter, silent on transient impact dynamics.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>How it reached trading: invariance (2016) lets a desk carry pre-trade cost and sizing estimates from liquid names to thin ones.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -313,7 +327,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Slide 8 — live "compute your own bet's standardized size" calculator.
+  // Slide 9 — live "compute your own bet's standardized size" calculator.
   // Mirrors the full lesson's calculator formula exactly, so the numbers agree.
   (function(){
     var priceInput = document.getElementById('mc-price');

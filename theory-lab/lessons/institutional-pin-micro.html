@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Putting a number on how informed the flow is</h2>
+      <p class="sl-sub">PIN · Easley, Kiefer, O'Hara &amp; Paperman, 1996 → information-risk measure, then VPIN</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Easley, Kiefer, O'Hara &amp; Paperman (1996) estimated the informed share of flow from daily buy/sell counts, and found it higher in thinly traded stocks.</p>
+        <p>Easley, Hvidkjaer &amp; O'Hara (2002) priced it as information risk; VPIN (2012) made a real-time version for toxicity monitoring. Duarte &amp; Young (2009) dispute what it measures.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> what fraction of trading in this name comes from informed traders?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Two populations of traders, one stock</h2>
       <p class="sl-sub">Everything PIN estimates comes down to who shows up to trade, and when.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">A researcher never sees "an event happened" directly — only the day's total buy and sell counts. PIN is the technique for reading that fingerprint back out of the counts alone.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The day-type tree</h2>
       <p class="sl-sub">Every trading day is one draw down this tree. Three possible outcomes, three different expected arrival rates.</p>
       <div class="sl-card">
@@ -97,8 +110,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Fitting it — a mixture likelihood, maximized</h2>
       <p class="sl-sub">A researcher never sees which branch of the tree fired on a given day — only that day's (B, S) counts.</p>
       <div class="sl-icard-grid">
@@ -110,8 +123,8 @@
       <div class="sl-quote">Where do the daily (B, S) counts themselves come from? A trade-classification scheme applied to the raw tape — covered in this category's own Trade Classification lesson. PIN's likelihood takes those counts as a given input, not something it derives.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Unpacking PIN = αμ / (αμ + 2ε)</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">↑</div><div><h4>αμ — expected informed arrivals</h4><p>Probability an event occurs (α), times the informed arrival rate conditional on one occurring (μ). This is a rate: expected informed trades per day.</p></div></div>
@@ -121,8 +134,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Why δ is nowhere in that formula</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">The distinction that matters</div>
@@ -131,8 +144,8 @@
       <p class="sl-p">δ shapes what informed trading <em>looks like</em> on an event day — net buying pressure or net selling pressure. It says nothing about how <em>often</em> (α), or how <em>intensely</em> (μ, against baseline ε), information-driven trading occurs — and PIN measures exactly that second question, not the first.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Worked example: from fitted numbers to PIN</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Already-fitted parameters</div>
@@ -150,8 +163,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag α — watch the informed share move</h2>
       <p class="sl-sub">μ = 150/day and ε = 100/day held fixed. Only the event probability α changes.</p>
       <div class="sl-card">
@@ -179,8 +192,8 @@
       <p class="sl-p">Push α toward 1 — events happen almost every day — and the informed bar keeps growing while the uninformed bar never moves, since ε is unrelated to how often events occur. PIN climbs toward 1 right alongside it.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute PIN yourself</h2>
       <p class="sl-sub">PIN = αμ / (αμ + 2ε). No δ field — it genuinely doesn't belong in this formula.</p>
       <div class="sl-card">
@@ -207,8 +220,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">PIN vs. VPIN</h2>
       <p class="sl-sub">The same underlying question, two very different tools for answering it.</p>
       <div class="sl-card">
@@ -241,8 +254,8 @@
       <div class="sl-quote">Easley, López de Prado &amp; O'Hara are explicit about the lineage: VPIN exists because PIN's own MLE approach is too slow and data-hungry to compute in anything close to real time. It's PIN's fast, approximate cousin — not a newer replacement for it.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Not a settled measure — a real academic dispute</h2>
       <div class="sl-callout purple">
         <div class="sl-callout-label">The Duarte &amp; Young (2009) critique</div>
@@ -255,8 +268,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -306,8 +319,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>PIN estimates Glosten-Milgrom's informed-vs-noise split by maximum likelihood, fit to daily buy/sell counts — an estimation technique, not a new theory of the spread.</p></div>
@@ -316,6 +329,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>δ never enters the formula — it decides direction, not overall informed-trading rate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>VPIN exists because PIN's MLE can't run live — same question, a faster and cruder answer.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Duarte &amp; Young (2009): a real, unresolved critique — some of what PIN measures may be ordinary imbalance, not information.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: PIN (1996) became a research measure of information risk and the parent of the real-time VPIN toxicity monitor.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

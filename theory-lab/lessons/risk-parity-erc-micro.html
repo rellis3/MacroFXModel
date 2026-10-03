@@ -260,7 +260,7 @@
       <div class="sl-quote">Dropping expected returns doesn't remove a bet from the portfolio — it just changes which bet is being made, without saying so out loud. It's an unstated wager that volatility and correlation are stable enough to trust, and that whatever real return differences exist across assets aren't worth acting on. Critics call heavy, unlevered bond weightings "an implicit view" for exactly this reason — risk parity claims to have no view, yet its output leans hard on one asset class more than any human allocator, unprompted, ever would.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Does this actually exist in this codebase?</h2>
       <p class="sl-sub">The full lesson's own status line calls this "theory only" — that claim was checked against the current source before this slide was written.</p>
@@ -270,7 +270,7 @@
         <p style="margin-top:10px"><strong>What's actually in the repo today:</strong> that claim is stale. <code style="font-family:'DM Mono',monospace">js/bookStress.js</code> contains <code style="font-family:'DM Mono',monospace">riskParityWeights()</code> — a genuine iterative Equal Risk Contribution solver (a multiplicative fixed-point update on the sample covariance, the same style of algorithm this slide deck's own correlation slider runs in your browser) — feeding an <code style="font-family:'DM Mono',monospace">allocationCompare()</code> routine that backtests equal / inverse-vol / risk-parity allocation on real sleeve returns and reports realized vol, Sharpe, max drawdown, and effective bets under each. It's covered by passing unit tests in <code style="font-family:'DM Mono',monospace">js/bookStress.test.mjs</code> (weights sum to 1; the equal-risk property holds; it correctly reduces toward inverse-vol weighting for uncorrelated assets), and surfaced live on the <code style="font-family:'DM Mono',monospace">book-stress.html</code> page. A simpler sibling, <code style="font-family:'DM Mono',monospace">inverseVolWeights()</code> in <code style="font-family:'DM Mono',monospace">js/levelAtlasVoteReview.js</code>, is already wired into this project's production trade-vote allocation code.</p>
       </div>
       <p class="sl-p">To be precise about what this does and doesn't establish: this is real, tested code applied to this project's own <em>trade sleeves</em> (a trend book vs. a fade book, or per-pair vote portfolios) rather than a classic multi-asset equity/bond/commodity allocation — but it is the same mathematics this lesson teaches, genuinely implemented, genuinely unit-tested, and already live in a page a reader of this repo can open today. Nothing here is silently corrected in the full lesson's text — both claims are left visible, side by side, exactly as found.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11 · It actually happened</div>
@@ -294,11 +294,13 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="multi-spread-sleeve" data-evidence-date="2026-09-20">
-        <span class="sl-stamp-tag">Validated</span>
+        <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>An equal-risk blend of two diversifying sleeves beat either alone, in backtest.</strong> With two streams ERC is exactly inverse-vol. The desk's 2Y and 10Y yield-spread FX sleeves: 15.7% trade overlap, 0.300 daily-return correlation, equal-risk combined Sharpe 1.15 vs y2 1.02 and y10 0.81. Backtest only, not forward-proven, and a 0.30 correlation from ordinary days is the kind of number March 2020 shows can move.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>ERC treats Σ as known and stable enough to size by. In March 2020 volatilities jumped several-fold in days and the stock-bond correlation flipped sign for a stretch, so "equal" risk was equal only on stale data. And thousands of funds running similar rules make the de-levering itself a market event.</p>
@@ -346,14 +348,14 @@
         <div class="sl-quiz-explain">Risk parity sizes purely by risk, with zero mechanism to reward a genuinely better expected return — and its bond-heavy tilt is itself an implicit, unexamined bet, according to its critics.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+<!-- DESK:START -->      <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Does this repo have code that numerically solves for equal-risk-contribution weights?</h4>
         <button class="sl-quiz-opt" data-correct="true">Yes — riskParityWeights() in js/bookStress.js, covered by passing unit tests</button>
         <button class="sl-quiz-opt">No — the full lesson's "theory only" status is fully accurate today</button>
         <button class="sl-quiz-opt">Only as an untested prototype with no test coverage</button>
         <div class="sl-quiz-explain">js/bookStress.js's riskParityWeights() is a real, tested, iterative ERC solver, wired into allocationCompare() and surfaced on book-stress.html — the full lesson's "no allocator built or tested" claim is stale, as flagged on the earlier slide.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="15">
@@ -366,11 +368,11 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>True Equal Risk Contribution (RCᵢ = RCⱼ for every pair) is a genuinely different, correlation-aware target from equal-dollar or naive inverse-vol weighting alone.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Only under the idealized uniform-correlation special case does ERC reduce exactly to inverse-volatility weighting; real, uneven correlations need a numerical solve.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The trade-off is real: no view on which asset is more attractive, and a real tendency to lean hard on low-vol assets like bonds — itself an implicit bet, by some critics' account.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>March 2020: volatility jumped everywhere and stocks and Treasuries fell together, so the levered bond sleeve's risk contribution ballooned and risk-parity and vol-target funds were forced to cut into the fall. An equal-risk blend of this desk's two spread sleeves beat either alone in backtest (Sharpe 1.15 vs 1.02 / 0.81).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>March 2020: volatility jumped everywhere and stocks and Treasuries fell together, so the levered bond sleeve's risk contribution ballooned and risk-parity and vol-target funds were forced to cut into the fall.<!-- DESK:START --> An equal-risk blend of this desk's two spread sleeves beat either alone in backtest (Sharpe 1.15 vs 1.02 / 0.81).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
-        <p>Build a portfolio-weighting scheme that never needs a return forecast — only volatility and correlation, the more stable inputs. Recognize the moment "equal weight" gets silently substituted for "equal risk" in a pitch deck or a fund's marketing. Know precisely when the cheap inverse-vol shortcut is fine (correlations roughly uniform) versus when a full numerical ERC solve is required (they're not) — and know this repo already has that numerical solve built and unit-tested, in <code style="font-family:'DM Mono',monospace">js/bookStress.js</code>, ready to point to.</p>
+        <p>Build a portfolio-weighting scheme that never needs a return forecast — only volatility and correlation, the more stable inputs. Recognize the moment "equal weight" gets silently substituted for "equal risk" in a pitch deck or a fund's marketing. Know precisely when the cheap inverse-vol shortcut is fine (correlations roughly uniform) versus when a full numerical ERC solve is required (they're not)<!-- DESK:START --> — and know this repo already has that numerical solve built and unit-tested, in <code style="font-family:'DM Mono',monospace">js/bookStress.js</code>, ready to point to<!-- DESK:END -->.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>
@@ -443,7 +445,7 @@
     }
 
     // Equal Risk Contribution via multiplicative fixed-point iteration —
-    // same algorithm as js/bookStress.js's riskParityWeights().
+    // the standard iterative ERC algorithm.
     function ercWeights(cov){
       var k = 3;
       var w = [1/k, 1/k, 1/k];

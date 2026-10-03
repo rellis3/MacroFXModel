@@ -37,7 +37,7 @@
       <li>Validate out-of-sample with realistic costs and a genuine train/test boundary — see <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> for why even a clean-looking chronological split can still leak.</li>
       <li>Pre-register what "it worked" and "it didn't work" each look like <em>before</em> running the test — otherwise a null result quietly gets re-narrated into "promising, needs more tuning."</li>
       <li>The best-of-many-variations number needs a multiple-testing correction before it means anything — see <a href="sharpe-family-deflated.html">the Deflated Sharpe Ratio</a> and <a href="multiple-testing.html">Multiple Testing</a>.</li>
-      <li><strong>Real-world episode:</strong> large NHLBI clinical trials went from 57% reporting a benefit (17 of 30) to 8% (2 of 25) once outcomes were registered in advance; and this desk's funding-stress pre-registration, whose written prior (a drawn Standing Repo Facility precedes wider ranges) lost: S&amp;P 500 −0.561 ATR, a calmer week, banked as a null against the expectation.</li>
+      <li><strong>Real-world episode:</strong> large NHLBI clinical trials went from 57% reporting a benefit (17 of 30) to 8% (2 of 25) once outcomes were registered in advance<!-- DESK:START -->; and this desk's funding-stress pre-registration, whose written prior (a drawn Standing Repo Facility precedes wider ranges) lost: S&amp;P 500 −0.561 ATR, a calmer week, banked as a null against the expectation<!-- DESK:END -->.</li>
     </ul>
   </div>
 
@@ -367,8 +367,8 @@
   <div class="tl-section-mark"><span>Section 03</span></div>
   <h2>It actually happened: a prior written down, and beaten</h2>
   <p>
-  Stage 5 can sound like paperwork. Two episodes show what it actually changes: one from medicine, at the scale of a whole
-  field, and one from this desk, where the written prior lost.
+  Stage 5 can sound like paperwork.<!-- DESK:START --> Two episodes show what it actually changes: one from medicine, at the scale of a whole
+  field, and one from this desk, where the written prior lost.<!-- DESK:END -->
   </p>
 
   <div class="tl-story" id="story-1">
@@ -384,6 +384,7 @@
     </p>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-story" id="story-2">
     <div class="tl-story-label">It actually happened here</div>
     <h3>This desk, October 2026: funding stress, and a prior that lost</h3>
@@ -408,7 +409,9 @@
       written expectation". Nobody got to decide afterwards that calm was what they had meant all along.
     </p>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-chain">
     <div class="tl-chain-link shock"><b>The folk claim</b>SOFR above the floor, or a drawn SRF, warns of a rougher market</div>
     <div class="tl-chain-arrow">→</div>
@@ -422,12 +425,16 @@
     <div class="tl-chain-arrow">→</div>
     <div class="tl-chain-link end"><b>Outcome</b>Banked as a null against the prior; the calm is reported, not promoted</div>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Before the game, the desk wrote on a card and sealed it: "I think team A wins big." Team B won. Because the card was sealed first, nobody could pretend afterwards that they'd picked team B all along. Doctors started sealing their cards in 2000, and suddenly far fewer of their medicines "won".</p>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <h3>Where the textbook version breaks</h3>
   <p>
   Stage 5 as written guards against one failure: a null re-narrated into "promising, needs more tuning". Here the danger ran
@@ -439,9 +446,11 @@
   too: the cell it expected to be untestable was testable, and the headline-SOFR setup came out untestable instead, with 15
   episodes against a floor of 20, 12 of them on the 14th–18th of a month.
   </p>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>funding-stress: genuine funding stress did not precede wider ranges, and the written prior lost.</strong>
     2,123 SOFR sessions, 2018-04 to 2026-09. SRF drawn: 21 episodes, SPX500 next-5-session range −0.561 ATR [−0.984, −0.181]
     versus control, negative in both halves (−0.928 / −0.228): calmer, not wider. EUR/USD −0.483 [−1.150, +0.119] and
@@ -449,6 +458,7 @@
     floor of 20, 12 of them on the 14th–18th. Direction null throughout. The SRF is drawn on 667 of 2,123 sessions
     (31%).</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -547,7 +557,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Pre-register the verdict criteria before the test runs.</strong> This is what stops a null or marginal result from being re-narrated into "promising, needs more tuning" after the fact.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The order matters more than any single step's rigor.</strong> A technically correct OOS test on a data-mined hypothesis is still worthless — the leak happened upstream, before validation ever began.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A best-of-many-variations result needs the multiple-testing correction, not just an OOS pass.</strong> Clearing an out-of-sample bar and clearing the chance-expected ceiling for how many variations were tried are two separate hurdles — see the Deflated Sharpe Ratio lesson.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Write the prior down so it is allowed to lose (funding-stress, NULL).</strong> The desk expected a drawn SRF to precede wider ranges; the S&amp;P 500 came back −0.561 ATR [−0.984, −0.181], calmer, and was banked as a null against the written expectation. A significant surprise is a new hypothesis, not a finding.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Write the prior down so it is allowed to lose<!-- DESK:START --> (funding-stress, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> The desk expected a drawn SRF to precede wider ranges; the S&amp;P 500 came back −0.561 ATR [−0.984, −0.181], calmer, and was banked as a null against the written expectation.<!-- DESK:END --> A significant surprise is a new hypothesis, not a finding.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

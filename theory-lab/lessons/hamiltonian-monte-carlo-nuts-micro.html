@@ -246,10 +246,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>The default for a reason</h4><p>Gradient-informed trajectories with an automatically chosen length is exactly why NUTS — not fixed-L HMC — is the default sampler in modern probabilistic programming languages, including Stan and PyMC.</p></div></div>
       </div>
       <div class="sl-quote">No one has to guess the right rolling time in advance. The marble's own path — specifically, the moment its momentum stops pointing away from home — tells NUTS when to stop.</div>
-      <div class="sl-callout purple">
+      <!-- DESK:START --><div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>This slide (and the full lesson it condenses) explains a sampling algorithm, not a claim about this repo. Checked directly against the codebase for this deck: no Hamiltonian Monte Carlo, NUTS, Stan, or PyMC usage exists anywhere in this repo's actual code today — consistent with the full lesson's own "concept, not built here" framing. Whatever posterior this machinery is ever applied to would still have to earn its keep out of sample, like everything else in this curriculum.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

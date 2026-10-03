@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Capital Asset Pricing Model (CAPM)</h1>
   <p class="tl-dek">Markowitz proved there's a mathematically best trade-off between risk and return once you know how every asset moves with every other. CAPM asks the next question: if every investor is smart enough to actually hold that best trade-off, what does that force each individual asset's expected return to be? The answer collapses to a single number — beta — and it's the founding idea every other lesson in this new category either extends or was written to fix.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — CAPM's single-market-portfolio pricing model isn't built here, but this repo's own <code>beta_estimator.py</code> runs the identical rolling-OLS beta regression against macro factor proxies for hedging, not pricing</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — CAPM's single-market-portfolio pricing model isn't built here, but this repo's own <code>beta_estimator.py</code> runs the identical rolling-OLS beta regression against macro factor proxies for hedging, not pricing<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> (beta is exactly that lesson's OLS slope), <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> (CAPM is what falls out once everyone holds the same efficient portfolio)</span>
   </div>
@@ -36,6 +36,7 @@
       <li>The <strong>Capital Market Line</strong> (return vs. total risk σ, only efficient portfolios sit on it) and the <strong>Security Market Line</strong> (return vs. beta alone, every correctly-priced asset sits on it) are frequently confused but answer different questions — this lesson keeps them explicitly separate.</li>
       <li>CAPM's assumptions — single period, identical investor expectations, no taxes or costs, unlimited borrowing/lending at the risk-free rate — are all known to be false. That's not a fatal flaw; it's exactly what makes CAPM a clean, tractable <em>baseline</em> rather than a finished answer.</li>
       <li>Decades of empirical work (Fama &amp; French, 1992, is the canonical citation) found beta alone leaves a large chunk of the actual cross-section of stock returns unexplained — small-cap and "value" stocks have historically earned more than their beta predicts. That specific, well-documented failure is exactly what the next lesson in this category, Fama-French &amp; Carhart, was built to address.</li>
+      <li><strong>How it reached trading:</strong> Sharpe (1964) and Lintner (1965) gave every asset a market beta; Jensen's 1968 alpha made it the yardstick for fund skill, and beta is still the first hedge ratio and the first risk number a desk looks at.</li>
     </ul>
   </div>
 
@@ -106,6 +107,23 @@
       arithmetic of what each individual asset's expected return has to be
       for that to be a stable, self-consistent state of the world.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>One number for how much market risk you carry</h3>
+    <div class="tl-origin-who">CAPM · Sharpe 1964, Lintner 1965 → beta on every market-data screen</div>
+    <p>Markowitz showed in 1952 how to trade off risk and return across a portfolio, but it needed a covariance for every pair of assets and gave no answer to the question a manager actually faced: what return should this stock be expected to earn for the risk it adds? William Sharpe (1964) and John Lintner (1965) answered with a single number per asset: its beta against the market.</p>
+    <p>That number moved fast into practice. Michael Jensen (1968) used CAPM to judge mutual funds, and "Jensen's alpha" became the standard measure of skill; by the 1970s brokers published beta estimates for listed stocks, and the market-portfolio logic underpinned the first index funds. Sharpe shared the 1990 Nobel prize for the model.</p>
+    <p>Today beta is the first figure a desk checks: it sets the index-futures hedge on an equity book, splits a manager's return into beta and alpha, and serves as the cost-of-equity input in corporate finance, even though the empirical evidence says beta alone does not explain average returns.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much of this asset's move is just the market, and what return does that exposure justify?</dd>
+        <dt>Takes in</dt><dd>The regression slope from <a href="primer-correlation-regression.html">Correlation &amp; Regression</a> and the mean-variance world of <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>.</dd>
+        <dt>Hands on to</dt><dd>The extra factors of <a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart</a>, the hedge in <a href="alpha-beta-separation.html">Alpha-Beta Separation</a>, and the time-varying beta of the <a href="kalman-filter.html">Kalman Filter</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -387,8 +405,8 @@
     <h3>Three assets, one market index, five years of returns</h3>
     <p>
       A toy universe: a market index and three assets, five years of
-      (invented, illustrative) annual returns, and a 2% risk-free rate,
-      matching this repo's other worked examples' convention:
+      (invented, illustrative) annual returns, and a 2% risk-free rate<!-- DESK:START -->,
+      matching this repo's other worked examples' convention<!-- DESK:END -->:
     </p>
     <div class="tl-symbols"><table>
       <tr><td>Market (%)</td><td>8&nbsp;&nbsp;&nbsp;&minus;3&nbsp;&nbsp;&nbsp;15&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;9</td></tr>
@@ -557,8 +575,8 @@
       leans on equities' natural market-cap weighting scheme, and currencies
       simply don't have an equivalent, off-the-shelf answer to "what is the
       market portfolio." That's a genuine reason CAPM stays a
-      cross-asset-pricing <em>concept</em> in this curriculum rather than a
-      component this repo's own FX trading logic could adopt directly.
+      cross-asset-pricing <em>concept</em> in this curriculum<!-- DESK:START --> rather than a
+      component this repo's own FX trading logic could adopt directly<!-- DESK:END -->.
     </p>
   </div>
 
@@ -624,7 +642,7 @@
     </p>
   </div>
 
-  <div class="tl-solid blue">
+  <!-- DESK:START --><div class="tl-solid blue">
     <strong>Verified against this repo's actual code.</strong> A repo-wide
     search for CAPM-style "beta" turned up a genuine, working system —
     <code>bot/modules/beta_estimator.py</code>, <code>portfolio_beta.py</code>,
@@ -643,7 +661,7 @@
     where the line between "this repo's beta" and "CAPM's beta" actually
     sits, rather than assuming either that nothing like this exists here or
     that this already <em>is</em> CAPM.
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
@@ -654,6 +672,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>CAPM's assumptions — single period, identical expectations, no frictions, unlimited risk-free borrowing — are all known to be false.</strong> That's exactly why it's a tractable baseline, not a finished description of markets.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Decades of empirical work (Fama &amp; French, 1992) show beta alone leaves a real chunk of the cross-section of stock returns unexplained</strong> — small-cap and value stocks earned systematically more than their beta predicted. This specific failure is what the next lesson, Fama-French &amp; Carhart, directly addresses.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is useful independent of whether CAPM's pricing claim holds.</strong> Hedging, exposure decomposition, and attribution all lean on the same OLS-derived sensitivity number without needing the SML itself to be exactly right.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk beta is the first number.</strong> Sharpe and Lintner's beta sets the index hedge on an equity book and, through Jensen's 1968 alpha, splits a manager's return into market exposure and skill, even though beta alone fails to explain the cross-section of returns.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

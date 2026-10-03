@@ -203,3 +203,5 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 .sl-fullnote.sl-fullnote-gone{max-height:0;padding-top:0;padding-bottom:0;opacity:0;border-bottom-width:0}
 .sl-fulllink{font-family:'DM Mono',monospace;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);text-decoration:none;white-space:nowrap;border:1px solid var(--blue-bd);border-radius:999px;padding:4px 9px;flex-shrink:0}
 @media (prefers-reduced-motion: reduce){.sl-fullnote{transition:none}}
+.tl-verdict-scope{margin-top:8px;font-size:12px;line-height:1.5;color:var(--text3);border-top:1px dashed var(--border2);padding-top:6px}
+@media (max-width:600px){.sl-stamp{flex-direction:column;gap:8px}.sl-stamp-tag{align-self:flex-start}}

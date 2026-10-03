@@ -327,10 +327,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">💱</div><div><h4>Instrument grouping</h4><p>Cluster a universe of currencies or assets by return-behavior similarity to build a smaller set of representative baskets — without hand-specifying what "similar" should mean.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Signal deduplication</h4><p>Identify which candidate signals are effectively near-duplicates of each other before feeding a pile of collinear features into a model.</p></div></div>
       </div>
-      <div class="sl-callout amber">
+      <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Factual check against this repo's actual code</div>
         <p>The full lesson's status line reads "CONCEPT — not built or tested anywhere in this repo." That's now stale for k-means specifically: <code>js/forecastFeatureScan.js</code> runs a real, deterministic, seeded k-means (<code>_cluster</code>) that groups trading days into recurring "day types" from their realized signature — exactly the regime-discovery scenario above — and it's exercised by <code>js/forecastFeatureScan.test.mjs</code> (asserting every day is clustered exactly once and that the seeded run is reproducible), consumed by <code>js/volForecastResearchEngine.js</code> and <code>js/crossPairResearch.js</code>, and surfaced live in <code>vol-research-book.html</code> and <code>cross-pair-research.html</code>. Hierarchical (dendrogram-based) clustering, by contrast, still has no general-purpose use in this repo outside the narrow Hierarchical Risk Parity allocator — consistent with that lesson's own, more precisely worded claim ("no clustering-based <em>allocator</em> built or tested"). Read literally, both statements can be true at once: k-means clustering exists and is tested; a hierarchical-clustering allocator does not.</p>
-      </div>
+      </div><!-- DESK:END -->
       <div class="sl-quote">A regime map that survives an independent check — does the "stressed" cluster line up with dates already known to be volatile from other evidence? — is a genuine discovery. A regime map only ever checked against the clustering that produced it is not evidence of anything; it's the algorithm confirming its own output.</div>
     </section>
 

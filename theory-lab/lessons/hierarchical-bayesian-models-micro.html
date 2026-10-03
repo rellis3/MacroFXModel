@@ -314,11 +314,11 @@
         <p style="margin-top:10px"><strong>Treating μ and τ² as free of uncertainty.</strong> They're estimated from a finite — often small — number of groups. Plugging in one point estimate, as this lesson's worked numbers do, understates the true uncertainty versus a fully Bayesian treatment.</p>
         <p style="margin-top:10px"><strong>Confusing shrinkage with validation.</strong> A shrunk estimate is a more honest point estimate of what's already been observed — it is not evidence a strategy will keep performing that way. It still needs genuine out-of-sample proof before it earns real capital.</p>
       </div>
-      <p class="sl-p">A systematic allocator sizing five sub-strategies by expected Sharpe would badly over-allocate to Strategy A using its raw 2.10 — precisely the small-sample noise the shrunk 1.478 corrects for. That's the logic of the approach, not a claim that this specific allocation rule is built, backtested, or running anywhere in this codebase today — see the note below.</p>
-      <div class="sl-callout purple">
+      <p class="sl-p">A systematic allocator sizing five sub-strategies by expected Sharpe would badly over-allocate to Strategy A using its raw 2.10 — precisely the small-sample noise the shrunk 1.478 corrects for. That's the logic of the approach, not a claim that this specific allocation rule is built, backtested, or running<!-- DESK:START --> anywhere in this codebase today — see the note below<!-- DESK:END -->.</p>
+      <!-- DESK:START --><div class="sl-callout purple">
         <div class="sl-callout-label">Checked against this repo's actual code</div>
         <p>The repo does contain a real n/(n+k) shrinkage estimator in <code>forge/vol.py</code> (event-day volatility multipliers shrunk toward 1.0 by sample size) — so "shrink a noisy estimate by how little data backs it" is a real, shipped technique here. But there is no code that shrinks a per-pair or per-strategy Sharpe, win rate, or return estimate toward a cross-pair or cross-strategy grand mean the way this lesson describes — the allocation scenario above remains conceptual, exactly as the full lesson already discloses.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

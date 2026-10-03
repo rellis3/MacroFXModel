@@ -307,16 +307,20 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What this desk found when it tested the claim</h2>
+      <!-- DESK:START --><h2 class="sl-h2">What this desk found when it tested the claim</h2><!-- DESK:END -->
       <p class="sl-sub">The tempting claim: work out which regime we're in, and that tells you what to do.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17">
-        <span class="sl-stamp-tag">Context</span>
+        <span class="sl-stamp-tag">Desk data: base rate</span>
         <span><strong>stock-bond-flip:</strong> negative 20-day stock/yield correlation, <strong>71 episodes since 2008, median 5 sessions, p75 17</strong>; 17% of days. Only 36 clean flips, too few to test what follows. A constant stay-probability with a median of 5 would put p75 near 10, so real spells have a longer tail.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="regime-divergence-fx" data-evidence-date="2026-09-20">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>regime-divergence-fx:</strong> diverging vs aligned growth/inflation regimes, 2008–2026: <strong>EUR/USD range +0.03pp [−0.48, +0.52]</strong>, GBP/USD −0.33pp [−0.86, +0.23]; returns all through zero.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> the HMM assumes fixed states, fixed emissions and a fixed transition matrix. 2022 brought a state missing from the training window, a "stress" state whose stock-bond behaviour changed sign, and spells longer than brief flips imply. Baum-Welch can't learn a state the data never showed.</div>
     </section>
 
@@ -380,7 +384,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The transition matrix's rows each sum to 1; the diagonal is persistence, and expected regime duration is 1 / (1 − A_ii).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Each hidden state has its own emission distribution — the same state can still look a little different every time you observe it, which is why inference gives a probability, not a certainty.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>An HMM replaces a fixed, hand-set threshold with an adaptive, data-fit probability — a graded confidence instead of a binary flag, with persistence built in rather than judged bar by bar.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>2022: stocks and bonds fell together after twenty years in which bonds hedged stocks, a state missing from any model trained on those years. On this desk, such spells are mostly short (median 5 sessions, context) and regime labels did not set up FX trades (null).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>2022: stocks and bonds fell together after twenty years in which bonds hedged stocks, a state missing from any model trained on those years.<!-- DESK:START --> On this desk, such spells are mostly short (median 5 sessions, context) and regime labels did not set up FX trades (null).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

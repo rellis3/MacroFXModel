@@ -17,7 +17,7 @@
   <h1 class="tl-title">Active Portfolio Management</h1>
   <p class="tl-dek">Alpha vs. Beta Separation showed how to pull a return stream apart into a market bet and a residual. This lesson asks the next question: how good is that residual, really — and is there even a way for the "average active dollar" to win at all?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — theory only, no manager, forecast series or portfolio in this repo has an IR, IC, breadth or Active Share computed for it</span>
+    <span class="tl-status concept">CONCEPT — theory only<!-- DESK:START -->, no manager, forecast series or portfolio in this repo has an IR, IC, breadth or Active Share computed for it<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Alpha vs. Beta Separation, Sharpe/Sortino/Calmar &amp; the Deflated Sharpe Ratio, Factor-Based Portfolio Construction</span>
   </div>
@@ -36,7 +36,7 @@
       <li>The <strong>Fundamental Law of Active Management</strong>, \(IR \approx IC \times \sqrt{BR}\), says a modest edge repeated across many <em>independent</em> bets compounds into a strong aggregate Information Ratio — the same logic that makes a diversified portfolio's Sharpe ratio beat any single position's. The trap: breadth (\(BR\)) means independent bets, and correlated bets are not independent bets, no matter how many trade tickets they generate.</li>
       <li><strong>Active Share</strong> (Cremers &amp; Petajisto) measures how different a portfolio's <em>holdings</em> are from its benchmark's; <strong>tracking error</strong> measures how different its <em>returns</em> have been. These are not the same axis, and a portfolio can score high on one and low on the other — the mismatch is often the most useful diagnostic in the whole lesson.</li>
       <li>The mandatory honest caveat: before costs, the average actively-managed dollar's return <em>must</em> equal the market's return, because active managers collectively hold the market portfolio — a pure accounting identity (Sharpe, 1991), not a claim about anyone's skill. After costs, the average active dollar underperforms. Everything else here is about finding the manager on the right side of that split, not proof that doing so is easy.</li>
-      <li><strong>Real-world episode:</strong> in the August 2007 "quant quake", quant equity funds with thousands of positions each found their books overlapped, so one fund's forced unwind made every "independent" bet lose at once and effective breadth collapsed toward one. On this desk's seven USD crosses, breadth is too thin to detect a realistic edge (underpowered).</li>
+      <li><strong>Real-world episode:</strong> in the August 2007 "quant quake", quant equity funds with thousands of positions each found their books overlapped, so one fund's forced unwind made every "independent" bet lose at once and effective breadth collapsed toward one.<!-- DESK:START --> On this desk's seven USD crosses, breadth is too thin to detect a realistic edge (underpowered).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -542,8 +542,9 @@
     Sharpe's arithmetic showing up in the data.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
-    <span class="tl-verdict-tag">Underpowered</span>
+    <span class="tl-verdict-tag">Desk test: too small to tell</span>
     <span><strong>fx-factor-book-v2: on seven USD crosses, breadth is too thin to prove a realistic edge either way.</strong>
     The desk ran six quant-desk overlays on its G10 trend and carry baskets: two runs of the frozen spec, 8 of 8
     primaries within noise, largest improvement +0.26 Sharpe against a Bonferroni bar of +1.04. <strong>5.7 years out
@@ -551,6 +552,7 @@
     while the literature sizes these overlays at +0.1 to +0.3. This is the Fundamental Law read backwards: with this
     little breadth, a genuinely good \(IC\) cannot be told apart from zero in any realistic history.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -589,7 +591,7 @@
     anything in between. Everything built above — \(IR\), \(IC\), breadth,
     Active Share — is machinery for identifying <em>which</em> manager sits on
     the winning side of that zero-sum split. None of it is evidence that
-    doing so is easy, common, or that this repo has identified one.
+    doing so is easy or common<!-- DESK:START -->, or that this repo has identified one<!-- DESK:END -->.
   </div>
 
   <div class="tl-eli5">
@@ -647,8 +649,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Breadth means independent bets, not trade count.</strong> Correlated positions inflate \(BR\) and make a target \(IR\) look far more achievable than the manager's true opportunity set supports — the single most common misapplication of this formula.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Active Share (holdings) and tracking error (returns) are different axes and can diverge.</strong> Low Active Share plus high tracking error is a classic closet-indexing signature that a returns-only review misses entirely.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The zero-sum floor is an accounting identity, not an opinion.</strong> Before costs the average active dollar equals the market; after costs it must underperform (Sharpe, 1991) — every tool in this lesson is about finding the exception, not proof that exceptions are common.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Crowding turns breadth into one bet (August 2007).</strong> Quant equity funds with thousands of positions each held overlapping books; when one large unwind started, the "independent" bets all lost together. On this desk's seven USD crosses, breadth is so thin that a realistic improvement can't be detected at all (fx-factor-book-v2, UNDERPOWERED: minimum detectable +1.4 Sharpe vs a realistic +0.1 to +0.3).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Crowding turns breadth into one bet (August 2007).</strong> Quant equity funds with thousands of positions each held overlapping books; when one large unwind started, the "independent" bets all lost together.<!-- DESK:START --> On this desk's seven USD crosses, breadth is so thin that a realistic improvement can't be detected at all (fx-factor-book-v2, UNDERPOWERED: minimum detectable +1.4 Sharpe vs a realistic +0.1 to +0.3).<!-- DESK:END --></span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> No manager, forecast series, or portfolio here has an \(IR\), \(IC\), breadth, or Active Share number actually computed against real data.</span></div>
+    <!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

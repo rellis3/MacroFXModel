@@ -21,7 +21,7 @@
   <h1 class="tl-title">QE and QT: What the Fed's Balance Sheet Actually Does</h1>
   <p class="tl-dek">"The Fed is printing money" is half right and half misleading. Quantitative easing is a swap on two balance sheets — bonds out of the market, bank reserves in — and once you can draw the T-account, every argument about what QE and QT do to yields, to funding markets and to the corridor gets much easier to follow.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: The Fed's Corridor (Lesson 1), Bond Pricing &amp; YTM</span>
   </div>
@@ -39,7 +39,7 @@
       <li><strong>Three channels are usually named:</strong> portfolio balance / duration extraction (fewer long bonds in private hands → lower term premium), signalling (buying bonds tells you rates will stay low for longer) and liquidity (a big buyer in a broken market).</li>
       <li><strong>QT in this cycle has been runoff, not selling.</strong> The Fed lets bonds mature and does not reinvest the principal above a monthly cap. Reserves fall as the Treasury refinances that debt with private buyers.</li>
       <li><strong>Reserves can go from "ample" to "scarce" without warning.</strong> September 2019 is the episode that showed where the line was: reserves had been drained by QT and other flows, and overnight repo rates jumped far above the Fed's range on a mid-month tax-and-settlement date.</li>
-      <li><strong>The desk has not tested QE → yields.</strong> It is an open study (Fed balance sheet against the 10-year, episode by episode, mirrored against QT). What it <em>has</em> tested is the plumbing end — and <code>funding-stress</code> came back <strong>null</strong>.</li>
+      <!-- DESK:START --><li><strong>The desk has not tested QE → yields.</strong> It is an open study (Fed balance sheet against the 10-year, episode by episode, mirrored against QT). What it <em>has</em> tested is the plumbing end — and <code>funding-stress</code> came back <strong>null</strong>.</li><!-- DESK:END -->
     </ul>
   </div>
 
@@ -296,7 +296,7 @@
         <text x="500" y="34">≈$9tn</text>
       </g>
     </svg>
-    <div class="tl-chart-caption">A schematic, drawn by hand to show the shape — not a plot of the data. The three labelled levels (under $1 trillion before the crisis, roughly $4.5 trillion after QE3, close to $9 trillion at the 2022 peak) are the round figures this lesson is confident of; everything between them is shape only. The desk has the weekly series and can draw the real thing.</div>
+    <div class="tl-chart-caption">A schematic, drawn by hand to show the shape — not a plot of the data. The three labelled levels (under $1 trillion before the crisis, roughly $4.5 trillion after QE3, close to $9 trillion at the 2022 peak) are the round figures this lesson is confident of; everything between them is shape only.<!-- DESK:START --> The desk has the weekly series and can draw the real thing.<!-- DESK:END --></div>
   </div>
 
   <div class="tl-box example">
@@ -394,8 +394,8 @@
     <p style="margin-bottom:0">
       Notice what is missing: a confident directional call on the 10-year. The
       honest version of this read is about <em>which channel</em> the news
-      touches, not how many basis points it is worth — because, as Section 05
-      shows, this desk has not measured that.
+      touches, not how many basis points it is worth<!-- DESK:START --> — because, as Section 05
+      shows, this desk has not measured that<!-- DESK:END -->.
     </p>
   </div>
 
@@ -424,29 +424,39 @@
     </div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>What the desk found</h2>
   <p>
     The central folk claim here — <em>"QE pushes long yields down and QT pushes
     them up"</em> — has <strong>not been tested on this desk</strong>.
   </p>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>QE → yields, mirrored against QT:</strong> both series are on hand (the Fed's weekly total assets and the daily 10-year yield), and the study is an open item: episode-level, each purchase or runoff phase as one unit, with QT run as the mirror. Until it runs, this lesson's yield channels are explained, not measured. No number from this desk supports or rejects them.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <p>
     What the desk <em>has</em> tested is the other end of the chain — the
     plumbing that QT drains. Both results say the same thing: what looks like
     stress in the funding market is mostly the calendar.
   </p>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict null">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>funding-stress — tested, nothing found.</strong> 2,123 SOFR sessions, 2018-04 to 2026-09. Headline SOFR ≥ 3bp over the floor away from month-end left just 15 episodes — untestable against a pre-registered floor of 20 — and 12 of those 15 fall on the 14th–18th of a month: mid-month tax and settlement dates, the same calendar as September 2019. Standing Repo Facility drawn: 21 episodes, and it came back <em>against</em> the written expectation — SPX500 next-5-session range −0.561 ATR [−0.984, −0.181] versus control, i.e. <strong>calmer</strong>, not wider. EUR/USD −0.483 [−1.150, +0.119] and USD/JPY +0.417 [−0.066, +0.963] are null. Direction null on all three. The SRF is drawn on 667 of 2,123 sessions (31%), so "the backstop was used" is routine plumbing, not a stress marker.</span>
   </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="repo-stress-range" data-evidence-date="2026-09-20">
-    <span class="tl-verdict-tag">Context</span>
+    <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>repo-stress-range:</strong> SOFR's 99th percentile 10bp or more above the floor, 26 episodes 2018–2026 — next-five-session range versus matched control SPX500 +0.14 ATR [−0.54, +0.98], EUR/USD +0.13 [−0.37, +0.65], USD/JPY +0.08 [−0.76, +0.93]. The setup fires on a quarter of all sessions since 2024: month-end plumbing, not stress.</span>
   </div>
+  <!-- DESK:END -->
   <p>
     <strong>The academic evidence is real but debated.</strong> Event studies
     of the 2008–09 announcements — notably Gagnon, Raskin, Remache and Sack
@@ -458,10 +468,11 @@
     or the <em>flow</em> of its purchases is still contested (D'Amico and King,
     2013, is a standard reference on that distinction), and the effects of
     later rounds are generally found to be smaller than QE1's. Announcement-day
-    moves are also not the same as lasting moves. None of this is a desk
-    result.
+    moves are also not the same as lasting moves.<!-- DESK:START --> None of this is a desk
+    result.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -477,6 +488,7 @@
       weeks that the SOFR sample lacks.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -485,7 +497,7 @@
     <p><strong>"QE is printing money that floods into the economy."</strong> It creates reserves, which stay inside the banking system. Deposits rise only when non-banks sell, and those deposits replace a bond they already owned. Any effect on spending runs through prices and yields, not through a pile of new cash.</p>
     <p><strong>"QT means the Fed is dumping bonds."</strong> In this cycle it has been capped runoff. The Treasury, not the Fed, sells the replacement bonds to the market.</p>
     <p><strong>"QE always lowers yields."</strong> During QE2 and QE3, long yields at times <em>rose</em> — as markets priced a stronger recovery. A yield is the sum of the expected path and the term premium; QE can push one down while the outlook pushes the other up.</p>
-    <p style="margin-bottom:0"><strong>"SOFR above the floor means stress."</strong> On this desk it has meant the calendar — month-end and mid-month — far more often than stress. See the verdicts above.</p>
+    <!-- DESK:START --><p style="margin-bottom:0"><strong>"SOFR above the floor means stress."</strong> On this desk it has meant the calendar — month-end and mid-month — far more often than stress. See the verdicts above.</p><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -494,8 +506,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>QE is a balance-sheet swap.</strong> Fed securities and bank reserves rise by the same \(X\); a non-bank seller also swaps a bond for a deposit. Nobody's net wealth goes up by \(X\).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three channels: portfolio balance (term premium), signalling (expected path), liquidity (market functioning).</strong> Different episodes ran through different channels — 2013 was signalling, March 2020 was liquidity.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>QT is capped runoff, and it drains reserves.</strong> The danger point between ample and scarce is invisible in advance — September 2019 is where it showed itself.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>QE → yields is untested here.</strong> The study is open (balance sheet vs the 10-year, episode-level, mirrored against QT). The academic event-study evidence is real but debated, especially stock versus flow.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>funding-stress is NULL.</strong> SOFR over the floor away from month-end was 15 episodes, 12 of them on the 14th–18th — the calendar, untestable. A drawn SRF was followed by a <em>calmer</em> SPX500 (−0.561 ATR [−0.984, −0.181]) and is drawn on 31% of sessions. Do not read either as a stress signal.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><!-- DESK:START --><strong>QE → yields is untested here.</strong> The study is open (balance sheet vs the 10-year, episode-level, mirrored against QT). <!-- DESK:END -->The academic event-study evidence is real but debated, especially stock versus flow.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>funding-stress is NULL.</strong> SOFR over the floor away from month-end was 15 episodes, 12 of them on the 14th–18th — the calendar, untestable. A drawn SRF was followed by a <em>calmer</em> SPX500 (−0.561 ATR [−0.984, −0.181]) and is drawn on 31% of sessions. Do not read either as a stress signal.</span></div><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>
@@ -516,10 +528,12 @@
     <summary>Q4. What happened in September 2019, and why is it the link between QE/QT and the corridor?</summary>
     <div class="tl-answer">After QT1 and other drains, reserves had fallen closer to scarce than anyone realised. On a mid-month tax and settlement date cash left the system all at once and overnight repo rates spiked far above the Fed's range (SOFR above 5% against 2.00–2.25%). The floor system only holds rates down if reserves are ample; QT had eroded that, and the Fed responded with repo operations and bill purchases. It is the episode that later motivated a standing repo facility as the corridor's ceiling.</div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q5. A colleague says: "SOFR printed 4bp over the floor mid-month and the SRF was drawn — risk-off coming." What does the desk's evidence say?</summary>
     <div class="tl-answer">funding-stress is null. Away from month-end, SOFR over the floor clusters on the 14th–18th (12 of 15 episodes) — tax and settlement dates, not stress — and was too rare to test. The SRF is drawn on 31% of sessions, and SPX500 ranges were calmer after a draw, not wider. Direction was null throughout. The honest reading is "calendar plumbing" unless something else is going on.</div>
   </details>
+  <!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

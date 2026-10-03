@@ -35,7 +35,7 @@
   <h1 class="tl-title">Why a Loss Hurts Twice as Much</h1>
   <p class="tl-dek">Prospect theory in plain English: why you play safe when you are winning, gamble when you are losing, and why "I'll just wait until it gets back to even" has ended careers and, once, a 233-year-old bank.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: <a href="primer-probability.html">Probability primer</a> (expected value)</span>
   </div>
@@ -54,7 +54,9 @@
       <li>People also <strong>bend probabilities</strong>: small chances feel bigger than they are (lottery tickets, far out-of-the-money options) and near-certainties feel less sure than they are.</li>
       <li>On a trading screen this shows up as <strong>moving the stop, refusing to take a small loss, and adding size when behind</strong> to "get back to even". The maths says a losing position makes you risk-seeking at exactly the moment your judgement is worst.</li>
       <li><strong>It actually happened:</strong> Nick Leeson hid losses in Barings' error account 88888 and kept doubling down. After the Kobe earthquake in January 1995 the losses passed the bank's capital and Barings collapsed in February 1995.</li>
+<!-- DESK:START -->
       <li><strong>Desk verdict: untested.</strong> No ledger entry measures loss aversion in trading results. The desk's guard is procedural: write the exit rule and the kill criterion <em>before</em> the trade or test, so the curve never gets a vote.</li>
+<!-- DESK:END -->
     </ul>
   </div>
 
@@ -441,8 +443,9 @@
     the bias supplied the motive, and the missing separation of duties supplied the opportunity.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>"Loss aversion costs traders money; fixed exits beat discretionary ones."</strong> Not tested here.
     The desk's ledger tests market claims, not the behaviour of the person trading them, and has no entry that
     measures moved stops or break-even chasing. What the desk does have is the guard: every study's rules, sample and
@@ -450,6 +453,7 @@
     research version of a stop you are not allowed to move. A fair test of the trading claim would compare the same
     signal with its pre-set exits against the exits actually taken, trade by trade.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -500,6 +504,7 @@
   </ul>
   <div class="tl-readout" id="stop-check-out">0 of 5 ticked: the stop stays.</div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🧩</div>
     <div class="tl-box-label">Where this connects to MacroFXModel</div>
@@ -510,6 +515,7 @@
       Pipeline</a> and <a href="multiple-testing.html">Multiple Testing</a>.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -530,7 +536,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Small probabilities feel bigger than they are.</strong> That is the pull of lottery-ticket trades.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Move the reference point to today.</strong> "Would I open this trade now?" turns a break-even gamble back into the bad bet it is.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Getting back to even is how small losses become fatal ones.</strong> Barings went from hidden errors to a ~£827m loss and collapse in February 1995 by repeating that one choice.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested on this desk.</strong> No ledger entry measures loss aversion in trading results; the desk's guard is pre-registered rules, not a measured edge.</span></div>
+<!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -555,10 +563,12 @@
     <summary>Q5. In the Barings collapse, what did loss aversion supply and what did it not?</summary>
     <div class="tl-answer">It supplied the motive: booking a visible loss felt worse than hiding it and betting bigger to get back to even, and each larger loss pushed further down the convex side of the curve. It did not supply the opportunity: that came from one person controlling both trading and settlement, the control failure the Bank of England's inquiry highlighted.</div>
   </details>
+<!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. Has this desk shown that loss aversion costs traders money?</summary>
     <div class="tl-answer">No. The verdict is untested: there is no ledger entry on trader behaviour. The desk applies the remedy procedurally (rules and kill criteria fixed before results are seen), which is a guard, not evidence of a measured effect.</div>
   </details>
+<!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

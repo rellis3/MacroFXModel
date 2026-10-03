@@ -256,10 +256,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>The Feller condition</h4><p>2κθ ≥ ξ² is needed to guarantee v_t never hits exactly zero. Many real calibrations to option data land outside this region anyway, with real numerical consequences.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🕓</div><div><h4>Calibration is a snapshot, not a law</h4><p>(κ,θ,ξ,ρ) fitted to today's option surface routinely come out materially different a week later, especially after a regime shift. A tight in-sample fit is curve-fitting by construction, not a validated edge.</p></div></div>
       </div>
-      <div class="sl-callout amber">
+      <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's current code</div>
         <p>The full lesson states this repo has no options-pricing module and no Heston implementation — a repo-wide search confirms that's still accurate: zero hits for Heston, and no options-pricing module of any kind. One nuance worth adding: <code>js/oi.js</code>'s dealer-positioning engine does evaluate a flat-vol, Black-Scholes-style d1/d2 formula for its gamma-exposure (GEX) calculation — a live, small-scale example of exactly the flat-σ limitation this lesson opens with — falling back to a per-strike implied-vol surface (a pasted smile) when one is available, but never a Heston or other stochastic-vol model. GARCH(1,1) does exist in production (<code>VolRangeForecaster/vol_range_forecast.py</code>, <code>DynAnchorBot</code>) as this lesson's discrete-time cousin, exactly as the full lesson claims.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">

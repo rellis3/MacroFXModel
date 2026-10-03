@@ -27,7 +27,7 @@
   <h1 class="tl-title">Bates Model: Stochastic Volatility + Jumps</h1>
   <p class="tl-dek">Heston's stochastic variance can shape a smile reasonably well — until you get to short-dated options, where real markets show a skew far steeper than smooth diffusion alone can build in time. Bates (1996) staples a Merton-style jump term straight onto Heston's own price process. No new machinery gets derived here: two models this Theory Lab already covers in full, combined into one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — grepping this repo's actual <code>.js</code>/<code>.py</code> source (case-insensitive) for "Bates" turns up zero hits anywhere in the codebase. There is also no Heston-style stochastic-variance fit (no κ, θ, ξ, ρ anywhere) and no Merton-style parametric jump-size fit (no λ, μ_J, σ_J anywhere) — consistent with both sibling lessons' own findings, which this lesson does not contradict. What the repo <em>does</em> have, genuinely adjacent in spirit: four modules literally named "jump_diffusion" in <code>volatilityExhaustion/</code> (<code>jump_diffusion_daily.py</code>, <code>jump_diffusion_forecast.py</code>, <code>jump_event_validation.py</code>, <code>jump_regime_book.py</code>) that implement a Barndorff-Nielsen &amp; Shephard-style realized-variance/bipower-variation jump-fraction test (RV − BV, split into a jump share and a diffusive share) on 1-minute FX/gold bars — a model-free empirical technique for measuring how much of a day's <em>already-realized</em> variance came from jumps versus smooth diffusion, not a fitted compound-Poisson model and not an estimate of λ, μ_J, or σ_J. Separately, <code>js/gammaGreeks.js</code> computes closed-form Black-Scholes Greeks (charm, vanna, gamma) for dealer-positioning analysis off a flat or IV-surface-fed volatility — no stochastic-vol or jump term anywhere in it either. No options-pricing engine for any of Black-Scholes, Heston, Merton, or Bates exists in this codebase.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — grepping this repo's actual <code>.js</code>/<code>.py</code> source (case-insensitive) for "Bates" turns up zero hits anywhere in the codebase. There is also no Heston-style stochastic-variance fit (no κ, θ, ξ, ρ anywhere) and no Merton-style parametric jump-size fit (no λ, μ_J, σ_J anywhere) — consistent with both sibling lessons' own findings, which this lesson does not contradict. What the repo <em>does</em> have, genuinely adjacent in spirit: four modules literally named "jump_diffusion" in <code>volatilityExhaustion/</code> (<code>jump_diffusion_daily.py</code>, <code>jump_diffusion_forecast.py</code>, <code>jump_event_validation.py</code>, <code>jump_regime_book.py</code>) that implement a Barndorff-Nielsen &amp; Shephard-style realized-variance/bipower-variation jump-fraction test (RV − BV, split into a jump share and a diffusive share) on 1-minute FX/gold bars — a model-free empirical technique for measuring how much of a day's <em>already-realized</em> variance came from jumps versus smooth diffusion, not a fitted compound-Poisson model and not an estimate of λ, μ_J, or σ_J. Separately, <code>js/gammaGreeks.js</code> computes closed-form Black-Scholes Greeks (charm, vanna, gamma) for dealer-positioning analysis off a flat or IV-surface-fed volatility — no stochastic-vol or jump term anywhere in it either. No options-pricing engine for any of Black-Scholes, Heston, Merton, or Bates exists in this codebase.<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="heston-model.html">The Heston Model</a> and <a href="merton-jump-diffusion.html">The Merton Jump-Diffusion Model</a> — this lesson reuses both lessons' exact notation rather than re-deriving either</span>
   </div>
@@ -47,6 +47,7 @@
       <li><strong>The cost is parameters.</strong> Bates has 8 free parameters — Heston's \((\kappa,\theta,\xi,\rho,v_0)\) plus the jump trio \((\lambda,\mu_J,\sigma_J)\) — versus 5 or 3 alone. More flexibility to fit an observed surface, but a genuinely harder, less identified, more overfitting-prone calibration.</li>
       <li>A live calculator below applies the standard compound-Poisson moment formulas and shows, numerically, why fixed jump parameters matter far more at short maturities: the jump share of total <em>variance</em> stays constant across horizons, but the jump contribution to <em>skewness</em> decays like \(1/\sqrt{T}\) and to <em>excess kurtosis</em> like \(1/T\) — the actual mechanism behind "jumps dominate the short end, stochastic vol dominates the long end."</li>
       <li>Jump risk is not perfectly hedgeable by continuous delta-hedging the way pure diffusion risk is under Black-Scholes-style replication — an incomplete-markets subtlety flagged honestly here, without inventing a specific risk-premium formula this lesson isn't certain of.</li>
+      <li><strong>How it reached trading:</strong> Bates fitted it to Deutsche mark currency options in 1996; stochastic vol plus jumps ("SVJ") is now the benchmark index and FX desks use to separate priced jump risk from ordinary volatility risk.</li>
     </ul>
   </div>
 
@@ -126,6 +127,23 @@
       lesson exists to explain, told as one river instead of two separate
       ones.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A short-dated skew that diffusion alone can't build</h3>
+    <div class="tl-origin-who">Bates model · Bates, 1996 — Deutsche mark currency options</div>
+    <p>After the 1987 crash, option markets priced a persistent smile and skew that Black–Scholes could not produce. Heston's stochastic volatility (1993) could bend the longer-dated surface but diffused too slowly to explain the steep wings on options a few weeks from expiry; Merton's jumps (1976) could make those wings but left no reason for volatility to stay high after a shock.</p>
+    <p>David Bates put the two together in "Jumps and Stochastic Volatility: Exchange Rate Processes Implicit in Deutsche Mark Options" (<em>Review of Financial Studies</em>, 1996), fitting it to exchange-traded DM currency options and reading the market's priced jump risk off their prices. Bakshi, Cao &amp; Chen (<em>Journal of Finance</em>, 1997) then ran the horse race on S&amp;P 500 options and found stochastic volatility plus jumps priced them best of the models they tested.</p>
+    <p>Today "SVJ" is the standard benchmark when an index or FX desk needs one model for both the short-dated crash wing and the longer-dated term structure, and the usual way to ask how much of an option's price is jump risk rather than ordinary volatility risk.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much of the option surface is pricing sudden jumps, and how much ordinary, persistent volatility, maturity by maturity?</dd>
+        <dt>Takes in</dt><dd>The variance dynamics of <a href="heston-model.html">Heston</a> and the jump term of <a href="merton-jump-diffusion.html">Merton jump-diffusion</a>, priced through <a href="fft-option-pricing-carr-madan.html">Carr–Madan FFT</a>.</dd>
+        <dt>Hands on to</dt><dd>Pricing and sizing crash protection in <a href="tail-risk-hedging-convexity.html">tail-risk hedging</a>, and the exact-fit alternative in <a href="institutional-dupire-local-vol.html">Dupire local volatility</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -626,8 +644,8 @@
       construction with even more degrees of freedom than Heston alone to do
       the fitting with. A tighter in-sample fit says nothing, by itself,
       about whether a strategy built on top of that calibration would show
-      real out-of-sample edge — that would need to be tested, per this
-      repo's validation discipline, not assumed from the model having more
+      real out-of-sample edge — that would need to be tested,<!-- DESK:START --> per this
+      repo's validation discipline,<!-- DESK:END --> not assumed from the model having more
       knobs to turn.
     </p>
   </div>
@@ -641,7 +659,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jump share of variance is flat across horizons; skew decays as 1/√T and excess kurtosis as 1/T.</strong> This is the precise, arithmetic reason fixed jump parameters matter far more at short maturities than long ones.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Eight parameters buy flexibility at the cost of identification.</strong> Multiple, meaningfully different (κ,θ,ξ,ρ,v₀,λ,μ_J,σ_J) combinations can produce statistically similar fits — a real, honest calibration-stability concern, not a throwaway caveat.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Jump risk is not perfectly hedgeable by continuous delta-hedging.</strong> A genuine discontinuity defeats the continuous-rebalancing logic behind Black-Scholes-style replication — an incomplete-markets subtlety, stated honestly without a specific unverified risk-premium formula.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This repo has no Bates, Heston, or Merton implementation anywhere.</strong> This lesson is pure theory background — the repo's own "jump_diffusion"-named modules do model-free realized-variance jump detection, not parametric jump-diffusion or stochastic-vol fitting.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This repo has no Bates, Heston, or Merton implementation anywhere.</strong> This lesson is pure theory background — the repo's own "jump_diffusion"-named modules do model-free realized-variance jump detection, not parametric jump-diffusion or stochastic-vol fitting.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it splits the smile into jump risk and volatility risk.</strong> Bates (1996) built it on Deutsche mark options; after Bakshi, Cao &amp; Chen (1997) found it priced S&amp;P 500 options best of the models they tested, SVJ became the benchmark for the short-dated crash wing.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

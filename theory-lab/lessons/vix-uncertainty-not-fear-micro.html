@@ -123,24 +123,30 @@
           <p>VIX above VIX3M. The next 30 days are priced as wilder than the next 90 — something is happening now.</p>
         </div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
-        <span class="sl-stamp-tag">Validated</span>
+        <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>vix-inversion:</strong> first day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). Range, not direction.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
-        <span class="sl-stamp-tag">Validated</span>
+        <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>mv-vixterm-range</strong>, an independent reproduction: next 20 sessions +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ, 14 de-clustered firings, both halves positive. <strong>Direction is null: 57% up against an 80%+ control.</strong></span>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="8">
       <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Implied vs realised: "over-insured" doesn't mean calm</h2>
       <p class="sl-p"><strong>Implied</strong> = what the market pays for (the VIX). <strong>Realised</strong> = what the index actually did. Implied usually sits above realised — the insurance premium. The folk claim: when implied is <em>far</em> above realised, everyone's over-hedged and things will calm down.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp validated">
-        <span class="sl-stamp-tag">Validated</span>
+        <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>iv-over-rv-wider — the opposite.</strong> VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range +0.38 ATR [+0.11, +0.62], next-20 +0.56; SPX500 next-20 +0.67 [+0.13, +1.21] (next-5 +0.17, null). Realised catches up to implied.</span>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="9">
@@ -180,16 +186,18 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+<!-- DESK:START -->    <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The one "fear" test — and it failed</h2>
-      <p class="sl-sub">If the VIX were a fear signal with a direction, the classic fear trade — buy gold — should pay after a spike.</p>
+      <p class="sl-sub">If the VIX were a fear signal with a direction, the classic fear trade — buy gold — should pay after a spike.</p><!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
-        <span class="sl-stamp-tag">Null</span>
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>fear-gold:</strong> 58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on: excess -1.19% [-2.30, -0.48]. <strong>No fear bid in gold on average, and a month later gold had lagged its ordinary drift.</strong></span>
       </div>
-      <div class="sl-quote">Three validated VIX findings, all about <strong>range</strong>. One directional "fear" claim, <strong>null</strong>. Vol tells you about size, never sign.</div>
-    </section>
+      <!-- DESK:END -->
+<!-- DESK:START -->      <div class="sl-quote">Three validated VIX findings, all about <strong>range</strong>. One directional "fear" claim, <strong>null</strong>. Vol tells you about size, never sign.</div>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
@@ -211,26 +219,26 @@
         <button class="sl-quiz-opt">Stocks are about to fall</button>
         <button class="sl-quiz-opt" data-correct="true">It's paying for moves twice as big, in either direction</button>
         <button class="sl-quiz-opt">Gold is about to rally</button>
-        <div class="sl-quiz-explain">The VIX is priced from puts and calls and squares the moves; doubling it doubles the expected size and leaves the centre of the bell at zero. "Fear buys gold" was tested here and came back null.</div>
+        <div class="sl-quiz-explain">The VIX is priced from puts and calls and squares the moves; doubling it doubles the expected size and leaves the centre of the bell at zero.<!-- DESK:START --> "Fear buys gold" was tested here and came back null.<!-- DESK:END --></div>
       </div>
 
-      <div class="sl-quiz-q" data-q="3">
+<!-- DESK:START -->      <div class="sl-quiz-q" data-q="3">
         <div class="sl-quiz-num">Question 3</div>
         <h4>VIX rises above VIX3M for the first time in months. What did this desk find?</h4>
         <button class="sl-quiz-opt" data-correct="true">The next week ran wider than matched controls — range, not direction</button>
         <button class="sl-quiz-opt">Stocks bounced the next week</button>
         <button class="sl-quiz-opt">Nothing — it was null</button>
         <div class="sl-quiz-explain">vix-inversion: SPX500 +0.76 ATR, NAS100 +0.82 over the next 5 sessions (86 entries since 2008), reproduced over 20 sessions by mv-vixterm-range — whose direction check was null.</div>
-      </div>
+      </div><!-- DESK:END -->
 
-      <div class="sl-quiz-q" data-q="4">
+<!-- DESK:START -->      <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
         <h4>Implied vol is in its top decile relative to realised. Expect…</h4>
         <button class="sl-quiz-opt">Calmer markets — everyone is over-insured</button>
         <button class="sl-quiz-opt" data-correct="true">Wider ranges over the coming weeks</button>
         <button class="sl-quiz-opt">A rally</button>
         <div class="sl-quiz-explain">iv-over-rv-wider: SPX500 next-20 +0.67 ATR [+0.13, +1.21]; NAS100 next-5 +0.38 [+0.11, +0.62]. Realised caught up to implied.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -240,13 +248,13 @@
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The VIX is 30-day implied vol from a strip of out-of-the-money puts <em>and</em> calls: 100 × √(expected variance).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>VIX ÷ √12 = a one-month 1σ move; VIX ÷ 16 ≈ a one-day move. VIX 20 ≈ ±5.8% a month.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>It usually rises when stocks fall because of put demand — but it can rise in a rally.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>VIX above VIX3M → a wider week and month (validated twice). Implied far above realised → wider, not calmer (validated).</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>"Fear buys gold" is <strong>null</strong>. Vol tells you about size, never sign.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">04</div><p>VIX above VIX3M → a wider week and month (validated twice). Implied far above realised → wider, not calmer (validated).</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p><!-- DESK:START -->"Fear buys gold" is <strong>null</strong>. <!-- DESK:END -->Vol tells you about size, never sign.</p></div>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>
         <h3>What the Yield Curve Says About Growth</h3>
-        <p>Options answer "how uncertain?". The bond market answers a different question — what growth and what rate path are expected — and its most famous signal has its own verdict.</p>
+        <p>Options answer "how uncertain?". The bond market answers a different question — what growth and what rate path are expected<!-- DESK:START --> — and its most famous signal has its own verdict<!-- DESK:END -->.</p>
         <div class="sl-teaser-btns">
           <a class="sl-btn" href="yield-curve-growth-expectations-micro.html">Next lesson →</a>
           <a class="sl-btn ghost" href="vix-uncertainty-not-fear.html">Read the full VIX lesson →</a>

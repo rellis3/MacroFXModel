@@ -335,10 +335,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Out-of-bag error</h4><p>Each tree already left ~37% of rows unseen. Averaging each row's prediction only over the trees that never trained on it gives an honest validation estimate — with no separate held-out split needed.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A sane first model</h4><p>Forests have few hyperparameters that meaningfully change the result — mainly B, the feature-subset size m, and each tree's depth — making them a common first "sanity check" before reaching for gradient boosting, next in this series.</p></div></div>
       </div>
-      <div class="sl-callout amber">
+      <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>The full lesson this deck condenses labels decision trees and random forests a "concept — explained here, not built or tested anywhere in this repo." A repo-wide search confirms that's still accurate: no <code>RandomForestClassifier</code>/<code>Regressor</code> and no plain <code>DecisionTreeClassifier</code>/<code>Regressor</code> exist anywhere in this codebase. Worth knowing, though: a <em>different</em> tree-ensemble family — gradient-boosted trees (XGBoost, LightGBM, and scikit-learn's HistGradientBoosting) — genuinely is used in several places (<code>bot/scripts/train_gold_model.py</code>, <code>bot/modules/ml_confidence.py</code>, <code>AnalogML/ml_walkforward.py</code>, <code>SessionResearch/forecast.py</code>, <code>volatilityExhaustion/daytype_classifier.py</code>). That's a related but distinct technique — the subject of the next lesson, not this one.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">

@@ -22,7 +22,7 @@
     <section class="sl-slide active" data-slide="1">
       <div class="sl-kicker">Primer 4 · Math Primer</div>
       <h1 class="sl-h1">Returns, Log-Returns &amp; the <em>Cost of Volatility</em></h1>
-      <p class="sl-lede">There are two mathematically distinct ways to measure "how much did the price move" — the simple percentage return everyone computes first, and the log return every stochastic model in this series is secretly built on. They agree for small moves and diverge for large ones, and that gap is the reason a volatile strategy compounds slower than its own average return suggests, the reason option pricing assumes prices are lognormal, and the reason this repo scales its volatility bands by the square root of the horizon rather than the horizon itself.</p>
+      <p class="sl-lede">There are two mathematically distinct ways to measure "how much did the price move" — the simple percentage return everyone computes first, and the log return every stochastic model in this series is secretly built on. They agree for small moves and diverge for large ones, and that gap is the reason a volatile strategy compounds slower than its own average return suggests, the reason option pricing assumes prices are lognormal<!-- DESK:START -->, and the reason this repo scales its volatility bands by the square root of the horizon rather than the horizon itself<!-- DESK:END -->.</p>
     </section>
 
     <section class="sl-slide" data-slide="2">
@@ -215,7 +215,7 @@
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Turning a daily vol number into an annual one</h2>
-      <p class="sl-sub">Exactly the calculation this repo's own engines run — daily σ scaled by √T for weekly, monthly, or annual horizons.</p>
+      <!-- DESK:START --><p class="sl-sub">Exactly the calculation this repo's own engines run — daily σ scaled by √T for weekly, monthly, or annual horizons.</p><!-- DESK:END -->
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — change either input, live</div>
         <div class="sl-calc-row">
@@ -232,7 +232,7 @@
           <div>√T = <b id="ann-sqrt">15.87</b></div>
         </div>
         <button type="button" class="sl-reset-btn" id="ann-reset">Reset to 1% daily / 252 days (annual)</button>
-        <div class="sl-note">Try T = 5 (weekly) or T = 20 (roughly one month) — the same ×√T rule behind this repo's ×1 / ×√5 / ×√20 scaling for daily, weekly, and 20-day horizons.</div>
+        <div class="sl-note">Try T = 5 (weekly) or T = 20 (roughly one month)<!-- DESK:START --> — the same ×√T rule behind this repo's ×1 / ×√5 / ×√20 scaling for daily, weekly, and 20-day horizons<!-- DESK:END -->.</div>
       </div>
       <p class="sl-p">This is the same convenience a risk desk uses to scale a 1-day 95% VaR to a 10-day VaR by multiplying by √10 rather than re-estimating the whole model — cheap, standard, and only as good as the independence assumption it rests on.</p>
     </section>
@@ -274,11 +274,13 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
-        <span class="sl-stamp-tag">Untested</span>
+        <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Not tested here:</strong> that selling volatility, or holding an inverse-volatility product, earns a dependable carry. A fair test reports compounded (geometric) return, not average daily return, on a sample with jump sessions like 5 Feb 2018 and March 2020, with daily resets and redemption terms applied.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>g ≈ R̄ − σ²/2 assumes small, roughly continuous returns; √T assumes independent periods. Daily leverage multiplies σ by k, and one jump day puts kRₜ far outside the small-move zone, where the exact product and the −100% floor take over. And the bad days cluster.</p>
@@ -344,9 +346,9 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Log returns add exactly across time; simple returns pick up a nonzero cross term the moment you chain more than one period.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Arithmetic mean describes a typical single period; geometric mean describes what actually happened to your money — they coincide only at zero variance.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Volatility drag: g ≈ R̄ − σ²/2, growing quadratically with σ — a 0% average return can still be a real loss, as the +50%/−50% case shows exactly.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Volatility scales with √T, not T, because variances — not standard deviations — of independent periods add. This is the exact reason this repo scales daily σ by ×1 / ×√5 / ×√20 for daily, weekly, and 20-day horizons.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Volatility scales with √T, not T, because variances — not standard deviations — of independent periods add.<!-- DESK:START --> This is the exact reason this repo scales daily σ by ×1 / ×√5 / ×√20 for daily, weekly, and 20-day horizons.<!-- DESK:END --></p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Both properties assume independent periods — volatility clustering in real markets breaks that assumption, and naive √T scaling then understates true risk.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Daily-reset leveraged and inverse products compound Π(1 + kRₜ), so drag grows like k²σ²/2, and one jump day can end them: XIV lost over 90% in an evening on 5 February 2018. Whether short-vol carry pays on this desk is untested.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Daily-reset leveraged and inverse products compound Π(1 + kRₜ), so drag grows like k²σ²/2, and one jump day can end them: XIV lost over 90% in an evening on 5 February 2018.<!-- DESK:START --> Whether short-vol carry pays on this desk is untested.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

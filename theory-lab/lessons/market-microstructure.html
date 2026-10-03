@@ -34,13 +34,16 @@
     <li>Glosten-Milgrom derives the bid-ask spread from pure Bayesian adverse selection: Spread \(=\alpha(V_H-V_L)\), where \(\alpha\) is the informed-trading share and \(V_H-V_L\) is the fundamental-value uncertainty — not an arbitrary fee, but the exact gap needed for zero expected profit.</li>
     <li>This file's own worked numbers: with \(V_H=101\), \(V_L=99\), a spread of 0.60 at \(\alpha=0.3\) doubles to 1.20 at \(\alpha=0.6\), exactly tracking the formula, with the midpoint pinned at 100.00 both times.</li>
     <li>Kyle's Lambda extends the same logic to order size: \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\); the worked example runs the same 500-unit order through \(\sigma_u=100\) (liquid, \(\lambda=0.01\), $5 impact) versus \(\sigma_u=20\) (thin, \(\lambda=0.05\), $25 impact) — a five-fold cost difference from liquidity alone.</li>
+<!-- DESK:START -->
     <li>Both models are the formal "why" behind this repo's fill discipline — the spread every backtest pays is the adverse-selection premium of section 3, and the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — connecting directly to this project's own empirical test of whether reported edge survives progressively more realistic fills.</li>
-    <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash. When liquidity providers could no longer tell why prices were falling, they did what Glosten-Milgrom says a market maker must when \(\alpha\) jumps: they widened to the edge or left. \(\sigma_u\) collapsed, \(\lambda\) became enormous for a few minutes, and some stocks traded at a penny. The desk's verdict on the spread as a real cost is <strong>Validated</strong> (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.</li>
+<!-- DESK:END -->
+    <li><strong>Real-world episode:</strong> the 6 May 2010 Flash Crash. When liquidity providers could no longer tell why prices were falling, they did what Glosten-Milgrom says a market maker must when \(\alpha\) jumps: they widened to the edge or left. \(\sigma_u\) collapsed, \(\lambda\) became enormous for a few minutes, and some stocks traded at a penny.<!-- DESK:START --> The desk's verdict on the spread as a real cost is <strong>Validated</strong> (<code>execution-gate</code>): above spread/ATR 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --></li>
   </ul>
 </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
+<!-- DESK:START -->
   <p>
     This repo already behaves as if trading costs real money in a way that
     varies with circumstance, not just a flat commission. The house rules in
@@ -57,8 +60,11 @@
     with order size and worse still in thin liquidity — as opposed to just
     being a fixed friction you subtract off the top.
   </p>
+<!-- DESK:END -->
   <p>
-    Market microstructure theory answers both questions with two results from
+    Every trader faces two questions: why does a quoted price have a spread at
+    all, and why does a bigger order move the price further? Market
+    microstructure theory answers both with two results from
     the same year, 1985, that between them are the formal foundation under
     almost every practical execution rule a trading desk follows. Glosten and
     Milgrom explain why a bid-ask spread exists at all — not as an arbitrary
@@ -67,8 +73,8 @@
     Kyle explains why the <em>size</em> of an order matters — why trading
     twice as much moves the price roughly twice as far, and why that
     relationship is steeper in a thin market than a deep one. Together they
-    are the rigorous "why" behind a rule this repo already enforces as pure
-    practical hygiene: that fills are not free, that they get worse with size,
+    are the rigorous "why" behind a rule<!-- DESK:START --> this repo already enforces as pure
+    practical hygiene<!-- DESK:END -->: that fills are not free, that they get worse with size,
     and that they get worse still exactly when liquidity is thin.
   </p>
 
@@ -594,8 +600,9 @@
     A book with nothing between the last real bid and a one-cent stub turns impact into a jump, not a slope.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
-    <span class="tl-verdict-tag">Validated</span>
+    <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>execution-gate: the spread is a real cost, and it decides whether a short-horizon idea survives.</strong>
     The tempting claim is that the spread is a small fee you can ignore on a quick trade. On this desk's data, when the
     spread is above <strong>0.15 of the day's range (spread/ATR)</strong>, <strong>zero of 30 strategy × timeframe cells
@@ -603,6 +610,7 @@
     strategies. This tests the ordinary quoted spread on normal days. It says nothing about size-driven impact or a
     Flash-Crash-style withdrawal, which this desk, trading single small orders, has never measured.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -745,10 +753,12 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A trade is itself Bayesian evidence.</strong> Observing a buy shifts the market maker's belief about fundamental value from a flat 50/50 prior toward \(V_H\), even with no public news at all — the order flow is the news.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kyle's Lambda formalizes why size and depth both matter.</strong> \(\Delta p=\lambda Q\) with \(\lambda=\sigma_v/(2\sigma_u)\) says price impact scales with order size, and the rate it scales at depends on how much noise-trading depth is available to absorb it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Thin markets mean high \(\lambda\), and high \(\lambda\) means the same order costs more.</strong> A 500-unit order that costs \$5 of impact in a deep market can cost \$25 in a market with a fifth the noise-trading depth — nothing about the order changed, only the depth it landed in.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is the theoretical "why" behind this repo's cost/fill-realism discipline.</strong> The round-trip spread every backtest pays is, in theory, the adverse-selection premium of Glosten-Milgrom; the extra slippage modeled on stop/breakout entries is a high-\(\lambda\) event — this project's own house rules and existing fill-realism research were already correct, this lesson just supplies the citation.</span></div>
+<!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) is not a fixed constant of an instrument.</strong> It depends on time-varying fundamental uncertainty and time-varying noise-trading depth — the same pair has a low \(\lambda\) at London/NY overlap and a high \(\lambda\) at a thin session transition. A single "typical slippage" number applied at every hour throws that away.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Price impact is not purely linear or purely permanent in reality.</strong> Kyle's straight-line \(\Delta p=\lambda Q\) is a tractable first-order approximation; empirical impact grows sub-linearly at large size (closer to a square-root law), and real trades also carry temporary impact that partially reverts, on top of the model's permanent component.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Liquidity is not a constant; it leaves when you need it.</strong> Both models hold \(\sigma_u\) and the market maker's willingness to quote fixed. On 6 May 2010 market makers pulled out, E-mini buy depth fell below 1% of the morning's, and stocks traded at stub quotes of $0.01. On normal days the spread alone already kills short-horizon ideas above spread/ATR 0.15 (<code>execution-gate</code>, Validated: 0 of 30 cells profitable).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Liquidity is not a constant; it leaves when you need it.</strong> Both models hold \(\sigma_u\) and the market maker's willingness to quote fixed. On 6 May 2010 market makers pulled out, E-mini buy depth fell below 1% of the morning's, and stocks traded at stub quotes of $0.01.<!-- DESK:START --> On normal days the spread alone already kills short-horizon ideas above spread/ATR 0.15 (<code>execution-gate</code>, Validated: 0 of 30 cells profitable).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -840,6 +850,7 @@
       needing to have been wrong.
     </div>
   </details>
+<!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. Why does this project's rule to model extra slippage specifically on stop and breakout entries reflect Kyle's Lambda, rather than being an arbitrary conservative padding?</summary>
     <div class="tl-answer">
@@ -858,6 +869,7 @@
       applying a flat cost model uniformly to every order type.
     </div>
   </details>
+<!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
@@ -865,7 +877,7 @@
     <li>Lawrence R. Glosten &amp; Paul R. Milgrom, "Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders," <em>Journal of Financial Economics</em>, 1985 — the original adverse-selection derivation of the bid-ask spread.</li>
     <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the original paper defining the linear price-impact coefficient now universally called Kyle's Lambda.</li>
     <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the standard textbook synthesis of both models and the broader microstructure literature built on them.</li>
-    <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayesian-updating machinery the Glosten-Milgrom derivation above applies directly.</li>
+    <li><code>theory-lab/lessons/bayesian-inference.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the Bayesian-updating machinery the Glosten-Milgrom derivation above applies directly.</li>
   </ul>
   </details>
 

@@ -140,16 +140,20 @@
 
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
-      <h2 class="sl-h2">The dealer-level version: what the desk found</h2>
+      <h2 class="sl-h2">The dealer-level version<!-- DESK:START -->: what the desk found<!-- DESK:END --></h2>
       <p class="sl-sub">A dealer book that has sold options is "short gamma" — this lesson, aggregated. The folk claim: short gamma amplifies moves, long gamma damps them, and so gamma tells you what's next.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
-        <span class="sl-stamp-tag">Validated · range</span>
+        <span class="sl-stamp-tag">Desk test: held up (range only)</span>
         <span><strong>793 days of Nasdaq futures, pre-registered.</strong> Next-day range vs a Brownian baseline +0.176 wider on short-gamma days (p 0.0008), +0.315 vol-matched; 4/4 specs, 6/6 years. But short-gamma days sit at ≈1.02 — ordinary — while long-gamma days sit at ≈0.85. <strong>Long gamma is quiet</strong>; short gamma isn't wild.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null">
-        <span class="sl-stamp-tag">Falsified · direction</span>
+        <span class="sl-stamp-tag">Desk test: no direction found</span>
         <span><strong>No direction from gamma</strong> — the adjacent wall-magnet test scored 48.8% out-of-sample vs a 49.9% placebo. <strong>Not FX</strong> — tested there, doesn't carry.</span>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="10">
@@ -159,7 +163,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Same Greeks, same risk"</h4><p>Identical gamma and vega; worst cases 97.80 vs unlimited.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Gamma ≈ 0 means safe"</h4><p>Low gamma means <em>linear</em>, not <em>small</em>. A deep-ITM short call loses one-for-one.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>"Bounded means small"</h4><p>The short put risks 97.80 to earn 2.20 — about 44× the premium.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Short gamma = breakout"</h4><p>Tested: short-gamma days are ordinary; gamma carries no direction; nothing on FX.</p></div></div>
+        <!-- DESK:START --><div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Short gamma = breakout"</h4><p>Tested: short-gamma days are ordinary; gamma carries no direction; nothing on FX.</p></div></div><!-- DESK:END -->
       </div>
     </section>
 
@@ -186,6 +190,7 @@
         <div class="sl-quiz-explain">The forward is a straight line with no floor; its gamma and vega are zero, so the Greeks can't register it.</div>
       </div>
 
+      <!-- DESK:START -->
       <div class="sl-quiz-q" data-q="3">
         <div class="sl-quiz-num">Question 3</div>
         <h4>The desk's verdict on "dealer short gamma" is…</h4>
@@ -194,6 +199,7 @@
         <button class="sl-quiz-opt">Untested</button>
         <div class="sl-quiz-explain">+0.176 (p 0.0008) wider on short-gamma days vs baseline over 793 Nasdaq days; long-gamma days ≈0.85 are the informative state. Direction falsified (48.8% vs 49.9% placebo); doesn't carry to FX.</div>
       </div>
+      <!-- DESK:END -->
 
       <div class="sl-quiz-q" data-q="4">
         <div class="sl-quiz-num">Question 4</div>
@@ -213,7 +219,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Short call = short put + short forward. The forward is invisible to gamma and vega and carries the whole unlimited tail.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Greeks are local slopes; payoffs are global. Size by stressed loss, not Greek columns.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Deep ITM, a short call's Greeks go quiet while it loses one-for-one — low gamma means linear, not small.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Dealer gamma, tested: a Nasdaq range effect (long gamma quiet). Direction falsified. Not FX.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Dealer gamma, tested: a Nasdaq range effect (long gamma quiet). Direction falsified. Not FX.</p></div><!-- DESK:END -->
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

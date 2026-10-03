@@ -17,7 +17,7 @@
   <h1 class="tl-title">Garman-Klass &amp; Yang-Zhang Volatility Estimators</h1>
   <p class="tl-dek">Close-to-close volatility throws away three of the four prices a daily bar hands you for free. Open, high, and low all carry real information about how far price actually traveled — and a family of "range-based" estimators uses all four to measure the same thing with far less data.</p>
   <div class="tl-meta">
-    <span class="tl-status course">VERIFIED IN THIS REPO — Yang-Zhang is the live production volatility estimator (<code>js/volForecast.js</code>, <code>forge/vol.py</code>); Garman-Klass, Parkinson &amp; Rogers-Satchell are also implemented and used, not just explained here</span>
+    <!-- DESK:START --><span class="tl-status course">VERIFIED IN THIS REPO — Yang-Zhang is the live production volatility estimator (<code>js/volForecast.js</code>, <code>forge/vol.py</code>); Garman-Klass, Parkinson &amp; Rogers-Satchell are also implemented and used, not just explained here</span><!-- DESK:END -->
     <span>~19 min read</span>
     <span>Prereqs: <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a>, <a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a></span>
   </div>
@@ -36,7 +36,10 @@
       <li><strong>Garman-Klass (1980)</strong> adds the open-close move to the range: \(\sigma^2_{GK} = 0.5\ln(H/L)^2 - (2\ln2-1)\ln(C/O)^2\) — about 7.4x more efficient than close-close, but it assumes continuous trading with no gap between one bar's close and the next bar's open, which is never quite true across an FX weekend rollover.</li>
       <li><strong>Rogers-Satchell (1991)</strong>, \(\sigma^2_{RS} = \ln(H/C)\ln(H/O) + \ln(L/C)\ln(L/O)\), is drift-independent — unlike Parkinson and Garman-Klass, it stays unbiased even when the price trends hard through the day.</li>
       <li><strong>Yang-Zhang (2000)</strong> combines an overnight (close-to-open) variance term, an open-close term, and Rogers-Satchell, weighted to minimize total estimator variance — unbiased under both drift and opening jumps, and the most complete of the four.</li>
+      <!-- DESK:START -->
       <li>This repo doesn't just explain these — Yang-Zhang is the actual production volatility input driving the live FX/gold daily-range forecaster (<code>js/volForecast.js</code>), Garman-Klass is the realized-variance "truth" a separate forecast benchmark scores against, and Parkinson drives a live trending/choppy regime classifier. Grounded in the repo's own code below, not asserted.</li>
+      <!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> Parkinson and Garman &amp; Klass (1980) squeezed more volatility out of the daily bar, Yang &amp; Zhang (2000) fixed the overnight gap, and they remain the standard estimators wherever a desk has bars rather than ticks.</li>
     </ul>
   </div>
 
@@ -96,6 +99,23 @@
       directly, for every single day, which is exactly why it needs so much
       less data to arrive at the same answer.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>More volatility out of the same daily bar</h3>
+    <div class="tl-origin-who">Range-based volatility · Parkinson; Garman &amp; Klass, 1980 → Yang &amp; Zhang, 2000</div>
+    <p>For decades the only cheap, universal price record was the daily bar: open, high, low, close. Close-to-close volatility throws three of those four numbers away, so it needs a long window to be precise, and a long window reacts slowly to a regime change.</p>
+    <p>Michael Parkinson (1980) showed the high–low range alone estimates volatility several times more efficiently; Mark Garman and Michael Klass (1980), writing with options pricing in mind, added the open and close. Rogers &amp; Satchell (1991) removed the drift bias, and Dennis Yang and Qiang Zhang (2000) added the overnight gap, which matters for markets that close or, like FX, pause over the weekend.</p>
+    <p>These estimators are now standard wherever a desk has bars but not ticks: realised-versus-implied checks on option books, volatility targeting and position sizing, stop and barrier widths, and as the realised-vol input to longer-horizon forecasting models.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How volatile is this market right now, measured as precisely as daily OHLC bars allow?</dd>
+        <dt>Takes in</dt><dd>Daily open, high, low and close prices, turned into <a href="primer-returns-compounding.html">log returns</a>.</dd>
+        <dt>Hands on to</dt><dd>Forecasting models such as <a href="garch-volatility.html">GARCH</a> and <a href="institutional-har-rv.html">HAR-RV</a>, and volatility-scaled barriers in <a href="institutional-triple-barrier-labeling.html">triple-barrier labelling</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -227,7 +247,7 @@
   </div>
   <p>
     Rogers-Satchell is rarely used entirely on its own in practice — its
-    real job, in this lesson and in this repo's own code, is as one
+    real job, in this lesson<!-- DESK:START --> and in this repo's own code<!-- DESK:END -->, is as one
     ingredient inside a more complete estimator. Its defining property is
     what it fixes: on a day that trends steadily in one direction (rather
     than wandering back and forth around a fixed level), Parkinson and
@@ -429,8 +449,7 @@
     <h3>Parkinson, Garman-Klass &amp; Rogers-Satchell on a single bar, live</h3>
     <p>
       Enter one day's O/H/L/C and pick an annualization convention (this
-      curriculum, and this repo's own <code>forge/vol.py</code>, standardize
-      on 252 trading days). Starts on day 1 of the worked example above;
+      curriculum standardizes on 252 trading days<!-- DESK:START -->, as does this repo's own <code>forge/vol.py</code><!-- DESK:END -->). Starts on day 1 of the worked example above;
       invalid combinations are caught and explained rather than silently
       producing NaN.
     </p>
@@ -494,7 +513,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <!-- DESK:START --><div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How this repo actually uses these estimators</h2>
   <p>
     This is not a purely conceptual lesson. All four estimators derived
@@ -523,8 +542,9 @@
       <h4>Rogers-Satchell — gold's dedicated shadow estimator</h4>
       <p><code>js/volForecast.js</code>'s <code>rsEwmaVolSeries()</code> is the legacy/shadow EWMA estimator specifically for the commodity (gold) asset class, and the same function is mirrored in <code>DynAnchorBot/dyn_anchor_mt5_bot.py</code>'s live MT5 bot ("GARCH(1,1) for fx/index, Rogers-Satchell EWMA for commodity — mirrors dashboard").</p>
     </div>
-  </div>
+  </div><!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Verified against this repo's actual code</div>
@@ -551,6 +571,7 @@
       bodies rather than grepping for estimator names alone.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -581,12 +602,12 @@
       <strong>A realized-volatility estimate is a measurement, not a forecast.</strong>
       Every estimator in this lesson describes how much a bar <em>already</em>
       moved — none of them, by themselves, predict how much tomorrow's bar
-      will move. This repo's own <code>forge/vol.py</code> enforces that
+      will move. <!-- DESK:START -->This repo's own <code>forge/vol.py</code> enforces that
       distinction explicitly: its <code>as_of_yesterday()</code> function is
       the single place a same-day sigma measurement is deliberately shifted
       forward by one day before it's allowed to be used as a forecast input
       — every estimator upstream of it, Yang-Zhang included, is described in
-      the code's own comments as "not forecast-ready by itself." Conflating
+      the code's own comments as "not forecast-ready by itself." <!-- DESK:END -->Conflating
       "I measured today's realized vol accurately" with "I know what
       tomorrow's vol will be" is a different, separate claim — the subject
       of <a href="institutional-har-rv.html">HAR-RV: Forecasting Realized
@@ -602,7 +623,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Garman-Klass assumes no gap between bars</strong> — a real limitation for FX around weekend rollovers, fixed specifically by Yang-Zhang's overnight term, not by Garman-Klass itself.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Yang-Zhang is unbiased under both drift and opening jumps</strong> — the two failure modes that individually break Parkinson and Garman-Klass, respectively.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson's own Monte Carlo check recovered ~5x (Parkinson) and ~7.8x (Garman-Klass) efficiency gains over close-close vol</strong> — closely matching the textbook figures, not just citing them.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Genuinely built here, not just explained:</strong> Yang-Zhang is this repo's live production volatility estimator; Garman-Klass, Parkinson, and Rogers-Satchell are each doing real, distinct jobs elsewhere in the codebase.</span></div>
+    <!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the volatility input when you have bars, not ticks.</strong> Parkinson and Garman &amp; Klass (1980) through Yang &amp; Zhang (2000) feed realised-versus-implied checks, volatility targeting, position sizing and stop widths.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>
@@ -674,7 +698,7 @@
       drift as well as under opening jumps.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Is Yang-Zhang used anywhere in this repo's actual production code, or is it explained here purely as background theory?</summary>
     <div class="tl-answer">
       It's genuinely in production, not just explained. <code>js/volForecast.js</code>'s
@@ -688,7 +712,7 @@
       <code>forge/vol_test.py</code> — this is not the "CONCEPT — not built
       here" status most Theory Lab lessons carry.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

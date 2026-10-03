@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Data Pipeline: Raw Feeds to Trading-Ready Data</h1>
   <p class="tl-dek">A raw vendor feed and a backtest-ready dataset are not the same object — this is the map of every stage a tick has to pass through in between, and why the most common bar-construction choice is quietly the statistically weakest one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span class="tl-status concept">CONCEPT — explains real industry practice<!-- DESK:START -->, not a claim about this repo's own data pipeline<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none — this is the entry lesson for the category</span>
   </div>
@@ -36,7 +36,7 @@
       <li><strong>Bar construction</strong> is a separate, foundational choice inside "ingestion": how raw ticks get grouped into the bars a strategy actually sees. Time bars, tick bars, volume bars, and dollar bars are the four standard sampling clocks (Marcos López de Prado, <em>Advances in Financial Machine Learning</em>, Wiley 2018, Chapter 2).</li>
       <li><strong>Time bars — the default almost everyone starts with — have a known statistical weakness:</strong> sampling at a fixed wall-clock interval oversamples quiet periods and undersamples bursts of activity, producing returns that are further from IID/Gaussian than volume- or dollar-bar sampling.</li>
       <li>This category covers the <em>data layer underneath a feature</em> — ingesting, cleaning, and architecting the raw series itself, before any feature gets computed from it. <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> covers the layer built <em>on top</em> of clean data — this lesson and its category are what has to be true first.</li>
-      <li><strong>Real-world episode:</strong> in the 6 May 2010 Flash Crash, firms' own data-integrity checks paused their trading, Accenture printed at one cent, and after the close the venues cancelled over 20,000 trades more than 60% from the 2:40 p.m. price. The "raw" record changed after capture. Whether this desk's historical bars match what its live feed showed is untested.</li>
+      <li><strong>Real-world episode:</strong> in the 6 May 2010 Flash Crash, firms' own data-integrity checks paused their trading, Accenture printed at one cent, and after the close the venues cancelled over 20,000 trades more than 60% from the 2:40 p.m. price. The "raw" record changed after capture.<!-- DESK:START --> Whether this desk's historical bars match what its live feed showed is untested.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -427,14 +427,16 @@
     for that afternoon contains a range no one could have traded at the size a backtest assumes.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: that the historical bars this desk backtests on match what its live feed showed at
     the time.</strong> The ledger has no entry on data-pipeline parity. A fair test would record the live feed's bars as
     they form, fetch the same window from the historical source days later, and count the bars whose open, high, low or
     close differ, with the size of each difference, before trusting any short-horizon backtest built on the
     historical copy.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>

@@ -247,10 +247,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">🎚</div><div><h4>Picking one learning rate and never revisiting it</h4><p>A rate that works well on one calibration problem can be far too large or small for a different one — exactly why adaptive methods (AdaGrad, RMSProp, Adam) exist.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🏔</div><div><h4>Mistaking convergence for correctness</h4><p>A zero gradient only guarantees a <em>stationary</em> point — on a non-convex function that could be a local minimum far worse than the true global one. The next lesson is entirely about when that distinction stops mattering.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Factual grounding — verified against this repo's current code</div>
         <p>The full lesson this deck condenses tags itself "CONCEPT — not built or tested in this repo." That's still accurate as of this check: <code>js/impliedVolCore.js</code> loads static CME CVOL / CBOE implied-vol <em>snapshots</em> rather than solving for volatility from a pricing formula, and <code>js/gammaGreeks.js</code> only computes Greeks <em>from</em> a given volatility, never inverts one. No Newton-Raphson (or any other iterative root-finder) exists anywhere in <code>js/</code> today — the yield-curve and vol modules consume observed, quoted data directly. Nothing here is stale; this lesson is, and remains, purely conceptual groundwork for numerical solvers this codebase doesn't yet implement.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">

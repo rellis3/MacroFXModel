@@ -254,17 +254,19 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">Genuinely advanced — and genuinely not what's running in this repo</h2>
+      <h2 class="sl-h2">Genuinely advanced<!-- DESK:START --> — and genuinely not what's running in this repo<!-- DESK:END --></h2>
       <p class="sl-sub">Worth being explicit about where this machinery actually gets used, and where it doesn't.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Specialist curve-modelling desks</h4><p>The HJM/Musiela framework, in something close to its full generality, is genuinely used where a book's exposure to curve <em>shape</em> — not just level — is large enough to justify the complexity.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Academic filtering research</h4><p>The Zakai equation is standard machinery in the nonlinear-filtering literature; the algorithms it motivates (Kalman, particle filters) are what actually reach production, not a direct SPDE solve.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A frontier worth recognizing, not a default tool</h4><p>Knowing the SPDE framing is most useful for judging when a finite-dimensional simplification is adequate — and when its assumptions are being stretched.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>Checked directly rather than assumed: nothing in this codebase implements HJM/Musiela, a Zakai equation, or any whole-curve stochastic model — a repo-wide search turns up no such code anywhere. This curriculum's own <code>js/yieldCurveEngine.js</code> models the yield curve only as a single 2s10s slope number plus a z-score trend versus its own history — a level-and-trend signal, not even a static multi-tenor snapshot, let alone a stochastic model of the whole curve moving through time. That's fully consistent with this lesson's framing below: full SPDE machinery is real, rigorous, and used elsewhere, but nowhere in this repo, and it isn't meant to be — this is background theory for reading specialist material and the next lesson's neural-SPDE extension, not a build spec.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
