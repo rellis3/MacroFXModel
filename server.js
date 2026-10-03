@@ -158,7 +158,7 @@ import { BAND_REACH_PARAMS as _BAND_REACH_PARAMS } from './js/bandReachParams.js
 import { fredSpecFor as _fredSpecFor, actualFromVintage as _fredActual, vintageWindow as _fredVintageWindow, fetchStart as _fredFetchStart, priorAgrees as _fredPriorAgrees, pendingRows as _fredPending, revisionOf as _fredRevisionOf, policyActualFrom as _policyActual, onsSeries as _onsSeries, statcanSeries as _statcanSeries, jsonStatSeries as _jsonStatSeries } from './js/fredActuals.js';   // the actuals ForexFactory's free feed never carries, rebuilt from FRED vintages   // real economic-surprise index (actual vs consensus), accumulated week by week
 import { createReleasePoller as _createReleasePoller, latestObservationDate as _latestObs, isLate as _releaseIsLate } from './js/releasePoller.js';   // poll until the DATA advances; a once-a-day schedule misses the release
 import { buildRegimeStudy as _buildRegimeStudy, buildCalendarStudy as _buildCalendarStudy, currentRegime as _currentRegime, describeRegime as _describeRegime, buildEventStudy as _buildEventStudy } from './js/macroRegimeFx.js';   // what FX has historically done in the macro conditions holding right now, and on release days
-import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief } from './js/deskEvidence.js';
+import { DESK_EVIDENCE as _DESK_EVIDENCE, evidenceForPrompt as _evidenceForPrompt, evidenceBrief as _evidenceBrief, lessonSafe as _lessonSafe } from './js/deskEvidence.js';
 import { buildEodReviewPrompt } from './js/eodReview.js';
 import { scoreRelease as _scoreRelease, claimTally as _claimTally, HEADLINE_INSTRUMENT as _NEWS_HEADLINE } from './js/newsOutcome.js';
 // the equity half of the board, summarised server-side for today.html (see /api/wider-market)
@@ -34483,7 +34483,7 @@ app.get('/theory-lab/desk-verdicts.json', (req, res) => {
   const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
   const entries = {};
   for (const e of _DESK_EVIDENCE) {
-    if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: e.claim, result: e.result };
+    if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: _lessonSafe(e.claim), result: _lessonSafe(e.result) };
   }
   res.set('Cache-Control', 'no-cache').json({ entries });
 });

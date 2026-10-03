@@ -37,6 +37,7 @@
       <li>Validate out-of-sample with realistic costs and a genuine train/test boundary — see <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a> for why even a clean-looking chronological split can still leak.</li>
       <li>Pre-register what "it worked" and "it didn't work" each look like <em>before</em> running the test — otherwise a null result quietly gets re-narrated into "promising, needs more tuning."</li>
       <li>The best-of-many-variations number needs a multiple-testing correction before it means anything — see <a href="sharpe-family-deflated.html">the Deflated Sharpe Ratio</a> and <a href="multiple-testing.html">Multiple Testing</a>.</li>
+      <li><strong>Real-world episode:</strong> large NHLBI clinical trials went from 57% reporting a benefit (17 of 30) to 8% (2 of 25) once outcomes were registered in advance; and this desk's funding-stress pre-registration, whose written prior (a drawn Standing Repo Facility precedes wider ranges) lost: S&amp;P 500 −0.561 ATR, a calmer week, banked as a null against the expectation.</li>
     </ul>
   </div>
 
@@ -364,6 +365,92 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: a prior written down, and beaten</h2>
+  <p>
+  Stage 5 can sound like paperwork. Two episodes show what it actually changes: one from medicine, at the scale of a whole
+  field, and one from this desk, where the written prior lost.
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Clinical trials, before and after registration</h3>
+    <p style="margin-bottom:0">
+      Robert Kaplan and Veronica Irvin looked at large trials funded by the US National Heart, Lung, and Blood Institute
+      (<em>PLOS ONE</em>, 2015). From 2000, trials like these had to be registered in a public database, ClinicalTrials.gov,
+      with their primary outcome declared before the results came in. Of the 30 published before 2000, <strong>17
+      (57%)</strong> reported a significant benefit on their primary outcome. Of the 25 published after, <strong>2
+      (8%)</strong> did. The authors pointed to prospective registration as the likely reason: researchers could no longer
+      decide, after seeing the data, which outcome counted.
+    </p>
+  </div>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened here</div>
+    <h3>This desk, October 2026: funding stress, and a prior that lost</h3>
+    <p>
+      The claim was a familiar one: when overnight funding trades above the Fed's floor, cash is scarce, and scarce cash
+      shows up as wider, rougher markets before it shows up in prices. The desk wrote the pre-registration on 2 October 2026
+      and committed it before a line of the test harness existed. The harness checks the version history and refuses to bank
+      a result whose pre-registration was committed after it.
+    </p>
+    <p>
+      The document is specific about what its author expected. For the main setup, the Standing Repo Facility actually being
+      drawn, the expectation reads: <strong>real, and the strongest cell here</strong>, with a positive range difference
+      expected on the S&amp;P 500 in particular, and a warning that the sample might be too small to test at all. The pass bar
+      was fixed in the same document: an interval clear of zero <em>and</em> a difference of at least +0.10 ATR, the same sign
+      in both halves of the sample, and no bigger an effect on month-end days.
+    </p>
+    <p style="margin-bottom:0">
+      The result: 21 episodes, enough to test. S&amp;P 500 next-five-session range <strong>−0.561 ATR [−0.984,
+      −0.181]</strong> against a matched control, negative in both halves. A drawn facility was followed by a
+      <em>calmer</em> week, not a wider one. It was also drawn on 667 of 2,123 sessions, 31% of them, which makes "the
+      backstop was used" routine plumbing rather than an alarm. The ledger banks it as a null that came back "AGAINST the
+      written expectation". Nobody got to decide afterwards that calm was what they had meant all along.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>The folk claim</b>SOFR above the floor, or a drawn SRF, warns of a rougher market</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The desk</b>Must write its expectation and pass bar first: "real, and the strongest cell"</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Version history</b>The harness refuses a result whose pre-registration came after it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b style="color:var(--purple)">★ This lesson: Stage 5</b>The bar and the prior were fixed before the number existed</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The data</b>21 SRF episodes: S&amp;P 500 range −0.561 ATR, calmer, in both halves</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Banked as a null against the prior; the calm is reported, not promoted</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before the game, the desk wrote on a card and sealed it: "I think team A wins big." Team B won. Because the card was sealed first, nobody could pretend afterwards that they'd picked team B all along. Doctors started sealing their cards in 2000, and suddenly far fewer of their medicines "won".</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+  Stage 5 as written guards against one failure: a null re-narrated into "promising, needs more tuning". Here the danger ran
+  the other way. The result was clean, an interval clear of zero, but on the side nobody predicted, and that is the more
+  tempting failure: "a drawn SRF means a calmer week" would make a neat new signal. The pipeline above does not say what to
+  do with a significant surprise. The desk's answer is that a surprise is a new hypothesis, not a finding: the calm is
+  reported as measured and explicitly <em>not</em> as evidence that the backstop works (SRF days are mostly ordinary days,
+  and the sample has no crisis in it), and trading it would need its own pre-registration. The rest of the prior missed
+  too: the cell it expected to be untestable was testable, and the headline-SOFR setup came out untestable instead, with 15
+  episodes against a floor of 20, 12 of them on the 14th–18th of a month.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>funding-stress: genuine funding stress did not precede wider ranges, and the written prior lost.</strong>
+    2,123 SOFR sessions, 2018-04 to 2026-09. SRF drawn: 21 episodes, SPX500 next-5-session range −0.561 ATR [−0.984, −0.181]
+    versus control, negative in both halves (−0.928 / −0.228): calmer, not wider. EUR/USD −0.483 [−1.150, +0.119] and
+    USD/JPY +0.417 [−0.066, +0.963] null. SOFR ≥ 3bp over the floor away from month-end: 15 episodes, untestable against a
+    floor of 20, 12 of them on the 14th–18th. Direction null throughout. The SRF is drawn on 667 of 2,123 sessions
+    (31%).</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Institutional quant research groups formalize versions of this same discipline under different
@@ -450,7 +537,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>State the mechanism before touching the data.</strong> A hypothesis explained after the fact by a pattern already found is not a hypothesis — it's a description of one sample dressed up as a prediction.</span></div>
@@ -460,9 +547,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Pre-register the verdict criteria before the test runs.</strong> This is what stops a null or marginal result from being re-narrated into "promising, needs more tuning" after the fact.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The order matters more than any single step's rigor.</strong> A technically correct OOS test on a data-mined hypothesis is still worthless — the leak happened upstream, before validation ever began.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A best-of-many-variations result needs the multiple-testing correction, not just an OOS pass.</strong> Clearing an out-of-sample bar and clearing the chance-expected ceiling for how many variations were tried are two separate hurdles — see the Deflated Sharpe Ratio lesson.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Write the prior down so it is allowed to lose (funding-stress, NULL).</strong> The desk expected a drawn SRF to precede wider ranges; the S&amp;P 500 came back −0.561 ATR [−0.984, −0.181], calmer, and was banked as a null against the written expectation. A significant surprise is a new hypothesis, not a finding.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a hypothesis need a stated economic or behavioral mechanism, rather than just a pattern that performed well historically?</summary>
@@ -545,6 +633,7 @@
     <li>David H. Bailey, Jonathan M. Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, <em>"Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance"</em>, Notices of the AMS, 2014 — the case for treating backtest overfitting as a research-process failure, not just a statistical footnote.</li>
     <li>Campbell R. Harvey &amp; Yan Liu, "Backtesting," <em>Journal of Portfolio Management</em>, 2015 — argues for pre-specifying a significance hurdle before running a backtest, the direct ancestor of this lesson's pre-registration stage.</li>
     <li>Robert Pardo, <em>The Evaluation and Optimization of Trading Strategies</em> (Wiley, 2nd ed., 2008) — the walk-forward-optimization tradition this lesson's Stage 4 draws on, including the discipline of comparing in-sample to out-of-sample performance fold by fold rather than trusting one split.</li>
+    <li>Robert M. Kaplan &amp; Veronica L. Irvin, "Likelihood of Null Effects of Large NHLBI Clinical Trials Has Increased over Time," <em>PLOS ONE</em>, 2015 — the before-and-after picture of what prospective registration does to reported success rates.</li>
   </ul>
   </details>
 
@@ -578,5 +667,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

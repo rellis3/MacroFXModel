@@ -37,6 +37,7 @@
     <li>At \(m=70\) (the interactive slider's default), FWER ≈ 97.2% and the expected number of false positives among pure-noise slices is \(70 \times 0.05 = 3.5\) — "3 out of 70 slices look significant" is what noise does, not a discovery.</li>
     <li>Bonferroni fixes this by shrinking the per-test bar to \(\alpha/m\) (a strict, correlation-agnostic worst case); Benjamini-Hochberg (FDR) uses a rank-dependent staircase, \(p_{(k)} \le \frac{k}{m}q\), that's more forgiving and better suited to correlated FX slices.</li>
     <li>This is the mechanical basis for this repo's own house rule: "finding a few 'winners' among 70 slices is what noise does" — survivors must beat the chance-baseline and be IS-consistent, per Lego Principle 5.</li>
+    <li><strong>Real-world episode:</strong> finance's "factor zoo", where Harvey, Liu &amp; Zhu (2016) counted 316 published return factors and argued a new one should clear a t-statistic of about 3, not 2; and this desk's own rates-pivot test, where a confirmed rates low was followed by an up-move 54.1% of the time against a base rate of 54.1%.</li>
   </ul>
 </div>
 
@@ -426,6 +427,103 @@
   </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the factor zoo, and a 54% that was nothing</h2>
+  <p>
+  The arithmetic in Section 02 is not a classroom hypothetical. It has played out across an entire academic field, and on
+  this desk's own test bench.
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The factor zoo: hundreds of "discoveries" tested on one shared dataset</h3>
+    <p>
+      Cheap data and fast computers made it easy to test a new idea against the same few decades of US stock returns: do
+      stocks with trait X earn more than stocks without it? Each paper ran its test honestly, at the usual bar of a
+      t-statistic around 2 (roughly the 5% level), and the ideas that cleared the bar were published. The ones that didn't
+      mostly weren't. In his 2011 presidential address to the American Finance Association, John Cochrane called what had
+      accumulated a "zoo" of factors.
+    </p>
+    <p>
+      Campbell Harvey, Yan Liu and Heqing Zhu counted the zoo. In "…and the Cross-Section of Expected Returns"
+      (<em>Review of Financial Studies</em>, 2016) they catalogued <strong>316 factors</strong> proposed in published
+      research. Their argument is this lesson at the scale of a profession: when hundreds of tests are run on one shared
+      history, and the failed ones are invisible, a t-statistic of 2 is the bar for a single test, not for the
+      three-hundredth. Using a multiple-testing framework that allows for correlated tests and for the unpublished ones
+      nobody can see, they concluded that a newly proposed factor should clear a t-statistic of about
+      <strong>3.0</strong>, and that many published findings in the field are likely false.
+    </p>
+    <p style="margin-bottom:0">
+      Nobody in that story had to cheat. Each test could be run correctly. The error lived exactly where this lesson says
+      it lives: in \(m\), the number of looks, which no single paper reported because no single paper knew it.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Cheap data</b>Decades of stock returns and fast computers on every researcher's desk</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Researchers</b>Careers reward a significant result, so each tests idea after idea on the same history</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Journals</b>Publish what clears t ≈ 2; the failed tests stay in drawers, so nobody reports \(m\)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b style="color:var(--purple)">★ This lesson: look-elsewhere</b>Hundreds of hidden looks push the FWER toward 1, so some factors pass on noise alone</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>316 published factors; Harvey, Liu &amp; Zhu raise the hurdle to t ≈ 3</div>
+  </div>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened here</div>
+    <h3>This desk, 2026: the rates pivot that "led" the Nasdaq 54% of the time</h3>
+    <p>
+      A teaching video walked through one afternoon on a 15-minute Nasdaq chart: a short-term rates series made a low, the
+      low was confirmed, and the Nasdaq rallied afterwards. The suggestion, offered explicitly as a hypothesis still to be
+      tested, was that you could confirm the turn in rates and then pre-position in the index.
+    </p>
+    <p>
+      The desk pre-registered the test before writing any code, wrote its own expectation down as null, and ran it on 360
+      days of 15-minute bars: <strong>2,430 confirmed pivots</strong> in the US 2-year, with every measurement starting at
+      the bar on which the pivot could first be known. The headline a slide would have printed: <strong>after a confirmed
+      rates low, the Nasdaq rose 54.1% of the time.</strong> The number a slide usually leaves out: <strong>in the control
+      sample, with no pivot anywhere near, the Nasdaq rose 54.1% of the time.</strong> Identical to the decimal. The index
+      simply drifts up, and the setup inherited the drift.
+    </p>
+    <p style="margin-bottom:0">
+      The study scored 15 cells: three horizons, each pooled, by direction and by half of the sample. Had all 15 been tests
+      of nothing, you would expect \(15 \times 0.05 = 0.75\) false passes, and the chance of at least one is
+      \(1-(0.95)^{15}\), a little better than a coin flip. None passed. The pre-registered gate demanded agreement in
+      both directions and both halves, which is why a lone lucky cell could never have been written up as a finding.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Hundreds of scientists each flip a coin twenty times, hunting for a "magic" coin, and only the ones whose coins landed heads a lot write it up. Read only those write-ups and magic coins seem to be everywhere. The desk's version: a setup "worked" 54 times in 100, but the market goes up 54 times in 100 anyway, so the setup added nothing at all.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+  Every formula in Section 02 takes \(m\) as known: count your tests, then divide \(\alpha\) by \(m\) or rank the
+  p-values against \(\frac{k}{m}q\). In published research \(m\) is unknowable. The tests that failed belong to
+  other people and were never written up, and they were all run on the same shared history, so they are neither counted
+  nor independent. Harvey, Liu &amp; Zhu had to <em>estimate</em> the hidden tests to set their hurdle. A correction can
+  only be as honest as the count fed into it, which is why this desk fixes its cells before a study runs and records the
+  nulls alongside the passes.
+  </p>
+
+  <p>
+  The tempting claim this lesson exists to stop is "this setup is right X% of the time". The desk's verdict on its own
+  example:
+  </p>
+
+  <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>rates-pivot-lead: a confirmed turn in short-term rates does not lead the Nasdaq.</strong> 2,430 confirmed
+    2-year pivots, 2,010 de-clustered events at 1h: signed Nasdaq return −0.005% vs control [−0.021, +0.012]. Null at 1h,
+    2h and 4h, in both directions and both halves, and well powered: the interval is about ±0.12 ATR, inside the desk's own
+    0.15 execution gate. A confirmed rates low is followed by an up-move 54.1% of the time, and the base rate is 54.1%. In
+    the ledger's words: "54% looked like an edge and was exactly nothing."</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   In quantitative finance this problem has its own well-developed vocabulary, most notably
@@ -512,7 +610,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Running more tests makes a false "significant" result likely, not surprising.</strong> \(\text{FWER}=1-(1-\alpha)^m\) climbs toward 1 fast — at \(m=70\) it's already ≈97.2%, even when nothing real is happening.</span></div>
@@ -521,9 +619,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Benjamini-Hochberg (FDR) is the more forgiving alternative.</strong> Its rank-dependent staircase, \(p_{(k)}\le\frac{k}{m}q\), controls the expected proportion of false discoveries rather than banning any false positive outright — usually more useful for correlated, exploratory FX slicing.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The best of many is expected to look good, by construction.</strong> Being rank #1 of 70 tells you almost nothing on its own — someone has to be the minimum of 70 noise draws.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Surviving a correction is necessary, not sufficient.</strong> A statistically valid discovery still has to hold up in-sample consistently and on a genuine out-of-sample split with real costs before it's a tradeable edge (Lego Principle 5).</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A hit rate without its base rate is a winning ticket shown alone (rates-pivot-lead, NULL).</strong> Up 54.1% of the time after a confirmed rates low, against a 54.1% base rate; 0 of 15 cells real. And when \(m\) is hidden, as in the 316-factor zoo, the honest bar rises to t ≈ 3.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz"><summary>Q1. In your own words, what does \(\alpha = 0.05\) promise you for a single hypothesis test — and what does it NOT promise once you've run many tests?</summary>
     <div class="tl-answer">It promises that <em>if</em> the null hypothesis is actually true, there is a 5% chance this one test will incorrectly reject it — a false-positive rate of 5% <em>per test</em>. It does not promise anything about the chance of a false positive across a whole batch of tests: run enough tests at \(\alpha=0.05\) and a false "significant" result becomes likely, even though each individual test is still exactly as reliable as advertised (5% per test never changed). The mistake is applying the single-test guarantee to a multi-test situation.</div>
@@ -553,6 +652,7 @@
     <li>David H. Bailey &amp; Marcos López de Prado, "The Deflated Sharpe Ratio: Correcting for Selection Bias, Backtest Overfitting, and Non-Normality," <em>Journal of Portfolio Management</em> (2014).</li>
     <li>David H. Bailey, Jonathan Borwein, Marcos López de Prado &amp; Qiji Jim Zhu, "Pseudo-Mathematics and Financial Charlatanism: The Effects of Backtest Overfitting on Out-of-Sample Performance," <em>Notices of the AMS</em> (2014) — a readable, non-technical entry point into PBO.</li>
     <li>ATLAS &amp; CMS Collaborations' Higgs boson discovery papers (2012, <em>Physics Letters B</em>) — the canonical applied example of "look-elsewhere effect" correction in a real many-bins search.</li>
+    <li>Campbell R. Harvey, Yan Liu &amp; Heqing Zhu (2016), "…and the Cross-Section of Expected Returns," <em>Review of Financial Studies</em> — the 316-factor count and the case for a t-statistic hurdle near 3.0; John H. Cochrane (2011), "Presidential Address: Discount Rates," <em>Journal of Finance</em> — the "zoo" of factors.</li>
   </ul>
   </details>
 
@@ -629,5 +729,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

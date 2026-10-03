@@ -38,6 +38,7 @@
       <li>A clean chronological split alone still leaks: a training row just before the boundary can have a forward-looking label that reaches into the test window, and a training row just after the test period can have a rolling feature window that reaches back into it.</li>
       <li>The worked example (\(n=1{,}000\), \(w=20\), \(H=5\), test = days 500–599) shows this concretely: days 495–499 are purged for a label leak, days 600–618 for a feature leak, and a further 10-day embargo (days 619–628) buffers residual serial correlation the mechanical purge formula doesn't capture — training only resumes at day 629.</li>
       <li>This project's own split/metrics reporting does a single clean chronological split with no purge/embargo — an honest gap, not a bug, but a checkable refinement worth applying to strategies whose features (HV20, rolling z-scores/percentiles, day-type estimators) lean on multi-day rolling windows near the split date.</li>
+      <li><strong>Real-world episode:</strong> four of this desk's own backtests leaked. One scored 95% of its "wins" before entry, one's whole edge was stops that were not live for the first hour, one hid a look-ahead under a survivorship fix (honest edge 0.23× cost), and one showed 85.7% wins against 39.6% live.</li>
     </ul>
   </div>
 
@@ -485,6 +486,80 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: four backtests, four leaks</h2>
+  <p>
+  The trading scenario above is a hypothetical. This desk has real ones, logged together in its evidence ledger under one
+  heading: a backtest that looks too good has a bug, and the bug is usually in what it was allowed to see.
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened here</div>
+    <h3>Four of this desk's own backtests, and where each one leaked</h3>
+    <p>
+      <strong>A volatility tool.</strong> 95% of its "wins" were scored before entry. The outcome window that labelled a
+      trade a win had opened before the trade did: the label leak from Section 02 in its most extreme form, a
+      \(\text{Label}(i)\) built from bars the trader could not have been in the market for.
+    </p>
+    <p>
+      <strong>A voting system.</strong> A survivorship fix had been applied, and underneath it sat a deeper look-ahead. With both
+      removed, the honest edge was <strong>0.23 times the cost</strong> of trading it.
+    </p>
+    <p>
+      <strong>A mean-reversion system.</strong> The entire edge came from stops that were not live for the first hour after entry. The simulator
+      let positions survive moves a live stop would have closed.
+    </p>
+    <p>
+      <strong>The Fibonacci-level system.</strong> An <strong>85.7%</strong> backtest win rate against <strong>39.6%</strong> live. No
+      information leaked here at all; the gap was fills and costs, which a validation scheme cannot see.
+    </p>
+    <p style="margin-bottom:0">
+      The desk's standing rule grew out of being bitten by the pivot version of this, twice. A swing high or low at bar
+      \(i\) is defined by the bars on <em>both</em> sides of it, so its feature window reaches forward: with three bars either
+      side it is \([i-3,\, i+3]\), and the pivot cannot be known until bar \(i+3\). Measure from the pivot bar and every
+      result inherits three bars of the future. Every pre-registration on this desk now states, for each input, the bar on
+      which it is first knowable, and starts the outcome window there: the confirmation bar for a pivot, the next morning for
+      a rate the New York Fed publishes a day late.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Signal</b>A setup prints on bar \(i\): a pivot, a band touch, a vote</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The engine</b>Indexes the row at \(i\), so it starts the outcome window at \(i\), not at entry</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b style="color:var(--purple)">★ This lesson: a window across the boundary</b>The label (or the pivot) uses bars a live trader did not have yet</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The backtest</b>Counts wins already decided before entry: 95% of them, in one case</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A curve that looks like edge, which live trading cannot reproduce</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>One of the desk's tools was like a referee who wrote down "goal!" before the kick was taken, because they'd already seen the replay. Of course nearly every shot "scored". Purging is the rule that the referee only gets to watch from the moment the kick actually happens.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+  Purging assumes the decision time is the row's own index: a row at \(i\) is knowable at \(i\), and you only have to
+  check how far its windows reach. On a live desk the decision time is often later than the index. A pivot is knowable three
+  bars after it forms; SOFR for day \(D\) is published the next morning; an order fills after the signal bar closes, at a
+  price the bar's range does not guarantee. A split that is clean by index, and even correctly purged by \(w\) and \(H\),
+  still leaks if the boundary is drawn at the index instead of at the moment the information could have been acted on. And
+  that system's gap leaked no information at all: it was fills and costs, which no purge, embargo or walk-forward scheme can
+  detect.
+  </p>
+
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>backtest-artifacts: a backtest that looks too good has a bug, and the bug is usually in what it was allowed
+    to see.</strong> One mean-reversion system's entire edge: stops were not live for the first hour after entry. A voting system: a survivorship fix
+    sat on a deeper look-ahead; honest edge 0.23× cost. The Fibonacci-level system: 85.7% backtest win rate vs 39.6% live. A volatility tool: 95% of
+    "wins" scored before entry. Before believing a curve, audit what fraction of candidates each filter silently dropped and
+    what the engine could see at decision time.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Two overlapping traditions converge on the same discipline from different directions:
@@ -595,7 +670,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Random k-fold CV is mechanically broken for time series.</strong> Shuffling can put day \(i+1\) in training while day \(i\) is the test row — literal lookahead, not a subtle statistical nuance.</span></div>
@@ -605,9 +680,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Embargo buffers what purging can't formula-ize.</strong> Real serial correlation runs beyond any window length — embargo is a deliberate, conservative extra margin on top of the mechanical purge.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This project's own split/metrics reporting has no purge/embargo yet.</strong> An honest gap, not a bug — a checkable refinement worth applying to strategies whose features lean on multi-day rolling windows near the split date.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing a purged test is not proof of edge.</strong> It only makes the OOS number honest — it says nothing about costs, economic mechanism, or whether the result clears the multiple-testing chance baseline.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Draw the boundary where information was knowable, not where the row is indexed (backtest-artifacts, CONTEXT).</strong> One desk tool scored 95% of its wins before entry; a vote atlas's honest edge was 0.23× cost once a look-ahead came out. A pivot is knowable three bars late, a published rate a day late, and fills and costs leak in ways no purge can see.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is random k-fold cross-validation wrong for time series even if you never literally look at a "future" row directly?</summary>
@@ -790,5 +866,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

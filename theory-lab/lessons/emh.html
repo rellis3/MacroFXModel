@@ -38,6 +38,7 @@
     <li>The <strong>joint-hypothesis problem</strong>: you can never test market efficiency in isolation, only "efficiency + the assumed pricing model" together — so a single anomalous backtest can't tell you whether the market is inefficient or your pricing model just missed a risk factor.</li>
     <li>This lesson's own worked example: with \(n=500\) daily returns, the noise-level standard error of \(\hat\rho_1\) is \(\approx 1/\sqrt{500} \approx 0.045\); \(\hat\rho_1=0.03\) is unremarkable noise, but \(\hat\rho_1=0.15\) clears ~3 standard errors — a real statistical signal, though still only the <em>start</em> of a research question, not proof of a tradeable edge (no OOS, cost, or mechanism check yet).</li>
     <li>EMH doesn't forbid all profit — only riskless, cost-free profit — which is exactly why this repo bakes in an OOS split with a ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default: they're EMH's joint-hypothesis and free-lunch logic turned into engineering rules.</li>
+    <li><strong>Real-world episode:</strong> McLean &amp; Pontiff (2016) found 97 published stock-return predictors earned about 58% less after publication (26% less in the gap before it), as investors traded them; and this desk's own "priced in" tests, where conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%.</li>
   </ul>
 </div>
 
@@ -401,6 +402,103 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: published, then priced</h2>
+  <p>
+  The $20-bill box in Section 01 says a costless edge in plain sight should not survive. Here is what that looks like when
+  someone prints the map to the bill, and what happened when this desk tested the trader's everyday version of efficiency,
+  "it's priced in".
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>McLean &amp; Pontiff: what happens to a $20 bill once it is in a journal</h3>
+    <p>
+      Academic finance spent decades documenting stock-return anomalies: characteristics such as past returns, accounting
+      ratios or share issuance that predicted which stocks would do better. If real, each one was a bill on the sidewalk.
+      David McLean and Jeffrey Pontiff asked the next question: what happens to the bill after someone publishes a map to it?
+    </p>
+    <p>
+      In "Does Academic Research Destroy Stock Return Predictability?" (<em>Journal of Finance</em>, 2016) they followed
+      <strong>97 published predictors</strong> through three periods: the original study's sample, the stretch after that
+      sample ended but before the paper appeared, and the years after publication. Returns were about <strong>26%
+      lower</strong> in the stretch before publication, which they treat as an upper bound on what data mining alone explains:
+      part of the in-sample result was the luck of the original search. After publication returns were about <strong>58%
+      lower</strong>. The difference, roughly 32%, is the part they attribute to investors reading the research and
+      trading on it.
+    </p>
+    <p style="margin-bottom:0">
+      Two details make it this lesson rather than a footnote. The post-publication decline was larger for the predictors with
+      the biggest in-sample returns: the most visible bills went first. And predictor returns were higher in stocks that are
+      expensive to arbitrage, the illiquid ones and those with high idiosyncratic risk. The bill gets picked up where bending
+      down is cheap, and it lingers where bending down costs money.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Publication</b>A journal prints the predictor, with the rule and the data behind it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Arbitrageurs</b>Can now find the trade cheaply; if they don't take it, a competitor will</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Their orders</b>Buy the predicted winners, sell the predicted losers, pushing prices toward the information</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b style="color:var(--purple)">★ This lesson: efficiency at work</b>Once the information is in the price, the predictable part of the return shrinks</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About 58% lower returns after publication; strongest where trading is costly</div>
+  </div>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened here</div>
+    <h3>This desk: "it's priced in", tested two ways</h3>
+    <p>
+      Traders use "priced in" as a forecast. The desk tested both forecasts it usually carries. <strong>The size
+      version:</strong> on 85 FOMC decision days since 2016, does a decision the front end has already repriced move markets
+      less on the day? Decision-day range came out at about 1.3 ATR on EUR/USD, USD/JPY, gold and the S&amp;P 500 whether
+      the 2-year had moved less than 5bp over the prior 20 sessions or more than 16bp. <strong>The direction version:</strong>
+      does what yields did <em>into</em> a release change what the outcome does to price? A nearest-neighbour model built on
+      the pre-event state of the curve (2-, 10- and 30-year yields, real yields, breakevens and slope) scored a
+      <strong>49.3%</strong> hit rate. The placebo, the same model with the pre-event state shuffled, scored
+      <strong>51.5%</strong>.
+    </p>
+    <p style="margin-bottom:0">
+      Read through this lesson, the direction result is the semi-strong form passing a test. The run-up into a release is
+      public information and already in the price, so it should tell you nothing about which way the surprise pushes, and it
+      told the desk less than nothing. "Priced in" is true in the efficient-markets sense and useless as a trade: the prior
+      repricing did not make the day smaller, and it did not say which way the day would go.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Once someone posts a map to the $20 bill online, lots of people go and look, and soon it's gone. That's what happened to published stock tricks: after the papers came out, they paid a lot less. And knowing that "everyone already expected this" didn't help the desk guess which way prices would jump. A shuffled, random version of the guess did slightly better.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+  The textbook EMH is a switch: information is either in the price or it isn't, and it gets there at once. The
+  McLean–Pontiff evidence is a dial. Publication roughly halved the returns rather than erasing them, over years rather than
+  instantly, and what remained sat where arbitrage is costly: the limits-to-arbitrage and Adaptive Markets reading from the
+  pitfalls box below, not the frictionless one. It is also the joint-hypothesis problem in the wild: the 26% that vanished
+  <em>before</em> publication was never an inefficiency at all, only the original search's luck.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="priced-in-direction" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>priced-in-direction: what yields did into a release does not change what the outcome does to price.</strong>
+    Two registered tests. The lead-up × surprise interaction on the confirmatory cell: t = −0.14, fail. The composite
+    pre-event state (Δ2y, Δ10y, Δ30y, Δreal, Δbreakeven, Δslope) as a k-NN analogue: real arm 49.3% hit rate, while the
+    placebo with the state shuffled scored 51.5%. Conditioning on the pre-event state made the predictor worse than ignoring
+    it.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="priced-in" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>priced-in: a decision the front end has already repriced does not move markets less on the day.</strong>
+    85 FOMC decision days (2016 on). Decision-day range ≈ 1.3 ATR on EUR/USD, USD/JPY, gold and SPX500 whether the prior
+    20-session |Δ2Y| was in the bottom tercile (&lt;5bp) or the top (&gt;16bp). Differences −0.11 to +0.07, every interval
+    across zero.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Nobody at a real trading desk spends their day debating whether EMH is "true." It's used as a
@@ -489,7 +587,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>EMH's testable core is a martingale.</strong> \(E[\epsilon_t \mid \mathcal{F}_{t-1}] = 0\) — return autocorrelation should be statistically indistinguishable from zero if the weak form holds.</span></div>
@@ -499,9 +597,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>EMH forbids the free lunch, not all profit.</strong> Genuine risk premia — carry, illiquidity, tail risk — are entirely compatible with efficient markets.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's validation discipline is EMH turned into engineering.</strong> The OOS split, the ≥30-trade gate, a named no-skill benchmark, and costs-on-by-default are the joint-hypothesis and free-lunch logic made into hard rules.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adaptive Markets reframes efficiency as variable, not fixed.</strong> Inefficiencies can appear, get arbitraged away, and reappear as the competitive landscape shifts — don't treat EMH as a single permanent verdict.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Priced in" is not a trade (priced-in-direction and priced-in, both NULL).</strong> Conditioning on what yields did into a release scored 49.3% against a shuffled placebo's 51.5%, and FOMC days ran ≈1.3 ATR however much had been repriced beforehand. Published edges decay too: about 58% lower after publication (McLean &amp; Pontiff).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't EMH ever be conclusively falsified by a single empirical test?</summary>
@@ -582,6 +681,7 @@
     <li>Burton G. Malkiel, <em>A Random Walk Down Wall Street</em> — the accessible, book-length popularization of the random-walk view of markets and its implications for individual investors.</li>
     <li>Andrew W. Lo, "The Adaptive Markets Hypothesis: Market Efficiency from an Evolutionary Perspective," <em>Journal of Portfolio Management</em>, 2004, and his later book <em>Adaptive Markets: Financial Evolution at the Speed of Thought</em> — the modern reframing of efficiency as ecological/competitive rather than binary.</li>
     <li>Andrei Shleifer, <em>Inefficient Markets: An Introduction to Behavioral Finance</em> — a counterweight literature covering the limits-to-arbitrage arguments (funding constraints, noise-trader risk) for why some inefficiencies can persist.</li>
+    <li>R. David McLean &amp; Jeffrey Pontiff, "Does Academic Research Destroy Stock Return Predictability?," <em>Journal of Finance</em>, 2016 — 97 published predictors, about 26% weaker before publication and 58% weaker after it: the $20 bill being picked up, measured.</li>
   </ul>
   </details>
 
@@ -669,5 +769,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

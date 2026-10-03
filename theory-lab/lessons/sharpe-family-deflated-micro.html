@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Sharpe, Sortino &amp; the Deflated Sharpe Ratio — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the extreme-value-theory proof, and every worked example?<a href="sharpe-family-deflated.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -250,7 +250,41 @@
     </section>
 
     <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">LTCM: a beautiful ratio on a sample with no storm</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Long-Term Capital Management (from 1994; partners included Nobel laureates Myron Scholes and Robert Merton) made leveraged convergence bets, around <strong>25×</strong> its capital going into 1998. Returns of roughly <strong>40% a year</strong> after fees in 1995 and 1996, with low volatility. Then Russia defaulted in August 1998, investors fled to the safest bonds, and spreads widened across its trades at once. Creditor banks convened by the New York Fed put in about <strong>$3.6bn</strong>; the fund lost roughly <strong>$4.6bn</strong> in 1998.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b style="color:var(--purple)">★ This lesson</b>Calm sample: every ratio says "low risk"</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>LTCM</b>Low measured risk lets it lever ~25×</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Russia, Aug 1998</b>Flight to safe, liquid bonds</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Spreads</b>Widen together, not separately</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>~$4.6bn lost; ~$3.6bn rescue</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">This desk's Sharpe of 18.4</h2>
+      <p class="sl-sub">Fibonacci-level system backtest: 10,190 trades, Sharpe <strong>18.4</strong>, <strong>85.7%</strong> wins at one-to-one. The paper bot on the same game: <strong>39.6%</strong> of 101 trades, −$13,696 (paper) in 90 days. The arithmetic was right; the fills were not.</p>
+      <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+        <span class="sl-stamp-tag">Context</span>
+        <span><strong>backtest-artifacts:</strong> a backtest that looks too good has a bug, usually in what it was allowed to see. The Fibonacci-level system 85.7% vs 39.6% live; a mean-reversion system's edge was stops not live for the first hour; a voting system's honest edge 0.23× cost; a volatility tool scored 95% of "wins" before entry.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook breaks</div>
+        <p>Every ratio assumes the sample is a fair draw of the risks to come. LTCM's calm years held no flight to quality, and DSR's skew/kurtosis terms only correct for tails the sample already contains. The Fibonacci-level system breaks the other assumption: that the returns are ones a live account could earn. DSR deflates for the search, not for a fill model.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -300,8 +334,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Sharpe, Sortino and Calmar divide return by three different kinds of risk — total wobble, downside-only wobble, and the single worst realized drawdown. None subsumes the others.</p></div>
@@ -310,6 +344,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Deflated Sharpe Ratio benchmarks a reported Sharpe against SR₀ — the chance-expected ceiling for a best-of-N search — instead of against zero.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Undercounting N silently inflates DSR — informal reruns and "nudge it by feel" iterations count as trials too, the same failure mode the Multiple Testing lesson flags for unlogged slice-testing.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's deflatedSharpe() is real, wired in, and has already produced an honest negative finding — checking a repo claim against the actual code is worth doing before repeating it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened: LTCM's calm 1995–97 ratios held no flight to quality, and 1998 cost about $4.6bn; this desk's Fibonacci-level system backtest showed Sharpe 18.4 and 85.7% wins against 39.6% live. A very high Sharpe is a reason to audit the engine.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -493,5 +528,6 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

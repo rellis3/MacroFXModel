@@ -6,7 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DESK_EVIDENCE } from './deskEvidence.js';
+import { DESK_EVIDENCE, lessonSafe } from './deskEvidence.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'theory-lab', 'lessons');
 const byId = new Map(DESK_EVIDENCE.map(e => [e.id, e]));
@@ -28,6 +28,19 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.html'))) {
   }
 }
 ok('at least one lesson cites the ledger', tags > 0);
+
+// What the served page shows is lessonSafe(claim/result). The Theory Lab is the shareable
+// zone, so no cited entry may leak an internal system name, a repo path or a commit hash.
+const LEAK = /QMR|vote atlas|Fib Atlas|vol CLI|\bcog\b|confluence ?bot|memory project|\b(?:js|analysis|scripts|oi_research_book|cog-replication|cog|pylego|oi_recon|MD files|OI Data)\/|\.(?:js|mjs|py|md|csv)\b|\b(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b/i;
+const cited = new Set();
+for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.html')))
+  for (const m of fs.readFileSync(path.join(dir, f), 'utf8').matchAll(/data-evidence="([^"]+)"/g)) cited.add(m[1]);
+for (const id of cited) {
+  const e = byId.get(id); if (!e) continue;
+  const shown = lessonSafe(e.claim) + ' ' + lessonSafe(e.result);
+  const hit = shown.match(LEAK);
+  ok(`${id}: nothing internal reaches the lesson page`, !hit, hit ? `"${hit[0]}"` : '');
+}
 console.log(`  ${tags} tagged verdict boxes, ${stale} written against an older ledger entry`);
 console.log(failures ? `\n${failures} FAILED` : '\nall passed');
 process.exit(failures ? 1 : 0);
