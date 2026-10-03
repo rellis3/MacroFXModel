@@ -620,17 +620,17 @@
     var span = top - bot; top += span * 0.08; bot -= span * (bot < 0 ? 0.12 : 0.02);
     function y(val){ return Y0 + (Y1 - Y0) * (top - val) / (top - bot); }
     var steps = [
-      { lab: 'gross μ', from: 0, to: mu, col: 'var(--blue)' },
+      { lab: 'gross', from: 0, to: mu, col: 'var(--blue)' },
       { lab: 'spread', from: mu, to: mu - s, col: 'var(--red)' },
-      { lab: 'slippage ×2', from: mu - s, to: mu - s - 2 * l, col: 'var(--red)' },
-      { lab: 'commission', from: mu - s - 2 * l, to: mu - s - 2 * l - m, col: 'var(--red)' },
+      { lab: 'slip ×2', from: mu - s, to: mu - s - 2 * l, col: 'var(--red)' },
+      { lab: 'comm.', from: mu - s - 2 * l, to: mu - s - 2 * l - m, col: 'var(--red)' },
       { lab: 'financing', from: mu - s - 2 * l - m, to: net, col: 'var(--red)' },
       { lab: 'net', from: 0, to: net, col: net > 0 ? 'var(--green)' : 'var(--red)' }
     ];
     G.appendChild(el('line', { x1: X0, x2: X1, y1: y(0), y2: y(0) }, 'stroke:var(--text3);stroke-width:1'));
-    G.appendChild(el('text', { x: X0 - 6, y: y(0) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', '0'));
+    G.appendChild(el('text', { x: X0 - 6, y: y(0) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', '0'));
     G.appendChild(el('line', { x1: X0, x2: X1, y1: y(mu), y2: y(mu) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:4,4'));
-    G.appendChild(el('text', { x: X0 - 6, y: y(mu) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--amber)', fmt(mu, 1)));
+    G.appendChild(el('text', { x: X0 - 6, y: y(mu) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', fmt(mu, 1)));
     var w = (X1 - X0) / steps.length;
     steps.forEach(function(st, i){
       var a = y(Math.max(st.from, st.to)), b = y(Math.min(st.from, st.to)), bx = X0 + i * w + 6;
@@ -639,10 +639,10 @@
       if (i === 0){ G.appendChild(el('line', { x1: bx + w - 12, x2: X0 + w + 6, y1: y(mu), y2: y(mu) }, 'stroke:var(--text3);stroke-width:1;stroke-dasharray:2,3')); }
       var d = st.to - st.from;
       var lbl = i === 0 ? fmt(mu, 2) : i === 5 ? sgn(net, 2) : (Math.abs(d) < 0.005 ? '0' : fmt(d, 2));
-      G.appendChild(el('text', { x: bx + (w - 12) / 2, y: Math.max(a - 5, 12), 'text-anchor': 'middle', 'font-size': 12, 'font-family': FONT }, 'fill:var(--text)', lbl));
-      G.appendChild(el('text', { x: bx + (w - 12) / 2, y: Y1 + 18, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS }, 'fill:var(--text2)', st.lab));
+      G.appendChild(el('text', { x: bx + (w - 12) / 2, y: Math.max(a - 5, 12), 'text-anchor': 'middle', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text)', lbl));
+      G.appendChild(el('text', { x: bx + (w - 12) / 2, y: Y1 + 18, 'text-anchor': 'middle', 'font-size': 15, 'font-family': SANS }, 'fill:var(--text2)', st.lab));
     });
-    G.appendChild(el('text', { x: X1, y: 12, 'text-anchor': 'end', 'font-size': 10.5, 'font-family': SANS }, 'fill:var(--amber)', 'dashed: break-even cost = gross edge'));
+    G.appendChild(el('text', { x: X1, y: 12, 'text-anchor': 'end', 'font-size': 14, 'font-family': SANS }, 'fill:var(--amber)', 'dashed: break-even cost = gross edge'));
 
     // Readout
     $('ac-readout').innerHTML =
@@ -662,21 +662,21 @@
 
     // t vs n chart (log x)
     var T = $('ac-tn-g'); clear(T);
-    var TX0 = 64, TX1 = 620, TY0 = 160, TY1 = 14, NMIN = 30, NMAX = 30000;
+    var TX0 = 70, TX1 = 620, TY0 = 160, TY1 = 14, NMIN = 30, NMAX = 30000;
     function tx(nn){ return TX0 + (TX1 - TX0) * (Math.log(nn) - Math.log(NMIN)) / (Math.log(NMAX) - Math.log(NMIN)); }
     var tvals = [];
     for (var i = 0; i <= 80; i++){ var nn = NMIN * Math.pow(NMAX / NMIN, i / 80); tvals.push(mu / sd * Math.sqrt(nn), net / sd * Math.sqrt(nn)); }
     var tmax = Math.max(4, Math.max.apply(null, tvals)), tmin = Math.min(-4, Math.min.apply(null, tvals));
     tmax = Math.min(tmax, 40); tmin = Math.max(tmin, -40);
     function ty(tt){ return TY0 - (TY0 - TY1) * (Math.max(tmin, Math.min(tmax, tt)) - tmin) / (tmax - tmin); }
-    [-2, 0, 2].forEach(function(tt){
-      T.appendChild(el('line', { x1: TX0, x2: TX1, y1: ty(tt), y2: ty(tt) }, 'stroke:' + (tt === 0 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1' + (tt ? ';stroke-dasharray:4,4' : '')));
-      T.appendChild(el('text', { x: TX0 - 6, y: ty(tt) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', 't=' + (tt > 0 ? '+' : tt < 0 ? '−' : '') + Math.abs(tt)));
+    [-40, -20, -10, -2, 0, 2, 10, 20, 40].filter(function(tt){ return tt >= tmin && tt <= tmax && (Math.abs(tt) !== 2 || tmax - tmin <= 30); }).forEach(function(tt){
+      T.appendChild(el('line', { x1: TX0, x2: TX1, y1: ty(tt), y2: ty(tt) }, 'stroke:' + (tt === 0 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1' + (Math.abs(tt) === 2 ? ';stroke-dasharray:4,4' : '')));
+      T.appendChild(el('text', { x: TX0 - 6, y: ty(tt) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', 't=' + (tt > 0 ? '+' : tt < 0 ? '−' : '') + Math.abs(tt)));
     });
     [100, 1000, 10000].forEach(function(nn){
-      T.appendChild(el('text', { x: tx(nn), y: TY0 + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', nn.toLocaleString()));
+      T.appendChild(el('text', { x: tx(nn), y: TY0 + 16, 'text-anchor': 'middle', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', nn.toLocaleString()));
     });
-    T.appendChild(el('text', { x: (TX0 + TX1) / 2, y: TY0 + 32, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS }, 'fill:var(--text2)', 'number of trades n (log scale)'));
+    T.appendChild(el('text', { x: (TX0 + TX1) / 2, y: TY0 + 32, 'text-anchor': 'middle', 'font-size': 15, 'font-family': SANS }, 'fill:var(--text2)', 'number of trades n (log scale)'));
     var dG = '', dN = '';
     for (var j = 0; j <= 80; j++){
       var nj = NMIN * Math.pow(NMAX / NMIN, j / 80);
@@ -689,7 +689,7 @@
     T.appendChild(el('line', { x1: cx, x2: cx, y1: TY1, y2: TY0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3'));
     T.appendChild(el('circle', { cx: cx, cy: ty(t), r: 4.5 }, 'fill:var(--blue)'));
     T.appendChild(el('circle', { cx: cx, cy: ty(tnet), r: 4.5 }, 'fill:' + (net > 0 ? 'var(--green)' : 'var(--red)')));
-    T.appendChild(el('text', { x: cx > 480 ? cx - 6 : cx + 6, y: TY1 + 10, 'text-anchor': cx > 480 ? 'end' : 'start', 'font-size': 11, 'font-family': FONT }, 'fill:var(--amber)', 'n = ' + n.toLocaleString()));
+    T.appendChild(el('text', { x: cx > 480 ? cx - 6 : cx + 6, y: TY1 + 10, 'text-anchor': cx > 480 ? 'end' : 'start', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'n = ' + n.toLocaleString()));
   }
 
   ids.forEach(function(k){ inp[k].addEventListener('input', render); });

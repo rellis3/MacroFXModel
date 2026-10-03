@@ -634,12 +634,12 @@
     var p1 = 1 / (1 + o.b);
     var EQ = $('ed-eq-g'), CU = $('ed-cu-g'); clear(EQ); clear(CU);
     if (o.p0 <= p1 + 0.005){
-      EQ.appendChild(el('text', { x: 320, y: 100, 'text-anchor': 'middle', 'font-size': 14, 'font-family': SANS }, 'fill:var(--amber)', 'Tested win rate is at or below break-even (' + (p1 * 100).toFixed(1) + '%): no edge to monitor.'));
+      EQ.appendChild(el('text', { x: 320, y: 100, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--amber)', 'Tested win rate is at or below break-even (' + (p1 * 100).toFixed(1) + '%): no edge to monitor.'));
       $('ed-readout').innerHTML = 'With payoff <b>' + o.b.toFixed(2) + '</b>, break-even is <b>' + (p1 * 100).toFixed(1) + '%</b>. Raise the tested win rate or the payoff ratio.';
       return;
     }
     var path = runPath(o, mulberry32(seed), true);
-    var X0 = 56, X1 = 624;
+    var X0 = 70, X1 = 624;
     function px(t){ return X0 + (X1 - X0) * t / o.n; }
     // equity panel
     var lo = Math.min.apply(null, path.eqs), hi = Math.max.apply(null, path.eqs); if (hi - lo < 10){ hi += 5; lo -= 5; }
@@ -648,34 +648,34 @@
     var step = Math.max(1, Math.ceil(Math.abs(hi - lo) / 5 / 10) * 10);
     for (var gv = Math.ceil(lo / step) * step; gv <= hi; gv += step){
       EQ.appendChild(el('line', { x1: X0, x2: X1, y1: py(gv), y2: py(gv) }, 'stroke:' + (gv === 0 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1'));
-      EQ.appendChild(el('text', { x: X0 - 6, y: py(gv) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', (gv > 0 ? '+' : gv < 0 ? '−' : '') + Math.abs(gv) + 'R'));
+      EQ.appendChild(el('text', { x: X0 - 6, y: py(gv) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', (gv > 0 ? '+' : gv < 0 ? '−' : '') + Math.abs(gv) + 'R'));
     }
     if (o.tc < o.n){
       EQ.appendChild(el('line', { x1: px(o.tc), x2: px(o.tc), y1: Y1, y2: Y0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
-      EQ.appendChild(el('text', { x: Math.min(px(o.tc) + 5, X1 - 90), y: Y1 + 10, 'font-size': 11, 'font-family': SANS }, 'fill:var(--amber)', 'change → ' + Math.round(o.pa * 100) + '%'));
+      EQ.appendChild(el('text', { x: Math.min(px(o.tc) + 5, X1 - 130), y: Y1 + 14, 'font-size': 15, 'font-family': SANS }, 'fill:var(--amber)', 'change → ' + Math.round(o.pa * 100) + '%'));
     }
     var d = '';
     for (var t = 0; t < path.eqs.length; t++) d += (t ? 'L' : 'M') + px(t).toFixed(1) + ',' + py(path.eqs[t]).toFixed(1);
     EQ.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--blue);stroke-width:1.8'));
     if (path.alarm) EQ.appendChild(el('circle', { cx: px(path.alarm), cy: py(path.eqs[path.alarm]), r: 5.5 }, 'fill:var(--red)'));
-    [0, 0.25, 0.5, 0.75, 1].forEach(function(f){ EQ.appendChild(el('text', { x: px(o.n * f), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', Math.round(o.n * f))); });
+    [0, 0.25, 0.5, 0.75, 1].forEach(function(f){ EQ.appendChild(el('text', { x: px(o.n * f), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', Math.round(o.n * f))); });
     // CUSUM panel
     var cmax = Math.max(o.h * 1.25, Math.max.apply(null, path.cus));
     var CY0 = 126, CY1 = 10;
     function cy(v){ return CY0 - (CY0 - CY1) * v / cmax; }
     CU.appendChild(el('line', { x1: X0, x2: X1, y1: cy(0), y2: cy(0) }, 'stroke:var(--text3);stroke-width:1'));
     CU.appendChild(el('line', { x1: X0, x2: X1, y1: cy(o.h), y2: cy(o.h) }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,4'));
-    CU.appendChild(el('text', { x: X0 - 6, y: cy(o.h) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--amber)', 'h=' + o.h));
-    CU.appendChild(el('text', { x: X0 - 6, y: cy(0) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', '0'));
+    CU.appendChild(el('text', { x: X0 - 6, y: cy(o.h) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'h=' + o.h));
+    CU.appendChild(el('text', { x: X0 - 6, y: cy(0) + 4, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text3)', '0'));
     if (o.tc < o.n) CU.appendChild(el('line', { x1: px(o.tc), x2: px(o.tc), y1: CY1, y2: CY0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
     var dc = '';
     for (var u = 0; u < path.cus.length; u++) dc += (u ? 'L' : 'M') + px(u).toFixed(1) + ',' + cy(path.cus[u]).toFixed(1);
     CU.appendChild(el('path', { d: dc, fill: 'none' }, 'stroke:var(--purple);stroke-width:1.8'));
     if (path.alarm){
       CU.appendChild(el('circle', { cx: px(path.alarm), cy: cy(path.cus[path.alarm]), r: 5.5 }, 'fill:var(--red)'));
-      CU.appendChild(el('text', { x: px(path.alarm) > 480 ? px(path.alarm) - 8 : px(path.alarm) + 8, y: CY1 + 12, 'text-anchor': px(path.alarm) > 480 ? 'end' : 'start', 'font-size': 11, 'font-family': FONT }, 'fill:var(--red)', 'alarm at trade ' + path.alarm));
+      CU.appendChild(el('text', { x: px(path.alarm) > 480 ? px(path.alarm) - 8 : px(path.alarm) + 8, y: CY1 + 14, 'text-anchor': px(path.alarm) > 480 ? 'end' : 'start', 'font-size': 15, 'font-family': FONT }, 'fill:var(--red)', 'alarm at trade ' + path.alarm));
     }
-    CU.appendChild(el('text', { x: (X0 + X1) / 2, y: CY0 + 18, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS }, 'fill:var(--text2)', 'trade number'));
+    CU.appendChild(el('text', { x: (X0 + X1) / 2, y: CY0 + 18, 'text-anchor': 'middle', 'font-size': 15, 'font-family': SANS }, 'fill:var(--text2)', 'trade number'));
 
     // 1,000-path statistics
     var rnd = mulberry32(seed * 7919 + 13), SIMS = 1000, falseA = 0, caught = 0, delays = [], changes = o.tc < o.n && Math.abs(o.pa - o.p0) > 1e-9;

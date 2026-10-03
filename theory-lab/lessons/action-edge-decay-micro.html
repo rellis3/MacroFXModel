@@ -388,9 +388,9 @@
       function py(v){ return Y0 - (Y0 - Y1) * v / cmax; }
       g.appendChild(el('line', { x1: X0, x2: X1, y1: py(0), y2: py(0) }, 'stroke:var(--text3);stroke-width:1'));
       g.appendChild(el('line', { x1: X0, x2: X1, y1: py(h), y2: py(h) }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5,4'));
-      g.appendChild(el('text', { x: X0 - 6, y: py(h) + 4, 'text-anchor': 'end', 'font-size': 12, 'font-family': FONT }, 'fill:var(--amber)', 'h'));
+      g.appendChild(el('text', { x: X0 - 6, y: py(h) + 4, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--amber)', 'h'));
       g.appendChild(el('line', { x1: px(TC), x2: px(TC), y1: Y1, y2: Y0 }, 'stroke:var(--amber);stroke-width:1.5;stroke-dasharray:4,3'));
-      [0, 200, 400, 600].forEach(function(t){ g.appendChild(el('text', { x: px(t), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 12, 'font-family': FONT }, 'fill:var(--text3)', t)); });
+      [0, 200, 400, 600].forEach(function(t){ g.appendChild(el('text', { x: px(t), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', t)); });
       var d = ''; for (var t = 0; t < r.path.length; t++) d += (t ? 'L' : 'M') + px(t).toFixed(1) + ',' + py(r.path[t]).toFixed(1);
       g.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--purple);stroke-width:2'));
       if (r.alarm) g.appendChild(el('circle', { cx: px(r.alarm), cy: py(r.path[r.alarm]), r: 6 }, 'fill:var(--red)'));
