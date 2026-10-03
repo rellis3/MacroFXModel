@@ -45,6 +45,16 @@ Building or restyling a lesson? See
 every component in `assets/theory.css`, when to use it, copy-pasteable
 markup, the house content order, and a verification checklist.
 
+## Sharing: the desk-only layer
+
+Material about the owner's own desk and codebase sits inside
+`<!-- DESK:START -->…<!-- DESK:END -->` markers. The education **admin**
+login sees everything; every other reader (and anyone not logged in) gets
+the same pages with that material stripped server-side, and the capstone
+workbenches, Reading the Tape and the desk-verdict/capstone-board feeds
+return 404. Set `HIDE_DESK_EDUCATION=0` to serve everything to everyone.
+Details in the style guide (§5.18).
+
 ## What every lesson page contains
 
 - Plain-English intuition before any math.

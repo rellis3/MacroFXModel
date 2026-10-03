@@ -9,6 +9,7 @@ on:
       - 'js/deskEvidence.js'
       - 'js/lessonLinks.js'
       - 'js/progressSync.js'
+      - 'js/deskStrip.js'
       - 'js/*.test.mjs'
       - '.github/workflows/theory-lab.yml'
   push:
@@ -16,6 +17,7 @@ on:
     paths:
       - 'theory-lab/**'
       - 'js/deskEvidence.js'
+      - 'js/deskStrip.js'
 
 jobs:
   checks:
@@ -36,3 +38,5 @@ jobs:
         run: node js/lessonLinks.test.mjs
       - name: Progress sync (validator and merge)
         run: node js/progressSync.test.mjs
+      - name: Shared view (desk material sits inside DESK markers)
+        run: node js/deskStrip.test.mjs

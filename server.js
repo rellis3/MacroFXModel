@@ -34567,6 +34567,11 @@ if (HIDE_DESK_EDUCATION) {
       res.type('html').send(educationPageTransforms(req, html, req.path === '/theory-lab/hub.html'));
     });
   });
+  // The folder's README is developer notes about this repo, not a page for readers.
+  app.get(/^\/theory-lab\/.*\.md$/i, (req, res, next) => {
+    if (isEducationAdmin(req)) return next();
+    res.status(404).type('html').send('<!doctype html><title>Not Found</title><p>Not found.</p>');
+  });
 }
 
 if (HIDE_MICRO_EDUCATION || HIDE_DRILL_PRACTICE || AUTH_ENABLED) {
