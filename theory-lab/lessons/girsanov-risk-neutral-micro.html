@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Girsanov's Theorem &amp; the Risk-Neutral Measure — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the Radon-Nikodym derivative, and a 6-question self-test?<a href="girsanov-risk-neutral.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">Re-weighting random paths, in Kolmogorov's Moscow</h2>
+      <p class="sl-sub">Igor Girsanov · 1960 · Moscow State University</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Cameron &amp; Martin (1944) showed how probabilities on Brownian paths change under a fixed shift. Girsanov, a young Moscow probabilist, extended it in 1960 to random, path-dependent drifts — exactly what changing μ to r needs.</p>
+        <p>He was killed in a mountain accident in Siberia in 1967, aged 32. Only in 1979–81 did Harrison, Kreps and Pliska show that no-arbitrage pricing means an equivalent martingale measure, the measure Girsanov's theorem builds.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Same coin, a different odds sheet</h2>
       <p class="sl-sub">A probability measure is nothing mystical — it's just a specific weighting of how likely each possible future outcome is.</p>
       <div class="sl-icard-grid">
@@ -38,8 +49,8 @@
       <div class="sl-quote">Nobody thinks ℚ is what will actually happen. It's a deliberately constructed accounting device — and the rest of this deck is about exactly why that specific device, and no other, is the one a no-arbitrage price needs.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">One stock, written two ways</h2>
       <p class="sl-sub">Same σ, same source of randomness, same possible paths — only the drift term changes between measures.</p>
       <div class="sl-card">
@@ -80,8 +91,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Drag the real-world drift</h2>
       <p class="sl-sub">r and σ stay fixed. As μ moves, watch the gap between the two measures' means — that gap, in units of σ, is θ.</p>
       <div class="sl-card">
@@ -109,8 +120,8 @@
       <p class="sl-p">θ is the exact size of the shift Girsanov's theorem applies to the Brownian motion to move from ℙ to ℚ: W<sup>ℚ</sup> = W<sup>ℙ</sup> + θt. Drag μ down to r and the gap — and θ — collapses to zero: if investors truly were risk-neutral, ℙ and ℚ would already be the same measure, and there'd be nothing to shift.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Girsanov's theorem — the license to reweight</h2>
       <p class="sl-sub">Shifting a Brownian motion by a deterministic drift doesn't just look like a new random process — it provably still <em>is</em> one, once you're willing to reweight the underlying probabilities.</p>
       <div class="sl-card">
@@ -133,8 +144,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The market price of risk, live</h2>
       <p class="sl-sub">θ = (μ − r) / σ — excess return per unit of volatility. It's the asset's Sharpe ratio in these units, and exactly the size of the ℙ→ℚ shift.</p>
       <div class="sl-card">
@@ -157,8 +168,8 @@
       <p class="sl-p">This single number is the whole shift: multiply θ by t and add it to W<sup>ℙ</sup><sub>t</sub>, and Girsanov's theorem hands back a valid Brownian motion under a new measure ℚ. Push θ to zero (set μ = r) and there's no shift left to make — ℙ and ℚ already coincide.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why this shift, specifically</h2>
       <p class="sl-sub">Girsanov's theorem says a shift produces <em>some</em> valid measure. Only one choice of θ makes the discounted price a martingale — and that's the one pricing needs.</p>
       <div class="sl-compare">
@@ -182,8 +193,8 @@
       <div class="sl-quote">This is the exact martingale property from the Efficient Market Hypothesis lesson — 𝔼[P<sub>t</sub>|ℱ<sub>t−1</sub>] = P<sub>t−1</sub>, a "fair game." There, it was an empirical, testable claim about real markets under ℙ. Here, under ℚ, it holds <strong>by construction</strong> — the entire reason ℚ was built the way it was.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Pricing without ever knowing μ</h2>
       <p class="sl-sub">A one-period, two-outcome market. Notice: there's no field below for μ — risk-neutral pricing genuinely never asks for it.</p>
       <div class="sl-card">
@@ -213,8 +224,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">N(d₂) is real. The measure is the fiction.</h2>
       <p class="sl-sub">Under ℚ, ln S<sub>T</sub> is normal with mean ln S₀ + (r − σ²/2)T — same lognormal shape as under ℙ, centered on r instead of μ.</p>
       <div class="sl-callout purple">
@@ -228,8 +239,8 @@
       <div class="sl-quote"><strong>A bullish view is a separate bet, never a pricing input.</strong> A trader convinced EUR/USD will outrun the rate differential still prices and hedges the option under ℚ. Their view gets expressed by buying spot, or by an intentionally un-hedged option — not by quietly swapping μ in for r inside the pricing formula. Doing that produces a price too high and a hedge ratio that's systematically wrong.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a derivatives desk actually uses this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">💰</div><div><h4>Risk-neutral valuation is the default</h4><p>Every derivatives pricing model — plain Black-Scholes through local-vol and stochastic-vol — computes a discounted expectation under some ℚ, never under ℙ.</p></div></div>
@@ -243,8 +254,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where "risk-neutral" gets misread</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -272,8 +283,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -323,8 +334,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A probability measure is just a weighting of possible future paths — ℙ is the real-world weighting (includes a risk premium), ℚ is an equivalent but different weighting built for pricing.</p></div>
@@ -333,6 +344,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Because that martingale property is what no-arbitrage pricing requires, V₀ = e⁻ʳᵀ·𝔼^ℚ[V_T] never needs μ — only r and σ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>N(d₂) is a genuine probability — ℚ(S_T &gt; K) — computed correctly. What's a deliberate device is only the measure, never the number.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A real-world view is a separate directional bet — spot, forwards, an un-hedged option — never a silent adjustment to the drift inside a pricing model.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Girsanov (Moscow, 1960), extending Cameron &amp; Martin (1944); finance adopted it via Harrison, Kreps &amp; Pliska (1979–81).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

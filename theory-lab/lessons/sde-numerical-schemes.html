@@ -36,6 +36,7 @@
       <li>The standard result (Kloeden &amp; Platen, 1992): Euler-Maruyama has <strong>strong order 0.5</strong> and <strong>weak order 1.0</strong> — its path-tracking accuracy is markedly worse than its distributional accuracy.</li>
       <li>The <strong>Milstein scheme</strong> adds one extra term, \(\tfrac12\sigma\sigma'(\Delta W_n^2-\Delta t)\), lifting strong order to 1.0 — a genuine pathwise improvement, at the cost of needing the diffusion coefficient's derivative \(\sigma'\).</li>
       <li>A hand-worked Euler-Maruyama simulation of GBM, checked step by step against the closed-form solution, and a real Monte Carlo convergence study both confirm the 0.5/1.0 theoretical orders numerically in this lesson, not just by citation.</li>
+      <li>Where it came from: Euler's 1768 stepping method, extended to SDEs by Gisiro Maruyama in 1955, one of the first to grasp Itô's work; Milstein added his correction term in the USSR in 1974.</li>
     </ul>
   </div>
 
@@ -88,6 +89,15 @@
       Lemma out of) — which is exactly why the error analysis below needs its
       own machinery, distinct from ordinary Euler's-method error analysis.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Euler's 1768 step, plus a random shove</h3>
+    <div class="tl-origin-who">Leonhard Euler · 1768 · St Petersburg &nbsp;→&nbsp; Gisiro Maruyama · 1955 · Japan &nbsp;→&nbsp; Grigori Milstein · 1974 · USSR</div>
+    <p>Euler's method comes from Leonhard Euler's <em>Institutionum calculi integralis</em>, published by the St Petersburg Academy in 1768. There were no computers; the method was a way of tabulating approximate solutions of differential equations by hand, one small straight step at a time.</p>
+    <p>Almost two centuries later, the Japanese probabilist Gisiro Maruyama was one of the first mathematicians to see the importance of Itô's 1942 papers on stochastic differential equations. In a 1955 paper in the <em>Rendiconti del Circolo Matematico di Palermo</em> he studied exactly this lesson's recipe — Euler's step plus a Gaussian shock — and its convergence. That is why the scheme carries two names from two different centuries.</p>
+    <p>In 1974 the Soviet mathematician Grigori Milstein published the extra correction term that lifts the strong order to 1.0, built from the same \((dW)^2\) idea Itô's Lemma rests on. The theory was collected in Kloeden &amp; Platen's 1992 book, by which time banks were pricing path-dependent products by simulation. Today the Euler-Maruyama step is the inner loop of nearly every Monte Carlo pricer.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -498,6 +508,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Milstein's extra ½σσ'(ΔW²−Δt) term lifts strong order to 1.0.</strong> A genuine pathwise-accuracy improvement — fitted at 0.980 in this lesson's own Monte Carlo study, strictly below Euler-Maruyama's error at every step size tested.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Milstein needs the diffusion's derivative, σ' — not free.</strong> Trivial for GBM's linear σ(x)=σx, but a real added cost (and, in multiple dimensions, a Lévy-area simulation problem) for a general local-volatility surface.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Matching a step size to the wrong convergence notion silently mis-prices path-dependent payoffs.</strong> A step size fine enough for weak (distributional) accuracy is not automatically fine enough for strong (pathwise) accuracy.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The scheme's two names are almost two centuries apart.</strong> Euler (1768) for ODEs, Maruyama (1955) for SDEs, and Milstein's 1974 correction. The theory was gathered in Kloeden &amp; Platen (1992).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

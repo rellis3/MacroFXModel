@@ -37,6 +37,7 @@
       <li>Markowitz portfolio variance, \(w^\top \Sigma w\), is a convex quadratic function because a valid covariance matrix \(\Sigma\) is always positive semi-definite — which is exactly why mean-variance optimization is a well-posed, reliably solvable problem in the first place.</li>
       <li>The <strong>Lagrangian</strong> converts a constrained problem into an unconstrained one; the <strong>KKT conditions</strong> (stationarity, primal feasibility, dual feasibility, complementary slackness) are the necessary conditions a convex problem's true optimum must satisfy.</li>
       <li>Adding a realistic-sounding constraint — "hold at most 10 names" (a cardinality constraint) — can destroy convexity entirely, turning a cleanly solvable problem into a combinatorial one that needs heuristics rather than a guaranteed-optimal solve.</li>
+      <li>Where it came from: the optimality conditions were found by William Karush (1939, unpublished thesis), Fritz John (1948, first rejected by a journal) and Kuhn &amp; Tucker (1950–51, who made them famous); hence KKT.</li>
     </ul>
   </div>
 
@@ -110,6 +111,15 @@
       convex optimization problem, and it's precisely this combination that
       makes "local optimum = global optimum" hold.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A theorem discovered three times, and at first ignored</h3>
+    <div class="tl-origin-who">William Karush · 1939 · University of Chicago &nbsp;/&nbsp; Fritz John · 1948 &nbsp;/&nbsp; Harold Kuhn &amp; Albert Tucker · 1950–51 · Princeton</div>
+    <p>The KKT conditions in this lesson were found three times. William Karush derived them in his 1939 master's thesis at the University of Chicago. The thesis was never published and went almost unnoticed.</p>
+    <p>In 1948 Fritz John derived a closely related version; his paper was at first rejected by the <em>Duke Mathematical Journal</em> and appeared instead in a volume honouring Richard Courant. Then Harold Kuhn and Albert Tucker presented the result at a Berkeley symposium in 1950 (published 1951). This time it caught on, because a post-war operations-research community, much of it funded by the US Office of Naval Research, was ready for it. Kuhn later drew attention to Karush's earlier work, and the conditions now carry all three initials.</p>
+    <p>Finance adopted the idea in the same years. Harry Markowitz's 1952 portfolio-selection paper posed exactly the kind of constrained, convex quadratic problem these conditions characterise, and every long-only or capped mean-variance optimiser since then is checking KKT conditions under the hood.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -684,6 +694,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Markowitz portfolio variance is always convex.</strong> A valid covariance matrix is always PSD, so \(w^\top\Sigma w\) is a convex quadratic — the reason mean-variance optimization is reliably solvable.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The KKT conditions (stationarity, primal/dual feasibility, complementary slackness) are necessary and sufficient for a convex problem's true optimum.</strong> Complementary slackness in particular identifies exactly which constraints are binding.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A realistic-sounding constraint can destroy convexity entirely.</strong> Cardinality constraints ("at most 10 names") turn a clean, fast convex QP into a much harder combinatorial problem needing heuristics or mixed-integer solvers, with weaker guarantees.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>KKT is named after three discoveries.</strong> Karush's unpublished 1939 thesis, Fritz John's 1948 paper (first rejected) and Kuhn &amp; Tucker's 1950–51 paper, which arrived just as operations research and Markowitz's 1952 portfolio theory needed it.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

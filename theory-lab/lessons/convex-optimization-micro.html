@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Convex Optimization — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the KKT worked example, and a 5-question self-test?<a href="convex-optimization.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">A theorem discovered three times</h2>
+      <p class="sl-sub">Karush · 1939 · John · 1948 · Kuhn &amp; Tucker · 1950–51</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>William Karush derived the optimality conditions in his 1939 Chicago master's thesis, which was never published. Fritz John found a version in 1948, and his paper was first rejected by a journal.</p>
+        <p>Kuhn and Tucker's 1950 presentation (published 1951) caught on with the new operations-research community. Kuhn later credited Karush, hence KKT. Markowitz's 1952 portfolio problem is exactly this kind of convex program.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A bowl has one bottom; an egg carton has many</h2>
       <p class="sl-sub">"Convex" is a shape claim, not a calculus trick — and it's checkable just by looking.</p>
       <div class="sl-icard-grid">
@@ -41,8 +52,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Drop a ball in each shape and watch where it stops</h2>
       <p class="sl-sub">Same idea, two shapes. Where a marble starts only matters in one of them.</p>
       <div class="sl-card">
@@ -85,8 +96,8 @@
       <p class="sl-p">This is the entire practical stakes of convexity in one picture. Gradient descent and Newton's method can only feel the <em>local</em> slope under wherever they currently stand — exactly like a marble that can't see over the next hill. In the bowl, that's all the information they need. In the egg carton, it isn't nearly enough.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Checking convexity without drawing every chord</h2>
       <p class="sl-sub">Testing the chord inequality for every pair of points would take forever. Curvature gives a shortcut.</p>
       <div class="sl-icard-grid">
@@ -98,8 +109,8 @@
       <div class="sl-quote">This is not a coincidence waiting to happen later: a Hessian and a covariance matrix are both symmetric matrices being asked the exact same question — "is there any direction in which this matrix produces a negative number?" That question is about to reappear wearing Markowitz's clothing.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch convexity actually break</h2>
       <p class="sl-sub">Drag the slider to add a wiggle term to a plain bowl. Watch new local minima appear — and the guarantee disappear with them.</p>
       <div class="sl-card">
@@ -118,8 +129,8 @@
       <p class="sl-p">At A = 0 this is a pure quadratic bowl: convex, one minimum, no ambiguity. As A grows, the sine term adds curvature that periodically bends the wrong way — the Hessian test from the previous slide starts failing at those points — and new local minima peel off from the single bottom. Once there's more than one, "gradient descent stopped here" no longer implies "this is the best answer anywhere."</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The one guarantee that makes this all worth it</h2>
       <p class="sl-sub">Why "local minimum" and "global minimum" become the same sentence on a convex function.</p>
       <div class="sl-row">
@@ -134,8 +145,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why Markowitz's variance term is always convex</h2>
       <p class="sl-sub">The mean-variance objective from this curriculum's Markowitz &amp; Black-Litterman lesson is a convex quadratic — with no extra assumptions needed.</p>
       <div class="sl-icard-grid">
@@ -151,8 +162,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Is this matrix positive semi-definite?</h2>
       <p class="sl-sub">Starts on a 2-asset covariance matrix: σ₁=20%, σ₂=30%, ρ=0.2. Edit any entry — trace, determinant, and both eigenvalues recompute live.</p>
       <div class="sl-card">
@@ -180,8 +191,8 @@
       <p class="sl-p">Try pushing ρ (correlation) toward 1 by raising b close to √(ad) — the determinant collapses toward zero and the smaller eigenvalue follows it down, right to the boundary between strictly convex and merely flat. Push b past that point and the matrix stops being PSD entirely.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The checklist a convex optimum must pass</h2>
       <p class="sl-sub">The KKT conditions — necessary <em>and</em>, for a convex problem, sufficient to certify a true global optimum.</p>
       <div class="sl-icard-grid">
@@ -193,8 +204,8 @@
       <div class="sl-quote">For a genuinely convex problem, passing this whole checklist is enough on its own to certify the global optimum — no separate search required. That sufficiency, not just necessity, is itself a special benefit convexity provides and non-convex problems don't get.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">"Just hold at most 10 names" breaks all of it</h2>
       <p class="sl-sub">One realistic-sounding trading rule, two very different problems underneath.</p>
       <div class="sl-compare">
@@ -222,8 +233,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -273,8 +284,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Convex means bowl-shaped — the chord between any two points on the curve never dips below the curve: f(θx+(1−θ)y) ≤ θf(x)+(1−θ)f(y).</p></div>
@@ -283,6 +294,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Non-convex problems have no such guarantee — multiple local minima can trap a solver in a "false" optimum that looks like success.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Markowitz's variance term wᵀΣw is always convex, because a valid covariance matrix Σ is always positive semi-definite — the reason mean-variance optimization is reliably solvable.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A realistic-sounding rule (cardinality — "at most 10 names") can destroy convexity entirely, turning a clean convex QP into a combinatorial, NP-hard search.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Karush (1939), John (1948), Kuhn &amp; Tucker (1950–51), three discoveries behind one set of conditions.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -312,7 +324,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Slide 5 — wiggle slider: morph a plain bowl into a multi-minimum curve.
+  // Slide 6 — wiggle slider: morph a plain bowl into a multi-minimum curve.
   (function(){
     var slider = document.getElementById('wiggle-slider');
     if (!slider) return;
@@ -376,7 +388,7 @@
     update();
   })();
 
-  // Slide 8 — 2x2 symmetric matrix PSD checker.
+  // Slide 9 — 2x2 symmetric matrix PSD checker.
   (function(){
     var aInput = document.getElementById('psd-a');
     if (!aInput) return;

@@ -36,6 +36,7 @@
       <li>This is the <strong>forward</strong> equation: it evolves a fixed initial density forward in time. It is the mirror image of the <strong>backward</strong> Kolmogorov equation, which evolves an expected payoff backward from a fixed terminal condition — the Black-Scholes PDE is precisely a backward-Kolmogorov-type equation with an added discounting term.</li>
       <li>Verified here by direct substitution: geometric Brownian motion's known lognormal transition density actually solves its own Fokker-Planck equation — not merely asserted, computed term by term.</li>
       <li>The Fokker-Planck equation is a fully <strong>deterministic</strong> PDE describing how a density evolves. That is exactly the conceptual stepping-stone to stochastic PDEs, where the object evolving is no longer a deterministic density but a genuinely random field.</li>
+      <li>Where it came from: Louis Bachelier's ignored 1900 thesis on Paris bond prices described probability spreading like heat, before Einstein; Adriaan Fokker (1914) and Max Planck (1917) wrote the general equation for physics, and Kolmogorov (1931) made it rigorous.</li>
     </ul>
   </div>
 
@@ -96,6 +97,15 @@
       That's the whole intuition. The math below just makes it precise:
       which deterministic PDE, exactly, and why.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>From the Paris bourse to particles in a radiation field</h3>
+    <div class="tl-origin-who">Louis Bachelier · 1900 · Paris &nbsp;/&nbsp; Adriaan Fokker · 1913–14 · Leiden &nbsp;/&nbsp; Max Planck · 1917 · Berlin</div>
+    <p>Before any physicist, a finance student wrote down how probability spreads. In his 1900 Paris thesis <em>Théorie de la spéculation</em>, supervised by Henri Poincaré, Louis Bachelier modelled the price of French government bonds traded on the Paris bourse as a random walk. He showed that its probability spreads out the way heat diffuses through a metal bar. That was five years before Einstein's 1905 paper on Brownian motion. The thesis attracted little attention, Bachelier's academic career stalled, and economists largely ignored the work until the 1950s, when the statistician Leonard Savage came across it and alerted economists, among them Paul Samuelson.</p>
+    <p>The equation's name comes from physics. Adriaan Fokker wrote his 1913 Leiden doctoral thesis under Hendrik Lorentz on Brownian motion in a radiation field, and in 1914 published the drift-plus-diffusion equation for the density. Max Planck generalised it in 1917, and in 1931 Kolmogorov put it on a rigorous footing as the "forward equation," which is why it has two names. Fokker was a cousin of the aircraft builder Anthony Fokker, and is remembered in music too: he championed 31-tone equal temperament, and an organ tuned that way, built in 1950, is still known as the Fokker organ.</p>
+    <p>So the forward equation, written down in a finance thesis, spent decades in physics and probability before coming back to finance. It is how a model's whole risk-neutral distribution is moved forward in time, and the reason the density view and the backward Black-Scholes PDE in this lesson are two sides of one coin.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -601,6 +611,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GBM's lognormal density was verified, by direct substitution, to solve its own Fokker-Planck equation.</strong> Reduced via \(y=\ln x\) to a constant-coefficient equation whose Gaussian solution was checked term by term.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Closed-form transition densities are the exception, not the rule.</strong> GBM, Ornstein-Uhlenbeck, and CIR admit known solutions; most SDEs with more general coefficients require numerical PDE solution or simulation instead — don't expect a formula to just be sitting there.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The equation is deterministic — a stepping-stone to stochastic PDEs, not one itself.</strong> Stochastic PDEs put a genuine noise term into the evolution equation for the field itself, which the Fokker-Planck equation never has.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>A finance thesis got there before the physicists.</strong> Bachelier's 1900 study of Paris bond prices already had probability diffusing like heat, years before Einstein (1905), Fokker (1914) and Planck (1917). It was largely ignored until the 1950s.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

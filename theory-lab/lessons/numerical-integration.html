@@ -37,6 +37,7 @@
       <li><strong>Monte Carlo integration</strong> is a genuine reframe, not a different idea: instead of a deterministic grid, sample points randomly and average the function's value at them — it estimates the same area under the same curve, just by a different route.</li>
       <li>Deterministic quadrature (trapezoidal, Simpson's) is far more accurate in 1-2 dimensions, but its cost explodes exponentially as dimensions are added — the "curse of dimensionality." Monte Carlo's error shrinks at a fixed \(1/\sqrt{N}\) rate <em>regardless</em> of dimension, which is exactly why high-dimensional option pricing uses simulation, not a grid.</li>
       <li>The worked example integrates the standard normal PDF from 0 to 1 with the trapezoidal rule using only 4 intervals, and checks the answer against the exact value \(\Phi(1)-\Phi(0)\approx0.3413\).</li>
+      <li>Where it came from: Kepler's 1615 study of wine-barrel volumes after his wedding (the parabolic rule is still called Kepler's barrel rule in German), Simpson's 1743 rule, Gauss's 1814 quadrature, and Monte Carlo, born from Ulam's game of solitaire at Los Alamos in 1946.</li>
     </ul>
   </div>
 
@@ -116,6 +117,15 @@
       dimensions the problem has — a genuinely different, and often decisive,
       practical advantage over a fixed grid.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A wedding, a wine barrel and a game of solitaire</h3>
+    <div class="tl-origin-who">Johannes Kepler · 1615 · Linz &nbsp;/&nbsp; Thomas Simpson · 1743 &nbsp;/&nbsp; Stanislaw Ulam &amp; John von Neumann · c. 1946 · Los Alamos</div>
+    <p>When Johannes Kepler married for the second time, in Linz in 1613, he bought wine for the wedding and was irritated by how the merchant priced it: a measuring rod pushed diagonally through the bung-hole, read off the same way whatever the barrel's shape. Kepler set out to do better, and in 1615 published <em>Nova stereometria doliorum vinariorum</em> ("New solid geometry of wine barrels"). It treats a solid as a stack of very thin slices, an ancestor of the integral calculus. A one-panel form of the parabolic rule this lesson credits to Simpson is still called Kepler's barrel rule in German-speaking countries.</p>
+    <p>Thomas Simpson's 1743 statement gave the rule its English name, although others, Kepler included, had used the idea before him. Gauss later (1814) showed that choosing where to sample, and not only how to weight the samples, gives far higher accuracy. That is the Gauss-Legendre quadrature practitioners use for Heston-type pricing integrals.</p>
+    <p>Monte Carlo began with a card game. In 1946 Stanislaw Ulam, recovering from an illness, wondered how likely a game of solitaire was to come out. He realised it was easier to play many games and count than to calculate. With John von Neumann he turned this into a method for neutron-diffusion problems at Los Alamos, run on the early ENIAC computer. Nicholas Metropolis suggested the code name, after the Monte Carlo casino, where Ulam's uncle liked to gamble. Phelim Boyle brought the method to option pricing in 1977.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -589,6 +599,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Deterministic quadrature's cost explodes exponentially with dimension.</strong> The curse of dimensionality — roughly nᵈ evaluations for a d-dimensional grid — makes it infeasible past 2-3 dimensions.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Monte Carlo's 1/√N error rate doesn't depend on dimension at all.</strong> The exact reason high-dimensional option pricing (baskets, path-dependent payoffs) always uses simulation, never a grid.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither method validates the model being integrated against.</strong> Quadrature and Monte Carlo both faithfully compute the integral of whatever density or payoff they're given — garbage in, precisely-computed garbage out.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Integration methods began with practical problems.</strong> Kepler wanted to measure wine barrels fairly (1615), and Ulam wanted the odds of winning at solitaire (1946). Boyle brought Monte Carlo to option pricing in 1977.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -36,6 +36,7 @@
       <li>\(\theta=(\mu-r)/\sigma\) is the unique shift that makes the <em>discounted</em> price \(\tilde S_t=e^{-rt}S_t\) a martingale under \(\mathbb{Q}\) — that martingale property, not convenience, is why pricing "ignores" \(\mu\).</li>
       <li>That discounted-price martingale under \(\mathbb{Q}\) is the exact same object as the EMH lesson's "fair game" martingale under \(\mathbb{P}\) — here it holds by construction rather than as an empirical, testable claim.</li>
       <li>\(N(d_2)\) is a real, well-defined probability (\(\mathbb{Q}(S_T>K)\)) — it's the <em>measure</em> it's computed under that's a deliberate pricing device, not a real-world forecast, which is why a bullish real-world view is a separate bet, not a reason to reprice the option.</li>
+      <li>Where it came from: Cameron &amp; Martin (1944) handled fixed shifts of Brownian paths; Igor Girsanov in Moscow generalised it to random drifts in 1960, died in a mountain accident at 32, and never saw Harrison, Kreps and Pliska turn his theorem into the foundation of risk-neutral pricing (1979–81).</li>
     </ul>
   </div>
 
@@ -109,6 +110,15 @@
       why that particular device, and no other, is the one a no-arbitrage
       price needs.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Re-weighting random paths, in Kolmogorov's Moscow</h3>
+    <div class="tl-origin-who">Igor Girsanov · 1960 · Moscow State University &nbsp;/&nbsp; building on Cameron &amp; Martin · 1944</div>
+    <p>Changing a Brownian motion's drift by re-weighting probabilities began as a question in pure analysis, not finance. In 1944 the American mathematicians Robert Cameron and William Ted Martin showed exactly how integrals over Wiener's space of Brownian paths change when every path is shifted by a fixed, non-random function. That covers a constant drift change, but not a drift that depends on where the process has been.</p>
+    <p>Igor Girsanov, a young probabilist at Moscow State University — the home of Kolmogorov's school of probability — generalised the result in 1960 to shifts that are themselves random and depend on the path so far. That is the version this lesson needs, because \(\theta\) is allowed to depend on the state. Girsanov did not live to see what finance made of it. In 1965 he became head of a new probability and statistics laboratory at Moscow State; in March 1967, aged 32, he was killed in an accident while hiking in the Sayan Mountains of Siberia (accounts describe an avalanche).</p>
+    <p>The theorem waited almost twenty years for its financial meaning. Harrison &amp; Kreps (1979) and Harrison &amp; Pliska (1981) showed that "no arbitrage" is essentially the same as "an equivalent martingale measure exists" — and for models driven by Brownian motion, Girsanov's theorem is the tool that builds that measure. Every risk-neutral Monte Carlo engine today simulates under a measure his 1960 paper constructs.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -526,6 +536,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The same martingale property reappears under \(\mathbb{Q}\)</strong> that the EMH lesson treats as an empirical, testable claim under \(\mathbb{P}\) — here it holds by construction, not by observation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-neutral" describes the measure, not investor psychology.</strong> Real investors are risk-averse — that's exactly why \(\mu>r\) under \(\mathbb{P}\) and a nontrivial shift is needed at all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A real-world view is a separate bet, never a pricing input.</strong> Substituting a personal \(\mu\) into a pricing/hedging calculation produces a systematically mispriced option and a wrong hedge ratio.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>A pure-probability result became finance's foundation about twenty years later.</strong> Girsanov's 1960 theorem, built on Cameron &amp; Martin's 1944 work, became the tool for constructing the risk-neutral measure once Harrison, Kreps and Pliska linked martingale measures to no-arbitrage (1979–81).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

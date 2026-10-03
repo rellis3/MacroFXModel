@@ -36,6 +36,7 @@
       <li>Geometric Brownian motion's coefficients, \(\mu(x)=\mu x\) and \(\sigma(x)=\sigma x\), satisfy both conditions cleanly on any bounded region — but the honest full argument on all of \(\mathbb{R}\) needs slightly more care than a naive "it's globally Lipschitz" claim, because the Lipschitz constant these coefficients produce grows with the size of the region.</li>
       <li>A coefficient that <strong>violates</strong> the Lipschitz condition — \(\sigma(x)=\sigma\sqrt{|x|}\), the square-root diffusion behind the CIR short-rate model — needs a separate, weaker set of conditions (Yamada-Watanabe, 1971) to guarantee existence and uniqueness at all.</li>
       <li>Violating the <em>growth</em> condition instead is worse than a technical inconvenience: a deterministic illustration, \(dX/dt=X^2\), shows a solution that exists only up to a finite time and then diverges — there is no solution at all beyond that point, for any method.</li>
+      <li>Where it came from: Picard's 1890 successive-approximation method for ODEs, carried over to random paths by Itô's 1951 memoir; the square-root case behind CIR and Heston was settled by Yamada &amp; Watanabe (Kyoto, 1971), from Itô's own school.</li>
     </ul>
   </div>
 
@@ -105,6 +106,15 @@
       existence-and-uniqueness theorem below is the direct stochastic-calculus
       analogue of Picard-Lindelöf, adapted to control both terms at once.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A nineteenth-century trick for ODEs, rebuilt for random paths</h3>
+    <div class="tl-origin-who">Émile Picard · c. 1890 · Paris &nbsp;→&nbsp; Kiyosi Itô · 1951 &nbsp;→&nbsp; Toshio Yamada &amp; Shinzo Watanabe · 1971 · Kyoto</div>
+    <p>The engine inside this lesson's theorem is old. "Guess a solution, feed it into the right-hand side of the equation, repeat" — successive approximation — was put into its general form for ordinary differential equations by the French mathematician Émile Picard around 1890, and sharpened by the Finnish mathematician Ernst Lindelöf in 1894; hence Picard-Lindelöf. The smoothness condition that makes the iteration converge carries the name of Rudolf Lipschitz, a nineteenth-century German mathematician who had used it for the same existence question.</p>
+    <p>Kiyosi Itô's wartime papers had defined integrals along Brownian paths. To make "\(dX_t=\mu\,dt+\sigma\,dW_t\)" a genuine object rather than a suggestive formula, he then had to prove that such an equation actually has a solution and only one. His memoir <em>On Stochastic Differential Equations</em> (Memoirs of the American Mathematical Society, 1951) did it by running Picard's iteration on Brownian paths under Lipschitz and linear-growth conditions, which is essentially the theorem stated here.</p>
+    <p>Those conditions left out the square-root diffusion. Toshio Yamada and Shinzo Watanabe closed much of that gap in 1971; Watanabe had done his doctorate under Itô at Kyoto, so the fix came from Itô's own school. Two famous finance models depend on that result: the Cox-Ingersoll-Ross short-rate model (1985) and Heston's variance process (1993) are both square-root diffusions.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -483,6 +493,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The "GBM is globally Lipschitz" claim needs a caveat on all of ℝ.</strong> The fully rigorous argument pairs local Lipschitz behaviour with a separate non-explosion check, not a single global-K claim asserted without qualification.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CIR-style square-root diffusion σ(x)=σ√|x| fails Lipschitz at x=0.</strong> It needs the weaker Yamada-Watanabe conditions instead — a failed Lipschitz check doesn't mean the model is broken, it means a different theorem applies.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Violating linear growth can mean no solution exists at all past some finite time</strong> — not a simulation inconvenience. dX/dt=X² with X(0)=1 has no solution whatsoever past t=1, for any method.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The proof is an ODE technique from the 1890s, carried over to random paths.</strong> Picard's successive approximations (c. 1890) became Itô's 1951 existence proof; Yamada &amp; Watanabe's 1971 extension is what covers the square-root diffusions in CIR and Heston.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

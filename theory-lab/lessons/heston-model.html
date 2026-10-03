@@ -36,6 +36,7 @@
       <li>That negative \(\rho\) is exactly what generates a realistic volatility smile/skew — it makes large down-moves disproportionately likely to coincide with a vol spike, so low-strike puts price with higher implied vol than at-the-money, something flat-\(\sigma\) Black-Scholes structurally cannot produce.</li>
       <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion, already running in this project's own volatility research.</li>
       <li>Prices come from a semi-closed-form solution via the model's characteristic function, not a simple algebraic formula — this repo has no options-pricing module of any kind, so this lesson is pure theory background.</li>
+      <li>Where it came from: the post-1987 volatility skew broke Black-Scholes; Steven Heston at Yale (1993) combined Feller's square-root process with a Fourier approach to get a tractable, correlated stochastic-volatility model that covered currency options from day one.</li>
     </ul>
   </div>
 
@@ -106,6 +107,15 @@
       itself randomly wiggling and mean-reverting, and it tends to get bigger
       exactly when price falls.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>After the 1987 crash, a skew that would not go away</h3>
+    <div class="tl-origin-who">Steven L. Heston · 1993 · Yale School of Management · <em>Review of Financial Studies</em></div>
+    <p>Before October 1987, implied volatility on equity-index options was fairly flat across strikes. After the crash, out-of-the-money puts stayed persistently more expensive than at-the-money options, and the skew has been a permanent feature of index options ever since. Black-Scholes, with one constant \(\sigma\), cannot produce it. Stochastic-volatility models already existed, notably Hull &amp; White (1987) and Stein &amp; Stein (1991), but none combined realistic dynamics, correlation between price and volatility, and fast pricing.</p>
+    <p>Heston, then a young finance academic at Yale's School of Management, combined two borrowed ingredients. The first was the square-root diffusion that William Feller had analysed in 1951 and that Cox, Ingersoll &amp; Ross had used for interest rates in 1985. The second was a Fourier, characteristic-function approach that turned option prices into one-dimensional integrals, with the price-volatility correlation \(\rho\) fully included. His paper's title promises a "closed-form solution"; strictly, what is closed-form is the characteristic function, and a numerical integral is still needed. The title also names "bond and currency options," so FX was in the model from the start.</p>
+    <p>The paper became one of the most widely cited in derivatives research. Its characteristic function is also the reason the Carr-Madan FFT method, covered later in this Theory Lab, became the standard way to price a whole strike strip at once.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -500,6 +510,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Prices need a semi-closed-form numerical step, not simple algebra.</strong> Naive characteristic-function implementations are known to hit branch-cut discontinuities that silently misprice for some parameter combinations.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good smile fit is curve-fitting by construction, not a validated edge.</strong> Calibrating Heston to today's option prices says nothing, by itself, about whether a strategy built on it would show real edge out-of-sample.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in this project's own volatility research, not a description of existing code.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Heston answered the post-1987 skew.</strong> Heston (Yale, 1993) combined Feller's 1951 square-root process with characteristic functions to get the first widely usable stochastic-volatility model with price-volatility correlation.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

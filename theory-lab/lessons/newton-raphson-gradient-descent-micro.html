@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Newton-Raphson &amp; Gradient Descent — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="newton-raphson-gradient-descent.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">A cubic in the 1660s, and a one-page note in 1847</h2>
+      <p class="sl-sub">Newton · c. 1669 · Raphson · 1690 · Cauchy · 1847</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Newton's original method solved x³ − 2x − 5 = 0 by repeated polynomial substitution, with no tangent line. Raphson published a simpler repeatable version in 1690, and the f/f′ form in calculus came later (Simpson, 1740).</p>
+        <p>Gradient descent began with Cauchy's short 1847 note to the Paris Academy, written with astronomy's large equation systems in mind. It is the ancestor of how neural networks are trained.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Some formulas simply won't invert</h2>
       <p class="sl-sub">A bond's price is a known formula in its yield. There is no algebraic move that turns that formula around and isolates the yield.</p>
       <div class="sl-icard-grid">
@@ -40,8 +51,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Follow the tangent line down to zero</h2>
       <p class="sl-sub">Newton-Raphson's whole trick, in one sentence: look at the slope right where you're standing, and walk along that straight line — not the curve — until it hits zero.</p>
       <div class="sl-card">
@@ -56,8 +67,8 @@
       <p class="sl-p">Setting the tangent line's equation to zero and solving for the crossing point gives the whole method in one formula: <strong>xₙ₊₁ = xₙ − f(xₙ) / f′(xₙ)</strong>. Repeat with the new xₙ, and stop once the correction becomes negligibly small.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Three pieces, one correction</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">f(xₙ)</div><div><h4>How far off you are</h4><p>The current guess's error — how far the function is from the zero you're hunting for. Zero here means "found it."</p></div></div>
@@ -67,8 +78,8 @@
       <div class="sl-quote">Because the correction divides by the slope, a large slope means a small, careful correction, while a slope near zero means a huge, possibly wild one. Nearly everything about when this method works — and when it doesn't — traces back to that one division.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Watch it converge, geometrically</h2>
       <p class="sl-sub">f(x) = x² − 4 has a root at x = 2. Starting from x₀ = 3, three tangent-line steps land within a hundred-thousandth of it.</p>
       <div class="sl-card">
@@ -99,8 +110,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Same method, two very different fates</h2>
       <p class="sl-sub">f(x) = x³ − x has three roots: −1, 0, and 1. The starting guess decides everything.</p>
       <div class="sl-card">
@@ -131,8 +142,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where Newton-Raphson fails</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚡</div><div><h4>A near-zero derivative</h4><p>The correction f(xₙ)/f′(xₙ) explodes when f′(xₙ) is tiny — the tangent line is nearly flat, so its zero-crossing can be enormously far away.</p></div></div>
@@ -142,8 +153,8 @@
       <div class="sl-quote">Production pricing engines almost never run pure, unguarded Newton-Raphson. The standard fix: start from a problem-informed guess (the coupon rate for a bond near par; an approximation formula for implied vol), cap how large a single step is allowed to be, and fall back to a slower but guaranteed-to-converge method like bisection whenever a step leaves a known bracket around the true root.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Try it — Newton-Raphson finding a square root</h2>
       <p class="sl-sub">Finding √a is exactly root-finding on f(x) = x² − a. Change the target a or the starting guess x₀ and watch how fast (or badly) it converges.</p>
       <div class="sl-card">
@@ -163,8 +174,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A different question: not "where's zero," but "where's smallest"</h2>
       <p class="sl-sub">Gradient descent solves a related but distinct problem — minimizing a function instead of finding where it crosses zero.</p>
       <div class="sl-icard-grid">
@@ -175,8 +186,8 @@
       <div class="sl-quote">Picture standing on a hilly landscape, blindfolded, trying to reach the lowest point. You can feel which direction is steepest-downhill right under your feet — that's the gradient — so you take a step that way. Newton-Raphson could <em>see</em> the whole tangent line; gradient descent can only feel the slope, one step at a time.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Too small is slow, too large breaks it</h2>
       <p class="sl-sub">Drag the learning rate. This is real arithmetic on f(x) = (x − 3)², starting from x₀ = 0, six steps of xₙ₊₁ = xₙ − α·2(xₙ − 3).</p>
       <div class="sl-card">
@@ -198,8 +209,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What if you also knew the curvature?</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
@@ -226,8 +237,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">How this actually gets used — and misused</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Trusting the output without checking the root</h4><p>A bad starting guess or a function with multiple roots can make the method converge quickly and confidently to the <em>wrong</em> answer — fast convergence isn't the same claim as "converged to what you wanted."</p></div></div>
@@ -240,8 +251,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -291,8 +302,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Some formulas don't invert algebraically — bond yield and implied volatility are the classic examples — so an iterative numerical search takes the place of a closed-form solution.</p></div>
@@ -301,6 +312,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gradient descent solves a related but different problem — minimizing, not root-finding — by stepping a fixed distance α downhill along the negative gradient: xₙ₊₁ = xₙ − α∇f(xₙ).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The learning rate α is a genuine tradeoff: too small converges reliably but slowly; too large overshoots, oscillates, or diverges outright — there's no universally "safe" default.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Newton's method for optimization bridges both ideas by also using curvature (the Hessian) to pick the step automatically — faster per iteration, but too expensive to invert at the scale of a modern machine-learning model.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Newton (c. 1669) and Raphson (1690) for root-finding; Cauchy (1847) for gradient descent.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

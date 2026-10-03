@@ -36,6 +36,7 @@
       <li>The standard practical recipe: given a target correlation matrix \(\rho\), compute its Cholesky factor \(L\) (where \(\rho=LL^T\)), then simulate correlated shocks as \(dW_{\text{correlated}} = L\cdot dW_{\text{independent}}\).</li>
       <li>A real, honestly-run simulation of two correlated GBM processes (representing two FX pairs sharing a common currency) confirms the realized sample correlation converges to the target \(\rho\) as the number of simulated paths grows — with the expected sampling noise at small path counts, shrinking as path count increases.</li>
       <li>Heston's model, covered earlier in this curriculum, is already a live example of this machinery — its price and variance processes are two correlated SDEs linked by a single scalar \(\rho\), the simplest possible (2×2) case of the general Cholesky recipe built here.</li>
+      <li>Where it came from: André-Louis Cholesky, a French artillery officer, invented the factorisation around 1910 to solve map-survey equations by hand; he was killed in 1918 and a colleague published it for him in 1924.</li>
     </ul>
   </div>
 
@@ -83,6 +84,15 @@
       \(\Sigma\) or \(L\) is the mixing recipe; the correlated result is
       whatever the mixing recipe was built to produce.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>An artillery officer's shortcut for drawing maps</h3>
+    <div class="tl-origin-who">André-Louis Cholesky · c. 1910 · French Army geodetic service &nbsp;·&nbsp; published posthumously 1924</div>
+    <p>The recipe at the heart of this lesson, factorising a correlation matrix as \(\rho=LL^T\), was invented to make maps. André-Louis Cholesky was a French artillery officer seconded to geodesy. He worked on the survey of Crete in 1907–08 and later on surveys in North Africa. Triangulating a country produces large systems of least-squares "normal equations" that had to be solved by hand, and Cholesky found that splitting their symmetric matrix into a triangular factor times its transpose made the arithmetic far faster. His surviving manuscript is dated 2 December 1910.</p>
+    <p>He never published it. Cholesky was killed in action on 31 August 1918, in the last months of the First World War. In 1924 a fellow officer, Commandant Benoît, published the method on his behalf in the <em>Bulletin Géodésique</em> under the title "Procédé du Commandant Cholesky" — the paper this lesson's Further reading cites.</p>
+    <p>The property that guaranteed his factorisation would work on survey equations, a symmetric positive-definite matrix, is exactly the property a valid correlation matrix has. So in every correlated Monte Carlo simulation, the \(L\) in \(dW_{\text{corr}}=L\,dW_{\text{indep}}\) is a surveyor's hand-calculation shortcut from more than a century ago.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -431,6 +441,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Heston's ρ is already this recipe's simplest (2×2) case.</strong> heston-model.html's single scalar ρ is a Cholesky factor, just not named as one there.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Realized correlation converges to target ρ as path count grows, confirmed numerically here.</strong> 0.655 at N=50 paths settling to 0.600–0.606 by N≥5,000 — ordinary Monte Carlo convergence, not a special property of correlated simulation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A fixed ρ is a historical estimate, not a law of nature.</strong> Real correlations shift over time and often spike toward one in a crisis — a static Cholesky-based simulation cannot capture that on its own.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The Cholesky factor was a surveyor's shortcut.</strong> It was devised around 1910 for hand-solving map-triangulation equations and published only after Cholesky's death in action in 1918. It works on any symmetric positive-definite matrix, which every valid correlation matrix is.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -37,6 +37,7 @@
       <li>The <strong>HJM/Musiela SPDE</strong> models an entire forward interest-rate curve \(f(t,x)\) at once; the Vasicek, CIR and Hull-White short-rate models in <code>short-rate-models-vasicek-cir-hull-white.html</code> are each the finite-dimensional special case of tracking only the single point \(x=0\) of that curve.</li>
       <li>The <strong>Zakai equation</strong> is the specific linear SPDE the unnormalized conditional density in continuous-time nonlinear filtering literally evolves by — the Kalman filter (<code>kalman-smoother-ekf-ukf.html</code>) is its exact closed-form solution in the linear-Gaussian case, and the particle filter (<code>particle-filter.html</code>) is a Monte Carlo method for solving it approximately in general.</li>
       <li><strong>Say this plainly:</strong> full SPDE machinery is genuinely rare outside specialist term-structure modelling and academic filtering research — most practitioners work with the finite-dimensional simplifications this curriculum already covers in detail. This lesson explains the general, rigorous object those simplifications are simplifications <em>of</em>, not a claim that full SPDE machinery belongs on a desk.</li>
+      <li>Where it came from: physicists' growing-interface equation (Kardar, Parisi &amp; Zhang, 1986) and Zakai's filtering equation (1969), made rigorous by Walsh and by Da Prato &amp; Zabczyk, with the hardest cases solved by Martin Hairer (2014 Fields Medal); Musiela (1993) carried the idea to the forward curve.</li>
     </ul>
   </div>
 
@@ -97,6 +98,15 @@
       and infinite dimensions is precisely why the machinery below needs more
       care than the vector-SDE case already built in this sequence.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Growing interfaces, and a mathematician who also wrote audio software</h3>
+    <div class="tl-origin-who">Kardar, Parisi &amp; Zhang · 1986 · physics &nbsp;/&nbsp; John Walsh · 1986 · Saint-Flour lectures &nbsp;/&nbsp; Martin Hairer · Fields Medal 2014</div>
+    <p>SPDEs came into mathematics largely from engineering and physics. One source was Moshe Zakai's 1969 filtering equation, covered below. Another was a 1986 paper by the physicists Mehran Kardar, Giorgio Parisi and Yi-Cheng Zhang, which proposed an equation for randomly growing interfaces such as the edge of a spreading colony or a burning front, now called the KPZ equation. Physicists used it productively for decades even though mathematicians could not say what a solution meant: its non-linear term squares a quantity so rough that the square is not defined.</p>
+    <p>The rigorous groundwork came from probabilists. John Walsh's 1986 Saint-Flour lecture notes gave a hands-on theory of SPDEs driven by space-time white noise, and Da Prato &amp; Zabczyk's semigroup approach (first edition 1992) is the framework this lesson cites throughout.</p>
+    <p>The equations that had been out of reach were finally given a meaning by Martin Hairer's theory of regularity structures, which won him the 2014 Fields Medal. Hairer is also the author of Amadeus, a sound-editing program for the Mac that he began writing as a teenager and kept developing alongside his research. A Quanta Magazine profile of him was titled "In Noisy Equations, One Who Heard Music." The finance thread runs separately: Marek Musiela's 1993 rewriting of the Heath-Jarrow-Morton forward-curve model as an SPDE is the term-structure use this lesson builds.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -680,6 +690,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The HJM/Musiela SPDE models the whole forward curve at once; Vasicek/CIR/Hull-White are its x=0-only special case.</strong> Confirmed concretely: discretizing the SPDE and keeping only one tenor point collapses it to a Hull-White-shaped equation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Zakai equation is the SPDE the unnormalized filtering density literally solves.</strong> The Kalman filter is its exact solution in the linear-Gaussian case; the particle filter is a Monte Carlo approximation of it in general.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Full SPDE implementation is genuinely rare outside specialist curve modelling and academic filtering research.</strong> Most practitioners use the finite-dimensional simplifications this curriculum already covers — this lesson explains what those tools are simplifications of, not a case for building the general machinery here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>SPDEs reached finance from physics and filtering.</strong> KPZ (1986) and Zakai (1969) motivated the theory; Hairer's 2014 Fields Medal work handled the hardest equations; Musiela's 1993 reformulation of HJM is the finance application.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

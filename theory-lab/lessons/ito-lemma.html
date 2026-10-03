@@ -36,6 +36,7 @@
       <li>That single fact is written as the identity \((dW_t)^2 = dt\) (a quadratic-variation statement about the aggregate, not any one random draw), and it forces an extra term into the Taylor expansion that ordinary calculus is entitled to drop — this extra term is Itô's Lemma.</li>
       <li>Applying Itô's Lemma to \(\ln S_t\) under geometric Brownian motion makes every \(S_t\) cancel and leaves \(d(\ln S_t) = (\mu - \sigma^2/2)\,dt + \sigma\,dW_t\) — the mechanical, non-arbitrary origin of the \((r\pm\sigma^2/2)\) terms inside Black-Scholes's \(d_1\)/\(d_2\), which that lesson simply asserted.</li>
       <li>The same \(\sigma^2/2\) correction also appears informally elsewhere in this curriculum (volatility drag in the Kelly Criterion and Returns &amp; Compounding lessons) — three independent appearances of one underlying piece of mathematics.</li>
+      <li>Where it came from: Kiyosi Itô built the stochastic integral in wartime Japan (1942–44); a sealed envelope Wolfgang Doeblin sent to Paris in 1940, opened only in 2000, showed he had reached a very similar formula — hence the name Itô–Doeblin.</li>
     </ul>
   </div>
 
@@ -101,6 +102,15 @@
       and a Brownian-motion-style path, both zoomed in progressively — watch
       what happens to each.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A wartime statistician, and a soldier's sealed envelope</h3>
+    <div class="tl-origin-who">Kiyosi Itô · 1942–1944 · Statistics Bureau of Japan's Cabinet, Tokyo &nbsp;/&nbsp; Wolfgang Doeblin · 1940 · French Army</div>
+    <p>By the late 1930s Brownian motion had a rigorous mathematical definition (Norbert Wiener's construction from the 1920s), and Kolmogorov had described diffusions through equations for their probability densities. What nobody had was a way to do calculus <em>along a single random path</em>. Kiyosi Itô, then working as a statistician in the Statistics Bureau of Japan's Cabinet Secretariat (1939–1943), set out to build one from scratch. His first account appeared in Japanese in 1942, and the stochastic-integral paper cited at the bottom of this lesson was published in 1944 — written in wartime Japan, largely cut off from Western mathematics.</p>
+    <p>The twist is that he was not alone. In February 1940 a 24-year-old French soldier, Wolfgang Doeblin — a gifted probabilist and the son of the German novelist Alfred Döblin, whose family had fled Nazi Germany for France — mailed a sealed envelope (a <em>pli cacheté</em>) to the Académie des Sciences in Paris, titled <em>Sur l'équation de Kolmogoroff</em>. In June 1940, as German forces closed in on his unit in the Vosges, he took his own life in the village of Housseras rather than be captured. The envelope stayed sealed for sixty years. When it was opened in 2000 it showed that Doeblin had reached a change-of-variables formula for diffusions very close to Itô's — which is why some authors now write "Itô–Doeblin formula," the name this lesson's own Key Takeaways use for the multivariate version.</p>
+    <p>Itô's calculus stayed inside pure probability for roughly two decades. It reached markets through Robert Merton's continuous-time portfolio and option-pricing work from 1969 onward, which made it the working language of derivatives pricing. In 2006, aged 90, Itô became the first recipient of the Gauss Prize, an award created for mathematics with major impact outside mathematics — finance very much included.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -691,6 +701,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The same σ²/2 term appears three times in this curriculum</strong> — Black-Scholes's \(d_1\)/\(d_2\), Kelly Criterion's volatility drag, and Returns &amp; Compounding's log-return approximation — one piece of mathematics, not three coincidences.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>σ²/2 shrinks the drift of the log, not the mean of the price.</strong> \(E[S_T]\) under GBM is unaffected by σ — the gap exists because \(E[e^X]\ne e^{E[X]}\) (Jensen's inequality), not because volatility literally destroys expected value.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The single-variable formula doesn't cover correlated processes.</strong> A basket, spread, or ratio of two correlated underlyings needs the multivariate Itô-Doeblin form with a covariance cross-term — using the plain version silently drops correlation risk.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>It was found twice, and one discovery was nearly lost.</strong> Itô published in 1944; Doeblin's 1940 version sat in a sealed envelope at the Paris Académie until 2000 — the reason the formula is often called Itô–Doeblin.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

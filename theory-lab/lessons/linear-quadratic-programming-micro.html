@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Linear &amp; Quadratic Programming — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, worked LP/QP examples, and a 5-question self-test?<a href="linear-quadratic-programming.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">Plywood in Leningrad, Air Force logistics in Washington</h2>
+      <p class="sl-sub">Kantorovich · 1939 · Dantzig · 1947</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Kantorovich formulated linear programming in 1939 while advising a Leningrad plywood laboratory, and the West barely noticed until the late 1950s. Dantzig rediscovered it for US Air Force planning in 1947 and invented the simplex method.</p>
+        <p>The 1975 economics Nobel went to Kantorovich and Koopmans, not Dantzig. QP followed Markowitz, with Wolfe's simplex extension for quadratic objectives in 1959.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One matrix inversion, until it isn't</h2>
       <p class="sl-sub">The classical minimum-variance Markowitz problem — budget constraint plus a target-return constraint, nothing else — has a clean closed-form answer: write the stationarity condition as a linear system and invert a matrix. No search, no iteration.</p>
       <div class="sl-icard-grid">
@@ -42,8 +53,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A linear program: flat walls, and the optimum is always a corner</h2>
       <p class="sl-sub">Minimize (or maximize) a linear objective, cᵀx, subject to linear inequalities, Ax ≤ b. Every constraint is a straight line — in higher dimensions, a flat plane — so the region of points satisfying all of them at once is a <strong>polytope</strong>: a many-sided, flat-walled shape, the higher-dimensional cousin of a polygon.</p>
       <div class="sl-card">
@@ -77,8 +88,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A quadratic program: same flat room, a bowl instead of a ramp</h2>
       <p class="sl-sub">A QP keeps the exact same linear-constraint structure, Ax ≤ b, but swaps the linear objective for a quadratic one: minimize ½xᵀHx + cᵀx, with H positive semi-definite (so the bowl genuinely curves upward, never a saddle).</p>
       <div class="sl-compare">
@@ -98,8 +109,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Same two assets, three different feasible regions, three different answers</h2>
       <p class="sl-sub">Two assets, sum-to-one always required. Var(1)=2%², Var(2)=5%², Cov=3%² — correlated enough that minimizing variance alone wants to short Asset 2 hard. Same objective every tab; only the feasible region changes.</p>
       <div class="sl-card">
@@ -125,8 +136,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Watch the optimum snap to the wall</h2>
       <p class="sl-sub">A generic 2D picture (abstract units, not percentages): a bowl-shaped objective centered at (5, 5), inside a box 0 ≤ w₂ ≤ 6 (fixed) and 0 ≤ w₁ ≤ cap. Drag the cap and watch the constrained optimum move.</p>
       <div class="sl-card">
@@ -160,8 +171,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Clipping isn't the same as solving the QP</h2>
       <p class="sl-sub">A common shortcut: take the unconstrained weight, clip it to the cap, then renormalize so the two weights still sum to 100%. Try it — and watch what happens when renormalizing pushes a weight right back over the cap.</p>
       <div class="sl-card">
@@ -186,8 +197,8 @@
       <p class="sl-p">A real QP solver doesn't clip after the fact — it searches only among points that satisfy every constraint simultaneously from the start (an active-set method repeatedly guesses which constraints bind, solves the resulting equality system, and checks the guess was self-consistent). The heuristic above is a useful gut-check, not a substitute.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Vertex-hopping vs. cutting through the middle</h2>
       <p class="sl-sub">Two different algorithms, because LPs and QPs need to search different places.</p>
       <div class="sl-compare">
@@ -213,8 +224,8 @@
       <div class="sl-quote">Simplex remains highly competitive and is often preferred when a "warm start" from a nearby previous solution is available — resuming close to the new optimal vertex beats restarting an interior-point search from scratch. That's exactly the situation a fund re-solving a similar portfolio problem every night finds itself in.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Nobody hand-rolls simplex on a trading desk</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📦</div><div><h4>Off-the-shelf solvers</h4><p>OSQP, CVXOPT, and the GLPK/CLP family for open-source LP/QP work; Gurobi and CPLEX for large-scale or mixed-integer problems. The job is formulating H, c, A and b correctly — not implementing the algorithm.</p></div></div>
@@ -227,8 +238,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this actually goes wrong</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -249,8 +260,8 @@
       <div class="sl-quote">Every one of these produces an answer that <em>looks</em> fine — a number comes back, constraints are satisfied — right up until someone checks whether the inputs handed to the solver were actually the correct ones for that day.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this repo actually stands</h2>
       <p class="sl-sub">The full lesson's status line reads "CONCEPT — not built or tested in this repo." Checked against the current code, not just repeated.</p>
       <div class="sl-callout amber">
@@ -260,8 +271,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -311,8 +322,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Markowitz's closed-form formula is matrix inversion — it only works with equality constraints. Add wᵢ≥0, a cap, or a sector limit, and the single fixed matrix to invert disappears.</p></div>
@@ -321,6 +332,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Constrained Markowitz — minimize wᵀΣw subject to budget, return target, and box constraints — is exactly a QP, which is why real portfolios run on a QP solver, not the textbook formula.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>When the unconstrained optimum falls outside the feasible region, the true constrained optimum gets pulled to the nearest boundary or corner — not to some compromise point in between.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Naive clip-and-renormalize heuristics can silently re-violate the very constraint they were trying to satisfy — exactly why a real solver, not a spreadsheet trick, does this properly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Kantorovich (1939) and Dantzig (1947) independently; QP followed Markowitz in the 1950s.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

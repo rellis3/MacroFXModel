@@ -36,6 +36,7 @@
       <li>Markowitz's textbook closed-form solution (pure linear algebra — invert a matrix, done) only works for the <em>equality</em>-constrained version. The moment you add box constraints — no shorting (\(w_i\ge0\)), position caps (\(w_i\le0.1\)) — you don't know in advance which constraints will bind, and the clean formula breaks.</li>
       <li>Real portfolio construction always has box constraints, which is exactly why practitioners hand the problem to a QP solver rather than plugging numbers into the closed-form Markowitz formula.</li>
       <li>The worked example solves a tiny 2-variable LP by evaluating every vertex of its feasible region, and separately writes out a fully-specified 3-asset Markowitz QP with box constraints \(0\le w_i\le0.4\) — a solver's actual input, not something meant to be solved by hand.</li>
+      <li>Where it came from: Leonid Kantorovich formulated linear programming for a Leningrad plywood trust in 1939, largely ignored; George Dantzig rediscovered it for US Air Force planning in 1947 and invented the simplex method; quadratic programming followed Markowitz in the 1950s.</li>
     </ul>
   </div>
 
@@ -104,6 +105,15 @@
       structural reason QPs need a genuinely different algorithm than "check
       the corners" — the answer could be anywhere, not just at a vertex.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Plywood in Leningrad, Air Force logistics in Washington</h3>
+    <div class="tl-origin-who">Leonid Kantorovich · 1939 · Leningrad &nbsp;/&nbsp; George Dantzig · 1947 · US Air Force (Project SCOOP)</div>
+    <p>In 1938–39 the Leningrad mathematician Leonid Kantorovich was consulted by a plywood-industry laboratory. The problem was how to allocate machines among products to maximise output in fixed proportions. He saw that it was a general problem of optimising a linear objective under linear constraints, and in 1939 published a booklet setting out what is now called linear programming. It drew little attention in the Soviet Union and was almost unknown in the West until the late 1950s.</p>
+    <p>George Dantzig reached the same idea independently. In 1947, as chief mathematician of the US Air Force's Project SCOOP, which mechanised military planning, he stated the general linear program and invented the simplex method to solve it. He had form for this: as a Berkeley graduate student in 1939 he arrived late to a class, copied two problems from the board thinking they were homework, and solved them. They were open problems in statistics.</p>
+    <p>In 1975 the Nobel prize in economics went to Kantorovich and Tjalling Koopmans for the theory of optimal resource allocation, and not to Dantzig. Quadratic programming followed soon after: Markowitz's 1950s mean-variance problem is a QP, and Philip Wolfe extended the simplex method to quadratic objectives in 1959. Every constrained portfolio optimiser is a descendant.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -550,6 +560,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Box constraints are exactly why real portfolios need a QP solver, not the closed-form Markowitz formula.</strong> You can't know in advance which constraints will bind, so there's no single fixed matrix to invert.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Interior-point methods are the dominant modern algorithm for large LPs and QPs.</strong> They cut through the interior via a barrier function rather than hopping vertex to vertex, and generally scale better on the largest, sparsest problems.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An "optimal" solver output can be optimal with respect to the wrong constraints.</strong> A stale or misconfigured position cap doesn't error out — it silently changes what "optimal" means for that solve.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Linear programming was invented twice, on opposite sides of the Cold War.</strong> Kantorovich (Leningrad, 1939) and Dantzig (US Air Force, 1947). The 1975 Nobel went to Kantorovich and Koopmans, not to Dantzig, who invented the simplex method.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -36,6 +36,7 @@
       <li>Naively backpropagating through every simulated Euler-Maruyama step is memory-expensive (it has to store every intermediate state); the fix, the <strong>stochastic adjoint sensitivity method</strong> (Li, Wong, Chen &amp; Duvenaud, 2020), computes gradients by solving a second, backward SDE instead — the direct stochastic analogue of the Neural-ODE adjoint method (Chen et al., 2018).</li>
       <li><strong>Neural SPDEs</strong> generalize this further, to infinite-dimensional, spatio-temporal fields (Salvi, Lemercier &amp; Gerasimovics, 2021) — an implied-volatility <em>surface</em> evolving stochastically over time is exactly the kind of object (a field indexed by strike and tenor, evolving in time) an SPDE models.</li>
       <li>This is current, active machine-learning research machinery — considerably further from a testable trading signal than anything else in this curriculum. Nothing in this lesson claims it has been built, tested, or shown to produce edge anywhere in this repo.</li>
+      <li>Where it came from: noticing that a residual network's update is an Euler step led to Neural ODEs (Chen et al., NeurIPS 2018 best paper), trained with an adjoint method from Pontryagin's 1960s optimal control; stochastic versions followed in 2019–21.</li>
     </ul>
   </div>
 
@@ -88,6 +89,15 @@
       data required to fit them reliably, and much less interpretability than
       a named, textbook coefficient function.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A deep network that turned out to be Euler's method</h3>
+    <div class="tl-origin-who">Ricky Chen, Yulia Rubanova, Jesse Bettencourt &amp; David Duvenaud · 2018 · University of Toronto / Vector Institute</div>
+    <p>The idea started with an observation about an ordinary image-recognition architecture. A residual network updates its hidden state as \(h_{t+1}=h_t+f(h_t)\), which is one step of Euler's method for a differential equation. Chen, Rubanova, Bettencourt and Duvenaud asked what happens when the layers become continuous. The answer was an ODE whose right-hand side is a neural network, solved with an off-the-shelf ODE solver. Their "Neural Ordinary Differential Equations" paper was one of four best-paper award winners at NeurIPS 2018.</p>
+    <p>To train it without storing every solver step, they used the adjoint sensitivity method. Their paper credits it to the 1962 optimal-control book by Lev Pontryagin and colleagues. Pontryagin, one of the founders of Soviet optimal control theory, had been blind since an accident at the age of fourteen.</p>
+    <p>The stochastic version followed quickly: Tzen &amp; Raginsky (2019), the stochastic adjoint by Li, Wong, Chen &amp; Duvenaud (2020), and "neural SDEs as GANs" from Patrick Kidger and co-authors including Terry Lyons (2021). Lyons is also the founder of rough-path theory, the mathematics Hairer later extended to SPDEs. From around 2020, papers began applying neural SDEs to calibrating option-pricing models. As this lesson says, that work is still research, not a desk tool.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -402,6 +412,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neural SPDEs (Salvi, Lemercier &amp; Gerasimovics, 2021) generalize this to fields</strong> — a resolution-invariant architecture for learning spatio-temporal dynamics like an evolving implied-volatility surface.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is current ML research machinery, not a tested trading tool anywhere in this repo.</strong> Considerably further from a validated signal than Vasicek, CIR, or Hull-White — a knowledge lesson, explicitly not a built-and-proven claim.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>More flexibility buys more overfitting risk, not automatically more accuracy.</strong> A neural SDE's close in-sample fit says nothing about out-of-sample generalization without an honest validation split.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Neural SDEs came out of deep learning, not finance.</strong> A residual network's update is an Euler step, which led to Neural ODEs (2018). Pontryagin-era adjoints made them trainable, and stochastic versions followed in 2019–21. Finance applications are still research.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

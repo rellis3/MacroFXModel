@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Neural SDEs &amp; SPDEs — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the literature references, and a 5-question self-test?<a href="neural-sdes-spdes.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · The arc so far</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">A deep network that turned out to be Euler's method</h2>
+      <p class="sl-sub">Chen, Rubanova, Bettencourt &amp; Duvenaud · NeurIPS 2018 · Toronto</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>A residual network's update, h + f(h), is one Euler step. Making the layers continuous gave Neural ODEs, one of NeurIPS 2018's best papers, trained with an adjoint method from Pontryagin's 1962 optimal-control work.</p>
+        <p>Stochastic versions followed: Tzen &amp; Raginsky (2019), the stochastic adjoint (2020), and neural SDEs as GANs (Kidger et al., 2021). Applying them to finance is still research.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2 · The arc so far</div>
       <h2 class="sl-h2">Six lessons, one quiet assumption</h2>
       <p class="sl-sub">Every named model this category has built shares the same skeleton — only what's plugged into μ and σ changes.</p>
       <div class="sl-icard-grid">
@@ -39,8 +50,8 @@
       <div class="sl-quote">Notice what never changed across all six: a person always supplied the exact functional form of μ(x,t) and σ(x,t) — a constant, a linear pull toward a mean, a square root enforcing positivity. That choice is a real modelling commitment, made ahead of time, and it can be quietly wrong.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The same skeleton, four different fill-ins</h2>
       <p class="sl-sub">Every model below is dX_t = μ(X_t,t) dt + σ(X_t,t) dW_t. Pick a model to see exactly what a human chose to plug in.</p>
       <div class="sl-card">
@@ -71,8 +82,8 @@
       <p class="sl-p">Every one of these formulas is <strong>interpretable</strong> — κ is a mean-reversion speed, θ is a long-run level, ρ is a correlation. That interpretability is a direct consequence of the formula being small and hand-chosen. It is also exactly what gets sacrificed by what comes next.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">What if μ and σ were learned, not written down?</h2>
       <p class="sl-sub">A neural SDE keeps the identical skeleton — it only replaces the hand-picked formulas with two neural networks.</p>
       <div class="sl-card">
@@ -115,19 +126,19 @@
       <p class="sl-p">Training means simulating paths from the current μ_θ, σ_θ, comparing them against real observed data, and nudging θ with ordinary gradient descent so the simulated behaviour looks more like the real thing. Nothing about the SDE itself changes — dX_t = μ_θ(X_t,t) dt + σ_θ(X_t,t) dW_t is the exact same equation shape as every model on the previous slide.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why this is genuinely appealing</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🔓</div><div><h4>No forced fit to a named template</h4><p>OU, GBM, CIR, and Heston are each a bet that reality looks like one specific, tractable formula. A neural SDE removes that constraint entirely — the network can in principle learn whatever shape the data actually calls for.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>One architecture, many regimes</h4><p>Instead of picking a new named model every time a stylized fact changes, the same drift/diffusion network architecture can in principle absorb mean reversion, fat tails, or regime shifts directly from data.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Extends to whole fields, not just numbers</h4><p>The neural SPDE generalization (Section 7) applies this same idea to an entire evolving surface — an implied-volatility surface, for instance — not just a handful of state variables.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌊</div><div><h4>Extends to whole fields, not just numbers</h4><p>The neural SPDE generalization (Section 10) applies this same idea to an entire evolving surface — an implied-volatility surface, for instance — not just a handful of state variables.</p></div></div>
       </div>
       <div class="sl-quote">The appeal is real and worth taking seriously: markets don't know they're supposed to look like Vasicek. A sufficiently flexible learned function could, in principle, capture dynamics that no small number of named, closed-form-friendly templates fits well.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Classical vs. neural, dimension by dimension</h2>
       <p class="sl-sub">Same skeleton, very different trade-offs. Pick a dimension to compare.</p>
       <div class="sl-card">
@@ -157,8 +168,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Training isn't free: the memory problem, and its fix</h2>
       <p class="sl-sub">Naive backpropagation through a long simulated path is expensive. The stochastic adjoint method is the standard fix.</p>
       <div class="sl-compare">
@@ -182,8 +193,8 @@
       <p class="sl-p">Kidger, Foster, Li &amp; Lyons (2021) framed the whole training procedure as a generator/discriminator pair, exactly like an ordinary GAN: the neural SDE generates simulated paths, and a separate discriminator network is trained to tell them apart from real observed data — except the "generated image" here is an entire stochastic path, not a single picture.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The extrapolation problem, made visible</h2>
       <p class="sl-sub">Drag the slider to ask the model to predict further outside the range it was trained on.</p>
       <div class="sl-card">
@@ -209,8 +220,8 @@
       <p class="sl-p">A network's close fit inside the training range says nothing about what it does outside it. Unlike CIR's √X_t term, which enforces non-negativity everywhere by construction, a learned μ_θ, σ_θ has no such guarantee once asked about a region of (x, t) it never saw — it can extrapolate smoothly, or it can produce dynamics that are quietly implausible.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How many more knobs, exactly?</h2>
       <p class="sl-sub">A classical SDE has a handful of named parameters. A neural drift/diffusion network has as many weights as its architecture demands. Try your own sizes.</p>
       <div class="sl-card">
@@ -235,11 +246,11 @@
         <button type="button" class="sl-reset-btn" id="nn-reset">Reset to CIR (3 params) vs. a 2-layer, 32-wide network</button>
         <div class="sl-note">Illustrative, not a claim about any specific published architecture — the point is the order of magnitude, not the exact count.</div>
       </div>
-      <p class="sl-p">Three interpretable numbers versus over a thousand opaque weights, from a genuinely modest network — this is the interpretability/overfitting trade-off from Section 5, made concrete. A real production network could easily be far larger than this example.</p>
+      <p class="sl-p">Three interpretable numbers versus over a thousand opaque weights, from a genuinely modest network — this is the interpretability/overfitting trade-off from Section 6, made concrete. A real production network could easily be far larger than this example.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Neural SPDEs: the same idea, for a whole surface</h2>
       <p class="sl-sub">A neural SDE learns a handful of numbers evolving in time. A neural SPDE learns an entire field evolving in time.</p>
       <div class="sl-icard-grid">
@@ -250,12 +261,12 @@
       <p class="sl-p">Instead of the standard practitioner approach — modelling a surface's parameters (a local-vol grid, a handful of factor loadings) evolving independently — a neural SPDE would attempt to learn the entire surface's joint stochastic evolution directly, as one continuous object. It's a natural extension of everything this category has built — and also a genuinely advanced, unvalidated-in-this-repo research question, not a description of an existing tool.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Say this plainly</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Current research — not a production technique</div>
-        <p>Neural SDEs and neural SPDEs are current, active machine-learning research, published mostly within the last five to seven years, with genuine open questions still being worked out in the literature. They are considerably further from a testable trading signal than anything else in this category, including the decades-old, industry-standard Vasicek, CIR, and Hull-White models three lessons prior. They are much harder to fit reliably than a 2–3 parameter classical model, they can overfit and extrapolate implausibly outside their training range (Section 7), and they sacrifice interpretability almost entirely (Section 5) — there is no learned equivalent of "this parameter is the mean-reversion speed."</p>
+        <p>Neural SDEs and neural SPDEs are current, active machine-learning research, published mostly within the last five to seven years, with genuine open questions still being worked out in the literature. They are considerably further from a testable trading signal than anything else in this category, including the decades-old, industry-standard Vasicek, CIR, and Hull-White models three lessons prior. They are much harder to fit reliably than a 2–3 parameter classical model, they can overfit and extrapolate implausibly outside their training range (Section 8), and they sacrifice interpretability almost entirely (Section 6) — there is no learned equivalent of "this parameter is the mean-reversion speed."</p>
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code, 2026-09-04</div>
@@ -263,8 +274,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -314,8 +325,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Every model in this category shares one skeleton, dX_t = μ(X_t,t) dt + σ(X_t,t) dW_t — only the human-chosen formula plugged into μ and σ differs from OU to GBM to Heston to CIR.</p></div>
@@ -324,6 +335,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The cost is also real: far harder to fit reliably, prone to overfitting and implausible extrapolation outside the training range, and interpretability is essentially gone.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neural SPDEs extend the same idea to an entire evolving field, like an implied-volatility surface — resolution-invariant is a real property, but it is not the same claim as accurate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of this is built, tested, or validated as a trading tool anywhere in this repo — verified directly against the current source code, not just repeated from the full lesson.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: residual network = Euler step, which led to Neural ODEs (NeurIPS 2018 best paper); neural SDEs followed in 2019–21.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
