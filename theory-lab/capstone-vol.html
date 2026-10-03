@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Weekly Volatility Read — Capstone — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<style>
+  /* Local: the workbench's number grid, as-of lines and note boxes. */
+  .cw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+  .cw-field label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text2);margin-bottom:4px}
+  .cw-asof{display:block;font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.45;color:var(--text3);margin-top:4px;overflow-wrap:anywhere}
+  .cw-note-label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);margin:14px 0 6px}
+  textarea.cw-note{min-height:84px;resize:vertical;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
+  .cw-learn{font-size:12px;margin-top:6px}
+  .cw-step .tl-readout{line-height:1.6}
+  .cw-actions{margin:22px 0}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="paths.html#deliverable">Learning paths</a> · Volatility capstone</div>
+  <div class="tl-kicker">Capstone · 📉 Volatility path</div>
+  <h1 class="tl-title">A Weekly Volatility Read</h1>
+  <p class="tl-dek">For the S&amp;P 500, one page on what the options market is pricing for the coming week: a range, never a direction. Today's numbers are filled in. You write the sentences, and next to each one sits the desk's tested verdict on the claim behind it.</p>
+  <div class="tl-meta"><span class="tl-status course">CAPSTONE WORKBENCH</span><span>~20 min</span><span>Your notes stay in this browser</span></div>
+
+  <div id="cw-status" class="tl-solid amber"><strong>Loading today's board…</strong></div>
+  <div class="tl-callout"><strong>How to use it.</strong> Each step has the numbers, the arithmetic done for you, a box for <em>your</em> sentence, and the desk's verdict on the claim you are about to make. Verdicts update from the desk's ledger when a study is re-run. Write the sentence first, then check it against the verdict: if the ledger says <em>null</em>, your sentence should not lean on it.</div>
+
+  <section class="tl-box cw-step" data-step="1">
+    <div class="tl-box-label">Step 1 of 6</div>
+    <h3>Turn the VIX into an expected one-week move</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-spx">S&amp;P 500 level</label><input id="f-spx" class="tl-scratch-input" data-k="spx" data-src="vol.spx" data-source="S&amp;P 500 CFD daily close (OANDA)" inputmode="decimal"><span class="cw-asof" data-asof="spx"></span></div>
+      <div class="cw-field"><label for="f-vix">VIX</label><input id="f-vix" class="tl-scratch-input" data-k="vix" data-src="vol.vix" data-source="Cboe VIX close via FRED (VIXCLS)" inputmode="decimal"><span class="cw-asof" data-asof="vix"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="move"></div>
+    <label class="cw-note-label" for="n-move">Your sentence</label>
+    <textarea id="n-move" class="tl-scratch-input cw-note" data-note="move" placeholder="e.g. Options price a ±1σ week of about … points, roughly … to …"></textarea>
+    <div class="tl-verdict untested"><span class="tl-verdict-tag">Not tested here</span><span><strong>The band is arithmetic, not a forecast.</strong> VIX × √(5/252) is the one-week standard deviation the options imply, and "two weeks in three inside it" assumes normal returns. The desk has not scored how often the S&amp;P actually finishes inside this band, so write it as what is <em>priced</em>, not what will happen.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="2">
+    <div class="tl-box-label">Step 2 of 6</div>
+    <h3>State the term structure: contango or inverted</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-vix9d">VIX9D (9-day)</label><input id="f-vix9d" class="tl-scratch-input" data-k="vix9d" data-src="vol.vix9d" data-source="Cboe index history, daily close" inputmode="decimal"><span class="cw-asof" data-asof="vix9d"></span></div>
+      <div class="cw-field"><label for="f-vix3m">VIX3M (3-month)</label><input id="f-vix3m" class="tl-scratch-input" data-k="vix3m" data-src="vol.vix3m" data-source="Cboe index history, daily close" inputmode="decimal"><span class="cw-asof" data-asof="vix3m"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="term"></div>
+    <label class="cw-note-label" for="n-term">Your sentence</label>
+    <textarea id="n-term" class="tl-scratch-input cw-note" data-note="term" placeholder="e.g. The curve is in contango (VIX … below VIX3M …), so no inversion signal this week."></textarea>
+    <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>After an inversion, a wider week.</strong> On the first day the VIX closed above VIX3M, the next five sessions ran wider than matched controls: SPX500 +0.76 ATR, NAS100 +0.82 (86 entries since 2008, all intervals clear of zero). Inversions are brief, a median of one session.</span></div>
+    <div class="tl-verdict validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>…and a wider month, with no direction.</strong> Next 20 sessions' range ratio +0.52 on SPX500 and +0.44 on NQ against a matched control, 14 de-clustered firings, holding in both halves of the sample. Direction is null: 57% up against an 80%+ control.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="3">
+    <div class="tl-box-label">Step 3 of 6</div>
+    <h3>Compare implied with recent realised volatility</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-rv20">Realised vol, 20 sessions (%)</label><input id="f-rv20" class="tl-scratch-input" data-k="rv20" data-src="vol.rv20" data-source="computed from S&amp;P 500 ETF (SPY) daily closes, annualised ×√252" inputmode="decimal"><span class="cw-asof" data-asof="rv20"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="ivrv"></div>
+    <label class="cw-note-label" for="n-ivrv">Your sentence</label>
+    <textarea id="n-ivrv" class="tl-scratch-input cw-note" data-note="ivrv" placeholder="e.g. Implied sits … points above realised; when that gap is wide, realised has tended to catch up, not implied to fall."></textarea>
+    <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>The gap closes from below.</strong> The folk read is "implied far above realised means over-insured, so calm ahead". The desk found the opposite: with VIX ÷ 20-session realised in its top decile (88 first days, 2010 on), NAS100's next-5 range was +0.38 ATR and SPX500's next-20 +0.67. Realised catches up to implied.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/garch-volatility.html">GARCH &amp; Volatility Clustering</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="4">
+    <div class="tl-box-label">Step 4 of 6</div>
+    <h3>Give the dealer gamma sign, and what it does not tell you</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-gamma">Dealer gamma, Nasdaq-100</label><select id="f-gamma" class="tl-scratch-input" data-k="gamma" data-src="vol.nqGamma" data-source="the desk's Nasdaq-100 options book, last snapshot"><option value="">Unknown</option><option value="long">Long gamma (positive GEX)</option><option value="short">Short gamma (negative GEX)</option></select><span class="cw-asof" data-asof="gamma"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="gamma"></div>
+    <label class="cw-note-label" for="n-gamma">Your sentence</label>
+    <textarea id="n-gamma" class="tl-scratch-input cw-note" data-note="gamma" placeholder="e.g. Dealers are long gamma on the Nasdaq, which has meant quieter next days there. It says nothing about direction, or about FX."></textarea>
+    <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>Range, Nasdaq only, never direction.</strong> On 793 days of NQ, the next-day range was +0.315 higher on short-gamma days, matched on trailing vol. The reliable state is <em>long gamma is quiet</em> (about 0.85 of a random walk); short gamma sits near 1.02, essentially normal. It did not generalise to FX and carries no direction.</span></div>
+    <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>No pin to max pain.</strong> Price pinning to the options max-pain strike into expiry tested null, with timing, DTE, gamma and sign conventions all checked.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="5">
+    <div class="tl-box-label">Step 5 of 6</div>
+    <h3>Mark where skew and the tails say the normal band is too narrow</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-skew">Cboe SKEW index</label><input id="f-skew" class="tl-scratch-input" data-k="skew" data-src="vol.skew" data-source="Cboe index history, daily close" inputmode="decimal"><span class="cw-asof" data-asof="skew"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="skew"></div>
+    <label class="cw-note-label" for="n-skew">Your sentence</label>
+    <textarea id="n-skew" class="tl-scratch-input cw-note" data-note="skew" placeholder="e.g. The downside tail is priced richer than a normal band implies, so the lower edge of the range is the softer one."></textarea>
+    <div class="tl-verdict untested"><span class="tl-verdict-tag">Not tested here</span><span><strong>No ledger entry on SKEW.</strong> The desk has not tested whether a high SKEW reading is followed by anything. A sentence here describes what is priced; label it untested in your read.</span></div>
+    <div class="tl-verdict context" data-evidence="jump-diffusion" data-evidence-date="2026-09-13"><span class="tl-verdict-tag">Desk data: base rate</span><span><strong>Jumps are real; predicting them is not.</strong> Splitting moves into jumps and diffusion works as a measurement, but its forward payoff was null.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/vega-volatility-surface.html">Vega &amp; the Volatility Surface</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="6">
+    <div class="tl-box-label">Step 6 of 6</div>
+    <h3>Write the range expectation</h3>
+    <p>Pull steps 1 to 5 into three or four sentences: the priced range, whether the term structure, the implied/realised gap and gamma argue for wider or narrower than that, and where the tails make the band too narrow. After each sentence, put its verdict in brackets: (validated), (null) or (untested).</p>
+    <div class="tl-readout" data-calc="sheet"></div>
+    <label class="cw-note-label" for="n-range">Your weekly volatility read</label>
+    <textarea id="n-range" class="tl-scratch-input cw-note" data-note="range" placeholder="This week options price … (untested arithmetic). The curve is … (validated: vix-inversion). …" style="min-height:160px"></textarea>
+    <div class="tl-verdict validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>Size, never sign.</strong> Every vol signal on this page that survived testing predicts how far, not which way. The same study that found the inverted curve widens the month found direction null. If your read says "down", it has left the evidence behind.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/four-markets-four-questions.html">Four Markets, Four Questions</a></div>
+  </section>
+
+  <div class="tl-btnrow cw-actions">
+    <button type="button" class="tl-btn active" id="cw-download">⬇ Download as text</button>
+    <button type="button" class="tl-btn" id="cw-clear">Clear my notes</button>
+    <span class="tl-hint">Saved in this browser only. Download to keep a copy or hand it in.</span>
+  </div>
+
+  <div class="tl-footer-nav"><a href="paths.html#deliverable">← Volatility path</a><a href="capstone-macro.html">Morning macro read →</a></div>
+</div>
+<script>
+window.TL_CAPSTONE = {
+  id: 'vol', file: 'weekly-vol-read', title: 'A weekly volatility read (S&P 500)',
+  calc: function (a) {
+    var spx = a.num('spx'), vix = a.num('vix'), v9 = a.num('vix9d'), v3 = a.num('vix3m'), rv = a.num('rv20'), sk = a.num('skew'), g = a.val('gamma');
+    var wk = Math.sqrt(5 / 252);
+    a.set('move', spx != null && vix != null
+      ? '±1σ one week = VIX × √(5/252) = ' + a.fmt(vix, 2) + '% × ' + a.fmt(wk, 4) + ' = <b>±' + a.fmt(vix * wk, 2) + '%</b><br>In points: ' + a.fmt(spx, 0) + ' × ' + a.fmt(vix * wk / 100, 4) + ' = <b>±' + a.fmt(spx * vix / 100 * wk, 0) + ' pts</b>, a band of <b>' + a.fmt(spx * (1 - vix / 100 * wk), 0) + ' – ' + a.fmt(spx * (1 + vix / 100 * wk), 0) + '</b>' + (a.sameDate(['spx', 'vix']) || !a.live('spx') ? '' : '<br>Note: the index and the VIX are dated differently above.')
+      : 'Enter the S&amp;P 500 level and the VIX to get the ±1σ week: S&amp;P × VIX/100 × √(5/252).');
+    if (vix != null && v3 != null) {
+      var r = vix / v3, st = r > 1 ? '<b>inverted</b> (VIX above VIX3M)' : r > 0.97 ? '<b>flat</b>, close to inverting' : '<b>contango</b> (VIX below VIX3M, the normal shape)';
+      a.set('term', 'VIX ÷ VIX3M = ' + a.fmt(vix, 2) + ' ÷ ' + a.fmt(v3, 2) + ' = <b>' + a.fmt(r, 3) + '</b>: ' + st +
+        (v9 != null ? '<br>VIX9D ' + a.fmt(v9, 2) + (v9 > vix ? ' above' : ' below') + ' the VIX: the next nine days are priced ' + (v9 > vix ? 'hotter' : 'calmer') + ' than the month.' : '') +
+        (a.live('vix') && a.live('vix3m') && !a.sameDate(['vix', 'vix3m']) ? '<br>Note: VIX and VIX3M are dated differently above; compare closes from the same day.' : ''));
+    } else a.set('term', 'Enter VIX (step 1) and VIX3M. Ratio above 1 = inverted.');
+    a.set('ivrv', vix != null && rv != null
+      ? 'Implied − realised = ' + a.fmt(vix, 2) + ' − ' + a.fmt(rv, 2) + ' = <b>' + a.sgn(vix - rv, 2, ' vol pts') + '</b> · ratio VIX ÷ realised = <b>' + a.fmt(vix / rv, 2) + '</b><br>The desk\'s test fired on the top decile of that ratio; this page gives today\'s value, not its decile.'
+      : 'Enter the VIX (step 1) and 20-session realised vol: stdev of daily log returns × √252.');
+    a.set('gamma', g === 'long' ? 'Dealers <b>long gamma</b>: they sell rallies and buy dips to stay hedged, which damps moves. On NQ this has been the quiet state.'
+      : g === 'short' ? 'Dealers <b>short gamma</b>: their hedging adds to moves. On NQ, next-day range has been about normal (not "wild") in this state.'
+      : 'Gamma sign unknown here. Choose it if you have a source; otherwise say so in your read.');
+    a.set('skew', sk != null ? 'SKEW <b>' + a.fmt(sk, 1) + '</b>. 100 means the tails a normal (lognormal) distribution would give; the further above 100, the more the market pays for a large fall than the step-1 band assumes. ' + (sk > 100 ? 'So the <b>downside</b> edge of the band is the one to call too narrow.' : '')
+      : 'Enter the Cboe SKEW index. 100 = normal tails; higher = a fatter priced downside tail.');
+    var ok = [spx != null && vix != null, v3 != null, rv != null, !!g, sk != null].filter(Boolean).length;
+    a.set('sheet', ok + ' of 5 numbers in hand' + (spx != null && vix != null ? ' · priced week ±' + a.fmt(spx * vix / 100 * wk, 0) + ' pts' : '') + (vix != null && v3 != null ? ' · curve ' + (vix > v3 ? 'inverted' : 'contango') : '') + (vix != null && rv != null ? ' · implied ' + (vix > rv ? 'above' : 'below') + ' realised' : '') + (g ? ' · NQ ' + g + ' gamma' : ''));
+  }
+};
+</script>
+<script src="assets/capstone.js"></script>
+<script src="assets/verdicts.js" defer></script>
+</body>
+</html>

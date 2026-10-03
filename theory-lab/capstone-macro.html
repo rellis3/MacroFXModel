@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Morning Macro Read — Capstone — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<style>
+  /* Local: the workbench's number grid, as-of lines, note boxes and the four-market cards. */
+  .cw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:12px 0}
+  .cw-field label{display:block;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--text2);margin-bottom:4px}
+  .cw-asof{display:block;font-family:'DM Mono',monospace;font-size:10.5px;line-height:1.45;color:var(--text3);margin-top:4px;overflow-wrap:anywhere}
+  .cw-note-label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);margin:14px 0 6px}
+  textarea.cw-note{min-height:84px;resize:vertical;font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5}
+  .cw-learn{font-size:12px;margin-top:6px}
+  .cw-step .tl-readout{line-height:1.6}
+  .cw-actions{margin:22px 0}
+  .cw-mkts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:12px 0}
+  .cw-mkt{border:1px solid var(--border2);border-radius:var(--r);padding:12px;background:var(--bg)}
+  .cw-mkt h4{margin:0 0 2px;font-size:14px;color:var(--text)}
+  .cw-mkt .cw-q{font-size:12.5px;color:var(--text2);margin:0 0 8px}
+  .cw-mkt .cw-grid{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+  .cw-mkt textarea.cw-note{min-height:64px}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · <a href="paths.html#deliverable">Learning paths</a> · Macro capstone</div>
+  <div class="tl-kicker">Capstone · 🌍 Macro path</div>
+  <h1 class="tl-title">A Morning Macro Read</h1>
+  <p class="tl-dek">A short note on today's board that asks each market its own question, traces the one chain that is moving, and labels which claims this desk has tested and which failed. Today's numbers are filled in; you write the read.</p>
+  <div class="tl-meta"><span class="tl-status course">CAPSTONE WORKBENCH</span><span>~25 min</span><span>Your notes stay in this browser</span></div>
+
+  <div id="cw-status" class="tl-solid amber"><strong>Loading today's board…</strong></div>
+  <div class="tl-callout"><strong>How to use it.</strong> Every number shows the date it is from; rates, FX and equities close on different calendars and some official series publish a day or more late. "Change" means over the last five observations of that series, roughly a week. Write your sentence, then read the verdict beside it: most of the famous macro "leads" came back <em>null</em> on this desk, so a good read says what is happening now and stops there.</div>
+
+  <section class="tl-box cw-step" data-step="1">
+    <div class="tl-box-label">Step 1 of 7</div>
+    <h3>Ask each market its own question</h3>
+    <div class="cw-mkts">
+      <div class="cw-mkt">
+        <h4>📈 Equities</h4><p class="cw-q">How do investors feel about growth and earnings?</p>
+        <div class="cw-grid"><div class="cw-field"><label for="f-spx">S&amp;P 500</label><input id="f-spx" class="tl-scratch-input" data-k="spx" data-src="macro.spx" data-source="S&amp;P 500 CFD daily close (OANDA)" inputmode="decimal"><span class="cw-asof" data-asof="spx"></span></div></div>
+        <div class="tl-readout" data-calc="q-eq"></div>
+        <textarea class="tl-scratch-input cw-note" data-note="q-eq" aria-label="Your answer for equities" placeholder="Mood: …"></textarea>
+      </div>
+      <div class="cw-mkt">
+        <h4>🏛️ Treasuries</h4><p class="cw-q">How much do people want safety, and what rate path is expected?</p>
+        <div class="cw-grid">
+          <div class="cw-field"><label for="f-us2y">2-year yield (%)</label><input id="f-us2y" class="tl-scratch-input" data-k="us2y" data-src="macro.us2y" data-source="FRED DGS2" inputmode="decimal"><span class="cw-asof" data-asof="us2y"></span></div>
+          <div class="cw-field"><label for="f-us10y">10-year yield (%)</label><input id="f-us10y" class="tl-scratch-input" data-k="us10y" data-src="macro.us10y" data-source="FRED DGS10" inputmode="decimal"><span class="cw-asof" data-asof="us10y"></span></div>
+        </div>
+        <div class="tl-readout" data-calc="q-ust"></div>
+        <textarea class="tl-scratch-input cw-note" data-note="q-ust" aria-label="Your answer for Treasuries" placeholder="Safety / rate path: …"></textarea>
+      </div>
+      <div class="cw-mkt">
+        <h4>🎲 Options (VIX)</h4><p class="cw-q">How uncertain is everyone? Size, never sign.</p>
+        <div class="cw-grid"><div class="cw-field"><label for="f-vix">VIX</label><input id="f-vix" class="tl-scratch-input" data-k="vix" data-src="macro.vix" data-source="Cboe VIX close via FRED (VIXCLS)" inputmode="decimal"><span class="cw-asof" data-asof="vix"></span></div></div>
+        <div class="tl-readout" data-calc="q-vix"></div>
+        <textarea class="tl-scratch-input cw-note" data-note="q-vix" aria-label="Your answer for the VIX" placeholder="Uncertainty: …"></textarea>
+      </div>
+      <div class="cw-mkt">
+        <h4>💱 The dollar</h4><p class="cw-q">Whose money do people want?</p>
+        <div class="cw-grid"><div class="cw-field"><label for="f-usd">Broad dollar index</label><input id="f-usd" class="tl-scratch-input" data-k="usd" data-src="macro.usdBroad" data-source="Fed broad trade-weighted dollar, FRED DTWEXBGS (publishes with a lag)" inputmode="decimal"><span class="cw-asof" data-asof="usd"></span></div></div>
+        <div class="tl-readout" data-calc="q-fx"></div>
+        <textarea class="tl-scratch-input cw-note" data-note="q-fx" aria-label="Your answer for the dollar" placeholder="Whose money: …"></textarea>
+      </div>
+    </div>
+    <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>Read them together, not in sequence.</strong> "Rates turn first, then the Nasdaq follows" was null on every cell: 2,010 de-clustered 2-year pivots, signed Nasdaq return −0.005% against control at one hour. A confirmed rates low was followed by an up-move 54.1% of the time, exactly the base rate.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/four-markets-four-questions.html">Four Markets, Four Questions</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="2">
+    <div class="tl-box-label">Step 2 of 7</div>
+    <h3>The 2-year, the 10-year and the curve</h3>
+    <div class="tl-readout" data-calc="curve"></div>
+    <label class="cw-note-label" for="n-curve">Your sentence</label>
+    <textarea id="n-curve" class="tl-scratch-input cw-note" data-note="curve" placeholder="e.g. 10s2s at … bp; the 2-year moved … bp this week, below the desk's shock line."></textarea>
+    <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>An inverted curve is not a trade.</strong> Fifty years of 10s2s collapse to ten inversion episodes. Recession within 24 months followed 6 of 10 (95% interval 31% to 83%, which contains a coin flip), and steepening episodes did <em>worse</em> for the Nasdaq at 12 months than inversions did.</span></div>
+    <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>A 2-year shock does not mean a wild FX week.</strong> After a ±14bp week in the 2-year (about 211 shocks per pair), the next week's FX volatility was not higher; after a 2-year <em>rise</em>, EUR/USD and GBP/USD ran calmer.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="3">
+    <div class="tl-box-label">Step 3 of 7</div>
+    <h3>Split the 10-year into real yield and breakeven</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-real">10-year real yield, TIPS (%)</label><input id="f-real" class="tl-scratch-input" data-k="real" data-src="macro.real10y" data-source="FRED DFII10" inputmode="decimal"><span class="cw-asof" data-asof="real"></span></div>
+      <div class="cw-field"><label for="f-bei">10-year breakeven (%)</label><input id="f-bei" class="tl-scratch-input" data-k="bei" data-src="macro.bei10y" data-source="FRED T10YIE" inputmode="decimal"><span class="cw-asof" data-asof="bei"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="split"></div>
+    <label class="cw-note-label" for="n-split">Your sentence</label>
+    <textarea id="n-split" class="tl-scratch-input cw-note" data-note="split" placeholder="e.g. The 10-year is up … bp, … of it real yield: a growth/policy story, not inflation."></textarea>
+    <div class="tl-verdict null" data-evidence="yield-move-fx-range" data-evidence-date="2026-09-27"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>A big 10-year day does not reliably widen FX.</strong> Over 260 de-clustered top-decile days per pair since 2010, only EUR/USD cleared (+0.101 ATR next session); USD/JPY and GBP/USD did not, and no half-sample held.</span></div>
+    <div class="tl-verdict null" data-evidence="oil-to-breakevens" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>Breakevens do not "catch up" to oil.</strong> A ±10% 20-day oil move was followed by no excess breakeven change at 5, 10 or 20 sessions. If oil moved and breakevens did not, that is the read, not a pending trade.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="4">
+    <div class="tl-box-label">Step 4 of 7</div>
+    <h3>Trace the one domino chain that is moving today</h3>
+    <p>Pick the one link from steps 1 to 3 that moved most, and write the chain it runs through, link by link: what moved, through what mechanism, to what. Stop at the link where today's numbers stop confirming it.</p>
+    <div class="tl-readout" data-calc="chain"></div>
+    <label class="cw-note-label" for="n-chain">Your chain</label>
+    <textarea id="n-chain" class="tl-scratch-input cw-note" data-note="chain" placeholder="Shock: … → … → Outcome: … (confirmed by … / not yet confirmed)"></textarea>
+    <div class="tl-verdict context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk data: base rate</span><span><strong>Stocks and bonds falling together.</strong> A negative 20-day stock/yield correlation happened in 71 episodes since 2008, a median of 5 sessions long, 17% of days. Only 36 clean flips: too few to test what follows. Describe it if you see it; do not forecast from it.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/domino-chain-cross-asset.html">The Domino Effect: One Shock Through the Whole Board</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="5">
+    <div class="tl-box-label">Step 5 of 7</div>
+    <h3>Check the plumbing: SOFR in the corridor, and the calendar</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-sofr">SOFR (%)</label><input id="f-sofr" class="tl-scratch-input" data-k="sofr" data-src="macro.sofr" data-source="FRED SOFR (NY Fed)" inputmode="decimal"><span class="cw-asof" data-asof="sofr"></span></div>
+      <div class="cw-field"><label for="f-sofr99">SOFR 99th percentile (%)</label><input id="f-sofr99" class="tl-scratch-input" data-k="sofr99" data-src="macro.sofr99" data-source="NY Fed SOFR distribution" inputmode="decimal"><span class="cw-asof" data-asof="sofr99"></span></div>
+      <div class="cw-field"><label for="f-iorb">IORB, the floor (%)</label><input id="f-iorb" class="tl-scratch-input" data-k="iorb" data-src="macro.iorb" data-source="FRED IORB" inputmode="decimal"><span class="cw-asof" data-asof="iorb"></span></div>
+      <div class="cw-field"><label for="f-top">Top of the target range (%)</label><input id="f-top" class="tl-scratch-input" data-k="top" data-src="macro.policyTop" data-source="FRED DFEDTARU (also the SRF rate)" inputmode="decimal"><span class="cw-asof" data-asof="top"></span></div>
+      <div class="cw-field"><label for="f-srf">Standing Repo Facility take-up ($bn)</label><input id="f-srf" class="tl-scratch-input" data-k="srf" data-src="macro.srfBn" data-source="FRED RPONTSYD" inputmode="decimal"><span class="cw-asof" data-asof="srf"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="plumb"></div>
+    <label class="cw-note-label" for="n-plumb">Your sentence</label>
+    <textarea id="n-plumb" class="tl-scratch-input cw-note" data-note="plumb" placeholder="e.g. SOFR … bp over the floor on a mid-month settlement date: calendar, not stress."></textarea>
+    <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>SOFR over the floor, or the SRF drawn, is not a risk signal here.</strong> Away from month-end, 12 of the 15 "SOFR ≥ 3bp over the floor" days fell on the 14th to 18th: mid-month tax and settlement dates. After SRF use, SPX500 ran <em>calmer</em> (−0.561 ATR), and the facility is drawn on 31% of sessions.</span></div>
+    <div class="tl-verdict context" data-evidence="repo-stress-range" data-evidence-date="2026-09-20"><span class="tl-verdict-tag">Desk data: base rate</span><span><strong>The 99th percentile is month-end plumbing.</strong> SOFR's 99th percentile 10bp+ over the floor (26 episodes) did not precede a wider week, and it fires on a quarter of sessions since 2024.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor: IORB, the SRF and the Discount Window</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="6">
+    <div class="tl-box-label">Step 6 of 7</div>
+    <h3>The policy path the curve prices, against a Taylor rule</h3>
+    <p>Inflation and the output gap are not on the board: take them from the latest release you trust and write the source in your sentence.</p>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-infl">Inflation, y/y (%)</label><input id="f-infl" class="tl-scratch-input" data-k="infl" inputmode="decimal" placeholder="e.g. core PCE"><span class="cw-asof" data-asof="infl"></span></div>
+      <div class="cw-field"><label for="f-gap">Output gap (%)</label><input id="f-gap" class="tl-scratch-input" data-k="gap" inputmode="decimal" placeholder="e.g. CBO estimate"><span class="cw-asof" data-asof="gap"></span></div>
+      <div class="cw-field"><label for="f-rstar">Neutral real rate r* (%)</label><input id="f-rstar" class="tl-scratch-input" data-k="rstar" data-default="2" inputmode="decimal"><span class="cw-asof" data-asof="rstar"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="policy"></div>
+    <label class="cw-note-label" for="n-policy">Your sentence</label>
+    <textarea id="n-policy" class="tl-scratch-input cw-note" data-note="policy" placeholder="e.g. The 2-year sits … bp below the range midpoint: the curve prices cuts. A Taylor rule says … ."></textarea>
+    <div class="tl-verdict null" data-evidence="priced-in" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>"It's priced in" does not make the day quieter.</strong> Across 85 FOMC decision days, the decision-day range was about 1.3 ATR whether the 2-year had barely moved beforehand (&lt;5bp) or repriced a lot (&gt;16bp).</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/taylor-rule.html">The Taylor Rule</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="7">
+    <div class="tl-box-label">Step 7 of 7</div>
+    <h3>The rate differential behind each FX move, and what has not predicted direction</h3>
+    <div class="cw-grid">
+      <div class="cw-field"><label for="f-de10y">Bund 10Y (%)</label><input id="f-de10y" class="tl-scratch-input" data-k="de10y" data-src="macro.de10y" data-source="Bundesbank" inputmode="decimal"><span class="cw-asof" data-asof="de10y"></span></div>
+      <div class="cw-field"><label for="f-gb10y">Gilt 10Y (%)</label><input id="f-gb10y" class="tl-scratch-input" data-k="gb10y" data-src="macro.gb10y" data-source="Bank of England" inputmode="decimal"><span class="cw-asof" data-asof="gb10y"></span></div>
+      <div class="cw-field"><label for="f-jp10y">JGB 10Y (%)</label><input id="f-jp10y" class="tl-scratch-input" data-k="jp10y" data-src="macro.jp10y" data-source="Japan Ministry of Finance" inputmode="decimal"><span class="cw-asof" data-asof="jp10y"></span></div>
+      <div class="cw-field"><label for="f-eurusd">EUR/USD</label><input id="f-eurusd" class="tl-scratch-input" data-k="eurusd" data-src="macro.eurusd" data-source="OANDA daily close" inputmode="decimal"><span class="cw-asof" data-asof="eurusd"></span></div>
+      <div class="cw-field"><label for="f-gbpusd">GBP/USD</label><input id="f-gbpusd" class="tl-scratch-input" data-k="gbpusd" data-src="macro.gbpusd" data-source="OANDA daily close" inputmode="decimal"><span class="cw-asof" data-asof="gbpusd"></span></div>
+      <div class="cw-field"><label for="f-usdjpy">USD/JPY</label><input id="f-usdjpy" class="tl-scratch-input" data-k="usdjpy" data-src="macro.usdjpy" data-source="OANDA daily close" inputmode="decimal"><span class="cw-asof" data-asof="usdjpy"></span></div>
+    </div>
+    <div class="tl-readout" data-calc="fx"></div>
+    <label class="cw-note-label" for="n-fx">Your sentence</label>
+    <textarea id="n-fx" class="tl-scratch-input cw-note" data-note="fx" placeholder="e.g. The US–Bund gap widened … bp and EUR/USD fell …%: the textbook, same week. That says nothing about next week."></textarea>
+    <div class="tl-verdict null" data-evidence="yields-to-fx-direction" data-evidence-date="2026-08-23"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>Yields explain FX in the same bar, not the next.</strong> The forward coupling from yield moves to FX and index direction was null; the relationship is real only contemporaneously.</span></div>
+    <div class="tl-verdict null" data-evidence="nonus-yield-gap-direction" data-evidence-date="2026-09-20"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>A foreign-led yield move does not call the pair.</strong> Next-session "textbook" direction after a foreign-led rise: 50% GBP/USD, 55% EUR/USD, 50% USD/JPY. Every interval holds the coin flip.</span></div>
+    <div class="cw-learn">Learn it in: <a href="lessons/interest-rate-parity.html">Interest Rate Parity — Covered vs. Uncovered</a></div>
+  </section>
+
+  <section class="tl-box cw-step" data-step="8">
+    <div class="tl-box-label">Your note</div>
+    <h3>The morning macro read</h3>
+    <p>Five to eight sentences: each market's answer, the one chain that is moving, the plumbing, and the policy gap. Put the verdict in brackets after any sentence that leans on a tested claim: (validated), (null), (context) or (untested).</p>
+    <div class="tl-readout" data-calc="sheet"></div>
+    <label class="cw-note-label" for="n-note">Your morning read</label>
+    <textarea id="n-note" class="tl-scratch-input cw-note" data-note="note" placeholder="Equities say … Treasuries say … (null: curve-inversion) …" style="min-height:180px"></textarea>
+  </section>
+
+  <div class="tl-btnrow cw-actions">
+    <button type="button" class="tl-btn active" id="cw-download">⬇ Download as text</button>
+    <button type="button" class="tl-btn" id="cw-clear">Clear my notes</button>
+    <span class="tl-hint">Saved in this browser only. Download to keep a copy or hand it in.</span>
+  </div>
+
+  <div class="tl-footer-nav"><a href="paths.html#deliverable">← Macro path</a><a href="capstone-vol.html">Weekly volatility read →</a></div>
+</div>
+<script>
+window.TL_CAPSTONE = {
+  id: 'macro', file: 'morning-macro-read', title: 'A morning macro read',
+  calc: function (a) {
+    var bp = function (x) { return x == null ? null : x * 100; };
+    var pc = function (k) { var c = a.chg(k), v = a.num(k); return c == null || v == null || v === c ? null : 100 * c / (v - c); };
+    var line = function (lab, v, c, dp, unit) { return v == null ? lab + ': —' : lab + ' <b>' + a.fmt(v, dp) + (unit || '') + '</b>' + (c == null ? '' : ' (' + a.sgn(c[0], c[1], c[2]) + ' over 5 obs)'); };
+    var spx = a.num('spx'), y2 = a.num('us2y'), y10 = a.num('us10y'), vix = a.num('vix'), usd = a.num('usd');
+    var c2 = bp(a.chg('us2y')), c10 = bp(a.chg('us10y'));
+    a.set('q-eq', line('S&amp;P 500', spx, pc('spx') == null ? null : [pc('spx'), 2, '%'], 1));
+    a.set('q-ust', line('2Y', y2, c2 == null ? null : [c2, 0, 'bp'], 2, '%') + '<br>' + line('10Y', y10, c10 == null ? null : [c10, 0, 'bp'], 2, '%'));
+    a.set('q-vix', line('VIX', vix, a.chg('vix') == null ? null : [a.chg('vix'), 2, ' pts'], 2));
+    a.set('q-fx', line('Broad dollar', usd, pc('usd') == null ? null : [pc('usd'), 2, '%'], 2) + (usd == null ? '<br>Or use DXY / EUR/USD and say which.' : ''));
+    if (y2 != null && y10 != null) {
+      var s = bp(y10 - y2);
+      a.set('curve', '10s2s = ' + a.fmt(y10, 2) + ' − ' + a.fmt(y2, 2) + ' = <b>' + a.sgn(s, 0, 'bp') + '</b>: ' + (s < 0 ? '<b>inverted</b>' : s < 25 ? 'flat' : 'upward-sloping') +
+        (c2 != null ? '<br>2-year over 5 obs: <b>' + a.sgn(c2, 0, 'bp') + '</b>; ' + (Math.abs(c2) >= 14 ? 'that <b>is</b> a front-end shock by the desk\'s ±14bp definition' : 'inside the desk\'s ±14bp "front-end shock" line') : '') +
+        (c2 != null && c10 != null ? '<br>Curve over 5 obs: ' + a.sgn(c10 - c2, 0, 'bp') + ' (' + ((c10 - c2) > 0 ? 'steepening' : 'flattening') + ', ' + (Math.abs(c2) > Math.abs(c10) ? 'led by the front end' : 'led by the long end') + ')' : ''));
+    } else a.set('curve', 'Enter the 2-year and 10-year in step 1: 10s2s = 10Y − 2Y, in basis points.');
+    var r = a.num('real'), b = a.num('bei'), cr = bp(a.chg('real')), cb = bp(a.chg('bei'));
+    if (r != null && b != null) {
+      a.set('split', 'Level: real ' + a.fmt(r, 2) + '% + breakeven ' + a.fmt(b, 2) + '% = ' + a.fmt(r + b, 2) + '%' + (y10 != null ? ' (nominal 10Y ' + a.fmt(y10, 2) + '%)' : '') +
+        (cr != null && cb != null ? '<br>Over 5 obs: real <b>' + a.sgn(cr, 0, 'bp') + '</b> + breakeven <b>' + a.sgn(cb, 0, 'bp') + '</b> = ' + a.sgn(cr + cb, 0, 'bp') +
+          (Math.abs(cr) + Math.abs(cb) > 0 ? ': <b>' + (Math.abs(cr) >= Math.abs(cb) ? 'real-yield led (growth / policy)' : 'breakeven led (inflation)') + '</b>' : '') : '<br>The weekly split needs live data (it uses the value five observations back).'));
+    } else a.set('split', 'Enter the 10-year real yield and breakeven: nominal ≈ real + breakeven.');
+    var moves = [];
+    if (pc('spx') != null) moves.push(['S&P 500 ' + a.sgn(pc('spx'), 2, '%'), Math.abs(pc('spx')) / 2]);
+    if (c2 != null) moves.push(['2Y ' + a.sgn(c2, 0, 'bp'), Math.abs(c2) / 14]);
+    if (c10 != null) moves.push(['10Y ' + a.sgn(c10, 0, 'bp'), Math.abs(c10) / 15]);
+    if (a.chg('vix') != null) moves.push(['VIX ' + a.sgn(a.chg('vix'), 1, ' pts'), Math.abs(a.chg('vix')) / 3]);
+    if (pc('usd') != null) moves.push(['Dollar ' + a.sgn(pc('usd'), 2, '%'), Math.abs(pc('usd')) / 0.8]);
+    moves.sort(function (x, y) { return y[1] - x[1]; });
+    a.set('chain', moves.length ? 'This week\'s moves, biggest first against a rough typical week: ' + moves.map(function (m) { return m[0]; }).join(' · ') + '<br>Start your chain from the first one, or say why another matters more.' : 'Write the chain from what you see on the board.');
+    var so = a.num('sofr'), s99 = a.num('sofr99'), io = a.num('iorb'), top = a.num('top'), srf = a.num('srf'), L = a.live('sofr');
+    if (so != null && io != null) {
+      var cal = '';
+      if (L && L.date) {
+        var d = new Date(L.date + 'T12:00:00Z'), day = d.getUTCDate(), dim = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate(), m = d.getUTCMonth() + 1;
+        cal = '<br>Calendar (' + L.date + '): ' + (day >= dim - 2 || day <= 1 ? '<b>month-end turn</b>' + ([3, 6, 9, 12].indexOf(day <= 1 ? (m === 1 ? 12 : m - 1) : m) >= 0 ? ', and a quarter-end' : '') + ': expect SOFR to sit high' : day >= 14 && day <= 18 ? '<b>mid-month tax / settlement window</b> (14th–18th): where the desk found most "SOFR over the floor" days' : 'an ordinary day on the calendar');
+      }
+      a.set('plumb', 'SOFR − IORB = <b>' + a.sgn(bp(so - io), 0, 'bp') + '</b>' + (s99 != null ? ' · 99th pct − IORB = <b>' + a.sgn(bp(s99 - io), 0, 'bp') + '</b>' : '') +
+        (top != null ? ' · room to the ceiling (top of range / SRF rate) ' + a.fmt(bp(top - so), 0) + 'bp' : '') + cal +
+        (srf != null ? '<br>SRF take-up ' + (srf > 0 ? '<b>$' + a.fmt(srf, 1) + 'bn</b>: drawn, which the desk found routine (31% of sessions)' : 'zero') : ''));
+    } else a.set('plumb', 'Enter SOFR and IORB: SOFR − IORB in basis points, then check the date against month-end and the 14th–18th.');
+    var inf = a.num('infl'), gap = a.num('gap'), rs = a.num('rstar');
+    var p = [];
+    if (top != null) { var mid = top - 0.125; p.push('Range midpoint ≈ ' + a.fmt(mid, 3) + '% (top − 12.5bp, assuming the usual 25bp range)'); if (y2 != null) p.push('2Y − midpoint = <b>' + a.sgn(bp(y2 - mid), 0, 'bp') + '</b>: the curve prices ' + (y2 < mid - 0.1 ? '<b>cuts</b> over two years' : y2 > mid + 0.1 ? '<b>hikes</b> over two years' : 'roughly <b>no change</b>')); }
+    if (inf != null && gap != null && rs != null) { var t = rs + inf + 0.5 * (inf - 2) + 0.5 * gap; p.push('Taylor: ' + a.fmt(rs, 2) + ' + ' + a.fmt(inf, 2) + ' + 0.5×(' + a.fmt(inf, 2) + ' − 2) + 0.5×' + a.fmt(gap, 2) + ' = <b>' + a.fmt(t, 2) + '%</b>' + (top != null ? ', ' + a.sgn(bp(t - (top - 0.125)), 0, 'bp') + ' from the midpoint' : '')); }
+    else p.push('Enter inflation and the output gap for the Taylor estimate: r* + π + 0.5(π − 2) + 0.5 × gap.');
+    a.set('policy', p.join('<br>'));
+    var fx = [];
+    [['de10y', 'US − Bund', 'eurusd', 'EUR/USD'], ['gb10y', 'US − Gilt', 'gbpusd', 'GBP/USD'], ['jp10y', 'US − JGB', 'usdjpy', 'USD/JPY']].forEach(function (q) {
+      var f = a.num(q[0]), cf = a.chg(q[0]), pr = a.num(q[2]), cp = pc(q[2]);
+      var s = q[1] + ': ' + (y10 != null && f != null ? '<b>' + a.sgn(bp(y10 - f), 0, 'bp') + '</b>' + (c10 != null && cf != null ? ' (' + a.sgn(c10 - bp(cf), 0, 'bp') + ' over 5 obs)' : '') : '—');
+      s += ' · ' + q[3] + ' ' + (pr != null ? a.fmt(pr, q[3] === 'USD/JPY' ? 2 : 4) + (cp != null ? ' (' + a.sgn(cp, 2, '%') + ')' : '') : '—');
+      fx.push(s);
+    });
+    a.set('fx', fx.join('<br>') + '<br>Gap widening in the US\'s favour with the dollar up is the textbook, in the same week.');
+    var got = ['spx', 'us2y', 'us10y', 'vix', 'usd', 'real', 'bei', 'sofr', 'iorb', 'top', 'de10y', 'eurusd'].filter(function (k) { return a.num(k) != null; }).length;
+    a.set('sheet', got + ' of 12 core numbers in hand' + (y2 != null && y10 != null ? ' · 10s2s ' + a.sgn(bp(y10 - y2), 0, 'bp') : '') + (so != null && io != null ? ' · SOFR − IORB ' + a.sgn(bp(so - io), 0, 'bp') : '') + (moves.length ? ' · biggest move: ' + moves[0][0] : ''));
+  }
+};
+</script>
+<script src="assets/capstone.js"></script>
+<script src="assets/verdicts.js" defer></script>
+</body>
+</html>

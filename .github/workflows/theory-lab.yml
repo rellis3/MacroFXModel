@@ -8,6 +8,7 @@ on:
       - 'theory-lab/**'
       - 'js/deskEvidence.js'
       - 'js/lessonLinks.js'
+      - 'js/progressSync.js'
       - 'js/*.test.mjs'
       - '.github/workflows/theory-lab.yml'
   push:
@@ -33,3 +34,5 @@ jobs:
         run: node js/lessonPaths.test.mjs
       - name: Board links to lessons (files and anchors exist)
         run: node js/lessonLinks.test.mjs
+      - name: Progress sync (validator and merge)
+        run: node js/progressSync.test.mjs

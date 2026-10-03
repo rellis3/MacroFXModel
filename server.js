@@ -34577,6 +34577,138 @@ app.get('/theory-lab/desk-verdicts.json', (req, res) => {
   res.set('Cache-Control', 'no-cache').json({ entries });
 });
 
+// Theory Lab progress sync (theory-lab/assets/sync.js). The education login is one
+// SHARED password, so there is no user to sync "per login"; a reader instead gets a
+// random 10-char code and types it on another device. The code is the only handle.
+// Stored as tl_sync_<CODE> (durable CF KV, routed in kv.js isCfKey) with a ~400-day
+// TTL refreshed on every write, so abandoned codes clean themselves up. Writes are
+// kept rare: unchanged pushes are not written, one write per code per 10s, a few
+// codes per IP per hour, and a daily ceiling well inside the CF KV write quota.
+// Validation lives in js/progressSync.js (tested by js/progressSync.test.mjs).
+const _PS = await import('./js/progressSync.js');
+const _psState = { day: '', writes: 0, lastWrite: new Map(), creates: new Map() };
+const _PS_TTL = 400 * 86_400, _PS_DAILY_WRITES = 500, _PS_CREATES_PER_HOUR = 20;
+function _psCanWrite(res) {
+  const day = new Date().toISOString().slice(0, 10);
+  if (_psState.day !== day) { _psState.day = day; _psState.writes = 0; _psState.lastWrite.clear(); _psState.creates.clear(); }
+  if (_psState.writes >= _PS_DAILY_WRITES) { res.status(503).json({ error: 'sync is busy today, try again tomorrow' }); return false; }
+  return true;
+}
+function _psBody(req, res) {
+  if (+req.get('content-length') > _PS.SYNC_MAX_BYTES) { res.status(413).json({ error: 'payload too large' }); return null; }
+  const v = _PS.validateSyncBody(req.body);
+  if (!v.ok) { res.status(400).json({ error: v.error }); return null; }
+  return v.value;
+}
+async function _psRead(code) {
+  const raw = await kv.getStrict(_PS.SYNC_KV_PREFIX + code);
+  if (!raw) return null;
+  const v = _PS.validateSyncBody((() => { try { const p = JSON.parse(raw); return { progress: p.progress, path: p.path, checks: p.checks }; } catch { return null; } })());
+  return v.ok ? v.value : null;
+}
+async function _psWrite(code, value) {
+  _psState.writes++;
+  await kv.put(_PS.SYNC_KV_PREFIX + code, JSON.stringify({ v: 1, ...value, updatedAt: new Date().toISOString() }), { expirationTtl: _PS_TTL });
+}
+app.post('/theory-lab/progress-sync', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const value = _psBody(req, res); if (!value) return;
+  if (!_psCanWrite(res)) return;
+  const ip = String(req.get('x-forwarded-for') || req.ip || '').split(',')[0].trim();
+  const hr = Math.floor(Date.now() / 3_600_000), c = _psState.creates.get(ip);
+  const n = c && c.hr === hr ? c.n : 0;
+  if (n >= _PS_CREATES_PER_HOUR) return res.status(429).json({ error: 'too many new codes, try again later' });
+  _psState.creates.set(ip, { hr, n: n + 1 });
+  try {
+    let code = _PS.newSyncCode();
+    for (let i = 0; i < 3 && await kv.get(_PS.SYNC_KV_PREFIX + code); i++) code = _PS.newSyncCode();
+    await _psWrite(code, value);
+    res.status(201).json({ code, data: value });
+  } catch (e) { console.error('[progress-sync] create failed:', e.message); res.status(500).json({ error: 'could not save' }); }
+});
+app.get('/theory-lab/progress-sync/:code', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const code = _PS.normalizeSyncCode(req.params.code);
+  if (!code) return res.status(400).json({ error: 'bad code' });
+  try {
+    const data = await _psRead(code);
+    if (!data) return res.status(404).json({ error: 'code not found' });
+    res.json({ code, data });
+  } catch (e) { console.error('[progress-sync] read failed:', e.message); res.status(502).json({ error: 'store unavailable' }); }
+});
+app.put('/theory-lab/progress-sync/:code', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const code = _PS.normalizeSyncCode(req.params.code);
+  if (!code) return res.status(400).json({ error: 'bad code' });
+  const value = _psBody(req, res); if (!value) return;
+  try {
+    const stored = await _psRead(code);   // getStrict: a store failure throws instead of reading as "empty" and overwriting
+    if (!stored) return res.status(404).json({ error: 'code not found' });
+    // Merge rather than overwrite, so two devices pushing close together both keep their progress.
+    const merged = _PS.validateSyncBody(_PS.mergeSyncPayload(value, stored)).value;
+    if (!merged) return res.status(400).json({ error: 'merged payload too large' });
+    if (_PS.syncFingerprint(merged) === _PS.syncFingerprint(stored)) return res.json({ code, data: stored, unchanged: true });
+    if (Date.now() - (_psState.lastWrite.get(code) || 0) < 10_000) return res.status(429).json({ error: 'syncing too often, try again shortly' });
+    if (!_psCanWrite(res)) return;
+    _psState.lastWrite.set(code, Date.now());   // the gap is between UPDATES; creating a code and joining it right away is fine
+    await _psWrite(code, merged);
+    res.json({ code, data: merged });
+  } catch (e) { console.error('[progress-sync] update failed:', e.message); res.status(502).json({ error: 'store unavailable' }); }
+});
+
+// Today's numbers for the two "read the market" capstone workbenches
+// (theory-lab/capstone-vol.html, capstone-macro.html). Education zone for the same
+// reason as desk-verdicts.json above: the /api/* feeds are main-zone. Reads ONLY what
+// is already cached in memory (the daily drill bundle, the rates cache, the non-US
+// 10Y yields, the Nasdaq options book) and never fetches upstream, so a learner
+// reloading cannot cost anything. Every value carries its own date and the value
+// five observations earlier; anything not cached yet is null and the page falls back
+// to a fill-in template. No series ids, keys or store names go out.
+app.get('/theory-lab/capstone-board.json', async (_req, res) => {
+  const last = (arr, back = 0) => {               // arr: [{date, value}] oldest first
+    let seen = 0;
+    for (let i = (arr?.length ?? 0) - 1; i >= 0; i--) {
+      const o = arr[i];
+      if (o && o.date && Number.isFinite(o.value) && seen++ === back) return o;
+    }
+    return null;
+  };
+  const pt = (arr, dp = 2) => {
+    const a = last(arr), b = last(arr, 5);
+    return a ? { date: a.date, value: +a.value.toFixed(dp), prevDate: b?.date ?? null, prev: b ? +b.value.toFixed(dp) : null } : null;
+  };
+  const B = _drillBundle.data, R = _rates.series, I = _intlYields.series;
+  const bs = k => (B?.series?.[k] ? B.series[k].map((value, i) => ({ date: B.dates[i], value })) : null);
+  const rs = k => R?.[k] ?? null;
+  const rv20 = (() => {                            // 20-session realised vol, annualised %, from exchange-day closes
+    const a = (bs('spy') || bs('spx') || []).filter(o => Number.isFinite(o.value) && o.value > 0).slice(-21);
+    if (a.length < 21) return null;
+    const r = a.slice(1).map((o, i) => Math.log(o.value / a[i].value));
+    const m = r.reduce((s, x) => s + x, 0) / r.length;
+    const sd = Math.sqrt(r.reduce((s, x) => s + (x - m) ** 2, 0) / (r.length - 1));
+    return { date: a[a.length - 1].date, from: a[0].date, value: +(sd * Math.sqrt(252) * 100).toFixed(2), n: r.length };
+  })();
+  let gamma = null;
+  try {
+    const o = await _cogOiFor('NAS100_USD');
+    const g = o?.exposures?.gex;
+    if (Number.isFinite(g) && g !== 0 && Number.isFinite(o.savedAtMs)) gamma = { date: new Date(o.savedAtMs).toISOString().slice(0, 10), sign: g > 0 ? 'long' : 'short' };
+  } catch { /* no options book: the page leaves the gamma line blank */ }
+  res.set('Cache-Control', 'no-cache').json({
+    vol: { vix: pt(bs('vix')), vix9d: pt(bs('vix9d')), vix3m: pt(bs('vix3m')), skew: pt(bs('skew')), spx: pt(bs('spx'), 1), rv20, nqGamma: gamma },
+    macro: {
+      spx: pt(bs('spx'), 1), vix: pt(bs('vix')),
+      us2y: pt(rs('us2y') || bs('us2y')), us10y: pt(rs('us10y') || bs('us10y')),
+      real10y: pt(rs('real') || bs('tips')), bei10y: pt(rs('bei') || bs('bei')),
+      policyTop: pt(rs('policy')), iorb: pt(rs('iorb')), sofr: pt(rs('sofr')), sofr99: pt(rs('sofr99')), effr: pt(rs('effr')),
+      srfBn: pt(rs('srf'), 3), usdBroad: pt(bs('dxy')),
+      eurusd: pt(bs('eurusd'), 4), usdjpy: pt(bs('usdjpy'), 2), gbpusd: pt(bs('gbpusd'), 4),
+      de10y: pt(I?.de10y), jp10y: pt(I?.jp10y), gb10y: pt(I?.gb10y),
+    },
+    at: new Date().toISOString(),
+  });
+});
+
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.
 app.use(express.static(__dirname, {

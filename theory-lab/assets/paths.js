@@ -64,6 +64,8 @@
 
   // ── paths.html ────────────────────────────────────────────────────────────
   var app = document.getElementById('tl-paths-app'); if (!app) return;
+  // Capstones with a pre-filled workbench page (today's numbers + live desk verdicts).
+  var WORKBENCH = { volatility: 'capstone-vol.html', macro: 'capstone-macro.html' };
   function render() {
     var sel = path(get(K_PATH, null));
     var h = '<div class="tp-grid">' + D.paths.map(function (p) {
@@ -88,7 +90,8 @@
               (p >= 90 ? '✓ done' : p > 0 ? p + '% read' : m.min + ' min') + '</span></li>';
           }).join('') + '</ol></div>';
       });
-      h += '<div class="tp-deliv" id="deliverable"><div class="tp-deliv-k">Capstone · your finish line</div><h3>' + esc(sel.deliverable.title) + '</h3><p>' + esc(sel.deliverable.what) + '</p><ol>' +
+      h += '<div class="tp-deliv" id="deliverable"><div class="tp-deliv-k">Capstone · your finish line</div><h3>' + esc(sel.deliverable.title) + '</h3><p>' + esc(sel.deliverable.what) + '</p>' +
+        (WORKBENCH[sel.id] ? '<p><a class="tl-btn active" href="' + WORKBENCH[sel.id] + '">Open the workbench →</a></p>' : '') + '<ol>' +
         sel.deliverable.steps.map(function (s, i) {
           var m = D.lessons[s.lesson];
           return '<li><label><input type="checkbox" data-check="' + i + '"' + (c[i] ? ' checked' : '') + '> ' + esc(s.text) + '</label>' +
@@ -108,5 +111,7 @@
     var sel = path(get(K_PATH, null)); if (!sel) return;
     var all = get(K_CHECK, {}); all[sel.id] = all[sel.id] || {}; all[sel.id][i] = e.target.checked; set(K_CHECK, all); render();
   });
+  // assets/sync.js merged progress from another device: re-read and repaint.
+  document.addEventListener('tl-sync-updated', function () { prog = get(K_PROG, {}); render(); });
   render();
 })();

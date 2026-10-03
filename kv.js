@@ -429,6 +429,12 @@ function isCfKey(key) {
   // Must ALSO be permanent in _worker.js (PERMANENT_KEYS / PERMANENT_PREFIXES)
   // or they silently inherit the 48h TTL — feedback_kv_second_ttl_gate.
   if (key.startsWith('equity_') || key.startsWith('expect_') || key === 'bot_allocations') return true;
+  // tl_sync_<CODE> — Theory Lab cross-device reading progress (js/progressSync.js). A
+  // reader's progress on another device is the whole point, so it must survive a
+  // redeploy. Written by server.js directly with its own ~400-day expirationTtl
+  // (refreshed per write), so the _worker.js 48h-TTL gate does not apply. Writes are
+  // capped server-side (unchanged pushes skipped, <=500/day).
+  if (key.startsWith('tl_sync_')) return true;
   return _CF_EXACT.has(key) || key.startsWith('journal_') || key.startsWith('ai_');
 }
 
