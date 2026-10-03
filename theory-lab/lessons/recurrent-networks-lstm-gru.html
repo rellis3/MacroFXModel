@@ -36,6 +36,7 @@
       <li>The <strong>LSTM</strong> (Hochreiter &amp; Schmidhuber, 1997) fixes this with a separate cell state \(C_t\) updated <em>additively</em> through forget, input, and output gates — an additive path lets gradients flow across many time steps without being repeatedly multiplied down to zero.</li>
       <li>The <strong>GRU</strong> (Cho et al., 2014) simplifies the gating into just a reset gate and an update gate, with no separate cell state — fewer parameters than an LSTM, and often comparable performance, but not a strict improvement in either direction.</li>
       <li><strong>Honest framing:</strong> RNNs and LSTMs were the dominant sequence architecture before 2017. The next lesson (<a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series</a>) covers the architecture that has largely superseded them for long sequences — but LSTMs remain a genuinely reasonable, still-current choice for shorter or streaming sequences and lower-compute settings, not an obsolete method.</li>
+      <li><strong>Where it came from:</strong> Sepp Hochreiter's 1991 German-language diploma thesis at TU Munich diagnosed the vanishing gradient. His 1997 LSTM paper with Jürgen Schmidhuber fixed it with a "constant error carousel". The forget gate in today's standard cell was added later, in 2000, by Gers, Schmidhuber &amp; Cummins.</li>
     </ul>
   </div>
 
@@ -89,6 +90,40 @@
       step, by the time you're 50 words in, anything from word 3 has been
       diluted into near-nothingness — which is precisely the vanishing
       gradient problem, described plainly before any equations below.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A student's thesis on why recurrent networks forget</h3>
+    <div class="tl-origin-who">Sepp Hochreiter, supervised by Jürgen Schmidhuber · 1991 thesis, 1997 paper · Technical University of Munich</div>
+    <p>
+    In 1991 Sepp Hochreiter, a student at the Technical University of Munich
+    supervised by Jürgen Schmidhuber, wrote a diploma thesis (roughly a master's
+    thesis) analysing why recurrent networks could not learn long-range
+    dependencies. He showed that the error signal passed back through time
+    shrinks or blows up exponentially, which is the vanishing/exploding gradient
+    problem this lesson describes. That was three years before the Bengio, Simard
+    &amp; Frasconi analysis cited here, but the thesis was written in German and
+    was little known in the English-language literature at first.
+    </p>
+    <p>
+    The fix arrived in their 1997 paper. Its core was what they called the
+    "constant error carousel": a memory cell whose connection to itself passes
+    error back unchanged, with multiplicative gates deciding what gets written
+    and what gets read. One detail matters if you compare the paper with modern
+    code. The original 1997 cell had input and output gates only. The forget gate
+    that is now part of every standard LSTM was added in 2000 by Felix Gers,
+    Schmidhuber and Fred Cummins.
+    </p>
+    <p>
+    The architecture took most of two decades and much more computing power to
+    break through. By the mid-2010s LSTMs were running Google's speech
+    recognition, and in 2016 they were at the heart of Google's neural machine
+    translation system. In finance, LSTMs became the default "deep learning for
+    time series" choice in the late 2010s. One well-known example is Fischer
+    &amp; Krauss (2018) on S&amp;P 500 constituents, which is part of why the
+    honest comparison against simpler models in this lesson still matters.
     </p>
   </div>
 
@@ -510,6 +545,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The GRU merges the cell and hidden state and uses two gates instead of three</strong> — fewer parameters, often comparable performance, genuinely dataset-dependent (Cho et al., 2014).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Gating mitigates, it does not eliminate, gradient decay over very long sequences</strong> — this is the real, current motivation for the attention mechanism in the next lesson, not a strategy claim.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>LSTMs are not obsolete.</strong> Transformers largely supersede them for long sequences, but for shorter, streaming, or lower-compute settings a well-tuned LSTM or GRU remains a genuinely reasonable, still-current choice — check both, don't assume.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>The forget gate was a later addition.</strong> Hochreiter's 1991 thesis diagnosed the problem, and the 1997 LSTM cell solved it with input and output gates. Gers, Schmidhuber &amp; Cummins added the forget gate in 2000.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -595,7 +631,7 @@
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
     <li>Yoshua Bengio, Patrice Simard, and Paolo Frasconi, <em>"Learning Long-Term Dependencies with Gradient Descent is Difficult"</em>, IEEE Transactions on Neural Networks, 5(2), 1994 — the foundational analysis of the vanishing/exploding gradient problem in recurrent networks used throughout this lesson.</li>
-    <li>Sepp Hochreiter and Jürgen Schmidhuber, <em>"Long Short-Term Memory"</em>, Neural Computation, 9(8), 1997 — the original LSTM paper: the forget/input/output gate structure and additive cell-state update.</li>
+    <li>Sepp Hochreiter and Jürgen Schmidhuber, <em>"Long Short-Term Memory"</em>, Neural Computation, 9(8), 1997 — the original LSTM paper: input and output gates around an additive cell-state update (the "constant error carousel"); the forget gate was added later by Gers, Schmidhuber &amp; Cummins (2000).</li>
     <li>Kyunghyun Cho, Bart van Merriënboer, Caglar Gulcehre, Dzmitry Bahdanau, Fethi Bougares, Holger Schwenk, and Yoshua Bengio, <em>"Learning Phrase Representations using RNN Encoder-Decoder for Statistical Machine Translation"</em>, Proceedings of EMNLP, 2014 — the paper introducing the GRU, in the context of a machine translation encoder-decoder system.</li>
     <li>Razvan Pascanu, Tomas Mikolov, and Yoshua Bengio, <em>"On the Difficulty of Training Recurrent Neural Networks"</em>, Proceedings of ICML, 2013 — a widely cited formal treatment of the exploding-gradient direction of the same problem, including gradient clipping as a practical fix.</li>
     <li>Ian Goodfellow, Yoshua Bengio, and Aaron Courville, <em>Deep Learning</em>, MIT Press, 2016 — Chapter 10 covers recurrent networks, LSTM, and GRU architectures with the same notation used in this lesson.</li>

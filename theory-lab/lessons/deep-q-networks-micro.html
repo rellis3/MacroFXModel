@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Deep Q-Networks — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the six-transition worked example, and a 5-question self-test?<a href="deep-q-networks.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">One network, dozens of Atari games, nothing but pixels and the score</h2>
+      <p class="sl-sub">Volodymyr Mnih, Koray Kavukcuoglu, David Silver and colleagues · 2013–2015 · DeepMind, London</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Neural networks plus Q-learning had a reputation for diverging. In 2013 DeepMind, then a small London start-up, showed one network learning several Atari games from screen pixels and the score alone. The 2015 <em>Nature</em> version used the same network and settings across 49 games. Experience replay was borrowed from Long-Ji Lin's early-1990s work.</p>
+        <p>The honest footnote: on games where rewards are rare, most famously <em>Montezuma's Revenge</em>, DQN learned almost nothing. A year later the same lab's AlphaGo beat Lee Sedol 4–1. Its move 37 in game 2 was one it estimated a human would play about 1 time in 10,000. AlphaGo used tree search rather than DQN, but it came from the same deep-RL bet.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The Q-table's fatal flaw: it needs a room, not a page</h2>
       <p class="sl-sub">The Q-learning lesson's worked example — three states, a handful of actions — fit entirely on a page. That was never the hard case.</p>
       <div class="sl-icard-grid">
@@ -38,8 +49,8 @@
       <div class="sl-quote">This lesson exists to fix exactly one limitation — nothing about Q-learning's update rule changes. What changes is what "the thing being updated" <strong>is</strong>: not a table cell, but the weights of a network.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Same update rule, a different container for the estimate</h2>
       <p class="sl-sub">Q(s,a) stops being a table cell and becomes Q(s,a;θ) — a neural network parameterized by weights θ.</p>
       <div class="sl-card">
@@ -101,8 +112,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The DQN loss: the same TD target, now a gradient step</h2>
       <p class="sl-sub">"Update Q(s,a)" becomes "nudge θ so the network's output for (s,a) moves toward this target."</p>
       <div class="sl-row">
@@ -120,8 +131,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why a plain swap isn't enough</h2>
       <p class="sl-sub">Train the naive way — sample transitions in the order they happen, target with the same network being updated — and it's badly unstable.</p>
       <div class="sl-compare">
@@ -137,8 +148,8 @@
       <p class="sl-p">Each problem gets one specific, named fix — not a general "add more data" or "train longer." The next two sections are exactly those two fixes.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Fix 1 — experience replay</h2>
       <p class="sl-sub">Store every transition as it happens. Train on a random sample from the whole history, not the newest arrival.</p>
       <div class="sl-card">
@@ -165,8 +176,8 @@
       <div class="sl-verdict" id="buf-verdict" style="margin-top:10px"></div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Fix 2 — the target network</h2>
       <p class="sl-sub">Freeze a second copy of the network, θ⁻, used only to compute the target. Sync it from θ every N steps — not every step.</p>
       <div class="sl-card">
@@ -204,8 +215,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">How often should θ⁻ get updated?</h2>
       <p class="sl-sub">A smaller N keeps the target fresher but closer to moving under its own updates. A larger N holds it stiller — up to a point, past which it's just stale.</p>
       <div class="sl-card">
@@ -229,8 +240,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it — compute the DQN target and loss yourself</h2>
       <p class="sl-sub">target = r + γ · max Q(s′,a′;θ⁻). loss = (target − Q(s,a;θ))². Starts on the same numbers as the full lesson's worked example.</p>
       <div class="sl-card">
@@ -250,12 +261,12 @@
           <div id="dqn-gamma-note" style="color:var(--amber)"></div>
         </div>
         <button type="button" class="sl-reset-btn" id="dqn-reset">Reset to worked-example numbers</button>
-        <div class="sl-note">θ⁻ is what makes "max Q(s′,a′;θ⁻)" a fixed number you can type in here — it isn't recomputed by this same gradient step, which is the entire point of Section 6.</div>
+        <div class="sl-note">θ⁻ is what makes "max Q(s′,a′;θ⁻)" a fixed number you can type in here — it isn't recomputed by this same gradient step, which is the entire point of Section 7.</div>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Still value-based: the max that doesn't go away</h2>
       <p class="sl-sub">A network in place of a table changes how Q(s,a) is stored. It doesn't change what DQN computes at every target.</p>
       <div class="sl-compare">
@@ -279,8 +290,8 @@
       <div class="sl-quote">Value-based and policy-based aren't rival final answers — they're two tools suited to two different action-space shapes. Discrete-and-small favors DQN; continuous favors policy gradients. The choice between this lesson and the previous one is mostly that shape question.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What a trained guesser doesn't tell you</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">The trade this makes, stated plainly</div>
@@ -293,8 +304,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -344,8 +355,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A Q-table needs one entry per state-action pair — infeasible once the state space is continuous or built from more than a handful of features, because near-identical states almost never repeat exactly.</p></div>
@@ -354,6 +365,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A target network freezes a second copy, θ⁻, for computing the TD target — syncing it from θ only every N steps stops the target from moving under its own updates.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>DQN is still value-based — it still needs max over actions, which is exactly why policy gradients and actor-critic methods exist for continuous action spaces like position size.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A network adds complexity and removes interpretability relative to a table — that makes a poorly specified reward or an unrealistic backtest an easier trap to fall into, not a harder one.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: DeepMind's Atari agent (2013 workshop paper, <em>Nature</em> 2015). It was impressive on games with a dense score and nearly helpless on sparse ones like <em>Montezuma's Revenge</em>, which is worth remembering for markets.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -383,7 +395,7 @@
 <script src="../assets/deck.js"></script>
 <script>
 (function(){
-  // Slide 6 — replay buffer diagram: draw the 6 stored transitions once.
+  // Slide 7 — replay buffer diagram: draw the 6 stored transitions once.
   (function(){
     var g = document.getElementById('dqnm-buf');
     if (!g) return;
@@ -405,7 +417,7 @@
     });
   })();
 
-  // Slide 6 — replay-buffer-size slider: bigger buffer dilutes the "recent,
+  // Slide 7 — replay-buffer-size slider: bigger buffer dilutes the "recent,
   // correlated" window into a shrinking share of the whole pool. Illustrative,
   // not a measured statistic.
   (function(){
@@ -430,7 +442,7 @@
     update();
   })();
 
-  // Slide 8 — target-network sync-frequency slider: illustrative stability
+  // Slide 9 — target-network sync-frequency slider: illustrative stability
   // score, rising steeply then gently declining once the target gets too stale.
   (function(){
     var slider = document.getElementById('freq-slider');
@@ -468,7 +480,7 @@
     update();
   })();
 
-  // Slide 9 — live DQN target/loss calculator, with guards against blank or
+  // Slide 10 — live DQN target/loss calculator, with guards against blank or
   // non-finite input (shows "—" rather than NaN/Infinity).
   (function(){
     var r = document.getElementById('dqn-r');

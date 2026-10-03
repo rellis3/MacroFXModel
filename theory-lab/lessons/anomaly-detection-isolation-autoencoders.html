@@ -36,6 +36,7 @@
       <li>Both methods generalize the classical, univariate rules in <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a> (rolling median/MAD thresholds) to <strong>multivariate</strong> anomalies — a point that looks completely normal on every single variable in isolation, but whose <em>combination</em> of variables has never occurred before.</li>
       <li>Anomaly detection is the pointwise, cross-sectional cousin of <a href="change-point-detection.html">Change-Point Detection</a>'s sequential framing: change-point tools ask "has the process shifted, over time"; anomaly detectors ask "is this individual observation unusual, right now, relative to everything else."</li>
       <li><strong>Mandatory honest framing:</strong> an anomaly score flags "this is statistically unusual" — never "this is wrong," and never "this is a trading opportunity." What counts as unusual always needs a human decision about context, and a model trained on one regime will flag an entirely normal but different regime as one long anomaly.</li>
+      <li><strong>Where it came from:</strong> Liu, Ting &amp; Zhou (Monash and Nanjing, ICDM 2008) stopped modeling "normal" and isolated anomalies directly with random cuts. Deep autoencoders became practical after Hinton &amp; Salakhutdinov's 2006 <em>Science</em> paper.</li>
     </ul>
   </div>
 
@@ -74,6 +75,36 @@
     only ever practiced compressing-and-rebuilding <em>normal</em> patterns gets good at that specific job and
     stays bad at anything unfamiliar — so when a genuinely unusual input comes through, the reconstruction
     comes out noticeably wrong. The size of that mistake is the anomaly score.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Stop describing normal and isolate the odd one out</h3>
+    <div class="tl-origin-who">Fei Tony Liu &amp; Kai Ming Ting (Monash University) and Zhi-Hua Zhou (Nanjing University) · 2008 · IEEE ICDM</div>
+    <p>
+    Before 2008, most anomaly detectors worked by building a profile of
+    "normal", using distances to neighbours or local density, and flagging
+    whatever did not fit. That is expensive on large data sets and depends heavily
+    on getting the profile right. Liu, Ting and Zhou turned the problem around:
+    don't model normal at all. If anomalies really are "few and different", random
+    cuts will isolate them quickly, and the number of cuts is the score.
+    </p>
+    <p>
+    The reversal paid off in practice. The method works on small random
+    subsamples (their default was 256 points per tree), runs in time linear in the
+    data size, and needs no distance or density calculation at all. The ICDM 2008
+    paper won the conference's runner-up award for best theoretical/algorithms
+    paper, and Isolation Forest is now a standard tool for fraud detection and
+    data-quality checks.
+    </p>
+    <p>
+    The autoencoder half of this lesson has an older history. Networks that
+    reconstruct their own input through a bottleneck date back to the 1980s, but
+    deep ones only became practical to train after Geoffrey Hinton and Ruslan
+    Salakhutdinov's 2006 <em>Science</em> paper on reducing dimensionality with
+    neural networks. Both tools reached markets the same way, as checks on whether
+    a combination of readings has been seen before, not as signals.
     </p>
   </div>
 
@@ -407,6 +438,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both are genuinely multivariate.</strong> They catch a bad combination of otherwise-individually-normal variables, closing a structural gap a per-series MAD threshold cannot.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An anomaly score is never "this is wrong" or "this is an opportunity."</strong> It is a measure of statistical rarity relative to training data, full stop — every downstream judgment about what "unusual" means here requires a human.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Regime-trained models flag regime shifts as anomalies.</strong> A model fit on one regime cannot tell "genuinely wrong" apart from "a different, legitimate regime it has simply never seen" — both look identical to it.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Isolation Forest's insight was a reversal.</strong> Earlier detectors profiled normal data. Liu, Ting &amp; Zhou (2008) isolated the rare points directly, which made the method fast enough for small subsamples and linear time.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

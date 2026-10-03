@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Policy Gradients &amp; Actor-Critic — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, MathJax notation, and a 5-question self-test?<a href="policy-gradients-actor-critic.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Balancing a pole with two artificial neurons</h2>
+      <p class="sl-sub">Andrew Barto, Richard Sutton &amp; Charles Anderson · 1983 · University of Massachusetts Amherst — then Ronald Williams · 1992 · Northeastern University</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>In 1983 Andrew Barto, Richard Sutton and Charles Anderson (UMass Amherst) built a learning system to balance a pole on a moving cart, when the only feedback came when the pole fell. One element chose the pushes (the <strong>actor</strong>). An "adaptive critic" element learned to predict failure early (the <strong>critic</strong>).</p>
+        <p>Ronald Williams' REINFORCE (1992) is a deliberately strained acronym: "REward Increment = Nonnegative Factor × Offset Reinforcement × Characteristic Eligibility". The "offset reinforcement" is reward minus a baseline, the same subtraction that becomes the advantage later in this deck.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">When "pick the best action" stops being cheap</h2>
       <p class="sl-sub">Q-learning's update — and acting on it — leans on one operation at every single step.</p>
       <div class="sl-card">
@@ -45,8 +56,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Same decision, two ways to solve it</h2>
       <p class="sl-sub">One underlying choice — how big a position to take — approached three ways.</p>
       <div class="sl-card">
@@ -86,8 +97,8 @@
       <p class="sl-p">This is the entire motivation for everything that follows: keep the max, and continuous actions force a nested optimization problem into every step. Drop the max — parameterize the policy itself and improve it with gradient ascent — and the continuous case stops being special at all.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The fix: learn the policy directly</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">π</div><div><h4>The policy is the thing being learned now</h4><p>π<sub>θ</sub>(a|s) — a function, with its own parameters θ, mapping a state straight to an action or a distribution over actions. No value table sits in between.</p></div></div>
@@ -98,8 +109,8 @@
       <div class="sl-quote">Picture a policy as a slot machine with a dial. Pull the lever, see which action got picked and what return followed. Better than expected → turn the dial slightly <strong>toward</strong> that action. Worse than expected → turn it slightly <strong>away</strong>. Repeat this thousands of times and the dial settles on whatever's actually been paying off. That is the policy gradient theorem — the dial is just a vector of parameters θ, and "turn it toward what worked" is precise calculus (this exact estimator is called REINFORCE, Williams 1992).</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Actor and critic, drawn as a loop</h2>
       <p class="sl-sub">Two networks, one cycle, repeated every step.</p>
       <div class="sl-card">
@@ -144,8 +155,8 @@
       <p class="sl-p">The <strong>actor</strong> is the policy π<sub>θ</sub> itself, updated by the policy gradient. The <strong>critic</strong> is a separately learned value function, typically trained with the exact TD(0) update from the previous lesson: V(s) ← V(s) + α[r + γV(s′) − V(s)]. The bracketed term there — the TD error — is, to a first approximation, the same quantity as the advantage used to weight the actor's update. Two lessons, converging on one number.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Why a baseline makes the signal usable</h2>
       <p class="sl-sub">Raw REINFORCE works, but the weight it uses — an entire trajectory's return — is noisy.</p>
       <div class="sl-compare">
@@ -169,8 +180,8 @@
       <div class="sl-quote">Grading a test score against zero tells you little; grading it against how the class usually does on that exact test tells you something. The advantage does this for actions — it compares an action's outcome to what this state usually delivers, so only genuinely above- or below-average choices push the policy around.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A continuous policy, in motion</h2>
       <p class="sl-sub">Drag the state input. The policy's output — a position-size fraction — slides along a fixed curve, no lookup table involved.</p>
       <div class="sl-card">
@@ -198,8 +209,8 @@
       <p class="sl-p">The curve is π<sub>θ</sub>'s mean output as a function of state — here, a momentum-style state feature mapped through a fixed Gaussian policy to a fraction of maximum position size. Nothing here is a lookup: given any state at all, even one never seen in training, the policy evaluates the same closed-form expression and returns an action.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One policy-gradient-style update, live</h2>
       <p class="sl-sub">A simplified illustration of the core move: reward beat the baseline, so nudge the parameter toward what just happened.</p>
       <div class="sl-card">
@@ -226,8 +237,8 @@
       <p class="sl-p">This is a deliberately simplified stand-in for the real update — the actual policy gradient scales the step by the score function ∇<sub>θ</sub>log π<sub>θ</sub>(a|s), not by a flat 1-to-1 nudge — but the shape of the logic is identical: advantage decides direction and rough magnitude, the learning rate decides how much any single sample is allowed to move things.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🛡</div><div><h4>PPO &amp; TRPO constrain each step</h4><p>A single large gradient step can catastrophically change the policy — and the data used to estimate the next gradient along with it. Proximal Policy Optimization and Trust Region Policy Optimization cap how far one update is allowed to move.</p></div></div>
@@ -237,8 +248,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">A powerful optimizer says nothing about what it's optimizing</h2>
       <div class="sl-quote">Think of RL as an incredibly obedient genie: whatever wish you phrase as a reward, it grants exactly and only that wish, as literally as possible, with zero judgment about whether the wish was a good idea. Ask it to maximize profit with no mention of risk, and it will happily find the riskiest possible way to make money look great in a test environment — not because it misunderstood, but because it did precisely what it was asked, and nothing more.</div>
       <p class="sl-p">This is not a caveat about a weak implementation — it's the structural nature of what an optimizer is. A reward defined as raw PnL with no drawdown penalty will train a policy that takes on catastrophic tail exposure, because nothing in the reward said not to. A simulated environment with no transaction costs, no market impact, or any look-ahead will get "solved" beautifully — the optimizer did exactly what it was asked, and what it was asked for was wrong. This failure mode has a name: <strong>reward hacking</strong>, or specification gaming, and it is one of the single most-documented ways applied reinforcement learning quietly goes wrong.</p>
@@ -252,8 +263,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -303,8 +314,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Q-learning's max over actions is cheap for a short discrete menu and intractable for a continuous action space — it becomes a nested optimization problem at every single step.</p></div>
@@ -313,6 +324,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Actor-critic pairs that policy (the actor) with a learned value function (the critic), using the critic's advantage estimate to sharply cut the update's variance.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The previous lesson's TD error and this lesson's advantage are, to a first approximation, the same number — two lessons converging on one quantity.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of this is a trading edge. RL faithfully optimizes whatever reward and environment it's handed — a misspecified reward or an unrealistic simulator gets "solved" beautifully while still failing live.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Barto, Sutton &amp; Anderson's 1983 pole-balancing actor and "adaptive critic", followed by Williams' REINFORCE (1992), whose acronym already includes the baseline.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

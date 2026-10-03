@@ -36,6 +36,7 @@
       <li><strong>Hierarchical (agglomerative) clustering</strong> builds a full dendrogram instead: start with every point as its own cluster, repeatedly merge the two closest clusters by some linkage rule (single, complete, or average), and record every merge — no \(k\) needs to be chosen upfront, only where to cut the finished tree.</li>
       <li>This Theory Lab's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> lesson already uses exactly this dendrogram-building technique — for one specific purpose, allocating portfolio weight down the tree. This lesson is the general-purpose version of the same tool: the same dendrogram machinery applies just as directly to regime discovery, grouping similar instruments by behavior, or any other "what clusters with what" question that has nothing to do with position sizing.</li>
       <li><strong>The mandatory caveat:</strong> clustering is unsupervised — there is no ground-truth label to check a clustering's answer against. A clean-looking split into groups is not, by itself, evidence that the groups mean anything; every clustering result has to be sanity-checked against real domain knowledge, never trusted just because an algorithm produced it.</li>
+      <li><strong>Where it came from:</strong> Stuart Lloyd's 1957 Bell Labs work on digitizing telephone signals (PCM), which was not published until 1982. James MacQueen named it "k-means" in 1967. Rosario Mantegna's 1999 correlation tree of US stocks brought hierarchical clustering to market structure.</li>
     </ul>
   </div>
 
@@ -97,6 +98,38 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>k-means is like being handed exactly 4 empty boxes and told "sort your toys into these 4 boxes so similar toys end up together" — you have to decide on 4 boxes before you even start. Hierarchical clustering is different: you just keep taping the two most similar toys together, over and over, until it's all one giant taped-together pile, and you can look at the tape lines afterward to decide where you'd want to cut it into however many groups you actually want.</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Digitizing telephone speech at Bell Labs</h3>
+    <div class="tl-origin-who">Stuart Lloyd · 1957 (published 1982) · Bell Telephone Laboratories — the name "k-means" from James MacQueen · 1967</div>
+    <p>
+    Stuart Lloyd was not trying to group anything. At Bell Labs in 1957 he was
+    working on pulse-code modulation (PCM), turning a continuous voice signal into
+    a small set of discrete levels so it could be transmitted digitally. The
+    question was which levels to use so the squared error between the real signal
+    and its digitized version is as small as possible. His answer alternated two
+    steps: put each boundary halfway between neighbouring levels, then move each
+    level to the mean of the signal values that fall in its interval. That is the
+    assign/update loop of this lesson, in one dimension.
+    </p>
+    <p>
+    The work circulated as an internal Bell Labs report and was not published
+    in a journal until 1982, in <em>IEEE Transactions on Information Theory</em>,
+    some twenty-five years later. Meanwhile others reached the same idea
+    independently. Hugo Steinhaus in Poland (1956) and Edward Forgy (1965) both
+    did, and James MacQueen gave it the name "k-means" in 1967. The algorithm
+    everyone runs today still carries Lloyd's name.
+    </p>
+    <p>
+    The market-structure line came from physics. In 1999 Rosario Mantegna
+    turned stock-return correlations into distances and built a hierarchical tree
+    of US stocks. The tree recovered sensible industry groupings without being
+    told what the industries were. The idea of turning correlations into distances
+    and building a tree from them is the same one this lab's <a href="hierarchical-risk-parity.html">Hierarchical Risk
+    Parity</a> lesson uses to build its dendrogram.
+    </p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -622,6 +655,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither the elbow method nor the silhouette score gives a provably correct k.</strong> Both are heuristics for a judgment call, and they can disagree with each other on the identical data.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>k-means assumes roughly round, similarly-sized clusters and needs standardized features and multiple restarts.</strong> None of these are optional in a serious application.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Clustering is unsupervised — there is no ground truth to validate against.</strong> A clean-looking cluster split is never, by itself, proof the groups are meaningful; every result needs an independent sanity check against real domain knowledge before being trusted.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>k-means started as a telephone-engineering trick.</strong> Lloyd's 1957 Bell Labs method for choosing quantization levels went unpublished for 25 years. The market-structure use of clustering came later, from Mantegna's 1999 stock-correlation tree.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

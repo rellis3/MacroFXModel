@@ -37,6 +37,7 @@
       <li>Averaging \(B\) correlated estimators does not drive variance to zero as \(B\to\infty\); it converges to \(\rho\sigma^2\), where \(\rho\) is the average pairwise correlation between trees. Feature subsampling lowers \(\rho\) directly — this, not just "more trees," is the actual lever.</li>
       <li>Forests naturally produce a genuinely useful practical output: <strong>feature importance</strong> (mean decrease in impurity, or the more reliable permutation importance) — and an internal, free validation estimate from the roughly one-third of rows left out of each bootstrap sample (out-of-bag error).</li>
       <li>None of this says a specific feature set fed into a forest produces real trading edge — a strong general-purpose method and a validated signal are two different claims, kept separate throughout this lesson.</li>
+      <li><strong>Where it came from:</strong> Leo Breiman, a probabilist who spent about thirteen years as a freelance consultant before joining Berkeley. He co-wrote CART (1984), then published bagging (1996) and random forests (2001). In "The Two Cultures" (2001) he argued that statistics should judge models by out-of-sample prediction.</li>
     </ul>
   </div>
 
@@ -96,6 +97,40 @@
       genuine signal — the pattern that shows up no matter which resample or
       feature subset a tree was given — survives the averaging and comes
       through in the vote.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A statistician who spent thirteen years as a consultant</h3>
+    <div class="tl-origin-who">Leo Breiman · CART 1984, bagging 1996, random forests 2001 · University of California, Berkeley</div>
+    <p>
+    Leo Breiman did not take the usual academic path. As he recounted in 2001,
+    after about seven years as a probability theorist at UCLA he resigned and
+    spent some thirteen years as a full-time freelance consultant, before joining
+    the Berkeley statistics department in 1980. His projects included predicting
+    next-day ozone levels in Los Angeles and identifying chlorine-containing
+    compounds from mass-spectra data. Problems like those convinced him that what
+    matters is how well a model predicts data it has not seen, not how elegant
+    its assumptions are.
+    </p>
+    <p>
+    That practical streak runs through the tree lineage in this lesson: CART
+    with Friedman, Olshen and Stone in 1984, bagging in 1996, and random forests
+    in 2001. The forest's random feature subsets built on earlier work, including
+    Tin Kam Ho's "random decision forests" at Bell Labs (1995) and Amit and
+    Geman's randomized trees.
+    </p>
+    <p>
+    In the same year as the forest paper, Breiman published "Statistical
+    Modeling: The Two Cultures". He estimated that 98% of statisticians worked in
+    a "data modeling" culture (assume a stochastic model, estimate its
+    parameters) and only 2% in an "algorithmic modeling" culture (treat the
+    mechanism as unknown and judge models by predictive accuracy). He argued the
+    field was far too committed to the former, and leading statisticians
+    including David Cox and Brad Efron published replies pushing back. Today
+    forests are a standard baseline in cross-sectional return-prediction studies,
+    such as Gu, Kelly &amp; Xiu (2020).
     </p>
   </div>
 
@@ -630,6 +665,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Averaging \(B\) correlated trees converges to a variance floor of \(\rho\sigma^2\), not zero.</strong> Lowering the trees' pairwise correlation matters as much as growing more of them.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Feature importance (MDI or permutation) and OOB error are genuinely useful, low-cost byproducts</strong> of the bagging design — not something bolted on afterward.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A trained forest's feature importances say nothing on their own about real trading edge.</strong> That question needs a genuine out-of-sample test with costs, kept entirely separate from "the method works well in general."</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Random forests came out of consulting, not theory.</strong> Breiman's years spent on real prediction problems led to CART, bagging and forests, and to his 2001 "Two Cultures" argument that predictive accuracy on new data should be the test.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

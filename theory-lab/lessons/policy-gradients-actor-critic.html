@@ -37,6 +37,7 @@
       <li>Actor-critic methods use a learned value function (the "critic") to build an advantage estimate \(A(s,a)=Q(s,a)-V(s)\), which replaces the raw, noisy return in the policy gradient — the actor is the policy being updated by that gradient; the critic is what makes the gradient estimate far less noisy.</li>
       <li>The TD error from the previous lesson, \(r+\gamma V(s')-V(s)\), <em>is</em> a one-step estimate of the advantage — the two lessons converge on the same quantity from different directions.</li>
       <li><strong>Mandatory honest framing:</strong> RL is a general-purpose optimizer, not a trading strategy. It will optimize whatever reward and environment you hand it — including a poorly specified reward or an unrealistic simulator — and "solve" it beautifully while still failing live. This lesson explains a method, not an edge.</li>
+      <li><strong>Where it came from:</strong> The actor-critic idea comes from Barto, Sutton &amp; Anderson's 1983 pole-balancing system, which had an "adaptive critic" element. REINFORCE comes from Ronald Williams (1992), whose acronym spells out "offset reinforcement", in other words reward minus a baseline.</li>
     </ul>
   </div>
 
@@ -91,6 +92,40 @@
       action's outcome was. No action ever needs to be the provably single
       best one at any given moment — the policy just needs to keep shifting,
       gradually and correctly, toward whatever has been working.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Balancing a pole with two artificial neurons</h3>
+    <div class="tl-origin-who">Andrew Barto, Richard Sutton &amp; Charles Anderson · 1983 · University of Massachusetts Amherst — then Ronald Williams · 1992 · Northeastern University</div>
+    <p>
+    The actor-critic split is decades older than deep learning. In 1983 Andrew
+    Barto, his student Richard Sutton and Charles Anderson published a paper titled
+    "Neuronlike adaptive elements that can solve difficult learning control
+    problems". The task was to balance a pole hinged on a moving cart, and the only
+    feedback came when the pole fell over. Their system had two parts. One element
+    chose which way to push (the actor). An "adaptive critic" element learned to
+    predict failure and turned that rare, late signal into an earlier and richer
+    one (the critic). That is the same division of labour this lesson
+    describes.
+    </p>
+    <p>
+    Ronald Williams' 1992 paper (in Further reading) gave the general
+    score-function recipe. The name REINFORCE is a deliberately strained
+    acronym. Williams spelled it out as "REward Increment = Nonnegative Factor
+    × Offset Reinforcement × Characteristic Eligibility". The "offset
+    reinforcement" in that phrase is reward minus a baseline, the same
+    variance-reducing subtraction that becomes the advantage in this lesson. The
+    formal policy gradient theorem for function approximation followed from
+    Sutton and colleagues around 2000.
+    </p>
+    <p>
+    Descendants of these ideas did very visible work later. PPO, a policy
+    gradient method, trained OpenAI's Dota 2 team in 2018–19 and is used in RLHF
+    for large language models. For trading, the appeal is the same as for the
+    cart-pole: a continuous action, such as a push or a position size, chosen
+    directly by a policy.
     </p>
   </div>
 
@@ -499,6 +534,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The TD error from the previous lesson is a one-step estimate of the advantage.</strong> Actor-critic methods are, in substance, TD learning's critic feeding a policy-gradient actor.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>None of this is a trading edge — it's an optimizer.</strong> RL will faithfully optimize a poorly specified reward or an unrealistic simulated environment and "solve" it beautifully while failing live. State this every time this machinery is proposed for a real strategy, not just once in a lesson.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Raw policy gradient estimates are noisy and updates can be unstable.</strong> Production methods (PPO, TRPO, GAE) exist specifically to constrain how far a single update is allowed to move the policy.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>The actor-critic split started with balancing a pole on a cart.</strong> Barto, Sutton &amp; Anderson (1983) used one learning element to push and one to criticise. Williams' REINFORCE (1992) already had the baseline built into its name.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

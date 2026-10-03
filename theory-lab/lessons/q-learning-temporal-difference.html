@@ -37,6 +37,7 @@
       <li>SARSA is the on-policy sibling: it bootstraps off \(Q(s',a')\) for the action \(a'\) actually taken, not the best one — the two differ only in that one substitution, with real behavioral consequences.</li>
       <li>Worked example in this lesson: explicit Q-table updates on the same 3-state flat/long/short MDP from the previous lesson, converging (with a constant step size) toward — but not exactly onto — the \(Q^*\) values solved for by hand there.</li>
       <li>Model-free learning removes the previous lesson's biggest limitation (needing \(P\) and \(R\) up front) but trades it for a new one: you need enough sampled experience, and enough exploration, for the estimates to actually converge.</li>
+      <li><strong>Where it came from:</strong> TD learning was formalized by Richard Sutton (1988), with roots in Arthur Samuel's 1959 checkers program. Q-learning came from Chris Watkins' 1989 Cambridge PhD thesis, <em>Learning from Delayed Rewards</em>, which was framed around how animals learn when rewards arrive late. Tesauro's self-taught TD-Gammon (1992) was the first famous success.</li>
     </ul>
   </div>
 
@@ -96,6 +97,39 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Imagine guessing how a road trip will go. Waiting for the whole trip to finish before learning anything is Monte Carlo — accurate, but slow, and one weird detour can throw the whole lesson off. Temporal-difference learning is like updating your guess after every single mile, using your best current guess about the rest of the trip — quicker feedback, even though that guess about "the rest of the trip" is itself still a work in progress.</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Learning from delayed rewards, the way animals do</h3>
+    <div class="tl-origin-who">Chris Watkins · 1989 · University of Cambridge (PhD thesis), building on Richard Sutton's TD learning (1988)</div>
+    <p>
+    The "nudge an earlier guess toward a later one" idea is older than its name.
+    Arthur Samuel's checkers-playing program at IBM, described in 1959, improved
+    its scoring of board positions by pulling earlier position scores toward the
+    scores of positions that came later in the game. Richard Sutton, whose work
+    grew partly out of models of how animals learn by conditioning, formalized
+    this as temporal-difference learning in 1988 (the paper is in Further
+    reading below).
+    </p>
+    <p>
+    Q-learning itself came from Chris Watkins' 1989 PhD thesis at Cambridge,
+    titled <em>Learning from Delayed Rewards</em>. Watkins framed the question in
+    terms of animal behaviour: how can a creature learn which actions pay off
+    when the payoff arrives long after the choice, and without any model of how
+    its world works? His answer was to learn the value of state-action pairs
+    directly, which is the update in this lesson. The convergence proof came
+    three years later, with Peter Dayan, in the 1992 paper cited below.
+    </p>
+    <p>
+    The demonstration that made people pay attention was Gerald Tesauro's
+    TD-Gammon at IBM in 1992. It combined TD learning with a small neural network
+    and taught itself backgammon by playing against itself, reaching a level close
+    to the world's best players. Some of its unconventional opening moves led
+    strong human players to rethink established opening theory. In markets, the
+    attraction is the same: learn from a stream of (state, action, reward, next
+    state) without first writing down a model of the market.
+    </p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -465,6 +499,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SARSA changes exactly one term — the max becomes the actually-taken next action — making it on-policy instead.</strong> It learns the value of the policy actually being followed, exploration and all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A constant learning rate converges to a neighborhood of \(Q^*\), not exactly onto it.</strong> Formal convergence needs a decaying step size satisfying the Robbins-Monro conditions.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Exploration isn't optional — it's part of the convergence guarantee.</strong> Every state-action pair needs to be visited enough for its Q-value to be learned correctly; a purely greedy behavior policy can permanently miss better alternatives.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>The idea came from animal learning and games, not trading.</strong> Watkins' 1989 thesis asked how a creature learns from delayed rewards, and TD-Gammon (1992) showed the approach could teach itself expert-level backgammon. Its appeal for markets is the same model-free learning.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

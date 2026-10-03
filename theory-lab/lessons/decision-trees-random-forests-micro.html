@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Decision Trees &amp; Random Forests — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, and a 6-question self-test?<a href="decision-trees-random-forests.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">A statistician who spent thirteen years as a consultant</h2>
+      <p class="sl-sub">Leo Breiman · CART 1984, bagging 1996, random forests 2001 · University of California, Berkeley</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Leo Breiman left a probability post at UCLA and spent about thirteen years as a freelance consultant, working on problems like forecasting Los Angeles ozone levels, before joining Berkeley in 1980. That convinced him a model should be judged by how well it predicts new data.</p>
+        <p>He co-wrote CART (1984), then published bagging (1996) and random forests (2001), building on Tin Kam Ho's 1995 "random decision forests". In "The Two Cultures" (2001) he estimated that 98% of statisticians assumed a data model and only 2% judged models by prediction, and argued the balance was wrong.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Twenty questions, asked by an algorithm</h2>
       <p class="sl-sub">A decision tree is built by repeatedly asking the single most useful yes/no question about the data it still has left.</p>
       <div class="sl-icard-grid">
@@ -38,8 +49,8 @@
       <div class="sl-quote">If "tree" already sounds familiar from earlier in this curriculum: hierarchical risk parity built a tree too, but bottom-up and for a completely different job — clustering similar assets together by correlation distance into a dendrogram, then using it to allocate portfolio weight. A decision tree grows top-down instead, splitting rows of data by a feature's value to predict a target. Same branching shape, unrelated purpose.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Follow one example down the tree</h2>
       <p class="sl-sub">Same small tree throughout — three questions, two features, one final prediction. Step through it.</p>
       <div class="sl-card">
@@ -134,8 +145,8 @@
       <p class="sl-p">Every internal node is one binary question; every leaf's prediction is just a mean. Nothing here is estimated live — the numbers are illustrative of the structure this recursive splitting produces, not a fitted model.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A tree with no limits doesn't stop asking</h2>
       <p class="sl-sub">The same splitting rule, run with a stopping point versus run without one.</p>
       <div class="sl-compare">
@@ -165,8 +176,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What overfitting actually looks like, drawn</h2>
       <p class="sl-sub">Eight points, two of them mislabeled by noise. One fit threads every point exactly; the other one doesn't.</p>
       <div class="sl-card">
@@ -200,8 +211,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Fix #1 — bagging: many trees, many resamples</h2>
       <p class="sl-sub">Bootstrap aggregating ("bagging"): train each tree on its own resample of the training rows, drawn with replacement.</p>
       <div class="sl-card">
@@ -219,8 +230,8 @@
       <p class="sl-p">Averaging \(B\) independent, equally-good estimators, each with variance σ², produces an average with variance σ²/B — variance falls straight toward zero as B grows, while bias barely moves, since averaging equally-biased predictors doesn't shift the expectation. That's the entire case for bagging in one sentence: many high-variance, low-bias trees, averaged, keep the low bias and lose most of the variance.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The catch: bootstrap-trained trees aren't independent</h2>
       <p class="sl-sub">They all still come from the exact same underlying dataset.</p>
       <div class="sl-callout amber">
@@ -231,8 +242,8 @@
       <p class="sl-p">This is the setup for the next section: if the floor ρσ² is the real limit, the only way to genuinely improve a forest past what bagging alone offers is to actively push ρ — the correlation between trees — down.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">More trees helps — until it doesn't</h2>
       <p class="sl-sub">Drag the slider. Variance falls fast at first, then flattens toward the ρσ² floor — it never reaches zero.</p>
       <div class="sl-card">
@@ -257,8 +268,8 @@
       <p class="sl-p">Growing B from 100 to 10,000 keeps shrinking the (1 − ρ)σ²/B term, but the forest's variance never drops below ρσ². If the trees are highly correlated to begin with, no amount of extra trees fixes that — which is exactly the problem the next section's trick is aimed at.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Fix #2 — random forest's extra trick</h2>
       <p class="sl-sub">Bagging resamples the rows. A random forest also resamples the <em>features</em> — separately, at every single split.</p>
       <div class="sl-compare">
@@ -287,8 +298,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute the variance floor yourself</h2>
       <p class="sl-sub">Var(ensemble) = ρσ² + (1 − ρ)σ²/N. Change any input, live.</p>
       <div class="sl-card">
@@ -314,8 +325,8 @@
       <p class="sl-p">Notice that pushing N from 50 toward a very large number barely moves the result once ρ is fixed — the second term is already small. Pushing ρ down, instead, moves both terms. That's the whole practical argument for random forest's feature-subsampling trick over "just add more trees."</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What a trained forest hands you for free</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Feature importance</h4><p>Because the forest already tracks every split every tree made, it can report which features it leaned on most — either cheaply (mean decrease in impurity) or more reliably (permutation importance, which shuffles a feature and measures how much error rises).</p></div></div>
@@ -328,8 +339,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -379,8 +390,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A decision tree recursively splits data on the feature and threshold that most reduces impurity, building yes/no questions down to leaf nodes that predict a mean.</p></div>
@@ -389,6 +400,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Random forests add one more twist: only a random subset of features is considered at each split, decorrelating the trees further than bagging alone manages.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Averaging B correlated trees never reaches zero variance — it converges to a floor of ρσ², set by tree correlation, not by tree count.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Feature importance and out-of-bag error come essentially free from the bagging design — but neither one, by itself, is evidence of real trading edge.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Leo Breiman, a consultant-turned-Berkeley statistician whose CART, bagging and random forests all came from treating prediction on new data as the real test.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

@@ -36,6 +36,7 @@
       <li><strong>Self-attention</strong> applies this within a single sequence (queries, keys, and values all come from the same input); <strong>multi-head attention</strong> runs several attention computations in parallel with different learned projections, so different heads can specialize in different kinds of relationships between positions.</li>
       <li>The direct cost of "everyone looks at everyone" is an \(n\times n\) attention matrix — \(O(n^2)\) time and memory in sequence length \(n\). Time-series-specific architectures like the <strong>Temporal Fusion Transformer</strong> (Lim et al., 2021) and <strong>Informer</strong> (Zhou et al., 2021) exist specifically to make long-sequence forecasting tractable despite this cost.</li>
       <li><strong>Mandatory honest framing:</strong> transformers are now the dominant architecture for large-scale sequence modeling, but they need substantially more data and compute than LSTMs to realize that advantage. For shorter, lower-data time series — which most individual market series genuinely are — the benefit over a well-tuned classical or LSTM approach is not guaranteed and must be tested empirically, not assumed from the model's reputation in NLP or vision.</li>
+      <li><strong>Where it came from:</strong> Bahdanau, Cho &amp; Bengio (2014) added attention to recurrent translation models to get around a fixed-length "summary vector" bottleneck. In 2017 eight Google researchers dropped the recurrence entirely in "Attention Is All You Need", and their architecture became the "T" in GPT.</li>
     </ul>
   </div>
 
@@ -93,6 +94,38 @@
       sum to one, and the output is just a weighted blend of every position's
       value — exactly the "everyone speaks, weighted by relevance" picture,
       made numeric.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A translation bottleneck, then a paper that dropped the recurrence</h3>
+    <div class="tl-origin-who">Dzmitry Bahdanau, Kyunghyun Cho &amp; Yoshua Bengio · 2014 · Université de Montréal — then Vaswani et al. · 2017 · Google Brain &amp; Google Research</div>
+    <p>
+    Attention was invented to fix machine translation, not forecasting. Neural
+    translation systems in 2014 squeezed a whole source sentence into one
+    fixed-length vector before writing out the translation, and quality fell off
+    on long sentences. Working in Yoshua Bengio's lab in Montréal, Dzmitry
+    Bahdanau, with Kyunghyun Cho (who also co-created the GRU from the previous
+    lesson), let the decoder look back over every source word and learn how much
+    weight to give each one at each step. That is attention, bolted onto a
+    recurrent network.
+    </p>
+    <p>
+    In 2017 a team of eight at Google asked what would happen if they kept the
+    attention and threw the recurrence away entirely. The answer was "Attention
+    Is All You Need". Their transformer beat the previous best results on the
+    standard English-to-German and English-to-French translation benchmarks and
+    trained far faster, because every position could be processed in parallel.
+    The paper lists all eight authors as equal contributors in a randomly ordered
+    list.
+    </p>
+    <p>
+    The architecture became the "T" in GPT, and within a few years all eight
+    authors had left Google, several of them to found AI companies. Time-series
+    versions followed, including the Temporal Fusion Transformer from Oxford and
+    Google researchers. Whether that pedigree carries over to short, noisy market
+    series is the open question this lesson keeps returning to.
     </p>
   </div>
 
@@ -507,6 +540,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Full attention costs \(O(n^2)\) in sequence length.</strong> The Temporal Fusion Transformer and Informer exist specifically to make long financial or macro sequences tractable despite this cost.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A transformer's dominance in NLP and vision is not evidence it will beat a well-tuned LSTM or classical model on a short, noisy market series.</strong> Transformers need substantially more data and compute to realize their advantage — test empirically, every time, rather than assuming from reputation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A causal attention mask is mandatory for forecasting.</strong> Without one, a model can trivially attend to future positions, producing backtest results that are pure look-ahead leakage rather than a genuine forecasting result.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Attention was built for translation.</strong> It started as a 2014 fix for long sentences in recurrent translation models and became a full architecture with Google's 2017 transformer. Its record in language says nothing yet about short market series.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

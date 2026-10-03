@@ -37,6 +37,7 @@
       <li>The difference is pure geometry: a circle (L2) almost never touches an elliptical loss contour at an axis point; a diamond (L1) very often does, because its corners <em>are</em> the axis points.</li>
       <li><strong>Elastic Net</strong> (Zou &amp; Hastie, 2005) blends both penalties — LASSO's sparsity plus Ridge's stability when predictors are correlated in groups.</li>
       <li>The worked example fits a toy 3-predictor regression with one real signal, one near-duplicate of it, and one pure noise column: OLS gives unstable, even sign-flipped coefficients; Ridge shrinks all three smoothly; LASSO zeroes the duplicate and the noise column exactly, keeping only the real signal.</li>
+      <li><strong>Where it came from:</strong> Ridge came from Arthur Hoerl's "ridge analysis" of chemical processes at DuPont (formalized with Kennard, 1970). The LASSO came from Robert Tibshirani (1996), inspired by Breiman's non-negative garrote. It drew little attention until the LARS algorithm (2004) made it cheap to compute.</li>
     </ul>
   </div>
 
@@ -103,6 +104,43 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>OLS is a kid packing a suitcase who's been told "bring anything that might be useful" — so they bring everything, including things that don't help at all, and the suitcase is a mess. Ridge is a parent who says "fine, bring it all, but everything gets squeezed smaller." LASSO is a parent who says "no — if it's not actually useful, it's not going in the bag at all."</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A chemical engineer's ridge and a statistician's lasso</h3>
+    <div class="tl-origin-who">Arthur Hoerl &amp; Robert Kennard · 1970 · DuPont — Robert Tibshirani · 1996 · University of Toronto</div>
+    <p>
+    Ridge regression came out of industry. Arthur Hoerl worked in the
+    statistics group at DuPont, where he was asked to optimize chemical processes
+    with many interacting variables. He had developed a response-surface
+    technique he called "ridge analysis" (1959), and in 1962 he applied it to
+    regressions on poorly-conditioned, highly correlated data, which is where the
+    name comes from. The formal treatment with Robert Kennard followed in
+    <em>Technometrics</em> in 1970. Essentially the same mathematics had been
+    developed independently in Soviet mathematical physics by Andrey Tikhonov for
+    "ill-posed" problems, which is why the L2 penalty is also called Tikhonov
+    regularization.
+    </p>
+    <p>
+    The LASSO came from Robert Tibshirani, then at the University of Toronto.
+    In his 2011 retrospective he named Leo Breiman's "non-negative garrote"
+    (1995) as his most direct influence. The 1996 paper did not attract much
+    attention for years. Computing it relied on general-purpose
+    quadratic-programming solvers that scaled poorly and offered little insight.
+    That changed with the LARS algorithm (Efron, Hastie, Johnstone and
+    Tibshirani, published in 2004), which traced the whole path of solutions
+    cheaply, and after that the LASSO became one of the most used tools in
+    statistics. A closely related L1 idea, "basis pursuit", arose independently
+    in signal processing (Chen, Donoho and Saunders, 1998).
+    </p>
+    <p>
+    Finance runs on the same idea under other names. Ledoit and Wolf's
+    shrinkage of the sample covariance matrix (2004) is one example, and
+    L1-penalized selection from the "factor zoo" of published return predictors
+    is another. Both trade a little bias for a lot less variance, as this lesson
+    does.
+    </p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -586,6 +624,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example: OLS gave unstable, even sign-flipped coefficients under collinearity; Ridge shrank all three smoothly; LASSO zeroed the redundant and noise predictors exactly.</strong></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Standardize predictors before regularizing, and choose λ only by cross-validation.</strong> Both penalties are scale-dependent, and in-sample fit always favors λ=0 by construction.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>LASSO's selected variables are not a validated causal claim.</strong> Which predictor survives among a correlated group can flip across resamples — treat the selection as informative, not definitive.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Both penalties came from practical problems.</strong> Ridge came from DuPont process engineering. The LASSO sat largely unused for years until a faster algorithm (LARS, 2004) made it practical, a reminder that an idea's usefulness can depend on how easy it is to compute.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
