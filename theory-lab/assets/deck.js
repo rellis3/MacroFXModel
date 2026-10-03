@@ -142,4 +142,38 @@
       });
     });
   });
+
+  // On a phone the "read the complete lesson" banner costs about a fifth of the
+  // screen, so the slide has to be scrolled from the first moment. Show it long
+  // enough to be read, then fold it away (after 3s, or on the first scroll or
+  // navigation, whichever comes first) and leave a compact "Full lesson" link in
+  // the top bar so the way out is never lost. Wider screens keep the banner.
+  (function(){
+    var note = document.querySelector('.sl-fullnote');
+    if (!note || !window.matchMedia || !window.matchMedia('(max-width: 700px)').matches) return;
+    var link = note.querySelector('a');
+    var done = false;
+    function collapse(){
+      if (done) return;
+      done = true;
+      note.classList.add('sl-fullnote-gone');
+      note.setAttribute('aria-hidden', 'true');
+      if (link) link.setAttribute('tabindex', '-1');
+      var count = document.querySelector('.sl-topcount');
+      if (link && count) {
+        var a = document.createElement('a');
+        a.className = 'sl-fulllink';
+        a.href = link.getAttribute('href');
+        a.textContent = 'Full lesson';
+        a.setAttribute('aria-label', 'Read the complete lesson');
+        count.parentNode.insertBefore(a, count);
+      }
+    }
+    setTimeout(collapse, 3000);
+    viewport.addEventListener('scroll', collapse, { passive: true, once: true });
+    viewport.addEventListener('touchstart', collapse, { passive: true, once: true });
+    prevBtn.addEventListener('click', collapse);
+    nextBtn.addEventListener('click', collapse);
+    document.addEventListener('keydown', collapse, { once: true });
+  })();
 })();
