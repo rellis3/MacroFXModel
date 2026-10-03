@@ -421,3 +421,6 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 .tl-verdict-ledger{margin-top:8px;font-size:12px}
 .tl-verdict-ledger summary{cursor:pointer;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px}
 .tl-verdict-ledger p{margin:6px 0 0;color:var(--text2);line-height:1.55}
+/* The link in a .tl-chain that IS the lesson's own concept (label it "★ This lesson · …"). */
+.tl-chain-link.concept{border:2px solid var(--purple);background:var(--purple-bg)}
+.tl-chain-link.concept b{color:var(--purple)}

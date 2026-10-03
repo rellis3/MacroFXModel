@@ -181,3 +181,5 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 .sl-stamp-ledger{margin-top:8px;font-size:12px}
 .sl-stamp-ledger summary{cursor:pointer;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px}
 .sl-stamp-ledger p{margin:6px 0 0;color:var(--text2);line-height:1.5}
+.sl-chain-link.concept{border:2px solid var(--purple);background:var(--purple-bg)}
+.sl-chain-link.concept b{color:var(--purple)}

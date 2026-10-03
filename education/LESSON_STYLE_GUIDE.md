@@ -387,6 +387,10 @@ through, and what this desk found when it tested the claim.
 </div>
 ```
 
+Mark the one link that is the lesson's own concept with `.concept` (purple, 2px) and a
+"★ This lesson · …" label: `<div class="tl-chain-link concept"><b>★ This lesson · VaR</b>…</div>`
+(slides: `.sl-chain-link.concept`). No inline styles on chain links.
+
 `.tl-verdict` variants match `js/deskEvidence.js`: `validated` (green), `null`
 (red), `context` (blue), `underpowered` / `untested` (amber). Quote the ledger
 entry's own numbers; never round a null up. Slide decks use `.sl-chain` /
