@@ -29,6 +29,9 @@ import { crossSourceRead } from './js/sourceConflict.js';
 import { loadCvolSeries as cvolSeriesFor, cvolMeta as _cvolMeta } from './js/impliedVolCore.js';
 import { constantMaturityIV } from './js/ivMetrics.js';
 import { health as _dataHealth } from './js/dataHealth.js';
+import { FEEDS as _DATA_FEEDS, FEED_CATEGORIES as _DATA_FEED_CATEGORIES, IGNORE_HOSTS as _DATA_IGNORE_HOSTS } from './js/dataFeeds.js';
+import { CATALOGUE as _SERIES_CATALOGUE } from './js/dataCatalogue.js';
+import { scanUsage as _dcScanUsage, pageTitle as _dcPageTitle, uncataloguedHosts as _dcUncatalogued, buildCatalogue as _dcBuild, stampOf as _dcStampOf } from './js/dataCatalogueCore.js';
 import { computeHMM5m } from './hmm5m.js';
 import { computeHMM5mV2, computeMacroContext } from './hmm5m-v2.js';
 import { trainHMM5mAll, loadTrainedParams, fetchFredMacro } from './hmm5m-train.js';
@@ -14522,6 +14525,29 @@ async function _buildDataHealth() {
   } catch {}
   push('fredDash', `FRED dashboard cache${fredWorstKey ? ` (worst leg: ${fredWorstKey})` : ''}`, fredWorst, 1);
 
+  // ── legs added for the 🗄 Data Map (js/dataFeeds.js `health` ids) ──────────
+  // the OANDA daily tape, read off the bars the vol forecaster already holds
+  try {
+    const bars = Object.values(forecastState.ohlcCache ?? {}).find(a => Array.isArray(a) && a.length);
+    const b = bars?.at(-1);
+    const t = b ? (b.date ?? b.d ?? b.time ?? b.t ?? null) : null;
+    push('oanda', 'OANDA daily candles', typeof t === 'number' && t < 1e12 ? t * 1000 : t, 1, { refreshEveryH: 24 });
+  } catch { push('oanda', 'OANDA daily candles', null, 1, { refreshEveryH: 24 }); }
+  push('spreads', 'Live spreads', _spreadsCache.at || null, 1, { market: false, refreshEveryH: 0.2 });
+  push('intlYields', 'International yields', _intlYields.at || null, 1, { market: false, refreshEveryH: 6 });
+  push('weekmap', 'The week, scored', _weekMap.at || null, 1, { market: false, refreshEveryH: 24 });
+  push('calFeed', 'Calendar with actuals', _calFeed.at || null, 1, { market: false, refreshEveryH: 0.5 });
+  // KV-backed feeds: the stamp the writing job left inside the value (js/dataCatalogueCore
+  // stampOf). A shape it does not recognise stays `unknown` with no refresh interval, which
+  // the map shows as "not tracked" -- never a guessed age.
+  for (const f of _DATA_FEEDS) {
+    if (!f.kvStamp) continue;
+    const { key, cadenceDays = 1, market = true } = f.kvStamp;
+    let last = null;
+    try { const raw = await kv.get(key); if (raw) last = _dcStampOf(typeof raw === 'string' ? JSON.parse(raw) : raw); } catch {}
+    srcs.push({ id: `kv:${key}`, label: `${f.name} (KV ${key})`, last, cadenceDays, market });
+  }
+
   const out = { ..._dataHealth(srcs), bootedAt: new Date(_BOOTED_AT).toISOString() };
   _dataHealthCache = { at: Date.now(), data: out };
   return out;
@@ -14531,6 +14557,52 @@ app.get('/api/data-health', async (_req, res) => {
   try {
     if (_dataHealthCache.data && Date.now() - _dataHealthCache.at < 5 * 60_000) return res.json({ ok: true, cached: true, ..._dataHealthCache.data });
     res.json({ ok: true, cached: false, ...(await _buildDataHealth()) });
+  } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// ── /api/data-catalogue — the 🗄 Data Map: every feed, where used, how fresh ──
+// Registry (js/dataFeeds.js) + series (js/dataCatalogue.js) + live freshness (the rows
+// /api/data-health builds) + "where used", which is SCANNED from the repo's pages and js/
+// rather than hand-kept, because the API Map's hand-kept consumers column is the proof
+// that a remembered list drifts. Files do not change while the process runs, so the scan
+// happens once per boot; freshness rides the data-health cache (5 min).
+let _dataRepoScan = null;
+function _scanDataRepo() {
+  if (_dataRepoScan) return _dataRepoScan;
+  const files = [], titles = {};
+  const read = rel => { try { return fs.readFileSync(path.join(__dirname, rel), 'utf8'); } catch { return null; } };
+  const list = dir => { try { return fs.readdirSync(path.join(__dirname, dir)); } catch { return []; } };
+  for (const f of list('.')) if (f.endsWith('.html')) {
+    const text = read(f); if (text == null) continue;
+    files.push({ path: f, text }); const t = _dcPageTitle(text); if (t) titles[f] = t;
+  }
+  // js/ modules read endpoints too (deskApp, main, ...) -- but not server-side engines'
+  // own route files, which would list the server as its own consumer
+  // (and not the map's own files, which name every endpoint by construction)
+  const self = new Set(['dataFeeds.js', 'dataCatalogue.js', 'dataCatalogueCore.js', 'dataMap.js', 'dataHealth.js']);
+  for (const f of list('js')) if (/\.(m?js)$/.test(f) && !/\.test\.m?js$/.test(f) && !/Routes\.js$/.test(f) && !self.has(f)) {
+    const text = read('js/' + f); if (text != null) files.push({ path: 'js/' + f, text });
+  }
+  const endpoints = _DATA_FEEDS.flatMap(f => f.endpoints ?? []);
+  const serverText = [read('server.js') ?? '', ...list('js').filter(f => /\.m?js$/.test(f) && !/\.test\./.test(f)).map(f => read('js/' + f) ?? '')]
+    .filter(t => /\bfetch\s*\(|https?:\/\//.test(t)).join('\n');
+  _dataRepoScan = {
+    usage: _dcScanUsage(files, endpoints), titles,
+    uncatalogued: _dcUncatalogued(serverText, _DATA_FEEDS, _DATA_IGNORE_HOSTS),
+    scannedFiles: files.length,
+  };
+  return _dataRepoScan;
+}
+
+app.get('/api/data-catalogue', async (req, res) => {
+  try {
+    const h = (_dataHealthCache.data && Date.now() - _dataHealthCache.at < 5 * 60_000) ? _dataHealthCache.data : await _buildDataHealth();
+    const scan = _scanDataRepo();
+    const out = _dcBuild({ feeds: _DATA_FEEDS, categories: _DATA_FEED_CATEGORIES, healthRows: h.rows ?? [],
+      usage: scan.usage, titles: scan.titles, uncatalogued: scan.uncatalogued, series: _SERIES_CATALOGUE });
+    // the nav pill on every page only needs the dot and the count
+    if (req.query.summary) return res.json({ ok: true, summary: out.summary });
+    res.json({ ok: true, generatedAt: new Date().toISOString(), bootedAt: h.bootedAt, scannedFiles: scan.scannedFiles, ...out });
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
@@ -14953,6 +15025,9 @@ app.get('/api/rates', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('rates', () => _refreshRates().catch(e => console.error('[rates]', e.message)), 6 * 3600_000);
+// One boot run, so the cache is not empty for six hours after every deploy -- the Data Map
+// showed this as `unknown` all morning. Staggered after the boot rush (vixCapture 2m, hedge 5-6m).
+svcTimeout('rates', () => _refreshRates().catch(e => console.error('[rates] boot run:', e.message)), 7 * 60_000);
 
 // ── The non-US 10-year yields: gilts (BoE), JGBs (MoF), bunds (Bundesbank) ────
 // Daily from the issuers' own offices (FRED only mirrors them monthly). Feeds the
@@ -15025,6 +15100,7 @@ app.get('/api/crack', async (_req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('crack', () => _refreshCrack().catch(e => console.error('[crack]', e.message)), 6 * 3600_000);
+svcTimeout('crack', () => _refreshCrack().catch(e => console.error('[crack] boot run:', e.message)), 8 * 60_000);   // boot run, as rates above
 
 // ── The drill's history bundle ───────────────────────────────────────────────
 // Six years of daily closes for the nodes the drill asks about, as a shared date
@@ -15370,6 +15446,9 @@ app.get('/api/drill-series', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 svcInterval('drill', () => _refreshDrillBundle().catch(e => console.error('[drill]', e.message)), 24 * 3600_000);
+// boot runs, as rates above: the bundle first, then the chapters, which are built from it
+svcTimeout('drill', () => _refreshDrillBundle().catch(e => console.error('[drill] boot run:', e.message)), 9 * 60_000);
+svcTimeout('drill', () => _refreshChapters().catch(e => console.error('[chapters] boot run:', e.message)), 12 * 60_000);
 
 // ── The week map: every series scored against its own history ────────────────
 // Weekly changes of ~25 macro series, each as a z against the series' full
