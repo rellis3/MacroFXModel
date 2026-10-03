@@ -4,7 +4,7 @@
 // Each field is built independently; a field that fails keeps its previous build and records why.
 // Data: OANDA daily candles (27 FX pairs, gold, NAS100), OANDA 15-minute candles (8 instruments, ~300 days),
 // FRED constant-maturity Treasury yields (11 tenors) and the broad dollar index. KV `surface_lab_v1`.
-// Re-derivable from source, so not a permanent key: a missing build after a redeploy is rebuilt on the next tick.
+// Re-derivable from source, but kept as a permanent key so a deploy or a failed fetch still shows the last build.
 import { absorption, persistence, volTime, windowShare, rates, regimeOutcomes, TENORS, PERSIST_Q } from './surfaceLabCore.js';
 
 export const SURFACE_KV = 'surface_lab_v1';

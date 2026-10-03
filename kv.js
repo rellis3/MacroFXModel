@@ -53,6 +53,9 @@ const _CF_EXACT = new Set([
   'desk_watch_v1',           // the early-warning layer's state + fire log: which conditions are on, when each
                              // started, and what happened after. The forward record of the evidence book.
                              // Must also be in _worker.js PERMANENT_KEYS.
+  'surface_lab_v1',          // Surface Lab (surface-lab.html): last full build of the 3D surfaces. Re-derivable, but kept
+                             // durable so a deploy or a failed OANDA/FRED fetch shows the last build, not an empty page.
+                             // Must also be in _worker.js PERMANENT_KEYS.
   'daily_read_v1',           // Daily Read (daily-read.html): each day's continuation/exhaustion tags and how they scored;
                              // the live calibration record of the IV-vs-sigma call. Must also be in _worker.js PERMANENT_KEYS.
   'paper_record_v1',         // rich-vol break paper record (paper-record.html): every flag and hypothetical trade since
