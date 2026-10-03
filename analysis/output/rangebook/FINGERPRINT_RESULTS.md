@@ -40,3 +40,11 @@ Touches that continued and touches that faded look the same on every feature: th
 digit and every AUC sits between 0.48 and 0.51 (0.50 = no separation), identically in both halves. The few-point effects found
 earlier (within-cell continue rates, stalls included) are real but tiny when set against the cont-vs-fade question directly.
 TWAP and 5-minute swing fibs are not in this table yet.
+
+## Combined (post-hoc, 2026-10-03)
+One gradient-boosted model on all 30 features + line family/rung, distances to both targets, time, range used and touch number;
+trained before 2023, tested walk-forward 2023–26 (unseen). Continue vs fade AUC **0.578** — identical (0.578) to a model with ONLY
+line, distances, time, range used and touch number. Volume, momentum, speed, ROC, WaveTrend, VWAP etc. add nothing, alone or combined.
+The combined knowledge is large and calibrated: by predicted decile, continue rises from 7% to 55% (fade from 4% to 50%). Traded,
+including stalls and spread, every follow decile and every fade decile loses in every year (−0.04 to −0.08R; top follow decile
+−0.044R, longs −0.033 / shorts −0.058).
