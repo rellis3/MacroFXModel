@@ -83,6 +83,11 @@ Details in the style guide (§5.18).
 - **Start here** (`start.html`) — the newcomer's page: how a lesson is laid
   out and where to begin by background. Visual-guide sentences sit inside
   `<!-- MICRO:START -->…<!-- MICRO:END -->` and go when visual guides are hidden.
+- **From Analysis to Action** (8, full + visual guide, **admin only**:
+  `lessons/action-*.html` 404 for everyone else and the hub category sits in
+  DESK markers) — the bridge from a finished analysis to a usable decision:
+  trade plan, expected value, combining signals, costs, vol → size,
+  calibration scoring, base rates, edge decay. Each ends in a working tool.
 - **Stories** (`stories.html`) — the episode-first way in: 38 real episodes
   (Black Monday to the 2024 yen carry unwind), each with its causal chain
   and a link to every lesson section that tells it. Built from the lessons'

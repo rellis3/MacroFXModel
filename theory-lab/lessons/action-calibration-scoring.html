@@ -13,6 +13,7 @@
   .cb-table th,.cb-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace;vertical-align:middle}
   .cb-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
   .cb-table td:first-child,.cb-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  @media (max-width:480px){.cb-table th,.cb-table td{padding:5px 4px;font-size:12px}}
   .cb-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
   .cb-svg{width:100%;height:auto;display:block}
   .cb-rows{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
@@ -572,16 +573,16 @@
       clear(g);
       [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach(function(v){
         g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
-        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', v.toFixed(1)));
+        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 5, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', v.toFixed(1)));
       });
-      [0.5, 0.6, 0.7, 0.8, 0.9, 1].forEach(function(v){ g.appendChild(el('text', { x: x(v), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%')); });
-      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 32, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS }, 'fill:var(--text2)', 'probability you write'));
+      [0.5, 0.6, 0.7, 0.8, 0.9, 1].forEach(function(v){ g.appendChild(el('text', { x: x(v), y: Y0 + 19, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%')); });
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 38, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'probability you write'));
       var d = '';
       for (var i = 0; i <= 100; i++){ var ff = 0.5 + 0.5 * i / 100; d += (i ? 'L' : 'M') + x(ff).toFixed(1) + ',' + y(E(p, ff)).toFixed(1); }
       g.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--purple);stroke-width:2.5'));
       g.appendChild(el('line', { x1: x(p), x2: x(p), y1: Y1, y2: Y0 }, 'stroke:var(--green);stroke-width:1;stroke-dasharray:4,3'));
       g.appendChild(el('circle', { cx: x(p), cy: y(E(p, p)), r: 5 }, 'fill:var(--green)'));
-      g.appendChild(el('text', { x: x(p) + 6, y: Y1 + 10, 'font-size': 10.5, 'font-family': FONT }, 'fill:var(--green)', 'honest'));
+      g.appendChild(el('text', { x: x(p) + 6, y: Y1 + 10, 'font-size': 15, 'font-family': FONT }, 'fill:var(--green)', 'honest'));
       g.appendChild(el('circle', { cx: x(f), cy: y(E(p, f)), r: 6 }, 'fill:var(--amber)'));
       var ef = E(p, f), ep = E(p, p);
       $('pr-readout').innerHTML = 'True rate <b>' + Math.round(p * 100) + '%</b>, you write <b>' + Math.round(f * 100) + '%</b>: expected Brier <b>' + ef.toFixed(4) + '</b> vs <b>' + ep.toFixed(4) + '</b> if honest. Extra cost per call <b>' + (ef - ep).toFixed(4) + '</b> = (f − p)² = ' + ((f - p) * (f - p)).toFixed(4) + '.';
@@ -661,16 +662,16 @@
     }
     function drawDiagram(ob, N){
       var g = $('cb-g'); clear(g);
-      var X0 = 60, X1 = 610, Y0 = 290, Y1 = 14, XLO = 0.4, XHI = 1.0;
+      var X0 = 74, X1 = 610, Y0 = 290, Y1 = 14, XLO = 0.4, XHI = 1.0;
       function x(f){ return X0 + (X1 - X0) * (f - XLO) / (XHI - XLO); }
       function y(v){ return Y0 - (Y0 - Y1) * v; }
       [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(function(v){
         g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
-        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%'));
+        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 5, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%'));
       });
-      BUCKETS.forEach(function(f){ g.appendChild(el('text', { x: x(f), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', Math.round(f * 100) + '%')); });
-      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 32, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS }, 'fill:var(--text2)', 'what you said'));
-      g.appendChild(el('text', { x: 14, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS, transform: 'rotate(-90 14 ' + (Y0 + Y1) / 2 + ')' }, 'fill:var(--text2)', 'what happened'));
+      BUCKETS.forEach(function(f){ g.appendChild(el('text', { x: x(f), y: Y0 + 19, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(f * 100) + '%')); });
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 38, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'what you said'));
+      g.appendChild(el('text', { x: 12, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS, transform: 'rotate(-90 12 ' + (Y0 + Y1) / 2 + ')' }, 'fill:var(--text2)', 'what happened'));
       // luck band
       BUCKETS.forEach(function(f, i){
         var n = data[i].n; if (!n) return;
@@ -680,16 +681,16 @@
       g.appendChild(el('line', { x1: x(XLO), y1: y(XLO), x2: x(XHI), y2: y(XHI) }, 'stroke:var(--text3);stroke-width:1.2;stroke-dasharray:5,4'));
       if (N){
         g.appendChild(el('line', { x1: X0, x2: X1, y1: y(ob), y2: y(ob) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3'));
-        g.appendChild(el('text', { x: X1, y: y(ob) - 5, 'text-anchor': 'end', 'font-size': 10.5, 'font-family': FONT }, 'fill:var(--amber)', 'base rate ' + Math.round(ob * 100) + '%'));
+        g.appendChild(el('text', { x: X1, y: y(ob) - 5, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'base rate ' + Math.round(ob * 100) + '%'));
         var pts = [];
         BUCKETS.forEach(function(f, i){ var d = data[i]; if (d.n) pts.push([x(f), y(Math.min(d.h, d.n) / d.n), d.n]); });
         if (pts.length > 1) g.appendChild(el('path', { d: pts.map(function(p, i){ return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(''), fill: 'none' }, 'stroke:var(--purple);stroke-width:1.5;opacity:0.7'));
         pts.forEach(function(p){
           g.appendChild(el('circle', { cx: p[0], cy: p[1], r: Math.min(13, 4 + Math.sqrt(p[2]) * 1.6) }, 'fill:var(--purple);opacity:0.9'));
-          g.appendChild(el('text', { x: p[0] + 16, y: p[1] + 4, 'font-size': 10.5, 'font-family': FONT }, 'fill:var(--text2)', 'n=' + p[2]));
+          g.appendChild(el('text', { x: p[0] + 16, y: p[1] + 4, 'font-size': 15, 'font-family': FONT }, 'fill:var(--text2)', 'n=' + p[2]));
         });
       } else {
-        g.appendChild(el('text', { x: (X0 + X1) / 2, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', 'font-size': 13, 'font-family': SANS }, 'fill:var(--text3)', 'Log a few calls to see your reliability diagram'));
+        g.appendChild(el('text', { x: (X0 + X1) / 2, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', 'font-size': 18, 'font-family': SANS }, 'fill:var(--text3)', 'Log a few calls to see your reliability diagram'));
       }
     }
     $('cb-example').addEventListener('click', function(){ data = EXAMPLE.map(function(d){ return { n: d.n, h: d.h }; }); sync(); });

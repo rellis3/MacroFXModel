@@ -13,6 +13,7 @@
   .cs-table th,.cs-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace;vertical-align:top}
   .cs-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
   .cs-table td:first-child,.cs-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  @media (max-width:480px){.cs-table th,.cs-table td{padding:5px 4px;font-size:12px}}
   .cs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
   .cs-svg{width:100%;height:auto;display:block}
   .cs-sigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
@@ -160,7 +161,7 @@
 
   <div class="tl-chart interactive">
     <div class="tl-chart-label">How many opinions do you really have?</div>
-    <svg id="ne-svg" class="cs-svg" viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Effective number of signals against the number of signals, for the chosen correlation. The dashed diagonal shows what you would have if the signals were independent; the curve flattens toward one over the correlation.">
+    <svg id="ne-svg" class="cs-svg" viewBox="0 0 640 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Effective number of signals against the number of signals, for the chosen correlation. The dashed diagonal shows what you would have if the signals were independent; the curve flattens toward one over the correlation.">
       <g id="ne-g"></g>
     </svg>
     <div class="tl-controls">
@@ -659,17 +660,17 @@
       clear(g);
       [0, 5, 10, 15, 20].forEach(function(v){
         g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
-        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', v));
+        g.appendChild(el('text', { x: X0 - 8, y: y(v) + 5, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', v));
       });
-      [1, 5, 10, 15, 20].forEach(function(n){ g.appendChild(el('text', { x: x(n), y: Y0 + 16, 'text-anchor': 'middle', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', n)); });
-      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 32, 'text-anchor': 'middle', 'font-size': 11, 'font-family': SANS }, 'fill:var(--text2)', 'signals on your screen'));
+      [1, 5, 10, 15, 20].forEach(function(n){ g.appendChild(el('text', { x: x(n), y: Y0 + 19, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', n)); });
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 38, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'signals on your screen'));
       g.appendChild(el('path', { d: 'M' + x(1) + ',' + y(1) + ' L' + x(20) + ',' + y(20), fill: 'none' }, 'stroke:var(--text3);stroke-width:1;stroke-dasharray:4,4'));
       var d = '';
       for (var n = 1; n <= NMAX; n++){ var ne = n / (1 + (n - 1) * r); d += (n > 1 ? 'L' : 'M') + x(n).toFixed(1) + ',' + y(ne).toFixed(1); }
       g.appendChild(el('path', { d: d, fill: 'none' }, 'stroke:var(--purple);stroke-width:2.5'));
       if (r > 0 && 1 / r <= YMAX){
         g.appendChild(el('line', { x1: X0, x2: X1, y1: y(1 / r), y2: y(1 / r) }, 'stroke:var(--amber);stroke-width:1;stroke-dasharray:3,3'));
-        g.appendChild(el('text', { x: X1, y: y(1 / r) - 5, 'text-anchor': 'end', 'font-size': 10.5, 'font-family': FONT }, 'fill:var(--amber)', 'ceiling 1/ρ = ' + (1 / r).toFixed(2)));
+        g.appendChild(el('text', { x: X1, y: y(1 / r) - 5, 'text-anchor': 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--amber)', 'ceiling 1/ρ = ' + (1 / r).toFixed(2)));
       }
       var neN = N / (1 + (N - 1) * r);
       g.appendChild(el('circle', { cx: x(N), cy: y(neN), r: 5 }, 'fill:var(--amber)'));
@@ -766,28 +767,28 @@
     }
     function draw(names, S, w){
       var g = $('cs-g'); clear(g);
-      var k = S.length, CX = 320, HALF = 280, ROW = 50, TOP = 14;
+      var k = S.length, CX = 320, HALF = 280, ROW = 66, TOP = 22;
       var sAbs = S.reduce(function(p, v){ return p + Math.abs(v); }, 0) || 1;
       var contrib = S.map(function(s, i){ return w[i] * s; });
       var cAbs = contrib.reduce(function(p, v){ return p + Math.abs(v); }, 0) || 1;
-      var H = TOP + ROW * (k + 1) + 10;
+      var H = TOP + ROW * (k + 1) + 6;
       $('cs-svg').setAttribute('viewBox', '0 0 640 ' + H);
       g.appendChild(el('line', { x1: CX, x2: CX, y1: TOP - 4, y2: TOP + ROW * k + 4 }, 'stroke:var(--text3);stroke-width:1'));
-      g.appendChild(el('text', { x: CX - HALF, y: TOP - 2, 'font-size': 10.5, 'font-family': SANS }, 'fill:var(--red)', '← short'));
-      g.appendChild(el('text', { x: CX + HALF, y: TOP - 2, 'text-anchor': 'end', 'font-size': 10.5, 'font-family': SANS }, 'fill:var(--green)', 'long →'));
+      g.appendChild(el('text', { x: CX - HALF, y: TOP - 2, 'font-size': 15, 'font-family': SANS }, 'fill:var(--red)', '← short'));
+      g.appendChild(el('text', { x: CX + HALF, y: TOP - 2, 'text-anchor': 'end', 'font-size': 15, 'font-family': SANS }, 'fill:var(--green)', 'long →'));
       for (var i = 0; i < k; i++){
         var y0 = TOP + ROW * i + 6;
-        g.appendChild(el('text', { x: CX - HALF, y: y0 + 9, 'font-size': 12, 'font-family': SANS }, 'fill:var(--text)', names[i].slice(0, 34)));
+        g.appendChild(el('text', { x: CX - HALF, y: y0 + 12, 'font-size': 18, 'font-family': SANS }, 'fill:var(--text)', names[i].slice(0, 34)));
         var a = S[i] / sAbs * HALF, b = contrib[i] / cAbs * HALF;
-        g.appendChild(el('rect', { x: Math.min(CX, CX + a), y: y0 + 15, width: Math.abs(a), height: 8, rx: 2 }, 'fill:var(--text3);opacity:0.7'));
-        g.appendChild(el('rect', { x: Math.min(CX, CX + b), y: y0 + 26, width: Math.abs(b), height: 12, rx: 2 }, 'fill:var(--purple)'));
-        g.appendChild(el('text', { x: b >= 0 ? CX + Math.abs(b) + 5 : CX - Math.abs(b) - 5, y: y0 + 36, 'text-anchor': b >= 0 ? 'start' : 'end', 'font-size': 10.5, 'font-family': FONT }, 'fill:var(--purple)', Math.round(contrib[i] / cAbs * 100) + '%'));
+        g.appendChild(el('rect', { x: Math.min(CX, CX + a), y: y0 + 22, width: Math.abs(a), height: 9, rx: 2 }, 'fill:var(--text3);opacity:0.7'));
+        g.appendChild(el('rect', { x: Math.min(CX, CX + b), y: y0 + 35, width: Math.abs(b), height: 15, rx: 2 }, 'fill:var(--purple)'));
+        g.appendChild(el('text', { x: b >= 0 ? CX + Math.abs(b) + 5 : CX - Math.abs(b) - 5, y: y0 + 48, 'text-anchor': b >= 0 ? 'start' : 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--purple)', Math.round(contrib[i] / cAbs * 100) + '%'));
       }
       var Fc = contrib.reduce(function(p, v){ return p + v; }, 0), yF = TOP + ROW * k + 8;
       var nf = Fc / cAbs * HALF;
-      g.appendChild(el('text', { x: CX - HALF, y: yF + 10, 'font-size': 12, 'font-weight': 700, 'font-family': SANS }, 'fill:var(--text)', 'Net of the honest combination'));
-      g.appendChild(el('rect', { x: Math.min(CX, CX + nf), y: yF + 16, width: Math.max(Math.abs(nf), 1), height: 14, rx: 2 }, 'fill:' + (Fc >= 0 ? 'var(--green)' : 'var(--red)')));
-      g.appendChild(el('text', { x: nf >= 0 ? CX + Math.abs(nf) + 5 : CX - Math.abs(nf) - 5, y: yF + 27, 'text-anchor': nf >= 0 ? 'start' : 'end', 'font-size': 10.5, 'font-family': FONT }, 'fill:var(--text2)', (Fc >= 0 ? '+' : '') + Math.round(Fc / cAbs * 100) + '% net'));
+      g.appendChild(el('text', { x: CX - HALF, y: yF + 14, 'font-size': 18, 'font-weight': 700, 'font-family': SANS }, 'fill:var(--text)', 'Net of the honest combination'));
+      g.appendChild(el('rect', { x: Math.min(CX, CX + nf), y: yF + 24, width: Math.max(Math.abs(nf), 1), height: 16, rx: 2 }, 'fill:' + (Fc >= 0 ? 'var(--green)' : 'var(--red)')));
+      g.appendChild(el('text', { x: nf >= 0 ? CX + Math.abs(nf) + 5 : CX - Math.abs(nf) - 5, y: yF + 37, 'text-anchor': nf >= 0 ? 'start' : 'end', 'font-size': 15, 'font-family': FONT }, 'fill:var(--text2)', (Fc >= 0 ? '+' : '') + Math.round(Fc / cAbs * 100) + '% net'));
     }
     build();
     var saved = null;
