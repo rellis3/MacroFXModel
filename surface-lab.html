@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surface Lab</title>
+<style>
+  /* Layout: field tabs, then a surface pane with two linked slice cards beside it (stacked on phones), then the
+     three reading boxes: the concept, what it means for your systems now, and the honest test. */
+  :root { --bg:#0a0d12; --panel:#10151c; --card:#161b22; --border:#263040; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+          --pick:#f0b44c; --warm:#e57a3a; --cool:#4a8ee8; --mid:#3a414c; --pos:#3fb950; --neg:#f85149;
+          --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1440px; margin:0 auto; padding:16px 16px 48px; display:grid; gap:14px; }
+  .strip { display:flex; flex-wrap:wrap; justify-content:space-between; gap:6px 16px; font:11px var(--mono); color:var(--text3); border-bottom:1px solid var(--border); padding-bottom:8px; }
+  .strip b { color:var(--text); letter-spacing:.05em; }
+  h1 { font-size:22px; margin:0; text-wrap:balance; } .sub { color:var(--text3); max-width:90ch; margin:4px 0 0; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .lab { color:var(--text3); font:11px var(--mono); letter-spacing:.1em; text-transform:uppercase; min-width:8em; }
+  button.chip { font:500 12px var(--mono); color:var(--text); background:transparent; border:1px solid var(--border); border-radius:3px; padding:4px 9px; cursor:pointer; }
+  button.chip:hover { border-color:var(--text3); } button.chip[aria-pressed="true"] { background:#1d3557; border-color:var(--cool); }
+  button.chip:focus-visible { outline:2px solid var(--pick); outline-offset:1px; }
+  .main { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); gap:14px; }
+  @media (max-width:980px) { .main { grid-template-columns:minmax(0,1fr); } }
+  .pane { border:1px solid var(--border); background:var(--panel); min-width:0; border-radius:4px; }
+  .pane h2 { font:600 11px var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--text3); margin:0; padding:8px 10px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .pane h2 span { color:var(--pick); text-transform:none; letter-spacing:.02em; }
+  #surf { height:min(64vh,580px); min-height:380px; }
+  .cards { display:grid; gap:14px; min-width:0; } .plot { height:250px; }
+  .note { font-size:12px; color:var(--text3); padding:6px 10px 10px; margin:0; }
+  .boxes { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .box { background:var(--card); border:1px solid var(--border); border-radius:4px; padding:12px 14px; min-width:0; }
+  .box h3 { margin:0 0 6px; font:600 11px var(--mono); letter-spacing:.1em; text-transform:uppercase; }
+  .box p, .box li { color:var(--text2); font-size:13.5px; line-height:1.6; margin:0 0 6px; } .box ul { margin:0; padding-left:18px; }
+  .box.concept h3 { color:var(--cool); } .box.systems h3 { color:var(--pick); } .box.test h3 { color:var(--text3); }
+  .box.systems { border-color:#4a3a14; }
+  .now { font:12px var(--mono); color:var(--text); background:#0d1117; border:1px solid var(--border); border-radius:3px; padding:8px 10px; margin-bottom:8px; white-space:normal; }
+  .tblwrap { overflow-x:auto; } table { border-collapse:collapse; width:100%; font:12px var(--mono); font-variant-numeric:tabular-nums; }
+  th, td { padding:5px 8px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; } th:first-child, td:first-child { text-align:left; }
+  th { color:var(--text3); font-weight:500; } .agree { color:var(--pos); } .split { color:var(--text3); }
+  #status { font:11px var(--mono); color:var(--text3); }
+  .muted { color:var(--text3); } .empty { color:var(--text3); padding:20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="strip"><span><b>SURFACE LAB</b> · whole systems as surfaces, rebuilt every night</span><span id="meta">loading…</span></div>
+  <div>
+    <h1>See the whole market at once, watch its shape change, then slice it</h1>
+    <p class="sub">The principles of COG's yield-curve explorer, applied to four kinds of analysis. Each surface puts a whole system on one picture, with time as an axis. Click any point to update the two cards. The boxes underneath explain the idea, say what it means for the systems you already run today, and give the test result.</p>
+  </div>
+  <div class="row"><span class="lab">Field</span><span id="fieldBtns" class="row"></span></div>
+  <div class="row" id="instRow"><span class="lab">Instrument</span><span id="instBtns" class="row"></span></div>
+  <div class="row"><span class="lab">View</span><span id="viewBtns" class="row"></span><button class="chip" id="rebuild" type="button">↻ Rebuild now</button><span id="status"></span></div>
+
+  <div class="main">
+    <section class="pane"><h2><b id="surfName"></b><span id="pickLab"></span></h2><div id="surf" role="img" aria-label="3D surface"></div><p class="note" id="surfNote"></p></section>
+    <div class="cards">
+      <section class="pane"><h2><b id="c1t"></b></h2><div class="plot" id="c1"></div><p class="note" id="c1n"></p></section>
+      <section class="pane"><h2><b id="c2t"></b></h2><div class="plot" id="c2"></div><p class="note" id="c2n"></p></section>
+    </div>
+  </div>
+  <div class="boxes">
+    <section class="box concept"><h3>The idea</h3><div id="concept"></div></section>
+    <section class="box systems"><h3>What it means for your systems today</h3><div id="systems"></div></section>
+    <section class="box test"><h3>Tested, honestly</h3><div id="test"></div></section>
+  </div>
+  <section class="pane" id="extraPane" hidden><h2><b id="extraT"></b><span id="extraS"></span></h2><div class="tblwrap" id="extra"></div><p class="note" id="extraN"></p></section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.34.0/plotly.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const C = { panel:'#10151c', border:'#263040', text:'#e6edf3', muted:'#8b949e', pick:'#f0b44c', warm:'#e57a3a', cool:'#4a8ee8', mid:'#3a414c' };
+const SEQ = [[0,'#0f2a4a'],[0.35,'#2f6fd6'],[0.6,'#3fa29a'],[0.82,'#d8b04a'],[1,'#f2a15c']];
+const DIV = [[0,'#2f6fd6'],[0.42,'#4a8ee8'],[0.5,'#3a414c'],[0.58,'#e57a3a'],[1,'#f2a15c']];
+const VIEWS = { reading:{ eye:{ x:-1.6, y:-1.6, z:0.9 } }, front:{ eye:{ x:0, y:-2.3, z:0.35 } }, side:{ eye:{ x:2.3, y:0, z:0.35 } }, above:{ eye:{ x:0.01, y:0.01, z:2.5 } } };
+const cfg = { displaylogo:false, responsive:true, modeBarButtonsToRemove:['toImage','sendDataToCloud','resetCameraLastSave3d','hoverClosest3d'] };
+const ax3 = (t, extra) => Object.assign({ title:{ text:t, font:{ color:C.muted, size:11 } }, color:C.muted, gridcolor:C.border, zerolinecolor:C.border, backgroundcolor:C.panel, showbackground:true, tickfont:{ size:10, color:C.muted } }, extra || {});
+const base2 = () => ({ paper_bgcolor:C.panel, plot_bgcolor:C.panel, font:{ family:'ui-monospace,Menlo,monospace', color:C.text, size:10 }, margin:{ l:48, r:12, t:8, b:36 }, showlegend:false,
+  xaxis:{ color:C.muted, gridcolor:C.border, zerolinecolor:C.border }, yaxis:{ color:C.muted, gridcolor:C.border, zerolinecolor:C.mid } });
+const layout3 = scene => ({ paper_bgcolor:C.panel, font:{ family:'ui-monospace,Menlo,monospace', color:C.text }, margin:{ l:0, r:0, t:0, b:0 }, showlegend:false, scene:Object.assign({ camera:VIEWS[S.view] }, scene) });
+const pct = x => x == null ? '–' : (x * 100).toFixed(0) + '%';
+const slotLab = s => `${String(Math.floor(s / 4)).padStart(2, '0')}:${String((s % 4) * 15).padStart(2, '0')}`;
+const HZ = q => ({ 2:'30m', 4:'1h', 8:'2h', 16:'4h', 32:'8h' }[q] ?? q * 15 + 'm');
+
+let D = null, wired = false;
+const S = { field:'absorption', inst:'EURUSD', view:'reading', pick:{} };
+try { const s = JSON.parse(localStorage.getItem('surfLab') || '{}'); if (s.field) S.field = s.field; if (s.inst) S.inst = s.inst; } catch {}
+const save = () => { try { localStorage.setItem('surfLab', JSON.stringify({ field:S.field, inst:S.inst })); } catch {} };
+
+function chips(el, items, key) {
+  el.innerHTML = '';
+  for (const [v, label] of items) {
+    const b = document.createElement('button'); b.className = 'chip'; b.type = 'button'; b.textContent = label;
+    b.setAttribute('aria-pressed', String(S[key] === v)); b.onclick = () => { S[key] = v; if (key !== 'view') S.pick = {}; save(); render(); };
+    el.appendChild(b);
+  }
+}
+
+// ── field: absorption ──────────────────────────────────────────────────────────────────────────────
+function fAbsorption() {
+  const A = D.absorption; if (!A) return empty('absorption');
+  const comps = A.share[0].map((_, k) => 'PC' + (k + 1));
+  const j = S.pick.date ?? A.dates.length - 1, k = S.pick.comp ?? 0;
+  const z = comps.map((_, kk) => A.dates.map((_, t) => A.share[t][kk]));
+  Plotly.react('surf', [
+    { type:'surface', x:A.dates, y:comps, z, colorscale:SEQ, showscale:true, colorbar:{ title:{ text:'share of all movement', side:'right', font:{ color:C.muted, size:10 } }, tickformat:'.0%', tickfont:{ color:C.muted, size:10 }, thickness:10, len:0.6 },
+      contours:{ y:{ show:true, color:'rgba(230,237,243,.25)', width:1 } }, hovertemplate:'%{x}<br>%{y}: %{z:.1%} of all FX movement<extra></extra>' },
+    { type:'scatter3d', mode:'lines', x:A.dates, y:A.dates.map(() => comps[k]), z:z[k], line:{ color:C.text, width:5 }, hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:comps.map(() => A.dates[j]), y:comps, z:comps.map((_, kk) => A.share[j][kk]), line:{ color:C.pick, width:6 }, hoverinfo:'skip' },
+  ], layout3({ xaxis:ax3('date', { nticks:6 }), yaxis:ax3('factor (PC1 = biggest)'), zaxis:ax3('share', { tickformat:'.0%' }), aspectmode:'manual', aspectratio:{ x:1.7, y:1, z:0.6 } }), cfg);
+  head('absorption · 27 FX pairs · 60-day window', `pick: ${A.dates[j]} · ${comps[k]} = ${pct(A.share[j][k])}`,
+    'Each ridge is one hidden factor. The tall front ridge (PC1) is how much of all FX movement is a single trade. Click to pick a date (amber) and a factor (white).');
+  const ld = A.pairs.map((p, i) => [p, A.loadings[j][i]]).sort((a, b) => b[1] - a[1]);
+  const l1 = base2(); l1.margin.b = 60; l1.yaxis.title = { text:'loading on PC1', font:{ size:10, color:C.muted } };
+  Plotly.react('c1', [{ type:'bar', x:ld.map(x => x[0]), y:ld.map(x => x[1]), marker:{ color:ld.map(x => x[1] >= 0 ? C.warm : C.cool) }, hovertemplate:'%{x}: %{y:.2f}<extra></extra>' }], Object.assign(l1, { bargap:0.25, xaxis:Object.assign(l1.xaxis, { tickangle:-60, tickfont:{ size:9 } }) }), cfg);
+  card(1, `1) the one trade on ${A.dates[j]}`, `How each pair loads on PC1. Orange pairs rise when the factor rises (the dollar up, |corr| ${A.dollarCorr[j]}); blue pairs fall. Pairs near zero are not part of the trade that day.`);
+  const l2 = base2(); l2.yaxis.tickformat = '.0%'; l2.shapes = [{ type:'line', x0:A.dates[j], x1:A.dates[j], yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
+  Plotly.react('c2', [{ x:A.dates, y:z[k], mode:'lines', line:{ color:C.text, width:2 }, fill:'tozeroy', fillcolor:'rgba(74,142,232,.10)', hovertemplate:'%{x}: %{y:.1%}<extra></extra>' }], l2, cfg);
+  card(2, `2) ${comps[k]} share through the year`, `Above 1/27 ≈ 4% means pairs are moving together more than chance. PC1 near 40%+ means FX is close to one trade.`);
+  const n = A.now;
+  box('concept', `<p><b>Principal component analysis</b> takes the 27 pairs' daily moves and finds the few hidden factors that drive them all. The <b>absorption ratio</b> (Kritzman, Li, Page & Rigobon, 2011) is the share of total movement the top factors soak up.</p><p>If pairs moved independently, each factor would explain about 4%. When one factor explains 40%, the "27 markets" are really one trade with 27 tickets. In FX that trade is almost always the dollar.</p>`);
+  box('systems', `<div class="now">Now (${esc(n.date)}): PC1 = <b>${pct(n.pc1)}</b> of all FX movement, ${n.pctile}th percentile of the year · it is the dollar (|corr| ${n.dollarCorr}) · dollar ${n.dollar20 >= 0 ? '+' : ''}${n.dollar20}% over 20 days · biggest pairs: ${n.top.map(x => esc(x[0])).join(', ')}</div>
+    <ul><li><b>Rich-Vol Break Record:</b> when PC1 is in its top fifth, same-direction breaks on USD pairs are one dollar position. Count them as one trade and size the dollar once, or the rule quietly takes several times the risk.</li>
+    <li><b>Daily Read:</b> its "dollar factor" lesson fires when 3+ pairs break the same p75 side. This surface shows whether that was a one-day event or a regime.</li>
+    <li><b>Correlations / hedge pages:</b> this is the one-number summary of the whole correlation matrix. Watch it before trusting any cross-pair hedge, because hedges fail exactly when PC1 rises.</li></ul>`);
+  box('test', `<p>10 years, 27 pairs (analysis/surfaces/ABSORPTION_CHECK.md, descriptive, not pre-registered). PC1 averages 34% of movement and is mostly the dollar (median |corr| 0.67). FX has spent more time concentrated since 2021.</p><p>It does <b>not</b> predict the next 20 days' vol, the chance of a range break, or the dollar's next 5-day direction. Read it as a map of risk concentration, not a signal.</p>`);
+  extra(null);
+}
+
+// ── field: persistence ────────────────────────────────────────────────────────────────────────────
+function fPersistence() {
+  const P = D.persistence; const X = P?.byInst?.[S.inst]; if (!X) return empty('persistence', P?.errors?.[S.inst]);
+  const hz = P.qs.map(HZ), j = S.pick.date ?? X.dates.length - 1, k = S.pick.h ?? 3;
+  const z = hz.map((_, h) => X.dates.map((_, t) => X.vr[t][h]));
+  Plotly.react('surf', [
+    { type:'surface', x:X.dates, y:hz, z, colorscale:DIV, cmin:0.6, cmax:1.4, showscale:true, colorbar:{ title:{ text:'variance ratio', side:'right', font:{ color:C.muted, size:10 } }, tickfont:{ color:C.muted, size:10 }, thickness:10, len:0.6 },
+      hovertemplate:'%{x}<br>%{y}: VR %{z:.2f}<extra></extra>' },
+    { type:'surface', x:X.dates, y:hz, z:z.map(r => r.map(() => 1)), opacity:0.15, showscale:false, colorscale:[[0,'#8b949e'],[1,'#8b949e']], hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:X.dates, y:X.dates.map(() => hz[k]), z:z[k], line:{ color:C.text, width:5 }, hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:hz.map(() => X.dates[j]), y:hz, z:X.vr[j], line:{ color:C.pick, width:6 }, hoverinfo:'skip' },
+  ], layout3({ xaxis:ax3('date', { nticks:6 }), yaxis:ax3('horizon'), zaxis:ax3('VR', { range:[0.4, 1.6] }), aspectmode:'manual', aspectratio:{ x:1.7, y:1, z:0.6 } }), cfg);
+  head(`persistence · ${S.inst} · last 20 London days`, `pick: ${X.dates[j]} · ${hz[k]} = ${X.vr[j][k]}`,
+    'Above the glass plane (VR > 1, orange): moves at that horizon have been extending. Below (blue): they have been giving back.');
+  const l1 = base2(); l1.yaxis.title = { text:'VR', font:{ size:10, color:C.muted } }; l1.showlegend = true; l1.legend = { orientation:'h', font:{ size:9, color:C.muted }, y:-0.25 };
+  l1.shapes = [{ type:'line', xref:'paper', x0:0, x1:1, y0:1, y1:1, line:{ color:C.muted, dash:'dot', width:1 } }];
+  const d0 = X.dates[j];
+  Plotly.react('c1', Object.entries(P.byInst).map(([sym, Y]) => { const t = Y.dates.indexOf(d0); return t < 0 ? null : { x:hz, y:Y.vr[t], name:sym, mode:'lines+markers', line:{ width:sym === S.inst ? 3 : 1, color:sym === S.inst ? C.pick : undefined }, opacity:sym === S.inst ? 1 : 0.55, hovertemplate:sym + ' %{x}: %{y:.2f}<extra></extra>' }; }).filter(Boolean), Object.assign(l1, { margin:{ l:48, r:12, t:8, b:60 } }), cfg);
+  card(1, `1) every instrument on ${d0}`, 'Across horizons, the picked instrument in amber. Nearly everything sits below 1 and falls with horizon: intraday moves partly give back.');
+  const l2 = base2(); l2.shapes = [{ type:'line', xref:'paper', x0:0, x1:1, y0:1, y1:1, line:{ color:C.muted, dash:'dot', width:1 } }, { type:'line', x0:d0, x1:d0, yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
+  Plotly.react('c2', [{ x:X.dates, y:z[k], mode:'lines', line:{ color:C.text, width:2 }, hovertemplate:'%{x}: %{y:.2f}<extra></extra>' }], l2, cfg);
+  card(2, `2) ${S.inst} at ${hz[k]} through the year`, 'The regime is where this line sits against its own past. The bottom third is "reverting", the top third "trending".');
+  const regimes = Object.entries(P.byInst).map(([s, Y]) => `${esc(s)} <b>${esc(Y.now.regime)}</b> (${Y.now.vr4h})`).join(' · ');
+  box('concept', `<p>The <b>variance ratio</b> (Lo & MacKinlay, 1988) compares how far price travels over a long block with how far it would travel if each short step were independent. VR = 1 is a random walk. Above 1, moves have been extending (trend). Below 1, they have been giving back (mean reversion).</p><p>Measuring it at 30 minutes, 1, 2, 4 and 8 hours at once shows the market's memory horizon by horizon. It asks the fade-or-continue question of the market itself, not of one line.</p>`);
+  box('systems', `<div class="now">4h regime vs each instrument's last year: ${regimes}</div>
+    <ul><li><b>Fade/Continue Book and Daily Read:</b> after a <b>reverting</b> 20 days, p75 touches continued 2–4 points more often in both halves of 10 years. After <b>trending</b> stretches they faded more. This matches the book's "counter-trend touches continue more" result, so read it as context next to the IV ÷ σ tag.</li>
+    <li><b>Fade systems</b> (VuManChu fade, Forward-Track, Forecast-Style Fade): fades have the better backdrop when this instrument reads <b>trending</b>, the worst when it reads reverting.</li>
+    <li><b>Rich-Vol Break Record:</b> a CONTINUE tag on a <b>reverting</b> instrument is the stronger break setup. Both point the same way.</li></ul>`);
+  box('test', `<p>11,083 p75 touches, 8 instruments, 2016–2026 (analysis/surfaces/PERSISTENCE_CHECK.md, descriptive, not pre-registered). Median VR 0.97 / 0.93 / 0.91 at 15m / 1h / 4h: intraday markets mean-revert, more so at longer horizons.</p><p>Reverting regime → continue 37–39% vs 33–35% when trending. That's real and the same in both halves, but it's about the size the line spacing already prices, so it's context, not a trade on its own.</p>`);
+  extra(null);
+}
+
+// ── field: vol time ───────────────────────────────────────────────────────────────────────────────
+function fVolTime() {
+  const V0 = D.volTime?.byInst?.[S.inst]; if (!V0) return empty('vol time', D.volTime?.errors?.[S.inst]);
+  // 4-week rolling mean: COG's smoothing principle — single weeks are noise, the regime is the 4-week shape.
+  const V = { ...V0, share: V0.share.map((_, w) => { const win = V0.share.slice(Math.max(0, w - 3), w + 1); return win[0].map((_, sl) => win.reduce((t, x) => t + (x[sl] ?? 0), 0) / win.length); }) };
+  const slots = [...Array(96).keys()], labs = slots.map(slotLab), j = S.pick.week ?? V.weeks.length - 1, s = S.pick.slot ?? 32;
+  const z = slots.map(sl => V.weeks.map((_, w) => (V.share[w][sl] ?? 0) * 100));
+  Plotly.react('surf', [
+    { type:'surface', x:V.weeks, y:labs, z, colorscale:SEQ, showscale:true, colorbar:{ title:{ text:'% of the day\'s movement', side:'right', font:{ color:C.muted, size:10 } }, tickfont:{ color:C.muted, size:10 }, thickness:10, len:0.6 },
+      hovertemplate:'week of %{x}<br>%{y} London: %{z:.2f}% of the day<extra></extra>' },
+    { type:'scatter3d', mode:'lines', x:labs.map(() => V.weeks[j]), y:labs, z:slots.map(sl => (V.share[j][sl] ?? 0) * 100), line:{ color:C.pick, width:6 }, hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:V.weeks, y:V.weeks.map(() => labs[s]), z:z[s], line:{ color:C.text, width:5 }, hoverinfo:'skip' },
+  ], layout3({ xaxis:ax3('week', { nticks:6 }), yaxis:ax3('London time', { nticks:8 }), zaxis:ax3('% of day'), aspectmode:'manual', aspectratio:{ x:1.3, y:1.5, z:0.55 } }), cfg);
+  head(`vol time · ${S.inst} · 52 weeks`, `pick: week of ${V.weeks[j]} · ${labs[s]}`, 'The height is the share of each day\'s movement made in that 15-minute slot, averaged over 4 weeks. Ridges are the sessions: Tokyo, the London open, the NY data and open.');
+  const avg = slots.map(sl => V.share.reduce((t, w) => t + (w[sl] ?? 0), 0) / V.share.length * 100);
+  const l1 = base2(); l1.xaxis.tickvals = [0, 16, 32, 48, 64, 80]; l1.xaxis.ticktext = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
+  l1.shapes = [{ type:'rect', x0:0, x1:40, yref:'paper', y0:0, y1:1, fillcolor:'rgba(240,180,76,.07)', line:{ width:0 } }];
+  Plotly.react('c1', [{ x:slots, y:avg, mode:'lines', line:{ color:C.muted, width:1, dash:'dot' }, hovertemplate:'year avg %{y:.2f}%<extra></extra>' },
+    { x:slots, y:slots.map(sl => (V.share[j][sl] ?? 0) * 100), mode:'lines', line:{ color:C.pick, width:2 }, hovertemplate:'%{text}: %{y:.2f}%<extra></extra>', text:labs }], l1, cfg);
+  card(1, `1) the 4 weeks to ${V.weeks[j]} vs the year`, 'Amber is the picked 4 weeks, dotted is the year average. The shaded band is 00:00–10:00 London, the Rich-Vol Break Record\'s entry window.');
+  const l2 = base2(); l2.shapes = [{ type:'line', x0:V.weeks[j], x1:V.weeks[j], yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
+  Plotly.react('c2', [{ x:V.weeks, y:z[s], mode:'lines', line:{ color:C.text, width:2 }, hovertemplate:'%{x}: %{y:.2f}%<extra></extra>' }], l2, cfg);
+  card(2, `2) ${labs[s]} London through the year`, 'How important this time of day has been, week by week. A rising line means more of the day is being decided here.');
+  const n = V.now;
+  box('concept', `<p><b>Volatility time</b>: an hour at 03:00 and an hour at 14:30 are not the same amount of market. Desks measure the day in "expected movement elapsed", not minutes.</p><p>This surface is that clock. It also shows the clock <b>shifting</b>: some months the day is made in London, others at the NY data. The arcsine law says the day's high and low are most likely set early or late in vol time, so when the clock shifts, so does when the extremes come.</p>`);
+  box('systems', `<div class="now">${esc(S.inst)}: 00:00–10:00 London made <b>${pct(n.asia_london_4w)}</b> of the day's movement over the last 4 weeks (year: ${pct(n.asia_london_52w)}) · 13:30–21:00 made ${pct(n.ny_4w)} (year: ${pct(n.ny_52w)})</div>
+    <ul><li><b>Rich-Vol Break Record:</b> it only enters 00:00–10:00 London. When that window's share of the day falls, the rule is working with less of the day's range. Expect fewer, later breaks.</li>
+    <li><b>Vol Forecast / "is the high already in":</b> when the clock has shifted to NY, an early extreme is less likely to be the day's extreme, so don't treat a morning p75 touch as the day's high.</li>
+    <li><b>Daily Read:</b> its session audit is taken at 22:00 UTC. This shows how little of the day is left after that, by instrument.</li></ul>`);
+  box('test', `<p>Descriptive only: it measures where the movement happened and doesn't predict anything yet. The testable next step is whether a week's shift in the profile predicts which session sets the next day's high or low.</p>`);
+  extra(null);
+}
+
+// ── field: rates ──────────────────────────────────────────────────────────────────────────────────
+function fRates() {
+  const R = D.rates; if (!R) return empty('rates');
+  const j = S.pick.week ?? R.weeks.length - 1, k = S.pick.tenor ?? 8, yearAgo = Math.max(0, j - 52);
+  const z = R.tenors.map((_, t) => R.weeks.map((_, w) => R.curve[w][t]));
+  Plotly.react('surf', [
+    { type:'surface', x:R.weeks, y:R.tenors, z, colorscale:SEQ, showscale:true, colorbar:{ title:{ text:'yield %', side:'right', font:{ color:C.muted, size:10 } }, tickfont:{ color:C.muted, size:10 }, thickness:10, len:0.6 },
+      hovertemplate:'%{x}<br>%{y}: %{z:.2f}%<extra></extra>' },
+    { type:'scatter3d', mode:'lines', x:R.tenors.map(() => R.weeks[j]), y:R.tenors, z:R.curve[j], line:{ color:C.pick, width:6 }, hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:R.weeks, y:R.weeks.map(() => R.tenors[k]), z:z[k], line:{ color:C.text, width:5 }, hoverinfo:'skip' },
+  ], layout3({ xaxis:ax3('week', { nticks:6 }), yaxis:ax3('tenor'), zaxis:ax3('yield %'), aspectmode:'manual', aspectratio:{ x:1.7, y:1.1, z:0.6 } }), cfg);
+  head('rates · US Treasury curve · weekly, 5-week mean', `pick: ${R.weeks[j]} · ${R.tenors[k]} · ${R.regime[j] ?? '–'}`, 'The curve over five years, the way COG draws it. Amber is the picked week\'s curve and white is the picked tenor\'s history.');
+  const l1 = base2(); l1.xaxis.type = 'category';
+  Plotly.react('c1', [{ x:R.tenors, y:R.curve[yearAgo], mode:'lines', line:{ color:C.muted, dash:'dot', width:1 }, hovertemplate:'a year before: %{y:.2f}%<extra></extra>' },
+    { x:R.tenors, y:R.curve[j], mode:'lines+markers', line:{ color:C.pick, width:2 }, hovertemplate:'%{x}: %{y:.2f}%<extra></extra>' }], l1, cfg);
+  const f = R.factors[j];
+  card(1, `1) the curve on ${R.weeks[j]}`, `Dotted is a year before. Level ${f.level}% · slope (10Y−3M) ${f.slope} · curvature ${f.curvature}. The 4-week move reads ${R.regime[j] ?? '–'}.`);
+  const l2 = base2(); l2.shapes = [{ type:'line', x0:R.weeks[j], x1:R.weeks[j], yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
+  Plotly.react('c2', [{ x:R.weeks, y:z[k], mode:'lines', line:{ color:C.cool, width:2 }, fill:'tozeroy', fillcolor:'rgba(74,142,232,.10)', hovertemplate:'%{x}: %{y:.2f}%<extra></extra>' }], l2, cfg);
+  card(2, `2) ${R.tenors[k]} through five years`, 'The picked tenor\'s history. Click another tenor on the surface to swap it.');
+  const n = R.now;
+  box('concept', `<p>A curve is described by three numbers: <b>level</b> (all rates), <b>slope</b> (long minus short) and <b>curvature</b> (the belly vs the wings). Litterman & Scheinkman (1991) showed these explain almost all curve moves.</p><p>The <b>move</b> gets a name from which end leads: <b>bull steepener</b> (front-end yields fall faster, usually markets pricing cuts), <b>bear steepener</b> (long-end yields rise faster, term premium or inflation fear), <b>bear flattener</b> (front end rises faster, hikes priced) and <b>bull flattener</b> (long end falls faster, growth fear).</p>`);
+  box('systems', `<div class="now">Week of ${esc(n.week)}: <b>${esc(n.regime ?? '–')}</b> · level ${n.factors.level}% · slope ${n.factors.slope} · curvature ${n.factors.curvature} · last 8 weeks: ${n.lastRegimes.map(x => esc(x ?? '–')).join(' → ')}</div>
+    <ul><li><b>Market View / Desk:</b> names the macro regime in the vocabulary rates desks use. Pair it with the dollar factor in the absorption field. A bear flattener plus a high PC1 is a dollar-led tightening regime.</li>
+    <li><b>Direction (honest):</b> the table below shows what the dollar, Nasdaq and gold did over the next 4 weeks after each label, in the older and newer half of five years. Only rows where both halves agree in sign and n ≥ 15 are marked. The evidence ledger already found curve inversion and yield-to-FX coupling null forward, so treat the rest as context.</li>
+    <li><b>Yield-Shape Regime page:</b> that page tracks the 10Y's intraday shape. This is the weekly whole-curve picture behind it.</li></ul>`);
+  box('test', `<p>The outcome table is computed live from five years of data and isn't pre-registered, so read it as a description. A row that holds in both halves is a candidate for a proper pre-registered test, not a rule.</p>`);
+  const O = R.outcomes?.byAsset ?? {}, labs = ['bull steepener', 'bear steepener', 'bull flattener', 'bear flattener', 'steepening twist', 'flattening twist', 'parallel up', 'parallel down'];
+  const rows = labs.map(l => `<tr><td>${l}</td>${Object.keys(O).map(a => { const o = O[a][l] ?? {}, x = o.older, y = o.newer;
+    const ag = x && y && x.n >= 15 && y.n >= 15 && Math.sign(x.meanPct) === Math.sign(y.meanPct);
+    return `<td class="${ag ? 'agree' : 'split'}">${x ? (x.meanPct >= 0 ? '+' : '') + x.meanPct + '% · ' + x.n : '–'}</td><td class="${ag ? 'agree' : 'split'}">${y ? (y.meanPct >= 0 ? '+' : '') + y.meanPct + '% · ' + y.n : '–'}</td>`; }).join('')}</tr>`).join('');
+  extra('what followed each regime', `mean ${R.outcomes?.fwdWeeks ?? 4}-week return · n weeks · split at ${R.outcomes?.split ?? '–'}`,
+    `<table><thead><tr><th>regime (4-week move)</th>${Object.keys(O).map(a => `<th colspan="2">${esc(a)}: older · newer</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`,
+    'Green: both halves agree in sign with at least 15 weeks each. Grey: split or too few. Overlapping 4-week windows make neighbouring weeks dependent, so the real sample is smaller than n.');
+}
+
+function head(name, pick, note) { $('surfName').textContent = name; $('pickLab').textContent = pick; $('surfNote').textContent = note + ' Drag to rotate.'; }
+function card(i, t, n) { $(`c${i}t`).textContent = t; $(`c${i}n`).textContent = n; }
+function box(id, html) { $(id).innerHTML = html; }
+function extra(t, s, html, n) { $('extraPane').hidden = !t; if (!t) return; $('extraT').textContent = t; $('extraS').textContent = s; $('extra').innerHTML = html; $('extraN').textContent = n; }
+function empty(what, why) { $('surf').innerHTML = `<div class="empty">No ${esc(what)} build yet${why ? ': ' + esc(why) : ''}. It rebuilds every night, or press Rebuild now.</div>`; ['c1', 'c2'].forEach(id => $(id).innerHTML = ''); }
+
+const FIELDS = { absorption:['absorption (FX as one trade)', fAbsorption], persistence:['persistence by horizon', fPersistence], volTime:['vol time', fVolTime], rates:['rates curve + regime', fRates] };
+function render() {
+  chips($('fieldBtns'), Object.entries(FIELDS).map(([k, v]) => [k, v[0]]), 'field');
+  const insts = Object.keys(D.persistence?.byInst ?? {});
+  $('instRow').hidden = !['persistence', 'volTime'].includes(S.field);
+  chips($('instBtns'), insts.map(i => [i, i]), 'inst');
+  chips($('viewBtns'), Object.keys(VIEWS).map(v => [v, v]), 'view');
+  if (!insts.includes(S.inst) && insts.length) S.inst = insts[0];
+  try { FIELDS[S.field][1](); } catch (e) { $('surfNote').textContent = 'Could not draw this field: ' + e.message; }
+}
+function wire() {
+  $('surf').on?.('plotly_click', ev => {
+    const p = ev.points?.[0]; if (!p) return;
+    if (S.field === 'absorption') { const t = D.absorption.dates.indexOf(p.x), k = typeof p.y === 'string' ? +p.y.slice(2) - 1 : null; if (t >= 0) S.pick.date = t; if (k >= 0) S.pick.comp = k; }
+    if (S.field === 'persistence') { const X = D.persistence.byInst[S.inst], t = X.dates.indexOf(p.x), h = D.persistence.qs.map(HZ).indexOf(p.y); if (t >= 0) S.pick.date = t; if (h >= 0) S.pick.h = h; }
+    if (S.field === 'volTime') { const V = D.volTime.byInst[S.inst], w = V.weeks.indexOf(p.x), sl = [...Array(96).keys()].map(slotLab).indexOf(p.y); if (w >= 0) S.pick.week = w; if (sl >= 0) S.pick.slot = sl; }
+    if (S.field === 'rates') { const w = D.rates.weeks.indexOf(p.x), t = D.rates.tenors.indexOf(p.y); if (w >= 0) S.pick.week = w; if (t >= 0) S.pick.tenor = t; }
+    render();
+  });
+}
+async function load() {
+  try {
+    const r = await fetch('/api/surface-lab'); D = await r.json();
+    if (!D.ok) { $('meta').textContent = D.error || 'no build yet'; $('status').textContent = D.running ? 'building…' : ''; return; }
+    $('meta').textContent = `built ${new Date(D.builtAt).toLocaleString()} · ${Math.round((D.buildMs ?? 0) / 1000)}s${Object.keys(D.errors ?? {}).length ? ' · some fields failed: ' + Object.keys(D.errors).join(', ') : ''}`;
+    render(); if (!wired && $('surf').on) { wire(); wired = true; }
+  } catch (e) { $('meta').textContent = 'Could not load the Surface Lab: ' + e.message + '. Reload to try again.'; }
+}
+$('rebuild').onclick = async () => { $('status').textContent = 'rebuilding — takes a minute or two…'; try { await fetch('/api/surface-lab/rebuild', { method:'POST' }); } catch {} setTimeout(load, 90_000); };
+if (window.Plotly) load(); else $('meta').textContent = 'The chart library did not load. Reload the page to try again.';
+</script>
+</body>
+</html>

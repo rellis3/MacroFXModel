@@ -89,6 +89,7 @@ import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
 import { createYieldShapeRegime } from './js/yieldShapeRegimeRoutes.js';
 import { createDailyRead } from './js/dailyReadRoutes.js';
+import { createSurfaceLab } from './js/surfaceLabRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -26061,6 +26062,15 @@ svcInterval('yieldShapeRegime', () => svcRun('yieldShapeRegime', () => yieldShap
 const dailyRead = createDailyRead({ kv });
 dailyRead.mount(app);
 svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
+
+// ── Surface Lab (surface-lab.html) ────────────────────────────────────────────
+// COG-style live 3D surfaces: FX absorption ratio (PCA), variance-ratio persistence by horizon, vol time, and the
+// Treasury curve with its steepener/flattener label. Rebuilt when older than 12 h; first build ~2 min after boot.
+const surfaceLab = createSurfaceLab({ kv, fetchCandles: fetchOandaCandleRange,
+  fetchFred: (id, from) => fetchFredSeries(id, from, process.env.FRED_KEY) });
+surfaceLab.mount(app);
+svcInterval('surfaceLab', () => svcRun('surfaceLab', () => surfaceLab.tick('scheduled')), 30 * 60_000);
+svcTimeout('surfaceLab', () => svcRun('surfaceLab', () => surfaceLab.tick('boot')), 120_000);
 
 // 1-minute VIX / VXN recorder: Yahoo keeps only 7 days of 1-minute bars, so pull every 6 hours into R2 (vix_m1/...) to build
 // the minute-level history for testing the VIX-vs-Nasdaq divergence idea later. Status: /api/vix-capture.
