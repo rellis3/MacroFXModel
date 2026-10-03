@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Open Interest Walls, Max Pain &amp; Squeeze — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, worked examples by hand, and a 5-question self-test?<a href="open-interest-walls-max-pain.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -317,7 +317,46 @@
     </section>
 
     <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">GameStop, January 2021: walls overrun and rebuilt</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>A heavily shorted stock (reported short interest above 100% of float) met a wave of retail buying in shares and short-dated out-of-the-money calls. As each call strike was overrun, buyers moved higher. The price went from under $20 to an <strong>intraday $483 on 28 January</strong>. Melvin Capital needed about $2.75bn from Citadel and Point72; several brokers restricted buying that day.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Retail wave</b>Shares and short-dated OTM calls</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link" style="border-color:var(--purple-bd);border-width:2px"><b>★ Call writers</b>Wall as fuel: hedge by buying as delta climbs</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Call buyers</b>Roll to higher strikes: new wall, new fuel</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Shorts / brokers</b>Some buy to close; buying restricted 28 Jan</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>$483 intraday, then a sharp fall</div>
+      </div>
+      <p class="sl-p">★ is this lesson's concept, and its size here is <strong>contested</strong>. The SEC staff report (October 2021) put the rise mainly down to broad buying, with short covering a small part. How much was dealers hedging calls, the "gamma squeeze", has never been measured publicly with any precision.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The folk claim: price gravitates to max pain into expiry, and walls fence the range.</p>
+      <div class="sl-stamp null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>oi-max-pain:</strong> tested properly for the first time 2026-09-10: <strong>null</strong>. The OI publish-lag timing risk was tested directly and survives; DTE, gamma, sign convention and spot basis all verified. A level to know about, not a magnet.</span>
+      </div>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>Walls as range fences:</strong> queued, not yet tested. A fair test: point-in-time walls from that morning's OI vs random bands of the same width, matched volatility, rule fixed in advance.</span>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Walls and max pain treat the chain as a fixed snapshot held by continuous hedgers, on a stock anyone can trade. In January 2021 open interest was rebuilt higher daily, short interest exceeded the float, and buying was partly switched off. One morning's chain described a market gone by the afternoon.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -367,8 +406,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A wall is a strike whose OI is an outlier next to its neighbors (roughly 3×+) — a local property, not a chain-wide maximum.</p></div>
@@ -377,6 +416,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A squeeze is a role reversal, not new information — hedging flow that was dampening a move near a wall can flip to accelerating it once the wall breaks.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The evidence that max pain itself moves price is thin and contested — treat it as a description of writer incentives, not a forecast.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Walls and max pain are live snapshots — open interest closes out every session, so re-check rather than assume persistence.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>GameStop, January 2021: call walls overrun and rebuilt higher within days; the "gamma squeeze" share of it is contested. Desk verdict: max pain is NOT a magnet (oi-max-pain, null); walls as range fences remain untested.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -507,5 +547,6 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

@@ -37,6 +37,7 @@
       <li>Short dealer gamma means hedging flow has the <strong>same</strong> sign as the price move (buy as it rises, sell as it falls) — destabilizing. Long dealer gamma means hedging flow has the <strong>opposite</strong> sign — stabilizing, mean-reverting.</li>
       <li>The worked example shows ATM gamma roughly doubling from 30 to 7 days to expiry, then more than doubling again into the final day — the numeric substance behind "gamma effects intensify near expiry."</li>
       <li>A "wall" isn't sellers pushing back — it's the point where the hedging <em>demand</em> that was fuelling a move disappears because the hedge is already complete. When a wall breaks instead, that same mechanism reverses into a squeeze.</li>
+      <li><strong>Real-world episode:</strong> on 5 February 2018 inverse-VIX products, short gamma by their own daily rebalancing rule, had to buy VIX futures into a VIX jump of about 115%. XIV lost more than 90% and was terminated. Tested here (<code>gex-range</code>, validated on the Nasdaq only): short-gamma days are only ordinary (~1.02× a Brownian baseline), long-gamma days are quiet (~0.85×). Range only, no direction, nothing on FX.</li>
     </ul>
   </div>
 
@@ -584,6 +585,97 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 5 February 2018, "Volmageddon"</h2>
+  <p>
+    The trading scenario above is a stylised squeeze. Here is the real-world case where short-gamma hedging, in the exact
+    shape this lesson derives, was written into the rules of a fund and then forced to run in one afternoon.
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>5 February 2018: the funds whose rulebook made them short gamma</h3>
+    <p>
+      Through 2017 the VIX spent long stretches near the lowest levels in its history, and a popular way to be paid for
+      that calm was an exchange-traded product that was <em>short</em> VIX futures. The largest, Credit Suisse's XIV
+      note, and ProShares' SVXY fund each aimed to return the inverse of one day's move in short-term VIX futures.
+      Leveraged <em>long</em>-VIX products sat on the other side. None of them had sold an option to anyone. Their daily
+      rebalancing rule still had the exact shape of a short-gamma dealer's hedge.
+    </p>
+    <p>
+      Here is why, in this lesson's terms. A fund promising −1× the day's move starts with NAV 1 and a short futures
+      position worth 1. If the futures rise by a fraction \(r\), the fund ends the day with NAV \(1-r\) but a short
+      position now worth \(1+r\). To get back to −1× its new NAV it must <strong>buy back \(2r\)</strong> of futures. The
+      required trade has the <strong>same sign as the move and grows with its size</strong>: Section 02's hedge-flow
+      rule with a negative sign, written into a prospectus. A 2× long fund must also buy after a rise (\(2r\) again,
+      per unit of starting NAV). And because the trade is done near the close, everyone can see it coming.
+    </p>
+    <p>
+      On Friday 2 February a strong wage figure in the US jobs report pushed bond yields up and the S&amp;P 500 fell
+      about 2%. On Monday 5 February it fell 4.1%, and the Dow had its largest one-day point fall up to that date, about
+      1,175 points. The VIX closed at <strong>37.32, from 17.31</strong> on Friday, a rise of about 115% and the biggest
+      one-day percentage jump in its history. VIX futures, which keep trading for a short while after the stock market
+      closes, jumped again in that window, which is when the products' rebalancing purchases were being made.
+    </p>
+    <p>
+      The bill: after the close, XIV's indicative value fell by more than 90%. That was enough to trigger a clause in its
+      terms letting Credit Suisse redeem the note, and the bank announced the next day that it would. SVXY also lost
+      most of its value in the session, and ProShares later cut its target to −0.5×. A trade that had paid steadily
+      through the quiet of 2017 gave it all back in a single afternoon.
+    </p>
+    <p style="margin-bottom:0">
+      One honest caveat. How much of that day's <em>stock-index</em> selling came from options dealers' own short
+      gamma (the thing this lesson's GEX formula estimates), as opposed to these products, volatility-targeting funds
+      cutting exposure and plain de-risking, has never been cleanly measured in public, and accounts of the day
+      disagree. What is not in dispute is the inverse-VIX products' rebalancing rule, because it was written down in
+      advance.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Wage data</b>The 2 Feb jobs report lifts yields; stocks fall about 2%, then 4.1% on Monday</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Protection buyers</b>Pay up for index puts and VIX exposure; short-term VIX futures jump</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);border-width:2px"><b>★ Inverse-VIX funds · this lesson</b>Short gamma by rule: must <em>buy</em> about 2r of futures per unit of NAV into the close, the same sign as the move and bigger the bigger it is</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Leveraged long-VIX funds</b>Must also buy after a rise, on the same side, in the same window</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Futures pushed higher still; XIV loses more than 90% and is terminated</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: hedging flow with the same sign as the price move.</p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The amplify-or-dampen rule pictures hedges adjusted continuously, in small steps, into a market deep enough to absorb
+    them. In February 2018 the rebalancing was <strong>batched into one window at the close, fixed in size by formula,
+    and visible in advance</strong>, and a VIX futures market had to absorb it all at once on a 100%+ day. The same-sign
+    logic held exactly. The "small, continuous, absorbable" part did not, which is why the move fed on itself instead of
+    just getting a little bigger.
+  </p>
+
+  <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+    <span class="tl-verdict-tag">Validated</span>
+    <span><strong>gex-range: the range half is real on the Nasdaq; the direction half is not.</strong> On 793 days of NQ,
+    next-day realised range against a same-trailing-vol Brownian baseline was <strong>+0.176 higher on short-gamma days
+    (p 0.0008)</strong>, rising to <strong>+0.315</strong> matched on trailing vol. But the asymmetry runs the other way
+    from the folk version: short-gamma days sit at DR ~1.02, essentially Brownian, while <strong>long-gamma days sit at
+    ~0.85</strong>. Long gamma is quiet; short gamma is ordinary, not wild.</span>
+  </div>
+  <p>
+    The same ledger entry adds two limits that matter for anyone reading a GEX chart. It <strong>does not generalise to
+    FX</strong>, and it <strong>carries no direction</strong>: the adjacent "walls are magnets" test was falsified at
+    48.8% out-of-sample against a 49.9% placebo. So the honest sentence on a long-gamma day is "quieter than a
+    vol-matched baseline", and on a short-gamma day it is "ordinary", not "breakout risk". (This lesson's status badge
+    predates that test.) February 2018 does not contradict it. That was not an ordinary short-gamma day; it was a
+    rulebook forcing a whole market's worth of same-sign hedging into one window.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a rule that says: whenever umbrellas get more expensive, you must buy more umbrellas before the shop shuts. On a stormy day, everyone with that rule is in the shop at closing time at once, and the price shoots up even more. That was February 2018. When the desk tested ordinary days, though, the "must buy as it rises" crowd didn't make markets wild; it was the opposite crowd that reliably made them calm.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Nobody trades dealer GEX as a standalone signal in isolation — the sign
@@ -645,7 +737,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>GEX rescales gamma into a comparable dollar figure.</strong> \(\Gamma \times \text{OI} \times 100 \times S^2 \times 0.01\) converts "delta change per $1 move" into "dollar delta change per 1% move" — the unit options-flow analytics standardizes on.</span></div>
@@ -654,9 +746,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma amplifies, long gamma dampens — derived, not asserted.</strong> The sign of dealer gamma flips the sign of the required hedge trade relative to the price move itself.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dealer's sign is an assumption layered on top of raw OI, not an observed fact.</strong> Every GEX figure and gamma-flip estimate inherits this uncertainty.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Whether apparent "pinning" is active trading or a pure hedging byproduct is genuinely unsettled.</strong> Don't treat either explanation as the proven one.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>On this desk's data, long gamma is quiet and short gamma is ordinary (gex-range, Nasdaq only).</strong> Short-gamma days run at ~1.02 of a Brownian baseline, long-gamma days at ~0.85; no direction, nothing on FX. February 2018's blow-up came from rules that batched short-gamma hedging into one window at the close, not from continuous textbook hedging.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why do a call and a put at the same strike and expiry have exactly the same gamma, even though their deltas are different (and opposite in sign)?</summary>
@@ -922,5 +1015,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>
