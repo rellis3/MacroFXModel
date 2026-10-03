@@ -85,6 +85,7 @@ import { mountAsiaFibAtlasRoutes, startRunJob as _startAsiaFibAtlasRunJob, asiaL
 import { mountBotAuditRoutes } from './js/botAuditRoutes.js';
 import { createPaperRecord } from './js/paperRecordRoutes.js';
 import { createYieldShapeRegime } from './js/yieldShapeRegimeRoutes.js';
+import { createDailyRead } from './js/dailyReadRoutes.js';
 import { createVixCapture } from './js/vixCaptureRoutes.js';
 import { mountMondayFibAtlasRoutes, startRunJob as _startMondayFibAtlasRunJob, mondayLivePlanZones, mondayAllLines, liveCache as _faMondayLiveCache, liveWarming as _faMondayLiveWarming, saveAllLiveSnapshots as _faMondaySaveAllLiveSnapshots } from './js/mondayFibAtlasRoutes.js';
 import { refreshVolatilityPlan } from './js/volatilityBotProducer.js';
@@ -25955,6 +25956,14 @@ svcInterval('paperRecord', () => svcRun('paperRecord', () => paperRecord.tick('s
 const yieldShapeRegime = createYieldShapeRegime({ kv, getFastLive: _laGetFastLive, liveCache: _laLiveCache });
 yieldShapeRegime.mount(app);
 svcInterval('yieldShapeRegime', () => svcRun('yieldShapeRegime', () => yieldShapeRegime.tick('scheduled')), 5 * 60_000);
+
+// ── Daily Read (daily-read.html) ──────────────────────────────────────────────
+// Each evening: tag tomorrow per instrument from implied vol ÷ the forecast's own σ (continuation / fair / exhaustion);
+// each audited session: score where the range landed on its ladder and keep a running reliability tally; pick one
+// lesson from what happened. KV reads only. Evidence: analysis/exhaustion_residual/ (descriptive, not pre-registered).
+const dailyRead = createDailyRead({ kv });
+dailyRead.mount(app);
+svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('scheduled')), 5 * 60_000);
 
 // 1-minute VIX / VXN recorder: Yahoo keeps only 7 days of 1-minute bars, so pull every 6 hours into R2 (vix_m1/...) to build
 // the minute-level history for testing the VIX-vs-Nasdaq divergence idea later. Status: /api/vix-capture.

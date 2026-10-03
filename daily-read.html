@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daily Read</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --text:#e6edf3; --text2:#c9d1d9; --text3:#8b949e;
+          --pos:#3fb950; --neg:#f85149; --amber:#d29922; --blue:#58a6ff; --warm:#e57a3a; --cool:#4a8ee8; --mid:#6e7681; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:18px 16px 48px; display:grid; gap:16px; }
+  h1 { font-size:20px; margin:0; } h2 { font-size:13px; margin:0 0 8px; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .sub { color:var(--text3); max-width:80ch; margin:4px 0 0; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:14px; min-width:0; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  button { background:#21262d; color:var(--text); border:1px solid var(--border); border-radius:5px; padding:5px 10px; cursor:pointer; font:inherit; }
+  button:hover { border-color:var(--text3); }
+  #status { color:var(--text3); font-size:12px; }
+  .tbl { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+  th, td { padding:6px 8px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap; }
+  th:first-child, td:first-child { text-align:left; } th { color:var(--text3); font-weight:500; font-size:12px; }
+  .pill { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; padding:1px 7px; border-radius:3px; }
+  .t-continue { background:#3a1e0e; color:var(--warm); } .t-fair { background:#21262d; color:var(--text3); } .t-exhaust { background:#0e2240; color:var(--cool); }
+  .t-null { background:transparent; color:var(--text3); border:1px dashed var(--border); }
+  .band { display:inline-flex; gap:2px; vertical-align:middle; } .band i { width:14px; height:10px; border-radius:2px; background:#21262d; display:block; }
+  .band i.on0 { background:#2d5a8a; } .band i.on1 { background:var(--mid); } .band i.on2 { background:var(--warm); } .band i.on3 { background:#f2a15c; }
+  .hits { display:inline-flex; gap:3px; } .hits b { font-size:10px; font-weight:600; padding:0 4px; border-radius:2px; color:var(--text3); border:1px solid var(--border); }
+  .hits b.y { color:var(--bg); background:var(--text2); border-color:var(--text2); }
+  .lesson { border-left:3px solid var(--amber); }
+  .lesson h3 { margin:0 0 6px; font-size:16px; } .lesson p { margin:0; color:var(--text2); max-width:85ch; font-size:14px; line-height:1.6; }
+  .lesson a { color:var(--blue); }
+  .grid2 { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; }
+  .tag-explain { display:grid; gap:8px; } .tag-explain div { color:var(--text2); }
+  .bars { display:grid; gap:10px; }
+  .bar-row { display:grid; grid-template-columns:90px 1fr 70px; gap:8px; align-items:center; }
+  .track { position:relative; height:16px; background:#21262d; border-radius:3px; }
+  .fill { position:absolute; left:0; top:0; bottom:0; border-radius:3px; }
+  .mark { position:absolute; top:-3px; bottom:-3px; width:2px; }
+  .legend { color:var(--text3); font-size:12px; display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:8px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:-1px; margin-right:4px; }
+  .heat td { padding:3px; border-bottom:none; } .heat td.c { width:22px; height:20px; border-radius:3px; font-size:10px; text-align:center; color:var(--bg); font-weight:700; }
+  .muted { color:var(--text3); } .empty { color:var(--text3); padding:8px 0; }
+  .note { color:var(--text3); font-size:12px; max-width:110ch; }
+  @media (max-width:640px) { .bar-row { grid-template-columns:72px 1fr 56px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>📰 Daily Read</h1>
+    <p class="sub">Rebuilt every night. Each instrument's lines are tagged for tomorrow from one question: <b>do options price more or less movement than the lines were built for?</b> Then each finished day is scored against its own ladder, so you can watch the call being right or wrong, and one lesson is picked from what the market actually did.</p>
+  </div>
+  <div class="row"><button id="run">▶ Update now</button><button id="reload">↻ Reload</button><span id="status">loading…</span></div>
+
+  <section class="card lesson" id="lessonCard"><div class="empty">The first lesson appears once a finished day has been scored.</div></section>
+
+  <section class="card">
+    <h2 id="tmTitle">Tomorrow</h2>
+    <div class="tbl"><table id="tm"><thead><tr><th>Instrument</th><th>Tag</th><th>IV ÷ σ</th><th>Edges</th><th>IV %</th><th>σ day %</th><th>Event</th><th>OH / OL p75 %</th><th>p75 range passed, history</th></tr></thead><tbody></tbody></table></div>
+    <div class="tag-explain" id="tagExplain" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <h2 id="ydTitle">Last finished day</h2>
+    <div class="tbl"><table id="yd"><thead><tr><th>Instrument</th><th>Tag it had</th><th>Range ÷ median line</th><th>Where the range landed</th><th>Lines hit (OH / OL)</th></tr></thead><tbody></tbody></table></div>
+    <div class="legend"><span><i style="background:#2d5a8a"></i>inside p50</span><span><i style="background:var(--mid)"></i>p50–p75</span><span><i style="background:var(--warm)"></i>p75–p90</span><span><i style="background:#f2a15c"></i>beyond p90</span></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2>Is the call working? p75 range line passed, by tag</h2>
+      <div class="bars" id="bars"></div>
+      <div class="legend"><span><i style="background:var(--text)"></i>research expectation</span><span><i style="background:var(--amber)"></i>design 25%</span></div>
+      <p class="note">Live rates start noisy; with ~20 days per tag the gap between CONTINUE and EXHAUST should be visible if the research holds. If the live rates drift from the research marks, the tag edges need refitting.</p>
+    </section>
+    <section class="card">
+      <h2>Recent days</h2>
+      <div class="tbl"><table class="heat" id="heat"></table></div>
+      <p class="note">Colour = where the day's range landed on its ladder. Letter = the tag it had the night before (C / F / E).</p>
+    </section>
+  </div>
+
+  <p class="note" id="foot"></p>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const BANDC = ['#2d5a8a', 'var(--mid)', 'var(--warm)', '#f2a15c'];
+const BANDL = ['inside p50', 'p50–p75', 'p75–p90', 'beyond p90'];
+const pct = x => x == null ? '–' : (x * 100).toFixed(0) + '%';
+const f = (x, d = 2) => x == null ? '–' : (+x).toFixed(d);
+const pill = (tag, tags) => tag ? `<span class="pill t-${tag}">${esc(tags[tag]?.label ?? tag)}</span>` : '<span class="pill t-null">none</span>';
+
+function render(data) {
+  const days = data.days ?? {}, tags = data.tags ?? {}, exp = data.expectP75 ?? {};
+  const dates = Object.keys(days).sort();
+  const setupDate = [...dates].reverse().find(d => days[d].setup && !days[d].score);
+  const scoredDates = dates.filter(d => days[d].score);
+  const lastScored = scoredDates.at(-1);
+
+  // lesson
+  const L = lastScored && days[lastScored].lesson;
+  if (L) $('lessonCard').innerHTML = `<h2>Lesson from ${esc(lastScored)}</h2><h3>${esc(L.title)}</h3><p>${esc(L.body)}</p>${L.link ? `<p style="margin-top:8px"><a href="${esc(L.link)}" target="_blank">Go deeper: the theory lesson ↗</a></p>` : ''}`;
+
+  // tomorrow
+  const tb = $('tm').querySelector('tbody'); tb.innerHTML = '';
+  if (setupDate) {
+    $('tmTitle').textContent = `Tomorrow: ${setupDate}`;
+    for (const r of days[setupDate].setup.rows) {
+      tb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.sym)}${r.provisional ? ' <span class="muted" title="' + esc(r.provisional) + '">*</span>' : ''}</td>
+        <td>${pill(r.tag, tags)}</td><td>${f(r.ratio, 3)}</td><td class="muted">${r.edges ? r.edges.map(x => x.toFixed(2)).join(' / ') : '–'}</td>
+        <td>${f(r.iv)}</td><td>${f(r.sigma, 3)}</td><td>${esc(r.event ?? '–')}</td><td>${f(r.lines?.oh_p75)} / ${f(r.lines?.ol_p75)}</td>
+        <td>${r.expectP75 != null ? pct(r.expectP75) + ' <span class="muted">vs 25%</span>' : `<span class="muted">${esc(r.why ?? '')}</span>`}</td></tr>`);
+    }
+  } else tb.innerHTML = '<tr><td colspan="9" class="empty">Tomorrow\'s tags appear after the 22:00 UTC forecast run.</td></tr>';
+  $('tagExplain').innerHTML = ['continue', 'fair', 'exhaust'].map(k => tags[k] ? `<div>${pill(k, tags)} <b>${esc(tags[k].short)}.</b> ${esc(tags[k].read)}</div>` : '').join('') +
+    '<div class="muted">IV ÷ σ = implied vol per day ÷ the σ the lines were built from (before the event multiplier). Edges = the cheap / rich tercile cut-offs. * = provisional edges (hover for why).</div>';
+
+  // last finished day
+  const yb = $('yd').querySelector('tbody'); yb.innerHTML = '';
+  if (lastScored) {
+    $('ydTitle').textContent = `Last finished day: ${lastScored}`;
+    for (const r of days[lastScored].score.rows) {
+      const band = [0, 1, 2, 3].map(i => `<i class="${i === r.band ? 'on' + i : ''}"></i>`).join('');
+      const h = r.hit ?? {}, chip = (k, l) => `<b class="${h[k] ? 'y' : ''}">${l}</b>`;
+      yb.insertAdjacentHTML('beforeend', `<tr><td>${esc(r.sym)}</td><td>${pill(r.tag, tags)}</td><td>${f(r.resid)}×</td>
+        <td><span class="band" title="${BANDL[r.band] ?? ''}">${band}</span> <span class="muted">${BANDL[r.band] ?? ''}</span></td>
+        <td><span class="hits">${chip('oh_p50', '50')}${chip('oh_p75', '75')}${chip('oh_p90', '90')}</span> / <span class="hits">${chip('ol_p50', '50')}${chip('ol_p75', '75')}${chip('ol_p90', '90')}</span></td></tr>`);
+    }
+  } else yb.innerHTML = '<tr><td colspan="5" class="empty">The first finished day is scored after its 22:00 UTC session audit.</td></tr>';
+
+  // tally bars
+  const t = data.tally ?? {};
+  $('bars').innerHTML = ['continue', 'fair', 'exhaust'].map(k => {
+    const a = t[k] ?? { n: 0, p75Rate: null }, rate = a.p75Rate ?? 0, scale = x => Math.min(100, x / 0.6 * 100);
+    const col = k === 'continue' ? 'var(--warm)' : k === 'exhaust' ? 'var(--cool)' : 'var(--mid)';
+    return `<div class="bar-row"><span>${pill(k, tags)}</span><div class="track" title="live ${pct(a.p75Rate)} of ${a.n} days; research ${pct(exp[k])}">
+      ${a.n ? `<div class="fill" style="width:${scale(rate)}%;background:${col}"></div>` : ''}
+      <div class="mark" style="left:${scale(exp.design ?? .25)}%;background:var(--amber)"></div>
+      <div class="mark" style="left:${scale(exp[k] ?? 0)}%;background:var(--text)"></div></div>
+      <span class="muted">${a.n ? pct(a.p75Rate) + ' · ' + a.n : 'no days'}</span></div>`;
+  }).join('');
+
+  // heat
+  const recent = scoredDates.slice(-15), syms = [...new Set(recent.flatMap(d => days[d].score.rows.map(r => r.sym)))];
+  $('heat').innerHTML = recent.length ? `<tr><td></td>${recent.map(d => `<td class="muted" style="font-size:10px;text-align:center">${d.slice(5)}</td>`).join('')}</tr>` +
+    syms.map(s => `<tr><td>${esc(s)}</td>${recent.map(d => { const r = days[d].score.rows.find(x => x.sym === s);
+      return r && r.band != null ? `<td class="c" style="background:${BANDC[r.band]}" title="${esc(s)} ${d}: ${BANDL[r.band]}, ${f(r.resid)}× median">${r.tag ? r.tag[0].toUpperCase() : ''}</td>` : '<td></td>'; }).join('')}</tr>`).join('')
+    : '<tr><td class="empty">No scored days yet.</td></tr>';
+
+  const lt = data.lastTick;
+  $('status').textContent = `updated ${data.updatedAt ? new Date(data.updatedAt).toLocaleString() : 'never'}${lt && !lt.ok ? ' · last run failed: ' + lt.error : ''}`;
+  $('foot').textContent = 'Evidence: analysis/exhaustion_residual/RESIDUAL_MECHANISM_CHECK.md and the Exhaustion Surface (6 FX + NAS100, 2020–26, descriptive, not pre-registered). ' +
+    'Implied vol comes from the Rich-Vol Break Record\'s nightly flags (CME settlement IV30, CBOE indices); σ and lines from the 22:00 UTC Vol Forecast; the realised range from its session audit (taken at 22:00 UTC, so in summer the last London hour is missing). No orders, no alerts.';
+}
+
+async function load() {
+  try { const r = await fetch('/api/daily-read'); const d = await r.json(); if (!r.ok) throw new Error(d.error || r.status); render(d); }
+  catch (e) { $('status').textContent = 'Could not load the Daily Read: ' + e.message + '. Reload to try again.'; }
+}
+$('reload').onclick = load;
+$('run').onclick = async () => { $('status').textContent = 'updating…'; try { await fetch('/api/daily-read/tick', { method: 'POST' }); } catch {} load(); };
+load();
+</script>
+</body>
+</html>

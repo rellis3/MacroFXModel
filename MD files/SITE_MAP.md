@@ -112,6 +112,7 @@ Pages with a later date have genuinely been worked on since.
 | `forecast-path.html`         | Draw the model's cone intraday/daily and grade it                       | 🟢 Live      | ≤2026-08-09   | A calibration viewer, not a strategy                           |
 | `forecast-style-fade.html`   | Rank 6 forecasters × 4 line types for fade/follow expectancy            | 🔬 Research  | ≤2026-08-09   | Greenest cell wins; no verdict banked                          |
 | `forward-track.html`         | Live post-research record of the confirmed fade                         | 🟢 Live      | ≤2026-08-09   | The test a backtest can't fake; KV-persisted                   |
+| `daily-read.html`            | Nightly read: tomorrow's continue/fair/exhaust tags, yesterday scored, lesson | 🟢 Live      | 2026-10-03    | KV daily_read_v1; job `dailyRead` every 5 min; KV reads only      |
 | `paper-record.html`          | Paper forward test of the rich-vol break rule (Fade/Continue research)    | 🟢 Live      | 2026-10-02    | KV paper_record_v1; job `paperRecord` every 5 min; no orders     |
 | `honest-policy.html`         | Reproduce COG's per-cell selection under honest 1-min fills             | 🔬 Research  | ≤2026-08-09   | Pre-registered; verdict at runtime, not banked                 |
 | `news-exhaustion.html`       | Tests whether calendar news buckets predict session fade vs follow      | 🔬 Research  | ≤2026-08-09   | No verdict recorded                                            |
