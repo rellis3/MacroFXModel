@@ -389,6 +389,16 @@ window.TL_PATHS = {
    "min": 14,
    "micro": true
   },
+  "loss-aversion-prospect-theory": {
+   "t": "Why a Loss Hurts Twice as Much",
+   "min": 20,
+   "micro": true
+  },
+  "process-vs-outcome-decision-journals": {
+   "t": "Judge the Decision, Not the Result",
+   "min": 20,
+   "micro": true
+  },
   "options-four-positions": {
    "t": "The Four Option Positions",
    "min": 17,
@@ -472,6 +482,16 @@ window.TL_PATHS = {
   "cornish-fisher-expansion": {
    "t": "Cornish-Fisher Expansion",
    "min": 13,
+   "micro": true
+  },
+  "overconfidence-overtrading": {
+   "t": "Overconfidence and the Cost of Trading Too Much",
+   "min": 20,
+   "micro": true
+  },
+  "drawdowns-risk-of-ruin": {
+   "t": "Drawdowns, Risk of Ruin, and Why Good Systems Get Abandoned",
+   "min": 20,
    "micro": true
   },
   "four-markets-four-questions": {
@@ -567,6 +587,11 @@ window.TL_PATHS = {
   "cointegration": {
    "t": "Cointegration & Statistical Arbitrage",
    "min": 16,
+   "micro": true
+  },
+  "herding-narratives-bubbles": {
+   "t": "Herding, Narratives and Bubbles",
+   "min": 22,
    "micro": true
   },
   "data-pipeline-raw-to-trading-ready": {
@@ -677,6 +702,11 @@ window.TL_PATHS = {
   "coherent-risk-measures": {
    "t": "Coherent Risk Measures: VaR, CVaR & the Artzner Axioms",
    "min": 14,
+   "micro": true
+  },
+  "disposition-effect": {
+   "t": "Selling Winners, Holding Losers",
+   "min": 18,
    "micro": true
   },
   "markowitz-black-litterman": {

@@ -73,6 +73,17 @@ markup, the house content order, and a verification checklist.
   (Black Monday to the 2024 yen carry unwind), each with its causal chain
   and a link to every lesson section that tells it. Built from the lessons'
   own `.tl-story` boxes, which carry stable `id="story-N"` anchors.
+- **The Human Side** (6, full + visual guide) — the person at the screen:
+  loss aversion & prospect theory, the disposition effect, overconfidence &
+  overtrading, herding & bubbles, drawdowns & risk of ruin, and judging
+  decisions not results (with a decision journal). Each has a self-audit.
+- **Learning paths** (`paths.html`) — four goal-based routes (Volatility &
+  Options, Macro & FX, System Building, Risk & Portfolio) sharing one core,
+  each ending in a capstone. Defined in `assets/paths-data.js`; every lesson
+  on a path shows an "On your path" bar (`assets/paths.js`). Checked by
+  `node js/lessonPaths.test.mjs`.
+- **"Where this came from"** (`.tl-origin`) — the human origin of the idea in
+  59 maths/ML lessons; real-world episodes (`.tl-story`) now in 78 — every public lesson has one or the other.
 - **Theory in the Real World** (10, each with a full lesson and a visual
   guide) — the story layer: hard theory told through real episodes, real
   causal chains (`.tl-chain`), and this desk's own tested verdict on each
