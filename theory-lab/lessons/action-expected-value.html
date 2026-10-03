@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thinking in Expected Value — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .ev-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 14px}
+  .ev-table th,.ev-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .ev-table th{color:var(--text3);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .ev-table td:first-child,.ev-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .ev-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .ev-svg{width:100%;height:auto;display:block;touch-action:pan-y}
+  .ev-card{font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;background:var(--s2);border:1px dashed var(--border);border-radius:8px;padding:12px 14px;margin:10px 0 0;white-space:pre-wrap;word-break:break-word;color:var(--text2)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / From Analysis to Action / Thinking in Expected Value</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">From Analysis to Action · Lesson 2 of 8</div>
+  <h1 class="tl-title">Thinking in Expected Value</h1>
+  <p class="tl-dek">A hit rate on its own tells you almost nothing. This lesson turns a finished analysis into the one number that decides whether a trade is worth taking: what it pays on average, after costs. It also shows how to get a probability out of an analysis that never gives you one.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~20 min read</span>
+    <span>Prereqs: <a href="primer-probability.html">Probability</a> (helpful); <a href="action-trade-plan.html">From a View to a Trade Plan</a> (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="action-expected-value-micro.html">Visual Guide</a>. It covers the same ground as short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Expected value per trade, in R</strong> (multiples of what you risk), is \(E = p\,b - (1-p) - c\): win rate times payoff, minus loss rate, minus cost. A 40% hit rate paying 2R makes +0.20R a trade; a 70% hit rate paying 0.4R loses 0.02R.</li>
+      <li><strong>Every payoff has a break-even win rate</strong>, \(p^{*} = (1+c)/(1+b)\). Your edge is how far your real win rate sits above that line, not how high the win rate is.</li>
+      <li><strong>Moving the target doesn't create an edge.</strong> In a market with no edge, the chance of hitting a target \(T\) before a stop \(S\) is \(S/(S+T)\), which is exactly the break-even rate. A wider target only lowers your hit rate to match.</li>
+      <li><strong>Analyses rarely state a probability, so you have to build one.</strong> Start from the base rate (the no-edge odds). Then count how often the setup worked, shrink that count toward the base rate when the sample is small, and turn range forecasts into odds.</li>
+      <li><strong>EV is an average, so it takes trades to show up.</strong> A real +0.2R edge at a 40% win rate needs a couple of hundred trades before it clears the noise.</li>
+      <li><strong>Desk verdicts:</strong> the desk's one audited sleeve (63% win, profit factor 2.2) works out to about +0.44 average-losses per trade, clearing its break-even win rate by about 19 points. The desk's own records also show how far a backtest win rate can fall live (85.7% → 39.6% on one system).</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson, <a href="action-trade-plan.html">From a View to a Trade Plan</a>, turned a view into
+    an entry, a stop and a target. That plan doesn't yet tell you whether the trade is worth taking.
+    For that you need two more numbers: how likely the target is to be hit before the stop, and what the
+    trade costs. Multiply them through and you get expected value, the average you earn per trade if you
+    take this kind of trade many times.
+  </p>
+  <p>
+    Expected value sits under nearly every other lesson in this category. <a href="action-combining-signals.html">Combining
+    signals</a> is really about getting a better probability. <a href="action-edge-after-costs.html">Edge after
+    costs</a> is the cost term \(c\) taken seriously. <a href="kelly-criterion.html">Kelly</a> sizing uses the
+    same \(p\) and \(b\). <a href="action-calibration-scoring.html">Calibration</a> checks whether the probabilities
+    you feed in are honest. The arithmetic itself is simple. The hard part is getting a probability that means something.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Being right often is not the same as making money</h3>
+    <p>
+      Picture two traders. One is right seven times out of ten, but takes profits quickly and lets losers run
+      to the stop. The other is right only four times in ten, but cuts losers at the stop and lets winners run to
+      twice the risk. Ask people which one is better and most pick the first, because being right feels like
+      skill.
+    </p>
+    <p style="margin-bottom:0">
+      Count the money instead. Over ten trades the first wins seven small amounts and loses three full ones. The
+      second loses six full ones but wins four big ones. Once you weigh each outcome by its size, the second
+      trader is clearly ahead. Expected value is that weighing, done before the trade rather than after.
+    </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>From the card table to the trading desk</h3>
+    <div class="tl-origin-who">Expected value · into markets via Edward Thorp (1960s) and the "R-multiple" expectancy of trading education (1990s)</div>
+    <p>
+      The idea of weighing outcomes by their probabilities goes back to Pascal and Fermat's letters on gambling
+      in 1654. It reached trading through one person in particular. In <em>Beat the Dealer</em> (1962), the
+      mathematician Edward Thorp showed that a blackjack player who tracks the cards can identify moments when
+      the next hand has positive expected value, and should bet more at exactly those moments. He then took the
+      same thinking to markets. <em>Beat the Market</em> (1967, with Sheen Kassouf) priced warrants against
+      their stock and hedged the difference. He later ran Princeton Newport Partners on the same principle:
+      find a positive average, size it, and repeat it many times.
+    </p>
+    <p>
+      For discretionary traders, the same arithmetic arrived as "expectancy", often written in R-multiples
+      (profit or loss divided by the initial risk). Trading educators such as Van K. Tharp popularised it in
+      the 1990s. Measuring every trade in R makes trades with different stops comparable and puts the payoff
+      ratio on the same footing as the win rate.
+    </p>
+    <p>
+      On a desk, expected value is the gate between a signal and a position. An analysis can produce a view.
+      EV decides whether that view, at this entry, stop, target and cost, is worth a trade at all. The answer
+      then goes on to sizing.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Turn a view with a stop and a target into one number: the average R this kind of trade earns after costs, and how sure you are of it.</dd>
+        <dt>Takes in</dt><dd>The plan's entry, stop and target (<a href="action-trade-plan.html">Trade Plan</a>), a probability (<a href="action-base-rates.html">Base Rates First</a>, <a href="bayesian-inference.html">Bayesian inference</a>) and a cost (<a href="action-edge-after-costs.html">Edge After Costs</a>).</dd>
+        <dt>Hands on to</dt><dd>Position sizing (<a href="action-vol-to-size.html">Vol to Size</a>, <a href="kelly-criterion.html">Kelly</a>) and later the scoring of the probability itself (<a href="action-calibration-scoring.html">Scoring Your Own Calls</a>).</dd>
+      </dl>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Measure every trade in R</h3>
+  <p>
+    Call the amount you lose if the stop is hit <strong>1R</strong>. A trade that risks 40 pips and makes
+    100 pips is a +2.5R win, and a stop-out is −1R. Working in R lets a 10-pip scalp and a 300-pip swing
+    trade be judged on the same scale. The payoff ratio \(b\) is the average win divided by the average loss.
+  </p>
+
+  <h3>2. Expected value per trade</h3>
+  <p>
+    If a trade wins with probability \(p\), pays \(b\) R when it wins, loses 1R when it loses, and costs
+    \(c\) R to do (spread, slippage, commission), then the average result per trade is
+  </p>
+  <div class="tl-math">
+    \[ E = p\,b \;-\; (1-p) \;-\; c \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp green"><div class="tl-fp-term">p · b</div><div class="tl-fp-name">What the winners bring</div><div class="tl-fp-desc">How often you win, times how much a win pays</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">(1 − p)</div><div class="tl-fp-name">What the losers take</div><div class="tl-fp-desc">How often you lose, times 1R</div></div>
+    <div class="tl-fp blue"><div class="tl-fp-term">c</div><div class="tl-fp-name">The toll</div><div class="tl-fp-desc">Paid on every trade, win or lose</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">E</div><div class="tl-fp-name">Expected value</div><div class="tl-fp-desc">The average R per trade, the number that decides</div></div>
+  </div>
+  <p>Here are the two traders from the intuition box, with a small cost of 0.05R per trade:</p>
+  <div class="ev-wrap"><table class="ev-table">
+    <tr><th></th><th>Win rate p</th><th>Payoff b</th><th>p·b</th><th>1 − p</th><th>E before cost</th><th>E after 0.05R</th><th>Break-even p</th></tr>
+    <tr><td>Trader A: "right a lot"</td><td>70%</td><td>0.40</td><td>0.28</td><td>0.30</td><td>−0.02R</td><td>−0.07R</td><td>71.4%</td></tr>
+    <tr><td>Trader B: "wrong a lot"</td><td>40%</td><td>2.00</td><td>0.80</td><td>0.60</td><td>+0.20R</td><td>+0.15R</td><td>33.3%</td></tr>
+  </table></div>
+  <p>
+    Over 100 trades, A expects to lose about 7R and B to make about 15R. A's 70% is below its own
+    break-even rate of 71.4%. B's 40% is well above its break-even rate of 33.3%. The win rate on its own
+    tells you nothing until you know what each win pays.
+  </p>
+
+  <h3>3. The break-even win rate</h3>
+  <p>Set \(E = 0\) and solve for \(p\):</p>
+  <div class="tl-math">
+    \[ p^{*} = \frac{1 + c}{1 + b} \qquad\text{and, with no cost,}\qquad p^{*} = \frac{1}{1+b} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>p*</code><span>the win rate at which the trade exactly breaks even</span></div>
+    <div class="tl-eq-chip c2"><code>1 + c</code><span>a loss plus the toll: what each losing trade really costs</span></div>
+    <div class="tl-eq-chip c3"><code>1 + b</code><span>the swing between a win and a loss</span></div>
+  </div>
+  <p>
+    Your <strong>edge</strong> is the gap \(p - p^{*}\). A 2R target needs 33.3% to break even before costs.
+    A 0.5R target needs 66.7%. A strategy with a high hit rate and small wins is not safer for that. It just
+    has a higher bar to clear, and every point of cost raises that bar further.
+  </p>
+
+  <h3>4. Moving the target doesn't create an edge</h3>
+  <p>
+    Here is the result that matters most when you write a trade plan. Suppose the market is a random walk with
+    no drift, which is what "no edge" means. You place a stop \(S\) below and a target \(T\) above. The chance
+    of reaching the target first is the classic gambler's-ruin result:
+  </p>
+  <div class="tl-math">
+    \[ P(\text{target before stop}) = \frac{S}{S+T} = \frac{1}{1+b} \qquad (b = T/S) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S</code><span>distance to the stop</span></div>
+    <div class="tl-eq-chip c2"><code>T</code><span>distance to the target</span></div>
+    <div class="tl-eq-chip c4"><code>1/(1+b)</code><span>the no-edge hit rate, identical to the break-even rate</span></div>
+  </div>
+  <p>
+    The no-edge hit rate equals the break-even rate. So in a market with no edge, every combination of stop
+    and target has an expected value of exactly zero before costs and exactly \(-c\) after them. Moving a
+    target from 1R to 3R takes the hit rate from 50% to 25% and leaves EV unchanged. An edge exists only when
+    your analysis lets you beat \(S/(S+T)\) for the stop and target you chose. That makes \(S/(S+T)\) the
+    natural <em>base rate</em> for any stop-and-target trade, and it is where your probability estimate should start.
+  </p>
+
+  <h3>5. Profit factor, and turning someone else's stats into EV</h3>
+  <p>
+    Track records are often quoted as a win rate and a <strong>profit factor</strong>, gross profit divided by
+    gross loss: \(\text{PF} = p\,b/(1-p)\). Rearranging gives the payoff and the expectancy, in units of the
+    average loss:
+  </p>
+  <div class="tl-math">
+    \[ b = \text{PF}\cdot\frac{1-p}{p}, \qquad E = (1-p)\,(\text{PF} - 1) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>PF</code><span>profit factor: gross wins ÷ gross losses</span></div>
+    <div class="tl-eq-chip c2"><code>b</code><span>the payoff ratio implied by PF and the win rate</span></div>
+    <div class="tl-eq-chip c3"><code>E</code><span>expectancy per trade in average losses (gross of any costs not already in the record)</span></div>
+  </div>
+  <p>
+    So "60% winners, profit factor 1.5" means \(b = 1.5 \times 0.4/0.6 = 1.0\) and \(E = 0.4 \times 0.5 = 0.20\)
+    average losses per trade. A profit factor near 1 is close to no edge, whatever the win rate.
+  </p>
+
+  <h3>6. EV is an average, so it takes trades to show up</h3>
+  <p>
+    A two-outcome trade has a standard deviation of \(\sigma = (1+b)\sqrt{p(1-p)}\) R per trade. After \(n\)
+    trades, the average R has a standard error of \(\sigma/\sqrt{n}\). To be roughly two standard errors sure the
+    edge is above zero you need
+  </p>
+  <div class="tl-math">
+    \[ n \approx \left(\frac{2\sigma}{E}\right)^{2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ</code><span>how much one trade's result swings, in R</span></div>
+    <div class="tl-eq-chip c2"><code>E</code><span>the edge you are trying to detect</span></div>
+    <div class="tl-eq-chip c3"><code>n</code><span>trades needed before the record can tell the edge from luck</span></div>
+  </div>
+  <p>
+    For Trader B, \(\sigma = 3\sqrt{0.24} = 1.47\)R and \(E = 0.20\)R, so \(n \approx (2 \times 1.47/0.20)^2 \approx 216\)
+    trades. A good edge can stay invisible in your results for months. That is why the decision has to rest on
+    the expected value you estimated beforehand, not on how the last ten trades went (see
+    <a href="process-vs-outcome-decision-journals.html">Judge the Decision, Not the Result</a>).
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>R</td><td>One unit of risk: what you lose if the stop is hit.</td></tr>
+    <tr><td>\(p\)</td><td>Win rate: the probability the target is reached before the stop.</td></tr>
+    <tr><td>\(b\)</td><td>Payoff ratio: average win ÷ average loss (for a fixed stop and target, \(T/S\)).</td></tr>
+    <tr><td>\(c\)</td><td>Round-trip cost per trade, in R.</td></tr>
+    <tr><td>\(E\)</td><td>Expected value (expectancy) per trade, in R.</td></tr>
+    <tr><td>\(p^{*}\)</td><td>Break-even win rate, \((1+c)/(1+b)\).</td></tr>
+    <tr><td>\(S,\ T\)</td><td>Distances from entry to the stop and to the target.</td></tr>
+    <tr><td>PF</td><td>Profit factor: gross profit ÷ gross loss.</td></tr>
+    <tr><td>\(\sigma\)</td><td>Standard deviation of one trade's result, in R. In section 3, the forecast volatility of a price move.</td></tr>
+    <tr><td>\(n\)</td><td>Number of trades (or of past cases in a count).</td></tr>
+    <tr><td>\(k\)</td><td>Number of past cases that worked.</td></tr>
+    <tr><td>\(p_0\)</td><td>Base rate: the probability before you use the analysis.</td></tr>
+    <tr><td>\(m\)</td><td>Prior weight: how many "pretend cases" the base rate counts for when shrinking.</td></tr>
+    <tr><td>\(\Phi\)</td><td>The standard normal cumulative distribution.</td></tr>
+    <tr><td>\(z\)</td><td>A distance measured in standard deviations, \(d/\sigma\).</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Your tool: the EV and payoff explorer</div>
+    <div class="ev-wrap">
+    <svg id="ev-svg" class="ev-svg" viewBox="0 0 640 302" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A map of win rate against payoff ratio. A curve marks the break-even win rate for each payoff; the region above it makes money and the region below loses. A dashed curve shows the no-edge hit rate of a random market. Your chosen trade is a dot; reference points mark Trader A and Trader B.">
+      <g id="ev-g"></g>
+    </svg>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--green)"></i>makes money after costs</span>
+      <span><i style="background:var(--red)"></i>loses after costs</span>
+      <span><i style="background:var(--text3)"></i>no-edge hit rate, 1/(1+b)</span>
+      <span><i style="background:var(--purple)"></i>your trade</span>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Win rate p</span><span class="tl-live" id="ev-p-val">40%</span></div>
+        <input type="range" id="ev-p" min="5" max="95" step="1" value="40">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Payoff b (avg win ÷ avg loss)</span><span class="tl-live" id="ev-b-val">2.00</span></div>
+        <input type="range" id="ev-b" min="0.2" max="5" step="0.05" value="2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Cost per trade c (in R)</span><span class="tl-live" id="ev-c-val">0.05R</span></div>
+        <input type="range" id="ev-c" min="0" max="0.3" step="0.01" value="0.05">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trades per year</span><span class="tl-live" id="ev-n-val">100</span></div>
+        <input type="range" id="ev-n" min="10" max="500" step="10" value="100">
+      </div>
+    </div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" data-ev-p="70" data-ev-b="0.4">Trader A · 70% / 0.4</button>
+      <button type="button" class="tl-btn" data-ev-p="40" data-ev-b="2">Trader B · 40% / 2.0</button>
+      <button type="button" class="tl-btn" data-ev-p="63" data-ev-b="1.3">Desk sleeve · 63% / 1.3</button>
+      <button type="button" class="tl-btn" data-ev-p="29" data-ev-b="2.5">No edge at 2.5R</button>
+    </div>
+    <div class="tl-readout" id="ev-readout"></div>
+    <div class="tl-chart-caption">Each point on the map is a strategy: a win rate and a payoff. The solid curve is \(p^{*} = (1+c)/(1+b)\). Strategies above it make money after costs, and below it they lose. The dashed curve is \(1/(1+b)\), the hit rate a random market gives you for nothing. A point on the dashed line has no edge. Raise the cost and watch the solid curve move up away from it. "Trades to tell" is \((2\sigma/E)^2\), how many trades before the record can separate this edge from luck.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>A game: you pay 1 sweet to play. Half the time you win 3 sweets, half the time you win nothing. Play ten times: you pay 10 and win about 15. You lost half your games and still came out ahead, because the wins were big. What matters is what you get back on average, not how often you win.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Where the probability comes from</h2>
+  <p>
+    A GARCH forecast gives you a volatility. A cointegration test gives you a spread and a half-life. A factor
+    model gives you an exposure. None of them gives you "the target is hit first 38% of the time". To use EV
+    you have to build that number yourself. There are four honest ways to do it, and they work best in this order.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">⚖️</div>
+      <h4>1. Start from the base rate</h4>
+      <p>What would the probability be with no analysis at all? For a stop-and-target trade that is \(S/(S+T)\). For "up over the next week" it is the long-run share of up-weeks. Everything you add has to move you away from this. <a href="action-base-rates.html">Base Rates First</a> goes into this step in depth.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧮</div>
+      <h4>2. Count conditional frequencies</h4>
+      <p>Find past cases where the analysis said the same thing, apply the same stop and target, and count how often the target came first: \(k\) of \(n\). Only use information that was available at the time.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧲</div>
+      <h4>3. Shrink small samples toward the base rate</h4>
+      <p>Twelve wins in twenty cases is not a 60% edge. It could easily be a 45% one. Pull the count toward the base rate by an amount that shrinks as the sample grows (formula below).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📏</div>
+      <h4>4. Turn ranges into odds</h4>
+      <p>A volatility forecast describes a distribution. Combine it with a target distance and you get the probability of reaching the target, under a stated assumption about drift.</p>
+    </div>
+  </div>
+
+  <h3>Shrinking a small count</h3>
+  <p>
+    The simplest honest estimator treats the base rate as worth \(m\) imaginary past cases, and blends it with
+    the \(n\) real ones:
+  </p>
+  <div class="tl-math">
+    \[ \hat p = \frac{k + m\,p_0}{n + m} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>k / n</code><span>what your count says: k wins in n cases</span></div>
+    <div class="tl-eq-chip c2"><code>p₀</code><span>the base rate you start from</span></div>
+    <div class="tl-eq-chip c3"><code>m</code><span>how many cases the base rate is "worth"; larger m means more scepticism</span></div>
+    <div class="tl-eq-chip c4"><code>p̂</code><span>the probability you actually feed into EV</span></div>
+  </div>
+  <p>
+    This is the posterior mean of a Beta prior (see <a href="bayesian-conjugate-priors.html">Conjugate Priors</a>).
+    With \(n\) small, \(\hat p\) stays close to \(p_0\). With \(n\) large, it moves toward \(k/n\). A sensible
+    default for a new, untested idea is \(m\) equal to about 20–30 cases. The standard error of a raw count,
+    \(\sqrt{\hat p(1-\hat p)/n}\), tells you how little 20 or 30 cases pin down: about ±9–11 percentage points.
+  </p>
+
+  <h3>From a range forecast to odds</h3>
+  <p>
+    If the analysis says the next week's move has a standard deviation of \(\sigma\) (from
+    <a href="garch-volatility.html">GARCH</a>, <a href="institutional-har-rv.html">HAR</a> or implied vol), and
+    you assume no drift, then for a target a distance \(d\) away:
+  </p>
+  <div class="tl-math">
+    \[ P(\text{close beyond } d) = 1 - \Phi\!\left(\tfrac{d}{\sigma}\right), \qquad P(\text{touch } d \text{ during the week}) \approx 2\left[1 - \Phi\!\left(\tfrac{d}{\sigma}\right)\right] \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>d/σ</code><span>the target distance in standard deviations</span></div>
+    <div class="tl-eq-chip c2"><code>Φ</code><span>the normal cumulative probability</span></div>
+    <div class="tl-eq-chip c3"><code>2[1 − Φ]</code><span>touching is about twice as likely as closing beyond (the reflection principle)</span></div>
+  </div>
+  <p>
+    The factor of two comes from the reflection principle for a driftless random walk. Fat tails and drift both
+    bend these numbers, so treat them as a base rate to adjust, not as the answer.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Range to odds: what a volatility forecast says about a target</div>
+    <div class="ev-wrap">
+    <svg id="ro-svg" class="ev-svg" viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bell curve of next week's move, measured in percent. The area beyond the target distance is shaded and labelled with the probability of closing beyond it.">
+      <g id="ro-g"></g>
+    </svg>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Forecast 1-week volatility σ</span><span class="tl-live" id="ro-s-val">1.2%</span></div>
+        <input type="range" id="ro-s" min="0.3" max="5" step="0.1" value="1.2">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Distance to target d</span><span class="tl-live" id="ro-d-val">1.0%</span></div>
+        <input type="range" id="ro-d" min="0.1" max="6" step="0.1" value="1">
+      </div>
+    </div>
+    <div class="tl-readout" id="ro-readout"></div>
+    <div class="tl-chart-caption">Assumes a normal, driftless week. For scale: EUR/USD has typically moved roughly 1% a week (one standard deviation), and gold and equity indices more. Use the result as a starting point, the no-edge odds, and then ask what your analysis adds to it.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Your friend says "I'm good at guessing coin flips, I got 4 out of 5!" Before you believe them, remember that anyone gets 4 out of 5 sometimes. So you start from "half the time, like everyone" and only move a little toward 4 out of 5. If they get 400 out of 500, then you move a lot.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>Worked example: one EUR/USD trade, end to end</h2>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Long EUR/USD at 1.0850: is it worth taking?</h3>
+    <p>Your analysis says the pair is oversold against its usual relationship with rate differentials. The <a href="action-trade-plan.html">trade plan</a> says: buy 1.0850, stop 1.0810 where the thesis is wrong, target 1.0950. Round-trip cost is 1.0 pip of spread plus 0.5 pip of expected slippage.</p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Put the plan in R</h4>
+        <p>Stop distance \(S = 40\) pips \(= 1\)R. Target distance \(T = 100\) pips, so \(b = 100/40 = 2.5\). Cost \(c = 1.5/40 = 0.0375\)R.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Base rate: what a random market gives you</h4>
+        <p>\(p_0 = S/(S+T) = 40/140 = 28.6\%\). A coin-flip market hits this target first about 29% of the time.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Conditional frequency from your analysis</h4>
+        <p>You go back through history and find 30 past cases where the same reading occurred. With the same stop and target in R, the target came first 12 times: \(k/n = 40\%\). On its own that looks like an 11-point edge.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Shrink it</h4>
+        <p>With \(m = 30\): \(\hat p = (12 + 30 \times 0.286)/(30 + 30) = 20.57/60 = 34.3\%\). The standard error of the raw 40% is \(\sqrt{0.4 \times 0.6/30} = 8.9\) points, so you can't claim more than that.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Expected value after costs</h4>
+        <p>\(E = 0.343 \times 2.5 - 0.657 - 0.0375 = 0.857 - 0.657 - 0.0375 = +0.16\)R per trade, about 6.5 pips. Using the unshrunk 40% would have given +0.36R, more than double.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body">
+        <h4>Break-even and margin</h4>
+        <p>\(p^{*} = (1 + 0.0375)/3.5 = 29.6\%\). Your estimate sits 4.6 points above it, which is about half of one standard error. The estimate is positive but thin.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">7</div><div class="tl-step-body">
+        <h4>How long before you'd know</h4>
+        <p>\(\sigma = 3.5\sqrt{0.343 \times 0.657} = 1.66\)R, so \(n \approx (2 \times 1.66/0.16)^2 \approx 418\) trades. No single trade, and no month of trades, will confirm or refute this.</p>
+      </div></div>
+    </div>
+    <p style="margin-top:12px"><strong>The usable output, one row of an EV table:</strong></p>
+    <div class="ev-wrap"><table class="ev-table">
+      <tr><th>Trade</th><th>b</th><th>c</th><th>p₀</th><th>Count</th><th>p̂</th><th>p*</th><th>E</th><th>Decision</th></tr>
+      <tr><td>EUR/USD long 1.0850</td><td>2.5</td><td>0.04R</td><td>28.6%</td><td>12/30</td><td>34.3%</td><td>29.6%</td><td>+0.16R</td><td>Take, reduced size</td></tr>
+    </table></div>
+    <p style="margin-bottom:0">The decision follows from the numbers. EV is positive on an honest estimate, so the trade is worth taking. The margin is inside the noise, so it gets a smaller size than a well-established setup (the <a href="action-vol-to-size.html">sizing lesson</a> turns that into lots), and it goes in the journal so the 30 cases become 31.</p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Template · copy this</div>
+    <h3>The EV card: fill it in before the order goes in</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>R and payoff</h4><p>Stop distance = 1R. Target distance ÷ stop distance = \(b\). Round-trip cost ÷ stop distance = \(c\).</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Base rate</h4><p>\(p_0 = S/(S+T)\) for a stop-and-target trade, or the unconditional frequency for a time-based exit. Write it down before you look at your analysis.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>Evidence</h4><p>\(k\) of \(n\) past cases (same rule, same exits, no hindsight), or a range-to-odds figure. Write the source next to it.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>Shrunk probability</h4><p>\(\hat p = (k + m\,p_0)/(n+m)\), with \(m\) of 20–30 unless the setup has a long audited record.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>EV and margin</h4><p>\(E = \hat p\,b - (1-\hat p) - c\). Margin \(= \hat p - p^{*}\). Compare the margin with the standard error.</p></div></div>
+      <div class="tl-step"><div class="tl-step-num">6</div><div class="tl-step-body"><h4>Decision</h4><p>E ≤ 0: no trade. E &gt; 0 with a margin under one standard error: small size, and log it. E &gt; 0 with a margin of two or more standard errors: normal size.</p></div></div>
+    </div>
+    <div class="ev-card">EV CARD   instrument ____  date ____
+entry ____  stop ____  target ____   S=__  T=__  b=T/S=__
+cost (pips) __  → c = cost/S = __R
+base rate p0 = S/(S+T) = __%     (or: unconditional __%)
+evidence: k=__ of n=__   source: ________________
+shrunk p = (k + m·p0)/(n + m), m=__  → p = __%
+E = p·b − (1−p) − c = __R    break-even p* = (1+c)/(1+b) = __%
+margin p − p* = __ pts   vs SE √(p(1−p)/n) = __ pts
+decision: no trade / small / normal     review after __ more cases</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: high hit rates, negative skew</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>February 2018: the short-volatility trade</h3>
+    <p>
+      Through the very calm markets of 2017, one of the most popular trades was to be short volatility, often
+      through exchange-traded notes that rose when the VIX fell. Most days, and most months, the trade made a
+      little money. Its hit rate was high and its equity curve looked smooth, which is exactly what a strategy
+      with many small wins looks like before its rare large loss arrives.
+    </p>
+    <p>
+      On 5 February 2018 U.S. stocks fell sharply and the VIX more than doubled in a single session. The
+      best-known of these products, Credit Suisse's XIV note, lost more than 90% of its value in a day, and
+      Credit Suisse announced it would terminate it. Several other short-volatility funds took heavy losses
+      in the same days.
+    </p>
+    <p style="margin-bottom:0">
+      Expected value is the right way to read this. A long run of small wins tells you the win rate, but the
+      payoff ratio on the losing side was a large multiple of a typical win, and very few people had a
+      reliable estimate of how often that loss would come. With a high win rate and a huge, rare loss, the
+      sign of EV depends almost entirely on the one number nobody had measured well.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1962: a mathematician beats the dealer</h3>
+    <p style="margin-bottom:0">
+      Blackjack has a house edge, so the average hand loses. Edward Thorp's <em>Beat the Dealer</em>
+      showed that the edge isn't fixed. As cards leave the shoe, the remaining deck sometimes favours the
+      player, and a player who tracks it can tell when. The method was to bet the minimum when EV is negative
+      and bet more when it turns positive. Thorp tested it in Nevada casinos, and casinos changed their rules
+      and shuffling practices in response. The same two ideas, measure EV for each opportunity and size by it,
+      became the basis of his later trading career.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Analysis</b>A view: oversold, cheap, a spread at an extreme</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Probability</b>Base rate, conditional count, shrunk toward the base rate</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · expected value</b>p·b − (1−p) − c, against the break-even rate</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Size</b>Bigger when the margin is many standard errors, smaller when it's thin</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Judged over hundreds of trades, not the last few</div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>The desk's one fully audited strategy, read as expected value.</strong> The FX sleeve built on the US-versus-foreign 2-year yield spread: out of sample 2015–2025 with honest publication lags, ~109 trades, 63% win, profit factor 2.2. Apply this lesson's identities: \(b = 2.2 \times 0.37/0.63 \approx 1.29\), and \(E = 0.37 \times (2.2 - 1) \approx 0.44\) average losses per trade. At that payoff the break-even win rate is \(1/(1+1.29) \approx 44\%\), so the sleeve's 63% sits about 19 points above it. Because the inputs are rounded, the derived figures are approximate. <em>Backtest evidence, paper-traded since 2026-07, not forward-proven.</em></span>
+  </div>
+
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>How far a backtest win rate can fall.</strong> The desk's own audits are a sobering base rate for the \(p\) you feed into EV. One Fibonacci-level system showed an 85.7% win rate in backtest and 39.6% live, and other "too good" curves traced back to what the engine was allowed to see. EV can't be better than its probability. Shrink a backtest's win rate before you believe it, and audit the backtest before you shrink.</span>
+  </div>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>"A wider target makes the trade better."</strong> Not tested on the desk's data. The maths in section 2 says that with no edge, a wider target lowers the hit rate exactly in step and EV stays at \(-c\). Whether a particular setup's hit rate holds up as the target widens is an empirical question for that setup, and it has to be measured, not assumed.</span>
+  </div>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> quoting a win rate without a payoff, or a payoff without a win rate. "Right 70% of the time" and "3-to-1 reward-to-risk" both sound like an edge, and each on its own can be exactly zero. The only statement that means something is the win rate <em>relative to the break-even rate for that payoff, after costs</em>.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📒</div>
+      <h4>Journal in R, not in money</h4>
+      <p>Logging every trade as an R-multiple makes expectancy a running average you can read off directly, and lets you compare across instruments and position sizes.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🧾</div>
+      <h4>An EV row per setup type</h4>
+      <p>Desks keep a table of setups with their \(b\), \(c\), base rate, count and shrunk \(p\). A new trade is checked against its row, not judged fresh each time.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🌪️</div>
+      <h4>Look at the shape, not only the mean</h4>
+      <p>Two strategies with the same EV can have very different worst cases. For high-win-rate, small-win strategies, stress the loss side: what if the rare loss is twice as large, or twice as frequent?</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🔁</div>
+      <h4>Re-estimate as trades come in</h4>
+      <p>Every closed trade updates \(k\) and \(n\). The shrunk \(p\) moves slowly and honestly, which is the defence against both over-reacting to a streak and ignoring a decay (<a href="action-edge-decay.html">When an Edge Has Stopped Working</a>).</p>
+    </div>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where expected-value thinking goes wrong</h3>
+    <p><strong>Judging by hit rate.</strong> A high hit rate with small wins can be below break-even. The question is always "above or below \(p^{*}\)?"</p>
+    <p><strong>Leaving out costs.</strong> Cost is subtracted from every trade. On a 0.4R-target strategy, a 0.05R cost raises the break-even win rate by more than three points.</p>
+    <p><strong>Using a raw count from a small sample.</strong> 12 of 20 is not 60%. Shrink toward the base rate, and quote the standard error.</p>
+    <p><strong>Forgetting trades that hit neither.</strong> If some trades time out between stop and target, they are part of the distribution. Count them at their actual R, not as wins or losses.</p>
+    <p style="margin-bottom:0"><strong>Treating EV as what will happen.</strong> It is the average over many repetitions. A +0.16R edge will produce losing months, and it needs hundreds of trades to show.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(E = p\,b - (1-p) - c\), in R.</strong> 40% at 2R makes +0.20R before costs; 70% at 0.4R loses 0.02R.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Edge is the gap to break-even,</strong> \(p - (1+c)/(1+b)\), not the win rate.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Stop and target placement can't create edge.</strong> With no edge, the hit rate is \(S/(S+T)\), which is exactly break-even. Use it as the base rate.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Build the probability:</strong> base rate, then conditional count, then shrink with \((k + m\,p_0)/(n+m)\), and turn range forecasts into odds.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>EV takes a long time to show.</strong> \(n \approx (2\sigma/E)^2\): a few hundred trades for a typical edge. Don't judge it on a month.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The desk's own records show win rates shrinking live</strong> (85.7% backtest → 39.6% live on one system). The validated sleeve's ≈ +0.44 average losses per trade is backtest evidence, not yet forward-proven.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A system wins 45% of the time, average win 1.5R, average loss 1R, no costs. What is its EV, and its break-even win rate?</summary>
+    <div class="tl-answer">\(E = 0.45 \times 1.5 - 0.55 = 0.675 - 0.55 = +0.125\)R per trade. Break-even \(p^{*} = 1/(1+1.5) = 40\%\). It sits 5 points above the line.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. A colleague's system is "right 70% of the time" and is losing money. How is that possible?</summary>
+    <div class="tl-answer">If the average win is small relative to the average loss, the break-even rate is above 70%. With \(b = 0.4\), \(p^{*} = 1/1.4 = 71.4\%\), and costs push it higher still. At 70% the EV is \(0.28 - 0.30 = -0.02\)R before costs.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In a market with no edge, you move your target from 1R to 3R with the same stop. What happens to the hit rate and to EV?</summary>
+    <div class="tl-answer">The hit rate falls from \(1/2 = 50\%\) to \(1/4 = 25\%\), because \(S/(S+T)\) goes from 1/2 to 1/4. EV is \(0.5 \times 1 - 0.5 = 0\) before and \(0.25 \times 3 - 0.75 = 0\) after, so it is \(-c\) after costs in both cases. Moving the target changes the shape of the outcomes, not the average.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Your back-check says a setup "worked 9 of 12 times". The no-edge base rate for its stop and target is 50%. Using a prior weight of m = 12, what probability should go into EV?</summary>
+    <div class="tl-answer">\(\hat p = (9 + 12 \times 0.5)/(12 + 12) = 15/24 = 62.5\%\), not 75%. The raw count's standard error is \(\sqrt{0.75 \times 0.25/12} \approx 12.5\) points, so 75% was never well pinned down.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A volatility model forecasts a 1-week σ of 1.5% for gold. Your target is 3% away. Roughly how likely is gold to close the week beyond it, and to touch it at some point during the week?</summary>
+    <div class="tl-answer">\(d/\sigma = 2\). \(P(\text{close beyond}) = 1 - \Phi(2) \approx 2.3\%\). \(P(\text{touch}) \approx 2 \times 2.3\% \approx 4.6\%\). That is the driftless base rate. The analysis has to justify anything higher.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. A track record shows a 40% win rate and a profit factor of 1.5. What payoff ratio does that imply, and what expectancy?</summary>
+    <div class="tl-answer">\(b = \text{PF}(1-p)/p = 1.5 \times 0.6/0.4 = 2.25\). \(E = (1-p)(\text{PF} - 1) = 0.6 \times 0.5 = 0.30\) average losses per trade. Check: \(0.4 \times 2.25 - 0.6 = 0.30\).</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Edward O. Thorp, <em>Beat the Dealer</em>, 1962. Expected value that changes from hand to hand, and betting more when it is positive.</li>
+    <li>Edward O. Thorp and Sheen T. Kassouf, <em>Beat the Market</em>, 1967. The same thinking applied to warrants and hedging.</li>
+    <li>J. L. Kelly Jr., "A New Interpretation of Information Rate", <em>Bell System Technical Journal</em>, 1956. Where the link between \(p\), \(b\) and bet size comes from.</li>
+    <li>Van K. Tharp, <em>Trade Your Way to Financial Freedom</em>, 1998. R-multiples and expectancy as a trader's working vocabulary.</li>
+    <li>Nassim Nicholas Taleb, <em>Fooled by Randomness</em>, 2001. Why a high win rate with rare large losses is easy to mistake for skill.</li>
+    <li>Annie Duke, <em>Thinking in Bets</em>, 2018. Making decisions on expected value when outcomes are noisy.</li>
+    <li><a href="kelly-criterion.html">Kelly Criterion</a>, <a href="bayesian-conjugate-priors.html">Conjugate Priors</a> and <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a>: the sizing, shrinkage and streak lessons this one connects to.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="action-trade-plan.html">← From a View to a Trade Plan</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="action-combining-signals.html">Combining Signals That Disagree →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace", SANS = "'DM Sans',sans-serif";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+  function Phi(x){ // Abramowitz & Stegun 7.1.26 erf
+    var s = x < 0 ? -1 : 1, z = Math.abs(x) / Math.SQRT2, t = 1 / (1 + 0.3275911 * z);
+    var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+    return 0.5 * (1 + s * y);
+  }
+
+  // ---------- 1. EV explorer ----------
+  (function(){
+    var pIn = document.getElementById('ev-p'), bIn = document.getElementById('ev-b'), cIn = document.getElementById('ev-c'), nIn = document.getElementById('ev-n');
+    var g = document.getElementById('ev-g');
+    var X0 = 56, X1 = 620, Y0 = 250, Y1 = 14, BMAX = 5;
+    function x(b){ return X0 + (X1 - X0) * b / BMAX; }
+    function y(p){ return Y0 - (Y0 - Y1) * p; }
+    function fmtR(v){ return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(2) + 'R'; }
+    function render(){
+      var p = parseFloat(pIn.value) / 100, b = parseFloat(bIn.value), c = parseFloat(cIn.value), n = parseInt(nIn.value, 10), q = 1 - p;
+      document.getElementById('ev-p-val').textContent = Math.round(p * 100) + '%';
+      document.getElementById('ev-b-val').textContent = b.toFixed(2);
+      document.getElementById('ev-c-val').textContent = c.toFixed(2) + 'R';
+      document.getElementById('ev-n-val').textContent = n;
+      clear(g);
+      // regions
+      var top = 'M' + x(0) + ',' + y(1), bot = '', curve = [], k;
+      for (k = 0; k <= 200; k++){ var bb = BMAX * k / 200, pc = Math.min(1, (1 + c) / (1 + bb)); curve.push([x(bb), y(pc)]); }
+      var dCurve = curve.map(function(pt, i){ return (i ? 'L' : 'M') + pt[0].toFixed(1) + ',' + pt[1].toFixed(1); }).join('');
+      var above = dCurve + 'L' + x(BMAX) + ',' + y(1) + 'L' + x(0) + ',' + y(1) + 'Z';
+      var below = dCurve + 'L' + x(BMAX) + ',' + y(0) + 'L' + x(0) + ',' + y(0) + 'Z';
+      g.appendChild(el('path', { d: above }, 'fill:var(--green);opacity:0.10'));
+      g.appendChild(el('path', { d: below }, 'fill:var(--red);opacity:0.10'));
+      // grid
+      [0, 0.2, 0.4, 0.6, 0.8, 1].forEach(function(v){
+        g.appendChild(el('line', { x1: X0, x2: X1, y1: y(v), y2: y(v) }, 'stroke:var(--border);stroke-width:1'));
+        g.appendChild(el('text', { x: X0 - 6, y: y(v) + 4, 'text-anchor': 'end', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', Math.round(v * 100) + '%'));
+      });
+      for (k = 0; k <= BMAX; k++){
+        g.appendChild(el('line', { x1: x(k), x2: x(k), y1: Y1, y2: Y0 }, 'stroke:var(--border);stroke-width:1'));
+        g.appendChild(el('text', { x: x(k), y: Y0 + 20, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', k + (k ? 'R' : '')));
+      }
+      g.appendChild(el('text', { x: (X0 + X1) / 2, y: Y0 + 42, 'text-anchor': 'middle', 'font-size': 16, 'font-family': SANS }, 'fill:var(--text2)', 'payoff b (average win ÷ average loss)'));
+      // no-edge dashed curve
+      var d0 = '';
+      for (k = 0; k <= 200; k++){ var b0 = BMAX * k / 200; d0 += (k ? 'L' : 'M') + x(b0).toFixed(1) + ',' + y(1 / (1 + b0)).toFixed(1); }
+      g.appendChild(el('path', { d: d0, fill: 'none' }, 'stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,4'));
+      g.appendChild(el('path', { d: dCurve, fill: 'none' }, 'stroke:var(--text);stroke-width:2'));
+      // reference points
+      [[0.4, 0.7, 'A'], [2, 0.4, 'B']].forEach(function(r){
+        g.appendChild(el('circle', { cx: x(r[0]), cy: y(r[1]), r: 5 }, 'fill:var(--s1);stroke:var(--text2);stroke-width:1.5'));
+        g.appendChild(el('text', { x: x(r[0]) + 8, y: y(r[1]) - 8, 'font-size': 16, 'font-family': FONT }, 'fill:var(--text2)', r[2]));
+      });
+      // your point
+      var E = p * b - q - c, be = (1 + c) / (1 + b), sd = (1 + b) * Math.sqrt(p * q), pf = q > 0 ? p * b / q : Infinity;
+      g.appendChild(el('line', { x1: x(b), x2: x(b), y1: y(Math.min(1, be)), y2: y(p) }, 'stroke:' + (E >= 0 ? 'var(--green)' : 'var(--red)') + ';stroke-width:2'));
+      g.appendChild(el('circle', { cx: x(b), cy: y(p), r: 6.5 }, 'fill:var(--purple);stroke:var(--s1);stroke-width:2'));
+      var lx = x(b) > 470 ? x(b) - 10 : x(b) + 10, anchor = x(b) > 470 ? 'end' : 'start';
+      g.appendChild(el('text', { x: lx, y: Math.max(Y1 + 16, y(p) - 12), 'text-anchor': anchor, 'font-size': 18, 'font-weight': 600, 'font-family': FONT }, 'fill:var(--purple)', 'E ' + fmtR(E)));
+      var tell = E > 0 ? Math.ceil(Math.pow(2 * sd / E, 2)) : null;
+      document.getElementById('ev-readout').innerHTML =
+        'EV per trade <b>' + fmtR(E) + '</b> (before cost ' + fmtR(E + c) + ') · break-even win rate <b>' + (Math.min(1, be) * 100).toFixed(1) + '%</b> · margin <b>' + ((p - be) * 100 >= 0 ? '+' : '−') + Math.abs((p - be) * 100).toFixed(1) + ' pts</b><br>' +
+        'Over ' + n + ' trades: <b>' + fmtR(E * n) + '</b> expected, give or take ' + (sd * Math.sqrt(n)).toFixed(1) + 'R (1 s.d.) · profit factor (gross) <b>' + (isFinite(pf) ? pf.toFixed(2) : '∞') + '</b><br>' +
+        'One trade swings ±' + sd.toFixed(2) + 'R · trades to tell this edge from luck: <b>' + (tell === null ? 'never (no edge)' : tell.toLocaleString()) + '</b>' +
+        (tell !== null && tell > n ? ' — more than ' + (tell / n).toFixed(1) + ' years at this pace' : '');
+    }
+    [pIn, bIn, cIn, nIn].forEach(function(i){ i.addEventListener('input', render); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ev-p]'), function(btn){
+      btn.addEventListener('click', function(){ pIn.value = btn.getAttribute('data-ev-p'); bIn.value = btn.getAttribute('data-ev-b'); render(); });
+    });
+    render();
+  })();
+
+  // ---------- 2. Range to odds ----------
+  (function(){
+    var sIn = document.getElementById('ro-s'), dIn = document.getElementById('ro-d'), g = document.getElementById('ro-g');
+    var X0 = 20, X1 = 620, Y0 = 170, Y1 = 30;
+    function render(){
+      var s = parseFloat(sIn.value), d = parseFloat(dIn.value), z = d / s;
+      document.getElementById('ro-s-val').textContent = s.toFixed(1) + '%';
+      document.getElementById('ro-d-val').textContent = d.toFixed(1) + '%';
+      clear(g);
+      var span = Math.max(3.5 * s, d * 1.25);
+      function x(v){ return X0 + (X1 - X0) * (v + span) / (2 * span); }
+      function pdf(v){ return Math.exp(-0.5 * (v / s) * (v / s)); }
+      function y(h){ return Y0 - (Y0 - Y1) * h; }
+      var dd = '', tail = 'M' + x(d).toFixed(1) + ',' + Y0, k, N = 240;
+      for (k = 0; k <= N; k++){ var v = -span + 2 * span * k / N; dd += (k ? 'L' : 'M') + x(v).toFixed(1) + ',' + y(pdf(v)).toFixed(1); if (v >= d) tail += 'L' + x(v).toFixed(1) + ',' + y(pdf(v)).toFixed(1); }
+      tail += 'L' + x(span).toFixed(1) + ',' + Y0 + 'Z';
+      g.appendChild(el('line', { x1: X0, x2: X1, y1: Y0, y2: Y0 }, 'stroke:var(--border2,var(--border));stroke-width:1'));
+      g.appendChild(el('path', { d: tail }, 'fill:var(--amber);opacity:0.35'));
+      g.appendChild(el('path', { d: dd, fill: 'none' }, 'stroke:var(--blue);stroke-width:2'));
+      g.appendChild(el('line', { x1: x(0), x2: x(0), y1: Y1, y2: Y0 }, 'stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3'));
+      g.appendChild(el('line', { x1: x(d), x2: x(d), y1: Y1 - 2, y2: Y0 }, 'stroke:var(--amber);stroke-width:2'));
+      [-2, -1, 1, 2, 3].forEach(function(m){
+        var v = m * s; if (Math.abs(v) > span) return;
+        g.appendChild(el('text', { x: x(v), y: Y0 + 20, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', (m > 0 ? '+' : '') + m + 'σ'));
+      });
+      g.appendChild(el('text', { x: x(0), y: Y0 + 20, 'text-anchor': 'middle', 'font-size': 16, 'font-family': FONT }, 'fill:var(--text3)', '0'));
+      var pc = 1 - Phi(z), pt = Math.min(1, 2 * pc);
+      var lx = x(d) > 420 ? x(d) - 8 : x(d) + 8;
+      g.appendChild(el('text', { x: lx, y: Y1 - 8, 'text-anchor': x(d) > 420 ? 'end' : 'start', 'font-size': 18, 'font-weight': 600, 'font-family': FONT }, 'fill:var(--amber)', 'target +' + d.toFixed(1) + '%'));
+      g.appendChild(el('text', { x: X0, y: 214, 'font-size': 15, 'font-family': SANS }, 'fill:var(--text3)', 'next week\'s move (driftless normal)'));
+      document.getElementById('ro-readout').innerHTML =
+        'Target is <b>' + z.toFixed(2) + 'σ</b> away · P(close beyond) <b>' + (pc * 100).toFixed(1) + '%</b> · P(touch during the week) ≈ <b>' + (pt * 100).toFixed(1) + '%</b>' +
+        (pc > 0 ? ' · about 1 week in ' + Math.max(1, Math.round(1 / pc)) + ' closes beyond it' : '');
+    }
+    [sIn, dIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

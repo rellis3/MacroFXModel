@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Base Rates First — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .br-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  .br-table th,.br-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .br-table th{color:var(--text3);font-weight:500;font-size:11px}
+  .br-table td:first-child,.br-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .br-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .br-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+  .br-svg{width:100%;height:auto;display:block;touch-action:pan-y}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Base Rates First — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Want the full Bayes derivation, the reference-class shrinker, the base-rate card template and a 6-question self-test?<a href="action-base-rates.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">From Analysis to Action · 7 of 8</div>
+      <h1 class="sl-h1">Base Rates <em>First</em></h1>
+      <p class="sl-lede">Before you ask what is special about this setup, ask how often this kind of thing happens at all. Then move only as far as the evidence earns.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Line up the events and count</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>In 1969 Fama, Fisher, Jensen and Roll lined up many stock-split announcements and measured what usually happened around them, compared with what happens anyway. That was the first event study, and it is the base-rate method at its core.</p>
+        <p>Kahneman and Tversky showed in the 1970s that people skip this step. Kahneman and Lovallo (1993) named the fix the "outside view".</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> give the probability before the specifics, and the yardstick any hit rate must beat.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Outside view first, inside view second</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">Inside view</span><p>The chart, the story, the reasons it should work. Feels like analysis. Usually where people start.</p></div>
+        <div class="sl-ccard green"><span class="sl-ctag green">Outside view</span><p>How often have situations like this worked out? Feels boring. Should come first, written down.</p></div>
+      </div>
+      <p class="sl-p">A base rate is a frequency in a <strong>reference class</strong>: past situations similar enough to today that their outcomes tell you something. For a stop-and-target trade the simplest one is S/(S+T), the hit rate a random market gives you.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Bayes in one multiplication</h2>
+      <div class="sl-row"><div class="sl-box">posterior odds = prior odds × LR</div></div>
+      <div class="sl-row"><div class="sl-box">LR = hit rate ÷ false-alarm rate = P(E|H) / P(E|not H)</div></div>
+      <p class="sl-p"><strong>Cab problem:</strong> 15% of cabs are Blue. A witness who is right 80% of the time says "Blue". Prior odds 15:85, LR 4 → 60:85 → <strong>41%</strong>. Most people say 80%.</p>
+      <p class="sl-p">LR = 1 doesn't move you at all, however good the hit rate sounds.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Try it: 1,000 days</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Base-rate updater</div>
+        <div class="br-wrap" style="margin-bottom:12px"><svg id="bu-svg" class="br-svg" viewBox="0 0 640 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="1,000 small squares: purple are real outcomes the evidence caught, faded purple are outcomes it missed, amber are false alarms, grey are quiet days."><g id="bu-g"></g></svg></div>
+        <div class="sl-sliderhead"><span>Base rate</span><span class="sl-live" id="bu-p-val">5%</span></div>
+        <input type="range" class="sl-slider" id="bu-p" min="0.5" max="60" step="0.5" value="5">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Hit rate P(E | H)</span><span class="sl-live" id="bu-h-val">60%</span></div>
+        <input type="range" class="sl-slider" id="bu-h" min="1" max="100" step="1" value="60">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>False-alarm rate</span><span class="sl-live" id="bu-f-val">20%</span></div>
+        <input type="range" class="sl-slider" id="bu-f" min="1" max="100" step="1" value="20">
+        <div class="br-btnrow">
+          <button type="button" class="sl-tab" data-bu="5,60,20">Pattern</button>
+          <button type="button" class="sl-tab" data-bu="15,80,20">Cab</button>
+          <button type="button" class="sl-tab" data-bu="54,54,54">LR = 1</button>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">LR</div><div class="sl-calc-result-val" id="bu-lr">3.00</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">P(outcome | evidence)</div><div class="sl-calc-result-val" id="bu-post">13.6%</div></div>
+        </div>
+        <div class="sl-note" id="bu-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Rare stays rare</h2>
+      <p class="sl-p">5% of days are turns. A reversal pattern shows up before 60% of turns, and on 20% of ordinary days.</p>
+      <div class="sl-calc-steps">
+        <div>Of 1,000 days: <b>50</b> turns → <b>30</b> show the pattern</div>
+        <div><b>950</b> ordinary days → <b>190</b> show it too</div>
+        <div>Pattern days: 30 + 190 = <b>220</b>, of which <b>30</b> are turns</div>
+        <div>P(turn | pattern) = 30/220 = <b>13.6%</b> · LR = 3</div>
+      </div>
+      <p class="sl-p">The pattern nearly tripled the odds, and the day is still about six times more likely <em>not</em> to be a turn.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Choosing the class</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Too broad</h4><p>"All days": stable, but maybe not like today. Use it as the outer anchor.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Too narrow</h4><p>Seven cases is mostly noise. Shrink: p̂ = (k + m·p₀)/(n + m).</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Use a ladder</h4><p>Two or three nested classes. If they agree, you're on firm ground.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Check the halves</h4><p>A rate that differs between halves of the sample describes a regime, not a constant.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · Worked example</div>
+      <h2 class="sl-h2">"Hawkish surprise. Dollar higher in 5 sessions?"</h2>
+      <p class="sl-sub">The story says about 80%. The desk's measured frequencies say:</p>
+      <div class="br-wrap"><table class="br-table">
+        <tr><th>Step</th><th>Rate</th><th>Running p</th></tr>
+        <tr><td>Broad: any 5-session window</td><td>49%</td><td>49%</td></tr>
+        <tr><td>Narrow: after FOMC (81 meetings)</td><td>65%</td><td>62% (shrunk, m = 20)</td></tr>
+        <tr><td>Specific: hawkish surprise</td><td>64% [43, 86]</td><td>62% (LR ≈ 1)</td></tr>
+      </table></div>
+      <div class="sl-callout green"><div class="sl-callout-label">The output</div><p>About 60–65%: a calendar base rate, not a call on this meeting. The surprise the story relied on added nothing.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">The textbook that took eight years</h2>
+      <p class="sl-p">Kahneman's own story (<em>Thinking, Fast and Slow</em>). His curriculum team estimated about two years to finish. Asked how similar teams had done, their curriculum expert said roughly 40% never finished, and none that did took less than about seven years.</p>
+      <p class="sl-p">The team carried on regardless. The book took about eight years and was never used.</p>
+      <div class="sl-callout amber"><div class="sl-callout-label">The point</div><p>The base rate was asked for and given, and nobody used it. The specifics of their own case felt more real.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Where base rates sit</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>A vivid setup with a good story</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The default</b>Judge by resemblance</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · base rate first</b>Name the class, write its rate down</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Adjust</b>× measured LRs; LR = 1 → don't move</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A probability you can price and score</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Rates pivot → Nasdaq:</strong> 2,010 events, well powered, null. A confirmed rates low was followed by an up-move <strong>54.1%</strong> of the time, and the base rate is <strong>54.1%</strong>. Lift 1.0.</span></div>
+      <div class="sl-stamp validated" data-evidence="post-fomc-usd-drift" data-evidence-date="2026-08-20"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>Post-FOMC dollar drift:</strong> 81 meetings, +26bp, 65% positive vs 49% on other windows. Beat 10,000 placebos and held in both halves. Quoted as a base rate; not forward-proven.</span></div>
+      <div class="sl-stamp null" data-evidence="dr-copper" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"Dr Copper":</strong> 12 of 14 negative US quarters since 1990 had no 15% copper fall before them. A hit-rate claim with no false-alarm rate.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · Your template</div>
+      <h2 class="sl-h2">The base-rate card</h2>
+      <div class="sl-calc-steps">
+        <div>1 · The question, exactly: outcome, horizon, threshold</div>
+        <div>2 · Broad class: n and rate → <b>p₀</b></div>
+        <div>3 · Narrow class: k of n → <b>shrunk p̂</b>; check both halves</div>
+        <div>4 · Each extra fact as <b>hit ÷ false-alarm = LR</b>; no data → LR 1</div>
+        <div>5 · Odds × LRs → <b>final p</b>; hand to the EV card, log it for scoring</div>
+      </div>
+      <p class="sl-p">Write it <strong>before</strong> you look at the chart.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>10% of days are trend days. A filter flags 90% of them and 10% of other days. Flagged day: P(trend day)?</h4>
+        <button class="sl-quiz-opt">90%</button>
+        <button class="sl-quiz-opt" data-correct="true">50%</button>
+        <button class="sl-quiz-opt">10%</button>
+        <div class="sl-quiz-explain">Odds 1:9 × LR 9 = 1:1. Of 1,000 days: 90 true flags, 90 false flags.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>"After this signal the index rallied 54% of the time." What do you ask first?</h4>
+        <button class="sl-quiz-opt">How big the rallies were</button>
+        <button class="sl-quiz-opt" data-correct="true">How often it rallies without the signal</button>
+        <button class="sl-quiz-opt">Who found the signal</button>
+        <div class="sl-quiz-explain">Without the base rate there's no lift. The desk's rates-pivot test: 54.1% against 54.1%, exactly nothing.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Prior 20%, evidence with LR = 3. Posterior?</h4>
+        <button class="sl-quiz-opt">60%</button>
+        <button class="sl-quiz-opt" data-correct="true">About 43%</button>
+        <button class="sl-quiz-opt">23%</button>
+        <div class="sl-quiz-explain">Odds 1:4 × 3 = 3:4 → 3/7 ≈ 42.9%. Still more likely to fail than not.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Narrow class 7 of 8, broad rate 45%, m = 10. Carry forward?</h4>
+        <button class="sl-quiz-opt">87.5%</button>
+        <button class="sl-quiz-opt" data-correct="true">About 64%</button>
+        <button class="sl-quiz-opt">45%</button>
+        <div class="sl-quiz-explain">(7 + 4.5)/(8 + 10) = 11.5/18 ≈ 63.9%. Eight cases can't support near-certainty.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Write the base rate down first, from a named reference class.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Posterior odds = prior odds × LR. LR = hit rate ÷ false-alarm rate. LR = 1 → don't move.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Rare stays rare: LR 3 on 5% is 13.6%. Cab problem: 41%, not 80%.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Shrink narrow classes toward broad ones; check both halves.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Never quote a hit rate without its base rate. In the desk's rates-pivot test, 54% was exactly the base rate.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>When an Edge Has Stopped Working</h3>
+        <p>A normal losing streak or real decay? Streak odds, change-point tests on live results, and how many trades you need before you can tell.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="action-edge-decay-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="action-base-rates.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="action-calibration-scoring-micro.html">← Previous: Scoring Your Own Calls</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function pct(v, d){ return (v * 100).toFixed(d === undefined ? 1 : d) + '%'; }
+
+  // Slide 5 — base-rate updater over 1,000 cells (50 x 20).
+  (function(){
+    var pIn = document.getElementById('bu-p'), hIn = document.getElementById('bu-h'), fIn = document.getElementById('bu-f'), g = document.getElementById('bu-g');
+    var COLS = 50, ROWS = 20, CW = 12.4, GAP = 0.6, X0 = (640 - COLS * CW) / 2, Y0 = 4, cells = [];
+    for (var i = 0; i < COLS * ROWS; i++){
+      var r = Math.floor(i / COLS), c = i % COLS;
+      var rect = el('rect', { x: (X0 + c * CW + GAP).toFixed(1), y: (Y0 + r * CW + GAP).toFixed(1), width: (CW - 2 * GAP).toFixed(1), height: (CW - 2 * GAP).toFixed(1), rx: 1.5 });
+      g.appendChild(rect); cells.push(rect);
+    }
+    function render(){
+      var p = parseFloat(pIn.value) / 100, h = parseFloat(hIn.value) / 100, f = parseFloat(fIn.value) / 100;
+      document.getElementById('bu-p-val').textContent = pct(p, p < 0.1 ? 1 : 0);
+      document.getElementById('bu-h-val').textContent = pct(h, 0);
+      document.getElementById('bu-f-val').textContent = pct(f, 0);
+      var ev = Math.round(1000 * p), tp = Math.round(ev * h), fn = ev - tp, fp = Math.round((1000 - ev) * f);
+      cells.forEach(function(rect, i){
+        var st;
+        if (i < tp) st = 'fill:var(--purple)';
+        else if (i < tp + fn) st = 'fill:var(--purple);opacity:0.3';
+        else if (i < tp + fn + fp) st = 'fill:var(--amber)';
+        else st = 'fill:var(--border)';
+        rect.setAttribute('style', st);
+      });
+      var post = p * h / (p * h + (1 - p) * f), lr = h / f;
+      document.getElementById('bu-lr').textContent = lr.toFixed(2);
+      document.getElementById('bu-post').textContent = pct(post);
+      document.getElementById('bu-note').textContent = 'Flagged ' + (tp + fp) + ' of 1,000; ' + tp + ' are real (purple), ' + fp + ' are false alarms (amber). Ignore the base rate and you would probably say ' + pct(h, 0) + '.' + (Math.abs(lr - 1) < 0.005 ? ' LR = 1: the evidence tells you nothing.' : '');
+    }
+    [pIn, hIn, fIn].forEach(function(i){ i.addEventListener('input', render); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bu]'), function(btn){
+      btn.addEventListener('click', function(){ var v = btn.getAttribute('data-bu').split(','); pIn.value = v[0]; hIn.value = v[1]; fIn.value = v[2]; render(); });
+    });
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>
