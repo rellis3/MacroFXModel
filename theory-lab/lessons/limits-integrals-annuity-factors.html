@@ -38,6 +38,7 @@
       <li>The <strong>annuity factor</strong> is derived properly from scratch: starting at the finite geometric series \(A(n,y)=\sum_{t=1}^n(1+y)^{-t}\), multiplying by \((1+y)\), subtracting, and solving gives the closed form \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) — algebra, not an assertion.</li>
       <li>Two limits sit inside that one formula: letting \(n\to\infty\) gives the perpetuity value \(A\to1/y\); letting the compounding frequency \(m\to\infty\) within a period recovers continuous compounding and connects the annuity factor directly to \(e^{-rt}\).</li>
       <li>Duration, DV01, and the instantaneous forward rate \(f(t)=\frac{d}{dt}[t\cdot r(t)]\) are all, without exception, a derivative or a limit wearing a trading-desk name — not a separate piece of fixed-income folklore.</li>
+      <li><strong>Where it came from:</strong> Johan de Witt valued Dutch life annuities as sums of discounted payments in 1671. The limit idea behind the integral and the perpetuity was only made rigorous by Cauchy in 1821, after Bishop Berkeley mocked infinitesimals in 1734.</li>
     </ul>
   </div>
 
@@ -120,6 +121,15 @@
       stops after a fixed number of years, but which the perpetuity case
       pushes to literally infinitely many terms, another limit entirely.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A statesman prices annuities, and a bishop mocks the infinitely small</h3>
+    <div class="tl-origin-who">Johan de Witt · 1671 · The Hague — Augustin-Louis Cauchy · 1821 · Paris</div>
+    <p>In 17th-century Holland, governments raised money partly by selling annuities: the buyer paid a lump sum now and received a fixed payment every year, sometimes for life. Johan de Witt, who led the Dutch Republic's government as Grand Pensionary of Holland, was also a trained mathematician. In 1671 he wrote a report for the Dutch government valuing a life annuity as a sum of discounted future payments, each weighted by the chance that the buyer would still be alive to collect it: an annuity factor with mortality built in.</p>
+    <p>The next year, 1672, France invaded the Republic and de Witt was blamed; he and his brother Cornelis were killed by a mob in The Hague. Edmond Halley's 1693 life table, built from records in the city of Breslau, later put annuity pricing on real mortality data.</p>
+    <p>The step from a sum to an integral, and from \(n\) payments to infinitely many, rested on shaky ground for a long time. In 1734 Bishop George Berkeley mocked the vanishing quantities in Newton's calculus as "ghosts of departed quantities". The repair came in 1821, when Augustin-Louis Cauchy's <em>Cours d'analyse</em> built calculus on limits, later made fully precise in the epsilon-delta form. Macaulay's duration (1938, in Further Reading) is that limit machinery applied to bonds.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -687,6 +697,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The annuity factor is a finite geometric series, derived not asserted.</strong> \(A(n,y)=\frac{1-(1+y)^{-n}}{y}\) comes from the standard "multiply, subtract, solve" trick — the same one that sums any geometric series.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two limits sit inside that one formula.</strong> \(n\to\infty\) gives the perpetuity value \(1/y\); compounding frequency \(m\to\infty\) recovers continuous compounding and connects directly to \(e^{-rt}\).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Duration is a local, first-order approximation.</strong> It degrades for large yield moves without a convexity correction, and gets silently distorted by day-count/compounding convention mismatches or by confusing Macaulay with modified duration.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The annuity factor was government finance before it was a formula.</strong> de Witt priced Dutch annuities in 1671 by summing discounted payments; Cauchy's 1821 limits made the step from sum to integral rigorous.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

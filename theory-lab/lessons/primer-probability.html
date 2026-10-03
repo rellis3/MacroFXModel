@@ -38,6 +38,7 @@
       <li>The Law of Large Numbers guarantees a sample average converges to the true \(E[X]\) as \(n\to\infty\), but says nothing about how close it is at any small, fixed \(n\) — the reasoning behind this repo's "≥30 OOS trades" floor.</li>
       <li>The Central Limit Theorem: the average of many independent copies of <em>any</em> random variable with finite mean/variance approaches a normal distribution as \(n\) grows — even a flat, uniform die roll's average becomes bell-shaped by \(n=30\) — which is why so many aggregated financial quantities look roughly normal even when no individual ingredient is.</li>
       <li>That CLT justification depends on independence, and daily financial returns visibly violate it via volatility clustering — so "assume returns are approximately normal" is a defensible starting point that gets corrected (e.g. by GARCH), not a settled fact.</li>
+      <li><strong>Where it came from:</strong> expectation was born in 1654 letters between Pascal and Fermat on how to divide the stakes of an unfinished game fairly; Huygens put it in the first printed probability book in 1657.</li>
     </ul>
   </div>
 
@@ -99,6 +100,15 @@
       but because so many observed quantities are themselves sums of many
       smaller, mostly-independent pieces.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>How do you split the pot of a game that never finished?</h3>
+    <div class="tl-origin-who">Blaise Pascal &amp; Pierre de Fermat · 1654 · letters between Paris and Toulouse</div>
+    <p>The "problem of points" goes like this. Two players stake money on a game won by whoever first wins a set number of rounds, and the game is stopped early. How should the pot be divided fairly? The puzzle had been in print since at least Luca Pacioli's 1494 textbook, and the answers offered there and afterwards were generally judged wrong.</p>
+    <p>In 1654, prompted by gambling questions from the writer Antoine Gombaud (known as the Chevalier de Méré), Blaise Pascal in Paris began writing to Pierre de Fermat, a lawyer and magistrate in Toulouse. Their key step was to ignore the score so far and look at every way the game could still have finished, then split the pot by each player's chance of winning. That is expectation: the probability-weighted average this lesson starts with.</p>
+    <p>Later that year Pascal had an intense religious experience and largely turned away from mathematics. Christiaan Huygens heard of the problem in Paris and in 1657 published the first printed book on probability, built around expected value. Bernoulli's Law of Large Numbers, Laplace's Central Limit Theorem and Kolmogorov's axioms (all in Further Reading) followed. A trade's expected P&amp;L is still the Pascal–Fermat calculation.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -684,6 +694,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The CLT explains why sums look normal.</strong> The average of many independent copies of almost any random variable — even a flat die roll — approaches a normal distribution as \(n\) grows, which is why so many aggregated financial quantities look roughly bell-shaped.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CLT's guarantee depends on independence.</strong> Daily financial returns violate it via volatility clustering — big moves cluster in time rather than scattering independently — which is exactly why "assume normal, then correct" (GARCH) is the honest framing, not "assume normal, done."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Variance alone hides skew.</strong> It penalizes upside and downside deviations identically, which understates the risk that actually matters for a strategy with a lopsided return distribution.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Expected value started as a fairness question.</strong> Pascal and Fermat (1654) split an interrupted game's pot by each player's chance of winning, the same probability-weighted average used to value a trade today.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

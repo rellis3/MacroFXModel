@@ -39,6 +39,7 @@
       <li><strong>Continuous compounding</strong>, \(e^{rt}\), is the limit of compounding more and more frequently (yearly → monthly → daily → every instant) — derived directly from the definition of \(e\) as that limit.</li>
       <li><strong>Log-returns are additive across time</strong> — sum daily log-returns and you get the total log-return over the whole period, exactly, with no compounding correction needed. Simple (percentage) returns don't have this property; they compound multiplicatively instead.</li>
       <li>The worked example converts a 5% annual simple rate to its continuously-compounded equivalent (≈4.879%), and sums four daily log-returns to confirm they equal the 4-day total log-return exactly.</li>
+      <li><strong>Where it came from:</strong> John Napier published logarithms in 1614 to turn astronomers' long multiplications into additions. \(e\) came later, from Jacob Bernoulli's 1683 question about crediting interest ever more often, and Euler gave it its name.</li>
     </ul>
   </div>
 
@@ -111,6 +112,15 @@
       continuous growth rate, over what time, would it take to reach \(x\)
       starting from 1?"
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Twenty years of arithmetic to spare astronomers from multiplying</h3>
+    <div class="tl-origin-who">John Napier · 1614 · Edinburgh — then Jacob Bernoulli · 1683 · Basel</div>
+    <p>In the early 1600s, astronomers and navigators spent much of their working time multiplying long numbers by hand, many of them taken from trigonometric tables, and one slip could ruin a result. John Napier, a Scottish landowner, spent about twenty years building tables that turned multiplication into addition: look up the two numbers, add their entries, and look the total back up. He published them in 1614 as <em>Mirifici Logarithmorum Canonis Descriptio</em> ("A Description of the Wonderful Table of Logarithms"). His scale was not quite today's \(\ln\), but the idea was the product rule \(\ln(ab)=\ln a+\ln b\), offered as a labour-saving device.</p>
+    <p>In his own lifetime Napier was better known for a fiercely anti-Catholic commentary on the Book of Revelation. The tables spread fast anyway. Henry Briggs, a London professor, travelled to Edinburgh in 1615 to meet him, and the two agreed on base-10 logarithms, which Briggs then computed. Johannes Kepler used logarithms to finish his Rudolphine Tables of planetary positions (1627).</p>
+    <p>The number \(e\) came from a money question. In 1683 Jacob Bernoulli asked what happens to a year's growth at 100% interest if the interest is credited more and more often, and showed that the limit of \((1+1/n)^n\) lies between 2 and 3. Leonhard Euler later named the number \(e\), and his 1748 textbook <em>Introductio in analysin infinitorum</em> tied it to logarithms and to sine and cosine. Every continuous-compounding factor \(e^{rt}\) in this lab answers Bernoulli's question.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -559,6 +569,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(e^{rt}\) is the limit of compounding infinitely often.</strong> It falls straight out of the definition of \(e\) itself — not a separate formula to memorize.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log-returns are additive across time; simple returns are not.</strong> Sum log-returns for an exact multi-period total; summing simple returns is only a rough approximation, worse the more volatile the series.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A continuously-compounded rate is always a bit smaller than the equivalent simple rate.</strong> 5% simple ≈ 4.879% continuous over one year — the two conventions are not interchangeable numbers.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Logs were invented to save labour.</strong> Napier's 1614 tables turned multiplication into addition, the same product rule that makes log-returns add up today. \(e\) itself came from a compound-interest question (Bernoulli, 1683).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

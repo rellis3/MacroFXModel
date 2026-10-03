@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Descriptive Statistics — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 5-question self-test?<a href="primer-stats-normal.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">Coin tosses, a lost asteroid, and the bell curve</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p><strong>Abraham de Moivre · 1733 · London · Carl Friedrich Gauss · 1801–1809</strong></p>
+        <p>de Moivre, a French Protestant refugee in London, made his living tutoring and advising gamblers. In 1733 he showed that the odds for many coin tosses trace a bell curve: the first normal distribution.</p>
+        <p>In 1801 the new asteroid Ceres was lost in the Sun's glare after a few weeks of sightings. Gauss, aged 24, predicted where it would reappear from those noisy measurements, and it was found close to his prediction. His 1809 method treated errors as bell-shaped. In 1963 Mandelbrot showed cotton prices have much fatter tails.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One number can't describe a week</h2>
       <p class="sl-sub">Two very different weeks of daily returns can share the exact same mean.</p>
       <div class="sl-svgwrap">
@@ -58,8 +69,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Why not just average the distance from the mean?</h2>
       <p class="sl-sub">Six daily returns: +1.0, +2.0, −1.0, +3.0, 0.0, +1.0 — mean 1.0%. Their deviations are 0, 1, −2, 2, −1, 0. Try three ways of turning those into one "typical spread" number.</p>
       <div class="sl-card">
@@ -85,8 +96,8 @@
       <p class="sl-p">A deviation of 1% contributes 1 to the sum of squares; a deviation of 5% contributes 25 — twenty-five times more, not five times more. That "rare-big-moves-count-a-lot" behavior is exactly the property risk measurement wants: one 5% loss can be catastrophic in a way that five separate 1% days aren't.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Population variance vs. sample variance</h2>
       <p class="sl-sub">Two versions of the same formula. Mixing them up is one of the most common statistics mistakes.</p>
       <div class="sl-compare">
@@ -106,8 +117,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Standard deviation: undoing the squaring</h2>
       <p class="sl-sub">Variance is in squared units — "percent squared" isn't a number anyone can picture. Taking the square root undoes the squaring and returns to the original units: s = √s².</p>
       <div class="sl-card">
@@ -132,8 +143,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The normal distribution: a shape built from two numbers</h2>
       <p class="sl-sub">The bell curve is a specific, symmetric shape defined entirely by its mean μ (where the peak sits) and its standard deviation σ (how wide the bell is).</p>
       <div class="sl-svgwrap">
@@ -160,8 +171,8 @@
       <div class="sl-quote">This shape shows up constantly for a deep reason — the Central Limit Theorem, which (informally) says adding up many small, independent random effects tends to look approximately normal, whatever the individual effects looked like. For this page, treat it simply as the reference shape "typical, well-behaved noise" gets compared against.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The 68/95/99.7 rule</h2>
       <p class="sl-sub">Drag the slider to move a value along the curve, measured in standard deviations from the mean. Watch which band it falls into.</p>
       <div class="sl-card">
@@ -203,8 +214,8 @@
       <p class="sl-p">In words: about 68% of a normal distribution's values fall within 1 standard deviation of the mean; about 95% within 2; about 99.7% — nearly all of it — within 3. A value with |z| &gt; 2 is already in roughly the rarest 5% of outcomes if the data really is normal, and |z| &gt; 3 is roughly the rarest 0.3%.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Z-scores: the same ruler for any instrument</h2>
       <p class="sl-sub">"A 1.4% move" means nothing in isolation — big or small depends entirely on how volatile the instrument normally is. z = (x − μ) / σ answers the right question instead.</p>
       <div class="sl-card">
@@ -230,8 +241,8 @@
       <p class="sl-p">Because a z-score is unitless, it lets you compare a currency pair's daily return to a completely different instrument's return, or to its own weekly return, on the exact same scale — precisely why z-scores are the standard tool behind "is this move unusual" gates and filters.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Is today's move normal, or a tail event?</h2>
       <p class="sl-sub">This is exactly the question a z-score answers on a trading desk. Illustrative numbers, not a fitted historical figure.</p>
       <div class="sl-compare">
@@ -257,8 +268,8 @@
       <div class="sl-quote">"Is today's move within normal noise, or a real signal?" is exactly the question z-scores answer on a desk. A 2-sigma daily loss is shorthand for "roughly a 1-in-40-ish day event, if returns were normal" — a precise, comparable statement that "that felt like a big move" never gives you.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How practitioners actually use this</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Pick a rolling window N</h4><p>The last 20 or 100 observations — long enough to estimate x̄ and s reliably, short enough to track a changing regime.</p></div></div>
@@ -273,8 +284,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -324,8 +335,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The mean gives a center; it throws away everything about spread — that's the gap standard deviation exists to fill.</p></div>
@@ -334,6 +345,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Standard deviation is variance's square root, back in the original units — this is the σ referenced everywhere else in this series.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>z = (x − μ) / σ turns any value into a unitless "how many sigmas away" number — the same ruler for any instrument, any timeframe.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The 68/95/99.7 rule turns a z-score into a percentile — but real returns are fatter-tailed than normal, so extreme z-scores show up more often than the rule predicts.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The normal curve came from coin-toss odds (de Moivre, 1733) and astronomical error (Gauss, 1809), not from prices; Mandelbrot (1963) showed prices have fatter tails.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

@@ -38,6 +38,7 @@
       <li>The worked example solves <code>A = [[3,1],[1,3]]</code>: the characteristic equation <code>&#955;&#178; - 6&#955; + 8 = 0</code> factors to eigenvalues <strong>&#955;&#8321; = 4</strong> (eigenvector <code>(1,1)</code>) and <strong>&#955;&#8322; = 2</strong> (eigenvector <code>(1,-1)</code>), which come out perpendicular because <code>A</code> is symmetric.</li>
       <li>Reframed as a two-FX-pair covariance matrix (correlation &#8776; 0.33), those eigenvalues split the book's total variance (trace = 6) into 66.7% shared-direction and 33.3% divergence-direction, giving 1.8 effective independent bets via <code>(&#931;&#955;)&#178;/&#931;&#955;&#178; = 36/20</code>.</li>
       <li>This vocabulary is the direct prerequisite for three other Theory Lab lessons: PCA (eigenvectors of a correlation matrix), the Kalman Filter (chained matrix multiplication), and Hidden Markov Models (the stationary distribution is the eigenvector with eigenvalue 1).</li>
+      <li><strong>Where it came from:</strong> Sylvester coined "matrix" in 1850 and Cayley's 1858 memoir made matrices objects you can multiply, in an order that matters. Pearson (1901) and Hotelling (1933) built PCA on the eigenvectors this lesson computes.</li>
     </ul>
   </div>
 
@@ -124,6 +125,15 @@
       eigenvalue. That's the whole punchline of this lesson, arrived at
       properly below.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Two London lawyers who turned tables of numbers into objects</h3>
+    <div class="tl-origin-who">James Joseph Sylvester · 1850 &amp; Arthur Cayley · 1858 · London</div>
+    <p>Solving several equations at once by laying out their coefficients in a grid is ancient. The Chinese text <em>The Nine Chapters on the Mathematical Art</em>, compiled roughly 2,000 years ago, solves such systems by elimination on a counting board. But for most of history the grid was just a working layout, not a thing in its own right.</p>
+    <p>Two Victorian mathematicians who had to earn a living outside mathematics changed that. Arthur Cayley worked as a lawyer in London for about fourteen years and wrote hundreds of papers in his spare time. His friend James Joseph Sylvester, who as a Jew could not take his Cambridge degree because of a religious test, worked for a time as an actuary. Sylvester coined the word "matrix" in 1850. Cayley's 1858 "A Memoir on the Theory of Matrices" treated matrices as objects you can add and multiply, and noted that the order of multiplication matters, the \(MN \neq NM\) shown in this lesson.</p>
+    <p>The "eigen" in eigenvalue is German for "own" or "characteristic"; David Hilbert's use of it in the early 1900s made the term standard. In 1901 Karl Pearson described what became principal component analysis, finding the main directions in a cloud of data points, and in 1933 Harold Hotelling developed it further. Markowitz's 1952 portfolio paper then put a covariance matrix at the centre of finance, which is where this lesson's worked example picks up.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -705,6 +715,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This vocabulary is the direct prerequisite for PCA, the Kalman Filter, and Hidden Markov Models.</strong> "Eigenvector of the correlation matrix," "propagate the covariance matrix," and "stationary distribution" are all instances of the same small set of ideas covered here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An eigen-decomposition is a snapshot, not a permanent structural fact.</strong> It describes one rolling estimation window and can shift — sometimes sharply — when two eigenvalues are close together, even if the eigenvalues themselves barely move.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Non-square matrices have no eigenvectors in this sense.</strong> \(Av = \lambda v\) requires \(Av\) and \(v\) to live in the same space; singular value decomposition (SVD) is the generalization for non-square matrices, out of scope here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Matrices became objects only in the 1850s.</strong> Sylvester named them and Cayley gave them an algebra. PCA (Pearson 1901, Hotelling 1933) is the line from their work to a covariance matrix of FX returns.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

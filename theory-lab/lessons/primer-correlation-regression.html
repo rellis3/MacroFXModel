@@ -38,6 +38,7 @@
       <li>OLS regression fits \(Y=\alpha+\beta X+\epsilon\) by minimizing the sum of squared residuals; the calculus collapses to \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this project's own regression code implements.</li>
       <li>\(R^2 = 1-\mathrm{SSR}/\mathrm{SST}\) is the fraction of \(Y\)'s variance the fitted line explains, and equals \(r^2\) exactly for simple (one-predictor) regression — but \(R^2\) only ever weakly increases as predictors are added, even useless ones, so a high in-sample \(R^2\) alone proves nothing.</li>
       <li>Correlation is never proof of causation (ice cream sales and drowning deaths correlate because both follow warm weather, not each other); the interactive chart's noise slider shows \(r\) and \(R^2\) degrading as scatter widens around a fixed true slope.</li>
+      <li><strong>Where it came from:</strong> Francis Galton saw "regression" in sweet peas (1875) and in parents' and children's heights (1886), and defined "co-relation" in 1888. Pearson gave \(r\) its formula; the least-squares rule goes back to Legendre (1805).</li>
     </ul>
   </div>
 
@@ -117,6 +118,15 @@
       the practical, tradeable number: for every one-unit move in X, how many
       units does Y tend to move.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>Sweet peas, tall parents, and a word that stuck</h3>
+    <div class="tl-origin-who">Francis Galton · 1875–1888 · London — formalised by Karl Pearson in the 1890s</div>
+    <p>Francis Galton, a Victorian scientist and a half-cousin of Charles Darwin, wanted to know how traits pass from parents to children. In 1875 he sent packets of sweet-pea seeds, sorted by size, to friends around Britain to grow. Seeds from large parents came out large, but less extreme than their parents; seeds from small parents came out small, but closer to average. He called this "reversion".</p>
+    <p>He then found the same pattern in people. In his 1886 study of parents' and children's heights (in Further Reading), tall parents had children who were tall on average but less tall than themselves, and short parents had children closer to average. The line through his chart of parent height against child height is the ancestor of this lesson's OLS line. In 1888 he defined "co-relation", one number for how strongly two measurements move together, and Karl Pearson gave it the exact formula used here.</p>
+    <p>The rule for fitting such a line, minimising squared errors, was older. Adrien-Marie Legendre published least squares in 1805 for fitting comet orbits, and Gauss claimed he had been using it since 1795, which started a long priority dispute. Galton also coined the word "eugenics", and his heredity work fed that movement; the statistical tools have outlived it. Regression to the mean is also why one standout year from a trader or strategy is a reason to expect a more ordinary one next.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -683,6 +693,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r=0\) means no linear relationship, not "no relationship."</strong> \(y=x^2\) is a perfect deterministic relationship with \(r\approx0\) — always look at a scatter plot, not just the coefficient.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adding predictors always weakly increases R², even useless ones.</strong> OLS can always set a new coefficient to zero, so the fit never gets worse — a high in-sample R² with many predictors proves nothing on its own.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Correlation is never proof of causation.</strong> Confounding (a shared third driver) is the default explanation to rule out, not a rare edge case — treating a high r as a causal link is the single most common misuse of this tool.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Regression is named after a heredity study, not a trading desk.</strong> Galton saw extreme parents have less extreme children. The same regression to the mean is a reason to expect a standout trading year to be followed by a more ordinary one.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

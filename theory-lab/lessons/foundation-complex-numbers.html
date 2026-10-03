@@ -39,6 +39,7 @@
       <li><strong>Euler's formula</strong>, \(e^{i\theta}=\cos\theta+i\sin\theta\), fuses the natural exponential with sine and cosine into one identity — it can be motivated by plugging \(i\theta\) into the (infinite-series) definition of \(e^x\) and watching it split cleanly into the separate series for \(\cos\theta\) and \(\sin\theta\).</li>
       <li>Setting \(\theta=\pi\) gives <strong>Euler's identity</strong>, \(e^{i\pi}+1=0\) — routinely called the most beautiful equation in mathematics for linking five fundamental constants (\(0,1,e,i,\pi\)) in one line.</li>
       <li>Complex numbers matter in quantitative finance chiefly through <strong>characteristic functions</strong> (used in Fourier-based option pricing) and the <strong>Fourier Transform</strong> itself, both covered properly in later lessons this one sets up.</li>
+      <li><strong>Where it came from:</strong> square roots of negatives were forced on 16th-century Italian mathematicians by the cubic formula (Cardano's <em>Ars Magna</em>, 1545). Bombelli made them calculable in 1572, Descartes called them "imaginary" as a put-down in 1637, and Euler's formula followed in 1748.</li>
     </ul>
   </div>
 
@@ -112,6 +113,15 @@
       for describing rotation, oscillation, and waves, which is precisely why
       they show up in Fourier analysis and option pricing later on.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A "useless" answer to a puzzle about splitting the number 10</h3>
+    <div class="tl-origin-who">Gerolamo Cardano · 1545 · Milan — then Rafael Bombelli · 1572 · Bologna</div>
+    <p>In 16th-century Italy, solving cubic equations was a competitive business: mathematicians kept their methods secret and won reputations in public problem-solving contests. Niccolò Tartaglia shared his method for cubics with Gerolamo Cardano in 1539, on a promise of secrecy. Cardano published it in his 1545 book <em>Ars Magna</em> anyway, crediting Tartaglia and the earlier work of Scipione del Ferro, and a bitter public quarrel followed.</p>
+    <p>In the same book Cardano posed a small puzzle: split 10 into two parts whose product is 40. The answer is \(5+\sqrt{-15}\) and \(5-\sqrt{-15}\). He showed the pair works if you simply follow the rules, then dismissed the exercise as clever but of no use. The cubic formula made such roots hard to ignore: for some cubics with three ordinary real answers, the formula passes through square roots of negative numbers on the way. In 1572 Rafael Bombelli set out rules for calculating with them and showed that they cancel to give real answers. That is the same "complex in the middle, real at the end" pattern flagged in this lesson's pitfalls.</p>
+    <p>The names and pictures came slowly. René Descartes called such roots "imaginary" in 1637, as a put-down. Euler published \(e^{i\theta}=\cos\theta+i\sin\theta\) in 1748. Plotting \(a+bi\) as a point on a plane came from Caspar Wessel (1799) and Jean-Robert Argand (1806), both largely overlooked at first. The same numbers now price options through characteristic functions.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -481,6 +491,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Euler's identity, \(e^{i\pi}+1=0\), links five fundamental constants.</strong> A direct consequence of Euler's formula at \(\theta=\pi\), not a separate result.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Complex numbers appear in finance through characteristic functions and the Fourier Transform.</strong> Both are covered properly in later lessons this one exists to prepare for.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An intermediate complex number isn't automatically an error.</strong> Many legitimate pricing calculations pass through complex-valued intermediate steps and arrive at a real final answer — check the final output, not every intermediate one.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Complex numbers were accepted because they gave real answers.</strong> Cardano dismissed them in 1545; Bombelli showed in 1572 that they cancel to real results in cubic equations, just as a characteristic-function price ends up real.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

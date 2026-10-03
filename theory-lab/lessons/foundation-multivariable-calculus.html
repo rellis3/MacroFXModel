@@ -38,6 +38,7 @@
       <li>The <strong>Hessian</strong> stacks every <em>second</em> partial derivative into a matrix — the multivariable version of curvature, used to check whether a stationary point is a genuine minimum, a maximum, or a saddle.</li>
       <li>An option's Delta, Gamma, Theta, and Vega are not four separate special concepts — they are literally the partial derivatives of the option-value function \(V(S,t,\sigma,\dots)\) with respect to the underlying, time, and volatility, respectively.</li>
       <li>Worked example: for \(V(S,t) = S e^{-\delta t}\) (a dividend-paying asset's forward value), \(\partial V/\partial S = e^{-\delta t}\) and \(\partial V/\partial t = -\delta S e^{-\delta t}\) — two different partial derivatives of the exact same function, holding the other variable fixed each time.</li>
+      <li><strong>Where it came from:</strong> partial derivatives grew out of 18th-century physics, such as d'Alembert's 1747 equation for a vibrating string. Gradient descent is usually traced to an 1847 note by Cauchy on solving the equations of astronomical orbits.</li>
     </ul>
   </div>
 
@@ -115,6 +116,15 @@
       temperature rise the fastest?" — it turns out that question has one
       clean answer, built directly from the partial derivatives.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A vibrating string, and a shortcut for calculating orbits</h3>
+    <div class="tl-origin-who">Jean le Rond d'Alembert · 1747 · Paris / Berlin Academy — Augustin-Louis Cauchy · 1847 · Paris</div>
+    <p>Partial derivatives grew out of physics problems where one quantity depends on two things at once. In 1747 Jean le Rond d'Alembert described a vibrating string: the height of each point depends both on where along the string you look and on when you look. His equation linked the rate of change along the string to the rate of change over time, one of the first partial differential equations. Leonhard Euler and Daniel Bernoulli soon disagreed with him, in print and for years, about which shapes the string could take.</p>
+    <p>D'Alembert had a hard start: as a newborn he was left on the steps of the Paris church of Saint-Jean-le-Rond, which is where his name comes from. He became one of the leading mathematicians in Europe and co-editor of Diderot's <em>Encyclopédie</em>.</p>
+    <p>A century later, in 1847, Augustin-Louis Cauchy published a short note on solving the kind of equations that come up in computing the orbits of celestial bodies. His idea was to treat the error as a function of many unknowns and repeatedly step all of them in the direction that lowers it fastest: the negative gradient. That note is usually cited as the first description of gradient descent, which now trains almost every machine-learning model. Black–Scholes (1973) is also a partial differential equation, and the Greeks are its partial derivatives.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -609,6 +619,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The option Greeks are literally partial derivatives.</strong> Delta, Theta, and Vega are first partial derivatives of the option value with respect to spot, time, and volatility; Gamma is a second partial derivative — not four separate special ideas.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked forward-value example shows two different partials of one function.</strong> \(\partial V/\partial S \approx 0.9418\) and \(\partial V/\partial t \approx -2.825\) for the same \(V(S,t)=Se^{-\delta t}\) — the mechanics only ever differ in which variable is frozen.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A stationary gradient alone doesn't certify a minimum.</strong> \(\nabla f = 0\) is consistent with a minimum, a maximum, or a saddle point — the Hessian is what tells them apart.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The tools were built for physics and astronomy.</strong> d'Alembert's vibrating string (1747) needed separate rates of change in space and time; Cauchy's orbit calculations (1847) produced gradient descent. Finance borrowed both.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

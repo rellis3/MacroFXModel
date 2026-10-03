@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Complex Numbers — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">11</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation of Euler's formula, worked examples, and a 5-question self-test?<a href="foundation-complex-numbers.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,18 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <h2 class="sl-h2">Complex numbers started as a "useless" answer</h2>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p><strong>Gerolamo Cardano · 1545 · Milan · Rafael Bombelli · 1572 · Bologna</strong></p>
+        <p>In 1545 Cardano published the secret method for solving cubics (Tartaglia's, shared with him on a promise of secrecy, which caused a famous quarrel). In the same book he split 10 into two parts with product 40: 5 + √−15 and 5 − √−15. It worked, and he dismissed it as of no use.</p>
+        <p>The cubic formula made such roots impossible to avoid: some cubics with real answers pass through √(negative) on the way. In 1572 Bombelli showed how to calculate with them until they cancel to a real answer. Descartes later called them "imaginary" as a put-down (1637).</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">i isn't on the number line — it's a rule</h2>
       <p class="sl-sub">Every real number, squared, comes out zero or positive. No exceptions. i is what you get when you refuse to accept that as the end of the story.</p>
       <div class="sl-quote">i isn't a real number you can point to on a number line — it's defined to be an answer to a question every real number fails: "what number, squared, gives −1?" That's the whole definition: i² = −1.</div>
@@ -41,8 +52,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two numbers, glued together — kept separate like apples and oranges</h2>
       <p class="sl-sub">A complex number z = a + bi has a real part a and an imaginary part b — both are ordinary real numbers. Step through what happens when you add or multiply two of them.</p>
       <div class="sl-card">
@@ -68,8 +79,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A picture: the complex plane</h2>
       <p class="sl-sub">Plot z = a + bi as the point (a, b) — real part along the horizontal axis, imaginary part along the vertical. This is the complex plane (or Argand plane).</p>
       <div class="sl-card">
@@ -93,8 +104,8 @@
       <p class="sl-p">Points like this aren't abstract nonsense with no representation — they plot exactly the way an ordinary ordered pair (x, y) plots on any graph. The "imaginary" axis is just as real a place on the page as the horizontal one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">How far, and which way: modulus and argument</h2>
       <p class="sl-sub">The same point (a, b) can also be described by its distance from the origin and its angle — that's polar form. Edit a and b and watch both update live.</p>
       <div class="sl-compare">
@@ -128,8 +139,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Euler's formula: e^(iθ) is just a rotation</h2>
       <p class="sl-sub">e^(iθ) = cos θ + i sin θ. Drag the slider — the point always sits exactly on the unit circle, at angle θ.</p>
       <div class="sl-card">
@@ -154,8 +165,8 @@
       <p class="sl-p">This is a genuinely surprising fusion: the left side, e^(iθ), is built from continuous exponential growth. The right side, cos θ + i sin θ, is built from rotation around a circle. Euler's formula says these are, in a precise sense, the same object — two toys that turn out to be built from the exact same gears underneath.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">One angle away from the internet's favorite equation</h2>
       <p class="sl-sub">Set θ = π in Euler's formula. Since cos π = −1 and sin π = 0, the imaginary part vanishes completely.</p>
       <div class="sl-row"><div class="sl-box">e^(iπ)</div><div class="sl-arrow">=</div><div class="sl-box">cos π + i sin π</div><div class="sl-arrow">=</div><div class="sl-box green">−1</div></div>
@@ -167,8 +178,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where this actually shows up on a desk</h2>
       <p class="sl-sub">In quantitative finance, complex numbers arrive almost entirely through two connected tools — both covered properly later in this curriculum, both unreadable without this page's vocabulary.</p>
       <div class="sl-icard-grid">
@@ -182,8 +193,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Reading the angle: eyeballing it vs. checking the quadrant</h2>
       <p class="sl-sub">tan⁻¹(b/a) alone can't distinguish a first-quadrant point from a third-quadrant one — flipping both signs gives the exact same ratio.</p>
       <div class="sl-compare">
@@ -209,8 +220,8 @@
       <div class="sl-quote">The difference isn't sophistication — a calculator's tan⁻¹ button is correct exactly as far as it goes. The extra step of checking a and b's actual signs (or letting atan2 do it) is what turns a right-looking number into an actually-right angle.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -260,8 +271,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>i is defined by i² = −1 — a new number invented so "the square root of a negative" has an answer, the same trick already used for negative numbers and fractions.</p></div>
@@ -270,6 +281,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Euler's formula, e^(iθ) = cos θ + i sin θ, fuses exponential growth with rotation — every point on the unit circle is e^(iθ) for some θ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Setting θ = π gives Euler's identity, e^(iπ) + 1 = 0 — a direct consequence of the formula, not a separate result.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Complex numbers reach finance mainly through characteristic functions (option pricing) and the Fourier Transform — both represent oscillation as e^(iθ) instead of separate sine and cosine.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Complex numbers were forced on 16th-century algebra by the cubic formula (Cardano 1545, Bombelli 1572): complex in the middle, real at the end.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

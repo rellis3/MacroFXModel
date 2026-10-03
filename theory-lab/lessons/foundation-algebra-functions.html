@@ -26,7 +26,7 @@
   <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
 
   <div class="tl-callout">
-    <strong>Prefer pictures to prose?</strong> Try the <a href="foundation-algebra-functions-micro.html">Visual Guide</a> — the same ground covered here, broken into 11 short interactive slides.
+    <strong>Prefer pictures to prose?</strong> Try the <a href="foundation-algebra-functions-micro.html">Visual Guide</a> — the same ground covered here, broken into 12 short interactive slides.
   </div>
 
   <div class="tl-tldr">
@@ -38,6 +38,7 @@
       <li>A straight line \(y=mx+c\) has constant slope \(m\) (rise over run) and intercept \(c\) (where it crosses the vertical axis); a quadratic \(y=ax^2+bx+c\) curves, and the sign of \(a\) decides whether it curves up (holds water, "convex") or down (sheds water, "concave").</li>
       <li><strong>Composition</strong> \((f\circ g)(x) = f(g(x))\) chains two machines — feed \(g\)'s output straight into \(f\); an <strong>inverse</strong> \(f^{-1}\) is the machine that undoes \(f\) exactly, so \(f^{-1}(f(x))=x\).</li>
       <li>The worked example rearranges the compound-interest formula \(FV=P(1+r)^n\) to solve for the rate \(r\) — the exact same "isolate the variable" moves used later in this curriculum to solve for volatility, position size, or any other unknown buried inside a bigger formula.</li>
+      <li><strong>Where it came from:</strong> al-Khwarizmi's Baghdad handbook (around 820 CE) on "restoring and balancing" equations, written for inheritance, trade and land problems, gave algebra its name. It used no symbols at all; the \(f(x)\) notation arrived with Euler in the 1730s.</li>
     </ul>
   </div>
 
@@ -107,6 +108,15 @@
       answer baked in — is one of the most common early stumbling blocks, and
       it's worth being explicit about the difference before moving on.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">Where this came from</div>
+    <h3>A Baghdad handbook for inheritances, trade and land</h3>
+    <div class="tl-origin-who">Muhammad ibn Musa al-Khwarizmi · around 820 CE · House of Wisdom, Baghdad</div>
+    <p>Around 820 CE, al-Khwarizmi, a scholar at the House of Wisdom in Baghdad, wrote a short handbook on calculation. His preface says what it was for: the sums people constantly needed for inheritances, legacies, dividing property, lawsuits and trade, and for measuring land. The title named his two main moves. <em>Al-jabr</em> ("restoring") moves a subtracted quantity to the other side, where it becomes an addition. <em>Al-muqabala</em> ("balancing") cancels the same amount from both sides. That is the balance scale in the intuition box above, written down about twelve centuries ago.</p>
+    <p>There is no \(x\) anywhere in the book. Every equation and every step is written out in words, and the methods are justified with drawings of squares and rectangles. Latin translations in the 12th century carried "al-jabr" into Europe as "algebra", and the author's own name turned into "algorithm". Letters for unknowns came much later, with François Viète in the 1590s and René Descartes in 1637.</p>
+    <p>The function idea is younger still. Leibniz used the word "function" in the late 1600s, and Leonhard Euler introduced the \(f(x)\) notation in the 1730s. Every time this lab rearranges a pricing formula to back out an implied rate, it is doing al-Khwarizmi's restoring and balancing.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -596,6 +606,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Slope is constant on a line, changing on a curve.</strong> A changing slope is exactly what "curving" (convex/concave) means — the idea convexity later builds on directly.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Composition and inverses chain or undo functions.</strong> Order matters for composition; not every function has a clean inverse.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Rearranging gets harder once roots and exponents are involved.</strong> The compound-interest example needed a fractional-power root, not just addition/subtraction — a habit worth building now, before formulas get longer.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Algebra began as a practical tool.</strong> al-Khwarizmi wrote it around 820 CE for inheritances, trade and land, entirely in words. "Solve for \(x\)" is a much newer way of writing the same balancing moves.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
