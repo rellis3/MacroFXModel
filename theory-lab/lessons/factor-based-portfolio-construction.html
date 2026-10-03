@@ -36,6 +36,7 @@
       <li>Named FX/macro factor families — carry, momentum/trend, value — each come with real academic literature behind them (cited below), but citing that literature is not the same as this repo having validated any of them on its own out-of-sample data.</li>
       <li>Once exposures are estimated, portfolio-level factor exposure is just the weighted sum of asset-level exposures — so hitting a target profile ("long carry, neutral momentum") is a small linear system: solve for weights such that the weighted exposures match the target.</li>
       <li>Worked example: a 2-asset, 2-factor system solved exactly for the weights that deliver a stated target exposure, with zero free parameters beyond the target itself.</li>
+      <li><strong>Real-world episode:</strong> the US value factor suffered by many measures its deepest and longest drawdown on record in 2018–2020; value-tilted books held exactly the exposure they solved for and earned exactly the factor's negative return, many investors cut near the low, and value rebounded from November 2020. On this desk, the carry and trend baskets are underpowered and FX trend is null.</li>
     </ul>
   </div>
 
@@ -453,6 +454,88 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the "value winter", 2018–2020</h2>
+  <p>
+    Step 4 delivers a factor exposure exactly: solve \(B^\top w = q\) and the book holds the tilt you asked for. What it
+    cannot deliver is the factor's <em>return</em>. The value factor, one of the three this lesson names, spent the
+    years up to 2020 showing how long a documented premium can be negative, and what that does to the people holding it.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The best-documented premium, and its worst run on record</h3>
+    <p>
+      Value, buying what is cheap on a fundamental anchor and selling what is expensive, is one of the oldest and most
+      studied factors in finance. In equities it is the Fama–French "HML" factor; in currencies it is the real-exchange-rate
+      anchor from the PPP lesson; and Asness, Moskowitz &amp; Pedersen (2013), cited in this lesson, found it across
+      eight asset classes. By the late 2010s a large amount of money ran deliberate value tilts, built exactly the way this
+      lesson builds a target exposure.
+    </p>
+    <p>
+      Then value stopped paying, for years. US value stocks lagged growth stocks through most of the 2010s, and the
+      lag became severe in 2018–2020 as large technology companies kept rising and cheap stocks kept getting cheaper.
+      In 2020 the gap widened again as the pandemic favoured exactly the companies already priced as expensive. By
+      many measures it was the deepest and longest drawdown in the value factor's recorded history, which in US equities
+      goes back to the 1920s. The causes are still argued over: very low interest rates helping long-duration growth
+      companies, intangible assets that book value does not capture, or simply a large, rare run of bad luck.
+    </p>
+    <p style="margin-bottom:0">
+      The cost was paid in clients as well as returns. Quant managers known for value tilts saw large outflows; AQR, whose
+      founders co-wrote the "everywhere" paper this lesson cites, saw its assets under management fall substantially and
+      published papers defending the factor while it lost. Then, on 9 November 2020, Pfizer announced its vaccine trial
+      results, and value had one of its sharpest one-day reversals in years. It went on to outperform through 2021 and
+      2022. Investors who had cut their tilt near the bottom missed the turn.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock · a long regime</b>Low rates and a tech boom lift expensive growth stocks year after year</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · factor exposure</b>Value-tilted books held exactly the \(q\) they solved for, so they earned exactly the factor's return \(f_k\): negative, for years</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Clients and allocators</b>Lose patience with years of underperformance, so they redeem</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Value managers</b>Forced by outflows to sell cheap holdings, or cut the tilt, near the low</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The record drawdown, then the November 2020 rebound, caught by those who stayed</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. \(B_p = w^\top B\) did its job perfectly: the exposure was there. The
+    lesson's model is \(r_i = \sum_k \beta_{ik} f_k + \varepsilon_i\), and nothing in it says \(f_k\) must be positive
+    over any horizon an investor can sit through.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You built a lunchbox that is exactly "half apples, half carrots", because apples have been the tastiest fruit for a hundred years. Your lunchbox was built perfectly. But for a few years apples tasted bad, and lots of kids swapped their apples away. Just after they did, apples got tasty again. Building the box right is not the same as the apples being good this year.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The factor model treats each \(f_k\) as a return series with a stable positive mean that a long enough history
+    reveals. The value winter broke that in two ways. The premium's sign was negative for longer than most investors'
+    patience or most backtests' out-of-sample windows, so "a long history says it works" and "it will work over my
+    horizon" came apart. And factor returns are not independent of who holds them: crowding and outflows from the
+    factor's own holders made the drawdown deeper, which is the pitfall above about crowding and decay, seen in real money.
+  </p>
+
+  <div class="tl-verdict underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Underpowered</span>
+    <span><strong>fx-factor-book-v2: this desk's own carry and trend factor baskets cannot be shown to earn a premium.</strong>
+    The incumbents themselves: <strong>trend −0.16 out of sample; carry +0.61, which is 1.5 SE</strong> and sits in the
+    2021-26 rate-divergence era (in-sample −0.12). On 7 USD crosses over 5.7 years the Sharpe SE is 0.41, so neither a
+    real premium nor its absence can be established, and the carry basket's out-of-sample Sharpe is not to be cited as
+    an edge. Value has not been tested here at all.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>trend-following-fx: "momentum everywhere" did not show up in this desk's FX-only basket.</strong>
+    FX-only basket: null, verified not-a-bug with an independent rebuild. Broad multi-asset: modest (~0.3 OOS), barely
+    beating buy-and-hold. A trend reading on an FX pair here describes the past, not the next month.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     The three factor families named in the TL;DR are each backed by real,
@@ -531,7 +614,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A factor model trades pairwise covariances for shared exposures.</strong> \(r_i = \sum_k \beta_{ik}f_k + \varepsilon_i\) needs \(N\times K\) loadings instead of \(N(N-1)/2\) pairwise covariances — a real parameter-count win that grows with the universe size.</span></div>
@@ -540,9 +623,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Citing carry/momentum/value literature is not validating them here.</strong> Menkhoff et al. (2012) and Asness, Moskowitz &amp; Pedersen (2013) are real, peer-reviewed findings — not evidence that these factors work on this repo's own instruments and time period.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Loadings are estimates, not facts.</strong> A target-hitting weight solve is only as good as the \(\beta_{ik}\) estimates feeding it, each with its own standard error.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> No factor loadings are estimated, and no factor-tilted portfolio has been backtested, here.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Delivering the exposure is not delivering the premium (the value winter).</strong> Value-tilted books held exactly the tilt they solved for through value's deepest drawdown on record, 2018–2020, and many holders cut before the November 2020 rebound. Here, the carry and trend baskets are underpowered (trend −0.16 OOS, carry +0.61 at 1.5 SE) and FX trend tested null.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a K-factor model need far fewer parameters than estimating a full covariance matrix directly, once the universe is large?</summary>
@@ -675,5 +759,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>
