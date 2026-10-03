@@ -195,3 +195,6 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 .tl-pathbar-nav{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .tl-pathbar-nav a{color:var(--blue);font-weight:600;text-decoration:none}
 .tl-pathbar-also{margin-top:6px;font-size:12px;color:var(--text3)}
+.sl-role-stages{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0}
+.sl-role-stage{flex:1 1 60px;text-align:center;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 3px;border-radius:6px;border:1px solid var(--border);color:var(--text3);background:var(--panel2);font-family:'DM Mono',monospace}
+.sl-role-stage.on{color:var(--purple);border-color:var(--purple-bd);background:var(--purple-bg)}

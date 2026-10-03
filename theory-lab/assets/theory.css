@@ -471,3 +471,13 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 .tp-deliv li a{display:block;font-size:12px;margin-left:24px;text-decoration:none}
 .tp-foot,.tp-hint{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace}
 .tp-stage li a{text-decoration:none}
+/* .tl-role — "Its job in the analysis": where a tool sits in the trading pipeline.
+   Six stages; the lesson's stage(s) get .on. Sits inside or right after .tl-origin. */
+.tl-role{margin:12px 0 4px}
+.tl-role-stages{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.tl-role-stage{flex:1 1 70px;text-align:center;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:6px 4px;border-radius:6px;border:1px solid var(--border);color:var(--text3);background:var(--s2)}
+.tl-role-stage.on{color:var(--purple);border-color:var(--purple-bd);background:var(--purple-bg)}
+.tl-role dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 12px;margin:0;font-size:13px}
+.tl-role dt{color:var(--text3);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+.tl-role dd{margin:0;color:var(--text2)}
+@media (max-width:600px){.tl-role dl{grid-template-columns:1fr}.tl-role dt{padding-top:6px}}

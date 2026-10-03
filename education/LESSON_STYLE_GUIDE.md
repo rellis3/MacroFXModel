@@ -417,21 +417,33 @@ leaves the authored box untouched. `untested` boxes carry no `data-evidence`.
 carries a date, and that its page loads the script; it also lists boxes written
 against an older entry so the prose can be refreshed.
 
-### 5.17 Where this came from — `.tl-origin`
+### 5.17 How it reached trading — `.tl-origin` + `.tl-role`
 
-For maths/ML lessons where a market episode would be forced: the people, the
-problem they were actually trying to solve, and the twist. Real, documented
-history only.
+For maths/ML lessons. Trading-first: who brought the idea into markets, when,
+and what traders could not do before it; then its job in the analysis. At most
+one clause on a non-finance origin, and only when it genuinely helps.
 
 ```html
 <div class="tl-origin">
-  <div class="tl-origin-label">Where this came from</div>
-  <h3>A navigation problem on the way to the Moon</h3>
-  <div class="tl-origin-who">Rudolf Kálmán · 1960 · NASA Ames / Apollo</div>
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>A hedge ratio that won't sit still</h3>
+  <div class="tl-origin-who">Kalman filter · into markets from the 1980s–90s</div>
   <p>...</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span>
+      <span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span>
+      <span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>The question it answers in the analysis.</dd>
+      <dt>Takes in</dt><dd>What feeds it (link the lesson).</dd>
+      <dt>Hands on to</dt><dd>What uses its output (link the lesson).</dd>
+    </dl>
+  </div>
 </div>
 ```
-Slides: `.sl-origin` + `.sl-origin-label` (deck.css).
+Slides: `.sl-origin` + `.sl-origin-label`, with `.sl-role-stages` / `.sl-role-stage(.on)`.
 
 ---
 
