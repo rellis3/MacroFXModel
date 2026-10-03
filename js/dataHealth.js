@@ -66,7 +66,10 @@ export function classify(s, now = Date.now()) {
       ? `not refreshed since the restart ${bootMin} min ago — this one runs every ${s.refreshEveryH}h, so it is waiting, not broken`
       : bootMin != null ? `nothing cached since the restart ${bootMin} min ago`
       : 'no last-update time reported';
-    return { ...base, state: 'unknown', ageDays: null, overdue: null, why };
+    // `waiting` lets a reader tell the two unknowns apart: a cache with a refresh interval
+    // will fill itself; a source with none has nothing recording its time at all.
+    return { ...base, state: 'unknown', ageDays: null, overdue: null, why,
+             waiting: !!s?.refreshEveryH, refreshEveryH: s?.refreshEveryH ?? null, bootMin };
   }
 
   const cad = Math.max(0.0001, base.cadenceDays);

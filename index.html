@@ -52,6 +52,7 @@
   <button class="dark-btn" onclick="saveAllPairsToJournal()" id="journalAllBtn" title="Save ALL pairs' levels to Trade Journal in one go" style="border-color:var(--purple-bd);color:var(--purple)"><span>📓</span><span>All Pairs</span></button>
   <button class="dark-btn" onclick="openSiteMap()" title="Site map — all pages with descriptions" style="border-color:#4f7df0;color:#4f7df0"><span>🗺</span><span>Site Map</span></button>
   <button class="dark-btn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it" style="border-color:#34d399;color:#34d399"><span>🔌</span><span>API Map</span></button>
+  <button class="dark-btn" onclick="openDataMap()" title="Data map — every data feed, what it is for, where it is used, when it last updated" style="border-color:#a78bfa;color:#a78bfa"><span>🗄</span><span>Data Map</span></button>
   <div class="live-pill"><div class="live-dot"></div>Live</div>
   <span class="upd" id="upd"></span>
 </div>
@@ -2207,5 +2208,6 @@ function _renderBetaPanel(estimates, portfolio, deviation, rebalance, positions,
 .rb-panel>summary::-webkit-details-marker{display:none}
 </style>
 <script src="js/siteApiMap.js"></script>
+<script src="js/dataMap.js"></script>
 </body>
 </html>

@@ -8176,3 +8176,21 @@ Honest status: infrastructure is built and unit-tested on synthetic data only. N
 verdict exists until the routes are run on Railway (OANDA + FRED); record results in
 `FX_FACTOR_V2_TEST.md` §6. Known limits stated in the spec: 7-currency cross-section,
 interbank carry = upper bound, incumbent SE used for Δ (conservative).
+
+### 1bh. Data Map — feed registry + repo scan + freshness (2026-10-03)
+
+The third map next to 🗺 Site Map and 🔌 API Map: every data feed, what it is for, where
+it is used and when it last updated. Replaces the old "⬤ data" freshness pill, whose
+`unknown` rows could not say whether a feed was broken or just not loaded since a deploy.
+
+| Brick | File | Owns | Consumers | Status |
+|---|---|---|---|---|
+| **Feed registry** | `js/dataFeeds.js` | `FEEDS` (47 pipelines: provider, purpose, refresh, store, endpoints, health ids, `kvStamp`, `series` keys into `dataCatalogue.js`, `hosts`), `FEED_CATEGORIES`, `IGNORE_HOSTS` | `server.js` `/api/data-catalogue` | built |
+| **Catalogue core** | `js/dataCatalogueCore.js` | pure: `scanUsage` (endpoint → files, sibling-route safe), `endpointPattern`, `pageTitle`, `uncataloguedHosts` (the drift guard), `stampOf` (write time inside a KV value, never guessed), `statusOf` (splits `unknown` into **loading** vs **not tracked**), `buildCatalogue` | `server.js` | built, `js/dataCatalogueCore.test.mjs` |
+| **Data Map overlay** | `js/dataMap.js` | classic-script overlay `openDataMap()`: status/area filters, search across feeds, series and pages, expandable detail incl. each feed's series with tested/trap tags | `js/commandHub.js` (nav pill, lazy-loaded), `index.html`, `today.html` | built |
+| **Series catalogue** | `js/dataCatalogue.js` | (pre-existing) one row per series with why / verdict / trap — now *displayed* inside each feed card via `readBy` keys | the map | unchanged |
+
+Guard: `js/dataFeeds.test.mjs` fails if server.js or any js/ module fetches a host no feed
+claims, if a feed lists an endpoint the server does not serve, if a health id has no
+producing row, or if a `series` key matches no catalogue row. "Where used" is never
+hand-written — the server scans every root page and js/ module once per boot.
