@@ -36,6 +36,7 @@
       <li><strong>Gibbs sampling</strong> is the special case where you always propose a parameter directly from its true full conditional distribution — the acceptance probability algebraically collapses to exactly 1, so every proposal is accepted.</li>
       <li>Worked example: five explicit steps of a 1-D random-walk Metropolis chain sampling from a bimodal (double-well) target, computed by hand — two accepts, one reject, two automatic uphill accepts.</li>
       <li>A chain isn't trustworthy until it's diagnosed: trace plots, burn-in, effective sample size, and the Gelman-Rubin \(\hat{R}\) statistic are the standard checks, and the interactive chart below lets you watch mixing quality change with proposal step size.</li>
+      <li>Where it came from: Metropolis sampling was invented at Los Alamos in 1953 to simulate particles on the MANIAC computer, with Arianna and Marshall Rosenbluth now credited for much of the work; Gibbs sampling came from the Gemans' 1984 image-restoration paper.</li>
     </ul>
   </div>
 
@@ -92,6 +93,15 @@
       the entire landscape's shape — even though you never once computed its
       exact height at any point, only ever compared two heights to each other.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>Simulating atoms on one of the first computers</h3>
+  <div class="tl-origin-who">N. Metropolis, A. W. &amp; M. N. Rosenbluth, A. H. &amp; E. Teller · 1953 · Los Alamos (MANIAC) &nbsp;|&nbsp; S. &amp; D. Geman · 1984</div>
+  <p>The Metropolis algorithm was born at Los Alamos in the early 1950s, among physicists who wanted to predict how a dense collection of interacting particles behaves — its "equation of state". The exact answer needed integrals over far too many dimensions to compute. The team ran the problem instead on MANIAC, one of the laboratory's early electronic computers, using a random walk that proposes a small move for one particle and accepts or rejects it with exactly the rule this lesson derives. The 1953 paper carried five names: Nicholas Metropolis, Arianna and Marshall Rosenbluth, and Augusta and Edward Teller.</p>
+  <p>The algorithm carries Metropolis's name because he was first author and led the team that built MANIAC, but later accounts — including Marshall Rosenbluth's own recollection near the end of his life — credit the Rosenbluths with most of the actual work: Marshall worked out the method, and Arianna, a physicist with a Harvard PhD, wrote the program that ran it on MANIAC. Her role is now widely acknowledged.</p>
+  <p>For decades the method stayed inside physics. W. K. Hastings generalised it to asymmetric proposals in 1970 with little immediate fanfare. The other half of this lesson came from image processing: in 1984 the brothers Stuart and Donald Geman, working on cleaning up noisy pictures, described sampling one variable at a time from its conditional distribution and named it Gibbs sampling, after the physicist J. Willard Gibbs. When Alan Gelfand and Adrian Smith showed statisticians in 1990 how these samplers could compute Bayesian posteriors, MCMC spread rapidly — and it remains the standard tool for any posterior that has no closed form.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -530,6 +540,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A chain that runs is not automatically a chain that converged.</strong> Trace plots, burn-in, ESS, and R̂ across multiple chains are the standard, non-optional checks before trusting any MCMC output.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Proposal step size is a real tuning problem.</strong> Too small or too large both produce poor mixing, just for opposite reasons — the interactive chart above makes this failure mode directly visible.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This lesson explains a computational method, not a trading signal.</strong> MCMC is a way to compute a posterior that has no closed form — whatever model it's applied to still has to earn its keep OOS, exactly like every other idea in this curriculum.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: physics and image restoration.</strong> The 1953 Los Alamos paper (MANIAC; the Rosenbluths did much of the work) gave us Metropolis; the Geman brothers' 1984 image-restoration paper gave us Gibbs sampling; Gelfand &amp; Smith (1990) brought both to statistics.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

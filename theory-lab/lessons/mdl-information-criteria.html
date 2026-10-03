@@ -36,6 +36,7 @@
     <li>Rissanen's classical result: encoding each of \(k\) real-valued parameters to the precision the data can support costs about \(\tfrac12\log_2(n)\) bits — which, after matching units, is <em>exactly</em> BIC's \(k\ln(n)\) penalty (from the <a href="model-selection-aic-bic.html">AIC &amp; BIC</a> lesson) up to a constant scale factor.</li>
     <li>The worked example reuses that lesson's exact numbers (\(n=100\), Model A: \(k=2\), Model B: \(k=5\)) and shows the two-part code length for each model is <em>literally proportional</em> to its BIC value — \(BIC = 2\ln(2)\cdot DL\) — so minimizing one always picks the same model as minimizing the other.</li>
     <li>Schwarz derived BIC from Bayesian asymptotics in 1978; Rissanen derived (essentially) the same penalty from pure coding theory the same year, independently. Two different starting points, the same practical rule — the "aha" this lesson is built around.</li>
+    <li>Where it came from: Jorma Rissanen, an IBM engineer who also worked on arithmetic coding for data compression, turned "the best model compresses the data most" into MDL in 1978, building on 1960s work by Solomonoff, Kolmogorov and Wallace &amp; Boulton.</li>
   </ul>
   </div>
 
@@ -78,6 +79,15 @@
     expensive message you could possibly send, because you had to describe every last idiosyncrasy
     of this one sample instead of the underlying pattern.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>A data-compression engineer's view of statistics</h3>
+  <div class="tl-origin-who">Jorma Rissanen · 1978 · IBM Research, San Jose &nbsp;|&nbsp; precursors: Solomonoff, Kolmogorov, Wallace &amp; Boulton (1960s)</div>
+  <p>Jorma Rissanen was a Finnish-born engineer who spent most of his career at IBM's research laboratory in San Jose, California. Before MDL he had worked on control theory and on data compression; his work on arithmetic coding in the mid-1970s became one of the foundations of a method later included in image-compression standards. To a compression engineer, a good model is simply one that lets you write data down in fewer bits.</p>
+  <p>Rissanen's step was to apply that view to statistical model choice: the best model is the one that minimises the length of the model description plus the data encoded with it. He was not the first to link compression and inference. In the 1960s Ray Solomonoff and Andrey Kolmogorov had tied the complexity of a dataset to the shortest program that produces it, and Chris Wallace and David Boulton in Australia had proposed a closely related "minimum message length" approach in 1968. Rissanen's contribution was a practical criterion that statisticians could compute.</p>
+  <p>As covered below, his 1978 paper arrived at a penalty matching Schwarz's BIC from the same year by a completely different route. Rissanen kept refining MDL for decades, and it invites a useful question to ask of any strategy: not "does it fit?" but "does it compress?"</p>
   </div>
 
   <div class="tl-eli5">
@@ -443,6 +453,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two unrelated derivations, one answer.</strong> Schwarz's 1978 Bayesian asymptotic argument and Rissanen's 1978 coding-theory argument — independently, the same year — land on the same practical penalty.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The bridge is specific to BIC, not AIC.</strong> AIC targets a different (out-of-sample, KL-divergence) quantity — don't extend the exact BIC-MDL equivalence into a claim about AIC too.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A shorter code is a relative, not absolute, verdict.</strong> Same caveat as BIC itself: the winning model compressed this dataset best among the candidates tried — that's not the same claim as "this model is true," or that it produces trading edge.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: data compression.</strong> Rissanen, an IBM engineer who also worked on arithmetic coding, recast model choice as compression in 1978, building on Solomonoff, Kolmogorov and Wallace &amp; Boulton's 1960s ideas.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

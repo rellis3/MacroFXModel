@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">MCMC: Metropolis-Hastings &amp; Gibbs — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, worked-by-hand steps, and a 5-question self-test?<a href="mcmc-metropolis-gibbs.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Atoms on MANIAC, then noisy pictures</h2>
+      <p class="sl-sub">Metropolis, the Rosenbluths and the Tellers, Los Alamos (1953); Stuart &amp; Donald Geman (1984).</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Physicists at Los Alamos needed to simulate how many interacting particles behave — far too many dimensions to integrate. They ran a random accept/reject walk on the MANIAC computer. Later accounts credit Marshall Rosenbluth with working out the method and Arianna Rosenbluth with writing the code.</p>
+        <p>Gibbs sampling came from image processing: in 1984 the Geman brothers restored noisy pictures by resampling one pixel at a time from its conditional distribution. Statisticians adopted both methods widely after 1990.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Conjugate updating was the easy case, not the normal one</h2>
       <p class="sl-sub">The moment a model has more than one interacting parameter, the algebra runs out.</p>
       <div class="sl-compare">
@@ -52,8 +63,8 @@
       <div class="sl-quote">That last line is the whole trick MCMC is built on: a ratio of two unnormalized-density evaluations, <strong>f(θ′)/f(θ)</strong>, is exactly as informative as the ratio of true posterior densities <strong>p(θ′)/p(θ)</strong> — because whatever constant normalizes p cancels out of any ratio of it against itself. You never need the constant. You only ever need to compare two points.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A hiker who never refuses to go downhill</h2>
       <p class="sl-sub">Picture the posterior as a landscape — hills where a parameter value is plausible, valleys where it isn't.</p>
       <div class="sl-row">
@@ -72,8 +83,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The acceptance rule, term by term</h2>
       <div class="sl-row">
         <div class="sl-box amber" style="font-size:13px">α(θ,θ′) = min( 1, &nbsp;[ p(θ′)·q(θ∣θ′) ] / [ p(θ)·q(θ′∣θ) ] )</div>
@@ -90,8 +101,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Detailed balance: the ledger that has to zero out</h2>
       <p class="sl-sub">Why does this particular accept/reject rule guarantee the chain settles on the posterior, and not something else?</p>
       <div class="sl-row">
@@ -105,8 +116,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Five steps, by hand — walk it yourself</h2>
       <p class="sl-sub">Target (unnormalized): f(θ) = exp(−θ⁴/4 + θ²/2), a "double-well" shape with two peaks near θ = ±1 and a dip at θ = 0. Start at θ₀ = 0, f(0) = 1.</p>
       <div class="sl-card">
@@ -142,8 +153,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute the acceptance probability yourself</h2>
       <p class="sl-sub">Enter any two unnormalized posterior-density values — current f(θ) and proposed f(θ′) — and watch α = min(1, ratio) update live. Starts on the worked example's Step 2.</p>
       <div class="sl-card">
@@ -167,8 +178,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag the step size, watch the chain explore — or not</h2>
       <p class="sl-sub">Same bimodal target as the worked example, same seeded random draws every time — only the proposal step size (σ of the random-walk jump) changes. The shaded shape on the right is the target density itself, sideways, so you can see how the trace tracks it.</p>
       <div class="sl-card">
@@ -197,8 +208,8 @@
       <p class="sl-p">Too small a σ and the chain crawls — nearly everything gets accepted, but each step barely moves, so it rarely crosses the dip between the two modes. Too large a σ and most proposals land far downhill and get rejected, so the chain repeats its current value over and over, barely moving for the opposite reason. Somewhere in between, the trace bounces across the full range and visits both modes — the "hairy caterpillar" a healthy chain is supposed to look like.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Well-mixed vs. stuck — the same kind of trace plot</h2>
       <p class="sl-sub">Two real, seeded 200-iteration chains on the same target. Only the proposal step size differs.</p>
       <div class="sl-card">
@@ -238,8 +249,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Gibbs sampling: the special case that never rejects</h2>
       <p class="sl-sub">When you can sample a variable's full conditional distribution exactly — often because it's conjugate, one parameter at a time.</p>
       <div class="sl-compare">
@@ -266,8 +277,8 @@
       <div class="sl-quote">Regular Metropolis-Hastings guesses where to step next and checks whether the guess was any good. Gibbs sampling skips the guessing — for each parameter in turn it draws directly from the exact right answer for "given everything else fixed, what should this one be." Nothing to double-check, so nothing ever gets rejected.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">A chain that ran is not automatically a chain that converged</h2>
       <p class="sl-sub">Four standard diagnostics separate a genuine posterior sample from a chain that only looks like one.</p>
       <div class="sl-icard-grid">
@@ -282,8 +293,8 @@
       <p class="sl-p" style="margin-top:14px">If every chain has converged to the same target, B is small relative to W, and R̂ → 1 (commonly, trusted below about 1.01). If chains are stuck exploring different regions — say one trapped near θ=+1 and another near θ=−1, neither having crossed — B is large, and R̂ sits noticeably above 1: a direct, quantitative flag that the chains disagree about where the posterior actually is.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Where MCMC quietly goes wrong</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🏃</div><div><h4>Mistaking "it ran" for "it converged"</h4><p>A badly-tuned step size, a multimodal target, or too few iterations happily produces ten thousand numbers that look like a posterior sample and are actually biased toward whichever region the chain wandered into first.</p></div></div>
@@ -293,8 +304,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -344,8 +355,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Most real posteriors aren't conjugate — MCMC replaces the intractable normalizing integral with a random walk whose visit frequencies approximate the posterior.</p></div>
@@ -354,6 +365,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gibbs sampling is Metropolis-Hastings with the proposal set equal to the true full conditional — the ratio collapses to exactly 1, so every draw is accepted, with no tuning, but every conditional has to be sampleable.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Step size is a real tuning problem: too small crawls (high autocorrelation), too large gets rejected almost every time (also high autocorrelation) — both look like "it's running" without producing a useful sample.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A chain that ran isn't automatically a chain that converged — trace plots, burn-in, effective sample size, and multi-chain R̂ are the standard, non-optional checks before trusting any MCMC output.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Los Alamos physics on the MANIAC computer (1953, with the Rosenbluths doing much of the work) and the Gemans' image restoration (1984).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

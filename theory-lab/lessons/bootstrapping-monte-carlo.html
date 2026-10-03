@@ -38,6 +38,7 @@
       <li>Monte Carlo simulation is a different move: fit a parametric model (GARCH, GBM) to the data and generate brand-new synthetic paths from it, rather than resampling real observations.</li>
       <li>Both tools only describe what's plausible given what you already have — the one sample, or a model fitted to that sample — never what would happen against market conditions that sample never contained.</li>
       <li>As this project's own working philosophy states: "Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
+      <li>Where it came from: Monte Carlo began with Ulam's solitaire question in 1946 and was named after the casino; Efron's 1979 bootstrap generalised the earlier jackknife, letting a sample estimate its own uncertainty.</li>
     </ul>
   </div>
 
@@ -107,6 +108,15 @@
       model built from that sample — never what would happen against a market
       condition that sample never contained.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>A game of solitaire, a casino, and pulling yourself up by your bootstraps</h3>
+  <div class="tl-origin-who">Stanislaw Ulam &amp; John von Neumann · 1946–47 · Los Alamos &nbsp;|&nbsp; Bradley Efron · 1979 · Stanford</div>
+  <p>Monte Carlo simulation began with a card game. In 1946 the mathematician Stanislaw Ulam, recovering from a serious illness, passed time playing solitaire and wondered what fraction of deals could be won. Working it out combinatorially looked hopeless; it was far easier to deal many hands and count. He realised the same approach could tackle neutron transport in weapons design at Los Alamos, and worked it out with John von Neumann, who arranged for the calculations to run on ENIAC. Nicholas Metropolis suggested the code name "Monte Carlo", after the casino — as Metropolis later told it, Ulam had an uncle who would borrow money from relatives to go gambling there.</p>
+  <p>The bootstrap arrived three decades later. Statisticians already had the jackknife: Maurice Quenouille's leave-one-out bias correction from the late 1940s, which John Tukey named after the pocket knife — a rough tool that works in many situations. In 1979 Bradley Efron at Stanford published "Bootstrap Methods: Another Look at the Jackknife", showing that resampling the data with replacement gave a more general and powerful answer. The name refers to the impossible-sounding feat of pulling yourself up by your own bootstraps: the sample is used to estimate its own uncertainty.</p>
+  <p>Both ideas only became routine once computing was cheap — Monte Carlo needed some of the first electronic computers, and the bootstrap's thousands of resamples were expensive in 1979. Today they are the natural way to put error bars on Sharpe ratios and drawdowns that have no tidy formula.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -634,6 +644,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither tool can leave the sample it started from.</strong> Both describe what's plausible given what you already have — never what would happen under conditions that sample never contained.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A narrow bootstrap interval is not robustness evidence.</strong> It proves the sample is internally consistent, not that the underlying signal generalizes — conflating the two is a documented, easy way backtests mislead their own authors.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation is the tool that actually tests generalization.</strong> It splits real history into a fitting period and a genuinely separate later testing period the signal never touched — bootstrapping and Monte Carlo cannot substitute for that, no matter how many replicates are run.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: solitaire, a casino and a jackknife.</strong> Ulam and von Neumann built Monte Carlo at Los Alamos (named by Metropolis after the casino); Efron's 1979 bootstrap grew out of the Quenouille-Tukey jackknife.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

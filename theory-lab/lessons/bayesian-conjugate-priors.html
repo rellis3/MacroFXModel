@@ -36,6 +36,7 @@
       <li><strong>Normal-Normal (known variance):</strong> prior \(\mu \sim N(\mu_0,\sigma_0^2)\), the posterior mean is a <em>precision-weighted average</em> of the prior mean and the sample mean, and posterior precision is just prior precision plus data precision.</li>
       <li>Worked example: starting from a weak belief that "trend days" happen 40% of the time, 10 observed days (3 trend days) then 30 more (9 trend days) narrow the belief's standard deviation from 0.20 → 0.12 → 0.07 — visualized live in the chart below.</li>
       <li>Conjugacy is a mathematical convenience, not a law of nature — most real-world likelihoods have no conjugate prior at all, which is exactly why the next lesson in this trio covers MCMC.</li>
+      <li>Where it came from: Bayes and Laplace already worked the Beta-Binomial case in the 1700s; Raiffa and Schlaifer at Harvard Business School named and systematised "conjugate" priors in 1961 so decisions could be updated by hand.</li>
     </ul>
   </div>
 
@@ -86,6 +87,15 @@
       you just update two numbers that describe it, and the curve tightens
       around the truth as more days go by.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>Bayesian decisions for people with only a pencil</h3>
+  <div class="tl-origin-who">Howard Raiffa &amp; Robert Schlaifer · 1961 · Harvard Business School</div>
+  <p>The Beta-Binomial update in this lesson is, in a sense, the oldest piece of Bayesian mathematics there is. Bayes' own 1763 essay asked how to infer an unknown success rate from a count of successes and failures, starting from a flat prior — which is the Beta(1,1) case. Laplace pushed the same calculation further, deriving his "rule of succession" and famously applying it to the chance that the sun will rise tomorrow, given that it has risen every day in recorded history.</p>
+  <p>The name "conjugate prior" came much later, and from a business school. In 1961 Howard Raiffa and Robert Schlaifer, at Harvard Business School, published <em>Applied Statistical Decision Theory</em>. They wanted managers to make Bayesian decisions about real business problems at a time when there were no cheap computers to grind through integrals. Their answer was to pick prior families — they called them "natural conjugate" families — for which the posterior lands back in the same family, so updating becomes simple arithmetic on a couple of parameters that can be done by hand.</p>
+  <p>That pencil-and-paper convenience is the reason the idea survived into the computer age. Conjugate updates are still the fastest, most transparent way to keep a running belief about a hit rate or a mean, which is why this lesson reaches for them first when tracking something like a trend-day frequency — and why MCMC is only needed once a model steps outside these tidy families.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -507,6 +517,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A "flat" prior is still an assumption.</strong> Beta(1,1) asserts every rate is equally plausible beforehand — state and justify the chosen prior rather than treating any default as assumption-free.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Conjugacy is the exception, not the rule.</strong> Most real-world likelihoods have no matching conjugate prior at all — that's the entire motivation for MCMC, covered next.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A narrow posterior is not the same as a validated edge.</strong> It quantifies confidence about the observed sample, not about whether that sample generalizes — the honest OOS discipline this curriculum applies everywhere else still applies here.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: decision-making without computers.</strong> Raiffa &amp; Schlaifer (Harvard Business School, 1961) introduced natural conjugate priors so a posterior could be updated with pencil-and-paper arithmetic; the Beta-Binomial case goes back to Bayes and Laplace.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

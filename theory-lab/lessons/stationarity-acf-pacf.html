@@ -38,6 +38,7 @@
       <li>The PACF at lag \(k\) strips out that indirect chain, measuring only what lag \(k\) adds beyond what closer lags already explain — which is exactly what lets it identify an AR model's order \(p\).</li>
       <li>The Box-Jenkins signature of an AR(\(p\)) process: the ACF decays gradually (never cleanly stops) while the PACF cuts off sharply after lag \(p\) — for AR(1) specifically, PACF is large at lag 1 and near-zero from lag 2 on, even though the ACF stays visibly nonzero for several more lags.</li>
       <li>Practically, reading where the PACF cuts off tells you how far back a series' own history is genuinely informative — a principled alternative to guessing a lookback window or grid-searching one.</li>
+      <li>Where it came from: Yule's 1926 "nonsense correlations" warning and his 1927 sunspot model, extended by Gilbert Walker's monsoon work in 1931, gave us both the stationarity worry and the Yule-Walker equations behind the PACF.</li>
     </ul>
   </div>
 
@@ -100,6 +101,15 @@
       everything the more distant one had to offer. That's exactly the
       distinction this lesson formalizes.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>Sunspots, monsoons and a church-marriage scare</h3>
+  <div class="tl-origin-who">G. Udny Yule · 1926–27 · London &nbsp;|&nbsp; Gilbert Walker · 1931 · formerly head of India's meteorological service</div>
+  <p>In 1926 the statistician G. Udny Yule used his presidential address to the Royal Statistical Society to ask an awkward question: why do two time series that have nothing to do with each other so often show huge correlations? His showcase was the proportion of English marriages performed in the Church of England, which, over roughly 1866–1911, correlated at about 0.95 with the national death rate. Nobody believed church weddings were killing people. Yule's answer was that both series were simply trending slowly through time, and slow-moving, strongly autocorrelated series throw up "nonsense correlations" all the time — the same trap this lesson's stationarity check is there to catch.</p>
+  <p>A year later he turned the idea around. Astronomers had long tried to describe the roughly 11-year sunspot cycle as a sum of fixed sine waves. Yule instead fitted Wolfer's sunspot numbers with a model in which each year depends on the two years before it plus a fresh random shock — in modern terms an AR(2), arguably the first autoregressive model. His own image for it was a pendulum being pelted with peas by boys with pea-shooters: a regular swing, constantly knocked off course.</p>
+  <p>Sir Gilbert Walker, who had spent two decades running India's meteorological service trying to forecast the monsoon, generalised Yule's method in 1931 and applied it to the Southern Oscillation, the vast see-saw in air pressure he had identified. The pair of equations linking a process's autocorrelations to its AR coefficients still carry both their names — the Yule-Walker equations — and solving them one order at a time is exactly how the PACF in this lesson is computed. Box and Jenkins later packaged these weather-and-astronomy tools into the identification recipe that every ARIMA fit in finance still starts from.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -567,6 +577,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A slowly-decaying ACF is the cheap first-pass unit-root tell.</strong> Still elevated 20-30 lags out means run a formal test (ADF) before trusting anything downstream.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Many lags at once is a multiple-comparisons problem.</strong> About 1 in 20 lags clears a 5% significance band by chance alone, even for genuine white noise — a single isolated spike is weak evidence.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real market series rarely show the clean textbook cutoff.</strong> Expect a fade into the noise band, not a hard stop — use the shapes as a strong heuristic, not literal proof of an exact model order.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: astronomy and weather, not markets.</strong> Yule's nonsense-correlation warning (1926) and sunspot AR model (1927), plus Walker's monsoon work (1931), produced the Yule-Walker equations the PACF is built on.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

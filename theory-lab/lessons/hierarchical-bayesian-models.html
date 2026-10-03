@@ -36,6 +36,7 @@
       <li>The resulting shrinkage estimator is the same precision-weighted average from the Normal-Normal conjugacy lesson, applied per group: \(\hat\theta_j = B_j\,\bar{y}_j + (1-B_j)\,\mu\), where \(B_j\) grows toward 1 as that group's own sample size grows.</li>
       <li>Worked example: five strategies with wildly different trade counts (5 to 50 trades) and raw Sharpe estimates get pulled toward a common grand mean by very different amounts — the smallest samples move the most.</li>
       <li>This is the same idea behind the James-Stein estimator's famous, provable result: shrinking several noisy estimates toward each other, even when the underlying things being estimated have nothing to do with one another, reduces total estimation error.</li>
+      <li>Where it came from: Stein's 1956 shrinkage result surprised the field; Lindley &amp; Smith (1972) recast it as hierarchical Bayes, and Rubin's 1981 "eight schools" SAT-coaching study became the standard worked example.</li>
     </ul>
   </div>
 
@@ -92,6 +93,15 @@
       partial pooling formalizes — not as a vague gut instinct, but as an
       exact, computable weighted average.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>A result statisticians refused to believe — and eight schools' SAT coaching</h3>
+  <div class="tl-origin-who">Charles Stein · 1956 · Stanford &nbsp;|&nbsp; Dennis Lindley &amp; Adrian Smith · 1972 &nbsp;|&nbsp; Donald Rubin · 1981</div>
+  <p>The shrinkage at the heart of this lesson started as a shock. In 1956 Charles Stein, a Stanford statistician, proved that the obvious way to estimate several means at once — use each group's own average — is not the best possible when there are three or more of them. Something that shrinks them all toward a common value always does better on total squared error. Many statisticians found this hard to accept, and the explicit James-Stein estimator of 1961 (and Efron and Morris's baseball illustration, already covered below) were in part efforts to make it concrete.</p>
+  <p>What made the paradox feel natural was a change of viewpoint. Dennis Lindley and Adrian Smith, in a 1972 paper on Bayes estimates for the linear model, framed shrinkage as the result of a <em>hierarchy</em>: if the group parameters are themselves drawn from a common population, then learning about that population and pulling each group toward it is simply correct Bayesian inference, not a trick.</p>
+  <p>The best-known teaching example came from education research. In 1981 Donald Rubin analysed coaching programmes for the SAT verbal test run at eight different high schools. Each school's estimated effect was noisy, and taken at face value some looked large. A hierarchical model let the eight schools share information and shrank the extreme estimates sharply toward one another. The "eight schools" dataset is still a standard first example in Bayesian textbooks — and it has exactly the shape of this lab's problem of judging many short, noisy strategy or currency-pair track records at once.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -476,6 +486,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Pooling assumes the groups actually share structure.</strong> Shrinking unrelated strategies toward each other's mean can make estimates worse, not better — the grouping choice is itself a modeling assumption.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Point-estimating μ and τ² understates uncertainty.</strong> A fully Bayesian treatment puts its own prior on the hyperparameters rather than plugging in a single estimated value, as this lesson's worked example simplifies to for clarity.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A shrunk estimate is a better point estimate, not a validated forecast.</strong> It still needs the same true OOS proof this curriculum demands everywhere else before it justifies real capital allocation.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: Stein's paradox, then a hierarchy that explained it.</strong> Stein (1956) proved shrinkage beats separate averages; Lindley &amp; Smith (1972) showed a hierarchical prior makes it natural; Rubin's eight-schools SAT study (1981) is still the textbook example.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

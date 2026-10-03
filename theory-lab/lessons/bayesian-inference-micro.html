@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Bayesian Inference — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live calculator, and a 6-question self-test?<a href="bayesian-inference.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">An essay found among a dead man's papers</h2>
+      <p class="sl-sub">Thomas Bayes (d. 1761), published by Richard Price (1763); independently developed by Laplace (1774).</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Bayes never published his result. His friend Richard Price found it after his death and had it read to the Royal Society in 1763. Laplace, apparently unaware of it, reached the same idea in 1774 and turned it into a general method.</p>
+        <p>Its most vivid wins came from searching. Bayesian probability maps helped find the lost submarine USS <em>Scorpion</em> in 1968 and, after two years of failed searches, the wreck of Air France 447 in 2011 — each empty search was treated as evidence and used to update the map.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A belief exists before you ever look outside</h2>
       <p class="sl-sub">Bayesian inference starts with an uncomfortable admission: you already believed something, before any evidence showed up.</p>
       <div class="sl-quote">Say you think there's a 20% chance of rain today — your <strong>prior</strong>, what you believed before checking anything. You glance outside and see dark clouds. Dark clouds are more common on rainy days than dry ones, so seeing them should raise your belief. But it shouldn't jump straight to 100% — clouds pass without rain constantly, and in most climates it still doesn't rain on most cloudy days. Bayesian inference is the arithmetic for exactly how much to move your belief — not all the way, not by gut feel, but by a precise amount.</div>
@@ -37,8 +48,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Bayes' theorem isn't assumed — it falls out of one definition</h2>
       <p class="sl-sub">Step through the algebra. Every line below uses nothing but the definition of conditional probability.</p>
       <div class="sl-card">
@@ -71,8 +82,8 @@
       <p class="sl-p">This matters for the same reason rearranging a formula mattered in Lesson 1: knowing the theorem is a rearrangement of something more basic means it can't secretly be "wrong for this case" the way an unfamiliar formula might feel — it's conditional probability, twice, and a division.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Four terms, four jobs</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">P(H)</div><div><h4>Prior</h4><p>What you believed before seeing this evidence — usually the base rate: how often is H true in general?</p></div></div>
@@ -83,8 +94,8 @@
       <div class="sl-quote">Every term gets computed from a different source in practice — P(H) is usually a historical base rate, P(E&#124;H) comes from a test's validation report, and P(E) has to be <em>built</em>, not read off a sheet. Which is which matters, because mixing up P(E&#124;H) with P(H&#124;E) is the single most common way this goes wrong — the entire next few slides are about that one mix-up.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The term nobody hands you: P(E)</h2>
       <p class="sl-sub">If H is binary, P(E) has to be built from every way E could happen — the law of total probability.</p>
       <div class="sl-card">
@@ -101,8 +112,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">"80% accurate" is a claim about the test, not about today</h2>
       <p class="sl-sub">A regime classifier flags "trend day." Validation says it's 80% accurate. Only 20% of days actually are trend days. It just fired. How confident should you be?</p>
       <div class="sl-card">
@@ -128,8 +139,8 @@
       <p class="sl-p">Nothing about the classifier is broken — 80% accuracy is real. What broke is the assumption that "accurate" and "trustworthy on any single flag" mean the same thing. They don't, once the thing being flagged is rare.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The same arithmetic, as things you can count</h2>
       <p class="sl-sub">Percentages hide this. Counting out of 1,000 days doesn't — Gigerenzer's "natural frequencies" trick.</p>
       <div class="sl-svgwrap">
@@ -177,8 +188,8 @@
       <p class="sl-p">Out of 1,000 days, 200 really are trend days and 800 aren't. The 80%-accurate classifier correctly flags 160 of the real 200 — but it also incorrectly flags 160 of the 800 reversion days. Those two highlighted <strong>flagged</strong> boxes are the same size. Of the 320 total days that get flagged, only 160 — half — are the real thing.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Watch the posterior swing — drag the base rate</h2>
       <p class="sl-sub">Same classifier throughout. Only the base rate — how rare the flagged thing actually is — changes. Watch what that alone does to your confidence in a single flagged day.</p>
       <div class="sl-card">
@@ -211,8 +222,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Run the real formula yourself</h2>
       <p class="sl-sub">Same equation as Section 2, editable. Starts on the worked example's exact numbers.</p>
       <div class="sl-card">
@@ -236,8 +247,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Today's posterior is tomorrow's prior</h2>
       <p class="sl-sub">Bayes' theorem doesn't care whether P(H) came from a textbook base rate or from yesterday's posterior.</p>
       <div class="sl-card">
@@ -253,8 +264,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">"My strategy has an 80% win rate" is the same fallacy, different costume</h2>
       <div class="sl-compare">
         <div class="sl-ccard red">
@@ -277,8 +288,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -328,8 +339,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bayes' theorem is derived, not assumed — it falls straight out of the definition of conditional probability, applied two ways to the same quantity.</p></div>
@@ -337,6 +348,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The base-rate fallacy is the single most common failure — an "80% accurate" test on a rare (20%) event gives only a 50% posterior, not 80%, because false alarms from the much larger opposite population catch up to true alarms.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Sequential updating is just reusing yesterday's posterior as today's prior — multiply by the new likelihood ratio; nothing gets re-derived from scratch.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A Bayes factor isolates what the evidence itself is worth, separate from the prior — 1–3 barely worth mentioning, 3–10 "substantial," 10–30 "strong," 100+ "decisive" (Jeffreys' scale).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Where it came from: Bayes' posthumous essay (1763) and Laplace's independent work — later used to find the USS <em>Scorpion</em> and Air France 447 by updating on every empty search.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

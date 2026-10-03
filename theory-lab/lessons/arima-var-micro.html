@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">ARIMA &amp; VAR — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, worked Box-Jenkins case study, and a 6-question self-test?<a href="arima-var.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -27,6 +27,17 @@
 
     <section class="sl-slide" data-slide="2">
       <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Airline passengers and a macro rebellion</h2>
+      <p class="sl-sub">George Box &amp; Gwilym Jenkins (1970); Christopher Sims (1980).</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">Where this came from</div>
+        <p>Box (a former ICI statistician at Wisconsin) and Jenkins (Lancaster) worked on forecasting and controlling industrial processes. Their 1970 book turned AR/MA ideas into a step-by-step recipe; their model of 1949–60 airline passenger numbers is still the "airline model" benchmark.</p>
+        <p>Sims' 1980 VAR paper challenged big macro models whose identifying assumptions he called "incredible", letting a few variables explain each other instead. It contributed to his 2011 Nobel, shared with Thomas Sargent.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">AR(1) grows a longer memory: AR(p)</h2>
       <p class="sl-sub">AR(1) only looks back one step: Xₜ = c + φXₜ₋₁ + εₜ. The natural next move is to let today depend on several past values at once, each with its own weight.</p>
       <div class="sl-row">
@@ -45,8 +56,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A different kind of memory: MA(q)</h2>
       <p class="sl-sub">AR(p) only ever uses past <em>levels</em> of X. Some series carry a second, different memory — for past <em>shocks</em>, not past positions.</p>
       <div class="sl-row">
@@ -65,8 +76,8 @@
       <p class="sl-p">The identification signature flips relative to AR: an MA(q) process has an <strong>ACF</strong> that cuts off sharply after lag q (spikes at 1 through q, then ~zero), while its <strong>PACF</strong> decays gradually instead. Real series can carry both mechanisms at once — which is exactly the motivation for combining them rather than picking only one.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Same one-time shock, three different aftermaths</h2>
       <p class="sl-sub">Hit each model with a single shock at time t and watch its effect over the following periods. Switch tabs.</p>
       <div class="sl-card">
@@ -127,8 +138,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Blending both memories: ARMA(p,q)</h2>
       <div class="sl-row">
         <div class="sl-box">Xₜ = c + Σ φᵢXₜ₋ᵢ + εₜ + Σ θⱼεₜ₋ⱼ</div>
@@ -141,8 +152,8 @@
       <div class="sl-quote">Four canonical shapes cover the identification step: PACF cutoff with ACF decay is pure AR(p). ACF cutoff with PACF decay is pure MA(q). Both decaying gradually is a mixed ARMA(p,q). Neither cutting off at all almost always means the series still isn't stationary — differencing hasn't happened yet.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Why raw price levels need differencing first — the "I"</h2>
       <p class="sl-sub">Everything so far assumes X is already stationary. Most raw financial levels fail that outright — no fixed mean to revert to, exactly the φ ≥ 1 boundary the OU lesson flags as "the model doesn't apply here."</p>
       <div class="sl-row">
@@ -175,8 +186,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">ARIMA(p,d,q) and the Box-Jenkins loop</h2>
       <p class="sl-sub">Once the differenced series passes its stationarity check, an ordinary ARMA(p,q) gets fit to <em>that</em> series. Put together, that's ARIMA.</p>
       <div class="sl-row">
@@ -190,8 +201,8 @@
       <p class="sl-p">This is the <strong>Box-Jenkins methodology</strong> — an iterative recipe, not a single fit. <strong>Identify:</strong> difference until stationary, pattern-match ACF/PACF to propose p and q. <strong>Estimate:</strong> fit the candidate model's coefficients. <strong>Check:</strong> the residuals should look like white noise — a Ljung-Box test checks this formally. If structure remains, go back to step one and revise. For example: a series needing one difference whose PACF shows spikes at both lag 1 and lag 2 before cutting off suggests ARIMA(2,1,0) — but if diagnostic checking then flags leftover autocorrelation at lag 3, that's the model telling you it isn't done, and you extend or add an MA term rather than accepting the first candidate.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Turning the AR term into tomorrow's forecast</h2>
       <p class="sl-sub">Drop the unknown shock εₜ (its expectation is zero) and the AR(1) piece alone gives a point forecast for the next change.</p>
       <div class="sl-card">
@@ -214,8 +225,8 @@
       <p class="sl-p">With the worked-example numbers: 0 + 0.35 × 12 = <strong>4.2 pips</strong>. If yesterday's change was larger, today's forecast change scales with it, damped by φ — exactly the "fading echo" behavior from the impulse-response tabs earlier, expressed as a single next-step number instead of a whole decay curve.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">VAR: when series feed back on each other</h2>
       <p class="sl-sub">Everything above still describes one series' own history. VAR widens the question: does each series' own past, <em>and every other series' past</em>, help forecast it?</p>
       <div class="sl-svgwrap">
@@ -245,8 +256,8 @@
       <p class="sl-p">a₁₁ and a₂₂ are each series' own AR(1) coefficient. a₁₂ is the cross-effect of Y's past on X; a₂₁ is the cross-effect of X's past on Y. All four are estimated <strong>jointly</strong> from the same system — which is exactly what lets a VAR reveal bidirectional feedback that a single "Y on lagged X" regression, by construction, can never see. It was only ever set up to look for one arrow.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Granger causality — narrower than the name suggests</h2>
       <p class="sl-sub">The classic diagnostic built on a fitted VAR: does X's history significantly improve forecasting Y, beyond Y's own past?</p>
       <p class="sl-p">Concretely: compare a regression of Y on only its own lags against one that also adds X's lags, and run an F-test on whether adding X improves the fit by a statistically significant amount. If it does, X "Granger-causes" Y. That is a strictly <strong>statistical, predictive</strong> claim — <em>not</em> a claim of true, structural, mechanistic causation.</p>
@@ -261,8 +272,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this family of models goes wrong in practice</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Spurious regression</h4><p>Fitting AR/VAR-family models to raw, trending levels can produce impressively high R² and significant-looking coefficients that are pure statistical mirage. The "I" step exists precisely to prevent this — skipping it is the most common way this family of models breaks before estimation even starts.</p></div></div>
@@ -273,8 +284,8 @@
       <p class="sl-p">ARIMA is the standard classical baseline for single-series forecasting — the model to beat before crediting a fancier approach with adding anything. VAR's home turf is macroeconomics, where it displaced older simultaneous-equation models built on hard-to-defend structural assumptions; Christopher Sims's 1980 case for letting an unrestricted VAR reveal dynamic relationships from the data directly is part of the work behind his 2011 Nobel Memorial Prize.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -324,8 +335,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>ARIMA generalizes AR(1)/OU two ways — more lags of the level (AR(p)), a second memory for past shocks (MA(q)), and differencing (the "I") to make a non-stationary series stationary first.</p></div>
@@ -334,6 +345,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A single-equation regression can only see one arrow — a VAR estimates both cross-effects jointly, revealing bidirectional feedback a "Y on lagged X" regression never could.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Granger causality is a statistical claim, not a structural one — "X's lags improve forecasting Y," never "X makes Y happen."</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Single-series ARIMA is already live in this repo's alert pipeline; a multi-series VAR/Granger fit on the yield-spread/FX question is still a research candidate, not a shipped result.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Box &amp; Jenkins' 1970 recipe from industrial forecasting and control, and Sims' 1980 VARs against "incredible" macro assumptions.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

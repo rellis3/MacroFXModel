@@ -38,6 +38,7 @@
       <li>The interactive chart's sliders default to a 20% prior and 80% classifier accuracy, reproducing that same 50% posterior; drag them to see how a rarer prior or a weaker classifier pulls the posterior around.</li>
       <li>A Bayes factor of 4 (0.80/0.20) is what actually separates the 20% prior from the 50% posterior here — "substantial" evidence on Jeffreys' scale, real but not decisive.</li>
       <li>Bayesian updating is flagged here as a genuine, unbuilt alternative to this project's own fixed weighted scoring sum — a design hypothesis, not a validated improvement.</li>
+      <li>Where it came from: Thomas Bayes' essay was published posthumously by Richard Price in 1763 and independently developed by Laplace; the method later proved itself finding lost things, from the USS <em>Scorpion</em> (1968) to Air France 447 (2011).</li>
     </ul>
   </div>
 
@@ -93,6 +94,15 @@
       classifier or filter is implicitly supposed to be doing every time new
       data arrives.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">Where this came from</div>
+  <h3>A minister's unpublished essay — and a submarine on the ocean floor</h3>
+  <div class="tl-origin-who">Thomas Bayes · d. 1761 · Tunbridge Wells &nbsp;|&nbsp; Richard Price · 1763 · Royal Society &nbsp;|&nbsp; Pierre-Simon Laplace · 1774</div>
+  <p>Thomas Bayes was an English Presbyterian minister with a quiet interest in mathematics. He worked out how to reason backwards from observed outcomes to an unknown probability, but never published it. After his death in 1761 his friend Richard Price, another minister, found the essay among his papers, edited it, and had it read to the Royal Society; it appeared in 1763. It then sat largely unnoticed. A decade later Pierre-Simon Laplace, in France and apparently unaware of Bayes, reached the same idea independently in 1774 and spent decades turning it into a general working method — which is why historians often say the theorem owes as much to Laplace as to Bayes.</p>
+  <p>For much of the twentieth century the approach was out of fashion among academic statisticians, who distrusted the subjective-looking prior. Some of its most convincing demonstrations came from people who simply had to find something. When the US submarine USS <em>Scorpion</em> vanished in the Atlantic in 1968, Navy scientist John Craven had experts weigh up possible scenarios, turned them into a prior probability map of the sea floor, and updated it as searches came back empty. The wreck was found later that year close to the area the analysis favoured.</p>
+  <p>The same logic found Air France Flight 447, lost over the South Atlantic in 2009. After two years of failed searches, analysts at the firm Metron combined the prior (where the plane could have gone) with the likelihood of each earlier search having missed it — including the possibility that the wreck's locator beacons had failed. The updated map pointed to a region that had been under-weighted; the wreckage was found there in April 2011 after about a week of searching. Each "we looked here and found nothing" is evidence — exactly the update a signal or classifier in this lab should make every time new data arrives.</p>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -615,6 +625,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Bayes factor isolates what the evidence itself is worth,</strong> separate from the prior — 1–3 is barely worth mentioning, 3–10 "substantial," 10–30 "strong," 100+ "decisive" (Jeffreys' scale).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Bayesian and frequentist statistics disagree on what "probability" even means,</strong> not just on formulas — degree of belief about a single case, versus long-run frequency over repeated trials.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A Bayesian confluence score is a hypothesis, not a result.</strong> It isn't built or validated in this repo — and it must beat the incumbent additive score OOS, not just sound more principled, before it would replace anything live.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: a minister's posthumous essay.</strong> Bayes' work was published by Richard Price in 1763 and rebuilt independently by Laplace; Bayesian search later located the USS <em>Scorpion</em> (1968) and Air France 447 (2011) — "searched here, found nothing" is evidence too.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
