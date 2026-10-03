@@ -69,6 +69,10 @@ markup, the house content order, and a verification checklist.
 
 ## Curriculum map
 
+- **Stories** (`stories.html`) — the episode-first way in: 25 real episodes
+  (Black Monday to the 2024 yen carry unwind), each with its causal chain
+  and a link to every lesson section that tells it. Built from the lessons'
+  own `.tl-story` boxes, which carry stable `id="story-N"` anchors.
 - **Theory in the Real World** (10, each with a full lesson and a visual
   guide) — the story layer: hard theory told through real episodes, real
   causal chains (`.tl-chain`), and this desk's own tested verdict on each

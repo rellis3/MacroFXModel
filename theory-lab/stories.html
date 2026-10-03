@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stories — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theory.css">
+<style>
+  /* Episode-first index. Generated from the lessons' own story boxes, so every link
+     lands on the section that tells that episode. */
+  .st-bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:18px 0 8px}
+  .st-chip{background:var(--s1);border:1px solid var(--border);color:var(--text2);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  .st-chip:hover{border-color:var(--blue);color:var(--text)}
+  .st-chip.on{background:var(--blue-bg);border-color:var(--blue-bd);color:var(--text)}
+  .st-timeline{position:relative;margin-top:18px;padding-left:22px;border-left:2px solid var(--border2)}
+  .st-card{position:relative;background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;margin:0 0 18px}
+  .st-card::before{content:"";position:absolute;left:-30px;top:22px;width:12px;height:12px;border-radius:50%;background:var(--amber);border:2px solid var(--bg)}
+  .st-card[hidden]{display:none}
+  .st-when{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--amber);letter-spacing:.04em;margin-bottom:6px}
+  .st-theme{font-family:'DM Sans',sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text3)}
+  .st-title{font-size:20px;line-height:1.3;margin:0 0 8px}
+  .st-what{font-size:14px;color:var(--text2);margin:0 0 6px}
+  .st-told{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin:12px 0 6px}
+  .st-lessons{list-style:none;margin:0;padding:0}
+  .st-lessons li{padding:7px 0;border-top:1px solid var(--border);font-size:13.5px;line-height:1.5}
+  .st-lessons a{font-weight:600;text-decoration:none}
+  .st-angle{display:block;color:var(--text2);font-size:12.5px}
+  .tl-hub-hero .st-stats{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace}
+  @media (max-width:600px){.st-timeline{padding-left:14px}.st-card{padding:15px}.st-card::before{left:-22px}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="hub.html">Theory Lab</a> · Stories</div>
+  <div class="tl-hub-hero">
+    <div class="tl-kicker">Start from what happened</div>
+    <h1>Stories</h1>
+    <p>Every idea in this lab was learned the hard way by somebody. This page starts from the events instead of the equations: a crash, a squeeze, a bank run, a model that broke. Each one links straight to the lessons that tell it, and each lesson tells it from its own angle: the same March 2020 is a lesson in forced selling, in volatility clustering, in correlation, and in what the Fed does when it decides to.</p>
+    <p class="st-stats">25 episodes · 67 lesson sections · 50 lessons</p>
+  </div>
+  <div class="st-bar" role="group" aria-label="Filter by theme"><button type="button" class="st-chip on" data-theme="all">All</button><button type="button" class="st-chip" data-theme="crash">Crashes &amp; squeezes</button><button type="button" class="st-chip" data-theme="plumbing">Plumbing &amp; funding</button><button type="button" class="st-chip" data-theme="cb">Central banks &amp; rates</button><button type="button" class="st-chip" data-theme="models">Models that broke</button><button type="button" class="st-chip" data-theme="research">Research honesty</button></div>
+  <div class="st-timeline">
+  <article class="st-card" id="1987" data-theme="crash">
+    <div class="st-when">19 October 1987<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">Black Monday and portfolio insurance</h2>
+    <p class="st-what">The US market fell more than 20% in one session. Portfolio insurers were running Black-Scholes replication in size: as prices fell, the model told them to sell more futures, so they did, into a market with no buyers. Afterwards, index options never again priced crash risk as if it were impossible: the volatility skew was born.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Prices fall</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Portfolio insurers</b>The model says sell more futures</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Market</b>No one takes the other side</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A record one-day fall, and a permanent skew</div></div>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/black-scholes.html#story-1">Black-Scholes-Merton Option Pricing</a><span class="st-angle">continuous hedging assumed a market that is always there</span></li><li><a href="lessons/vega-volatility-surface.html#story-1">Vega &amp; the Volatility Surface</a><span class="st-angle">why out-of-the-money puts have cost more ever since</span></li><li><a href="lessons/extreme-value-theory.html#story-1">Extreme Value Theory &amp; Tail Risk</a><span class="st-angle">a day that &quot;should&quot; never happen under normal tails</span></li></ul>
+  </article>
+  <article class="st-card" id="ltcm" data-theme="models">
+    <div class="st-when">August–September 1998<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">Long-Term Capital Management</h2>
+    <p class="st-what">A fund run by some of the best-credentialed people in finance made small, carefully measured bets that related prices would converge, levered roughly 25 times. After Russia defaulted, everyone wanted the safe, liquid side of every trade at once. The spreads widened instead of converging, the fund lost about $4.6bn in under four months, and 14 firms put in $3.6bn to wind it down.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Russia defaults</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Investors</b>Flee to the most liquid assets</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Convergence trades</b>Spreads widen, not narrow</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Leverage turns a loss into a rescue</div></div>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/cointegration.html#story-1">Cointegration &amp; Statistical Arbitrage</a><span class="st-angle">&quot;bounded in the long run&quot; is not &quot;bounded this month&quot;</span></li><li><a href="lessons/sharpe-family-deflated.html#story-1">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a><span class="st-angle">the smoothest return stream on Wall Street, right up to the end</span></li><li><a href="lessons/kelly-criterion.html#story-1">The Kelly Criterion &amp; Position Sizing</a><span class="st-angle">an edge sized on calm-year volatility</span></li></ul>
+  </article>
+  <article class="st-card" id="quant-quake" data-theme="models">
+    <div class="st-when">7–10 August 2007<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">The quant quake</h2>
+    <p class="st-what">For three days, crowded statistical-arbitrage books lost money on the very trades designed to profit from prices snapping back. The leading explanation (Khandani &amp; Lo) is that one or more large funds were forced to unwind, and every similar book was holding the same positions.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Losses elsewhere force a large unwind</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Crowded books</b>Everyone holds the same positions</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Mean reversion</b>Runs backwards for three days</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Losses, then a sharp snap back</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/ou-mean-reversion.html#story-1">The Ornstein-Uhlenbeck Process &amp; Mean Reversion</a><span class="st-angle">what θ(μ − X) looks like when the sellers are forced</span></li></ul>
+  </article>
+  <article class="st-card" id="cdo" data-theme="models">
+    <div class="st-when">2007–2008<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">The Gaussian copula and the super-senior tranche</h2>
+    <p class="st-what">Banks priced the &quot;safest&quot; slices of mortgage CDOs with a model in which mass default was almost impossible. Those slices only lose if nearly everything defaults together, so their value depended almost entirely on the joint tail the model assumed away.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>House prices fall nationally</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Defaults</b>Arrive together, not independently</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Senior tranches</b>The &quot;impossible&quot; joint tail happens</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Tens of billions written down</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/copulas.html#story-1">Copulas — Modeling Dependence Beyond Correlation</a><span class="st-angle">zero tail dependence, priced as if it were a fact</span></li></ul>
+  </article>
+  <article class="st-card" id="2008" data-theme="plumbing">
+    <div class="st-when">September–October 2008<span class="st-theme">Plumbing &amp; funding</span></div>
+    <h2 class="st-title">Lehman, AIG and the dollar shortage</h2>
+    <p class="st-what">When Lehman failed, banks stopped lending to each other. AIG had sold the same credit protection to much of the system and could not meet the collateral calls. Outside the US, banks that had funded dollar assets short-term found no dollars, the arbitrage that normally ties FX swaps to interest rates broke, and carry trades crashed.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Lehman fails</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Banks</b>Hoard cash and dollars</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>AIG and FX swaps</b>Collateral calls; covered parity breaks</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Bailouts, unlimited swap lines, QE</div></div>
+    <div class="st-told">Told in 5 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/systemic-risk-networks.html#story-1">Systemic Risk &amp; Financial Contagion Networks</a><span class="st-angle">one node wired into everyone</span></li><li><a href="lessons/interest-rate-parity.html#story-1">Interest Rate Parity — Covered vs. Uncovered</a><span class="st-angle">when an arbitrage needs a balance sheet nobody has</span></li><li><a href="lessons/payoff-shape-vs-greek-signs.html#story-1">Same Greeks, Different Risk</a><span class="st-angle">a short squeeze in the same weeks</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-1">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">the Fed&#x27;s answer</span></li><li><a href="lessons/swap-curves-ois.html#story-1">Swap Curves &amp; OIS Discounting</a><span class="st-angle">LIBOR, the rate that was a survey</span></li></ul>
+  </article>
+  <article class="st-card" id="flash-2010" data-theme="crash">
+    <div class="st-when">6 May 2010<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">The Flash Crash</h2>
+    <p class="st-what">A single large sell order, run by an algorithm that targeted 9% of recent volume with no price or time limit, met a market where liquidity providers were stepping back. High-frequency traders passed contracts back and forth; volume rose, so the algorithm sold faster. Some stocks printed at a penny before most of it reversed within about twenty minutes.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Trigger</b>A 75,000-contract sell order</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Market makers</b>Widen or pull their quotes</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>The algorithm</b>More volume, so it sells faster</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A crash and recovery inside half an hour</div></div>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/execution-algorithms.html#story-1">Execution Algorithms: TWAP, VWAP, POV, IS</a><span class="st-angle">a POV algorithm in a thinning market</span></li><li><a href="lessons/market-microstructure.html#story-1">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a><span class="st-angle">what happens when the people who quote stop quoting</span></li><li><a href="lessons/vpin-order-flow-toxicity.html#story-1">Order Flow Toxicity &amp; VPIN</a><span class="st-angle">was the flow &quot;toxic&quot;, and did anyone know?</span></li></ul>
+  </article>
+  <article class="st-card" id="whale" data-theme="models">
+    <div class="st-when">2012<span class="st-theme">Models that broke</span></div>
+    <h2 class="st-title">The London Whale</h2>
+    <p class="st-what">JPMorgan&#x27;s chief investment office built a huge credit-derivatives position. A new risk model roughly halved the reported Value-at-Risk without the position changing; the bank&#x27;s own task force later found a spreadsheet that divided by a sum instead of an average. The losses ran into billions.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Setup</b>A position near its risk limit</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>The model</b>Rewritten; reported VaR halves</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Desk</b>Keeps adding</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Multi-billion loss and fines</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/coherent-risk-measures.html#story-1">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a><span class="st-angle">a single quantile is easy to move</span></li></ul>
+  </article>
+  <article class="st-card" id="draghi" data-theme="cb">
+    <div class="st-when">July 2012<span class="st-theme">Central banks &amp; rates</span></div>
+    <h2 class="st-title">&quot;Whatever it takes&quot;</h2>
+    <p class="st-what">At the height of the euro crisis, the ECB president said the bank would do whatever it takes to preserve the euro. Spreads on Italian and Spanish debt fell sharply, and the programme announced afterwards was never actually used. Words, believed, did the work.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>ECB</b>Commits without limit</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Markets</b>Believe it</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Spreads compress with no purchases</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/central-bank-policy.html#story-1">Central Bank Policy</a><span class="st-angle">a reaction function, not a rate move</span></li></ul>
+  </article>
+  <article class="st-card" id="taper" data-theme="cb">
+    <div class="st-when">May–September 2013<span class="st-theme">Central banks &amp; rates</span></div>
+    <h2 class="st-title">The taper tantrum</h2>
+    <p class="st-what">The Fed said it might slow its bond buying. It was a hint about the pace of purchases, not a rate hike, but long yields jumped and emerging markets sold off. The market heard a signal about the whole path of policy.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Fed</b>Hints at slower QE</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Markets</b>Reprice the whole rate path</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Long yields jump; EM sells off</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/qe-qt-balance-sheet.html#story-2">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">the signalling channel of QE</span></li></ul>
+  </article>
+  <article class="st-card" id="flash-2014" data-theme="crash">
+    <div class="st-when">15 October 2014<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">The Treasury flash rally</h2>
+    <p class="st-what">In twelve minutes, with no clear news, the 10-year Treasury yield fell about 16 basis points and came back. This is the deepest bond market in the world, but the depth shown at the best prices had thinned, and heavy volume walked straight through it.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Book</b>Thin at the touch</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Orders</b>Walk several levels</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A 16bp round trip in 12 minutes</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/limit-order-books.html#story-1">Limit Order Books &amp; Queue Dynamics</a><span class="st-angle">the depth you see is not the depth you get</span></li></ul>
+  </article>
+  <article class="st-card" id="negative" data-theme="cb">
+    <div class="st-when">2014–2024<span class="st-theme">Central banks &amp; rates</span></div>
+    <h2 class="st-title">Rates below zero</h2>
+    <p class="st-what">The ECB, the SNB, the BoJ and others took policy rates negative. Models that could not produce a negative rate stopped working, the market switched how it quoted volatility, and rates turned out to have a soft floor somewhere below zero rather than at it.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Central banks</b>Cut below zero</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Models</b>Some cannot go there</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>New quoting, shifted models</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/short-rate-models-vasicek-cir-hull-white.html#story-1">Short-Rate Models: Vasicek, CIR &amp; Hull-White</a><span class="st-angle">CIR vs Vasicek, decided by reality</span></li></ul>
+  </article>
+  <article class="st-card" id="snb" data-theme="cb">
+    <div class="st-when">15 January 2015<span class="st-theme">Central banks &amp; rates</span></div>
+    <h2 class="st-title">The Swiss franc floor goes</h2>
+    <p class="st-what">For three years the SNB had promised to stop EUR/CHF falling below 1.20, and had recently reaffirmed it. Then, without warning, it removed the floor. The franc jumped by more than 25% at the extreme within minutes; stop orders filled far below their levels, and brokers and option sellers took losses that no model of continuous prices allowed.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>The SNB removes the floor</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Price</b>Gaps, no trades in between</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Option sellers and brokers</b>Margin calls that cannot be met</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Insolvencies and rescues</div></div>
+    <div class="st-told">Told in 4 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/merton-jump-diffusion.html#story-1">The Merton Jump-Diffusion Model</a><span class="st-angle">a jump, not a diffusion</span></li><li><a href="lessons/options-four-positions.html#story-1">The Four Option Positions</a><span class="st-angle">what &quot;obligation&quot; means for an option seller</span></li><li><a href="lessons/second-order-greeks.html#story-1">Second-Order Greeks: Vanna, Charm, Vomma &amp; More</a><span class="st-angle">when the second-order terms stop being small</span></li><li><a href="lessons/central-bank-policy.html#story-2">Central Bank Policy</a><span class="st-angle">action against the words</span></li></ul>
+  </article>
+  <article class="st-card" id="volmageddon" data-theme="crash">
+    <div class="st-when">5 February 2018<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">Volmageddon</h2>
+    <p class="st-what">Products that paid investors for selling volatility had to buy VIX futures when volatility rose, by their own rulebook, and they had to do it into the close. On a day when the VIX roughly doubled, that buying fed the move. The largest inverse-VIX note lost most of its value and was terminated.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Volatility jumps</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Short-vol funds</b>Must buy VIX futures, by rule</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>VIX futures</b>Squeezed into the close</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Products wiped out overnight</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/gamma-exposure-dealer-hedging.html#story-1">Gamma Exposure &amp; Dealer Hedging Flows</a><span class="st-angle">short gamma by construction</span></li><li><a href="lessons/vix-uncertainty-not-fear.html#story-1">The VIX Is an Uncertainty Index, Not a Fear Gauge</a><span class="st-angle">what the VIX measures, and who was short it</span></li></ul>
+  </article>
+  <article class="st-card" id="optionsellers" data-theme="crash">
+    <div class="st-when">November 2018<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">The calls that were &quot;never&quot; supposed to pay</h2>
+    <p class="st-what">A firm sold natural-gas call options to collect premium &quot;for income&quot;. In mid-November gas prices spiked by double digits in a day, the calls went deep in the money, and client accounts were wiped out and more.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Seller</b>Collects theta, short gamma</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link shock"><b>Shock</b>Gas spikes</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Accounts wiped out</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/theta-decay.html#story-1">Theta Decay</a><span class="st-angle">theta is the rent for being short gamma</span></li></ul>
+  </article>
+  <article class="st-card" id="2019" data-theme="plumbing">
+    <div class="st-when">August–September 2019<span class="st-theme">Plumbing &amp; funding</span></div>
+    <h2 class="st-title">An inversion, and a repo spike</h2>
+    <p class="st-what">In August the 2-year/10-year curve inverted for the first time since 2007. A month later, on a corporate tax date that coincided with Treasury settlement, cash drained out of the repo market and overnight rates spiked far above the Fed&#x27;s range, because shrinking reserves had left no cushion.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Tax date + settlement</b>Cash leaves the banking system</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Money funds</b>Pull cash from repo</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Dealers</b>Bid up scarce cash</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>SOFR spikes; the Fed steps in</div></div>
+    <div class="st-told">Told in 4 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/fed-corridor-iorb-srf-discount-window.html#story-1">The Fed&#x27;s Corridor: IORB, the SRF and the Discount Window</a><span class="st-angle">a corridor with no ceiling</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-3">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">how far reserves could shrink</span></li><li><a href="lessons/yield-curve-growth-expectations.html#story-3">What the Yield Curve Says About Growth</a><span class="st-angle">the inversion that preceded a recession for other reasons</span></li><li><a href="lessons/four-markets-four-questions.html#story-2">Four Markets, Four Questions</a><span class="st-angle">bonds and stocks answering different questions</span></li></ul>
+  </article>
+  <article class="st-card" id="march-2020" data-theme="crash">
+    <div class="st-when">March 2020<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">The dash for cash</h2>
+    <p class="st-what">As the pandemic shut economies, everyone needed cash at once. Investors sold what they could, not what they wanted to: even Treasuries and gold fell for a time. Correlations went to one, volatility clustered into a run of ±10% days, the VIX closed at a record, and the Fed bought &quot;in the amounts needed&quot;.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Economies shut</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Everyone</b>Needs cash now</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Forced sellers</b>Sell the liquid things</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Correlations to one; the Fed buys without limit</div></div>
+    <div class="st-told">Told in 9 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/investor-mood-forced-selling.html#story-1">Mood, the Quote and Forced Selling</a><span class="st-angle">sell what you can, not what you want</span></li><li><a href="lessons/garch-volatility.html#story-1">GARCH &amp; Volatility Clustering</a><span class="st-angle">volatility clustering</span></li><li><a href="lessons/pca-factors.html#story-1">Principal Component Analysis &amp; Factor Regimes</a><span class="st-angle">one factor explains everything</span></li><li><a href="lessons/correlation-networks-mst.html#story-1">Correlation Networks &amp; Minimum Spanning Trees</a><span class="st-angle">the correlation tree collapses</span></li><li><a href="lessons/yield-curve-construction.html#story-1">Bootstrapping the Yield Curve</a><span class="st-angle">the curve stops fitting</span></li><li><a href="lessons/tail-risk-hedging-convexity.html#story-1">Tail Risk Hedging &amp; Portfolio Convexity</a><span class="st-angle">years of bleed, weeks of payoff</span></li><li><a href="lessons/vega-volatility-surface.html#story-2">Vega &amp; the Volatility Surface</a><span class="st-angle">the term structure inverts</span></li><li><a href="lessons/four-markets-four-questions.html#story-1">Four Markets, Four Questions</a><span class="st-angle">which market was right</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-4">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">QE without limit</span></li></ul>
+  </article>
+  <article class="st-card" id="gme" data-theme="crash">
+    <div class="st-when">January 2021<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">GameStop</h2>
+    <p class="st-what">Retail call buying and a heavily shorted stock produced one of the most famous squeezes in market history. A popular story said dealers hedging the calls drove it; the SEC staff report found short covering was only a small part of the buying, and how much was &quot;gamma&quot; remains contested.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Retail</b>Buys calls and stock</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Dealers and shorts</b>Hedge and cover</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A squeeze, and a contested story</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/open-interest-walls-max-pain.html#story-1">Open Interest Walls, Max Pain &amp; Squeeze Trading</a><span class="st-angle">walls as fuel, and why the story is disputed</span></li></ul>
+  </article>
+  <article class="st-card" id="archegos" data-theme="crash">
+    <div class="st-when">March 2021<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">Archegos and the race to sell first</h2>
+    <p class="st-what">A family office had built huge, concentrated positions through swaps at several prime brokers, none of whom saw the whole picture. When the stocks fell, the banks raced to dump the collateral. Those who sold first in large blocks lost little; those who waited lost billions.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>Concentrated stocks fall</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Prime brokers</b>Margin call, then liquidate</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Block sales</b>The first sellers get the best prices</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Billions lost by the slowest</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/market-impact-almgren-chriss.html#story-1">Market Impact Models &amp; Almgren-Chriss</a><span class="st-angle">optimal liquidation when you are not alone</span></li><li><a href="lessons/investor-mood-forced-selling.html#story-2">Mood, the Quote and Forced Selling</a><span class="st-angle">forced sellers are price-insensitive</span></li></ul>
+  </article>
+  <article class="st-card" id="2022" data-theme="cb">
+    <div class="st-when">2021–2024<span class="st-theme">Central banks &amp; rates</span></div>
+    <h2 class="st-title">Transitory, then the fastest hikes in four decades</h2>
+    <p class="st-what">Inflation was called transitory while policy stayed near zero, far below what a standard Taylor rule prescribed. Then the Fed hiked at the fastest pace in four decades. Stocks and bonds fell together, the curve inverted for the longest stretch in decades, and the yen slid to multi-decade lows.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Inflation</b>Runs hot</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Fed</b>Late, then fast</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Bonds and stocks</b>Fall together</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A long inversion, a weak yen, no recession (yet)</div></div>
+    <div class="st-told">Told in 8 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/taylor-rule.html#story-1">The Taylor Rule</a><span class="st-angle">the Taylor gap</span></li><li><a href="lessons/hidden-markov-models.html#story-1">Hidden Markov Models &amp; Regime Detection</a><span class="st-angle">a regime the training window never saw</span></li><li><a href="lessons/nelson-siegel-svensson.html#story-1">Curve Fitting: Nelson-Siegel &amp; Svensson</a><span class="st-angle">the factors move</span></li><li><a href="lessons/yield-curve-growth-expectations.html#story-2">What the Yield Curve Says About Growth</a><span class="st-angle">the textbook signal that waited</span></li><li><a href="lessons/purchasing-power-parity.html#story-1">Purchasing Power Parity</a><span class="st-angle">PPP vs the rate gap</span></li><li><a href="lessons/hurst-variance-ratio.html#story-1">The Hurst Exponent &amp; Variance Ratio Test</a><span class="st-angle">trend followers&#x27; good year</span></li><li><a href="lessons/duration-convexity.html#story-1">Duration &amp; Convexity</a><span class="st-angle">the bonds bought before it</span></li><li><a href="lessons/qe-qt-balance-sheet.html#story-5">QE and QT: What the Fed&#x27;s Balance Sheet Actually Does</a><span class="st-angle">quantitative tightening</span></li></ul>
+  </article>
+  <article class="st-card" id="ldi" data-theme="plumbing">
+    <div class="st-when">September–October 2022<span class="st-theme">Plumbing &amp; funding</span></div>
+    <h2 class="st-title">The UK gilt crisis</h2>
+    <p class="st-what">A mini-budget sent gilt yields soaring. Pension funds using leveraged liability-driven investment had to post collateral, so they sold gilts, which pushed yields higher and triggered more calls. The Bank of England had to step in to buy gilts. The move was bigger than the funds&#x27; stress buffers had been sized for.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>The mini-budget</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Gilts</b>Yields jump</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>LDI funds</b>Collateral calls force gilt sales</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>The Bank of England intervenes</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/domino-chain-cross-asset.html#story-1">The Domino Effect: One Shock Through the Whole Board</a><span class="st-angle">one shock through the whole board</span></li><li><a href="lessons/stress-testing-scenario-analysis.html#story-1">Stress Testing, Scenario Analysis &amp; Reverse Stress Tests</a><span class="st-angle">a buffer sized on the past</span></li></ul>
+  </article>
+  <article class="st-card" id="svb" data-theme="plumbing">
+    <div class="st-when">March 2023<span class="st-theme">Plumbing &amp; funding</span></div>
+    <h2 class="st-title">Silicon Valley Bank</h2>
+    <p class="st-what">SVB had invested a flood of deposits in long-dated bonds when rates were near zero. As rates rose those bonds lost value. When it sold some at a loss to raise cash, depositors, most of them uninsured, ran: $42bn left in a day, and the bank failed. The Fed opened a new facility lending against bonds at par.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Bank</b>Long duration, bought at the lows</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link shock"><b>Rates</b>Rise fast</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Depositors</b>Run</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Failure, and a new Fed backstop</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/duration-convexity.html#story-1">Duration &amp; Convexity</a><span class="st-angle">duration as a balance-sheet risk</span></li><li><a href="lessons/fed-corridor-iorb-srf-discount-window.html#story-2">The Fed&#x27;s Corridor: IORB, the SRF and the Discount Window</a><span class="st-angle">the discount window, and the stigma around it</span></li></ul>
+  </article>
+  <article class="st-card" id="income-funds" data-theme="crash">
+    <div class="st-when">2023<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">The income funds that sold the rally</h2>
+    <p class="st-what">Covered-call funds that sell index calls every month had cushioned the 2022 fall with premium. Then the Nasdaq rallied hard in 2023, and they trailed it by a wide margin: the upside they had sold was the upside that happened.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Funds</b>Sell calls monthly</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Market</b>Rallies through the strikes</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Capped upside, as designed</div></div>
+    <div class="st-told">Told in 1 lesson</div>
+    <ul class="st-lessons"><li><a href="lessons/covered-call-equals-short-put.html#story-1">The Covered Call Is a Short Put</a><span class="st-angle">a covered call is a short put</span></li></ul>
+  </article>
+  <article class="st-card" id="yen-2024" data-theme="crash">
+    <div class="st-when">August 2024<span class="st-theme">Crashes &amp; squeezes</span></div>
+    <h2 class="st-title">The yen carry unwind</h2>
+    <p class="st-what">Years of borrowing cheaply in yen to buy higher-yielding assets reversed after a Bank of Japan hike and a weak US jobs report. The Nikkei fell more than 12% in a day, its worst since 1987, and the VIX briefly printed above 60 intraday, then much of it reversed the next session.</p>
+    <div class="tl-chain"><div class="tl-chain-link shock"><b>Shock</b>BoJ hikes; weak US payrolls</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Carry traders</b>Buy back yen</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Risk assets</b>Sold to cover</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>A historic day, then a rebound</div></div>
+    <div class="st-told">Told in 2 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/domino-chain-cross-asset.html#story-2">The Domino Effect: One Shock Through the Whole Board</a><span class="st-angle">the chain through FX, equities and vol</span></li><li><a href="lessons/vix-uncertainty-not-fear.html#story-2">The VIX Is an Uncertainty Index, Not a Fear Gauge</a><span class="st-angle">an intraday VIX print and what it meant</span></li></ul>
+  </article>
+  <article class="st-card" id="research" data-theme="research">
+    <div class="st-when">1990s–2020s<span class="st-theme">Research honesty</span></div>
+    <h2 class="st-title">Discoveries that faded</h2>
+    <p class="st-what">Hundreds of published &quot;factors&quot; were tested on the same data; Harvey, Liu and Zhu argued the bar for a new one should be far higher. Published anomalies lost much of their return after publication. Medical trials reporting a benefit fell from 17 of 30 to 2 of 25 once outcomes had to be registered in advance.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Researchers</b>Test many ideas</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Journals</b>Publish the winners</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Many &quot;discoveries&quot; shrink or vanish</div></div>
+    <div class="st-told">Told in 3 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/multiple-testing.html#story-1">Multiple Testing &amp; the Look-Elsewhere Effect</a><span class="st-angle">look-elsewhere at scale</span></li><li><a href="lessons/emh.html#story-1">The Efficient Market Hypothesis</a><span class="st-angle">what happens to a $20 bill once it is in a journal</span></li><li><a href="lessons/research-pipeline-hypothesis-to-backtest.html#story-1">The Research Pipeline: Hypothesis to Honest Backtest</a><span class="st-angle">pre-registration changes the answer</span></li></ul>
+  </article>
+  <article class="st-card" id="desk" data-theme="research">
+    <div class="st-when">2026<span class="st-theme">Research honesty</span></div>
+    <h2 class="st-title">This desk&#x27;s own record</h2>
+    <p class="st-what">The desk tests the claims it is tempted to trade on, and writes down its prior before it looks. A rates signal that &quot;led&quot; the Nasdaq 54% of the time was exactly the base rate. A backtest with a Sharpe of 18.4 had leaked. A pre-registered prior about funding stress was beaten by a framing from a teaching video. These are the honest results, in the open.</p>
+    <div class="tl-chain"><div class="tl-chain-link"><b>Hypothesis</b>Written down first</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link"><b>Test</b>Against a matched base rate</div><div class="tl-chain-arrow">→</div><div class="tl-chain-link end"><b>Outcome</b>Most claims fail, and that is the point</div></div>
+    <div class="st-told">Told in 5 lessons</div>
+    <ul class="st-lessons"><li><a href="lessons/multiple-testing.html#story-2">Multiple Testing &amp; the Look-Elsewhere Effect</a><span class="st-angle">a hit rate that was the base rate</span></li><li><a href="lessons/sharpe-family-deflated.html#story-2">Sharpe, Sortino, Calmar &amp; the Deflated Sharpe Ratio</a><span class="st-angle">a ratio too good to be true</span></li><li><a href="lessons/walk-forward-purged-cv.html#story-1">Walk-Forward &amp; Purged Cross-Validation</a><span class="st-angle">where each backtest leaked</span></li><li><a href="lessons/emh.html#story-2">The Efficient Market Hypothesis</a><span class="st-angle">&quot;it&#x27;s priced in&quot;, tested two ways</span></li><li><a href="lessons/research-pipeline-hypothesis-to-backtest.html#story-2">The Research Pipeline: Hypothesis to Honest Backtest</a><span class="st-angle">a prior that lost, recorded honestly</span></li></ul>
+  </article>
+  </div>
+  <div class="tl-footer-nav"><a href="hub.html">← Theory Lab hub</a></div>
+</div>
+<script>
+(function(){
+  var chips=[].slice.call(document.querySelectorAll('.st-chip'));
+  var cards=[].slice.call(document.querySelectorAll('.st-card'));
+  chips.forEach(function(c){c.addEventListener('click',function(){
+    var t=c.getAttribute('data-theme');
+    chips.forEach(function(x){x.classList.toggle('on',x===c)});
+    cards.forEach(function(k){k.hidden=!(t==='all'||k.getAttribute('data-theme')===t)});
+  })});
+})();
+</script>
+</body>
+</html>
