@@ -27,7 +27,7 @@
   <h1 class="tl-title">Order Flow Imbalance &amp; the Microprice</h1>
   <p class="tl-dek">Every method earlier in this category reconstructs something about trading from historical data after the fact — who was probably the aggressor, how much of the spread was adverse selection, how much of the day's volume was informed. This lesson closes the category by building the two signals a live electronic desk actually watches update by update, tick by tick, right now.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no OFI, microprice, or queue-imbalance code exists anywhere in this repo (verified by grepping every .py/.js file); the closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed cost query for full order-book depth data, whose own comments note this repo's primary venue — OANDA spot FX — has no order book at all</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no OFI, microprice, or queue-imbalance code exists anywhere in this repo (verified by grepping every .py/.js file); the closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed cost query for full order-book depth data, whose own comments note this repo's primary venue — OANDA spot FX — has no order book at all<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="institutional-pin.html">PIN: The Probability of Informed Trading</a>, <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
   </div>
@@ -508,7 +508,7 @@
     </div>
   </div>
 
-  <div class="tl-solid blue">
+  <!-- DESK:START --><div class="tl-solid blue">
     <strong>What this repo actually contains, checked directly rather than assumed.</strong>
     A repo-wide search of every <code>.py</code> and <code>.js</code> file for
     "microprice," "queue imbalance," "order flow imbalance," and the bare string
@@ -524,7 +524,7 @@
     <strong>has no order book at all</strong> to compute either signal from — a real
     and specific reason both signals in this lesson remain genuinely conceptual
     here, not a gap likely to close by accident.
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>

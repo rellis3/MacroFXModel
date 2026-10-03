@@ -17,7 +17,7 @@
   <h1 class="tl-title">Kyle-Obizhaeva: Market Microstructure Invariance</h1>
   <p class="tl-dek">A $2 billion mega-cap and a $200 million micro-cap trade at utterly different costs, in utterly different sizes, on utterly different clocks. Invariance is the claim that this apparent chaos is an illusion of the wrong ruler — that once "bet size" is measured in units of risk transferred rather than shares or dollars, the same statistical law governs every stock, every currency pair, and every era.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — confirmed absent from this codebase; a targeted grep for invariance-, bet-size-, and Kyle-related logic across every <code>.js</code>/<code>.py</code> file found no market-microstructure-invariance or bet-size code anywhere — only unrelated software-testing uses of the word "invariance" (prefix/truncation invariance checks in <code>forge/</code>, <code>vumanchuLab/</code>, and <code>vmcResearch/</code>, guarding that a computation gives the same answer on a data prefix as on the full history) and zero matches on "Kyle" in any <code>.js</code>/<code>.py</code> file</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — confirmed absent from this codebase; a targeted grep for invariance-, bet-size-, and Kyle-related logic across every <code>.js</code>/<code>.py</code> file found no market-microstructure-invariance or bet-size code anywhere — only unrelated software-testing uses of the word "invariance" (prefix/truncation invariance checks in <code>forge/</code>, <code>vumanchuLab/</code>, and <code>vmcResearch/</code>, guarding that a computation gives the same answer on a data prefix as on the full history) and zero matches on "Kyle" in any <code>.js</code>/<code>.py</code> file<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> (Kyle's Lambda), <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a> (the square-root law)</span>
   </div>
@@ -60,7 +60,7 @@
     dollars — when the right unit was sitting there all along?
   </p>
   <p>
-    This repo's own <a href="market-microstructure.html">Market
+    The <a href="market-microstructure.html">Market
     Microstructure</a> lesson already covers the classical answer to "why
     does size cost money at all": Kyle's (1985) linear price-impact model,
     \(\Delta p = \lambda Q\) with \(\lambda = \sigma_v/(2\sigma_u)\). That

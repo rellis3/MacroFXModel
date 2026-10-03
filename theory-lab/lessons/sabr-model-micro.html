@@ -321,7 +321,9 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>β is almost always fixed by convention (near 1 for FX, often 0 for rates) because it's close to redundant with ρ on skew — fixing it leaves a small, well-identified three-parameter fit against three standard market quotes.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The worked example: α≈9.98% reproduces a 10% ATM quote, then one algebraic evaluation each reads off ~9.92% and ~10.09% at strikes 1.667% either side of the forward — no repricing loop.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Hagan formula is an asymptotic approximation, not exact — it can misbehave, even implying arbitrage, at extreme strikes/maturities or high ν, which "Arbitrage-Free SABR" (2014) patches numerically.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo carries SABR (and Heston) as theory only — no SABR fit, no Heston fit, and no options-pricing engine is wired into a live strategy here today. Verified against the current codebase while building this deck, not carried over unchecked.</p></div>
+        <!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: practitioners fixing local vol's wrong-way smile dynamics (Wilmott, 2002); it became the swaption and cap smile standard, widely used in FX.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

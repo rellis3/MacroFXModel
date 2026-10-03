@@ -190,7 +190,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Is this actually built here?</h2>
       <div class="sl-callout amber">
@@ -198,7 +198,7 @@
         <p>Yes — genuinely, and running live every day, though not (yet) as any asset class's primary σ. <code>js/volForecastBench.js</code>'s <code>harRvPred()</code> is Corsi's exact model, fit by a strictly causal, expanding-window walk-forward OLS. <code>js/volForecastScheduler.js</code>'s daily <code>runVolForecast()</code> job computes a full HAR-RV shadow forecast (<code>f.har</code>) for every one of ~28 instruments, every trading day. <code>js/volHorseRaceEngine.js</code> races it live against 7 other estimators (RW, EWMA, HV, Yang-Zhang, GARCH, and two combination models) by out-of-sample QLIKE, via a live endpoint. And <code>js/indexRvHar.js</code> runs a genuine-intraday-RV variant for equity indices — built specifically because an earlier range-based HAR shadow understated SPX's true volatility by roughly half (≈9.5% read versus a true ≈19%).</p>
       </div>
       <p class="sl-p">What it is <em>not</em>, per this project's own <code>PLATFORM_MODEL</code> mapping: the estimator actually setting live trading bands today is Yang-Zhang for FX, GARCH(1,1) for indices, and rolling HV for commodities. HAR-RV sits beside all three as an actively-benchmarked challenger — purely additive, never touching the primary numbers — not as a replacement for any of them. The horse race is a genuinely live computation over current data, not a fixed verdict baked into the code.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
@@ -210,20 +210,24 @@
             <li>HAR-RV's entire edge rests on RV being well-measured — many observations, not one</li>
             <li>Only daily OHLC bars available? True RV can't be computed at all</li>
             <li>Running the same equation on a single-observation daily proxy isn't a free upgrade — it's an untested estimator wearing Corsi's formula</li>
+            <!-- DESK:START -->
             <li>This repo's own <code>indexRvHar.js</code> exists because that exact substitution understated index vol by roughly half</li>
+            <!-- DESK:END -->
           </ul>
         </div>
         <div class="sl-ccard amber">
           <span class="sl-ctag amber">Collinearity + smoothing lag</span>
           <ul>
             <li>Daily, weekly, monthly RV averages move together far more than "independent" features normally would</li>
-            <li>Can make individual β estimates unstable on a short window — a small ridge penalty (used in this repo) is the standard fix</li>
+            <li>Can make individual β estimates unstable on a short window — a small ridge penalty<!-- DESK:START --> (used in this repo)<!-- DESK:END --> is the standard fix</li>
             <li>A blended, multi-horizon forecast structurally reads <em>below</em> reality right as a sharp new shock hits</li>
+            <!-- DESK:START -->
             <li>Documented in this project's own gold research: HAR sat ~15% under a plain close-to-close estimate in an elevated regime</li>
+            <!-- DESK:END -->
           </ul>
         </div>
       </div>
-      <div class="sl-quote">"HAR-RV beats GARCH" is an empirical finding conditional on well-measured, high-frequency data — not a universal law. This project's own horse race exists precisely to re-check that ranking per instrument, not to assume it from the math.</div>
+      <div class="sl-quote">"HAR-RV beats GARCH" is an empirical finding conditional on well-measured, high-frequency data — not a universal law.<!-- DESK:START --> This project's own horse race exists precisely to re-check that ranking per instrument, not to assume it from the math.<!-- DESK:END --></div>
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -268,14 +272,14 @@
         <div class="sl-quiz-explain">HAR-RV is actually the simpler model — plain OLS on three linear terms — versus GARCH's nonlinear recursive maximum-likelihood filter. The typical edge comes from better-measured input, not a fancier model.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>What does this repo's own code reveal about HAR-RV's actual status here?</h4>
         <button class="sl-quiz-opt" data-correct="true">Genuinely implemented and running live daily, as a benchmarked challenger — not yet any asset class's primary σ</button>
         <button class="sl-quiz-opt">Purely theoretical — never implemented anywhere in this codebase</button>
         <button class="sl-quiz-opt">It has fully replaced GARCH and Yang-Zhang as the platform's only volatility estimator</button>
         <div class="sl-quiz-explain">Corsi's exact model runs daily for every instrument (js/volForecastScheduler.js, js/volForecastBench.js) and is raced against 7 alternatives (js/volHorseRaceEngine.js) — but the platform's live trading bands still come from Yang-Zhang (FX), GARCH (indices), or HV (commodities), per PLATFORM_MODEL.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -286,13 +290,13 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>HAR-RV is literally an OLS regression on three engineered features — today's RV, and its 5-day and 22-day rolling averages.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Corsi's insight: heterogeneous trading horizons, layered as three simple linear terms, approximate genuine long-memory behavior without fractional-differencing machinery.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>HAR-RV's typical edge over GARCH comes from a better-measured input, not a fancier model — it's the simpler model of the two.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo genuinely runs Corsi's exact model live, daily, for every instrument, benchmarked against 7 alternatives — as a challenger, not (yet) any asset class's primary σ.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo genuinely runs Corsi's exact model live, daily, for every instrument, benchmarked against 7 alternatives — as a challenger, not (yet) any asset class's primary σ.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>HAR-RV needs genuine intraday data to be the model the literature validated — fed a single-observation daily proxy instead, it quietly becomes something else.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk: Corsi's HAR-RV is the workhorse realised-vol forecast, set against implied vol and used for vol targeting and risk limits.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Recognize why a better-measured input can beat a fancier recursive model, and why that lesson generalizes well past volatility forecasting. Read a multi-horizon regression like HAR-RV for what it actually is — three plain averages, fit by OLS — rather than assuming "long memory" requires exotic machinery. Know exactly where this repo's own HAR-RV sits today: real, live, actively tested, and honestly not yet in the driver's seat for any asset class.</p>
+        <p>Recognize why a better-measured input can beat a fancier recursive model, and why that lesson generalizes well past volatility forecasting. Read a multi-horizon regression like HAR-RV for what it actually is — three plain averages, fit by OLS — rather than assuming "long memory" requires exotic machinery.<!-- DESK:START --> Know exactly where this repo's own HAR-RV sits today: real, live, actively tested, and honestly not yet in the driver's seat for any asset class.<!-- DESK:END --></p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

@@ -39,7 +39,9 @@
     <div class="tl-readout" data-calc="move"></div>
     <label class="cw-note-label" for="n-move">Your sentence</label>
     <textarea id="n-move" class="tl-scratch-input cw-note" data-note="move" placeholder="e.g. Options price a ±1σ week of about … points, roughly … to …"></textarea>
+    <!-- DESK:START -->
     <div class="tl-verdict untested"><span class="tl-verdict-tag">Not tested here</span><span><strong>The band is arithmetic, not a forecast.</strong> VIX × √(5/252) is the one-week standard deviation the options imply, and "two weeks in three inside it" assumes normal returns. The desk has not scored how often the S&amp;P actually finishes inside this band, so write it as what is <em>priced</em>, not what will happen.</span></div>
+    <!-- DESK:END -->
     <div class="cw-learn">Learn it in: <a href="lessons/vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a></div>
   </section>
 
@@ -53,8 +55,12 @@
     <div class="tl-readout" data-calc="term"></div>
     <label class="cw-note-label" for="n-term">Your sentence</label>
     <textarea id="n-term" class="tl-scratch-input cw-note" data-note="term" placeholder="e.g. The curve is in contango (VIX … below VIX3M …), so no inversion signal this week."></textarea>
+    <!-- DESK:START -->
     <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>After an inversion, a wider week.</strong> On the first day the VIX closed above VIX3M, the next five sessions ran wider than matched controls: SPX500 +0.76 ATR, NAS100 +0.82 (86 entries since 2008, all intervals clear of zero). Inversions are brief, a median of one session.</span></div>
+    <!-- DESK:END -->
+    <!-- DESK:START -->
     <div class="tl-verdict validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>…and a wider month, with no direction.</strong> Next 20 sessions' range ratio +0.52 on SPX500 and +0.44 on NQ against a matched control, 14 de-clustered firings, holding in both halves of the sample. Direction is null: 57% up against an 80%+ control.</span></div>
+    <!-- DESK:END -->
     <div class="cw-learn">Learn it in: <a href="lessons/vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index, Not a Fear Gauge</a></div>
   </section>
 
@@ -67,7 +73,9 @@
     <div class="tl-readout" data-calc="ivrv"></div>
     <label class="cw-note-label" for="n-ivrv">Your sentence</label>
     <textarea id="n-ivrv" class="tl-scratch-input cw-note" data-note="ivrv" placeholder="e.g. Implied sits … points above realised; when that gap is wide, realised has tended to catch up, not implied to fall."></textarea>
+    <!-- DESK:START -->
     <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>The gap closes from below.</strong> The folk read is "implied far above realised means over-insured, so calm ahead". The desk found the opposite: with VIX ÷ 20-session realised in its top decile (88 first days, 2010 on), NAS100's next-5 range was +0.38 ATR and SPX500's next-20 +0.67. Realised catches up to implied.</span></div>
+    <!-- DESK:END -->
     <div class="cw-learn">Learn it in: <a href="lessons/garch-volatility.html">GARCH &amp; Volatility Clustering</a></div>
   </section>
 
@@ -80,8 +88,12 @@
     <div class="tl-readout" data-calc="gamma"></div>
     <label class="cw-note-label" for="n-gamma">Your sentence</label>
     <textarea id="n-gamma" class="tl-scratch-input cw-note" data-note="gamma" placeholder="e.g. Dealers are long gamma on the Nasdaq, which has meant quieter next days there. It says nothing about direction, or about FX."></textarea>
+    <!-- DESK:START -->
     <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>Range, Nasdaq only, never direction.</strong> On 793 days of NQ, the next-day range was +0.315 higher on short-gamma days, matched on trailing vol. The reliable state is <em>long gamma is quiet</em> (about 0.85 of a random walk); short gamma sits near 1.02, essentially normal. It did not generalise to FX and carries no direction.</span></div>
+    <!-- DESK:END -->
+    <!-- DESK:START -->
     <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10"><span class="tl-verdict-tag">Desk test: nothing found</span><span><strong>No pin to max pain.</strong> Price pinning to the options max-pain strike into expiry tested null, with timing, DTE, gamma and sign conventions all checked.</span></div>
+    <!-- DESK:END -->
     <div class="cw-learn">Learn it in: <a href="lessons/gamma-exposure-dealer-hedging.html">Gamma Exposure &amp; Dealer Hedging Flows</a></div>
   </section>
 
@@ -94,8 +106,12 @@
     <div class="tl-readout" data-calc="skew"></div>
     <label class="cw-note-label" for="n-skew">Your sentence</label>
     <textarea id="n-skew" class="tl-scratch-input cw-note" data-note="skew" placeholder="e.g. The downside tail is priced richer than a normal band implies, so the lower edge of the range is the softer one."></textarea>
+    <!-- DESK:START -->
     <div class="tl-verdict untested"><span class="tl-verdict-tag">Not tested here</span><span><strong>No ledger entry on SKEW.</strong> The desk has not tested whether a high SKEW reading is followed by anything. A sentence here describes what is priced; label it untested in your read.</span></div>
+    <!-- DESK:END -->
+    <!-- DESK:START -->
     <div class="tl-verdict context" data-evidence="jump-diffusion" data-evidence-date="2026-09-13"><span class="tl-verdict-tag">Desk data: base rate</span><span><strong>Jumps are real; predicting them is not.</strong> Splitting moves into jumps and diffusion works as a measurement, but its forward payoff was null.</span></div>
+    <!-- DESK:END -->
     <div class="cw-learn">Learn it in: <a href="lessons/vega-volatility-surface.html">Vega &amp; the Volatility Surface</a></div>
   </section>
 
@@ -106,7 +122,9 @@
     <div class="tl-readout" data-calc="sheet"></div>
     <label class="cw-note-label" for="n-range">Your weekly volatility read</label>
     <textarea id="n-range" class="tl-scratch-input cw-note" data-note="range" placeholder="This week options price … (untested arithmetic). The curve is … (validated: vix-inversion). …" style="min-height:160px"></textarea>
+    <!-- DESK:START -->
     <div class="tl-verdict validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23"><span class="tl-verdict-tag">Desk test: held up</span><span><strong>Size, never sign.</strong> Every vol signal on this page that survived testing predicts how far, not which way. The same study that found the inverted curve widens the month found direction null. If your read says "down", it has left the evidence behind.</span></div>
+    <!-- DESK:END -->
     <div class="cw-learn">Learn it in: <a href="lessons/four-markets-four-questions.html">Four Markets, Four Questions</a></div>
   </section>
 

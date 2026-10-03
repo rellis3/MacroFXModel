@@ -291,7 +291,7 @@
           <ul>
             <li>Tests for volatility clustering before leaning on CLT-based normality</li>
             <li>Uses GARCH-style corrections once clustering is confirmed, rather than ignoring it</li>
-            <li>Requires a non-trivial sample (this repo's ≥30 OOS trades floor) before trusting an average</li>
+            <li>Requires a non-trivial sample<!-- DESK:START --> (this repo's ≥30 OOS trades floor)<!-- DESK:END --> before trusting an average</li>
             <li>Treats "assume normal" as a defensible starting point that gets corrected, not a finished answer</li>
           </ul>
         </div>
@@ -346,7 +346,7 @@
         <button class="sl-quiz-opt" data-correct="true">How close the average is at any small, fixed n</button>
         <button class="sl-quiz-opt">That convergence happens eventually</button>
         <button class="sl-quiz-opt">That E[X] is a fixed, well-defined number</button>
-        <div class="sl-quiz-explain">The LLN is a statement about the limit as n → ∞. It says nothing about how close a 5-trade or 20-trade average is to the true expectation right now — which is exactly why this repo requires a non-trivial OOS trade count before trusting an average.</div>
+        <div class="sl-quiz-explain">The LLN is a statement about the limit as n → ∞. It says nothing about how close a 5-trade or 20-trade average is to the true expectation right now<!-- DESK:START --> — which is exactly why this repo requires a non-trivial OOS trade count before trusting an average<!-- DESK:END -->.</div>
       </div>
     </section>
 

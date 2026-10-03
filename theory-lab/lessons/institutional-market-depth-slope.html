@@ -27,7 +27,7 @@
   <h1 class="tl-title">Market Depth, Order-Book Slope &amp; Depth Imbalance</h1>
   <p class="tl-dek">A limit order book has a shape even when nobody is trading it — how much size sits right at the best price, and how much more shows up as you look one, two, five ticks further away. Slope describes that shape; depth imbalance describes which side of it is heavier. Neither one needs a single executed trade to compute, which is exactly what separates them from every flow-based signal this Theory Lab has covered so far.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no order-book depth, slope, or depth-imbalance code exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file for "depth", "orderbook", "order.book", and "bookImbalance"-style terms. The closest genuinely <em>running</em> code is a different kind of object entirely: <code>js/positionBookMetrics.js</code>, called live from <code>_worker.js</code> against OANDA's <code>positionBook</code> endpoint, computes retail long/short crowding, pain, and overhead percentages from a head-count, 20-minute-stale position heatmap spanning the whole historical price range — not bid/ask resting size at defined tick distances from a live top-of-book, which is what this lesson's slope and depth-imbalance formulas require. <code>scripts/fetch_oanda_books.py</code> is a genuine, but never-yet-executed, backfill script for OANDA's raw <code>orderBook</code>/<code>positionBook</code> history (no <code>data/books/</code> directory exists on disk). This sharpens, and stays consistent with, the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson's own finding that this repo's primary FX venue, OANDA spot, has no order book at all in the live-matching-engine sense — the closest thing it does expose (positionBook/orderBook) is retail-aggregated, price-bucketed, and 20 minutes stale, not a resting bid/ask ladder.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no order-book depth, slope, or depth-imbalance code exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file for "depth", "orderbook", "order.book", and "bookImbalance"-style terms. The closest genuinely <em>running</em> code is a different kind of object entirely: <code>js/positionBookMetrics.js</code>, called live from <code>_worker.js</code> against OANDA's <code>positionBook</code> endpoint, computes retail long/short crowding, pain, and overhead percentages from a head-count, 20-minute-stale position heatmap spanning the whole historical price range — not bid/ask resting size at defined tick distances from a live top-of-book, which is what this lesson's slope and depth-imbalance formulas require. <code>scripts/fetch_oanda_books.py</code> is a genuine, but never-yet-executed, backfill script for OANDA's raw <code>orderBook</code>/<code>positionBook</code> history (no <code>data/books/</code> directory exists on disk). This sharpens, and stays consistent with, the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson's own finding that this repo's primary FX venue, OANDA spot, has no order book at all in the live-matching-engine sense — the closest thing it does expose (positionBook/orderBook) is retail-aggregated, price-bucketed, and 20 minutes stale, not a resting bid/ask ladder.<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>, <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a></span>
   </div>
@@ -507,9 +507,9 @@
       same way.
     </p>
     <p>
-      Nothing above is a claim this repo runs this analysis on live data —
+      <!-- DESK:START -->Nothing above is a claim this repo runs this analysis on live data —
       see the status badge above for exactly what does and doesn't exist here
-      today. It illustrates how a desk that <em>did</em> have a genuine,
+      today. <!-- DESK:END -->It illustrates how a desk that <em>did</em> have a genuine,
       continuously-updating top-of-book feed would actually use these two
       numbers together, which is the point of the exercise.
     </p>
@@ -560,9 +560,9 @@
       primarily OTC across multiple competing ECNs and bank-to-bank venues,
       each with its own separate book. A slope or depth-imbalance figure
       computed from one venue's book describes that venue only — not "the FX
-      market's" depth as a whole — and this repo's own primary venue, OANDA
+      market's" depth as a whole<!-- DESK:START --> — and this repo's own primary venue, OANDA
       spot, doesn't even expose a live top-of-book ladder to begin with (see
-      the status badge above). A naive depth read that ignores fragmentation
+      the status badge above)<!-- DESK:END -->. A naive depth read that ignores fragmentation
       entirely can be badly misleading about how much liquidity genuinely
       exists across the market.
     </p>

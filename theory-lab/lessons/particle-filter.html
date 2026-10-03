@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Particle Filter (Sequential Monte Carlo)</h1>
   <p class="tl-dek">When a hidden state's dynamics stop being linear and its noise stops being Gaussian, the Kalman filter's neat closed form breaks — a weighted swarm of simulated guesses can track the state anyway.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: Kalman Filter &amp; Adaptive Relationships, Bayesian Inference</span>
   </div>
@@ -36,7 +36,9 @@
       <li>One cycle is four steps: <strong>initialize</strong> particles from the prior, <strong>propagate</strong> each through the (possibly nonlinear) state transition, <strong>weight</strong> each by the likelihood of the observation given that particle's state, and <strong>resample</strong> proportional to weight when the swarm has gotten too lopsided.</li>
       <li>The effective-sample-size diagnostic \(N_{\text{eff}} = 1/\sum_i w_i^2\) measures how lopsided the weights are — it drops toward 1 as one particle absorbs nearly all the credibility (particle degeneracy) and stays near \(N\) when weight is spread evenly; resampling is triggered when it falls below a threshold, commonly \(N/2\).</li>
       <li>The worked example tracks a state whose process noise is a fat-tailed mixture (mostly calm, occasionally a large jump) — exactly the kind of non-Gaussian shock a linear Kalman filter's single Gaussian \(Q\) cannot represent honestly.</li>
+      <!-- DESK:START -->
       <li>This is a concept lesson only: explaining Sequential Monte Carlo is not a claim it produces edge in this repo. Nothing here is built, prototyped, or validated.</li>
+      <!-- DESK:END -->
       <li><strong>How it reached trading:</strong> within a few years of the 1993 bootstrap filter, econometricians were using it to track hidden volatility in stochastic-volatility and jump models (Pitt &amp; Shephard, 1999; Johannes, Polson &amp; Stroud, 2009).</li>
     </ul>
   </div>
@@ -487,7 +489,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(N_{\text{eff}} = 1/\sum_i w_i^2\) measures swarm health</strong> — it runs from \(N\) (every particle equally informative) down to 1 (total degeneracy, one particle carries everything).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's swarm stayed healthy</strong> (\(N_{\text{eff}}\approx 4.83\) of 5) against an ordinary observation, but a genuine fat-tail jump would collapse it toward 1 — exactly the case a resample step exists to catch.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Resampling fixes degeneracy but costs diversity (particle impoverishment)</strong> — it is a real trade-off, not a free correction, which is why it should trigger on \(N_{\text{eff}}\), not run unconditionally every step.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> Explaining Sequential Monte Carlo is not a claim it produces edge here — any real use would need to beat the incumbent on true out-of-sample performance first, per this project's Lego Principle.</span></div>
+    <!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>In markets, it is a volatility tracker.</strong> Its finance job is filtering latent volatility, jumps and regimes out of returns when the model is too non-Gaussian for a Kalman filter, and resampling is what keeps that tracking alive over thousands of days.</span></div>
   </div>
 

@@ -275,10 +275,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">5</div><div><h4>OFI &amp; Microprice</h4><p>The live, tick-by-tick signals a desk actually watches — closing the gap between historical theory and real-time practice.</p></div></div>
       </div>
       <div class="sl-quote">Neither end of this arc replaces the other. A desk that only watches OFI without knowing why spreads and informed trading exist is operating on unexplained intuition; a researcher who only studies PIN without knowing what a live desk actually watches is missing where the theory gets used.</div>
-      <div class="sl-callout amber">
+      <!-- DESK:START --><div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>A repo-wide search of every <code>.py</code>/<code>.js</code> file for "microprice," "queue imbalance," "order flow imbalance," and the bare string "OFI" turns up nothing genuinely matching — the only "imbalance" hits found are unrelated fair-value-gap price imbalances (<code>forge/levels.py</code>, several confluence bots) and an ML class-imbalance comment. The closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed pricing-only cost query for full order-book depth data — its own comments confirm this repo's primary FX venue, OANDA spot, <strong>has no order book at all</strong> to compute either signal from. A specific, honest reason both signals stay conceptual here.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="15">

@@ -313,6 +313,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Is any of this actually running in this repo?</h2>
@@ -325,6 +326,7 @@
       <div class="sl-quote">estimators=[("ridge", Ridge(alpha=1.0)), ("xgb", XGBRegressor(...)), ("lgb", LGBMRegressor(...))], final_estimator=Ridge(alpha=1.0) — AnalogML/ml_walkforward.py</div>
       <p class="sl-p">Two caveats worth keeping straight: that <code style="font-family:'DM Mono',monospace">alpha</code> is fixed at 1.0 rather than chosen by cross-validation the way this lesson recommends for λ, and <strong>LASSO does not appear anywhere in this codebase</strong> — it remains conceptual only, exactly as the full lesson says. Nothing here is being silently corrected or silently repeated; both the original claim and the current code disagree, on purpose, in the open.</p>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 14</div>
@@ -391,7 +393,7 @@
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Build a linear model on many, or highly correlated, predictors that stays stable instead of overfitting their noise. Choose Ridge when the honest prior is "most of these carry a little real signal" and LASSO when it's "most of these are noise, a few really matter" — or reach for Elastic Net to hedge between them when predictors come in correlated groups. And you now know this isn't purely theoretical here: a Ridge regression, as a meta-learner, is genuinely running in this repo's <code style="font-family:'DM Mono',monospace">AnalogML</code> walk-forward pipeline today.</p>
+        <p>Build a linear model on many, or highly correlated, predictors that stays stable instead of overfitting their noise. Choose Ridge when the honest prior is "most of these carry a little real signal" and LASSO when it's "most of these are noise, a few really matter" — or reach for Elastic Net to hedge between them when predictors come in correlated groups.<!-- DESK:START --> And you now know this isn't purely theoretical here: a Ridge regression, as a meta-learner, is genuinely running in this repo's <code style="font-family:'DM Mono',monospace">AnalogML</code> walk-forward pipeline today.<!-- DESK:END --></p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

@@ -231,7 +231,7 @@
       <p class="sl-p">A desk sizing risk off Garman-Klass alone that week would be working from a volatility figure that quietly understated exactly the kind of move that just happened — the dollars-and-stops version of "GK assumes no gap," not just an abstract limitation.</p>
     </section>
 
-    <section class="sl-slide" data-slide="13">
+    <!-- DESK:START --><section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Genuinely built here — verified, not assumed</h2>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -239,7 +239,7 @@
         <p>This is not a "concept — not built here" lesson. <strong>Yang-Zhang</strong> is the live production volatility input in <code>js/volForecast.js</code>'s <code>computeForecast()</code> for both FX and gold, walk-forward validated independently in <code>forge/vol.py</code> / <code>forge/run_vol.py</code>, with dedicated tests in <code>forge/vol_test.py</code>. <strong>Garman-Klass</strong> is the realized-variance "ground truth" a separate forecast benchmark (<code>js/volForecastBench.js</code>) scores every candidate estimator against. <strong>Parkinson</strong> drives a live trending/choppy regime classifier (<code>js/volStateEngine.js</code>'s <code>rangeEfficiencyRatio()</code>). <strong>Rogers-Satchell</strong> is gold's dedicated shadow estimator, mirrored into the live MT5 bot in <code>DynAnchorBot/dyn_anchor_mt5_bot.py</code>.</p>
       </div>
       <p class="sl-p">Every formula in this deck was checked line-by-line against the actual implementation — not assumed from the estimator's name.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
@@ -282,14 +282,14 @@
         <div class="sl-quiz-explain">Var[ln(Oₜ/Cₜ₋₁)] is a dedicated term measuring exactly the overnight gap Garman-Klass has no way to see — Rogers-Satchell (already inside Yang-Zhang) is what fixes the drift assumption.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Is Yang-Zhang actually used in this repo's production code, or just explained here?</h4>
         <button class="sl-quiz-opt" data-correct="true">It's the live primary volatility input in js/volForecast.js's computeForecast()</button>
         <button class="sl-quiz-opt">It's a pure concept, not built anywhere in this repo</button>
         <button class="sl-quiz-opt">It only appears in a research notebook, never in production</button>
         <div class="sl-quiz-explain">js/volForecast.js's computeForecast() calls yangZhangVolSeries() as its primary σ input for FX and gold; a second, independent Python implementation in forge/vol.py is walk-forward validated and tested.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="15">
@@ -300,12 +300,12 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Parkinson (range only) → Garman-Klass (+ open-close) → Rogers-Satchell (drift-independent) → Yang-Zhang (+ overnight gap) is a ladder of increasingly complete assumptions.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Garman-Klass's real limitation is the no-gap assumption — a genuine issue for FX around weekend rollovers, fixed specifically by Yang-Zhang's overnight term.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>This deck's own Monte Carlo check recovered ≈5x (Parkinson) and ≈7.8x (Garman-Klass) efficiency gains over close-close vol — matching the textbook figures, not just citing them.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>All four estimators are genuinely implemented in this repo — Yang-Zhang is the live production estimator, not a concept sitting unused.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>All four estimators are genuinely implemented in this repo — Yang-Zhang is the live production estimator, not a concept sitting unused.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>On a desk: Parkinson → Garman-Klass (1980) → Yang-Zhang (2000) are the standard bar-based vol inputs for sizing, stops and realised-vs-implied checks.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Recognize when a close-only volatility figure is quietly throwing away real information, and reach for an OHLC estimator instead. Know exactly which failure mode each estimator fixes — drift, the open/close, or the overnight gap — instead of treating "range-based" as one interchangeable idea. Read this repo's own volatility code with the actual formulas in hand, not just the estimator names.</p>
+        <p>Recognize when a close-only volatility figure is quietly throwing away real information, and reach for an OHLC estimator instead. Know exactly which failure mode each estimator fixes — drift, the open/close, or the overnight gap — instead of treating "range-based" as one interchangeable idea.<!-- DESK:START --> Read this repo's own volatility code with the actual formulas in hand, not just the estimator names.<!-- DESK:END --></p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

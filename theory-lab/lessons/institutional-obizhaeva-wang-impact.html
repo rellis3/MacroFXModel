@@ -27,7 +27,7 @@
   <h1 class="tl-title">Obizhaeva-Wang Transient Price Impact</h1>
   <p class="tl-dek">Kyle's impact is permanent because it's information, and it never fades. Almgren-Chriss's temporary impact reverts the instant you stop trading, with no memory of what you did a moment ago. Obizhaeva-Wang sits in between: impact that decays, but not instantly — a limit-order-book "reservoir" that needs real time to refill — and that one assumption is enough to turn the optimal way to trade a large order from a smooth curve into something lumpier at both ends.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — grepped every <code>.js</code> and <code>.py</code> file in this repo, case-insensitive, for "resilien", "transient impact", and "Obizhaeva": no resilience-based transient-impact model, no decaying-impact state variable, and no Obizhaeva-Wang mechanics exist anywhere here. The only "resilien-" hits are <code>bot/main.py</code>'s <code>ResilientStreamHandler</code>/<code>ResilientFileHandler</code> — retry-safe logging handlers, unrelated to market microstructure or price impact in any way</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — grepped every <code>.js</code> and <code>.py</code> file in this repo, case-insensitive, for "resilien", "transient impact", and "Obizhaeva": no resilience-based transient-impact model, no decaying-impact state variable, and no Obizhaeva-Wang mechanics exist anywhere here. The only "resilien-" hits are <code>bot/main.py</code>'s <code>ResilientStreamHandler</code>/<code>ResilientFileHandler</code> — retry-safe logging handlers, unrelated to market microstructure or price impact in any way<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Market Microstructure Invariance</a>, <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a></span>
   </div>
@@ -400,6 +400,7 @@
     the target participation rate would otherwise allow it — both are informal, practitioner-level echoes of
     "don't trade into your own still-decaying impact."
   </p>
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🗂️</div>
     <div class="tl-box-label">What's actually verified against this repo's code</div>
@@ -420,6 +421,7 @@
       all elsewhere in this curriculum, does not implement either family of impact model.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>

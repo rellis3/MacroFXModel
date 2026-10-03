@@ -225,7 +225,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">🔀</div><div><h4>Reporting only one ordering</h4><p>Always compute both, or explicitly justify the ordering choice — usually neither venue's ordering is more defensible than the other.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>No genuine cointegration</h4><p>The whole common-factor framework needs a real, tested price-parity relationship — not just any two correlated series.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⏱️</div><div><h4>Sampling-frequency sensitivity</h4><p>Tick-level vs. one-minute vs. daily data can flip which venue appears to lead — microstructure noise and averaging both distort the answer differently.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">💧</div><div><h4>IS ≠ liquidity</h4><p>A high information share means news shows up there first — not that the venue is cheaper or more liquid to trade in. See this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons for that separate question.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">💧</div><div><h4>IS ≠ liquidity</h4><p>A high information share means news shows up there first — not that the venue is cheaper or more liquid to trade in. See the Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons for that separate question.</p></div></div>
       </div>
     </section>
 
@@ -285,7 +285,7 @@
         <button class="sl-quiz-opt" data-correct="true">No — IS measures where news shows up first, not spreads, depth, or execution cost</button>
         <button class="sl-quiz-opt">Yes, by definition</button>
         <button class="sl-quiz-opt">Only if α_Y = α_X</button>
-        <div class="sl-quiz-explain">Liquidity is a related but distinct question, covered by this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons — not by Information Share.</div>
+        <div class="sl-quiz-explain">Liquidity is a related but distinct question, covered by the Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons — not by Information Share.</div>
       </div>
     </section>
 
@@ -297,7 +297,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The common-factor loading vector ψ derives directly from the VECM's own α: ψ_Y = α_X/(α_X−α_Y), ψ_X = −α_Y/(α_X−α_Y) — the less a venue adjusts, the more common-factor weight it carries.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Cholesky-orthogonalizing the residual covariance matrix requires an arbitrary ordering choice, and the IS split can swing hard depending on it — 57.1% vs. 10.7% in this deck's own worked example, same fitted VECM throughout.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Two standard responses exist: Hasbrouck's own midpoint/range fix, and alternative measures — Gonzalo-Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share — that don't depend on the same arbitrary ordering.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Information Share needs genuine cointegration, is sensitive to sampling frequency, and answers a variance-attribution question — not a liquidity question, which belongs to this repo's Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Information Share needs genuine cointegration, is sensitive to sampling frequency, and answers a variance-attribution question — not a liquidity question, which belongs to the Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>How it reached trading: Hasbrouck's information share (1995) is the standard test of where price discovery happens: futures vs cash, CDS vs bonds, venue vs venue.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">

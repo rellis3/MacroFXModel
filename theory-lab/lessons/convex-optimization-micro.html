@@ -158,10 +158,10 @@
         <div class="sl-icard"><div class="sl-icard-badge">⊞</div><div><h4>Linear constraints keep the set convex too</h4><p>Weights summing to 1, a target return, no-shorting box constraints — all linear, so all convexity-preserving. Objective + set: a genuine convex quadratic program.</p></div></div>
       </div>
       <p class="sl-p">This is exactly why mean-variance optimization is reliably, provably solvable rather than a heuristic search — the deeper mechanics of the covariance matrix, the weight constraints, and the actual worked minimum-variance portfolio are covered in this curriculum's <a href="markowitz-black-litterman-micro.html">Markowitz &amp; Black-Litterman</a> lesson.</p>
-      <div class="sl-callout purple">
+      <!-- DESK:START --><div class="sl-callout purple">
         <div class="sl-callout-label">Grounded against this repo's actual code</div>
         <p>The full lesson tags this material "CONCEPT — not built or tested in this repo," and that check still holds: <code>portfolioBacktest/</code> in this codebase implements a cointegration pairs-trading backtester, with no mean-variance solver, QP library, or covariance-based optimizer anywhere in it. The convexity argument above is correct theory this repo doesn't yet act on.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="9">

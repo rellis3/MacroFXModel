@@ -27,7 +27,7 @@
   <h1 class="tl-title">Granger Causality &amp; Lead-Lag Analysis</h1>
   <p class="tl-dek">The Vector Error Correction Model told you, for one already-cointegrated pair, which side does the correcting. That's a narrow question about one specific kind of relationship. This lesson asks something broader and more precisely defined: for any two series at all, does one's past genuinely sharpen a forecast of the other's future — beyond what the target's own history already gives you — and can that claim be pinned down with an exact F-test rather than a hunch about which line moved first on the chart?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no Granger-causality F-test or VAR-based causality regression exists anywhere in this repo (grepped <code>js/</code>, <code>DecisionEngine/</code>, every root <code>.py</code> file, and <code>server.js</code>); every hit for "Granger" is Engle-Granger's <em>cointegration</em> test (a different contribution by the same author, already covered in the Cointegration lesson) or an unrelated Granger-Ramanathan regression weighting scheme in <code>js/volHorseRaceEngine.js</code> — see "How practitioners actually use this" for the simpler cross-correlation cousin that genuinely does exist, in several places</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no Granger-causality F-test or VAR-based causality regression exists anywhere in this repo (grepped <code>js/</code>, <code>DecisionEngine/</code>, every root <code>.py</code> file, and <code>server.js</code>); every hit for "Granger" is Engle-Granger's <em>cointegration</em> test (a different contribution by the same author, already covered in the Cointegration lesson) or an unrelated Granger-Ramanathan regression weighting scheme in <code>js/volHorseRaceEngine.js</code> — see "How practitioners actually use this" for the simpler cross-correlation cousin that genuinely does exist, in several places<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a>, <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>, <a href="institutional-vecm.html">Vector Error Correction Models</a></span>
   </div>
@@ -48,7 +48,7 @@
       <li>Two mandatory pre-checks, both skippable in ways that silently break the test: pick the lag order \(p\) with AIC/BIC <em>before</em> testing (the <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> lesson derives both criteria), and confirm both series are stationary first (test on returns, not price levels — unless the pair is cointegrated, in which case the <a href="institutional-vecm.html">VECM</a> lesson's error-correction framework is the correct home for this question, not a plain differenced VAR).</li>
       <li>A worked toy example below fits both regressions on 12 observations and gets \(F \approx 38.6\) against \(q=1\), \(n-k=9\) degrees of freedom — comfortably past even the 1% critical value of 10.56, a clean reject-the-null result computed end to end and hand-checkable.</li>
       <li>Run the test in <strong>both directions</strong>. \(X\) Granger-causing \(Y\) and \(Y\) Granger-causing \(X\) are two separate hypotheses on two separate regressions; both can be significant at once (genuine feedback), one can be, or neither.</li>
-      <li>Cross-correlation of returns at various lags — \(\text{corr}(X_t, Y_{t+k})\) for a range of \(k\) — is the simpler, non-regression cousin of the identical lead-lag question, and unlike Granger causality it does <strong>not</strong> control for \(Y\)'s own persistence. This repo genuinely runs several versions of that simpler tool in production; grep results are in "How practitioners actually use this" below. No Granger F-test exists anywhere in the codebase.</li>
+      <li>Cross-correlation of returns at various lags — \(\text{corr}(X_t, Y_{t+k})\) for a range of \(k\) — is the simpler, non-regression cousin of the identical lead-lag question, and unlike Granger causality it does <strong>not</strong> control for \(Y\)'s own persistence.<!-- DESK:START --> This repo genuinely runs several versions of that simpler tool in production; grep results are in "How practitioners actually use this" below. No Granger F-test exists anywhere in the codebase.<!-- DESK:END --></li>
       <li><strong>How it reached trading:</strong> Granger (1969) gave the definition; 1980s lead-lag studies such as Kawaller, Koch &amp; Koch (1987) found futures leading cash, and it remains the first screen on any lead-lag signal.</li>
     </ul>
   </div>
@@ -68,8 +68,8 @@
     beyond what the target series' own history already tells you? That is the
     literal content of Granger causality, and it is the formal machinery
     behind every "does the yield spread lead FX" or "does this cross lead
-    that one" question this curriculum and this repo's own research code keep
-    raising informally.
+    that one" question this curriculum keeps raising informally<!-- DESK:START --> (as does this repo's own
+    research code)<!-- DESK:END -->.
   </p>
   <p>
     This ground is not entirely new. The
@@ -486,6 +486,7 @@
     specific, testable lag — not just "seems to move first" from eyeballing a
     chart.
   </p>
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🗂️</div>
     <div class="tl-box-label">What's actually verified against this repo's code</div>
@@ -532,6 +533,7 @@
       unrestricted Granger comparison either.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -542,10 +544,10 @@
       currency against USD, and a second commodity currency against USD, both
       exposed to the same broad risk-sentiment factor — and wants to know
       whether one systematically leads the other by a lag short enough to
-      trade. The naive approach is exactly the cross-correlation tools
-      grepped above: compute \(\text{corr}(X_t, Y_{t+k})\) for a range of
+      trade. The naive approach is exactly the cross-correlation tools<!-- DESK:START -->
+      grepped above<!-- DESK:END -->: compute \(\text{corr}(X_t, Y_{t+k})\) for a range of
       \(k\) and look for a peak away from zero. That's a real, useful first
-      pass — and it's what this repo's own lead-lag tooling already runs. But
+      pass<!-- DESK:START --> — and it's what this repo's own lead-lag tooling already runs<!-- DESK:END -->. But
       a peak at lag \(k=2\) in a raw cross-correlation could just as easily
       reflect \(Y\)'s own momentum (yesterday's move predicting today's, with
       no help from \(X\) at all) coinciding with \(X\) and \(Y\) simply being
@@ -634,7 +636,9 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Two pre-checks are mandatory, not optional.</strong> Choose the lag order with AIC/BIC before testing, and confirm stationarity (test returns, not levels) — or route a genuinely cointegrated pair through the VECM's error-correction framework instead of a plain differenced VAR.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Test both directions.</strong> X-causes-Y and Y-causes-X are separate hypotheses on separate regressions; both, either, or neither can be significant, and a bidirectional result (a feedback loop) is a coherent, common finding, not a broken test.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Granger-causes" is not "causes."</strong> It is a statistical, predictive claim vulnerable to confounding, non-stationarity, and measurement-timing artifacts — never read a significant result as proof of a real mechanistic link.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo runs the simpler cousin, not the regression test itself.</strong> No Granger F-test exists anywhere in the codebase; genuine cross-correlation-at-various-lags tools do (<code>js/nasdaqResearch.js</code>, <code>js/creditLeadLagEngine.js</code>, <code>js/yieldCouplingCore.js</code>), and they don't control for the target's own autocorrelation the way this test does.</span></div>
+    <!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the first screen on a lead-lag idea.</strong> Granger (1969) gave the test; lead-lag studies such as Kawaller, Koch &amp; Koch (1987), showing S&amp;P 500 futures leading cash, made it a standard price-discovery tool.</span></div>
   </div>
 

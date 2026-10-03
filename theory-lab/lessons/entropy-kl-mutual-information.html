@@ -17,7 +17,7 @@
   <h1 class="tl-title">Entropy, KL Divergence &amp; Mutual Information</h1>
   <p class="tl-dek">Correlation only sees straight-line relationships. This lesson builds the machinery — entropy, KL divergence, mutual information — that measures how much two variables actually tell each other, in bits, whether or not the relationship is a straight line at all.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — background math, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Probability Primer, Correlation &amp; Regression primer</span>
   </div>
@@ -527,14 +527,14 @@
     distributions. Estimating \(I(X;Y)\) from a finite, noisy, continuous sample requires binning or
     kernel-density estimation, both of which introduce their own bias — a naive estimator can report
     a spuriously large mutual information purely from overfitting the joint density to a small
-    sample, the same overfitting risk this repo's validation discipline warns about everywhere else.
+    sample<!-- DESK:START -->, the same overfitting risk this repo's validation discipline warns about everywhere else<!-- DESK:END -->.
     </p>
     <p>
     <strong>Mutual information detects <em>any</em> dependence, not a <em>useful</em> one.</strong> A
     provably nonzero \(I(X;Y)\) says the two variables are not independent — it does not say the
     relationship is strong enough, stable enough, or simple enough to trade on. Detecting a
-    dependency and having an edge are different claims; explaining the concept is not itself a claim
-    that it produces edge in this repo.
+    dependency and having an edge are different claims<!-- DESK:START -->; explaining the concept is not itself a claim
+    that it produces edge in this repo<!-- DESK:END -->.
     </p>
   </div>
 

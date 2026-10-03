@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Hill Estimator</h1>
   <p class="tl-dek">Fitting a full Generalized Pareto Distribution to a tail is one honest way to size up how heavy it is. Sorting your data, taking the handful of biggest extremes, and averaging one log-ratio is another — cruder, older, and, for a quick answer, frequently good enough.</p>
   <div class="tl-meta">
-    <span class="tl-status candidate">CANDIDATE — a correct, ready-to-use <code>hillEstimator(xs, k)</code> already exists in <code>js/extremesCore.js</code> — the exact file backing this project's live GPD/POT tail fit — computing precisely this lesson's α̂ (and ξ̂ = 1/α̂), but grepping every other file in this repo turns up zero callers of it; its neighbors in the same file, <code>fitGPD</code> and <code>potFit</code>, ARE wired live into <code>js/analyticsDesk.js</code>'s per-instrument desk snapshot (imported by <code>server.js</code>) and <code>js/forecastCoverage.js</code>'s band-break diagnostic — see "How practitioners actually use this" below</span>
+    <span class="tl-status candidate">CANDIDATE<!-- DESK:START --> — a correct, ready-to-use <code>hillEstimator(xs, k)</code> already exists in <code>js/extremesCore.js</code> — the exact file backing this project's live GPD/POT tail fit — computing precisely this lesson's α̂ (and ξ̂ = 1/α̂), but grepping every other file in this repo turns up zero callers of it; its neighbors in the same file, <code>fitGPD</code> and <code>potFit</code>, ARE wired live into <code>js/analyticsDesk.js</code>'s per-instrument desk snapshot (imported by <code>server.js</code>) and <code>js/forecastCoverage.js</code>'s band-break diagnostic — see "How practitioners actually use this" below<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: <a href="extreme-value-theory.html">Extreme Value Theory &amp; Tail Risk</a> (this lesson assumes and repeatedly cross-references its GPD/POT machinery rather than re-deriving it)</span>
   </div>
@@ -38,7 +38,9 @@
       <li>Its output, \(\hat\alpha\), is the <strong>same number</strong> as the sibling lesson's shape parameter, just inverted: for the heavy-tailed case (\(\xi>0\)), \(\xi = 1/\alpha\) exactly. An \(\hat\alpha \approx 2.9\) and a \(\hat\xi \approx 0.34\) are two units for one fact, not two competing estimates.</li>
       <li>Choosing \(k\) is the Hill estimator's own version of the sibling lesson's "choosing the threshold \(u\)" problem: too small a \(k\) means high variance (a handful of points), too large a \(k\) means bias (you've pulled in observations that aren't really tail behavior anymore) — visualized as the notoriously unstable "Hill plot."</li>
       <li>What Hill buys you (no distributional assumption, trivial computation, known asymptotics) it also costs you: it only ever estimates the shape exponent, never a full fitted distribution — it can't be inverted for an arbitrary VaR/CVaR quantile the closed-form way a fitted GPD can.</li>
+      <!-- DESK:START -->
       <li>This repo's own <code>js/extremesCore.js</code> already contains a correct <code>hillEstimator</code> implementation using exactly this lesson's α/ξ convention — but, per the grep in the status badge above, nothing calls it. Its GPD/POT siblings in the same file are what's actually live in production.</li>
+      <!-- DESK:END -->
       <li><strong>How it reached trading:</strong> Hill's 1975 tail-index estimator reached markets through 1990s fat-tail studies of returns (tail indices near three), and risk teams use it as the quick check on whether a normal VaR can be trusted.</li>
     </ul>
   </div>
@@ -331,7 +333,7 @@
   common, genuinely useful role for the Hill estimator is exactly this: compute \(\hat\alpha\) (at a
   couple of sensible \(k\) values) across a shortlist of FX pairs or return series, and rank them by
   tail heaviness before deciding which ones warrant a full GPD/POT fit for actual VaR/CVaR
-  extrapolation. Illustrative numbers only, not this repo's actual output:
+  extrapolation. Illustrative numbers only<!-- DESK:START -->, not this repo's actual output<!-- DESK:END -->:
   </p>
   <div class="tl-symbols"><table>
     <tr><td>Instrument (illustrative)</td><td>α̂ (illustrative)&emsp;&emsp;Reading</td></tr>
@@ -377,6 +379,7 @@
     <div class="tl-hint" style="margin-top:8px">This calculator does no sorting or validation of "is this actually your top k" beyond checking the list is long enough and every ratio comes out positive — as with the real estimator, feeding it numbers that aren't really order statistics of a heavy tail produces a number with no meaningful target.</div>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🗂️</div>
     <div class="tl-box-label">What's actually verified against this repo's code</div>
@@ -408,6 +411,7 @@
     use, and one entirely unused, ready-made Hill estimator sitting beside the first of them.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -419,12 +423,12 @@
     loss magnitudes (cheap enough to run on all twelve in the time it takes to fit one careful GPD) would
     surface which names have the fattest apparent tails — exactly the ranking use case above. That
     ranking would then direct where the more expensive, more assumption-laden GPD/POT fit (and its
-    threshold-stability checks, per the sibling lesson's own pitfalls section) actually gets built.
+    threshold-stability checks, per the sibling lesson's own pitfalls section) actually gets built.<!-- DESK:START -->
     Today, per the grounding above, that first triage step isn't wired to anything — the desk snapshot
     goes straight to the full POT/GPD fit for every instrument it covers, without a Hill-based
     pre-screen. Whether adding one would actually save meaningful effort, or just add a second unvalidated
     number to look at, is exactly the kind of question this repo's own validation discipline would want
-    answered empirically before wiring it in — not asserted here.
+    answered empirically before wiring it in — not asserted here.<!-- DESK:END -->
     </p>
   </div>
 
@@ -476,7 +480,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It needs less and computes faster.</strong> Only "regularly varying tail," not "this is a GPD" — and a sum of logs instead of a numerical fit, with known (if asymptotic) sampling behavior.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>It only ever hands back a shape exponent.</strong> No scale, no closed-form VaR/CVaR at an arbitrary confidence level the way a fitted \((\xi,\beta)\) GPD provides — that machinery lives in the sibling lesson, not here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Choosing k is choosing u, restated.</strong> Too small = noisy; too large = biased — the identical trade-off the sibling lesson names for its own threshold choice, visualized here as the notoriously unstable "Hill plot."</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A ready-made, correct implementation sits unused in this repo.</strong> <code>js/extremesCore.js</code>'s <code>hillEstimator</code> has zero callers, unlike its live GPD/POT neighbors <code>fitGPD</code>/<code>potFit</code>, wired into <code>js/analyticsDesk.js</code> via <code>server.js</code>.</span></div>
+    <!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the quick fat-tail check.</strong> Since Jansen &amp; de Vries (1991) applied Hill's estimator to stock returns, tail indices near three have been the standard evidence that a normal VaR understates extreme losses.</span></div>
   </div>
 
@@ -533,7 +539,7 @@
     built on top of it, not something the plain formula in this lesson provides.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Is there a working Hill estimator anywhere in this repo's actual code, and is it used in production?</summary>
     <div class="tl-answer">
     Yes and no, respectively. <code>js/extremesCore.js</code> defines a correct
@@ -544,7 +550,7 @@
     <code>js/analyticsDesk.js</code>'s per-instrument desk snapshot (called from <code>server.js</code>)
     and into <code>js/forecastCoverage.js</code>'s band-break diagnostic.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

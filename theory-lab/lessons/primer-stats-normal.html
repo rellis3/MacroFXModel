@@ -656,8 +656,8 @@
             would represent, and nowhere close to the \(z\approx3\) tail-event
             territory. With only 6 data points this is a toy illustration,
             not a real volatility estimate — a real z-score gate would use a
-            much longer rolling window, exactly what this project's own
-            rolling z-score code does (next section).
+            much longer rolling window<!-- DESK:START -->, exactly what this project's own
+            rolling z-score code does<!-- DESK:END --> (next section).
           </p>
         </div>
       </div>
@@ -791,8 +791,8 @@
       gap between dividing by \(n\) and by \(n-1\) is largest exactly when
       \(n\) is small — a 5-observation sample divided by \(n=5\) versus
       \(n-1=4\) is a 25% difference in variance, versus a rounding error at
-      \(n=1000\). Backtests with thin trade counts (this repo's own
-      OOS-trade-count discipline exists partly for a related reason) are
+      \(n=1000\). Backtests with thin trade counts<!-- DESK:START --> (this repo's own
+      OOS-trade-count discipline exists partly for a related reason)<!-- DESK:END --> are
       exactly where getting this wrong matters most.
     </p>
     <p>

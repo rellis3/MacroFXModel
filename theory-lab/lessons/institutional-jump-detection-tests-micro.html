@@ -171,7 +171,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Verified against this repo's actual code</h2>
       <div class="sl-callout green" style="background:var(--green-bg);border-color:var(--green-bd)">
@@ -179,7 +179,7 @@
         <p><code>volatilityExhaustion/jump_detect_lm.py</code> is not plain Lee-Mykland only. <code>local_sigma(r, K)</code> matches Section 3's σ̂ᵢ exactly (K=270 for 5-min bars); <code>lm_threshold(n, alpha)</code> matches Section 4's Gumbel critical value exactly (α=1%); <code>periodicity(r, tod, n_is)</code> is the BCL piece — a robust per-30-minute-bucket factor, fitted on the leading 60% of history only and applied unchanged out-of-sample. Its own self-test: on synthetic pure diffusion with an injected 3× busy window, the RAW detector flags 1,020 false jumps; deseasonalized, 3.</p>
       </div>
       <p class="sl-p">It's registered as a Tier-1 brick, consumed by two downstream modules (<code>jump_regime_book.py</code>, <code>jump_exhaustion.py</code>). The honest finding from that work: detected jumps describe volatility REGIME, not direction — near-independent day to day (unlike volatility, which clusters hard), no persistent directional skew, no shift in next-day continuation odds. What they DO carry: a genuine signal that jump-driven volatility decays faster afterward. Measurement only — no trade, no cost, no signal claimed anywhere in that work.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
@@ -189,7 +189,7 @@
           <span class="sl-ctag red">Frequency mismatch</span>
           <ul>
             <li>K, n, and the critical value are all tied to a specific bar size</li>
-            <li>This repo's K=270 is calibrated for 5-min bars specifically</li>
+            <li><!-- DESK:START -->This repo's <!-- DESK:END -->K=270 is calibrated for 5-min bars specifically</li>
             <li>Swap to 1-min or 15-min bars without recalibrating and the test over- or under-flags for reasons that have nothing to do with real jumps</li>
           </ul>
         </div>
@@ -198,7 +198,9 @@
           <ul>
             <li>The statistic says "implausibly large relative to its local baseline" — full stop</li>
             <li>It can't distinguish a scheduled release from a thin-liquidity flash move</li>
+            <!-- DESK:START -->
             <li>This repo's own calendar check: only 1.15–1.31× more likely on Major-event days, ~24–34% of first jumps near a release — real, but leaves most flags unexplained by that check alone</li>
+            <!-- DESK:END -->
           </ul>
         </div>
       </div>
@@ -255,14 +257,14 @@
         <div class="sl-quiz-explain">Each return is divided by its own time bucket's typical size relative to the session average — deseasonalizing volatility before the Lee-Mykland statistic is ever computed.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>This repo's detector flags a return as a jump on a day that also carries a scheduled Major release. Does the statistic itself prove the release caused it?</h4>
         <button class="sl-quiz-opt" data-correct="true">No — the statistic only shows the return was implausible relative to its local baseline, not why</button>
         <button class="sl-quiz-opt">Yes — any jump on an event day is caused by that event by definition</button>
         <button class="sl-quiz-opt">Yes, because jump days are 100% explained by the calendar in this repo's own validation</button>
         <div class="sl-quiz-explain">The repo's own check shows only a statistical tendency (1.15–1.31× more likely on event days, ~24–34% of first jumps near a release) — real, but leaving most flags without a calendar-event explanation. Attribution needs external context the statistic can't supply.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -273,7 +275,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The day's maximum |Lᵢ| is Gumbel-distributed under the null, not normal — the critical value is sample-size-dependent, not a flat "4 sigma."</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A plain test, run against the intraday U-shape unadjusted, over-flags the open/close and under-flags midday — in both directions, from one blended yardstick.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Boudt-Croux-Laurent fixes this by dividing each return by its own time-of-day's typical size BEFORE the jump test runs.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo's own detector implements both pieces honestly, and is consumed by two downstream measurement modules — a rare exception to "concept only" in this curriculum.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo's own detector implements both pieces honestly, and is consumed by two downstream measurement modules — a rare exception to "concept only" in this curriculum.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Neither test explains WHY a flagged return jumped, and neither transfers across sampling frequencies without recalibrating from scratch.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk: Lee &amp; Mykland (2008) timestamp jumps, so they can be tied to announcements, cleaned out of vol inputs and counted for jump models.</p></div>
       </div>

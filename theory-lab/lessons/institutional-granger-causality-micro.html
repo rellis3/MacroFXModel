@@ -46,7 +46,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">👀</div><div><h4>The chart-reading trap</h4><p>"The spread always seems to dip before FX sells off" is a real observation about one dataset — and exactly the kind of pattern easy to convince yourself of after the fact.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Granger's actual proposal (1969)</h4><p>Build the best forecast of Y from Y's own past alone. Build a second forecast that also sees X's past. Test — formally — whether the second one is significantly better.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🐓</div><div><h4>The name is misleading</h4><p>"Granger-causes" ≠ "causes." Roosters crowing before sunrise would pass this test — the Earth's rotation drives both, and the test can't see that.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🔭</div><div><h4>Already previewed, not yet built</h4><p>This repo's own ARIMA &amp; VAR lesson introduces this test in one paragraph and flags "no such fit has been run yet." This deck is that paragraph, built all the way out.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔭</div><div><h4>Already previewed, not yet built</h4><p>The ARIMA &amp; VAR lesson introduces this test in one paragraph and flags "no such fit has been run yet." This deck is that paragraph, built all the way out.</p></div></div>
       </div>
       <div class="sl-quote">Treat every result below as "X's history has genuine forecasting content for Y" — never as "X causes Y." That distinction isn't pedantic. It's the entire content of what this test can and can't tell you.</div>
     </section>
@@ -220,7 +220,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually in this repo</h2>
       <div class="sl-icard-grid">
@@ -229,7 +229,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">🔍</div><div><h4>Same convention, real code</h4><p><code>leadLagCorrelation</code>'s own comment: "lag &gt; 0 means the driver LEADS the target" — exactly the convention this deck's cross-correlation chart uses.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>One real regression, different job</h4><p><code>js/compass.js</code>'s <code>compositeSpreadZSeries</code> runs a genuine rolling-regression divergence residual — its own comment calls it "the real lead-lag metric" — but it's a single-equation residual, not a restricted-vs-unrestricted Granger comparison.</p></div></div>
       </div>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
@@ -292,14 +292,14 @@
         <div class="sl-quiz-explain">The test cannot distinguish "A's history genuinely helps forecast B" from "an unobserved third factor drives both, hitting A's feed first." The shared shock does all the work here.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="6">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="6">
         <div class="sl-quiz-num">Question 6</div>
         <h4>Does this repo have a real Granger causality F-test running anywhere?</h4>
         <button class="sl-quiz-opt" data-correct="true">No — but genuine cross-correlation-at-lags tools exist in several files, which don't control for the target's own autocorrelation</button>
         <button class="sl-quiz-opt">Yes, a full restricted-vs-unrestricted VAR system runs in production</button>
         <button class="sl-quiz-opt">No lead-lag code of any kind exists in this repo</button>
         <div class="sl-quiz-explain"><code>js/nasdaqResearch.js</code>, <code>js/creditLeadLagEngine.js</code>, and <code>js/yieldCouplingCore.js</code> all run real, live cross-correlation-at-various-lags studies — the simpler, non-regression cousin of this lesson's test, not the F-test itself.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">

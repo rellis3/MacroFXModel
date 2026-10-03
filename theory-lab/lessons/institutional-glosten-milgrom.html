@@ -17,7 +17,7 @@
   <h1 class="tl-title">Glosten-Milgrom: Sequential Bayesian Market Making</h1>
   <p class="tl-dek">A market maker facing one anonymous order at a time never learns who it came from — only whether it was a buy or a sell. That single bit of information is enough, applied through nothing but Bayes' rule, to derive a bid-ask spread from scratch, and to explain why quotes tighten as a session's trades accumulate and widen again right before the next scheduled surprise.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — confirmed absent from this codebase; a different Bayesian scoring method exists, but for signals, not quotes</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — confirmed absent from this codebase; a different Bayesian scoring method exists, but for signals, not quotes<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure: Price Impact &amp; the Bid-Ask Spread</a> (Kyle's Lambda), <a href="bayesian-inference.html">Bayesian Inference &amp; Updating</a></span>
   </div>
@@ -735,8 +735,8 @@
     <li>Lawrence R. Glosten &amp; Paul R. Milgrom, "Bid, Ask and Transaction Prices in a Specialist Market with Heterogeneously Informed Traders," <em>Journal of Financial Economics</em>, 14(1), 1985 — the original derivation this lesson works through in full, including the sequential-updating extension.</li>
     <li>Albert S. "Pete" Kyle, "Continuous Auctions and Insider Trading," <em>Econometrica</em>, 1985 — the companion 1985 result covered in the prerequisite lesson, contrasted throughout this one.</li>
     <li>Maureen O'Hara, <em>Market Microstructure Theory</em>, Blackwell, 1995 — the standard textbook synthesis of both this model and the wider adverse-selection literature it founded.</li>
-    <li><code>theory-lab/lessons/bayesian-inference.html</code> in this repo — the Bayes'-rule machinery this lesson's derivation applies directly, notation and all.</li>
-    <li><code>theory-lab/lessons/market-microstructure.html</code> in this repo — the single-shot, fixed-prior version of this exact model, presented alongside Kyle's Lambda.</li>
+    <li><code>theory-lab/lessons/bayesian-inference.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the Bayes'-rule machinery this lesson's derivation applies directly, notation and all.</li>
+    <li><code>theory-lab/lessons/market-microstructure.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the single-shot, fixed-prior version of this exact model, presented alongside Kyle's Lambda.</li>
   </ul>
   </details>
 

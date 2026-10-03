@@ -17,7 +17,7 @@
   <h1 class="tl-title">HAR-RV &amp; Realized Volatility Forecasting</h1>
   <p class="tl-dek">A single squared daily return is one noisy sample of that day's true variance. Realized variance — the sum of hundreds of intraday squared returns — is not. Corsi's HAR-RV model shows that forecasting it well takes nothing more exotic than an ordinary regression on three horizons: yesterday, the past week, and the past month.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — genuinely implemented and running live in this repo daily (as a challenger forecast), not yet the primary σ for any asset class — see Section 06</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — genuinely implemented and running live in this repo daily (as a challenger forecast), not yet the primary σ for any asset class — see Section 06<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> and <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang: OHLC Volatility Estimators</a></span>
   </div>
@@ -35,7 +35,9 @@
       <li><strong>HAR-RV</strong> (Corsi, 2009): \(RV_{t+1} = \beta_0 + \beta_d RV_t + \beta_w RV_t^{(w)} + \beta_m RV_t^{(m)} + \epsilon_{t+1}\) — RV's own average over the past day, week, and month, fit by plain OLS. No fractional-differencing machinery required.</li>
       <li>Corsi's insight: traders operating at different horizons (daily, weekly, monthly) each contribute their own persistence to the aggregate market, and layering three ordinary linear regressors — one per horizon — approximates the market's genuine long-memory behavior almost as well as an actual fractionally-integrated model.</li>
       <li>Contrast with the previous lesson: GARCH(1,1) forecasts variance from <em>one</em> noisy observation (yesterday's squared return) fed through a recursive filter; HAR-RV forecasts it directly from realized variance itself — a well-measured quantity, used as both target and regressor. When genuine intraday data exists, that's usually a meaningfully better forecast — not because the model is fancier (it's simpler: OLS versus GARCH's nonlinear MLE), but because the input is measured better.</li>
+      <!-- DESK:START -->
       <li>This repo genuinely runs Corsi's exact daily/weekly/monthly OLS regression, live, every day, for every tracked instrument — as a shadow/challenger forecast that is actively benchmarked against the incumbent estimators, not (yet) the estimator that sets any asset class's live trading bands. The full finding, with file and function names, is in Section 06.</li>
+      <!-- DESK:END -->
       <li>HAR-RV is not a free upgrade over GARCH or a range-based estimator: it needs a genuine intraday-derived RV series to be the model the literature actually validated. Feed it a single-observation daily proxy instead and you've quietly rebuilt something else.</li>
       <li><strong>How it reached trading:</strong> Corsi (published 2009) replaced long-memory machinery with three OLS terms, and HAR-RV became the workhorse benchmark for forecasting realised vol against implied.</li>
     </ul>
@@ -342,10 +344,10 @@
       partial decay, exactly the pattern the GARCH lesson's worked example
       traced with a single event. The baseline \(\sigma\approx0.60\%\)
       annualizes to about 9.5%; the cluster's peak \(\sigma=1.20\%\)
-      annualizes to about 19% — the same order-of-magnitude gap this
+      annualizes to about 19%<!-- DESK:START --> — the same order-of-magnitude gap this
       project's own research (Section 06) found between an understated
       range-based proxy and a true intraday-measured realized volatility for
-      an equity index.
+      an equity index<!-- DESK:END -->.
     </p>
     <div class="tl-symbols"><table>
       <tr><td>1</td><td>σ = 0.60% → RV = 0.3600</td></tr>
@@ -480,7 +482,7 @@
     <button type="button" id="har-scratch-reset" class="tl-scratch-reset-btn">Reset to worked-example numbers</button>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <!-- DESK:START --><div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Is HAR-RV actually built here? Yes — as a live daily challenger, not (yet) the primary</h2>
   <p>
     Before writing this lesson's status badge, this repo's actual volatility
@@ -548,7 +550,7 @@
     structurally read low right as a fresh regime shift is still under way —
     the same lag-versus-reactivity tradeoff the GARCH lesson raised about
     flat trailing windows, one level up the sophistication ladder.
-  </p>
+  </p><!-- DESK:END -->
 
   <div class="tl-chart">
     <div class="tl-chart-label">The three horizon components feeding the worked example's forecast</div>
@@ -599,26 +601,26 @@
     strongly collinear (a calm month rarely contains a wild week, and vice
     versa), naive OLS on a short or ill-conditioned window can produce
     unstable individual coefficients even when the combined forecast is
-    fine — this project's own <code>harSigmaSeries()</code> (in
+    fine<!-- DESK:START --> — this project's own <code>harSigmaSeries()</code> (in
     <code>js/volEstimatorAB.js</code>) adds a small relative Tikhonov ridge
     specifically to keep that normal-equations solve well-behaved, a detail
     worth knowing if you ever implement this yourself rather than assuming
-    plain OLS is the whole story.
+    plain OLS is the whole story<!-- DESK:END -->.
   </p>
   <p>
     HAR-RV also composes naturally with other information. A well-known
     extension, HAR-IV, adds a forward-looking implied-volatility regressor
     (from a listed vol index like the VIX or GVZ) alongside the three
     realized-variance terms — implied vol embeds a variance risk premium and
-    genuinely helps forecast realized vol on top of HAR's own terms, an idea
+    genuinely helps forecast realized vol on top of HAR's own terms<!-- DESK:START -->, an idea
     this repo's own <code>harIvPred()</code> (also in
     <code>volForecastBench.js</code>) implements directly for gold and equity
-    indices. And rather than picking a single winning estimator outright,
+    indices<!-- DESK:END -->. And rather than picking a single winning estimator outright,
     it's common to blend forecasts — a fixed 50/50 average of HAR-RV and
     GARCH, or an OLS-learned optimal blend (Granger-Ramanathan regression of
-    realized vol on both forecasts, using only past data) — exactly the
+    realized vol on both forecasts, using only past data)<!-- DESK:START --> — exactly the
     "Combo-5050" and "Combo-optimal" entries this repo's own horse race
-    scores alongside the individual models.
+    scores alongside the individual models<!-- DESK:END -->.
   </p>
 
   <div class="tl-box pitfall">
@@ -634,9 +636,9 @@
       Yang-Zhang — the previous lesson) or a recursive model like GARCH
       instead. Running the exact same three-regressor HAR regression on a
       single-observation daily proxy isn't a free upgrade; it's a different,
-      untested estimator that happens to share Corsi's equation, and this
+      untested estimator that happens to share Corsi's equation<!-- DESK:START -->, and this
       repo's own <code>indexRvHar.js</code> exists specifically because that
-      substitution understated index volatility by roughly half.
+      substitution understated index volatility by roughly half<!-- DESK:END -->.
     </p>
     <p>
       <strong>The three horizon regressors are strongly collinear.</strong>
@@ -645,27 +647,27 @@
       three "independent" features normally would. This doesn't necessarily
       hurt the combined forecast much, but it can make the individual
       \(\beta_d,\beta_w,\beta_m\) estimates unstable or counter-intuitive on
-      a short or noisy fitting window; a small ridge penalty (as this
-      project's own implementation uses) is a standard, pragmatic fix.
+      a short or noisy fitting window; a small ridge penalty<!-- DESK:START --> (as this
+      project's own implementation uses)<!-- DESK:END --> is a standard, pragmatic fix.
     </p>
     <p>
       <strong>A smoothed average forecast structurally lags a sharp regime
       change.</strong> Because HAR-RV blends three different lookback
       windows, it will, by construction, read <em>below</em> a simpler
       current-only estimator right as volatility is spiking, and can read
-      <em>below</em> reality for a while as an elevated regime persists — the
+      <em>below</em> reality for a while as an elevated regime persists<!-- DESK:START --> — the
       documented ~15% gap against a plain close-to-close estimate in this
       project's own gold research (Section 06) is exactly that effect, not a
-      bug. A smoothing model buys stability by trading away some
+      bug<!-- DESK:END -->. A smoothing model buys stability by trading away some
       day-one reactivity; know which one your use case actually needs.
     </p>
     <p>
       <strong>"HAR-RV beats GARCH" is not a universal law.</strong> It's an
       empirical finding that holds when genuine high-frequency data is
-      available and well-behaved — this project's own horse race exists
+      available and well-behaved<!-- DESK:START --> — this project's own horse race exists
       precisely because that ranking is an empirical question to re-check per
       instrument and asset class, not an assumption to bake in from the math
-      alone. A strong general result about one dataset or asset class is not
+      alone<!-- DESK:END -->. A strong general result about one dataset or asset class is not
       automatically a strong result everywhere else.
     </p>
   </div>
@@ -677,8 +679,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>HAR-RV is literally an OLS regression on three engineered features</strong> — today's RV, and its 5-day and 22-day rolling averages — fit the same way any linear regression is fit, nothing volatility-specific about the estimation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Corsi's insight:</strong> heterogeneous market participants operating at different horizons each contribute their own persistence, and layering three simple linear terms approximates genuine long-memory behavior without fractional-differencing machinery.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>HAR-RV beats GARCH by having a better-measured input, not a fancier model.</strong> GARCH's nonlinear recursive filter is mathematically the more intricate of the two; HAR-RV's edge, where it has one, is entirely in what it's allowed to see.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo genuinely implements Corsi's exact model and runs it live, daily, for every instrument</strong> — as a benchmarked shadow forecast (<code>f.har</code>) and a genuine-intraday variant for indices, not (yet) as any asset class's primary live σ.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>HAR-RV is not a free upgrade without real intraday data.</strong> Fed a single-observation daily proxy instead of true RV, it quietly stops being the model the literature validated — this project's own code documents exactly that failure mode for index volatility.</span></div>
+    <!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>HAR-RV is not a free upgrade without real intraday data.</strong> Fed a single-observation daily proxy instead of true RV, it quietly stops being the model the literature validated<!-- DESK:START --> — this project's own code documents exactly that failure mode for index volatility<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the realised-vol forecast set against implied.</strong> Corsi's HAR-RV (2009) is the workhorse benchmark in realised-volatility forecasting, used for volatility targeting, risk limits and judging whether implied vol is rich or cheap.</span></div>
   </div>
 
@@ -760,9 +764,9 @@
       running the same three-regressor equation on a single-observation
       daily proxy (like a squared close-to-close return, or naively treating
       a range-based estimator's output as RV) is not the model the
-      literature validated — this project's own code documents exactly that
+      literature validated<!-- DESK:START --> — this project's own code documents exactly that
       failure mode understating index volatility by roughly half before a
-      genuine-intraday-RV variant was built to fix it.
+      genuine-intraday-RV variant was built to fix it<!-- DESK:END -->.
     </div>
   </details>
 
@@ -772,7 +776,7 @@
     <li>Fulvio Corsi, <em>"A Simple Approximate Long-Memory Model of Realized Volatility,"</em> Journal of Financial Econometrics, 7(2), 2009 — the original HAR-RV paper this entire lesson is built on.</li>
     <li>Ulrich A. Müller, Michel M. Dacorogna, Rakhal D. Davé, Richard B. Olsen, Olivier V. Pictet, and Jacob E. von Weizsäcker, <em>"Volatilities of Different Time Resolutions — Analyzing the Dynamics of Market Components,"</em> Journal of Empirical Finance, 4(2-3), 1997 — the heterogeneous-market-hypothesis literature Corsi's model builds on.</li>
     <li>Torben G. Andersen and Tim Bollerslev, <em>"Answering the Skeptics: Yes, Standard Volatility Models Do Provide Accurate Forecasts,"</em> International Economic Review, 39(4), 1998 — an early foundational paper on realized volatility as a superior ex-post variance measure.</li>
-    <li>Andrew J. Patton, <em>"Volatility Forecast Comparison Using Imperfect Volatility Proxies,"</em> Journal of Econometrics, 160(1), 2011 — the QLIKE loss function this repo's own horse race (Section 06) uses to rank estimators out-of-sample.</li>
+    <li>Andrew J. Patton, <em>"Volatility Forecast Comparison Using Imperfect Volatility Proxies,"</em> Journal of Econometrics, 160(1), 2011 — the QLIKE loss function<!-- DESK:START --> this repo's own horse race (Section 06) uses to rank estimators out-of-sample<!-- DESK:END -->.</li>
   </ul>
   </details>
 

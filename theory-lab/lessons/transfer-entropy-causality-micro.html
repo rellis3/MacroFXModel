@@ -280,12 +280,14 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">Where this sits in the literature — and in this repo</h2>
+      <h2 class="sl-h2">Where this sits in the literature<!-- DESK:START --> — and in this repo<!-- DESK:END --></h2>
       <p class="sl-p">Thomas Schreiber introduced transfer entropy (2000) explicitly as a model-free alternative to Granger causality for nonlinear systems. Barnett, Barrett &amp; Seth (2009) then proved the two are mathematically equivalent, up to a constant, for jointly Gaussian variables under a linear model — confirming transfer entropy is a strict generalization, adding real detection power only once the true relationship stops being linear. In neuroscience, it's a standard tool for directional flow between EEG or physiological channels, where nonlinear coupling is the norm rather than the exception.</p>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Factual grounding — verified against this repo's current source</div>
         <p>The full lesson tags itself "CONCEPT — not built or tested anywhere in this repo," and that check still holds: a repo-wide search finds no transfer-entropy code and no Granger-causality F-test or multi-series VAR fit anywhere in this codebase — confirming the same gap the ARIMA &amp; VAR visual guide already flagged for Granger causality and VAR. One thing worth not confusing: <code>js/goldMinerArbEngine.js</code> and <code>js/hedgeSignalV2Engine.js</code> do implement <strong>Engle-Granger cointegration</strong> tests — a different test, named after the same economist, that checks whether two non-stationary series share a long-run equilibrium. It is not the lagged-forecast-improvement test this lesson and the ARIMA &amp; VAR guide describe. Nothing here was stale; both claims check out as still accurate.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">

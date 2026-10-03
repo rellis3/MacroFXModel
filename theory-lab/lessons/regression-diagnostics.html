@@ -17,7 +17,7 @@
   <h1 class="tl-title">Regression Diagnostics: Durbin-Watson, Breusch-Pagan &amp; Jarque-Bera</h1>
   <p class="tl-dek">A regression's p-value is not a fact about the world — it's a fact about a model of the world, and that model comes with fine print. This lesson derives, from scratch, the three checks that verify the fine print actually holds before you trust the headline number: is the error serially correlated (Durbin-Watson), does its variance change across the sample (Breusch-Pagan), and does it look enough like a bell curve for small-sample inference to be valid (Jarque-Bera).</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — formalizes a validation discipline used throughout this project</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — formalizes a validation discipline used throughout this project<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer</span>
   </div>
@@ -34,10 +34,12 @@
   <div class="tl-tldr-label">TL;DR</div>
   <ul>
     <li>A regression's p-value is only valid if its residuals are non-autocorrelated (Durbin-Watson), homoskedastic (Breusch-Pagan), and — in small samples — approximately normal (Jarque-Bera); failing one doesn't make \(\hat\beta\) wrong, it makes the classical standard error wrong.</li>
+    <!-- DESK:START -->
     <li>This project's own backtest-build discipline already states this as a rule: <em>"Add residual diagnostics to any regression-based signal: Durbin-Watson (autocorrelation), Jarque-Bera (residual normality), Breusch-Pagan (heteroskedasticity) before trusting its p-value/coefficient. A statistically 'significant' coefficient on a heteroskedastic fit has optimistic standard errors — check before leaning on it."</em> This lesson derives why.</li>
+    <!-- DESK:END -->
     <li>Durbin-Watson compares squared consecutive-residual changes to total residual variance; \(DW \approx 2\) means no lag-1 autocorrelation, toward 0 means positive autocorrelation, toward 4 means negative.</li>
     <li>The worked scenario: an FX yield-spread regression shows a p-value of 0.01, but its residuals give \(DW = 0.6\) (implying \(\hat\rho \approx 0.7\)); with ~500 daily observations that corresponds to an effective sample size of only \(n_{eff}\approx 88\), and correcting for that (e.g. Newey-West/HAC standard errors) pushes the "significant" result back toward noise.</li>
-    <li>Passing all three diagnostics only certifies that the in-sample significance claim is honestly computed — it says nothing about out-of-sample durability (Lego Principle 5 still applies).</li>
+    <li>Passing all three diagnostics only certifies that the in-sample significance claim is honestly computed — it says nothing about out-of-sample durability<!-- DESK:START --> (Lego Principle 5 still applies)<!-- DESK:END -->.</li>
     <li>How it reached trading: White (1980), Hansen &amp; Hodrick (1980, on forward FX rates) and Newey &amp; West (1987) gave standard errors that survive clustered volatility and overlapping returns — now the default in return-predictability regressions.</li>
   </ul>
 </div>
@@ -85,7 +87,7 @@
     <p>Picture guessing someone's height from their shoe size — that guess itself doesn't care whether your data was collected cleanly. But saying "and I'm 99% sure about this guess" is a completely separate claim, and that confidence claim only holds up if your measurements followed certain rules — no repeated measurements of the same shoe pretending to be different people, no wildly different measuring tools for big feet versus small feet. The guess can be fine even when the confidence claim built on top of it is fake.</p>
   </div>
 
-  <p>
+  <!-- DESK:START --><p>
     This is precisely the gap this project's own build discipline calls out by
     name. Its backtest-build-discipline section states
     plainly: <em>"Add residual diagnostics to any regression-based signal:
@@ -98,7 +100,7 @@
     failure specifically inflates apparent significance rather than just
     "being bad in general," and what the fix looks like once a test flags a
     problem.
-  </p>
+  </p><!-- DESK:END -->
 
   <div class="tl-box intuition">
     <div class="tl-icon-badge blue">💡</div>
@@ -400,8 +402,8 @@
   </div>
 
   <p>
-    Both ingredient statistics are already built, tested, and in production
-    in this project — a sample-skewness function
+    Both ingredient statistics are standard<!-- DESK:START -->, and already built, tested, and in production
+    in this project<!-- DESK:END --> — a sample-skewness function
     (Fisher-Pearson sample skewness; positive means a longer right tail,
     negative a fatter <em>left</em> tail — the direction that matters most
     for a strategy's downside) and an excess-kurtosis function (kurtosis
@@ -409,10 +411,10 @@
     means fatter-than-normal tails). Jarque-Bera is nothing more than those
     same two quantities, computed on a regression's <em>residuals</em>
     specifically, squared, weighted, and summed into one number with a known
-    reference distribution to test against — the identical building blocks
+    reference distribution to test against<!-- DESK:START --> — the identical building blocks
     this project already uses to describe a strategy's raw return distribution
     repurposed to describe a regression's leftover error instead of a
-    strategy's P&amp;L.
+    strategy's P&amp;L<!-- DESK:END -->.
   </p>
   <p>
     <strong>Why does this matter more in small samples?</strong> The classical
@@ -425,10 +427,10 @@
     observations. With enough data, non-normal residuals stop mattering much
     for inference on \(\hat\beta\), because the averaging in the CLT smooths
     the irregularity away. With a small sample — few, non-overlapping trading
-    periods being the common case in this project, since resampling to a
+    periods<!-- DESK:START --> being the common case in this project, since resampling to a
     signal's true release frequency, per this project's own backtest-build-discipline
     guidance, often
-    leaves far fewer independent rows than the raw daily bar count suggests —
+    leaves far fewer independent rows than the raw daily bar count suggests<!-- DESK:END --> —
     that averaging hasn't had enough terms to do its smoothing work yet, so a
     skewed or fat-tailed residual distribution translates more directly into
     a distorted t-statistic and an unreliable p-value. Jarque-Bera is the
@@ -515,8 +517,8 @@
       without a second look.
     </p>
     <p>
-      Before trusting it, the researcher checks the residual diagnostics, as
-      the house rule requires. Durbin-Watson comes back at \(DW = 0.6\) — far
+      Before trusting it, the researcher checks the residual diagnostics<!-- DESK:START -->, as
+      the house rule requires<!-- DESK:END -->. Durbin-Watson comes back at \(DW = 0.6\) — far
       below the "no autocorrelation" benchmark of 2, squarely in
       strongly-positive-autocorrelation territory. Using the approximation
       \(DW \approx 2(1-\hat\rho)\), that implies \(\hat\rho \approx 0.7\): a
@@ -547,14 +549,14 @@
       p-value implied was manufactured by the autocorrelation, not earned by
       the data.
     </p>
-    <p>
+    <!-- DESK:START --><p>
       This is exactly the trap this project's own "add residual
       diagnostics... before trusting its p-value/coefficient" rule exists to
       prevent — not as an abstract statistical nicety, but as the specific
       mechanism by which a signal with a genuinely unremarkable relationship
       can produce an impressive-looking p-value purely from serially sticky
       errors, and get mistaken for a discovery.
-    </p>
+    </p><!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
@@ -595,10 +597,10 @@
     distributed, non-autocorrelated residuals in-sample and still fail
     completely out-of-sample, because the diagnostics check the <em>validity
     of the inference procedure</em>, not the <em>existence of a durable
-    relationship</em>. Both checks matter, and they check different things —
+    relationship</em>. Both checks matter, and they check different things<!-- DESK:START --> —
     consistent with this repo's own discipline that an in-sample number,
     however carefully diagnosed, is not evidence on its own (Lego Principle
-    5).
+    5)<!-- DESK:END -->.
   </p>
 
   <div class="tl-box pitfall">
@@ -656,8 +658,8 @@
       estimated on. A clean pass confirms the in-sample p-value is honestly
       computed; it is not, and was never meant to be, evidence that the
       relationship generalizes out of sample. Residual diagnostics and
-      out-of-sample validation answer different questions and this repo
-      requires both, not one in place of the other.
+      out-of-sample validation answer different questions<!-- DESK:START --> and this repo
+      requires both, not one in place of the other<!-- DESK:END -->.
     </p>
   </div>
 
@@ -670,7 +672,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Jarque-Bera checks normality, and matters most in small samples.</strong> With enough data the CLT bails you out regardless of residual shape.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: DW=0.6 implies ρ̂≈0.7</strong>, shrinking an effective sample of ~500 days to ~88 — enough to push a 0.01 p-value back toward noise once corrected.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A failure doesn't kill the coefficient — it means fix the inference.</strong> Recompute with HAC/Newey-West or robust standard errors rather than discarding \(\hat\beta\).</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing all three is not out-of-sample evidence.</strong> Clean diagnostics only certify the in-sample significance claim is honestly computed — Lego Principle 5 still applies.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Passing all three is not out-of-sample evidence.</strong> Clean diagnostics only certify the in-sample significance claim is honestly computed<!-- DESK:START --> — Lego Principle 5 still applies<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: robust errors for return regressions.</strong> Overlapping horizons and clustered volatility inflate t-statistics; White, Hansen–Hodrick (forward FX) and Newey–West gave the corrections finance now uses by default.</span></div>
   </div>
 
