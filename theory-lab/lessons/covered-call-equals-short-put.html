@@ -354,11 +354,11 @@
     has tested the gamma part of it.
   </p>
   <div class="tl-verdict validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
-    <span class="tl-verdict-tag">Range only</span>
+    <span class="tl-verdict-tag">Desk test: held up (range only)</span>
     <span><strong>Tested here (gex-range):</strong> the <strong>range</strong> half is real <strong>on the Nasdaq only</strong>. 793 days of NQ: next-day realised range against a same-trailing-vol Brownian baseline is +0.176 higher on short-gamma days (p 0.0008), +0.315 matched on trailing vol; positive in 4 of 4 specifications and 6 of 6 usable years. The reliable state is "long gamma is quiet" (range ratio ~0.85 versus ~1.02 on short-gamma days). It does <strong>not</strong> generalise to FX.</span>
   </div>
   <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
-    <span class="tl-verdict-tag">Falsified</span>
+    <span class="tl-verdict-tag">Desk test: no direction found</span>
     <span><strong>Direction:</strong> the gamma sign carries no directional content, and the adjacent "walls pull price toward them" direction was falsified at 48.8% out-of-sample against a 49.9% placebo. Long gamma near a big call strike can mean a quieter tape; it does not tell you which way.</span>
   </div>
 
@@ -395,15 +395,15 @@
 
   <h3>What the desk's own record says</h3>
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Covered calls themselves:</strong> the desk's evidence ledger holds no entry on overwriting flow, and nothing in the live code models it. Whether call overwriting measurably damps the index is not tested here.</span>
   </div>
   <div class="tl-verdict context">
-    <span class="tl-verdict-tag">Context</span>
+    <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>Put/call tilt:</strong> the desk reports whether open interest is put-heavy or call-heavy as a positioning tilt only, and explicitly declines to infer a direction from it, because open interest does not record who opened the contract (a sold put is bullish, a sold call is not). That inference has never been scored.</span>
   </div>
   <div class="tl-verdict null">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>Pinning to max pain (oi-max-pain):</strong> "price pins to options max pain into expiry" was tested on 2026-09-10 and came back null; the publish-lag timing risk, DTE, gamma, sign convention and spot basis were all checked. The honest weakness: the entry records <strong>no sample size and no interval</strong>, which makes it the weakest null in the ledger. Read it as "not shown", not "proven false". Max pain is a level to know about, not a magnet.</span>
   </div>
 

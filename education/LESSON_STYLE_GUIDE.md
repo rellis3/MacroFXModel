@@ -391,6 +391,14 @@ Mark the one link that is the lesson's own concept with `.concept` (purple, 2px)
 "★ This lesson · …" label: `<div class="tl-chain-link concept"><b>★ This lesson · VaR</b>…</div>`
 (slides: `.sl-chain-link.concept`). No inline styles on chain links.
 
+**Framing (non-negotiable).** A verdict is about *this desk's test of a trading
+claim*, never about the theory the lesson teaches. Tag text says what was tested:
+"Desk test: held up", "Desk test: nothing found", "Desk data: base rate",
+"Desk test: too small to tell", "Not tested here". Every "nothing found" / "too small"
+box carries the scope line (added by `verdicts.js`): one desk's test, on its own data,
+instruments and period; not a verdict on the theory; the test itself may be what is off.
+Write takeaways the same way ("the desk's test found nothing"), never "the theory is wrong".
+
 `.tl-verdict` variants match `js/deskEvidence.js`: `validated` (green), `null`
 (red), `context` (blue), `underpowered` / `untested` (amber). Quote the ledger
 entry's own numbers; never round a null up. Slide decks use `.sl-chain` /

@@ -151,6 +151,9 @@
   (function(){
     var note = document.querySelector('.sl-fullnote');
     if (!note || !window.matchMedia || !window.matchMedia('(max-width: 700px)').matches) return;
+    // The top bar's title wraps to three lines on a phone; the suffix adds nothing there.
+    var tt = document.querySelector('.sl-toptitle');
+    if (tt) tt.textContent = tt.textContent.replace(/\s*[—–-]\s*Visual Guide\s*$/i, '');
     var link = note.querySelector('a');
     var done = false;
     function collapse(){

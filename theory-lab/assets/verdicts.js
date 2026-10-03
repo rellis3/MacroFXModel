@@ -14,6 +14,24 @@
  * Offline / file:// / any fetch failure leaves the authored box exactly as written.
  */
 (function () {
+  // Labels say what was tested, not what is true. A null here is one desk's test, on its
+  // own data, instruments and period, finding nothing usable; it is not a verdict on the
+  // theory the lesson teaches, and the test itself can be what is wrong.
+  var LABEL = { validated: 'Desk test: held up', null: 'Desk test: nothing found', context: 'Desk data: base rate', underpowered: 'Desk test: too small to tell' };
+  var SCOPE = 'What this means: this desk tested the trading claim on its own data, instruments and period and found nothing usable. That is not a verdict on the theory above, and the test itself may be what is off.';
+  var VARIANTS0 = ['null', 'underpowered'];
+  // Every "nothing found" box, live or authored, carries the same scope line.
+  function addScope(box) {
+    if (box.querySelector('.tl-verdict-scope')) return;
+    var tag = box.querySelector('.tl-verdict-tag, .sl-stamp-tag');
+    var body = tag ? tag.nextElementSibling : null;
+    if (!body) return;
+    var p = document.createElement('div'); p.className = 'tl-verdict-scope'; p.textContent = SCOPE;
+    body.appendChild(p);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.tl-verdict, .sl-stamp'), function (b) {
+    if (VARIANTS0.some(function (v) { return b.classList.contains(v); })) addScope(b);
+  });
   var boxes = Array.prototype.slice.call(document.querySelectorAll('[data-evidence]'));
   if (!boxes.length || !window.fetch) return;
   var ids = boxes.map(function (b) { return b.getAttribute('data-evidence'); })
@@ -21,7 +39,6 @@
   var me = document.currentScript || document.querySelector('script[src*="verdicts.js"]');
   var url = new URL('../desk-verdicts.json', me ? me.src : location.href);
   url.searchParams.set('ids', ids.join(','));
-  var LABEL = { validated: 'Validated', null: 'Null', context: 'Context', underpowered: 'Underpowered' };
   var VARIANTS = ['validated', 'null', 'context', 'underpowered', 'untested'];
 
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; }
@@ -41,12 +58,13 @@
         box.classList.add(e.verdict);
         var tag = box.querySelector('.' + pre + '-tag');
         if (tag) tag.textContent = LABEL[e.verdict] || e.verdict;
+        var oldScope = box.querySelector('.tl-verdict-scope'); if (oldScope) oldScope.remove();
         var body = tag ? tag.nextElementSibling : null;
         if (!body) { body = el('span'); box.appendChild(body); }
         if (authored !== e.verdict || (wroteAgainst && e.date > wroteAgainst)) {
           var n = el('div', pre + '-updated');
           n.textContent = (authored !== e.verdict
-            ? 'The desk re-tested this and the verdict is now ' + (LABEL[e.verdict] || e.verdict).toUpperCase()
+            ? 'The desk re-tested this: ' + (LABEL[e.verdict] || e.verdict).toLowerCase()
             : 'The desk re-ran this study') + ' (ledger dated ' + e.date + '). The text below was written against the earlier result.';
           body.insertBefore(n, body.firstChild);
         }
@@ -55,6 +73,7 @@
         d.appendChild(el('p', null, 'Claim tested: ' + e.claim));
         d.appendChild(el('p', null, 'Result: ' + e.result));
         body.appendChild(d);
+        if (e.verdict === 'null' || e.verdict === 'underpowered') addScope(box);
         box.setAttribute('data-evidence-live', '1');
       });
     })

@@ -521,14 +521,14 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
   </p>
 
   <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
-    <span class="tl-verdict-tag">Null</span>
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>oi-max-pain: price does not pin to max pain into expiry.</strong> Tested properly for the first time
     2026-09-10: <strong>null</strong>. The OI publish-lag timing risk was tested directly and survives; DTE, gamma, sign
     convention and spot basis were all verified. Max pain is a level to know about, not a magnet.</span>
   </div>
 
   <div class="tl-verdict untested">
-    <span class="tl-verdict-tag">Untested</span>
+    <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Walls as range fences: not yet tested here (queued).</strong> The tempting read is that price stays
     between the put wall and the call wall while both stand. A fair test would compute the walls point-in-time from that
     morning's open interest, count how often the session stays inside them, and compare that with randomly placed bands
