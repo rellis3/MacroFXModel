@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A chemical engineer's ridge and a statistician's lasso</h2>
-      <p class="sl-sub">Arthur Hoerl &amp; Robert Kennard · 1970 · DuPont — Robert Tibshirani · 1996 · University of Toronto</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Hundreds of predictors, a few decades of returns</h2>
+      <p class="sl-sub">Shrinkage · into portfolios with Jorion (1986) and Ledoit &amp; Wolf (2003–04); the LASSO meets the factor zoo in the 2010s</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Ridge came from industry. Arthur Hoerl, in DuPont's statistics group, was optimizing chemical processes with many correlated variables. His "ridge analysis" of response surfaces (1959, applied to regression in 1962) gave the method its name, formalized with Robert Kennard in 1970.</p>
-        <p>Robert Tibshirani's LASSO (1996, Toronto) was inspired by Breiman's non-negative garrote. It drew little attention for years because it was awkward to compute. The LARS algorithm (2004) made the whole solution path cheap, and use of the LASSO took off.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Return data is short and noisy, and predictors keep multiplying. OLS on many correlated predictors fits noise: Goyal &amp; Welch (2008) found classic market-timing regressions mostly failed out of sample. Shrinkage trades a little bias for much less variance.</p>
+        <p>Jorion (1986) shrank expected returns, and Ledoit &amp; Wolf (2003–04) shrank covariance matrices, now standard in risk models. Once Cochrane (2011) named the "factor zoo", LASSO selection (Feng, Giglio &amp; Xiu, 2020) became a way to tame it.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> keep a many-predictor regression from fitting noise, by shrinking coefficients or zeroing the weak ones.</p>
       </div>
     </section>
 
@@ -385,7 +387,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>LASSO's penalty is the sum of absolute coefficients (L1) — it can drive some coefficients to exactly zero, performing automatic feature selection.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The difference is geometry: a circle's smooth edge rarely touches at an axis point; a diamond's corners sit exactly on the axes and catch the tangent point disproportionately often.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>λ is always chosen by cross-validation, never in-sample, and predictors must be standardized first — both penalties are scale-dependent.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Hoerl's ridge analysis at DuPont (1970 with Kennard) and Tibshirani's LASSO (1996), which only took off once LARS (2004) made it cheap to compute.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: shrunk means and covariances (Jorion 1986; Ledoit &amp; Wolf 2003–04), then the LASSO as a filter for the factor zoo in the 2010s.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

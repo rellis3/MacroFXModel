@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Can a rule barely better than guessing be made strong?</h2>
-      <p class="sl-sub">Michael Kearns &amp; Leslie Valiant (the question, late 1980s) · Robert Schapire &amp; Yoav Freund (AdaBoost, 1990s) · Jerome Friedman · 2001 · Stanford</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Squeezing the most signal out of a table of features</h2>
+      <p class="sl-sub">Boosted trees · in return prediction (Gu, Kelly &amp; Xiu, 2020) and, with XGBoost (2016) and LightGBM (2017), on quant desks</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>In the late 1980s Michael Kearns and Leslie Valiant asked whether a "weak" learner, barely better than chance, could always be boosted into a strong one. Robert Schapire proved it could (1990), and with Yoav Freund built AdaBoost, which won the 2003 Gödel Prize.</p>
-        <p>Jerome Friedman (Stanford, 2001) recast boosting as gradient descent, one tree at a time. Tianqi Chen's XGBoost (2016, with Carlos Guestrin) made it fast. Their paper counts 17 of 29 published Kaggle winning solutions in 2015 using it.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Quant data is mostly a table: a row per stock-day, many feature columns. Linear models miss its nonlinear structure, and neural nets are fiddly on it. Boosting adds small trees one at a time, each fixing what the ensemble still gets wrong.</p>
+        <p>It entered finance through credit scoring, then return prediction: Gu, Kelly &amp; Xiu (2020) found boosted trees among the models beating linear regressions on US stocks. XGBoost (2016) and LightGBM (2017) made it fast enough for everyday desk use.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> fit the strongest nonlinear forecast from a feature table, which is also the model most able to fit noise.</p>
       </div>
     </section>
 
@@ -302,7 +304,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Shrinkage ν trades more rounds for a more conservative step each round; too many rounds with too little shrinkage overfits, the same way an unconstrained single tree does.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>XGBoost, LightGBM, and CatBoost are the real production implementations — regularization, leaf-wise growth, and careful categorical handling on the same sequential-correction core.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Being the strongest general-purpose method on tabular data is a claim about the method, not about any one specific feature set — that gap is exactly where honest, leakage-free out-of-sample testing earns its keep.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: a 1980s theory question (can weak learners be boosted?), answered by Schapire and Freund, generalized by Friedman (2001), and popularized by XGBoost on Kaggle.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: credit scoring and return prediction (Gu, Kelly &amp; Xiu, 2020), made routine by XGBoost and LightGBM. It is the model that most needs a strict out-of-sample test.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

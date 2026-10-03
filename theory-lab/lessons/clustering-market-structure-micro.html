@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Digitizing telephone speech at Bell Labs</h2>
-      <p class="sl-sub">Stuart Lloyd · 1957 (published 1982) · Bell Telephone Laboratories — the name "k-means" from James MacQueen · 1967</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Which assets really move together?</h2>
+      <p class="sl-sub">Correlation clustering · Mantegna (1999); into portfolio construction with López de Prado's HRP (2016)</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>In 1957 Stuart Lloyd at Bell Labs was digitizing voice signals (pulse-code modulation). The question was which few levels to round a continuous signal to so the squared error is smallest. His answer alternated two steps: set the boundaries between levels, then move each level to the mean of its interval. That is k-means' assign/update loop in one dimension.</p>
-        <p>It stayed an internal report until 1982, and James MacQueen named it "k-means" in 1967. Clustering reached markets via physicist Rosario Mantegna (1999), whose correlation tree of US stocks recovered industry groups without being told them.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Traders grouped assets by label: sector, country, asset class. Labels can be wrong about co-movement. In 1999 physicist Rosario Mantegna turned stock correlations into distances and built a tree of US stocks that recovered industry groups from prices alone.</p>
+        <p>López de Prado's Hierarchical Risk Parity (2016) used the same correlation tree to allocate risk. Desks also cluster for risk buckets, pair shortlists and regime labels.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> group assets or dates by how they actually behave, not by their labels.</p>
       </div>
     </section>
 
@@ -393,7 +395,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Both methods measure distance directly, so unscaled features silently distort every decision either one makes — the same standardization discipline other methods in this curriculum require.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This generalizes the earlier Hierarchical Risk Parity lesson's own dendrogram machinery — the same tree-building tool, pointed at regimes, instruments, or signals instead of portfolio weight.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every clustering result needs an independent sanity check against real domain knowledge before it's trusted as a finding, not just an algorithm's own internal metric agreeing with itself.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Stuart Lloyd's 1957 Bell Labs work on digitizing speech, unpublished until 1982. Mantegna's 1999 stock-correlation tree brought clustering to market structure.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Mantegna's 1999 correlation tree of US stocks, then Hierarchical Risk Parity (2016), which allocates risk along the same tree.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

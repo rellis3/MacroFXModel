@@ -26,14 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A name picked to get past the Pentagon</h2>
-      <p class="sl-sub">Richard Bellman · early 1950s · RAND Corporation, Santa Monica</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">When the best move depends on every move after it</h2>
+      <p class="sl-sub">Dynamic programming · into finance via Samuelson &amp; Merton (1969–71) and Cox, Ross &amp; Rubinstein (1979)</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>At RAND in the early 1950s, Richard Bellman worked on multistage planning: how much to stock or produce now, when today's choice changes what's possible next month. His <strong>principle of optimality</strong> says that whatever your first decision is, the rest must be optimal for wherever that decision leaves you. That's the Bellman equation in words.</p>
-        <p>In his 1984 autobiography, <em>Eye of the Hurricane</em>, Bellman said he picked the name "dynamic programming" because the Secretary of Defense, Charles Wilson, had a "pathological fear and hatred" of the word "research". Historians note he was already using the term before Wilson took office, so the story may have been tidied up over the years.</p>
-        <p>He also coined the phrase "curse of dimensionality", the reason later lessons have to learn from samples and approximate with neural networks instead of solving exactly.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Markowitz (1952) chose weights for one period and stopped, which can't handle rebalancing or an American option that can be exercised any day. In 1969 Samuelson and Merton used Bellman's recursion to solve lifetime portfolio choice. In 1979 Cox, Ross &amp; Rubinstein priced American options by backward induction on a binomial tree: at every node, the larger of "exercise now" and "continue".</p>
+        <p>It is still how desks price American and Bermudan options, on trees or with Longstaff &amp; Schwartz's (2001) least-squares Monte Carlo, and it sits under dynamic hedging and execution scheduling.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> value each state assuming you act optimally afterwards, so you know whether to act now or wait.</p>
       </div>
     </section>
 
@@ -361,7 +362,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Bellman equation — value now equals reward now plus γ times the value of what's next — is a recursive identity, not a new assumption. It falls straight out of splitting an infinite sum.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Bellman optimality equation swaps "average over the policy's actions" for "take the best one," turning policy evaluation into policy search.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Value iteration converges to a fixed point that also encodes the optimal policy — often the greedy policy stabilizes long before the numbers themselves stop moving.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Richard Bellman at RAND in the early 1950s, working on multistage planning problems. Finance borrowed the same recursion later, for option pricing by backward induction and dynamic portfolio choice.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Samuelson and Merton (1969–71) used the recursion for dynamic portfolio choice, and Cox, Ross &amp; Rubinstein (1979) made backward induction the way to price American options.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

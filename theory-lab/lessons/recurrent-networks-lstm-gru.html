@@ -36,7 +36,7 @@
       <li>The <strong>LSTM</strong> (Hochreiter &amp; Schmidhuber, 1997) fixes this with a separate cell state \(C_t\) updated <em>additively</em> through forget, input, and output gates — an additive path lets gradients flow across many time steps without being repeatedly multiplied down to zero.</li>
       <li>The <strong>GRU</strong> (Cho et al., 2014) simplifies the gating into just a reset gate and an update gate, with no separate cell state — fewer parameters than an LSTM, and often comparable performance, but not a strict improvement in either direction.</li>
       <li><strong>Honest framing:</strong> RNNs and LSTMs were the dominant sequence architecture before 2017. The next lesson (<a href="attention-transformers-time-series.html">Attention &amp; Transformers for Time Series</a>) covers the architecture that has largely superseded them for long sequences — but LSTMs remain a genuinely reasonable, still-current choice for shorter or streaming sequences and lower-compute settings, not an obsolete method.</li>
-      <li><strong>Where it came from:</strong> Sepp Hochreiter's 1991 German-language diploma thesis at TU Munich diagnosed the vanishing gradient. His 1997 LSTM paper with Jürgen Schmidhuber fixed it with a "constant error carousel". The forget gate in today's standard cell was added later, in 2000, by Gers, Schmidhuber &amp; Cummins.</li>
+      <li><strong>How it reached trading:</strong> Fischer &amp; Krauss (2018) used LSTMs to rank S&amp;P 500 stocks for next-day returns, and Sirignano &amp; Cont (2019) used them on order-book data across hundreds of stocks.</li>
     </ul>
   </div>
 
@@ -94,37 +94,39 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>A student's thesis on why recurrent networks forget</h3>
-    <div class="tl-origin-who">Sepp Hochreiter, supervised by Jürgen Schmidhuber · 1991 thesis, 1997 paper · Technical University of Munich</div>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Forecasting from the whole path, not a fixed window</h3>
+    <div class="tl-origin-who">LSTM · into return and order-book prediction in the late 2010s (Fischer &amp; Krauss, 2018; Sirignano &amp; Cont, 2019)</div>
     <p>
-    In 1991 Sepp Hochreiter, a student at the Technical University of Munich
-    supervised by Jürgen Schmidhuber, wrote a diploma thesis (roughly a master's
-    thesis) analysing why recurrent networks could not learn long-range
-    dependencies. He showed that the error signal passed back through time
-    shrinks or blows up exponentially, which is the vanishing/exploding gradient
-    problem this lesson describes. That was three years before the Bengio, Simard
-    &amp; Frasconi analysis cited here, but the thesis was written in German and
-    was little known in the English-language literature at first.
+    Classical forecasting models such as ARIMA and GARCH use a fixed number of lags
+    and a linear (or nearly linear) rule. If what matters is the shape of the recent path
+    (a slow build, then a reversal, say), someone has to hand-craft a feature for it. The
+    LSTM, built in 1997 for sequence learning, carries a learned memory along the series
+    and decides for itself what to keep.
     </p>
     <p>
-    The fix arrived in their 1997 paper. Its core was what they called the
-    "constant error carousel": a memory cell whose connection to itself passes
-    error back unchanged, with multiplicative gates deciding what gets written
-    and what gets read. One detail matters if you compare the paper with modern
-    code. The original 1997 cell had input and output gates only. The forget gate
-    that is now part of every standard LSTM was added in 2000 by Felix Gers,
-    Schmidhuber and Fred Cummins.
+    Two papers put it on the finance map. Thomas Fischer and Christopher Krauss
+    (2018) trained LSTMs on S&amp;P 500 constituents from 1992 to 2015 to predict which
+    stocks would beat the cross-sectional median the next day. The LSTM beat a random
+    forest, a standard deep network and logistic regression, but its returns faded
+    sharply after about 2010. Justin Sirignano and Rama Cont (2019) trained LSTMs on
+    high-frequency order-book data for hundreds of US stocks and found that one
+    "universal" model predicted price moves better than stock-by-stock models.
     </p>
     <p>
-    The architecture took most of two decades and much more computing power to
-    break through. By the mid-2010s LSTMs were running Google's speech
-    recognition, and in 2016 they were at the heart of Google's neural machine
-    translation system. In finance, LSTMs became the default "deep learning for
-    time series" choice in the late 2010s. One well-known example is Fischer
-    &amp; Krauss (2018) on S&amp;P 500 constituents, which is part of why the
-    honest comparison against simpler models in this lesson still matters.
+    On desks, recurrent networks are used for intraday and order-book prediction,
+    volatility forecasting and streaming signals that update tick by tick. They are judged
+    against simpler models out of sample, because a short, noisy price history is easy to
+    overfit.
     </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Turn a sequence of bars or order-book updates into a forecast, carrying forward whatever memory of the path actually helps.</dd>
+        <dt>Takes in</dt><dd>Stationary, point-in-time inputs (see <a href="stationarity-acf-pacf.html">stationarity</a> and <a href="feature-engineering-leakage-reproducibility.html">feature engineering</a>), with <a href="arima-var.html">ARIMA/VAR</a> as the baseline to beat.</dd>
+        <dt>Hands on to</dt><dd>A forecast tested with <a href="walk-forward-purged-cv.html">walk-forward validation</a>; <a href="attention-transformers-time-series.html">attention and transformers</a> are the next architecture to try against it.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -545,7 +547,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The GRU merges the cell and hidden state and uses two gates instead of three</strong> — fewer parameters, often comparable performance, genuinely dataset-dependent (Cho et al., 2014).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Gating mitigates, it does not eliminate, gradient decay over very long sequences</strong> — this is the real, current motivation for the attention mechanism in the next lesson, not a strategy claim.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>LSTMs are not obsolete.</strong> Transformers largely supersede them for long sequences, but for shorter, streaming, or lower-compute settings a well-tuned LSTM or GRU remains a genuinely reasonable, still-current choice — check both, don't assume.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>The forget gate was a later addition.</strong> Hochreiter's 1991 thesis diagnosed the problem, and the 1997 LSTM cell solved it with input and output gates. Gers, Schmidhuber &amp; Cummins added the forget gate in 2000.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>In markets, LSTMs earned their place on path-dependent data.</strong> Fischer &amp; Krauss (2018) beat random forests on S&amp;P 500 stocks, but the edge faded after about 2010, and Sirignano &amp; Cont (2019) found a universal order-book model. The simple baseline still has to be beaten out of sample.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

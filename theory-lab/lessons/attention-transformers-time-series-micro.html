@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A translation bottleneck, then a paper that dropped the recurrence</h2>
-      <p class="sl-sub">Dzmitry Bahdanau, Kyunghyun Cho &amp; Yoshua Bengio · 2014 · Université de Montréal — then Vaswani et al. · 2017 · Google Brain &amp; Google Research</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Reading the filings, and weighting the right days</h2>
+      <p class="sl-sub">Transformers · into finance through text first (FinBERT, 2019–23), then time series</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>In 2014, neural translation squeezed a whole sentence into one fixed-length vector, and long sentences suffered. Dzmitry Bahdanau, working with Kyunghyun Cho and Yoshua Bengio in Montréal, let the decoder look back at every source word and weight each one. That was attention, added on top of a recurrent network.</p>
-        <p>In 2017 eight Google researchers kept the attention and dropped the recurrence: "Attention Is All You Need". It beat the best translation results while training in parallel. The paper lists all eight as equal contributors, and the transformer became the "T" in GPT.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Text signals used to mean word counts. Loughran &amp; McDonald (2011) built finance-specific word lists, but a count can't read "not as strong as expected". Attention reads each word in the context of the others.</p>
+        <p>Finance adopted it through text: FinBERT (Araci, 2019; Huang, Wang &amp; Yang, 2023) was tuned on filings, analyst reports and earnings calls, and BloombergGPT followed in 2023. On short price series the record is still contested.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> decide which words, or which past days, matter for this prediction, and weight them.</p>
       </div>
     </section>
 
@@ -342,7 +344,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Attention has no built-in sense of order — positional encoding restores it, and forecasting specifically also requires a causal mask so a step can't attend to the future.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The direct cost of "everyone compares against everyone" is O(n²) in sequence length — the reason time-series-specific variants like the Temporal Fusion Transformer and Informer exist.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A transformer's dominance in NLP and vision needs far more data and compute to earn that edge — never assume it transfers to a short, noisy market series without testing it, out-of-sample, against a well-tuned simpler baseline.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: a 2014 fix for long sentences in machine translation (Bahdanau, Cho &amp; Bengio), then Google's 2017 transformer, which dropped the recurrence entirely.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: through text first. FinBERT read filings and earnings calls better than word lists; for price series the benchmark is still an LSTM or a linear model.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">One network, dozens of Atari games, nothing but pixels and the score</h2>
-      <p class="sl-sub">Volodymyr Mnih, Koray Kavukcuoglu, David Silver and colleagues · 2013–2015 · DeepMind, London</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Too many market states for a table</h2>
+      <p class="sl-sub">Deep Q-learning · into trading and execution research from the late 2010s</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Neural networks plus Q-learning had a reputation for diverging. In 2013 DeepMind, then a small London start-up, showed one network learning several Atari games from screen pixels and the score alone. The 2015 <em>Nature</em> version used the same network and settings across 49 games. Experience replay was borrowed from Long-Ji Lin's early-1990s work.</p>
-        <p>The honest footnote: on games where rewards are rare, most famously <em>Montezuma's Revenge</em>, DQN learned almost nothing. A year later the same lab's AlphaGo beat Lee Sedol 4–1. Its move 37 in game 2 was one it estimated a human would play about 1 time in 10,000. AlphaGo used tree search rather than DQN, but it came from the same deep-RL bet.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Tabular Q-learning needs the market chopped into a few buckets; a real state (order-book levels, returns, volatility, inventory) has far too many combinations. DQN, built at DeepMind for video games, swaps the table for a network, with replay and a target network to keep it stable.</p>
+        <p>From the late 2010s researchers applied it to execution and trading. Zhang, Zohren &amp; Roberts (2020), for example, tested DQN on about fifty futures contracts net of costs. It fits discrete choices, but a market reward is far noisier than a game score.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> score a small menu of discrete actions from a state too rich for a table.</p>
       </div>
     </section>
 
@@ -365,7 +367,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A target network freezes a second copy, θ⁻, for computing the TD target — syncing it from θ only every N steps stops the target from moving under its own updates.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>DQN is still value-based — it still needs max over actions, which is exactly why policy gradients and actor-critic methods exist for continuous action spaces like position size.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A network adds complexity and removes interpretability relative to a table — that makes a poorly specified reward or an unrealistic backtest an easier trap to fall into, not a harder one.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: DeepMind's Atari agent (2013 workshop paper, <em>Nature</em> 2015). It was impressive on games with a dense score and nearly helpless on sparse ones like <em>Montezuma's Revenge</em>, which is worth remembering for markets.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: from the late 2010s deep Q-learning was applied to execution and futures trading (e.g. Zhang, Zohren &amp; Roberts, 2020), but it was proven on clean game scores, not noisy market rewards.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

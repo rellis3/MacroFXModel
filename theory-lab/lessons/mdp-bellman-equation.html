@@ -37,7 +37,7 @@
       <li>The Bellman <em>optimality</em> equation replaces "average over the policy's actions" with "take the best one": \(V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]\), and its action-value twin \(Q^*(s,a)\) scores a specific action directly.</li>
       <li>Worked example in this lesson: a 3-state flat/long/short position MDP solved by value iteration — the numbers climb steadily every sweep and settle at a fixed point that also happens to encode the sensible policy (stay long, don't stay short).</li>
       <li>This is the shared foundation both follow-up lessons build on: Q-learning (next lesson) turns this into a learning rule when \(P\) and \(R\) aren't known in advance; policy gradients (lesson 3) skip the \(\max_a\) altogether for continuous actions.</li>
-      <li><strong>Where it came from:</strong> Richard Bellman's work on multistage planning problems at RAND in the early 1950s. He later said he chose the name "dynamic programming" partly to keep a research-averse Secretary of Defense from objecting. The dates don't quite line up, so treat that story with care.</li>
+      <li><strong>How it reached trading:</strong> Samuelson and Merton (1969–71) used it to solve lifetime portfolio choice, and Cox, Ross &amp; Rubinstein's 1979 binomial tree made backward induction the standard way to price American options.</li>
     </ul>
   </div>
 
@@ -101,39 +101,43 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>A name picked to get past the Pentagon</h3>
-    <div class="tl-origin-who">Richard Bellman · early 1950s · RAND Corporation, Santa Monica</div>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>When the best move depends on every move after it</h3>
+    <div class="tl-origin-who">Dynamic programming · into finance via Samuelson &amp; Merton (1969–71) and Cox, Ross &amp; Rubinstein (1979)</div>
     <p>
-    RAND in the early 1950s was a think tank funded by the US Air Force, and the
-    problems on Richard Bellman's desk were multistage planning problems: how much
-    to stock or produce now, when today's choice changes what is possible next
-    month. His central idea, which he called the <strong>principle of
-    optimality</strong>, is that whatever the first decision is, the remaining
-    decisions must be optimal for the situation that first decision leaves you
-    in. That one sentence is the Bellman equation in words: you never have to plan
-    the whole future at once, only relate each state to the next one.
+    Before dynamic programming reached finance, portfolio theory was a one-shot
+    decision: Markowitz (1952) chose weights for a single period and stopped. That
+    cannot handle an investor who rebalances every year, or an American option whose
+    holder may exercise on any date. In both cases the right action today depends on
+    what you will be able to do tomorrow. Built by Richard Bellman for 1950s planning
+    problems, the recursion in this lesson is exactly the tool for that.
     </p>
     <p>
-    The name has a story of its own. In his autobiography, <em>Eye of the
-    Hurricane</em> (1984), Bellman wrote that the Secretary of Defense at the time,
-    Charles Wilson, had a "pathological fear and hatred" of the word "research",
-    so he wanted a label nobody in Washington could object to. "Programming" then
-    meant planning or scheduling (as in "linear programming"), and "dynamic"
-    captured the multistage, time-varying nature of the problems. Take the story
-    with a pinch of salt: historians have pointed out that Bellman was using the
-    term around 1952, before Wilson took office in 1953, so the account may have
-    been tidied up in the retelling.
+    In 1969 Paul Samuelson (in discrete time) and Robert Merton (in continuous time)
+    each used it to solve lifetime consumption and portfolio choice, and Merton's 1971
+    paper made the continuous-time version, the Hamilton–Jacobi–Bellman equation, the
+    standard tool for dynamic asset allocation. In 1979 Cox, Ross &amp; Rubinstein's
+    binomial tree priced an American option by working backwards from expiry, taking at
+    every node the larger of "exercise now" and "the discounted value of continuing".
+    That max is the Bellman equation. Bertsimas &amp; Lo (1998) used the same recursion
+    to split a large order optimally over time.
     </p>
     <p>
-    Bellman also coined the phrase "curse of dimensionality" for the way the
-    number of states explodes as you add variables, which is exactly the problem
-    that pushes the later lessons in this sequence toward learning from samples
-    and approximating with neural networks. Finance picked up the same recursion
-    later: pricing an American option by backward induction on a tree, and
-    Robert Merton's continuous-time portfolio-choice work around 1969–71, are both
-    Bellman's idea applied to money.
+    On a desk today the recursion runs in every American and Bermudan option price:
+    on trees and grids, and in Longstaff &amp; Schwartz's (2001) least-squares Monte
+    Carlo, which estimates the continuation value by regression. It also sits under
+    dynamic hedging and execution scheduling, and it is the target that the
+    reinforcement-learning lessons after this one try to approximate when the model
+    of the market is unknown.
     </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Put a value on being in a state, assuming you act optimally from there on. That continuation value decides exercise-or-hold, rebalance-or-wait, trade-now-or-later.</dd>
+        <dt>Takes in</dt><dd>States and transition probabilities (for example regimes from <a href="hidden-markov-models.html">Hidden Markov Models</a>) and a reward that encodes the objective, such as the log growth of the <a href="kelly-criterion.html">Kelly criterion</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="merton-portfolio-problem.html">Merton’s portfolio problem</a> (the continuous-time version), <a href="market-impact-almgren-chriss.html">Almgren–Chriss execution</a>, and <a href="q-learning-temporal-difference.html">Q-learning</a> when the transition model has to be learned instead.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -567,7 +571,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(Q^*(s,a)\) scores actions directly, and \(V^*(s)=\max_a Q^*(s,a)\).</strong> This exact rewriting — \(Q^*\) in terms of itself one step later — is what Q-learning's update rule is built from.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Value iteration converges to a fixed point that also encodes the optimal policy.</strong> In the worked example the greedy action at each state stabilizes long before the values themselves fully converge.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This whole chapter assumes the model (\(P\) and \(R\)) is known.</strong> Real problems almost never hand you an explicit transition table — that gap is exactly what the next lesson's learning rule is for.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Born in operations research, not finance.</strong> Bellman built this for 1950s RAND planning problems such as inventory and scheduling. Finance adopted the same recursion later, for backward-induction option pricing and dynamic portfolio choice.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>On a desk, this is backward induction.</strong> Every American or Bermudan option price on a tree, grid or Longstaff–Schwartz Monte Carlo, and Merton's dynamic portfolio choice, solves this same "act now versus continuation value" recursion.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

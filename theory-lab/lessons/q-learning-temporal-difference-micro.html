@@ -26,14 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Learning from delayed rewards, the way animals do</h2>
-      <p class="sl-sub">Chris Watkins · 1989 · University of Cambridge (PhD thesis), building on Richard Sutton's TD learning (1988)</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Learning a trading rule without a model of the market</h2>
+      <p class="sl-sub">Q-learning · tested on trading in the late 1990s (Moody &amp; Saffell); on execution by Nevmyvaka, Feng &amp; Kearns (2006)</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Arthur Samuel's IBM checkers program (1959) already nudged earlier board scores toward later ones. Richard Sutton formalized that as temporal-difference learning in 1988.</p>
-        <p>Q-learning came from Chris Watkins' 1989 Cambridge PhD thesis, <em>Learning from Delayed Rewards</em>. He asked how an animal learns which actions pay off when the reward comes much later and it has no model of its world. His answer was to learn the value of each state-action pair directly. The convergence proof followed in 1992, with Peter Dayan.</p>
-        <p>The breakthrough demo was Gerald Tesauro's TD-Gammon (IBM, 1992), which taught itself backgammon by self-play to near world-class level. Some of its opening moves changed how expert humans played.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Dynamic programming needs the market's transition probabilities, which nobody has. Q-learning learns action values straight from (state, action, reward, next state) records, which is what a fills log or order-book history contains. Moody &amp; Saffell tested it on stock-index allocation in the late 1990s and found a direct policy method did better.</p>
+        <p>The clean win was execution. Nevmyvaka, Feng &amp; Kearns (2006) learned where to place limit orders from order-book data for NASDAQ stocks and beat simple submit-and-leave strategies on cost.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> learn which action pays off in each state from logged experience, with no model of the market.</p>
       </div>
     </section>
 
@@ -329,7 +330,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Repeated sampling of one transition follows a clean geometric recursion toward Q* — but with a constant learning rate, it gets arbitrarily close without ever exactly arriving.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Exploration isn't optional — every (state, action) pair needs enough visits for its Q-value to be learned correctly. ε-greedy is the simplest practical mechanism.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SARSA changes one term — max becomes the action actually taken — to become on-policy, learning the value of the policy actually being followed, exploration included.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Sutton's TD learning (1988) and Chris Watkins' 1989 thesis on learning from delayed rewards, which was framed around animal learning. Tesauro's TD-Gammon (1992) was the first famous success.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Moody &amp; Saffell tested Q-learning on trading in the late 1990s, and Nevmyvaka, Feng &amp; Kearns (2006) showed it could cut execution costs on real order-book data.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

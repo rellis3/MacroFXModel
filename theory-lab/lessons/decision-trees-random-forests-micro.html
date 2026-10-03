@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A statistician who spent thirteen years as a consultant</h2>
-      <p class="sl-sub">Leo Breiman · CART 1984, bagging 1996, random forests 2001 · University of California, Berkeley</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Interactions a linear factor model can't see</h2>
+      <p class="sl-sub">Trees and random forests · credit scoring by 2010 (Khandani, Kim &amp; Lo); return prediction, Gu, Kelly &amp; Xiu (2020)</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Leo Breiman left a probability post at UCLA and spent about thirteen years as a freelance consultant, working on problems like forecasting Los Angeles ozone levels, before joining Berkeley in 1980. That convinced him a model should be judged by how well it predicts new data.</p>
-        <p>He co-wrote CART (1984), then published bagging (1996) and random forests (2001), building on Tin Kam Ho's 1995 "random decision forests". In "The Two Cultures" (2001) he estimated that 98% of statisticians assumed a data model and only 2% judged models by prediction, and argued the balance was wrong.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Return models were linear for decades. If momentum works only in small, illiquid stocks, a linear model misses it unless someone adds that interaction by hand. A tree finds such rules on its own, and a forest averages away a single tree's noise.</p>
+        <p>Trees reached finance through credit scoring (Khandani, Kim &amp; Lo, 2010). For returns, Gu, Kelly &amp; Xiu (2020) found tree ensembles beat linear regressions out of sample on US stocks, mostly by catching interactions.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> predict a return or trade label from many features when one feature's effect depends on another.</p>
       </div>
     </section>
 
@@ -400,7 +402,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Random forests add one more twist: only a random subset of features is considered at each split, decorrelating the trees further than bagging alone manages.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Averaging B correlated trees never reaches zero variance — it converges to a floor of ρσ², set by tree correlation, not by tree count.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Feature importance and out-of-bag error come essentially free from the bagging design — but neither one, by itself, is evidence of real trading edge.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Leo Breiman, a consultant-turned-Berkeley statistician whose CART, bagging and random forests all came from treating prediction on new data as the real test.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: credit scoring first, then Gu, Kelly &amp; Xiu (2020), where tree ensembles beat linear models on US stock returns by catching interactions.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
