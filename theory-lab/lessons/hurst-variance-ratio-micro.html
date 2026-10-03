@@ -105,7 +105,7 @@
       <p class="sl-p">R(n) is that walk's total swing — highest point minus lowest point. S(n) is the chunk's own volatility, used to put the swing on a scale-free footing: a chunk of 1% daily moves and a chunk of 0.1% daily moves should give comparable (R/S) values once you divide out their own volatility. Hurst's empirical finding — first made on Nile river flood records, not markets — is that (R/S)ₙ scales as a power law: <strong>(R/S)ₙ ≈ c · n<sup>H</sup></strong>.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Why logs</div>
-        <p>Taking logs of both sides turns that power law into a straight line: log(R/S)ₙ = log c + H·log n. Split the series into windows of several lengths (say 8, 16, 32, 64 bars), plot log(R/S)ₙ against log n for each length, and fit a line. <strong>The slope of that line IS the Hurst exponent</strong> — the entire point of taking logs, and exactly the OLS step this project's own live Hurst estimator runs.</p>
+        <p>Taking logs of both sides turns that power law into a straight line: log(R/S)ₙ = log c + H·log n. Split the series into windows of several lengths (say 8, 16, 32, 64 bars), plot log(R/S)ₙ against log n for each length, and fit a line. <strong>The slope of that line IS the Hurst exponent</strong> — the entire point of taking logs<!-- DESK:START -->, and exactly the OLS step this project's own live Hurst estimator runs<!-- DESK:END -->.</p>
       </div>
     </section>
 
@@ -194,6 +194,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Where this lives in this repo</h2>
@@ -204,13 +205,14 @@
       </div>
       <p class="sl-p">The lesson underneath the lesson: a diagnostic can be mathematically sound and still fail to earn its place in a live decision. Persistence measured correctly is not automatically an edge — that has to be shown with real out-of-sample evidence, not assumed from the formula alone.</p>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">How this actually gets used on a desk</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🚦</div><div><h4>A regime gate, not a signal</h4><p>Compute H or VR(k) on a rolling window and use the reading to decide which strategy <em>family</em> is even allowed to trade — mean-reversion switched on when anti-persistent, trend/breakout switched on when persistent, standing aside near H≈0.5 / VR≈1 where neither has a demonstrated edge.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>The same selector pattern, different math</h4><p>This is precisely the "score → choice" pattern this repo's own dayTypeScore → selectStrategy logic implements elsewhere — a different lens on the identical fade-or-follow decision.</p></div></div>
+        <!-- DESK:START --><div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>The same selector pattern, different math</h4><p>This is precisely the "score → choice" pattern this repo's own dayTypeScore → selectStrategy logic implements elsewhere — a different lens on the identical fade-or-follow decision.</p></div></div><!-- DESK:END -->
         <div class="sl-icard"><div class="sl-icard-badge">⏳</div><div><h4>A decaying prior, not a fact</h4><p>Both statistics are estimated from a short, noisy, non-stationary sample — they describe the recent past, with no guarantee it holds going forward. A window reading H=0.35 last month can read H=0.55 this month with no structural change at all.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Neither predicts direction</h4><p>A high H says moves have recently reinforced each other, not "the market is going up." It licenses a trend-following approach to whatever direction is already in motion — it does not forecast one.</p></div></div>
       </div>
@@ -244,16 +246,20 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this desk found when it tested the claim</h2>
+      <!-- DESK:START --><h2 class="sl-h2">What this desk found when it tested the claim</h2><!-- DESK:END -->
       <p class="sl-sub">The tempting claim: when the path looks persistent, follow it.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
         <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>trend-following-fx:</strong> FX-only basket <strong>null, verified not-a-bug with an independent rebuild</strong>. Broad multi-asset: modest, <strong>~0.3 out of sample</strong>, barely beating buy-and-hold.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12">
         <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>tape-speed-persistence:</strong> a slow 15 minutes is followed by a slow hour, a fast one by a fast hour, <strong>monotonic in 68 of 68 cells across 17 pairs</strong>. Pace persists; direction is not part of the claim.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> H and VR treat persistence as one fixed property of a series. In markets it is episodic: it switches on when one macro force pushes the same way for months, and off for years. A full-sample H near 0.5 can hide both, and the persistence of move <em>size</em> is far more reliable than that of <em>direction</em>.</div>
     </section>
 
@@ -307,8 +313,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The variance ratio test asks the identical question more rigorously: VR(k) = Var(r⁽ᵏ⁾) ÷ (k×Var(r⁽¹⁾)) equals exactly 1 under a random walk, with an actual standard error attached to any deviation.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Neither statistic predicts direction — both only license which strategy family, fade or follow, has a right to work in the current regime.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>R/S is biased toward finding H &gt; 0.5 in small samples — exactly the regime a feature computed on a few dozen daily bars sits in.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A single H or VR reading is a noisy, decaying prior about the current regime, not a fact about the market's permanent nature — and even a mathematically sound feature still has to earn its place with real out-of-sample evidence, as this repo's own history with featureHurst shows.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Persistence is episodic: trend followers thrived in 2008 and 2022 and struggled through much of the 2010s with the same rules. On this desk, FX-only trend following was null; what validated was persistence of tape speed (68 of 68 cells), not direction.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A single H or VR reading is a noisy, decaying prior about the current regime, not a fact about the market's permanent nature — and even a mathematically sound feature still has to earn its place with real out-of-sample evidence<!-- DESK:START -->, as this repo's own history with featureHurst shows<!-- DESK:END -->.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Persistence is episodic: trend followers thrived in 2008 and 2022 and struggled through much of the 2010s with the same rules.<!-- DESK:START --> On this desk, FX-only trend following was null; what validated was persistence of tape speed (68 of 68 cells), not direction.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

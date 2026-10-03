@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Capital Asset Pricing Model (CAPM)</h1>
   <p class="tl-dek">Markowitz proved there's a mathematically best trade-off between risk and return once you know how every asset moves with every other. CAPM asks the next question: if every investor is smart enough to actually hold that best trade-off, what does that force each individual asset's expected return to be? The answer collapses to a single number — beta — and it's the founding idea every other lesson in this new category either extends or was written to fix.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — CAPM's single-market-portfolio pricing model isn't built here, but this repo's own <code>beta_estimator.py</code> runs the identical rolling-OLS beta regression against macro factor proxies for hedging, not pricing</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — CAPM's single-market-portfolio pricing model isn't built here, but this repo's own <code>beta_estimator.py</code> runs the identical rolling-OLS beta regression against macro factor proxies for hedging, not pricing<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="primer-correlation-regression.html">Correlation &amp; Linear Regression</a> (beta is exactly that lesson's OLS slope), <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> (CAPM is what falls out once everyone holds the same efficient portfolio)</span>
   </div>
@@ -405,8 +405,8 @@
     <h3>Three assets, one market index, five years of returns</h3>
     <p>
       A toy universe: a market index and three assets, five years of
-      (invented, illustrative) annual returns, and a 2% risk-free rate,
-      matching this repo's other worked examples' convention:
+      (invented, illustrative) annual returns, and a 2% risk-free rate<!-- DESK:START -->,
+      matching this repo's other worked examples' convention<!-- DESK:END -->:
     </p>
     <div class="tl-symbols"><table>
       <tr><td>Market (%)</td><td>8&nbsp;&nbsp;&nbsp;&minus;3&nbsp;&nbsp;&nbsp;15&nbsp;&nbsp;&nbsp;6&nbsp;&nbsp;&nbsp;9</td></tr>
@@ -575,8 +575,8 @@
       leans on equities' natural market-cap weighting scheme, and currencies
       simply don't have an equivalent, off-the-shelf answer to "what is the
       market portfolio." That's a genuine reason CAPM stays a
-      cross-asset-pricing <em>concept</em> in this curriculum rather than a
-      component this repo's own FX trading logic could adopt directly.
+      cross-asset-pricing <em>concept</em> in this curriculum<!-- DESK:START --> rather than a
+      component this repo's own FX trading logic could adopt directly<!-- DESK:END -->.
     </p>
   </div>
 
@@ -642,7 +642,7 @@
     </p>
   </div>
 
-  <div class="tl-solid blue">
+  <!-- DESK:START --><div class="tl-solid blue">
     <strong>Verified against this repo's actual code.</strong> A repo-wide
     search for CAPM-style "beta" turned up a genuine, working system —
     <code>bot/modules/beta_estimator.py</code>, <code>portfolio_beta.py</code>,
@@ -661,7 +661,7 @@
     where the line between "this repo's beta" and "CAPM's beta" actually
     sits, rather than assuming either that nothing like this exists here or
     that this already <em>is</em> CAPM.
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>

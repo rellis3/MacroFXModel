@@ -17,7 +17,7 @@
   <h1 class="tl-title">Graph Theory Fundamentals &amp; Centrality Measures</h1>
   <p class="tl-dek">"Which node in this network matters most?" sounds like it should have one answer. It has at least three — degree, betweenness, and eigenvector centrality — and on the same small network they can each crown a different winner. That disagreement isn't a bug in the math; it's the whole lesson.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background theory, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — background theory, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Linear Algebra &amp; Matrices</span>
   </div>
@@ -36,7 +36,7 @@
       <li>Betweenness centrality counts how many shortest paths between other node-pairs run through a node — it finds "bridge" or "gatekeeper" nodes that degree alone can miss entirely.</li>
       <li>Eigenvector centrality defines importance recursively — a node is important if it's connected to important nodes — solved as the leading eigenvector of \(Ax=\lambda x\); PageRank is its directed, damped cousin.</li>
       <li>On a toy 7-node network built from two triangle-shaped clusters joined by one bridge node, these three measures don't just differ in magnitude, they crown different "most important" nodes — the worked example below computes all three by hand and shows exactly where and why they split.</li>
-      <li>None of this is built or used anywhere in this repo yet — it's presented here as background theory that the next two lessons (correlation networks/MST, and systemic-risk networks) build directly on top of.</li>
+      <!-- DESK:START --><li>None of this is built or used anywhere in this repo yet — it's presented here as background theory that the next two lessons (correlation networks/MST, and systemic-risk networks) build directly on top of.</li><!-- DESK:END -->
       <li><strong>How it reached trading:</strong> Mantegna mapped stock markets as graphs in 1999, and after 2008 network centrality became a systemic-risk tool (Billio et al., 2012; Diebold &amp; Yilmaz, 2014) and a scored category in the Basel method for systemically important banks.</li>
     </ul>
   </div>
@@ -71,8 +71,8 @@
     Contagion Networks</a>, uses the same node-and-edge language to model how
     trouble spreads through a network of exposures rather than just who's
     connected to whom. All three are genuinely new machinery for this
-    curriculum — nothing here is wired into any strategy or backtest in this
-    repo; it's presented as background theory a builder should have before
+    curriculum<!-- DESK:START --> — nothing here is wired into any strategy or backtest in this
+    repo<!-- DESK:END -->; it's presented as background theory a builder should have before
     reaching for it.
   </p>
 
@@ -656,7 +656,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Betweenness centrality finds bridge/gatekeeper nodes</strong> — a low-degree node can have the network's highest betweenness if it's the only route between two clusters.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Eigenvector centrality is recursive importance</strong> — solved as the leading eigenvector of \(Ax=\lambda x\); PageRank extends it to directed, damped graphs.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The three measures can disagree, and that's the point.</strong> The worked example computed all three exactly and got three different rankings for "most important node" — reporting only one is a choice, and it should be a stated one.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built anywhere in this repo.</strong> This is background theory the next two lessons build on directly — it is not itself a claim of trading edge.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built anywhere in this repo.</strong> This is background theory the next two lessons build on directly — it is not itself a claim of trading edge.</span></div><!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Centrality became a risk measure after 2008.</strong> Connectedness networks (Billio et al., 2012; Diebold &amp; Yilmaz, 2014) ask who transmits shocks, but every score is only as meaningful as the edges you chose to draw.</span></div>
   </div>
 

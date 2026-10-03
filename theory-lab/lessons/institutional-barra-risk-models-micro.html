@@ -45,7 +45,7 @@
         <div class="sl-icard"><div class="sl-icard-badge">📄</div><div><h4>CAPM, Fama-French, APT — all reproducible</h4><p>Each comes from a specific, citable published source with construction rules stated in the open literature. Anyone can re-run any of them from public data.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🔒</div><div><h4>A Barra-style model — proprietary, trade-secret</h4><p>Exact factor construction — how "size" or "momentum" is standardized and combined with dozens of others — is a commercial vendor's trade secret, not a formula in a paper.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🔁</div><div><h4>Continuously recalibrated, not fixed</h4><p>There's no single "the 2024 version" the way there's one citable Fama-French paper — the whole system is re-estimated on a rolling basis by the vendor's own pipeline.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">🗺</div><div><h4>So this lesson is an honest map, not a build</h4><p>What follows: the structure that genuinely is public knowledge, what's proprietary, what institutions use it for, and what this repo does instead for FX/gold.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🗺</div><div><h4>So this lesson is an honest map, not a build</h4><p>What follows: the structure that genuinely is public knowledge, what's proprietary, what institutions use it for, and what this curriculum does instead for FX/gold.</p></div></div>
       </div>
       <div class="sl-quote">Think of a commercial risk model like a weather-forecasting service, not a physics paper. The underlying "physics" — exposures times factor returns, plus a residual — is public. The specific 40-plus factors, exactly how each is built this quarter, and the covariance adjustments that make the system usable, are the proprietary product a fund pays a subscription for instead of building in-house.</div>
     </section>
@@ -220,14 +220,14 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">What this repo does instead — same logic, no equity taxonomy</h2>
-      <p class="sl-sub">No commercial Barra-for-currencies exists in wide use. This repo already has the underlying idea, applied honestly to FX/gold.</p>
+      <h2 class="sl-h2">What this curriculum does instead — same logic, no equity taxonomy</h2>
+      <p class="sl-sub">No commercial Barra-for-currencies exists in wide use. This curriculum already has the underlying idea, applied honestly to FX/gold.</p>
       <div class="sl-icard-grid">
-        <div class="sl-icard"><div class="sl-icard-badge">🌳</div><div><h4>Hierarchical Risk Parity</h4><p>Clusters this repo's own FX pairs by correlation-distance into blocs (a "risk-on" bloc and a "safe-haven" bloc, in its own worked example) — this repo's version of named systematic buckets, discovered from correlation rather than a fundamentals taxonomy.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Factor-Based Portfolio Construction</h4><p>Builds this exact lesson's r_i = Σβ_ik f_k + ε_i equation for named FX/macro factors — carry, momentum, value — honestly disclosed as cited literature, not validated on this repo's own data.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Random Matrix Theory</h4><p>This repo's own test for which correlation-matrix eigenvalues are real structure versus sampling noise — the closest thing here to a commercial model's covariance-shrinkage discipline.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🌳</div><div><h4>Hierarchical Risk Parity</h4><p>Clusters <!-- DESK:START -->this repo's own <!-- DESK:END -->FX pairs by correlation-distance into blocs (a "risk-on" bloc and a "safe-haven" bloc, in its own worked example) — this curriculum's version of named systematic buckets, discovered from correlation rather than a fundamentals taxonomy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📐</div><div><h4>Factor-Based Portfolio Construction</h4><p>Builds this exact lesson's r_i = Σβ_ik f_k + ε_i equation for named FX/macro factors — carry, momentum, value — honestly disclosed as cited literature, not validated<!-- DESK:START --> on this repo's own data<!-- DESK:END -->.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📊</div><div><h4>Random Matrix Theory</h4><p>This curriculum's own test for which correlation-matrix eigenvalues are real structure versus sampling noise — the closest thing here to a commercial model's covariance-shrinkage discipline.</p></div></div>
       </div>
-      <div class="sl-quote">None of these three claims to be a Barra-equivalent, and each says so explicitly in its own takeaways. What they show is that this repo already has the right idea, applied to the universe it actually trades — not a gap this lesson needs to paper over.</div>
+      <div class="sl-quote">None of these three claims to be a Barra-equivalent, and each says so explicitly in its own takeaways. What they show is that this curriculum already has the right idea, applied to the universe it actually covers — not a gap this lesson needs to paper over.</div>
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -296,11 +296,11 @@
 
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
-        <h4>What does this repo use in place of a commercial Barra-for-currencies?</h4>
+        <h4>What does this curriculum use in place of a commercial Barra-for-currencies?</h4>
         <button class="sl-quiz-opt" data-correct="true">Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory, applied to its own FX/gold universe</button>
         <button class="sl-quiz-opt">A licensed MSCI Barra FX module</button>
-        <button class="sl-quiz-opt">Nothing — this repo has no risk-decomposition tooling at all</button>
-        <div class="sl-quiz-explain">These three lessons already implement the same decompose-and-attribute logic for this repo's own instrument universe, without an equity-specific style/sector taxonomy — and none of them claims to be a Barra-equivalent.</div>
+        <button class="sl-quiz-opt">Nothing — this curriculum has no risk-decomposition tooling at all</button>
+        <div class="sl-quiz-explain">These three lessons already implement the same decompose-and-attribute logic<!-- DESK:START --> for this repo's own instrument universe<!-- DESK:END -->, without an equity-specific style/sector taxonomy — and none of them claims to be a Barra-equivalent.</div>
       </div>
     </section>
 
@@ -312,17 +312,17 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The general structure R_i = Σ_k X_ik f_k + u_i genuinely is public knowledge — known exposures times factor returns recovered by a cross-sectional regression, the same two-stage move as Fama-MacBeth at far larger scale.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Covariance shrinkage, continuous recalibration, formal industry/country factors, and a design purpose built for attribution and construction — not "more factors" — are the real differences from an academic model.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Institutions use these for risk attribution, performance attribution, and portfolio-construction constraints — never as a source of alpha.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>There's no direct Barra-for-currencies in wide use — this repo's genuine analog is Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory, already applied here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>There's no direct Barra-for-currencies in wide use — this curriculum's genuine analog is Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory, already applied here.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Since Barra's founding in 1975, commercial factor models have been how equity desks see risk: style, industry, country and specific, feeding both the risk report and the optimiser.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Read a "risk model" claim for what it actually is — a risk-decomposition and portfolio-construction tool, not an alpha source. Recognize the R = Xf + u structure underneath any factor-model pitch, commercial or academic. And know exactly which of this repo's own lessons already do the genuine version of this job for FX and gold, with the same honesty about what's validated and what isn't.</p>
+        <p>Read a "risk model" claim for what it actually is — a risk-decomposition and portfolio-construction tool, not an alpha source. Recognize the R = Xf + u structure underneath any factor-model pitch, commercial or academic. And know exactly which of this curriculum's own lessons already do the genuine version of this job for FX and gold, with the same honesty about what's validated and what isn't.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">This closes Factor Models — five lessons in</div>
         <h3>Garman-Klass &amp; Yang-Zhang: OHLC Volatility Estimators</h3>
-        <p>Next up — Volatility Estimation &amp; Jump Detection, starting with the range-based estimators this repo actually runs in production.</p>
+        <p>Next up — Volatility Estimation &amp; Jump Detection, starting with the range-based estimators<!-- DESK:START --> this repo actually runs in production<!-- DESK:END -->.</p>
         <div class="sl-teaser-btns">
           <a class="sl-btn" href="institutional-garman-klass-yang-zhang-micro.html">Next lesson →</a>
           <a class="sl-btn ghost" href="institutional-barra-risk-models.html">Read the full lesson →</a>

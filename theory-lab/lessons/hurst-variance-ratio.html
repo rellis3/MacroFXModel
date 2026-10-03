@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Hurst Exponent &amp; Variance Ratio Test</h1>
   <p class="tl-dek">Two different ways to ask the same question of a price series — is it wandering randomly, drifting with momentum, or snapping back toward a mean? — and why the second, less famous method is the one to trust more.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — a feature used elsewhere in this project's entry-bias research</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — a feature used elsewhere in this project's entry-bias research<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -36,20 +36,20 @@
       <li>R/S analysis estimates the Hurst exponent \(H\) as the slope of \(\log(R/S)_n\) regressed on \(\log n\) — the rescaled range of a chunk's cumulative mean-deviations, measured across several window lengths.</li>
       <li>\(H\) partitions into three regimes: \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk (range grows as \(\sqrt{n}\)), and \(H>0.5\) is persistent/trending.</li>
       <li>The variance ratio test (Lo &amp; MacKinlay 1988) asks the same question more rigorously: under a random walk, \(VR(q)=\operatorname{Var}(r_t^{(q)})/(q\cdot\operatorname{Var}(r_t^{(1)}))\) should equal exactly 1, and it comes with an actual standard error/z-statistic instead of an eyeballed regression slope.</li>
-      <li>This isn't just theory here — this project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared across its live entry logic and its backtest engine.</li>
+      <!-- DESK:START --><li>This isn't just theory here — this project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, treating \(H&lt;0.45\) as confirming a fade and \(H&gt;0.55\) as confirming a follow, shared across its live entry logic and its backtest engine.</li><!-- DESK:END -->
       <li>Both statistics are biased in small samples and say nothing about direction — they only license which strategy family (fade vs. follow) has a right to work right now.</li>
-      <li><strong>Real-world episode:</strong> trend following's fat and lean years. Managed-futures funds finished 2008 up by double digits and had a very strong 2022 as inflation drove months of one-way moves in bonds and the dollar, but much of the 2010s was lean for the same rules. This desk's FX-only trend test was null (<code>trend-following-fx</code>); what validated was persistence of tape speed, not direction (<code>tape-speed-persistence</code>).</li>
+      <li><strong>Real-world episode:</strong> trend following's fat and lean years. Managed-futures funds finished 2008 up by double digits and had a very strong 2022 as inflation drove months of one-way moves in bonds and the dollar, but much of the 2010s was lean for the same rules.<!-- DESK:START --> This desk's FX-only trend test was null (<code>trend-following-fx</code>); what validated was persistence of tape speed, not direction (<code>tape-speed-persistence</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-    Almost every trading decision in this repo boils down to one binary question asked over and over: at this level,
+    Almost every trading decision<!-- DESK:START --> in this repo<!-- DESK:END --> boils down to one binary question asked over and over: at this level,
     right now, should the system <strong>fade</strong> the move (bet on reversion) or <strong>follow</strong> it (bet on
-    continuation)? This project's own day-type classifier answers a version of this with a drift-vs-diffusion score; this lesson
+    continuation)? <!-- DESK:START -->This project's own day-type classifier answers a version of this with a drift-vs-diffusion score; this lesson
     covers a different, older, and in some ways more fundamental way to answer it: measure how "persistent" the recent
-    path itself has been, independent of any particular price model. That is what the Hurst exponent and the variance
+    path itself has been, independent of any particular price model. <!-- DESK:END -->That is what the Hurst exponent and the variance
     ratio test are for. Neither one predicts direction — both measure a property of the <em>path</em>: does the series
     have memory that reinforces past moves (trending), memory that undoes past moves (mean-reverting), or no memory at
     all (random walk)? That property changes which family of strategy — fade or follow — has any right to work in the
@@ -151,8 +151,8 @@
     In practice you don't estimate this from one chunk. You split the series into windows of several different lengths
     <em>n</em> (say 8, 16, 32, 64 bars), compute the average \((R/S)_n\) across all windows of each length, plot
     \(\log(R/S)_n\) against \(\log n\), and fit a straight line through those points. The slope of that line is your
-    estimate of <em>H</em>. This is exactly what this project's own live Hurst estimator does with its
-    ordinary-least-squares step.
+    estimate of <em>H</em>.<!-- DESK:START --> This is exactly what this project's own live Hurst estimator does with its
+    ordinary-least-squares step.<!-- DESK:END -->
   </p>
 
   <div class="tl-eli5">
@@ -458,10 +458,11 @@
   </div>
 
   <p>
-    The tempting trading claim: <em>when the path looks persistent, follow it.</em> This desk has tested
-    direction-following on FX, and separately tested whether the <em>pace</em> of the tape persists.
+    The tempting trading claim: <em>when the path looks persistent, follow it.</em><!-- DESK:START --> This desk has tested
+    direction-following on FX, and separately tested whether the <em>pace</em> of the tape persists.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>trend-following-fx: trend following works on FX.</strong> FX-only basket: <strong>null, verified
@@ -469,7 +470,9 @@
     barely beating buy-and-hold. Fading retail positioning is about as null as trend following on FX. A trend
     chip on an FX card describes the past 20 days, not the next 20.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="tape-speed-persistence" data-evidence-date="2026-09-12">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>tape-speed-persistence: what does persist is pace, not direction.</strong> A slow 15-minute approach
@@ -477,6 +480,7 @@
     cells across 17 pairs</strong>, and the effect is the same at random prices, so it is a property of the tape.
     That is persistence in the size of moves. It says nothing about which way the next move goes.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -488,8 +492,8 @@
     range trades) are switched on when the reading says anti-persistent, and trend/breakout strategies are switched on
     when the reading says persistent, with the strategy standing aside (or reducing size) near \(H \approx 0.5\) /
     \(VR \approx 1\) where the path is statistically indistinguishable from noise and neither family has a
-    demonstrated edge. This is precisely the same "score → choice" selector pattern this repo's own
-    <code>dayTypeScore → selectStrategy</code> brick implements, just computed a different mathematical way. A second
+    demonstrated edge.<!-- DESK:START --> This is precisely the same "score → choice" selector pattern this repo's own
+    <code>dayTypeScore → selectStrategy</code> brick implements, just computed a different mathematical way.<!-- DESK:END --> A second
     common use is diagnostic rather than tactical: some practitioners compute \(H\) across different asset classes or
     across different multi-year periods purely to characterize how "random-walk-like" a market has been, independent
     of any specific strategy, as part of general market-structure research (this is closer to Mandelbrot's original
@@ -551,11 +555,11 @@
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>H is the slope of log(R/S)ₙ regressed on log n.</strong> \(H<0.5\) is anti-persistent/mean-reverting, \(H=0.5\) is a random walk, \(H>0.5\) is persistent/trending.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The variance ratio test asks the identical question more rigorously.</strong> Under a random walk \(VR(q)=1\) exactly, and Lo &amp; MacKinlay's asymptotic distribution gives you an actual standard error and z-statistic, not an eyeballed slope.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> This project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared across its live entry logic and its backtest engine.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This isn't just theory here.</strong> This project's own entry-bias logic already runs live R/S analysis (lags 2/4/8/16) as one of five entry-bias features, shared across its live entry logic and its backtest engine.</span></div><!-- DESK:END -->
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Neither statistic predicts direction.</strong> Both only measure whether the recent path has memory that reinforces (trending) or undoes (mean-reverting) past moves — that licenses which strategy family has a right to work, not which way price goes next.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>R/S is biased toward finding H&gt;0.5 in small samples</strong> — exactly the regime a live feature computed on a few dozen daily bars sits in.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A single H or VR reading is noisy and can flip on estimation noise alone.</strong> Treat it as a decaying prior about the current regime, never a fact about the market's permanent nature.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Persistence is episodic, and direction persists far less than pace.</strong> Trend followers thrived in 2008 and 2022 and struggled through much of the 2010s with the same rules. On this desk, trend following on an FX-only basket was null (broad multi-asset ~0.3 out of sample); what validated was persistence of tape <em>speed</em> (68 of 68 cells), which says nothing about direction.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Persistence is episodic, and direction persists far less than pace.</strong> Trend followers thrived in 2008 and 2022 and struggled through much of the 2010s with the same rules.<!-- DESK:START --> On this desk, trend following on an FX-only basket was null (broad multi-asset ~0.3 out of sample); what validated was persistence of tape <em>speed</em> (68 of 68 cells), which says nothing about direction.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

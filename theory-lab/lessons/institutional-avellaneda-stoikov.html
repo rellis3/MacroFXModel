@@ -27,7 +27,7 @@
   <h1 class="tl-title">Avellaneda-Stoikov Inventory-Aware Market Making</h1>
   <p class="tl-dek">A market maker earns the spread by quoting both sides — but every fill leaves a position behind, and a position is a bet the market maker didn't necessarily want to make. Avellaneda &amp; Stoikov (2008) built the first widely-used closed-form answer to a genuinely practical question: given a inventory you're already holding, where should your bid and ask actually sit?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no Avellaneda-Stoikov logic, reservation-price math, or two-sided quoting engine of any kind exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file (case-insensitive) for "Avellaneda", "Stoikov", "reservation.price", "inventory.skew", and "market.mak". The only hits at all are two unrelated, incidental uses of the plain English phrase: a comment in <code>_worker.js</code> noting that OANDA's FX prices come "from a primary market maker" (a data-source label, not model logic), and an identical docstring line repeated in <code>Gold/</code>, <code>ConfluenceBot/</code>, and <code>GoldV2/</code>'s <code>modules/session_engine.py</code> describing how "the market makes a strong directional [move]" at session opens — ordinary usage of the verb "to make," unrelated to the market-making trading strategy this lesson covers. This repo has no code that quotes both a bid and an ask, tracks a running inventory, or computes anything resembling a reservation price.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no Avellaneda-Stoikov logic, reservation-price math, or two-sided quoting engine of any kind exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file (case-insensitive) for "Avellaneda", "Stoikov", "reservation.price", "inventory.skew", and "market.mak". The only hits at all are two unrelated, incidental uses of the plain English phrase: a comment in <code>_worker.js</code> noting that OANDA's FX prices come "from a primary market maker" (a data-source label, not model logic), and an identical docstring line repeated in <code>Gold/</code>, <code>ConfluenceBot/</code>, and <code>GoldV2/</code>'s <code>modules/session_engine.py</code> describing how "the market makes a strong directional [move]" at session opens — ordinary usage of the verb "to make," unrelated to the market-making trading strategy this lesson covers. This repo has no code that quotes both a bid and an ask, tracks a running inventory, or computes anything resembling a reservation price.<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>, <a href="ou-mean-reversion.html">Ornstein-Uhlenbeck</a></span>
   </div>
@@ -677,9 +677,9 @@
       instead of a blunt on/off cutoff.
     </p>
     <p>
-      Nothing above is a claim this repo runs any such system live — see the
+      <!-- DESK:START -->Nothing above is a claim this repo runs any such system live — see the
       status badge above for exactly what does and doesn't exist here today.
-      It illustrates the mechanism a desk that <em>did</em> run this model
+      <!-- DESK:END -->It illustrates the mechanism a desk that <em>did</em> run this model
       would actually be reacting to, which is the point of the exercise.
     </p>
   </div>

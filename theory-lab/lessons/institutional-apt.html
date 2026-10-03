@@ -17,7 +17,7 @@
   <h1 class="tl-title">Arbitrage Pricing Theory</h1>
   <p class="tl-dek">CAPM derives its one factor from an equation about how <em>every</em> investor behaves. Fama-French hand-picks specific factors because they empirically work. APT does neither: one much weaker assumption — no arbitrage — is enough to force expected returns into an approximately linear function of exposures to some small number of pervasive risk factors, without ever saying which factors, or how many.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — this repo builds real macro-surprise indices and a real multi-factor regression engine, but never joins them the way Chen-Roll-Ross does</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — this repo builds real macro-surprise indices and a real multi-factor regression engine, but never joins them the way Chen-Roll-Ross does<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="institutional-fama-macbeth.html">Fama-MacBeth</a> · <a href="taylor-rule.html">The Taylor Rule</a> · <a href="central-bank-policy.html">Central Bank Policy</a> (for the macro-surprise framing)</span>
   </div>
@@ -501,11 +501,11 @@
     <strong>The word "jointly" is doing real work in that sentence.</strong> A genuine
     multi-factor APT regression estimates every \(\beta_{ik}\) at the same time, in a single
     regression with several factor columns side by side — not one factor's loading estimated
-    in isolation, and not a sequence of separate univariate checks run one factor at a time.
+    in isolation, and not a sequence of separate univariate checks run one factor at a time.<!-- DESK:START -->
     Isolating that distinction is exactly what the honest read of this repo's own code below
-    turns on.
+    turns on.<!-- DESK:END -->
   </div>
-  <div class="tl-box scenario">
+  <!-- DESK:START --><div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Verified against this repo's actual code</div>
     <h3>Real macro-surprise machinery and a real multi-factor regression engine — never joined the way this lesson describes</h3>
@@ -550,7 +550,7 @@
       the lesson describes — a joint multi-factor regression of returns on macro surprises — is
       a real but genuinely different thing this codebase has not built.
     </p>
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -653,7 +653,7 @@
       priced, not the absolute stance, that actually moves markets.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Why is it misleading to say "this repo runs a Chen-Roll-Ross-style APT regression" just because it has both a macro-surprise index and a multi-factor OLS engine?</summary>
     <div class="tl-answer">
       Because the two pieces are real but never joined the way a genuine macro-factor APT test
@@ -667,7 +667,7 @@
       decomposition. Having both ingredients separately is not the same claim as having built
       the specific joint regression this lesson describes.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

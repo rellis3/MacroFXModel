@@ -22,7 +22,7 @@
     <section class="sl-slide active" data-slide="1">
       <div class="sl-kicker">Factor Models 2 · Factor Models</div>
       <h1 class="sl-h1">Fama-French &amp; Carhart, <em>Beyond the Single Factor</em></h1>
-      <p class="sl-lede">CAPM says one number — market beta — should explain a stock's expected return. It doesn't, not fully: small stocks and cheap "value" stocks both beat what their beta predicts, decade after decade. Fama and French's fix wasn't a better beta. It was two more zero-cost, long-short portfolios, measured directly and handed to the regression as their own factors — and this deck ends on the most distinctive part: currency markets have the exact same story, and this repo already tried building one.</p>
+      <p class="sl-lede">CAPM says one number — market beta — should explain a stock's expected return. It doesn't, not fully: small stocks and cheap "value" stocks both beat what their beta predicts, decade after decade. Fama and French's fix wasn't a better beta. It was two more zero-cost, long-short portfolios, measured directly and handed to the regression as their own factors — and this deck ends on the most distinctive part: currency markets have the exact same story<!-- DESK:START -->, and this repo already tried building one<!-- DESK:END -->.</p>
     </section>
 
     <section class="sl-slide" data-slide="2">
@@ -197,7 +197,7 @@
       <p class="sl-p">The FX carry trade exists precisely because UIP's prediction — that a high-yielder should depreciate to offset its extra interest — fails, on average, across decades. That's HML's risk-premium logic, transplanted: a persistent long-short spread, compensated for real, debated risk (crash risk, or consumption risk — Lustig &amp; Verdelhan, 2007), not a free lunch.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
+    <!-- DESK:START --><section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">This repo actually tried it — and got an honest null</h2>
       <div class="sl-callout amber">
@@ -205,7 +205,7 @@
         <p><code>forge/xsect.py</code> builds a genuine cross-sectional long-short basket across 26 FX/gold instruments, with both a "momentum" (follow the leaders) and a "reversion" (fade the extremes) sign as pre-registered, walk-forward-tested alternatives — the same construction move as UMD, applied to a distance-from-weekly-open score. Result, 10 years, 6 folds: <strong>OOS t = 0.44</strong>, inside a shuffled-score null's own range (−2.05 to +1.68). A clean null, not a validated edge. Separately, <code>forge/yield_basket.py</code> builds a genuine rate-differential-based FX cross-sectional basket on the live YieldSpreadBot engine — written, but currently unrun, blocked on FRED API access.</p>
       </div>
       <p class="sl-p">No literal SMB, HML, or UMD exists anywhere in this codebase — this repo trades FX and gold, not equities, so that's expected. What's genuinely present is the same <em>methodological move</em>, tested honestly, with a result that didn't clear its own noise floor.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
@@ -306,14 +306,14 @@
         <div class="sl-quiz-explain">FX momentum is a real, published, direct analog — not just a loose comparison — built by the identical rank-and-spread recipe as UMD.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>What did this repo's own <code>forge/xsect.py</code> cross-sectional FX basket actually find, walk-forward tested?</h4>
         <button class="sl-quiz-opt" data-correct="true">A clean null — OOS t=0.44, inside its own shuffled-score noise floor</button>
         <button class="sl-quiz-opt">A strong, validated momentum edge ready to trade</button>
         <button class="sl-quiz-opt">It has never been run</button>
         <div class="sl-quiz-explain">The construction is genuine and the test is honest, but the result doesn't clear its own null — a documented academic factor existing elsewhere is not the same claim as this repo's own signal clearing an OOS bar.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -325,12 +325,12 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Carhart (1997) adds UMD/momentum — a genuinely distinct, sometimes negatively-correlated-with-value continuation effect, not a redundant restatement.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Fama-French (2015) adds RMW and CMA via a dividend-discount-model argument; it's the modern standard, but 3- and 4-factor versions remain in routine use.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The FX carry trade is the identical methodological move in a currency-market costume, with direct published analogs for MKT, HML, and UMD alike.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own honest attempt at the FX analog (<code>forge/xsect.py</code>) came back a clean null — a documented factor elsewhere is not validated edge here.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own honest attempt at the FX analog (<code>forge/xsect.py</code>) came back a clean null — a documented factor elsewhere is not validated edge here.</p></div><!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Since Carhart (1997), alpha means what is left after market, size, value and momentum: the standard yardstick for any manager or strategy.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Read a manager's or a strategy's factor loadings as a style profile, not a skill certificate. Recognize the FX carry and momentum trades for what they structurally are — priced factors compensated for real risk, not free lunches. And keep "documented in the literature" and "validated on this repo's own data" as two entirely separate claims, exactly as <code>forge/xsect.py</code>'s own null result illustrates.</p>
+        <p>Read a manager's or a strategy's factor loadings as a style profile, not a skill certificate. Recognize the FX carry and momentum trades for what they structurally are — priced factors compensated for real risk, not free lunches. And keep "documented in the literature" and "validated on your own data" as two entirely separate claims<!-- DESK:START -->, exactly as <code>forge/xsect.py</code>'s own null result illustrates<!-- DESK:END -->.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

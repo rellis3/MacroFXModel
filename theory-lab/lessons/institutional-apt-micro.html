@@ -235,15 +235,15 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">Two honest cracks in the theory</h2>
+      <h2 class="sl-h2">Where the theory honestly cracks</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">The generality problem</div>
         <p>There is no single, universally agreed "the APT model," the way there is exactly one standard Fama-French three-factor specification. Because the theory itself never specifies which factors or how many, different researchers running the identical no-arbitrage theorem routinely choose different macro variables, different factor counts, and get different implied risk premia as a result.</p>
       </div>
-      <div class="sl-callout purple">
+      <!-- DESK:START --><div class="sl-callout purple">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>This repo has real macro-surprise construction (<code>js/econSurprise.js</code> standardizes actual-minus-consensus by each series' own dispersion) and a real joint multi-factor OLS engine (<code>js/mve/ols.js</code>). But it never joins them: the surprise/regime studies (<code>js/macroRegimeFx.js</code>) report mean FX returns bucket-by-bucket, one macro state at a time, while the multi-factor OLS engine runs on macro <em>levels</em> (real-rate diff, DXY, curve) for fair-value estimation, not on surprises for a Chen-Roll-Ross-style expected-return decomposition. Both halves are real; the specific joint regression this lesson describes is a real but different thing this codebase hasn't built.</p>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -287,14 +287,14 @@
         <div class="sl-quiz-explain">Markets are forward-looking — by release time, the anticipated part is already reflected in prices. This is the same "surprise, not stance" logic the Central Bank Policy lesson uses for rate decisions.</div>
       </div>
 
-      <div class="sl-quiz-q" data-q="5">
+      <!-- DESK:START --><div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Does having a macro-surprise index AND a multi-factor OLS engine mean this repo runs a Chen-Roll-Ross-style APT regression?</h4>
         <button class="sl-quiz-opt" data-correct="true">No — the two pieces exist separately and are never joined into one regression</button>
         <button class="sl-quiz-opt">Yes, exactly as this lesson describes</button>
         <button class="sl-quiz-opt">No — neither piece exists in this repo at all</button>
         <div class="sl-quiz-explain">The surprise index and regime studies report bucketed means, one macro state at a time; the multi-factor OLS engine regresses on macro levels for fair value, not on joint surprise factors for expected-return decomposition.</div>
-      </div>
+      </div><!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">

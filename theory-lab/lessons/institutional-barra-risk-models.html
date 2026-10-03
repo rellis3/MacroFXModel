@@ -17,7 +17,7 @@
   <h1 class="tl-title">Barra-Style Risk Models</h1>
   <p class="tl-dek">CAPM, Fama-French, and APT can all be rebuilt from a published paper. A commercial multi-factor risk model can't — it's proprietary production infrastructure, recalibrated constantly on huge datasets. This lesson maps what these systems actually are, honestly, rather than pretending to derive one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — a proprietary commercial category, not something any repo builds; this repo's genuine risk-decomposition analogs are Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory, applied to FX/gold instead of equities</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — a proprietary commercial category, not something any repo builds; this repo's genuine risk-decomposition analogs are Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory, applied to FX/gold instead of equities<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="institutional-apt.html">Arbitrage Pricing Theory</a>, <a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a></span>
   </div>
@@ -34,7 +34,7 @@
       <li>This is the one lesson in this category that cannot be derived from a published academic paper: Barra, MSCI, and Axioma-style commercial risk models are large, proprietary, continuously-recalibrated production systems, and their exact factor construction is a trade secret. This lesson is an honest orientation map, not a from-scratch build.</li>
       <li>The general structure <em>is</em> public knowledge and stated precisely here: \(R_i = \sum_k X_{ik} f_k + u_i\), where \(X_{ik}\) are an asset's known, pre-computed factor <strong>exposures</strong> and \(f_k\) are factor <strong>returns</strong>, estimated by a cross-sectional regression each period — conceptually the same move as the Fama-MacBeth stage-2 regression from lesson 3 of this category, just with dozens of style factors plus industry/sector and (for global models) country dummies instead of a handful of academic ones.</li>
       <li>What makes these genuinely different from an academic Fama-French-style model isn't just "more factors": careful covariance-matrix shrinkage so the risk matrix stays invertible for optimization, continuous re-estimation instead of one fixed specification, formal industry/sector/country factors, and a design purpose — risk attribution and portfolio construction — rather than testing an asset-pricing hypothesis.</li>
-      <li>This repo trades FX and gold, not a broad equity cross-section — there is no direct Barra-for-currencies in wide commercial use. But the underlying logic (decompose total risk into named systematic buckets plus a residual, then use that decomposition for both attribution and construction) is exactly what this curriculum's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>, <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a>, and <a href="random-matrix-theory.html">Random Matrix Theory</a> lessons already do for this repo's own instrument universe.</li>
+      <li><!-- DESK:START -->This repo trades FX and gold, not a broad equity cross-section. <!-- DESK:END -->There is no direct Barra-for-currencies in wide commercial use. But the underlying logic (decompose total risk into named systematic buckets plus a residual, then use that decomposition for both attribution and construction) is exactly what this curriculum's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>, <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a>, and <a href="random-matrix-theory.html">Random Matrix Theory</a> lessons already do<!-- DESK:START --> for this repo's own instrument universe<!-- DESK:END -->.</li>
       <li>A genuinely computable anchor closes the gap a full build can't: a real, correct 2-factor risk decomposition — factor variance via \(x^\top F x\) plus specific variance — computed live, exactly the arithmetic a 40-factor commercial model runs at far larger scale.</li>
       <li><strong>How it reached trading:</strong> Barr Rosenberg founded Barra in 1975 to sell factor risk models built from stock characteristics, and its descendants (MSCI Barra, Axioma) are how equity desks see and budget risk today.</li>
     </ul>
@@ -67,8 +67,8 @@
     What this lesson <em>can</em> do, honestly, is give an accurate map:
     what these systems structurally are, what part of that structure is
     genuinely public knowledge versus proprietary detail, what institutions
-    actually use them for, and — since this repo has no equity cross-section
-    and therefore no direct use for one — what this repo's own genuine
+    actually use them for, and<!-- DESK:START --> — since this repo has no equity cross-section
+    and therefore no direct use for one —<!-- DESK:END --> what this curriculum's own genuine
     risk-decomposition tooling does instead, for FX and gold, using exactly
     the same underlying logic. Call this an orientation lesson rather than a
     derivation, and treat that distinction as the single most important
@@ -253,7 +253,7 @@
         unstable, extreme weights. Commercial vendors run their own,
         proprietary version of this correction on every factor covariance
         matrix they publish, for exactly the same structural reason this
-        repo's own Random Matrix Theory and Hierarchical Risk Parity
+        curriculum's own Random Matrix Theory and Hierarchical Risk Parity
         lessons care about it.
       </p>
     </div>
@@ -496,9 +496,9 @@
   </p>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
-  <h2>The honest FX/macro comparison — what this repo does instead</h2>
+  <h2>The honest FX/macro comparison — what this curriculum does instead</h2>
   <p>
-    This repo trades FX and gold, not a broad equity cross-section. There is
+    <!-- DESK:START -->This repo trades FX and gold, not a broad equity cross-section. <!-- DESK:END -->There is
     no widely-used commercial Barra-for-currencies the way there is for
     equities — the whole commercial multi-factor risk-model industry grew up
     around large equity universes, where hundreds or thousands of names and
@@ -511,7 +511,7 @@
     But the underlying <em>logic</em> — decompose total risk into named
     systematic buckets plus a residual, and use that decomposition for both
     attribution and construction — is exactly what three lessons already in
-    this curriculum do, for this repo's own instrument universe, without
+    this curriculum do<!-- DESK:START -->, for this repo's own instrument universe<!-- DESK:END -->, without
     the equity-specific size/value/momentum/sector taxonomy:
   </p>
   <div class="tl-icard-grid">
@@ -519,11 +519,11 @@
       <div class="tl-icon-badge blue">🌳</div>
       <h4><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a></h4>
       <p>
-        Clusters this repo's own FX pairs by correlation-distance into a
+        Clusters <!-- DESK:START -->this repo's own <!-- DESK:END -->FX pairs by correlation-distance into a
         dendrogram (the worked example there groups a five-pair basket into
         a "risk-on" bloc — EURUSD, GBPUSD, AUDUSD — and a "safe-haven" bloc —
         USDJPY, USDCHF), then allocates top-down. That dendrogram-based bloc
-        structure is this repo's own version of "named systematic buckets" —
+        structure is this curriculum's own version of "named systematic buckets" —
         discovered from correlation structure rather than from a
         fundamentals-based style taxonomy, but doing the same structural job
         a Barra-style model's industry/sector grouping does.
@@ -541,19 +541,19 @@
         honestly-scoped, unvalidated version of the exact same factor-model
         machinery this lesson describes at commercial scale — the lesson's
         own takeaways are explicit that these three named factors are cited
-        academic literature, not something validated on this repo's data.
+        academic literature, not something validated<!-- DESK:START --> on this repo's data<!-- DESK:END -->.
       </p>
     </div>
     <div class="tl-icard">
       <div class="tl-icon-badge purple">📊</div>
       <h4><a href="random-matrix-theory.html">Random Matrix Theory &amp; the Marchenko-Pastur Law</a></h4>
       <p>
-        Gives this repo's own principled test for which eigenvalues of a
+        Gives this curriculum's own principled test for which eigenvalues of a
         correlation matrix are real, distinguishable structure versus
         sampling noise — the worked example there finds one genuine common
         factor (a dollar/risk-on component) and several eigenvalues
         indistinguishable from noise in a 30-pair, 250-day FX basket. This
-        is the closest thing this repo has to the covariance-shrinkage
+        is the closest thing this curriculum has to the covariance-shrinkage
         discipline Section 03 above says is arguably the biggest genuine
         engineering difference in a real commercial risk model — the same
         underlying concern (don't trust every eigenvalue of a
@@ -565,9 +565,9 @@
   <p>
     None of these three lessons is a Barra-equivalent, and none of them
     claims to be — each one says so explicitly in its own takeaways. What
-    they collectively demonstrate is that this repo already has the correct
+    they collectively demonstrate is that this curriculum already has the correct
     <em>idea</em> a commercial risk model is built around, applied honestly
-    to the universe this repo actually trades, rather than a gap this
+    to the universe this curriculum actually covers, rather than a gap this
     lesson needs to paper over by pretending an equity-style factor
     taxonomy would transfer directly.
   </p>
@@ -575,13 +575,13 @@
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
-    <h3>A multi-asset desk running both an equity book and this repo's FX book</h3>
+    <h3>A multi-asset desk running both an equity book and an FX book</h3>
     <p>
       Picture a multi-asset fund where the equity desk licenses a
       commercial Barra-style model for its cash-equity book — every morning
       it gets a risk report breaking the book's active risk into style,
       sector, and specific buckets, feeding directly into the equity
-      optimizer's constraints. The FX desk, running a book like this repo's,
+      optimizer's constraints. The FX desk<!-- DESK:START -->, running a book like this repo's,<!-- DESK:END -->
       has no equivalent subscription to point at. What it has instead is
       exactly the toolkit surveyed above: a correlation-distance dendrogram
       (Hierarchical Risk Parity) that discovers the FX book's own risk-on
@@ -599,7 +599,7 @@
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>Imagine one friend has a subscription to a professional meal-planning service that tracks dozens of nutrients across a huge grocery store's worth of ingredients. You don't have that subscription, and there isn't a version of it built for the three ingredients you actually cook with. But you can still do the same basic thing that service does — group your ingredients by which ones go well together, notice which combination actually drives most of a dish's flavor versus which part is just random variation, and plan meals around that — just at a much smaller, hand-built scale. That's the honest relationship between a Barra subscription and this repo's own risk-decomposition lessons.</p>
+    <p>Imagine one friend has a subscription to a professional meal-planning service that tracks dozens of nutrients across a huge grocery store's worth of ingredients. You don't have that subscription, and there isn't a version of it built for the three ingredients you actually cook with. But you can still do the same basic thing that service does — group your ingredients by which ones go well together, notice which combination actually drives most of a dish's flavor versus which part is just random variation, and plan meals around that — just at a much smaller, hand-built scale. That's the honest relationship between a Barra subscription and this curriculum's own risk-decomposition lessons.</p>
   </div>
 
   <div class="tl-box pitfall">
@@ -668,7 +668,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The general structure \(R_i=\sum_k X_{ik}f_k+u_i\) genuinely is public knowledge.</strong> Known, pre-computed exposures times factor returns estimated by a cross-sectional regression each period — conceptually the Fama-MacBeth stage-2 move, at a far larger factor count.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"More factors than Fama-French" is not the real distinction.</strong> Covariance shrinkage for optimization tractability, continuous re-estimation, formal industry/country factors, and a design purpose built for attribution and construction rather than hypothesis testing are what genuinely separate a commercial model from an academic one.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Institutions use these for risk attribution, performance attribution, and portfolio-construction constraints</strong> — never as a source of alpha, since the exposures a subscription reveals are widely-known, already-priced-in descriptive statistics.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>There is no direct Barra-for-currencies in wide commercial use.</strong> This repo's genuine analog is the same decompose-and-attribute logic, already built here for FX/gold: Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>There is no direct Barra-for-currencies in wide commercial use.</strong> This curriculum's genuine analog is the same decompose-and-attribute logic, already built here for FX/gold: Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The live calculator is a real, correct decomposition, just at toy scale.</strong> Factor variance \(x^\top F x\) plus specific variance is exactly the arithmetic a 40-plus-factor commercial model runs, computed here with \(K=2\).</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk this is the daily risk report.</strong> Since Barr Rosenberg founded Barra in 1975, equity managers have read predicted risk split into style, industry, country and stock-specific parts, and fed the same factor covariance matrix into their optimisers.</span></div>
   </div>
@@ -700,15 +700,15 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q5. Why is there no widely-used commercial Barra-equivalent for FX, and what does this repo use instead for the same underlying job?</summary>
+    <summary>Q5. Why is there no widely-used commercial Barra-equivalent for FX, and what does this curriculum use instead for the same underlying job?</summary>
     <div class="tl-answer">
-      The commercial multi-factor risk-model industry grew up around large equity universes with hundreds or thousands of names and a rich set of fundamental descriptors, which makes a 40-plus-factor model both feasible and valuable; a basket of a few dozen FX pairs and gold doesn't offer that same cross-section, and no equivalent commercial product exists in wide use for it. This repo uses the same underlying logic — decompose total risk into named systematic buckets plus a residual, then use that decomposition for attribution and construction — via its own Hierarchical Risk Parity (correlation-distance clustering into blocs), Factor-Based Portfolio Construction (named carry/momentum/value factor loadings), and Random Matrix Theory (a noise-band test on the correlation matrix's eigenvalues) lessons, applied to its own FX/gold universe rather than a broad equity cross-section.
+      The commercial multi-factor risk-model industry grew up around large equity universes with hundreds or thousands of names and a rich set of fundamental descriptors, which makes a 40-plus-factor model both feasible and valuable; a basket of a few dozen FX pairs and gold doesn't offer that same cross-section, and no equivalent commercial product exists in wide use for it. This curriculum uses the same underlying logic — decompose total risk into named systematic buckets plus a residual, then use that decomposition for attribution and construction — via its own Hierarchical Risk Parity (correlation-distance clustering into blocs), Factor-Based Portfolio Construction (named carry/momentum/value factor loadings), and Random Matrix Theory (a noise-band test on the correlation matrix's eigenvalues) lessons, applied to its own FX/gold universe rather than a broad equity cross-section.
     </div>
   </details>
   <details class="tl-quiz">
     <summary>Q6. A colleague says "since our FX book has a Barra-style risk decomposition available through this lesson's calculator, we now have a validated FX risk model." What's wrong with that claim?</summary>
     <div class="tl-answer">
-      The calculator is a genuinely correct piece of arithmetic — a real, working instance of the factor-variance-plus-specific-variance decomposition a commercial model runs — but it uses a fixed, illustrative 2×2 factor covariance matrix stated explicitly for teaching purposes, not one estimated from this repo's actual FX data with any of the shrinkage, continuous recalibration, or industry/country structure a real commercial model has. Nothing in this lesson estimates real exposures, real factor covariances, or real specific variances from this project's own instrument universe — that would require building (and separately validating) something closer to the Factor-Based Portfolio Construction or Random Matrix Theory lessons' own machinery on real data, which those lessons themselves are explicit has not been done here either.
+      The calculator is a genuinely correct piece of arithmetic — a real, working instance of the factor-variance-plus-specific-variance decomposition a commercial model runs — but it uses a fixed, illustrative 2×2 factor covariance matrix stated explicitly for teaching purposes, not one estimated from<!-- DESK:START --> this repo's<!-- DESK:END --> actual FX data with any of the shrinkage, continuous recalibration, or industry/country structure a real commercial model has. Nothing in this lesson estimates real exposures, real factor covariances, or real specific variances from the FX/gold instrument universe — that would require building (and separately validating) something closer to the Factor-Based Portfolio Construction or Random Matrix Theory lessons' own machinery on real data, which those lessons themselves are explicit has not been done here either.
     </div>
   </details>
 
@@ -717,7 +717,7 @@
   <ul class="tl-refs">
     <li>Richard C. Grinold &amp; Ronald N. Kahn, <em>Active Portfolio Management</em>, 2nd ed., McGraw-Hill, 1999 — the standard practitioner reference for multi-factor risk model structure, risk decomposition, and the active-management workflows (risk attribution, portfolio construction against a benchmark) this lesson describes; also the primary source cited in this curriculum's own Active Portfolio Management lesson.</li>
     <li>MSCI Barra multi-factor risk model methodology — general, publicly available methodology overviews from MSCI describe the exposure/factor-return/specific-risk structure covered in Section 02 of this lesson; this lesson does not claim access to, or knowledge of, any proprietary factor-construction detail beyond what MSCI itself publishes as a general methodology summary.</li>
-    <li>Marcos López de Prado, "Building Diversified Portfolios that Outperform Out-of-Sample," <em>Journal of Portfolio Management</em>, 42(4), 2016 — the source of this curriculum's own Hierarchical Risk Parity lesson, cited here as this repo's genuine analog to a commercial model's bloc/cluster structure.</li>
+    <li>Marcos López de Prado, "Building Diversified Portfolios that Outperform Out-of-Sample," <em>Journal of Portfolio Management</em>, 42(4), 2016 — the source of this curriculum's own Hierarchical Risk Parity lesson, cited here as this curriculum's genuine analog to a commercial model's bloc/cluster structure.</li>
   </ul>
   </details>
 

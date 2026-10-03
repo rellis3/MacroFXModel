@@ -491,11 +491,10 @@
         above, the \(H<0.5\) case has a formally <em>summable</em> autocovariance — it is short memory by the strict
         definition, even though it is real, negatively-correlated, mean-reverting structure. Calling it "long
         memory" is a common looseness worth avoiding in precise writing.</li>
-      <li><strong>A good ARFIMA in-sample fit is not automatically forecast edge.</strong> Per this repo's working
-        agreement (a method is not a strategy), a better-specified statistical description of volatility's
+      <li><strong>A good ARFIMA in-sample fit is not automatically forecast edge.</strong> As a working rule (a method is not a strategy), a better-specified statistical description of volatility's
         dependence structure is a legitimate methodological improvement over a misspecified GARCH — it is not, by
         itself, evidence that trading on the resulting longer-horizon forecast makes money. That still requires the
-        same honest, costed, out-of-sample test as anything else in this repo.</li>
+        same honest, costed, out-of-sample test as anything else<!-- DESK:START --> in this repo<!-- DESK:END -->.</li>
     </ul>
   </div>
 
@@ -506,7 +505,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long memory has a precise formal definition.</strong> The autocovariance sum \(\sum_k|\gamma(k)|=\infty\) — not just "somewhat persistent" or "somewhat autocorrelated."</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is categorical, not a matter of degree.</strong> No finite-order ARMA model, however many lags it's given, can ever exhibit true long memory — exponential decay is always absolutely summable.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>ARFIMA is the discrete-time tool that fits this to real data.</strong> Its fractional order \(d = H - 0.5\), so \(d\in(0,0.5)\) corresponds exactly to genuine long memory.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's <code>computeHurst</code> is the descriptive statistic, not the generative model.</strong> fBm/ARFIMA is background theory here — not yet fit or wired into any live forecaster.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo's <code>computeHurst</code> is the descriptive statistic, not the generative model.</strong> fBm/ARFIMA is background theory here — not yet fit or wired into any live forecaster.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Anti-persistence (H&lt;0.5) is short memory, not "long memory with a minus sign."</strong> And structural breaks/regime switching can produce an ACF that looks identical to true long memory — check for regime instability first.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good ARFIMA/FIGARCH in-sample fit is a methodological upgrade, not evidence of edge.</strong> It's a better-specified model of volatility's dependence structure — trading on it still needs a real, costed, out-of-sample test.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The long memory is in volatility, not returns.</strong> Lo (1991) found weak evidence in stock returns once short-term dependence is allowed for; absolute returns and realised volatility show it clearly (Ding, Granger &amp; Engle, 1993). Test it, don't assume it.</span></div>
@@ -585,7 +584,7 @@
       well-estimated \(\hat{d}\approx 0.35\) (implying \(H\approx 0.85\)) is a statement about the series' dependence
       structure being better described by ARFIMA than by GARCH(1,1) alone — a legitimate methodological improvement,
       consistent with the well-documented "long memory in volatility" literature. It is not, by itself, evidence that
-      forecasting further out with that model produces a tradeable edge; per this repo's working agreement, that
+      forecasting further out with that model produces a tradeable edge; <!-- DESK:START -->per this repo's working agreement, <!-- DESK:END -->that
       claim still needs a real, costed, out-of-sample test before being treated as anything more than a
       better-specified model.
     </div>
