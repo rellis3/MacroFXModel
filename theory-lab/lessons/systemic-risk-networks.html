@@ -34,8 +34,9 @@
       <li>Systemic risk is naturally a network problem: nodes are institutions or instruments, edges are exposures (counterparty, correlation, or funding linkages), and the question is how far a single node's distress spreads once it starts.</li>
       <li>DebtRank (Battiston et al., 2012) measures exactly this: it propagates a "distress level" iteratively through the exposure network, capital-weighted, and sums the total distress induced across the whole system relative to its size.</li>
       <li>DebtRank is conceptually related to eigenvector centrality — both are recursive, iterative computations over a network — but propagates a one-time shock forward through time rather than describing a fixed, static importance.</li>
-      <li>A worked 4-institution example shows one default (Bank C) propagating through capital-weighted exposures to leave the other three banks at roughly 24%, 48%, and 32% distress after the cascade settles — and the total induced distress (≈1.05) slightly exceeds the size of the initiating shock (1.00), the amplification effect DebtRank is built to capture.</li>
+      <li>A worked 4-institution example shows one default (Bank C) propagating through capital-weighted exposures to leave the other three banks at roughly 24%, 48%, and 32% distress after the cascade settles — and the total induced distress (≈1.04) slightly exceeds the size of the initiating shock (1.00), the amplification effect DebtRank is built to capture.</li>
       <li>This is stated plainly: DebtRank and tools like it are used by central banks, the Federal Reserve, and regulators for financial-stability stress testing — it is a market-structure research tool, not a component of any trading strategy in this repo.</li>
+      <li><strong>Real-world episode:</strong> AIG in September 2008 had sold credit protection to many banks at once. A downgrade triggered collateral calls it could not meet, and the Fed lent up to $85 billion because the failure would have spread down every edge together: too interconnected to fail.</li>
     </ul>
   </div>
 
@@ -398,6 +399,73 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: AIG, September 2008</h2>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The insurer that had sold everyone the same protection</h3>
+    <p>
+      Through the mid-2000s, AIG's Financial Products unit sold <strong>credit default swaps</strong> to large banks
+      in the US and Europe. The swaps protected the banks' holdings of the top-rated, "super-senior" slices of
+      mortgage-backed CDOs. The banks treated that protection as a hedge: with AIG standing behind them, the positions
+      looked close to riskless. The contracts carried a catch. AIG had to post collateral if the value of the
+      protected securities fell, or if AIG's own credit rating was cut.
+    </p>
+    <p>
+      As the US housing market turned in 2007 and 2008, the securities lost value and the collateral calls grew.
+      On 15 September 2008, the same day Lehman Brothers filed for bankruptcy, the rating agencies downgraded AIG.
+      That triggered more collateral demands than AIG could meet. On 16 September the Federal Reserve Bank of New
+      York agreed to lend AIG up to <strong>$85 billion</strong>, and the US government took a stake of about
+      four-fifths of the company. Government support later grew well beyond that first loan. When the CDOs were
+      bought out of the swaps that November, the bank counterparties ended up with the full value of the protection
+      they had bought.
+    </p>
+    <p style="margin-bottom:0">
+      Officials argued that a disorderly AIG failure, one day after Lehman, would have pushed losses into every
+      institution whose hedges AIG had written, all at once. That is a DebtRank argument made without the
+      algorithm. AIG was not judged too big to fail. It was judged <em>too interconnected to fail</em>, the exact
+      distinction Section 01 opened with. Its own losses were one thing; the distress it would induce across the
+      network was the reason for the rescue.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>US house prices fall; mortgage-backed CDOs lose value</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>AIG Financial Products</b>Wrote protection on those CDOs to many banks; contracts force it to post collateral as values fall</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Rating agencies</b>Downgrade AIG on 15 Sept 2008, triggering more collateral than it can raise</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Exposure network ◆ this lesson</b>If \(h_{\text{AIG}}\to1\), every bank's hedge fails together: distress flows down every edge at once</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Fed and Treasury</b>Forced to rescue it: up to $85bn from the New York Fed on 16 Sept; counterparties later paid in full</div>
+  </div>
+  <p>
+    The link marked ◆ is this lesson's concept. AIG is a node \(j\) with large impact factors \(W_{ij}\) into many
+    banks at once, so its DebtRank, the total distress its failure would induce, was far larger than its own loss.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The cascade in Section 02 runs on a fixed impact-factor matrix \(W_{ij}\), and distress travels only when a node
+    loses capital. At AIG the edges were <strong>contingent</strong>. The collateral it owed jumped with every fall in
+    the CDOs' value and with its own downgrade, so the weights grew exactly as distress rose. The first thing to travel
+    was cash demanded now, which drained AIG before it ever defaulted. Nobody could run the cascade beforehand either:
+    the bilateral swap exposures were private contracts that no single supervisor saw in full, the data problem the
+    pitfalls in Section 04 describe. And because the rescue stopped the cascade, AIG's counterfactual DebtRank was
+    never observed.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: "stress at a highly connected institution warns that markets will run wider
+    next."</strong> This desk has no exposure-network data, and the bilateral data that DebtRank needs is held by
+    regulators. A fair test would pre-register a public proxy for distress at the most connected banks, such as a jump
+    in their CDS spreads, and measure the next week's index and FX range against a volatility-matched control. Even
+    then it would test the proxy, not the network.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How this is actually used — and how it isn't</h2>
   <p>
     DebtRank was developed specifically in response to the 2008 crisis'
@@ -474,7 +542,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Systemic risk is a network-propagation problem, not just a network-structure one.</strong> The first two lessons in this category asked "which node is most important" and "what's the backbone structure" — this lesson asks "how far does one node's failure actually spread."</span></div>
@@ -482,10 +550,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example showed real amplification:</strong> one bank's full default (h=1.00) settled into a total induced distress of ≈1.04 across the other three banks — network propagation adding to the damage, not just redistributing an equal amount.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DebtRank is conceptually a cousin of eigenvector centrality</strong> — both are recursive, iterative computations over a network's structure — but DebtRank propagates a real shock forward in simulated time rather than describing a fixed importance score.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real bilateral exposure data is the hard, usually-confidential part.</strong> This machinery is genuinely used by central banks and regulators — but only because they have access to reporting data that isn't publicly available.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real edges are contingent, not fixed.</strong> AIG's collateral obligations jumped with every fall in value and with its own downgrade, so the edge weights rose exactly as distress did. The first thing to travel was cash, before any default. Using contagion stress as a trading signal is untested here.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is not, and is not presented as, part of any trading strategy in this repo.</strong> DebtRank and contagion-network analysis are financial-stability/regulatory research tools — stated plainly, not softened, so it's never mistaken for a built or validated component of this project.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. In the worked example, why did the total induced distress across banks A, B, and D (≈1.04) come out larger than the size of the initiating shock (1.00, Bank C's default alone)?</summary>
