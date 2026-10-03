@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">From a bead on a wire to a portfolio</h2>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">How much of each asset to hold</h2>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p><strong>Joseph-Louis Lagrange · 1788 · Paris · Harry Markowitz · 1952 · Chicago</strong></p>
-        <p>Lagrange wanted to know how bodies move when constrained, such as a bead on a wire. He folded each constraint into the problem with an extra multiplier and solved it all at once (Mécanique analytique, 1788). The preface boasts that the book contains no diagrams.</p>
-        <p>In 1952 Markowitz noticed that an investor who cared only about expected return would hold one stock, yet people diversify. His answer, lowest variance for a target return, is this lesson's Lagrangian. He recalled Milton Friedman objecting at his defence that it wasn't economics. It later shared a Nobel (1990).</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Harry Markowitz · 1952 · "Portfolio Selection"</strong></p>
+        <p>Investors knew diversifying helped but not by how much. In 1952 Markowitz posed it as an optimisation: lowest variance for a target return, weights summing to one. Lagrange multipliers (devised for mechanics in 1788) solve it.</p>
+        <p>It shared a Nobel in 1990, and Black and Litterman (Goldman Sachs, early 1990s) extended it. Optimisers now size portfolios, hedges and execution schedules under limits.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Choose sizes that do best on one objective without breaking the limits.</p>
       </div>
     </section>
 
@@ -315,7 +317,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>λ is a shadow price, not just algebra — it measures how much the optimal objective would change per unit change in the constraint's target.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Minimizing portfolio variance for a target return is exactly this Lagrangian problem — the two-asset worked example is the smallest possible instance of full Markowitz portfolio theory.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>KKT conditions extend the same logic to inequality constraints, and real solvers use them numerically — the hand-derivation here is for checking output, not for large problems.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Lagrange multipliers were built for constrained mechanics (1788); Markowitz (1952) reused them to trade off risk against a return target.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Markowitz (1952) made portfolio choice this constrained problem; the multiplier is the price of the constraint, and optimisers now size portfolios and hedges.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

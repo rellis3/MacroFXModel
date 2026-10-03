@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Logarithms were built to save astronomers time</h2>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Why desks work in log returns</h2>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p><strong>John Napier · 1614 · Edinburgh · Jacob Bernoulli · 1683 · Basel</strong></p>
-        <p>Astronomers and navigators lost hours to long multiplications. John Napier spent about twenty years building tables that turned multiplication into addition, and published them in 1614. Kepler used them to finish his planetary tables (1627). That is the product rule, ln(ab) = ln a + ln b, sold as a time-saver.</p>
-        <p>e came from money. In 1683 Jacob Bernoulli asked how big a year's growth at 100% gets if interest is credited ever more often: (1 + 1/n)ⁿ settles between 2 and 3. Euler later named it e.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>M. F. M. Osborne · 1959 · Black, Scholes &amp; Merton · 1973</strong></p>
+        <p>Up 50% then down 50% leaves you down 25%: simple returns don't add. In 1959 Osborne argued that log prices, not prices, follow a random walk, so log returns are the natural unit.</p>
+        <p>Black–Scholes–Merton (1973) built option pricing on that, discounting with e^(−rT). e itself came from Bernoulli's 1683 question about compounding interest ever more often.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Make returns add across time and put every rate on one compounding basis.</p>
       </div>
     </section>
 
@@ -423,7 +425,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>e^(rt) is compounding pushed to infinite frequency — it falls straight out of the limit that defines e itself, not a separate formula to memorize.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Log-returns add exactly across time; simple returns only approximate that, worse the more volatile the series.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A continuously-compounded rate is always a touch smaller than the equivalent simple rate — 5% simple ≈ 4.879% continuous over one year, not interchangeable numbers.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Logarithms began as Napier's 1614 labour-saving tables (multiply by adding), and e began as Bernoulli's 1683 question about compounding interest ever more often.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Desks use log returns and e^(−rT) because log returns add across time; Osborne (1959) and Black–Scholes–Merton (1973) made that the standard.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

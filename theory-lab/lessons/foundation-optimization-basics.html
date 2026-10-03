@@ -38,7 +38,7 @@
       <li>The Lagrange-multiplier intuition: at the constrained optimum, the objective's gradient and the constraint's gradient point along the exact same line — if they didn't, you could nudge along the constraint and still improve the objective, so that point couldn't have been optimal.</li>
       <li>KKT conditions are the version of this same logic for <em>inequality</em> constraints (≤ or ≥ instead of an exact =) — name-checked here, fully treated in a later Numerical Methods lesson.</li>
       <li>Markowitz portfolio optimization — minimizing a portfolio's variance subject to hitting a target expected return — is exactly this lesson's Lagrange-multiplier problem, worked fully by hand here with two made-up but plausible assets.</li>
-      <li><strong>Where it came from:</strong> Lagrange introduced his multipliers for constrained motion in mechanics (<em>Mécanique analytique</em>, 1788). Harry Markowitz turned the same constrained problem into portfolio selection in 1952.</li>
+      <li><strong>How it reached trading:</strong> Harry Markowitz (1952) turned portfolio choice into this lesson's constrained problem, minimum variance for a target return, and constrained optimisers have sized portfolios and hedges ever since.</li>
     </ul>
   </div>
 
@@ -119,12 +119,22 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>Mechanics with no diagrams, and a dissertation that "wasn't economics"</h3>
-    <div class="tl-origin-who">Joseph-Louis Lagrange · 1788 · Paris (born Turin) — Harry Markowitz · 1952 · University of Chicago</div>
-    <p>Lagrange's problem was physical: how do bodies move or balance when something constrains them, like a bead held to a wire or a pendulum held by its rod? Instead of working out the forces that keep each constraint in place, he folded each constraint into the problem with an extra unknown multiplier and solved everything at once. He set this out in <em>Mécanique analytique</em> (1788), and later applied the same device to general maximum and minimum problems.</p>
-    <p>Lagrange was born in Turin, succeeded Euler at the Berlin Academy in 1766 and moved to Paris in 1787. His mechanics was so purely algebraic that the preface warns the reader there are no diagrams anywhere in the book.</p>
-    <p>In the early 1950s Harry Markowitz, a graduate student at the University of Chicago, read a standard text that valued a stock by its expected future dividends. He saw that an investor who cared only about expected return would put everything into one stock, yet real investors diversify, so they must care about risk too. His 1952 paper "Portfolio Selection" posed this lesson's problem: the lowest variance for a target return. Markowitz later recalled that at his 1955 dissertation defence Milton Friedman objected that the work was not economics. It earned him a share of the 1990 Nobel Memorial Prize in Economic Sciences.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>How much of each asset to hold</h3>
+    <div class="tl-origin-who">Constrained optimisation · Markowitz, 1952 — Black &amp; Litterman, early 1990s</div>
+    <p>Before the 1950s investors knew diversification helped but had no way to say how much. Investment advice valued each security on its own; nothing traded risk off against return across a whole portfolio.</p>
+    <p>In 1952 Harry Markowitz, then a graduate student at Chicago, framed the choice as a constrained optimisation in "Portfolio Selection": minimise portfolio variance subject to a target expected return and weights that sum to one. Lagrange multipliers, devised in 1788 for constrained mechanics, solve exactly that. The work earned Markowitz a share of the 1990 Nobel Memorial Prize, and in the early 1990s Fischer Black and Robert Litterman at Goldman Sachs extended it to blend market-implied returns with a manager's views.</p>
+    <p>Constrained optimisers now sit behind portfolio construction, risk budgets, hedge sizing under limits and execution schedules that trade cost against risk. The multiplier has a desk meaning of its own: the shadow price, how much the objective improves if a constraint is loosened by one unit.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Choosing position sizes that do best on one objective (lowest risk, or highest expected return) while respecting hard limits: budget, return target, exposure caps.</dd>
+        <dt>Takes in</dt><dd>Gradients and the covariance matrix (<a href="foundation-multivariable-calculus.html">Multivariable Calculus</a>, <a href="linear-algebra-matrices.html">Linear Algebra &amp; Matrices</a>).</dd>
+        <dt>Hands on to</dt><dd>Portfolio construction (<a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>, <a href="convex-optimization.html">Convex Optimization</a>, <a href="risk-parity-erc.html">Risk Parity</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -580,7 +590,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Lagrange multiplier is a shadow price.</strong> Its value measures how much the optimal objective would change per unit change in the constraint's target — a genuinely useful economic number, not just algebra bookkeeping.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>KKT conditions (inequality constraints) are only name-checked here, not fully derived.</strong> A binding vs. slack distinction — new relative to this page's exact-equality case — is deferred to a later Numerical Methods lesson.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A mathematically exact optimum is only as good as its inputs.</strong> Markowitz's clean algebra is well known to be highly sensitive to estimation error in expected returns — a distinct, practical concern from the pure optimization mechanics covered here.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Lagrange built multipliers for mechanics; Markowitz brought them to portfolios.</strong> A bead held to a wire and a portfolio held to a return target are the same mathematical problem, 164 years apart.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Markowitz made portfolio choice a constrained optimisation.</strong> His 1952 problem, lowest variance for a target return, is a Lagrangian; the multiplier is the price of the constraint.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

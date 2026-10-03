@@ -38,7 +38,7 @@
       <li>Worked example: $1,000 at a nominal 6% for 5 years grows to \$1,338.23 compounded annually vs. \$1,349.86 compounded continuously — an \$11.63 gap from the same stated rate, purely from compounding frequency.</li>
       <li>USD/JPY scenario: spot 150.00, USD deposits at 5%, JPY at 0.1% — the no-arbitrage 3-month forward is about 148.19 (≈ −181 forward points), <em>below</em> spot, because the higher-rate currency (USD) must trade forward at a discount or a riskless borrow-JPY/invest-USD arbitrage opens up.</li>
       <li>The forward discount is not a directional forecast — it's the mechanical PV/FV adjustment that keeps the interest-rate differential from being free money, and it's exactly the machinery behind Black-Scholes's \(Ke^{-rT}\) term and the upcoming Interest Rate Parity lesson.</li>
-      <li><strong>Where it came from:</strong> interest problems go back to Babylonian clay tablets, but Fibonacci's <em>Liber Abaci</em> (1202) gave European merchants the numerals and worked problems for comparing payments at different dates, which the economist William Goetzmann calls an early form of present value.</li>
+      <li><strong>How it reached trading:</strong> present value runs from Fibonacci's merchant problems (1202) through Fisher's discounted cash flow (1930) to the price of every bond and swap, discounted on OIS curves since the post-2008 switch.</li>
     </ul>
   </div>
 
@@ -100,12 +100,22 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>A Pisan merchant's son brings home new numbers, and prices time</h3>
-    <div class="tl-origin-who">Leonardo of Pisa (Fibonacci) · 1202 · Pisa</div>
-    <p>Interest is far older than these formulas: Babylonian clay tablets include exercises asking how long money takes to double at a given rate. But adding up payments across many dates needs easy arithmetic, and medieval European merchants still worked with Roman numerals and counting boards.</p>
-    <p>Leonardo of Pisa, later nicknamed Fibonacci, learned Hindu-Arabic numerals as a boy in Bugia (now Béjaïa, in Algeria), where his father represented Pisan merchants. In 1202 he published <em>Liber Abaci</em>, a manual for doing business with the new numerals: sharing profits, exchanging currencies, setting prices and working out interest. It is famous today for a puzzle about breeding rabbits, but most of it is commercial arithmetic.</p>
-    <p>The economist William Goetzmann has argued that some of its problems, which compare payments arriving at different dates at a given rate of interest, are the first written present-value analysis. Church bans on usury made openly charging interest controversial at the time. The same comparison now sits in every bond price, every FX forward point and the \(Ke^{-rT}\) in Black–Scholes.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Comparing cash that arrives on different dates</h3>
+    <div class="tl-origin-who">Present value · Fibonacci, 1202 — Irving Fisher, 1930 — swap pricing from 1981</div>
+    <p>A dollar due in five years and a dollar today are different assets. Without a rule that brings both to one date, no bond, loan or swap can be priced, and no two of them can be compared.</p>
+    <p>Merchants met the problem first: Fibonacci's 1202 <em>Liber Abaci</em> includes problems comparing payments at different dates, which the economist William Goetzmann has called the first written present-value analysis. Irving Fisher's <em>The Theory of Interest</em> (1930) and John Burr Williams's <em>The Theory of Investment Value</em> (1938) made discounted cash flow the standard theory of what an asset is worth. When the swap market took off after the 1981 IBM–World Bank currency swap, swaps were priced the same way: the present value of one leg against the other.</p>
+    <p>Every bond, swap and forward price on a desk is a present value. The live question is which curve to discount with: after 2008, dealers and clearing houses moved from LIBOR to overnight-index (OIS) discounting, with LCH's SwapClear switching in 2010.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Bringing every cash flow to one date with a discount factor, so instruments with different payment schedules can be priced and compared.</dd>
+        <dt>Takes in</dt><dd>Compounding and \(e^{rt}\) (<a href="foundation-trig-logs-exponentials.html">Trig, Logs &amp; Exponentials</a>, <a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a>).</dd>
+        <dt>Hands on to</dt><dd>Bonds, annuities, swaps and forwards (<a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>, <a href="limits-integrals-annuity-factors.html">Limits, Integrals &amp; Annuity Factors</a>, <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>, <a href="interest-rate-parity.html">Interest Rate Parity</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -620,7 +630,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An FX forward is priced by no-arbitrage, not by forecast.</strong> The higher-rate currency always trades forward at a discount — otherwise a riskless borrow-low/invest-high trade would print free money.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Don't read a forward discount as a directional view.</strong> USD/JPY trading below spot says nothing about anyone expecting the dollar to weaken — it's mechanical, full stop.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Small rate gaps compound into large present-value gaps over long horizons.</strong> A 7-point rate difference is a modest gap at 3 years but a 4x discount-factor gap by year 20 — long-dated cash flows are far more rate-sensitive than short-dated ones.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Present value is an 800-year-old merchant's tool.</strong> Fibonacci's 1202 <em>Liber Abaci</em> taught traders to compare money paid at different dates; the FX forward and the Black–Scholes discount term make the same comparison.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Every bond and swap price is a present value.</strong> Merchants compared dated payments from Fibonacci (1202) on; Fisher (1930) made discounting the theory of value; since about 2010 the discount curve is OIS, not LIBOR.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

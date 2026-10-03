@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Present value is a medieval merchant's tool</h2>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Comparing cash that arrives on different dates</h2>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p><strong>Leonardo of Pisa (Fibonacci) · 1202 · Pisa</strong></p>
-        <p>Fibonacci learned Hindu-Arabic numerals as a boy in North Africa, where his father worked for Pisan merchants. His 1202 Liber Abaci taught European traders to calculate with them: profit shares, currency exchange, interest. It's famous for a rabbit puzzle, but it's mostly a business manual.</p>
-        <p>The economist William Goetzmann argues that its problems comparing payments at different dates are the first written present-value analysis. Babylonian tablets already asked how long money takes to double.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Fibonacci · 1202 · Irving Fisher · 1930 · swaps · 1981</strong></p>
+        <p>A dollar in five years is not a dollar today. Fibonacci's 1202 Liber Abaci already compared payments at different dates; Fisher (1930) made discounted cash flow the theory of value.</p>
+        <p>From the 1981 IBM–World Bank swap on, swaps were priced as one leg's present value against the other's. Since about 2010 desks discount on OIS curves, not LIBOR.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Bring every cash flow to one date so any two instruments can be compared.</p>
       </div>
     </section>
 
@@ -296,7 +298,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Continuous compounding, FV = PV·e^(rt), is the clean limit as compounding frequency goes to infinity — and daily compounding already sits within a thousandth of it.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Taking logs shows ln(FV/PV) = rt — a continuously-compounded rate is a log return per unit time, not an analogy to one.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The risk-free rate shows up in Black-Scholes (Ke^(−rT), discounting a strike) and in FX forward points (covered interest rate parity, discounting two currencies against each other) for the exact same reason: a future amount and a today amount can't be compared until one is moved to the other's point in time.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Present value goes back to Fibonacci's 1202 Liber Abaci, a merchant's manual for comparing payments at different dates.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every bond and swap price is a present value, from Fibonacci's merchants (1202) to OIS discounting after 2008.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

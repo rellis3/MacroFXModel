@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Matrices were named by two London lawyers</h2>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">The risk of a book with hundreds of positions</h2>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p><strong>James Joseph Sylvester · 1850 · Arthur Cayley · 1858 · London</strong></p>
-        <p>Grids of coefficients are ancient (China's Nine Chapters, about 2,000 years ago). Treating the grid as an object came in Victorian London. Sylvester, an actuary barred from his Cambridge degree as a Jew, coined "matrix" in 1850. Cayley, a working lawyer, wrote the 1858 memoir that showed how to multiply matrices, and that order matters.</p>
-        <p>Pearson (1901) and Hotelling (1933) turned eigenvectors into principal component analysis, the direct ancestor of PCA on FX returns.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Harry Markowitz · 1952 · Litterman &amp; Scheinkman · 1991</strong></p>
+        <p>Portfolio risk depends on how every pair of positions moves together. Markowitz (1952) put that in one covariance matrix: variance = wᵀΣw. Barra's factor models (1970s) shrank it to a few factors.</p>
+        <p>Litterman and Scheinkman (1991) ran PCA on Treasury returns: three eigenvectors, level, slope and curvature, explain almost all curve moves. RiskMetrics (1994) published covariance matrices daily.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Hold many positions and their co-movements in one object, so risk and hedges take a few operations.</p>
       </div>
     </section>
 
@@ -315,7 +317,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>An eigenvector is a direction the matrix only scales, never rotates off — Av = λv — and λ, the eigenvalue, is the amount of stretch. Solve λ² − trace(A)λ + det(A) = 0 to find every eigenvalue a matrix has.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Symmetric matrices — which covariance and correlation matrices always are — are guaranteed real eigenvalues and perpendicular eigenvectors, no extra assumption required.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This vocabulary is the direct prerequisite for PCA (eigenvectors of a correlation matrix), the Kalman Filter (chained matrix multiplication), and Hidden Markov Models (the stationary distribution is the eigenvector for eigenvalue 1).</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Matrices became objects in 1850s London (Sylvester named them, Cayley gave them an algebra); PCA (Pearson 1901, Hotelling 1933) brought eigenvectors to data.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Portfolio risk is wᵀΣw (Markowitz, 1952); eigenvectors of the yield curve's covariance give level, slope and curvature (Litterman &amp; Scheinkman, 1991).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

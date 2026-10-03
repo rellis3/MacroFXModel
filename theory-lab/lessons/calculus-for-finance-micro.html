@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Calculus came from a plague year and a priority war</h2>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Hedging something that never stops moving</h2>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p><strong>Isaac Newton · 1665–66 · Gottfried Leibniz · 1684 · Kiyosi Itô · 1940s</strong></p>
-        <p>Plague closed Cambridge in 1665, and Newton worked out his calculus at home but did not publish it. Leibniz found it independently and published first (1684), with the dx and ∫ notation. In 1712 a Royal Society report ruled for Newton; he was its president and wrote much of it himself.</p>
-        <p>Brook Taylor published his series in 1715. In the 1940s Kiyosi Itô showed that for random paths the second-order Taylor term doesn't vanish. That is where σ²/2 comes from.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Robert Merton · 1969–71 · Black, Scholes &amp; Merton · 1973</strong></p>
+        <p>Ordinary calculus assumes smooth paths; prices jiggle at every scale. Merton (1969–71) brought Itô's stochastic calculus (1940s probability theory) into finance, and in 1973 it gave the option price.</p>
+        <p>The key: for a random path the second-order Taylor term doesn't vanish. That is σ²/2, behind volatility drag, gamma P&amp;L and convexity.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Say how a value changes for a small move, to first and second order.</p>
       </div>
     </section>
 
@@ -276,7 +278,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>ln(1+R) ≈ R − R²/2 and g ≈ μ − σ²/2 are the identical second-order Taylor expansion of ln(1+x), applied once per period and once again after averaging — not two separate finance shortcuts.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Delta and gamma are literally Taylor terms — delta is the first-order derivative of an option's price with respect to the underlying, gamma is the second-order curvature correction.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Every Taylor approximation is local — accurate near the expansion point, and increasingly wrong the larger the step, exactly as the worked example's error growth showed.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Calculus came from Newton and Leibniz (1660s–1680s), the series from Taylor (1715); Itô (1940s) showed why the σ²/2 term survives for random prices.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Merton (1969–71) brought Itô's calculus to finance; the surviving second-order Taylor term (σ²/2) drives volatility drag, gamma P&amp;L and Black–Scholes–Merton.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

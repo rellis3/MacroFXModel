@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Complex numbers started as a "useless" answer</h2>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Complex numbers price options with no formula</h2>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p><strong>Gerolamo Cardano · 1545 · Milan · Rafael Bombelli · 1572 · Bologna</strong></p>
-        <p>In 1545 Cardano published the secret method for solving cubics (Tartaglia's, shared with him on a promise of secrecy, which caused a famous quarrel). In the same book he split 10 into two parts with product 40: 5 + √−15 and 5 − √−15. It worked, and he dismissed it as of no use.</p>
-        <p>The cubic formula made such roots impossible to avoid: some cubics with real answers pass through √(negative) on the way. In 1572 Bombelli showed how to calculate with them until they cancel to a real answer. Descartes later called them "imaginary" as a put-down (1637).</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p><strong>Steven Heston · 1993 · Peter Carr &amp; Dilip Madan · 1999</strong></p>
+        <p>Models where volatility moves or prices jump usually have no simple density, so pricing them meant slow simulation. Heston (1993) used the characteristic function E[e^(iuX)], known in closed form, and recovered prices by Fourier inversion.</p>
+        <p>Carr and Madan (1999) used the fast Fourier transform to price a whole strike grid at once. Stochastic-vol and jump models are still calibrated to the surface this way.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Carry the characteristic function, the form in which models like Heston can be priced.</p>
       </div>
     </section>
 
@@ -281,7 +283,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Euler's formula, e^(iθ) = cos θ + i sin θ, fuses exponential growth with rotation — every point on the unit circle is e^(iθ) for some θ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Setting θ = π gives Euler's identity, e^(iπ) + 1 = 0 — a direct consequence of the formula, not a separate result.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Complex numbers reach finance mainly through characteristic functions (option pricing) and the Fourier Transform — both represent oscillation as e^(iθ) instead of separate sine and cosine.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Complex numbers were forced on 16th-century algebra by the cubic formula (Cardano 1545, Bombelli 1572): complex in the middle, real at the end.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Heston (1993) and Carr–Madan's FFT (1999) put this to work: complex in the middle, a real option price at the end, fast enough to calibrate to a whole surface.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

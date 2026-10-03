@@ -38,7 +38,7 @@
       <li>A z-score, \(z=(x-\mu)/\sigma\), is a unitless "how many standard deviations from the mean" number — it's what lets you compare a move across instruments or timeframes on the same ruler, and it's the building block behind rolling z-score gates, Bollinger Bands, and VaR-style statements.</li>
       <li>For a normal distribution, about 68% of values fall within ±1σ of the mean, 95% within ±2σ, and 99.7% within ±3σ — but real FX/equity returns have fatter tails than normal, so extreme z-scores happen more often than that rule predicts.</li>
       <li>The worked example (returns +1, +2, −1, +3, 0, +1%) gets mean = 1.0%, sample variance = 2.0 (%)² (dividing by \(n-1=5\)), σ ≈ 1.414%, and a z-score of ≈1.41 for the best day — solidly between the ±1σ and ±2σ bands, not an extreme outlier.</li>
-      <li><strong>Where it came from:</strong> de Moivre found the bell curve in 1733 as an approximation to coin-toss odds; Gauss made it the law of measurement error after tracking the lost asteroid Ceres (1801, published 1809); Mandelbrot showed in 1963 that market prices have fatter tails.</li>
+      <li><strong>How it reached trading:</strong> Bachelier (1900) modelled Paris bond-price changes as normal, Mandelbrot (1963) showed real prices have fatter tails, and the normal survives on desks as the baseline for z-scores and value-at-risk.</li>
     </ul>
   </div>
 
@@ -111,12 +111,22 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>A gamblers' tutor, a lost asteroid, and why the bell curve is called Gaussian</h3>
-    <div class="tl-origin-who">Abraham de Moivre · 1733 · London — Carl Friedrich Gauss · 1801–1809 · Göttingen</div>
-    <p>Abraham de Moivre was a French Protestant who settled in London after France outlawed Protestant worship in 1685. He never obtained a university post, and earned his living tutoring mathematics and advising gamblers and buyers of annuities, reportedly from a table at Slaughter's Coffee House. Working out the odds for very large numbers of coin tosses, he showed in 1733 that the binomial probabilities trace out a smooth bell-shaped curve: the first appearance of the normal curve (see Further Reading).</p>
-    <p>On 1 January 1801 the astronomer Giuseppe Piazzi found a new object, Ceres, then lost it in the Sun's glare after only a few weeks of observations. Carl Friedrich Gauss, aged 24, predicted from those few noisy measurements where it would reappear, and it was found again close to his prediction at the end of that year. In 1809 he published the method behind it, treating measurement errors as following the bell curve. That is why the curve is often called Gaussian.</p>
-    <p>Markets borrowed it next. In 1900 Louis Bachelier modelled price changes on the Paris Bourse with the same curve. In 1963 Benoit Mandelbrot showed that cotton price changes had far fatter tails than the normal curve allows, which is the warning in this lesson's takeaways.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>How big is a normal day?</h3>
+    <div class="tl-origin-who">Normal price changes · Bachelier, 1900 — fat tails · Mandelbrot, 1963 — RiskMetrics, 1994</div>
+    <p>A trader needs to say whether today's move is ordinary or extreme, and how much a position could lose on a bad day. Both need a model of how price changes are spread out.</p>
+    <p>In his 1900 thesis <em>Théorie de la spéculation</em>, Louis Bachelier modelled price changes of French government bonds (rentes) on the Paris Bourse as normally distributed and used that to price options on them, the start of mathematical finance. The thesis was largely overlooked until economists rediscovered it in the 1950s. In 1963 Benoit Mandelbrot showed that cotton price changes had far fatter tails than the normal curve allows, and the October 1987 crash, a move of many standard deviations, made the point impossible to ignore.</p>
+    <p>The bell curve still does a lot of desk work. Z-scores flag unusual moves, and J.P. Morgan's RiskMetrics (1994) made normal-based value-at-risk an industry standard. The normal is the baseline; fat-tail corrections start from it.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Measuring how unusual a move is (a z-score) and how big a loss to expect at a given confidence level, as the baseline every fat-tail correction starts from.</dd>
+        <dt>Takes in</dt><dd>Return series (<a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a>).</dd>
+        <dt>Hands on to</dt><dd>Probability and the tails (<a href="primer-probability.html">Probability</a>, <a href="extreme-value-theory.html">Extreme Value Theory</a>, <a href="cornish-fisher-expansion.html">Cornish-Fisher</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-chart">
@@ -804,7 +814,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>68/95/99.7 is the ruler's scale.</strong> About 68% of a normal distribution sits within ±1σ, 95% within ±2σ, 99.7% within ±3σ — memorize this once, use it everywhere.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real FX/equity returns are fatter-tailed than normal.</strong> A "should happen 0.3% of the time" \(z=3\) move happens more often than that in practice — the 68/95/99.7 rule is a normal-distribution idealization, not a guarantee.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Standard deviation ≠ standard error.</strong> One measures spread in the data; the other measures uncertainty in an estimate, and shrinks as the sample grows. Mixing them up is one of the most common statistics mistakes.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The bell curve was built for coin tosses and telescope errors, not prices.</strong> de Moivre (1733) and Gauss (1809) had good reasons to expect it there; Mandelbrot's 1963 cotton-price study was an early warning that markets break it in the tails.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Markets adopted the normal curve, then learned where it breaks.</strong> Bachelier (1900) priced options with it and RiskMetrics (1994) built value-at-risk on it; Mandelbrot (1963) and the 1987 crash showed the tails are fatter.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

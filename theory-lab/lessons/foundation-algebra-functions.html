@@ -38,7 +38,7 @@
       <li>A straight line \(y=mx+c\) has constant slope \(m\) (rise over run) and intercept \(c\) (where it crosses the vertical axis); a quadratic \(y=ax^2+bx+c\) curves, and the sign of \(a\) decides whether it curves up (holds water, "convex") or down (sheds water, "concave").</li>
       <li><strong>Composition</strong> \((f\circ g)(x) = f(g(x))\) chains two machines — feed \(g\)'s output straight into \(f\); an <strong>inverse</strong> \(f^{-1}\) is the machine that undoes \(f\) exactly, so \(f^{-1}(f(x))=x\).</li>
       <li>The worked example rearranges the compound-interest formula \(FV=P(1+r)^n\) to solve for the rate \(r\) — the exact same "isolate the variable" moves used later in this curriculum to solve for volatility, position size, or any other unknown buried inside a bigger formula.</li>
-      <li><strong>Where it came from:</strong> al-Khwarizmi's Baghdad handbook (around 820 CE) on "restoring and balancing" equations, written for inheritance, trade and land problems, gave algebra its name. It used no symbols at all; the \(f(x)\) notation arrived with Euler in the 1730s.</li>
+      <li><strong>How it reached trading:</strong> markets quote prices, but traders compare yields and implied volatilities, and getting from one to the other means solving a pricing formula backwards, which is this lesson's algebra (implied volatility entered the literature with Latané and Rendleman in 1976).</li>
     </ul>
   </div>
 
@@ -111,12 +111,22 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>A Baghdad handbook for inheritances, trade and land</h3>
-    <div class="tl-origin-who">Muhammad ibn Musa al-Khwarizmi · around 820 CE · House of Wisdom, Baghdad</div>
-    <p>Around 820 CE, al-Khwarizmi, a scholar at the House of Wisdom in Baghdad, wrote a short handbook on calculation. His preface says what it was for: the sums people constantly needed for inheritances, legacies, dividing property, lawsuits and trade, and for measuring land. The title named his two main moves. <em>Al-jabr</em> ("restoring") moves a subtracted quantity to the other side, where it becomes an addition. <em>Al-muqabala</em> ("balancing") cancels the same amount from both sides. That is the balance scale in the intuition box above, written down about twelve centuries ago.</p>
-    <p>There is no \(x\) anywhere in the book. Every equation and every step is written out in words, and the methods are justified with drawings of squares and rectangles. Latin translations in the 12th century carried "al-jabr" into Europe as "algebra", and the author's own name turned into "algorithm". Letters for unknowns came much later, with François Viète in the 1590s and René Descartes in 1637.</p>
-    <p>The function idea is younger still. Leibniz used the word "function" in the late 1600s, and Leonhard Euler introduced the \(f(x)\) notation in the 1730s. Every time this lab rearranges a pricing formula to back out an implied rate, it is doing al-Khwarizmi's restoring and balancing.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Turning a quoted price into the number you actually compare</h3>
+    <div class="tl-origin-who">Inverting a pricing formula · bond yield tables, then implied volatility (Latané &amp; Rendleman, 1976)</div>
+    <p>Markets quote one thing and traders think in another. A bond trades at a price, but two bonds with different coupons and maturities can only be compared through the yield each price implies. An option trades at a premium, but the useful number is the volatility hidden inside it. Neither can be read off the screen: you take the pricing formula and run it backwards, solving for the input that reproduces the quoted price.</p>
+    <p>For bonds, dealers long relied on printed tables of yield against price, because that rearrangement has no neat closed form. For options, the formula arrived with Black and Scholes in 1973, and in 1976 Henry Latané and Richard Rendleman published standard deviations "implied in option prices", solving the formula for volatility instead of price. Implied volatility became the way options are quoted: interbank FX options trade in vol, and the premium is worked out afterwards.</p>
+    <p>Every yield, implied vol, breakeven inflation rate and implied policy path on a desk screen is a formula solved for one of its inputs. The moves are al-Khwarizmi's "restoring and balancing" from a Baghdad handbook written partly for trade around 820 CE; the use is turning a price into a number you can compare.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage on">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Rearranging a pricing formula so the market's quote gives back the input you care about (a yield, an implied vol, an implied rate), and reading a formula as a function so you can see how its output moves with its input.</dd>
+        <dt>Takes in</dt><dd>Market formulas to rearrange, starting with compound growth in <a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a>.</dd>
+        <dt>Hands on to</dt><dd>Logs, exponentials and yields solved for (<a href="foundation-trig-logs-exponentials.html">Trig, Logs &amp; Exponentials</a>, <a href="bond-pricing-ytm.html">Bond Pricing &amp; Yield to Maturity</a>, <a href="black-scholes.html">Black-Scholes-Merton</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -606,7 +616,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Slope is constant on a line, changing on a curve.</strong> A changing slope is exactly what "curving" (convex/concave) means — the idea convexity later builds on directly.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Composition and inverses chain or undo functions.</strong> Order matters for composition; not every function has a clean inverse.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Rearranging gets harder once roots and exponents are involved.</strong> The compound-interest example needed a fractional-power root, not just addition/subtraction — a habit worth building now, before formulas get longer.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Algebra began as a practical tool.</strong> al-Khwarizmi wrote it around 820 CE for inheritances, trade and land, entirely in words. "Solve for \(x\)" is a much newer way of writing the same balancing moves.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Every yield and implied vol is a formula solved backwards.</strong> Markets quote prices; traders compare the yield or volatility hidden inside them. Getting from one to the other is the rearranging practised in this lesson.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
