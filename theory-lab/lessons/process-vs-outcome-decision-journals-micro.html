@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge the Decision, Not the Result — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .dj-scen{background:var(--panel2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;margin:8px 0}
+  .dj-scen h4{font-size:13.5px;margin-bottom:6px}
+  .dj-row{display:flex;gap:6px;flex-wrap:wrap}
+  .dj-row .sl-tab{font-size:11px;padding:6px 10px}
+  .dj-row .sl-tab.right{border-color:var(--green);color:var(--green)}
+  .dj-row .sl-tab.wrong{border-color:var(--red);color:var(--red)}
+  .dj-ex{display:none;font-size:12.5px;color:var(--text2);margin-top:6px}
+  .dj-ex.shown{display:block}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Judge the Decision, Not the Result — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full Bayes and Brier maths, a working decision journal you can fill in, and a 6-question self-test?<a href="process-vs-outcome-decision-journals.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Human Side · 6 of 6</div>
+      <h1 class="sl-h1">Judge the Decision, <em>Not the Result</em></h1>
+      <p class="sl-lede">A good trade can lose and a reckless one can win. If you grade yourself on results, luck writes your rulebook. The cure is simple and unglamorous: write your reasoning down before the market answers.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Outcome bias: "resulting"</h2>
+      <p class="sl-p">Drive home drunk and arrive safely: good outcome, bad decision. Drive home sober and get hit by someone running a red light: bad outcome, good decision. Obvious on the road — invisible in a P&amp;L.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">The evidence</span><p>Baron and Hershey (1988): people rated the <em>same</em> decision, with the same information, as better when it happened to turn out well.</p></div>
+        <div class="sl-ccard amber"><span class="sl-ctag amber">The name</span><p>Annie Duke, <em>Thinking in Bets</em> (2018), calls it <strong>resulting</strong>: treating the quality of the result as the quality of the decision.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Two axes, four boxes</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>Deserved success</h4><p>Good decision, good outcome. Note it; don't over-learn it.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🎲</div><div><h4>Bad luck</h4><p>Good decision, bad outcome. Don't "fix" a sound process.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Dumb luck</h4><p>Bad decision, good outcome. The dangerous one: it pays you to do the wrong thing.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>Just deserts</h4><p>Bad decision, bad outcome. The only box a results-review gets right.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3 · Try it</div>
+      <h2 class="sl-h2">Sort the trade</h2>
+      <p class="sl-sub">Place each by the <em>decision</em>, not how it turned out.</p>
+      <div id="sort-cards"></div>
+      <div class="sl-note" id="sort-score"></div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Hindsight bias: "I knew it all along"</h2>
+      <p class="sl-p">Fischhoff (1975) gave people an account of the 1814 British–Gurkha war. Those told the outcome rated it more likely — and believed they'd have predicted it — than those not told. They didn't notice their judgment had moved.</p>
+      <p class="sl-p">With Ruth Beyth, he asked people to estimate events around Nixon's 1972 trips to Beijing and Moscow. Afterwards, they <em>remembered</em> having given higher odds to what then happened.</p>
+      <div class="sl-quote">After a loss the warning signs look obvious; after a win the logic looks inevitable. Either way, what you <strong>actually</strong> thought is gone — unless you wrote it down.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">One result tells you almost nothing</h2>
+      <p class="sl-sub">50/50 prior between a 55% trader and a 45% one. Each win multiplies the odds by 0.55/0.45 ≈ 1.22; each loss by 0.82.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Trades</span><span class="sl-live" id="by-n-val">10</span></div>
+        <input type="range" class="sl-slider" id="by-n" min="1" max="300" step="1" value="10">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Wins</span><span class="sl-live" id="by-w-val">7</span></div>
+        <input type="range" class="sl-slider" id="by-w" min="0" max="10" step="1" value="7">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">P(you're the 55% trader)</div><div class="sl-calc-result-val" id="by-post">69.1%</div></div>
+        </div>
+        <div class="sl-note">One win: 50% → 55%. Seven of ten: 69%. On average a genuine 55% process needs about 147 trades to reach 95%.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The decision journal — written <em>before</em></h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p><strong>What I expect</strong> — specific, checkable, with a horizon.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p><strong>Why</strong> — the reasons, and the <strong>base rate</strong>: how often does this happen anyway?</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p><strong>How confident</strong> — a number. 60% means wrong four times in ten.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p><strong>What would change my mind</strong> — decided now, not renegotiated later.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p><strong>Pre-mortem</strong> — "it went badly; the most likely reason is…"</p></div>
+      </div>
+      <p class="sl-p">Score it later with the Brier score, BS = mean of (confidence − outcome)². 0 is perfect; always saying 50% scores 0.25. A fillable journal is in <a href="process-vs-outcome-decision-journals.html#journal">the full lesson</a>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">The pre-mortem, and the chain it breaks</h2>
+      <p class="sl-p">Gary Klein's pre-mortem (HBR, 2007): before committing, imagine it has already failed and list why. It builds on "prospective hindsight" research (Mitchell, Russo &amp; Pennington, 1989): imagining an event has happened helps people find more reasons for it.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>A result arrives</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Memory</b>Hindsight rewrites what seemed knowable</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · resulting</b>Decision graded by its outcome</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The trader</b>Drops good rules after bad luck; repeats lucky mistakes</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Process drifts toward whatever got lucky</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">Super Bowl XLIX, 1 February 2015</h2>
+      <p class="sl-p">Seattle trail New England 28–24, under half a minute left, ball on the one-yard line. Everyone expects a run. Pete Carroll calls a pass; Malcolm Butler intercepts it at the goal line. The next day: "the worst call in Super Bowl history".</p>
+      <div class="sl-callout amber"><div class="sl-callout-label">Duke's point</div><p>Interceptions from there are rare, an incomplete pass stops the clock and leaves time for more plays — a reasonable case exists that passing gave Seattle more chances to score. Caught, the same call would have been "clever". The decision was identical in both worlds; only the outcome changed.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · It actually happened — on this desk</div>
+      <h2 class="sl-h2">A prior written down, and beaten</h2>
+      <p class="sl-p">Before running a test, the desk writes and commits its claim, definitions and its own expectation. In October 2026 it tested "when the Fed's Standing Repo Facility is drawn, markets get wider".</p>
+      <div class="sl-compare">
+        <div class="sl-ccard amber"><span class="sl-ctag amber">Written before</span><p>"Real, and the strongest cell here" — a wider S&amp;P 500 range the next week.</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">What came back</span><p>Over 21 episodes the range was <em>narrower</em> than controls, and the facility is drawn on nearly a third of all sessions. Reported as a null against expectation.</p></div>
+      </div>
+      <p class="sl-p">No room to say "we expected that all along". That's hindsight bias beaten by a dated piece of paper.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <div class="sl-stamp null" data-evidence="funding-stress" data-evidence-date="2026-10-02"><span class="sl-stamp-tag">Null</span><span><strong>A pre-registered prior that lost (funding-stress).</strong> SRF drawn, 21 episodes: S&amp;P 500 next-5 range −0.561 ATR [−0.984, −0.181] vs control — calmer, not wider. Drawn on 667 of 2,123 sessions (31%).</span></div>
+      <div class="sl-stamp null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25"><span class="sl-stamp-tag">Null</span><span><strong>The base-rate trap (rates-pivot-lead).</strong> 2,010 events, Nasdaq at 1h −0.005% [−0.021, +0.012]. Hit rate after a rates low: <strong>54.1%</strong>. Base rate: <strong>54.1%</strong>.</span></div>
+      <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10"><span class="sl-stamp-tag">Context</span><span><strong>Hindsight in machines (backtest-artifacts).</strong> A Fibonacci-level system: 85.7% backtest win rate vs 39.6% live; a volatility tool scored 95% of "wins" before entry. Backtests cheat by seeing the outcome, too.</span></div>
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Untested</span><span><strong>"Journals make you a better trader."</strong> Not tested here; outside evidence is indirect. The case rests on the biases a journal prevents.</span></div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>You revenge-size on a hunch and make +4R. Which box?</h4>
+        <button class="sl-quiz-opt">Deserved success</button>
+        <button class="sl-quiz-opt" data-correct="true">Dumb luck</button>
+        <button class="sl-quiz-opt">Bad luck</button>
+        <div class="sl-quiz-explain">A rule-break that paid. The reward teaches you to repeat it — the most dangerous box.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A signal is "right 54% of the time". What do you need before calling it an edge?</h4>
+        <button class="sl-quiz-opt">A bigger sample only</button>
+        <button class="sl-quiz-opt" data-correct="true">The base rate of that outcome without the signal</button>
+        <button class="sl-quiz-opt">A tighter stop</button>
+        <div class="sl-quiz-explain">The desk's rates-pivot test: 54.1% hit rate, 54.1% base rate — zero edge.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>When should a decision-journal entry be written?</h4>
+        <button class="sl-quiz-opt">After the trade closes, while it's fresh</button>
+        <button class="sl-quiz-opt" data-correct="true">Before the outcome is known</button>
+        <button class="sl-quiz-opt">Only after losing trades</button>
+        <div class="sl-quiz-explain">Written afterwards, it's a hindsight generator. And review winners too — that's where lucky mistakes hide.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>You said 80% on five calls; three came true. Brier score?</h4>
+        <button class="sl-quiz-opt">0.12</button>
+        <button class="sl-quiz-opt">0.20</button>
+        <button class="sl-quiz-opt" data-correct="true">0.28</button>
+        <div class="sl-quiz-explain">(3 × 0.04 + 2 × 0.64) / 5 = 0.28 — worse than always saying 50% (0.25). A hint of overconfidence, on a tiny sample.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Decision quality and outcome are different axes. Grade them separately.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Hindsight edits memory without telling you. Only a record written before beats it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>One result is weak evidence: ~150 trades to be 95% sure of a 55% edge.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Journal before, pre-mortem before, score after — always with the base rate.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The desk's own prior lost and was reported as a null; a 54.1% hit rate was the 54.1% base rate. Untested: whether journals raise P&amp;L.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">End of The Human Side</div>
+        <h3>Six lessons, one habit</h3>
+        <p>Loss aversion, the disposition effect, overconfidence, herding, drawdown panic and resulting all look different on paper — once you write it down first.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="../hub.html">Back to the Theory Lab hub →</a>
+          <a class="sl-btn ghost" href="process-vs-outcome-decision-journals.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="drawdowns-risk-of-ruin-micro.html">← Previous: Drawdowns and Risk of Ruin</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // Slide 4 — sort the trade.
+  var NAMES = { ds: 'Deserved success', bl: 'Bad luck', dl: 'Dumb luck', jd: 'Just deserts' };
+  var SCEN = [
+    { t: 'Risked 1% as planned, written thesis and stop. Stop hit.', a: 'bl', e: 'Plan followed, sensible size. Stops get hit in a positive-edge process.' },
+    { t: 'Doubled size on a hunch after three losses. Made +4R.', a: 'dl', e: 'A rule-break that paid — and will be repeated.' },
+    { t: 'Moved the stop because "it has to come back". It kept falling.', a: 'jd', e: 'Moving a stop to dodge a loss breaks the plan; this is what that risked.' },
+    { t: 'Passed on a trade because costs ate the expected move. It then ran your way.', a: 'bl', e: 'Declining a trade that failed your rules was right. A missed profit isn\'t a mistake.' }
+  ];
+  var host = document.getElementById('sort-cards'), done = 0, right = 0;
+  function score(){ document.getElementById('sort-score').textContent = 'Placed ' + done + ' of ' + SCEN.length + ' · matched the answer: ' + right; }
+  SCEN.forEach(function(s, i){
+    var box = document.createElement('div'); box.className = 'dj-scen';
+    box.innerHTML = '<h4>' + (i + 1) + '. ' + esc(s.t) + '</h4><div class="dj-row"></div><div class="dj-ex"></div>';
+    var row = box.querySelector('.dj-row'), ex = box.querySelector('.dj-ex');
+    ['ds', 'bl', 'dl', 'jd'].forEach(function(k){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'sl-tab'; b.textContent = NAMES[k];
+      b.addEventListener('click', function(){
+        Array.prototype.forEach.call(row.querySelectorAll('button'), function(x){ x.disabled = true; });
+        b.classList.add(k === s.a ? 'right' : 'wrong');
+        done++; if (k === s.a) right++;
+        ex.innerHTML = '<strong>' + (k === s.a ? 'Yes — ' : 'It\'s ') + NAMES[s.a] + '.</strong> ' + esc(s.e);
+        ex.classList.add('shown'); score();
+      });
+      row.appendChild(b);
+    });
+    host.appendChild(box);
+  });
+  score();
+
+  // Slide 6 — Bayes on a record, 55% vs 45%, 50/50 prior.
+  (function(){
+    var nIn = document.getElementById('by-n'), wIn = document.getElementById('by-w'), LR = Math.log(0.55 / 0.45);
+    function render(){
+      var n = parseInt(nIn.value, 10);
+      wIn.max = n; if (parseInt(wIn.value, 10) > n) wIn.value = n;
+      var w = parseInt(wIn.value, 10), post = 1 / (1 + Math.exp(-(2 * w - n) * LR));
+      document.getElementById('by-n-val').textContent = n;
+      document.getElementById('by-w-val').textContent = w;
+      document.getElementById('by-post').textContent = (post * 100).toFixed(1) + '%';
+    }
+    nIn.addEventListener('input', render); wIn.addEventListener('input', render);
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+</body>
+</html>

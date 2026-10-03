@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge the Decision, Not the Result — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  .dj-svg{width:100%;height:auto;display:block}
+  .dj-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin:10px 0}
+  .dj-card h4{font-size:14px;margin-bottom:6px}
+  .dj-card p{font-size:13.5px;color:var(--text2);margin-bottom:8px}
+  .dj-card .tl-btn.right{border-color:var(--green);color:var(--green)}
+  .dj-card .tl-btn.wrong{border-color:var(--red);color:var(--red)}
+  .dj-explain{display:none;font-size:13px;color:var(--text2);border-left:3px solid var(--blue);padding:4px 10px;margin-top:8px}
+  .dj-explain.shown{display:block}
+  .dj-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+  .dj-form .full{grid-column:1 / -1}
+  .dj-form label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px}
+  .dj-form label span{font-weight:400;color:var(--text3)}
+  textarea.tl-scratch-input{min-height:58px;resize:vertical;font-family:'DM Sans',sans-serif;font-size:13.5px}
+  .dj-entry{background:var(--s1);border:1px solid var(--border);border-radius:var(--rl);padding:12px 14px;margin:10px 0;font-size:13.5px}
+  .dj-entry dl{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;margin:8px 0}
+  .dj-entry dt{color:var(--text3);font-size:12px}
+  .dj-entry dd{color:var(--text2);white-space:pre-wrap}
+  .dj-entry .dj-meta{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)}
+  .dj-note{font-size:12px;color:var(--text3);margin-top:8px}
+  @media (max-width:600px){.dj-form{grid-template-columns:1fr}.dj-entry dl{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Human Side / Judge the Decision, Not the Result</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Human Side · Lesson 6 of 6</div>
+  <h1 class="tl-title">Judge the Decision, Not the Result</h1>
+  <p class="tl-dek">A good trade can lose and a reckless one can win. If you grade yourself on results, luck writes your rulebook. This lesson is about the habits that stop it: separating decision from outcome, catching hindsight in the act, and writing your reasoning down <em>before</em> the market answers.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here; desk verdicts quoted where tested</span>
+    <span>~20 min read</span>
+    <span>Prereqs: <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a> (lesson 5); <a href="bayesian-inference.html">Bayesian Inference</a> (helpful)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="process-vs-outcome-decision-journals-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Outcome bias ("resulting")</strong>: judging a decision by how it turned out. Baron and Hershey (1988) showed people rate the same decision as better when its outcome is good; Annie Duke's <em>Thinking in Bets</em> named the habit "resulting".</li>
+      <li><strong>Hindsight bias</strong>: once you know the outcome, it feels as though you always knew. Fischhoff (1975) showed that knowing an outcome raises how predictable people think it was — and they don't notice the shift.</li>
+      <li><strong>One result says almost nothing.</strong> A 55% edge loses 45% of the time; a single win moves a fair 50/50 prior only to 55%. It takes on the order of 150 trades to be 95% sure which kind of trader you are.</li>
+      <li><strong>The cure is to write first.</strong> A decision journal records what you expect, why, how confident, the base rate, and what would change your mind — <em>before</em> the outcome. A pre-mortem (Gary Klein) asks "it failed — why?" before you commit.</li>
+      <li><strong>The desk's verdict:</strong> its own pre-registered prior lost — it expected a drawn funding backstop to warn of wider markets, and found the opposite — and a 54.1% "hit rate" turned out to be exactly the 54.1% base rate. Both are nulls, reported as measured. Whether journals make traders better is <em>untested</em> here.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The previous lesson, <a href="drawdowns-risk-of-ruin.html">Drawdowns and Risk of Ruin</a>,
+    showed that a real edge still produces long losing streaks. This one asks the next question: if
+    results are that noisy, how do you learn anything from them? Every trader runs an informal
+    feedback loop — what worked, I do more of; what failed, I stop. When outcomes are mostly luck,
+    that loop learns the luck. Over a career it can talk you out of good habits and into bad ones.
+  </p>
+  <p>
+    This is the last lesson in the series, and it ties the others together. Loss aversion
+    (lesson 1), the disposition effect (lesson 2), overconfidence (lesson 3), herding (lesson 4) and
+    the drawdown panic (lesson 5) are all easier to see on paper, after the fact, <em>if</em> you
+    wrote down what you were thinking before it happened. Without that record, hindsight edits your
+    memory and the lesson you take is the one luck handed you.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Getting home safely doesn't make the drive a good idea</h3>
+    <p>
+      Someone drives home after too many drinks and arrives without incident. Was it a good
+      decision? Obviously not — the outcome was fine, the decision was bad. Someone else drives
+      home sober, carefully, and is hit by a driver who ran a red light. Bad outcome, good decision.
+      Nobody struggles with these examples, because the luck is obvious.
+    </p>
+    <p style="margin-bottom:0">
+      Markets are the same, except the luck is invisible. A trade made on a whim that wins looks
+      exactly like a trade made on a tested plan that wins. Your P&amp;L cannot tell them apart.
+      Only a record of <em>why</em> you did it — written before you knew the result — can.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Four ideas, and a little arithmetic</h2>
+
+  <h3>1. Outcome bias: "resulting"</h3>
+  <p>
+    In a 1988 study, Jonathan Baron and John Hershey gave people descriptions of decisions under
+    uncertainty — for example a doctor's decision to perform an operation — with exactly the same
+    information available at the time, and varied only how things turned out. People rated the
+    <em>decision</em>, and the competence of the person who made it, higher when the outcome was
+    good. Former professional poker player Annie Duke, in <em>Thinking in Bets</em> (2018), calls
+    this habit <strong>resulting</strong>: treating the quality of the result as if it were the
+    quality of the decision.
+  </p>
+  <p>
+    Separating the two gives a 2×2 grid. Two of the cells are comfortable — good decisions that
+    worked, bad ones that didn't. The other two are where learning goes wrong: a good decision that
+    lost tempts you to abandon a sound process, and a bad decision that won teaches you to repeat
+    it. That last cell, the lucky mistake, is the most dangerous one in trading, because it pays you
+    to do the wrong thing.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Exercise: sort the trade — decision quality versus outcome</div>
+    <svg id="grid-svg" class="dj-svg" viewBox="0 0 640 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-by-two grid. The horizontal axis is decision quality, bad on the left and good on the right. The vertical axis is outcome, good on top and bad below. The four cells are labelled dumb luck, deserved success, just deserts, and bad luck. Numbered dots appear as you classify each scenario.">
+      <rect x="80" y="20" width="270" height="140" rx="6" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <rect x="360" y="20" width="270" height="140" rx="6" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <rect x="80" y="170" width="270" height="140" rx="6" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+      <rect x="360" y="170" width="270" height="140" rx="6" style="fill:var(--blue-bg);stroke:var(--blue-bd)"/>
+      <text x="215" y="42" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif" style="fill:var(--amber)">Dumb luck</text>
+      <text x="215" y="58" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" style="fill:var(--text2)">bad decision, good outcome — the dangerous one</text>
+      <text x="495" y="42" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif" style="fill:var(--green)">Deserved success</text>
+      <text x="495" y="58" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" style="fill:var(--text2)">good decision, good outcome</text>
+      <text x="215" y="192" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif" style="fill:var(--red)">Just deserts</text>
+      <text x="215" y="208" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" style="fill:var(--text2)">bad decision, bad outcome</text>
+      <text x="495" y="192" text-anchor="middle" font-size="13" font-weight="700" font-family="'DM Sans',sans-serif" style="fill:var(--blue)">Bad luck</text>
+      <text x="495" y="208" text-anchor="middle" font-size="10.5" font-family="'DM Sans',sans-serif" style="fill:var(--text2)">good decision, bad outcome — don't "fix" it</text>
+      <text x="215" y="326" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" style="fill:var(--text3)">← bad decision</text>
+      <text x="495" y="326" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" style="fill:var(--text3)">good decision →</text>
+      <text x="40" y="90" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" style="fill:var(--text3)" transform="rotate(-90 40 90)">good outcome</text>
+      <text x="40" y="240" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" style="fill:var(--text3)" transform="rotate(-90 40 240)">bad outcome</text>
+      <g id="grid-dots"></g>
+    </svg>
+    <div id="sort-cards"></div>
+    <div class="tl-readout" id="sort-score">Classify each scenario. Placed: <b>0</b> of 6 · matched the answer: <b>0</b></div>
+    <div class="tl-chart-caption">The grid separates the two things a P&amp;L blends together. Each scenario lands where its <em>decision</em> belongs, whatever its result. If you found yourself wanting to put a scenario in a box because of how it turned out, that pull is outcome bias.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You can do your homework properly and still get one question wrong because the teacher made a mistake. You can copy a friend's homework and get full marks. The mark isn't the whole story — how you got there is the part you can actually get better at.</p>
+  </div>
+
+  <h3>2. Hindsight bias: "I knew it all along"</h3>
+  <p>
+    In 1975 Baruch Fischhoff gave people an account of a little-known historical conflict — the
+    British–Gurkha war of 1814 — and asked how likely each possible outcome had been. Some were told
+    which outcome actually happened. Those people rated that outcome as more likely, and judged that
+    they would have seen it coming, than people who were not told. They did not realise their
+    judgment had been changed. In a companion study with Ruth Beyth, people who had estimated the
+    chances of events around President Nixon's 1972 trips to Beijing and Moscow later
+    <em>remembered</em> having given higher probabilities to the things that then happened.
+  </p>
+  <p>
+    For a trader this is corrosive in two directions. After a loss, the warning signs look obvious,
+    so you blame yourself for missing what was not knowable. After a win, the logic looks
+    inevitable, so you credit yourself for a call that was partly luck. In both cases the memory of
+    what you <em>actually</em> thought is gone — replaced by a version that fits the ending.
+  </p>
+
+  <h3>3. How much does one result tell you?</h3>
+  <p>
+    Suppose a good process wins 55% of the time and a poor one 45%, and before any trades you think
+    each is equally likely to describe you. By Bayes' rule, each result multiplies the odds by a
+    likelihood ratio:
+  </p>
+  <div class="tl-math">
+    \[ \frac{P(\text{good}\mid \text{data})}{P(\text{poor}\mid \text{data})} = \frac{P(\text{good})}{P(\text{poor})} \times \left(\frac{p_g}{p_b}\right)^{w} \left(\frac{1-p_g}{1-p_b}\right)^{n-w} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">prior odds</div><div class="tl-fp-name">What you believed before</div><div class="tl-fp-desc">1:1 if you had no idea</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">(p_g/p_b)^w</div><div class="tl-fp-name">Evidence from wins</div><div class="tl-fp-desc">Each win multiplies by 0.55/0.45 ≈ 1.22</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">((1−p_g)/(1−p_b))^(n−w)</div><div class="tl-fp-name">Evidence from losses</div><div class="tl-fp-desc">Each loss multiplies by 0.45/0.55 ≈ 0.82</div></div>
+  </div>
+  <p>
+    One win takes you from 50% to 55% sure you are the good trader. Seven wins in ten: 69%. Sixty
+    in a hundred: 98%. On average it takes about 150 trades for a genuinely 55% process to reach
+    95% certainty from a 50/50 start. A single trade — the thing outcome bias grades — barely moves
+    the needle. (The same logic, with full priors, is in <a href="bayesian-inference.html">Bayesian
+    Inference</a>.)
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">How much should this record change your mind?</div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Trades</span><span class="tl-live" id="by-n-val">10</span></div>
+        <input type="range" id="by-n" min="1" max="300" step="1" value="10">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Wins</span><span class="tl-live" id="by-w-val">7</span></div>
+        <input type="range" id="by-w" min="0" max="10" step="1" value="7">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Good process wins / poor process wins</span><span class="tl-live" id="by-g-val">55% / 45%</span></div>
+        <input type="range" id="by-g" min="51" max="70" step="1" value="55">
+        <div class="tl-hint">The poor process is set as the mirror image (100% minus the good one). Prior: 50/50.</div>
+      </div>
+    </div>
+    <svg id="by-svg" class="dj-svg" viewBox="0 0 640 60" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A horizontal bar showing the probability that the record came from the good process, from 0 to 100%.">
+      <rect x="20" y="16" width="600" height="22" rx="4" style="fill:var(--s2)"/>
+      <rect id="by-bar" x="20" y="16" width="300" height="22" rx="4" style="fill:var(--green)"/>
+      <line x1="320" x2="320" y1="10" y2="44" style="stroke:var(--text3);stroke-dasharray:3,3"/>
+      <text x="320" y="56" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" style="fill:var(--text3)">50/50 prior</text>
+    </svg>
+    <div class="tl-readout" id="by-readout"></div>
+    <div class="tl-chart-caption">Real Bayes, no simulation: posterior odds = prior odds × (p_g/p_b)^w × ((1−p_g)/(1−p_b))^(n−w). Slide trades down to 1: one win is worth five percentage points of confidence.</div>
+  </div>
+
+  <h3>4. Base rates: the number your hit rate must beat</h3>
+  <p>
+    "This setup is right 54% of the time" sounds like an edge. Whether it is depends entirely on how
+    often the market does that thing <em>anyway</em>. If the Nasdaq rises in 54% of hours regardless,
+    a signal that is right 54% of the time knows nothing. Writing the base rate down next to every
+    claimed hit rate is the simplest guard against fooling yourself — and, as Section 05 shows, it is
+    the exact trap the desk measured in one of its own tests.
+  </p>
+
+  <h3>5. The decision journal and the pre-mortem</h3>
+  <p>
+    The fix for both biases is the same: capture your reasoning while it still belongs to the
+    past-you who did not know the outcome. A decision journal entry, written <em>before</em> the
+    trade resolves, records:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body"><h4>What I expect</h4><p>The specific outcome, the horizon, and the size of move — concrete enough that it can be checked.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body"><h4>Why</h4><p>The reasons, the evidence for them, and the base rate: how often does this happen anyway?</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body"><h4>How confident</h4><p>A number, not a mood. 60% means you expect to be wrong on four in ten of these.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body"><h4>What would change my mind</h4><p>The observation that would make you exit or reverse — decided now, so it cannot be renegotiated later.</p></div></div>
+    <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body"><h4>Pre-mortem</h4><p>"It is a month from now and this went badly. What is the most likely reason?" Gary Klein's technique: imagining the failure has already happened makes people better at finding the reasons it might.</p></div></div>
+  </div>
+  <p>
+    Klein's pre-mortem draws on research by Deborah Mitchell, J. Edward Russo and Nancy Pennington
+    (1989) on "prospective hindsight": imagining that an event has <em>already</em> occurred helps
+    people generate more reasons for it than asking whether it might. The pre-mortem borrows
+    hindsight's vividness without its distortion, because you use it before the result exists.
+  </p>
+  <p>
+    Over many entries, a journal also lets you score yourself. The standard score for probability
+    forecasts is the Brier score (Brier, 1950), the average squared gap between the confidence you
+    stated and what happened:
+  </p>
+  <div class="tl-math">
+    \[ \text{BS} = \frac{1}{N}\sum_{i=1}^{N} (f_i - o_i)^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>fᵢ</code><span>the confidence you wrote down for entry i, as a probability</span></div>
+    <div class="tl-eq-chip c2"><code>oᵢ</code><span>1 if the expected outcome happened, 0 if not</span></div>
+    <div class="tl-eq-chip c3"><code>BS</code><span>0 is perfect; always saying 50% scores 0.25; lower is better</span></div>
+  </div>
+  <p>
+    Philip Tetlock's long-running studies of forecasters (<em>Expert Political Judgment</em>, 2005;
+    <em>Superforecasting</em>, with Dan Gardner, 2015) found that the people who forecast best tended
+    to be the ones who kept score, stated probabilities precisely, and updated in small steps —
+    exactly what a journal forces you to do.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(p_g,\ p_b\)</td><td>Win rate of a good process and of a poor one.</td></tr>
+    <tr><td>\(n,\ w\)</td><td>Number of trades, and number of wins among them.</td></tr>
+    <tr><td>\(P(\text{good}\mid\text{data})\)</td><td>Probability you are running the good process, after seeing the record.</td></tr>
+    <tr><td>prior odds</td><td>\(P(\text{good})/P(\text{poor})\) before any trades — 1 for a 50/50 start.</td></tr>
+    <tr><td>\(f_i\)</td><td>Confidence stated in journal entry \(i\), as a probability between 0 and 1.</td></tr>
+    <tr><td>\(o_i\)</td><td>Outcome of entry \(i\): 1 if the expected thing happened, else 0.</td></tr>
+    <tr><td>\(N\)</td><td>Number of resolved journal entries.</td></tr>
+    <tr><td>BS</td><td>Brier score: mean squared gap between stated confidence and outcome.</td></tr>
+  </table></div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>A trade's result arrives — win or loss</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Memory</b>Hindsight rewrites what seemed knowable at the time</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · resulting</b>The trader grades the decision by its outcome</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The trader</b>Drops sound rules after bad luck; repeats lucky mistakes</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Process drifts toward whatever got lucky; real skill goes unmeasured</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Before a football match, write down who you think will win and how sure you are. After the match, it is very easy to say "I knew it!" — but the paper shows what you really thought. Do it lots of times and the paper tells you whether you are actually good at guessing, or just remember it that way.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Your decision journal</h2>
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Your exercise</div>
+    <h3>Write one entry before your next trade — then come back after</h3>
+    <p style="margin-bottom:0">
+      Fill this in before you place a trade (or any decision with an uncertain outcome). "Seal" it
+      and the reasoning is locked. When the outcome is known, record it and grade the
+      <em>decision</em> separately from the result. After a few dozen entries the summary shows your
+      calibration and where your decisions fall on the 2×2 grid. Entries are kept only in this
+      browser on this device; nothing is sent anywhere.
+    </p>
+  </div>
+
+  <div class="tl-chart interactive" id="journal">
+    <div class="tl-chart-label">Decision journal — written before the outcome</div>
+    <div class="dj-form">
+      <div class="full"><label for="dj-decision">The decision <span>— what, where, how big</span></label><input class="tl-scratch-input" id="dj-decision" type="text" placeholder="e.g. Long EUR/USD at 1.0850, risk 1% to a 1.0810 stop"></div>
+      <div class="full"><label for="dj-expect">What I expect <span>— specific and checkable, with a horizon</span></label><input class="tl-scratch-input" id="dj-expect" type="text" placeholder="e.g. Trades above 1.0920 within 5 sessions"></div>
+      <div class="full"><label for="dj-why">Why <span>— the reasons and the evidence</span></label><textarea class="tl-scratch-input" id="dj-why"></textarea></div>
+      <div><label for="dj-base">Base rate <span>— how often does this happen anyway?</span></label><input class="tl-scratch-input" id="dj-base" type="text" placeholder="e.g. a 70-pip move in 5 sessions: most weeks"></div>
+      <div><label for="dj-conf">Confidence <span>— % chance the expectation comes true</span></label><input class="tl-scratch-input" id="dj-conf" type="number" min="1" max="99" step="1" value="60"></div>
+      <div class="full"><label for="dj-change">What would change my mind <span>— the exit or reversal trigger</span></label><textarea class="tl-scratch-input" id="dj-change"></textarea></div>
+      <div class="full"><label for="dj-premortem">Pre-mortem <span>— it's later and this went badly; the most likely reason is…</span></label><textarea class="tl-scratch-input" id="dj-premortem"></textarea></div>
+    </div>
+    <div class="tl-btnrow" style="margin-top:12px">
+      <button type="button" class="tl-btn active" id="dj-seal">🔒 Seal this entry</button>
+      <button type="button" class="tl-btn" id="dj-export">Download all as text</button>
+      <button type="button" class="tl-btn" id="dj-clear">Delete all entries</button>
+    </div>
+    <div class="dj-note" id="dj-status"></div>
+    <div class="tl-readout" id="dj-summary"></div>
+    <div id="dj-list"></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>February 2015: "the worst call in Super Bowl history"</h3>
+    <p>
+      Super Bowl XLIX, 1 February 2015. The Seattle Seahawks trail the New England Patriots 28–24
+      with under half a minute left, second down, the ball on New England's one-yard line. Seattle
+      has a powerful running back and most observers expect a run. Instead coach Pete Carroll calls a
+      pass. Russell Wilson's throw is intercepted at the goal line by Malcolm Butler, and New England
+      wins. The next day the call was widely described as one of the worst in Super Bowl history.
+    </p>
+    <p style="margin-bottom:0">
+      Annie Duke opens <em>Thinking in Bets</em> with this play. Her argument is not that the call was
+      certainly right, but that the verdict was pure resulting: interceptions from that position are
+      rare, an incomplete pass stops the clock and leaves time for more plays, and a reasonable case
+      exists that passing on that down gave Seattle more total chances to score. Had the pass been
+      caught, the same call would have been remembered as clever. The decision did not change between
+      those two worlds — only the outcome did.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened — on this desk</div>
+    <h3>October 2026: a prior written down, and beaten</h3>
+    <p>
+      The desk that runs these lessons tests market folklore with a strict habit: before any data is
+      touched, it writes the claim, the exact definitions, and its own expectation — with the date —
+      and commits that document so it cannot be edited after the result. In October 2026 it tested
+      a popular "plumbing" warning: that when the Federal Reserve's Standing Repo Facility is
+      actually drawn on, cash is scarce and markets will get wider and weaker.
+    </p>
+    <p>
+      The written expectation was clear: this would be "Real, and the strongest cell here", with a
+      wider S&amp;P 500 range expected the following week. The result came back the other way. Over
+      21 episodes, the S&amp;P 500's next-five-session range was <em>narrower</em> than matched
+      controls, and the facility turned out to be drawn on nearly a third of all sessions — routine,
+      not a stress signal.
+    </p>
+    <p style="margin-bottom:0">
+      Without the written prior, it would have been easy to say afterwards that the facility being
+      used "obviously" just meant the backstop was working, and that this was expected all along.
+      With it, the record is plain: the expectation lost, and the null was reported as measured. That
+      is hindsight bias defeated by a dated piece of paper.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Ten journal entries, scored</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>The record</h4>
+        <p>You wrote 70% confidence on all ten entries. Six came true, four did not.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Calibration</h4>
+        <p>Stated 70%, realised 60%. On ten entries that gap is well within noise — but it is the direction overconfidence (lesson 3) predicts. Keep scoring.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Brier score</h4>
+        <p>Six hits: \((0.7-1)^2 = 0.09\) each. Four misses: \((0.7-0)^2 = 0.49\) each. \(\text{BS} = (6 \times 0.09 + 4 \times 0.49)/10 = 2.50/10 = 0.25\) — no better than always saying 50%.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Bayes on the P&amp;L</h4>
+        <p>If those were ten trades and you won six, how sure should you be you are a 55% trader rather than a 45% one? Odds \(= 1.22^{6-4} = 1.49\), so 60%. Ten trades are nowhere near enough to grade yourself on results — which is why the journal grades the decisions.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>The grid</h4>
+        <p>Of the four losers, your own after-the-fact grading says three followed the plan (bad luck) and one broke it (just deserts). Of the six winners, one broke the plan (dumb luck). Two plan-breaks out of ten is the number to work on — not the four losses.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What this desk found when it tested the claims</h2>
+
+  <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>A pre-registered prior that lost: "a drawn backstop warns of a wider tape".</strong> Expected in writing, before the run, to be the strongest result. Over 21 episodes the S&amp;P 500's next-5-session range was −0.561 ATR [−0.984, −0.181] versus control — <em>calmer</em>, not wider — and negative in both halves. The facility is drawn on 667 of 2,123 sessions (31%): routine plumbing, not stress. The other setup left just 15 episodes, below a floor of 20 set in advance, and was declared untestable rather than quoted. Reported against the desk's own expectation.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>The base-rate trap: "a confirmed turn in short-term rates leads the Nasdaq".</strong> 2,010 de-clustered events: signed Nasdaq return at one hour −0.005% versus control [−0.021, +0.012], null at 1h, 2h and 4h, both directions, both halves — and well powered. The telling number: a confirmed rates low is followed by an up-move <strong>54.1%</strong> of the time, and the base rate is <strong>54.1%</strong>. A hit rate quoted without its base rate looked like an edge and was exactly nothing.</span>
+  </div>
+
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>Hindsight in machines: "a backtest that looks too good has a bug".</strong> A backtest is a decision journal written by a program — and it can cheat the same way a memory does, by seeing the outcome. On this desk: one system's whole edge came from stops that were not live for the first hour; a Fibonacci-level system showed an 85.7% backtest win rate against 39.6% live; a volatility tool scored 95% of its "wins" before entry. Audit what the engine could see at decision time.</span>
+  </div>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>"Keeping a decision journal makes you a better trader."</strong> Not tested here, and the outside evidence is mostly indirect: forecasting research shows that scoring and precise probabilities help forecasters, but there is little rigorous evidence on journals and trading P&amp;L specifically. The case for a journal in this lesson rests on what it prevents — hindsight and resulting — not on a measured return.</span>
+  </div>
+
+  <div class="tl-solid green">
+    <strong>The habit that works:</strong> write the expectation, the confidence and the base rate down
+    <em>before</em> the answer exists, and publish the answer whichever way it goes. Every verdict in
+    this series — including the ones that embarrassed the desk's own priors — exists because of that
+    habit.
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📝</div>
+      <h4>Pre-registration</h4>
+      <p>Research teams write the hypothesis, the test and the pass bar before running it — the institutional version of a journal (see <a href="research-pipeline-hypothesis-to-backtest.html">From Hypothesis to Backtest</a> and <a href="multiple-testing.html">Multiple Testing</a>).</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔍</div>
+      <h4>Process reviews</h4>
+      <p>Post-trade reviews ask "did we follow the plan, and was the plan right given what we knew?" before they ask "did we make money?" Winners get reviewed too — that is where the lucky mistakes hide.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⚰️</div>
+      <h4>Pre-mortems</h4>
+      <p>Before a large position or a new strategy goes live, the team imagines it has failed and lists why. The reasons become stop rules and monitoring, not post-hoc excuses.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🎯</div>
+      <h4>Scoring forecasts</h4>
+      <p>Stated probabilities, Brier scores and calibration charts turn "I'm usually right" into a number that can be checked — and tracked over time.</p>
+    </div>
+  </div>
+
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The desk's journal is its pre-registration template and evidence ledger</h3>
+    <p style="margin-bottom:0">
+      Every test on this desk starts from a pre-registration template (<code>MD files/PREREG_TEMPLATE.md</code>)
+      that requires the expectation, the power calculation and the multiple-testing correction to be
+      written and committed before the harness runs; results are appended below a line that nothing
+      above may change. Verdicts land in <code>js/deskEvidence.js</code>, nulls included. The personal
+      journal on this page is not connected to either — it stays in your browser.
+    </p>
+  </div>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where process-over-outcome goes wrong</h3>
+    <p><strong>Writing the entry afterwards.</strong> A journal filled in after the result is a hindsight generator. If it isn't written before, it doesn't count.</p>
+    <p><strong>Vague expectations.</strong> "EUR should do well" cannot be scored. Name the level, the horizon and the probability.</p>
+    <p><strong>Using "process" to excuse everything.</strong> Process over outcome is not "results never matter". Over many trades, results are exactly how you test whether the process is good — the point is not to judge it on a handful.</p>
+    <p><strong>Skipping the base rate.</strong> A 54% hit rate means nothing until you know the market does the same thing 54% of the time anyway.</p>
+    <p style="margin-bottom:0"><strong>Only reviewing losers.</strong> The bad-decision-good-outcome cell never gets reviewed unless you look at winners with the same care.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Decision quality and outcome are different axes.</strong> Grade them separately; the lucky mistake is the dangerous cell.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hindsight edits memory.</strong> Fischhoff (1975): knowing the outcome makes it seem predictable, without people noticing. Only a record written before beats it.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>One result is weak evidence.</strong> At 55% vs 45%, one win moves 50% to 55%; ~150 trades on average to reach 95%.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Journal before, pre-mortem before, score after.</strong> Expectation, reasons, base rate, confidence, what would change your mind; then a Brier score.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The desk's own prior lost:</strong> a drawn funding backstop was expected to precede a wider week; the S&amp;P 500 range came back −0.561 ATR [−0.984, −0.181] — calmer. Reported as a null against expectation.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: rates turns lead the Nasdaq.</strong> A 54.1% hit rate against a 54.1% base rate — exactly nothing.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: that journals improve trading results.</strong> The case rests on the biases they prevent, not on a measured return.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. A trader doubles their usual size on a hunch to win back losses, and makes 4R. Where does this go on the grid, and why does it matter?</summary>
+    <div class="tl-answer">Bad decision, good outcome — dumb luck. It matters because the reward teaches the trader to repeat a rule-break, and the cost of that lesson arrives later, often larger. It is the cell a results-only review never catches.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. What did Fischhoff's 1975 experiment show, and what does it imply for post-trade reviews?</summary>
+    <div class="tl-answer">People told the outcome of a historical event rated that outcome as more likely, and believed they would have predicted it, compared with people not told — and they did not realise their judgment had shifted. A review done from memory after the result will overstate how knowable the result was; only reasoning recorded beforehand gives a fair comparison.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. You start 50/50 between being a 55% trader and a 45% trader. You win 12 of 20. How sure should you be you're the 55% trader?</summary>
+    <div class="tl-answer">Odds \(= (0.55/0.45)^{12} \times (0.45/0.55)^{8} = 1.222^{4} \approx 2.23\), so about 69%. Twenty trades have shifted you, but nowhere near certainty.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A signal "is right 54% of the time". What single extra number do you need before calling it an edge?</summary>
+    <div class="tl-answer">The base rate — how often the outcome happens without the signal. In the desk's rates-pivot test the hit rate was 54.1% and the base rate was 54.1%: zero edge.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. You state 80% confidence on five entries; three come true. What is your Brier score?</summary>
+    <div class="tl-answer">Hits: \((0.8-1)^2 = 0.04\) × 3 = 0.12. Misses: \((0.8-0)^2 = 0.64\) × 2 = 1.28. \(\text{BS} = 1.40/5 = 0.28\) — worse than always saying 50% (0.25), a sign of overconfidence, though five entries is a tiny sample.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Why does pre-registering a test — writing the expectation down and committing it before the data is run — protect against hindsight bias?</summary>
+    <div class="tl-answer">Because the expectation is fixed, dated and uneditable before the result exists. When the result arrives, there is no room to remember having expected it. The desk's funding-stress test is the example: its written prior said "the strongest cell", the result went the other way, and the record shows that plainly instead of a revised story.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Annie Duke, <em>Thinking in Bets: Making Smarter Decisions When You Don't Have All the Facts</em>, Portfolio, 2018 — "resulting", the Super Bowl XLIX example, and decision-making as betting.</li>
+    <li>Jonathan Baron and John C. Hershey, "Outcome Bias in Decision Evaluation", <em>Journal of Personality and Social Psychology</em>, 1988 — the experimental demonstration of outcome bias.</li>
+    <li>Baruch Fischhoff, "Hindsight ≠ Foresight: The Effect of Outcome Knowledge on Judgment Under Uncertainty", <em>Journal of Experimental Psychology: Human Perception and Performance</em>, 1975 — the original hindsight-bias study.</li>
+    <li>Baruch Fischhoff and Ruth Beyth, "'I knew it would happen': Remembered probabilities of once-future things", <em>Organizational Behavior and Human Performance</em>, 1975 — the Nixon-trips memory study.</li>
+    <li>Gary Klein, "Performing a Project Premortem", <em>Harvard Business Review</em>, September 2007 — the pre-mortem technique.</li>
+    <li>Deborah J. Mitchell, J. Edward Russo and Nancy Pennington, "Back to the Future: Temporal Perspective in the Explanation of Events", <em>Journal of Behavioral Decision Making</em>, 1989 — the prospective-hindsight research behind the pre-mortem.</li>
+    <li>Glenn W. Brier, "Verification of Forecasts Expressed in Terms of Probability", <em>Monthly Weather Review</em>, 1950 — the Brier score.</li>
+    <li>Philip E. Tetlock, <em>Expert Political Judgment</em>, Princeton, 2005; Philip E. Tetlock and Dan Gardner, <em>Superforecasting</em>, Crown, 2015 — keeping score on forecasts.</li>
+    <li><a href="bayesian-inference.html">Bayesian Inference</a>, <a href="multiple-testing.html">Multiple Testing</a> and <a href="research-pipeline-hypothesis-to-backtest.html">From Hypothesis to Backtest</a> — the statistical side of the same discipline.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="drawdowns-risk-of-ruin.html">← Drawdowns, Risk of Ruin</a>
+    <a href="../hub.html">Theory Lab hub — end of The Human Side →</a>
+  </div>
+</div>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // ---------- 1. Sort the trade (2x2) ----------
+  // q: 'dl' dumb luck (bad decision, good outcome), 'ds' deserved success, 'jd' just deserts, 'bl' bad luck.
+  var CELLS = { dl: { x: 215, y: 105, name: 'Dumb luck' }, ds: { x: 495, y: 105, name: 'Deserved success' }, jd: { x: 215, y: 255, name: 'Just deserts' }, bl: { x: 495, y: 255, name: 'Bad luck' } };
+  var SCEN = [
+    { t: 'You risked 1% as planned, with a written thesis and a stop. The stop was hit.', a: 'bl', e: 'The plan was followed and sized sensibly; a stop being hit is a normal cost of a positive-edge process. Changing the rules because of this result would be resulting.' },
+    { t: 'After three losses you doubled your usual size on a hunch to win it back. It made +4R.', a: 'dl', e: 'Revenge sizing on a hunch is a rule-break whatever the result. The +4R rewards the behaviour and makes it more likely next time — the most dangerous cell.' },
+    { t: 'You took your tested setup at standard size and it hit the target.', a: 'ds', e: 'Good process, good result. Note it, but do not over-learn from it: the same trade loses some of the time.' },
+    { t: 'You moved your stop further away because "it has to come back". It kept falling.', a: 'jd', e: 'Moving a stop to avoid taking a loss breaks the plan; the bad outcome is what that decision risked.' },
+    { t: 'You bought a "can\'t-miss" tip with no plan and no stop. It gapped up overnight.', a: 'dl', e: 'No thesis, no exit, no size rule: a bad decision that happened to pay. Winners need reviewing too.' },
+    { t: 'You passed on a trade because the spread was too wide for the move you expected. Price then ran the way you liked.', a: 'bl', e: 'Declining a trade whose costs ate the expected edge was a good decision. A missed profit is not a mistake when the trade did not meet your rules.' }
+  ];
+  var placed = {}, correct = 0;
+  var cardsEl = document.getElementById('sort-cards'), dotsEl = document.getElementById('grid-dots');
+  var OFFS = [[-40, 0], [40, 0], [0, 30], [-80, 30], [80, 30], [0, -14]];
+  function plot(){
+    while (dotsEl.firstChild) dotsEl.removeChild(dotsEl.firstChild);
+    var count = { dl: 0, ds: 0, jd: 0, bl: 0 };
+    Object.keys(placed).forEach(function(i){
+      var c = CELLS[placed[i]], o = OFFS[count[placed[i]]++ % OFFS.length];
+      dotsEl.appendChild(el('circle', { cx: c.x + o[0], cy: c.y + o[1], r: 11 }, 'fill:var(--s3);stroke:var(--text2);stroke-width:1.2'));
+      dotsEl.appendChild(el('text', { x: c.x + o[0], y: c.y + o[1] + 4, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 700, 'font-family': "'DM Mono',monospace" }, 'fill:var(--text)', String(+i + 1)));
+    });
+    document.getElementById('sort-score').innerHTML = 'Classify each scenario. Placed: <b>' + Object.keys(placed).length + '</b> of ' + SCEN.length + ' · matched the answer: <b>' + correct + '</b>';
+  }
+  SCEN.forEach(function(s, i){
+    var card = document.createElement('div'); card.className = 'dj-card';
+    card.innerHTML = '<h4>' + (i + 1) + '. ' + esc(s.t) + '</h4><div class="tl-btnrow"></div><div class="dj-explain"></div>';
+    var row = card.querySelector('.tl-btnrow'), ex = card.querySelector('.dj-explain');
+    [['ds', 'Good decision · good outcome'], ['bl', 'Good decision · bad outcome'], ['dl', 'Bad decision · good outcome'], ['jd', 'Bad decision · bad outcome']].forEach(function(opt){
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'tl-btn'; b.textContent = opt[1];
+      b.addEventListener('click', function(){
+        if (placed[i] !== undefined) return;
+        placed[i] = s.a;
+        if (opt[0] === s.a) correct++;
+        Array.prototype.forEach.call(row.querySelectorAll('button'), function(x){ x.disabled = true; });
+        b.classList.add(opt[0] === s.a ? 'right' : 'wrong');
+        ex.innerHTML = '<strong>' + (opt[0] === s.a ? 'Yes — ' : 'It belongs in ') + esc(CELLS[s.a].name) + '.</strong> ' + esc(s.e);
+        ex.classList.add('shown');
+        plot();
+      });
+      row.appendChild(b);
+    });
+    cardsEl.appendChild(card);
+  });
+  plot();
+
+  // ---------- 2. Bayes on a record ----------
+  (function(){
+    var nIn = document.getElementById('by-n'), wIn = document.getElementById('by-w'), gIn = document.getElementById('by-g');
+    function render(){
+      var n = parseInt(nIn.value, 10);
+      wIn.max = n; if (parseInt(wIn.value, 10) > n) wIn.value = n;
+      var w = parseInt(wIn.value, 10), pg = parseInt(gIn.value, 10) / 100, pb = 1 - pg;
+      var logOdds = w * Math.log(pg / pb) + (n - w) * Math.log((1 - pg) / (1 - pb));
+      var post = 1 / (1 + Math.exp(-logOdds));
+      document.getElementById('by-n-val').textContent = n;
+      document.getElementById('by-w-val').textContent = w;
+      document.getElementById('by-g-val').textContent = Math.round(pg * 100) + '% / ' + Math.round(pb * 100) + '%';
+      document.getElementById('by-bar').setAttribute('width', (600 * post).toFixed(1));
+      var perTrade = (pg - pb) * Math.log(pg / pb);
+      var need = Math.ceil(Math.log(19) / perTrade);
+      document.getElementById('by-readout').innerHTML = '<b>' + w + '</b> wins in <b>' + n + '</b> (' + (w / n * 100).toFixed(0) + '%) → probability you are the ' + Math.round(pg * 100) + '% trader: <b>' + (post * 100).toFixed(1) + '%</b>' +
+        '<br>A genuine ' + Math.round(pg * 100) + '% process needs about <b>' + need + '</b> trades, on average, to reach 95% from a 50/50 start.';
+    }
+    [nIn, wIn, gIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // ---------- 3. Decision journal (this browser only) ----------
+  (function(){
+    var KEY = 'theoryLabDecisionJournal';
+    var memory = [], storageOk = true;
+    function load(){
+      try { var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : []; }
+      catch (e) { storageOk = false; return memory; }
+    }
+    function save(list){
+      memory = list;
+      try { localStorage.setItem(KEY, JSON.stringify(list)); storageOk = true; }
+      catch (e) { storageOk = false; }
+    }
+    var F = ['decision', 'expect', 'why', 'base', 'conf', 'change', 'premortem'];
+    var LABELS = { decision: 'Decision', expect: 'Expected', why: 'Why', base: 'Base rate', conf: 'Confidence', change: 'Would change my mind', premortem: 'Pre-mortem' };
+    function field(k){ return document.getElementById('dj-' + k); }
+    function status(msg){ document.getElementById('dj-status').textContent = msg + (storageOk ? '' : ' (Browser storage is unavailable here, so entries last only until you close this page.)'); }
+    function fmtDate(t){ var d = new Date(t); return d.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+
+    function render(){
+      var list = load(), host = document.getElementById('dj-list');
+      host.innerHTML = '';
+      var resolved = list.filter(function(e){ return e.outcome; });
+      var grid = { ds: 0, bl: 0, dl: 0, jd: 0 };
+      resolved.forEach(function(e){
+        if (!e.grade || e.grade === 'unsure') return;
+        var good = e.grade === 'good', hit = e.outcome === 'yes';
+        grid[good ? (hit ? 'ds' : 'bl') : (hit ? 'dl' : 'jd')]++;
+      });
+      var summary = document.getElementById('dj-summary');
+      if (!resolved.length){
+        summary.innerHTML = 'Entries: <b>' + list.length + '</b> · resolved: <b>0</b>. Record outcomes to see your calibration and your 2×2.';
+      } else {
+        var hits = resolved.filter(function(e){ return e.outcome === 'yes'; }).length;
+        var avgConf = resolved.reduce(function(s, e){ return s + e.conf; }, 0) / resolved.length;
+        var brier = resolved.reduce(function(s, e){ var f = e.conf / 100, o = e.outcome === 'yes' ? 1 : 0; return s + (f - o) * (f - o); }, 0) / resolved.length;
+        summary.innerHTML = 'Entries: <b>' + list.length + '</b> · resolved: <b>' + resolved.length + '</b> · average stated confidence <b>' + avgConf.toFixed(0) + '%</b> vs came true <b>' + (hits / resolved.length * 100).toFixed(0) + '%</b> · Brier score <b>' + brier.toFixed(3) + '</b> (0.25 = always saying 50%)' +
+          '<br>Your grid — deserved success <b>' + grid.ds + '</b> · bad luck <b>' + grid.bl + '</b> · dumb luck <b>' + grid.dl + '</b> · just deserts <b>' + grid.jd + '</b>' + (resolved.length < 20 ? '<br>Fewer than 20 resolved entries: treat these numbers as a start, not a verdict.' : '');
+      }
+      list.slice().reverse().forEach(function(e){
+        var box = document.createElement('div'); box.className = 'dj-entry';
+        var html = '<div class="dj-meta">🔒 Sealed ' + esc(fmtDate(e.sealedAt)) + '</div><dl>';
+        F.forEach(function(k){ if (e[k] !== '' && e[k] != null) html += '<dt>' + LABELS[k] + '</dt><dd>' + esc(k === 'conf' ? e[k] + '%' : e[k]) + '</dd>'; });
+        if (e.outcome){
+          html += '<dt>Came true?</dt><dd>' + (e.outcome === 'yes' ? 'Yes' : 'No') + '</dd>';
+          html += '<dt>Decision, judged on what I knew then</dt><dd>' + esc(e.grade === 'good' ? 'Good' : e.grade === 'bad' ? 'Bad' : 'Unsure') + '</dd>';
+          if (e.lesson) html += '<dt>Lesson</dt><dd>' + esc(e.lesson) + '</dd>';
+          html += '<dt>Resolved</dt><dd>' + esc(fmtDate(e.resolvedAt)) + '</dd>';
+        }
+        html += '</dl>';
+        box.innerHTML = html;
+        if (!e.outcome){
+          var form = document.createElement('div');
+          form.innerHTML =
+            '<div class="dj-form">' +
+            '<div><label>Did the expectation come true?</label><select class="tl-scratch-input dj-o"><option value="">—</option><option value="yes">Yes</option><option value="no">No</option></select></div>' +
+            '<div><label>The decision, judged only on what I knew then</label><select class="tl-scratch-input dj-g"><option value="">—</option><option value="good">Good</option><option value="bad">Bad</option><option value="unsure">Unsure</option></select></div>' +
+            '<div class="full"><label>What I learned <span>— about the process, not the result</span></label><textarea class="tl-scratch-input dj-l"></textarea></div></div>' +
+            '<div class="tl-btnrow" style="margin-top:8px"><button type="button" class="tl-btn dj-r">Record outcome</button><button type="button" class="tl-btn dj-d">Delete</button></div>';
+          box.appendChild(form);
+          form.querySelector('.dj-r').addEventListener('click', function(){
+            var o = form.querySelector('.dj-o').value, g = form.querySelector('.dj-g').value;
+            if (!o || !g){ status('Choose whether it came true and grade the decision first.'); return; }
+            var all = load(); all.forEach(function(x){ if (x.id === e.id){ x.outcome = o; x.grade = g; x.lesson = form.querySelector('.dj-l').value.trim(); x.resolvedAt = Date.now(); } });
+            save(all); status('Outcome recorded.'); render();
+          });
+          form.querySelector('.dj-d').addEventListener('click', function(){
+            save(load().filter(function(x){ return x.id !== e.id; })); status('Entry deleted.'); render();
+          });
+        }
+        host.appendChild(box);
+      });
+    }
+
+    document.getElementById('dj-seal').addEventListener('click', function(){
+      var e = { id: Date.now() + '-' + Math.floor(Math.random() * 1e6), sealedAt: Date.now() };
+      F.forEach(function(k){ e[k] = field(k).value.trim(); });
+      e.conf = Math.max(1, Math.min(99, parseInt(e.conf, 10) || 50));
+      if (!e.decision || !e.expect){ status('Write at least the decision and what you expect before sealing.'); return; }
+      var list = load(); list.push(e); save(list);
+      F.forEach(function(k){ if (k !== 'conf') field(k).value = ''; });
+      status('Sealed. Come back when the outcome is known.');
+      render();
+    });
+    document.getElementById('dj-clear').addEventListener('click', function(){
+      if (!window.confirm('Delete every journal entry saved in this browser?')) return;
+      save([]); status('All entries deleted.'); render();
+    });
+    document.getElementById('dj-export').addEventListener('click', function(){
+      var list = load();
+      if (!list.length){ status('Nothing to download yet.'); return; }
+      var out = list.map(function(e){
+        var s = 'Sealed: ' + fmtDate(e.sealedAt) + '\n';
+        F.forEach(function(k){ s += LABELS[k] + ': ' + (k === 'conf' ? e[k] + '%' : e[k]) + '\n'; });
+        if (e.outcome) s += 'Came true: ' + e.outcome + '\nDecision grade: ' + e.grade + '\nLesson: ' + (e.lesson || '') + '\nResolved: ' + fmtDate(e.resolvedAt) + '\n';
+        return s;
+      }).join('\n---\n\n');
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([out], { type: 'text/plain' }));
+      a.download = 'decision-journal.txt';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      status('Downloaded.');
+    });
+    load();
+    status('Entries are saved only in this browser.');
+    render();
+  })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+</body>
+</html>
