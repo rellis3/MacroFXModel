@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why a Loss Hurts Twice as Much — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local to this deck: two-option gamble buttons. */
+  .hs-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+  .hs-opt{background:var(--panel2);border:1px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.45;padding:12px 14px;text-align:left;cursor:pointer}
+  .hs-opt:hover{border-color:var(--blue)}
+  .hs-opt b{display:block;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--blue);margin-bottom:4px}
+  .hs-opt.picked{border-color:var(--purple);background:var(--purple-bg)}
+  .hs-opt:disabled{cursor:default}
+  .hs-out{display:none;margin-top:10px}
+  .hs-out.shown{display:block}
+  @media (max-width:600px){.hs-opts{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Why a Loss Hurts Twice as Much — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+  </div>
+  <div class="sl-fullnote">Want the full value and weighting functions, the four-round gamble chooser, and a 6-question self-test?<a href="loss-aversion-prospect-theory.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Human Side · Lesson 1 of 6</div>
+      <h1 class="sl-h1">Why a Loss Hurts <em>Twice as Much</em></h1>
+      <p class="sl-lede">Prospect theory in pictures: why you play safe when you are winning, gamble when you are losing, and how "I'll wait until it gets back to even" brought down a 233-year-old bank.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">You feel changes, not levels</h2>
+      <p class="sl-sub">Kahneman and Tversky (1979): people code every outcome as a gain or loss from a <strong>reference point</strong>.</p>
+      <div class="sl-row"><div class="sl-box">what you end up with</div><div class="sl-arrow">−</div><div class="sl-box amber">reference point</div><div class="sl-arrow">=</div><div class="sl-box green">the gain or loss you feel</div></div>
+      <p class="sl-p">Classical theory says a $100,000 account is worth the same to you whether it was $90,000 or $110,000 yesterday. Nobody feels it that way. For a trader the reference point is almost always the <strong>entry price</strong>, and the P&amp;L column shows the feeling directly, in red or green.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Why it matters</div>
+        <p>Move the reference point and the same position feels like a different bet. That is the trick professionals use, and you will see it work on slide 7.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The S-curve: drag λ</h2>
+      <p class="sl-sub">v(x) = x<sup>0.88</sup> for gains, −λ(−x)<sup>0.88</sup> for losses. Tversky and Kahneman (1992) estimated λ = 2.25.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="S-shaped value function: flattening above zero, steeper below zero, compared with a dashed straight line for plain dollars">
+            <defs><clipPath id="mvf-clip"><rect x="60" y="10" width="550" height="270"/></clipPath></defs>
+            <line x1="60" y1="96" x2="610" y2="96" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="335" y1="10" x2="335" y2="280" style="stroke:var(--border2);stroke-width:1"/>
+            <text x="606" y="111" text-anchor="end" font-size="11" fill="var(--text3)">gain $ →</text>
+            <text x="64" y="88" font-size="11" fill="var(--text3)">← loss $</text>
+            <text x="60" y="295" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">−1000</text>
+            <text x="335" y="295" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="610" y="295" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text3)">+1000</text>
+            <g clip-path="url(#mvf-clip)">
+              <line x1="60" y1="216" x2="610" y2="-24" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:4,4"/>
+              <polyline id="mvf-curve" points="" style="fill:none;stroke:var(--purple);stroke-width:2.8"/>
+            </g>
+            <circle id="mvf-gain" cx="472.5" cy="67.5" r="5" style="fill:var(--green)"/>
+            <circle id="mvf-loss" cx="197.5" cy="160" r="5" style="fill:var(--red)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Loss aversion λ</span><span class="sl-live" id="mvf-lam-val">λ = 2.25</span></div>
+        <input type="range" class="sl-slider" id="mvf-lam" min="1" max="3" step="0.05" value="2.25">
+        <div class="sl-calc-steps">
+          <div>feel of +$500 = <b id="mvf-g">237</b> · feel of −$500 = <b id="mvf-l">−534</b></div>
+          <div>coin flip +$150 / −$100 (average +$25): <b id="mvf-mixed">rejected</b></div>
+        </div>
+        <div class="sl-note">Flatter on the right: you bank gains. Steeper and flattening on the left: you gamble to dodge a sure loss. Dashed line = plain dollars.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Catch your own curve: two choices</h2>
+      <p class="sl-sub">Answer with your gut. Both options in each pair have the same expected value.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Choice 1 · you've been given $1,000</div>
+        <div class="hs-opts" data-round="gain">
+          <button type="button" class="hs-opt" data-pick="A"><b>Option A</b>A sure extra +$500</button>
+          <button type="button" class="hs-opt" data-pick="B"><b>Option B</b>50% chance of +$1,000, 50% nothing</button>
+        </div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Choice 2 · you've been given $2,000</div>
+        <div class="hs-opts" data-round="loss">
+          <button type="button" class="hs-opt" data-pick="A"><b>Option A</b>A sure loss of −$500</button>
+          <button type="button" class="hs-opt" data-pick="B"><b>Option B</b>50% chance of −$1,000, 50% nothing</button>
+        </div>
+      </div>
+      <div class="sl-callout green hs-out" id="mgc-out">
+        <div class="sl-callout-label">What you just did</div>
+        <p id="mgc-text"></p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Find your own λ</h2>
+      <p class="sl-sub">A coin flip: tails you lose $100. What's the smallest win on heads that makes you <em>happy</em> to play?</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Smallest win you'd accept</span><span class="sl-live" id="mlam-val">$200</span></div>
+        <input type="range" class="sl-slider" id="mlam" min="100" max="400" step="10" value="200">
+        <div class="sl-calc-steps">
+          <div>your implied λ ≈ <b id="mlam-out">2.0</b></div>
+          <div>average profit you demand before playing: <b id="mlam-ev">+$50</b> per flip</div>
+        </div>
+        <div class="sl-note" id="mlam-note"></div>
+      </div>
+      <p class="sl-p">A robot that only cared about averages would play for anything over $100. Most people want about $200. That gap is <strong>loss aversion</strong>, and it is why "losses hurt twice as much" is the slogan.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Small chances feel bigger than they are</h2>
+      <p class="sl-sub">Prospect theory's second ingredient: probabilities get a decision weight w(p), not their true size.</p>
+      <div class="sl-card">
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Inverse-S weighting curve above the diagonal at low probabilities and below it at high probabilities">
+            <line x1="80" y1="250" x2="580" y2="250" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="250" x2="80" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="80" y1="250" x2="580" y2="20" style="stroke:var(--text3);stroke-width:1.2;stroke-dasharray:4,4"/>
+            <polyline id="mpw-curve" points="" style="fill:none;stroke:var(--amber);stroke-width:2.8"/>
+            <text x="330" y="272" text-anchor="middle" font-size="11" fill="var(--text3)">true probability →</text>
+            <text x="190" y="120" font-size="11" fill="var(--amber)">1% feels like ~5.5%</text>
+            <text x="570" y="90" text-anchor="end" font-size="11" fill="var(--amber)">99% feels like ~91%</text>
+          </svg>
+        </div>
+        <div class="sl-note">Tversky and Kahneman's 1992 form with γ = 0.61 (their estimate for gains). Dashed = probabilities as they are.</div>
+      </div>
+      <p class="sl-p">That is the lottery ticket and the insurance policy in one curve. On a screen it is the far out-of-the-money option that "could go ten times".</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Down $1,000, stop right there</h2>
+      <p class="sl-sub">Let the stop hit (a sure −$1,000), or pull it and hold: 50% back to even, 50% out at −$2,200. Holding averages −$1,100: worse.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Measured from entry</span>
+          <p>Stop feels like <strong>−982</strong>. Hold feels like <strong>−892</strong>. The worse bet feels better, so the stop moves.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">Measured from today</span>
+          <p>Hold is a fresh flip for +$1,000 or −$1,200: feels like <strong>−340</strong> against <strong>0</strong> for walking away. Plainly bad.</p>
+        </div>
+      </div>
+      <div class="sl-quote">Same trade, same odds. Only the reference point moved. "Would I open this trade, at this size, right now?" puts it back at today.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">Barings, 1995: account 88888</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Nick Leeson ran Barings' Singapore futures desk <strong>and</strong> its back office. From 1992 he hid losses in error account 88888 and traded bigger to win them back: short Nikkei straddles, then large long Nikkei futures. The <strong>Kobe earthquake (17 Jan 1995)</strong> sank the Nikkei; he bought more. London wired margin, believing the book was hedged. Losses of roughly <strong>£827m</strong> exceeded the bank's capital. Barings, founded in 1762, collapsed on <strong>26 Feb 1995</strong> and was sold to ING for <strong>£1</strong>.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link concept"><b>★ This lesson · loss aversion</b>Booking a loss feels worse than hiding it</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Leeson</b>Behind, so bets bigger to get back to even</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Kobe quake</b>Nikkei falls; both legs lose</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Exchange</b>Calls margin; London must wire cash</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>~£827m loss; bank sold for £1</div>
+      </div>
+      <p class="sl-p">Thaler and Johnson (1990) named the pull: the <strong>break-even effect</strong>. After a loss, any bet that offers a way back to even looks attractive.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">Not just traders: Boston condos</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Genesove and Mayer (2001) studied downtown Boston condominiums after the early-1990s price fall. Owners facing a loss against their purchase price <strong>asked more</strong> than comparable owners and <strong>took longer to sell</strong>. The price they had paid, irrelevant to what the flat was now worth, was the reference point.</p>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Holding a loser is not proof of bias: sometimes the thesis is intact and the stop was badly placed. The tell is changing the rule <em>because</em> you are losing. And Barings also needed a control failure: the bias was the motive, one person running trading and settlement was the opportunity.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">What this desk has, and hasn't, tested</h2>
+      <p class="sl-sub">The claim: loss aversion costs traders money, and fixed exits beat discretionary ones.</p>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>No ledger entry measures trader behaviour.</strong> The desk tests market claims. Its guard is procedural: every study's rules, sample and kill criterion are fixed before results are seen, and nulls are logged as nulls. A fair test would compare the same signal's pre-set exits with the exits actually taken, trade by trade.</span>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">The professional fix</div>
+        <p><strong>Decide while flat.</strong> Exits and maximum loss are set at entry and held by something other than the person in the trade: a hard stop at the broker, a daily loss limit, a risk manager. Benartzi and Thaler (1995): checking P&amp;L less often makes loss aversion bite less.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · Exercise</div>
+      <h2 class="sl-h2">Before you touch a stop</h2>
+      <p class="sl-sub">Keep this next to the screen. Any "no" and the stop stays.</p>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">1</div><p>I would open this trade, at this size, at today's price, if I were flat.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">2</div><p>The reason is new information, not the size of the loss.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">3</div><p>I am not adding size to get back to even.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">4</div><p>I wrote the change and the new exit in my journal before making it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">5</div><p>The new worst case is still inside my daily loss limit.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Same expected value, but you take the sure +$500 and gamble on the −$1,000. Which part of the curve does that?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The curvature: concave for gains, convex for losses</button>
+        <button class="sl-quiz-opt">Loss aversion λ alone</button>
+        <button class="sl-quiz-opt">Probability weighting alone</button>
+        <div class="sl-quiz-explain">This is the reflection effect. Any curvature below 1 produces it, even with λ = 1. λ is what makes you reject a 50/50 bet with a positive average.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>What does λ = 2.25 (Tversky and Kahneman, 1992) mean?</h4>
+        <button class="sl-quiz-opt">You lose money 2.25 times as often as you win</button>
+        <button class="sl-quiz-opt" data-correct="true">A loss weighs about 2.25 times as much as an equal gain</button>
+        <button class="sl-quiz-opt">Losses are 2.25 times larger in markets</button>
+        <div class="sl-quiz-explain">It is a weight on feelings, estimated as a median from lab choices, not a fact about markets and not a universal constant.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Which question best stops you moving a stop to "get back to even"?</h4>
+        <button class="sl-quiz-opt" data-correct="true">"Would I open this trade, at this size, right now?"</button>
+        <button class="sl-quiz-opt">"How much am I down from my entry?"</button>
+        <button class="sl-quiz-opt">"What's the best case if I hold?"</button>
+        <div class="sl-quiz-explain">It moves the reference point to today, where holding is a fresh bet judged on its own odds instead of a way back to even.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What has this desk found about loss aversion in trading results?</h4>
+        <button class="sl-quiz-opt">Validated: it costs a measured amount per trade</button>
+        <button class="sl-quiz-opt">Null: it makes no difference</button>
+        <button class="sl-quiz-opt" data-correct="true">Untested: no ledger entry measures it</button>
+        <div class="sl-quiz-explain">The desk applies the remedy (rules fixed before results are seen) but has not measured the effect. Saying so plainly is the point.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>You feel gains and losses from a reference point, usually your entry price, not your final wealth.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>The value curve is concave for gains, convex for losses and steeper for losses: λ ≈ 2.25 (Tversky and Kahneman, 1992).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Small probabilities are overweighted: the pull of lottery-ticket trades.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Being behind makes you risk-seeking, at exactly the wrong moment. Move the reference point to today.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Barings, 1995: hidden losses plus doubling down to get back to even, ~£827m, a 233-year-old bank sold for £1.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Desk verdict: untested. The guard is deciding while flat: rules and kill criteria fixed in advance.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Selling Winners, Holding Losers</h3>
+        <p>The same curve, measured in 10,000 real brokerage accounts: investors bank gains far more readily than losses, and the winners they sell go on to beat the losers they keep.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="disposition-effect-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="loss-aversion-prospect-theory.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function v(x, a, lam){ return x >= 0 ? Math.pow(x, a) : -lam * Math.pow(-x, a); }
+  function w(p, g){
+    if (p <= 0) return 0;
+    if (p >= 1) return 1;
+    var pg = Math.pow(p, g);
+    return pg / Math.pow(pg + Math.pow(1 - p, g), 1 / g);
+  }
+  function fmt(n){ return (n >= 0 ? '' : '−') + Math.abs(Math.round(n)); }
+
+  // Slide 3 — value function with a lambda slider (alpha fixed at 0.88).
+  (function(){
+    var s = document.getElementById('mvf-lam');
+    if (!s) return;
+    var A = 0.88, X0 = 335, XS = 0.275, Y0 = 96, YS = 0.12;
+    var curve = document.getElementById('mvf-curve');
+    function update(){
+      var lam = parseFloat(s.value);
+      document.getElementById('mvf-lam-val').textContent = 'λ = ' + lam.toFixed(2);
+      var pts = [];
+      for (var i = 0; i <= 200; i++){
+        var x = -1000 + i * 10;
+        pts.push((X0 + x * XS).toFixed(1) + ',' + (Y0 - v(x, A, lam) * YS).toFixed(1));
+      }
+      curve.setAttribute('points', pts.join(' '));
+      var vg = v(500, A, lam), vl = v(-500, A, lam);
+      document.getElementById('mvf-gain').setAttribute('cy', (Y0 - vg * YS).toFixed(1));
+      document.getElementById('mvf-loss').setAttribute('cy', Math.min(280, Y0 - vl * YS).toFixed(1));
+      document.getElementById('mvf-g').textContent = fmt(vg);
+      document.getElementById('mvf-l').textContent = fmt(vl);
+      var mixed = 0.5 * v(150, A, lam) + 0.5 * v(-100, A, lam);
+      document.getElementById('mvf-mixed').textContent = mixed > 0 ? 'accepted' : 'rejected';
+    }
+    s.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 4 — two-choice reflection test.
+  (function(){
+    var groups = Array.prototype.slice.call(document.querySelectorAll('.hs-opts[data-round]'));
+    var out = document.getElementById('mgc-out'), txt = document.getElementById('mgc-text');
+    if (!groups.length || !out) return;
+    var picks = {};
+    groups.forEach(function(g){
+      var btns = Array.prototype.slice.call(g.querySelectorAll('.hs-opt'));
+      btns.forEach(function(b){
+        b.addEventListener('click', function(){
+          btns.forEach(function(o){ o.disabled = true; });
+          b.classList.add('picked');
+          picks[g.getAttribute('data-round')] = b.getAttribute('data-pick');
+          if (picks.gain && picks.loss) report();
+        });
+      });
+    });
+    function report(){
+      var msg;
+      if (picks.gain === 'A' && picks.loss === 'B') msg = 'Safe with the gain, gamble with the loss: the reflection effect, the most common pattern. Prospect theory (1992 parameters) scores the sure +$500 at 237 vs 184 for its gamble, and the sure −$500 at −534 vs −446 for its gamble.';
+      else if (picks.gain === picks.loss) msg = 'You chose consistently across the two frames, which is what a pure expected-value chooser would do (both pairs have identical averages). Most people flip.';
+      else msg = 'Gamble with the gain, safe with the loss: the opposite of the usual pattern. Less common, but the averages are still identical in both pairs.';
+      txt.textContent = msg;
+      out.classList.add('shown');
+    }
+  })();
+
+  // Slide 5 — personal lambda.
+  (function(){
+    var s = document.getElementById('mlam');
+    if (!s) return;
+    function update(){
+      var x = parseInt(s.value, 10), lam = x / 100;
+      document.getElementById('mlam-val').textContent = '$' + x;
+      document.getElementById('mlam-out').textContent = lam.toFixed(1);
+      document.getElementById('mlam-ev').textContent = '+$' + ((x - 100) / 2).toFixed(0);
+      var note;
+      if (lam < 1.3) note = 'Close to neutral. Uncommon in experiments.';
+      else if (lam < 1.8) note = 'Mild loss aversion, at the low end of published estimates.';
+      else if (lam <= 2.6) note = 'Right in the textbook range (2.25 in 1992).';
+      else note = 'Strong loss aversion: you pass up bets with a large positive average.';
+      document.getElementById('mlam-note').textContent = note + ' (Assumes a straight value curve: λ ≈ your number ÷ 100.)';
+    }
+    s.addEventListener('input', update);
+    update();
+  })();
+
+  // Slide 6 — static weighting curve, gamma = 0.61.
+  (function(){
+    var c = document.getElementById('mpw-curve');
+    if (!c) return;
+    var pts = [];
+    for (var i = 0; i <= 100; i++){
+      var p = i / 100;
+      pts.push((80 + p * 500).toFixed(1) + ',' + (250 - w(p, 0.61) * 230).toFixed(1));
+    }
+    c.setAttribute('points', pts.join(' '));
+  })();
+})();
+</script>
+</body>
+</html>

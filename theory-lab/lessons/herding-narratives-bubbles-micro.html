@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Herding, Narratives and Bubbles — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Herding, Narratives &amp; Bubbles — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full cascade derivation, both stories, a narrative self-audit and a 6-question self-test?<a href="herding-narratives-bubbles.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Human Side · Lesson 4 of 6</div>
+      <h1 class="sl-h1">Herding, Narratives <em>and Bubbles</em></h1>
+      <p class="sl-lede">Following the crowd is often perfectly rational for each person. That's exactly why a whole market can end up confidently wrong. Add a good story and some leverage, and you get a bubble, along with the misery of being right too early.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1 · The idea</div>
+      <h2 class="sl-h2">Two restaurants, one busy, one empty</h2>
+      <p class="sl-sub">The example Bikhchandani, Hirshleifer &amp; Welch (1992) used themselves.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Early diners</span>
+          <p>Each follows their own guidebook. Each choice tells the street something.</p>
+        </div>
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Everyone after</span>
+          <p>Picks the busy one <strong>whatever their guidebook said</strong>. Their choice now tells the street nothing.</p>
+        </div>
+      </div>
+      <div class="sl-quote">A busy restaurant can be full of people who each privately thought the other one was better. The first two or three diners decided for everyone, and they may just have been unlucky.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2 · The rule</div>
+      <h2 class="sl-h2">When copying becomes the rational choice</h2>
+      <p class="sl-sub">Private signal right with probability p. d = net Good-minus-Bad signals the crowd's actions have revealed. s = your own signal (±1).</p>
+      <div class="sl-row"><div class="sl-box">odds of Good</div><div class="sl-arrow">=</div><div class="sl-box amber">(p / q)<sup>d + s</sup></div></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">|d|≤1</div><div><h4>Learning</h4><p>Your own signal decides, so your action reveals it. d moves.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">|d|=2</div><div><h4>Cascade</h4><p>Even an opposite signal can't flip the odds. You copy. Your action reveals nothing, so d stops moving for everyone after you.</p></div></div>
+      </div>
+      <p class="sl-p">Nobody behaved irrationally. Every person used Bayes' rule correctly, and the group still stopped learning.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3 · Try it</div>
+      <h2 class="sl-h2">Watch 20 people cascade</h2>
+      <p class="sl-sub">Truth: Good. Outer colour = what they did. Inner dot = what their own signal said. Dashed ring = in a cascade.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Twenty people in two rows of ten; outer colour shows each person's action, inner dot their private signal, dashed ring marks people inside a cascade">
+            <g id="hc-agents"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Signal accuracy p</span><span class="sl-live" id="hc-p-val">0.70</span></div>
+        <input type="range" class="sl-slider" id="hc-p" min="0.51" max="0.95" step="0.01" value="0.70">
+        <div class="sl-teaser-btns" style="margin-top:12px">
+          <button type="button" class="sl-btn" id="hc-new">New crowd</button>
+          <button type="button" class="sl-reset-btn" id="hc-many">Run 5,000 crowds</button>
+        </div>
+        <div class="sl-calc-steps" id="hc-readout"></div>
+        <div class="sl-note">Green = bought (right), red = passed (wrong). Press "New crowd" a few times at p = 0.6. Some crowds go all red while most inner dots are green.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4 · The cost</div>
+      <h2 class="sl-h2">Copying throws away the crowd's information</h2>
+      <p class="sl-sub">Before a cascade, d is a random walk stopped at ±2. Gambler's ruin gives the answer directly.</p>
+      <div class="sl-row"><div class="sl-box amber">P(wrong cascade) = q² / (p² + q²)</div></div>
+      <div class="sl-compare">
+        <div class="sl-ccard red">
+          <span class="sl-ctag red">Copying crowd, p = 0.7</span>
+          <p>Wrong about <strong>15.5%</strong> of the time. Settled by the first ~3.4 people.</p>
+        </div>
+        <div class="sl-ccard green">
+          <span class="sl-ctag green">20 independent votes, p = 0.7</span>
+          <p>Wrong about <strong>3.3%</strong> of the time. All twenty signals get counted.</p>
+        </div>
+      </div>
+      <p class="sl-p">Rational copying made the group about five times more likely to be wrong. It ends up holding the information of about two people instead of twenty.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5 · Stories and stages</div>
+      <h2 class="sl-h2">Narratives carry the cascade; leverage powers it</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📖</div><div><h4>Narrative economics (Shiller)</h4><p>Stories spread person to person like an epidemic. A rising price is the most convincing evidence a story can have: price up → story more believable → more buyers.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">①</div><div><h4>Displacement → Boom</h4><p>A real innovation creates real opportunities. Credit expands and the story spreads.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">②</div><div><h4>Euphoria</h4><p>Buying because it's rising. "This time is different." Sceptics give up.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">③</div><div><h4>Profit-taking → Panic</h4><p>Insiders sell and the market stalls. The leverage that forced buying now forces selling.</p></div></div>
+      </div>
+      <p class="sl-p">Minsky's stages, as Kindleberger set them out in <em>Manias, Panics, and Crashes</em> (1978).</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · It actually happened</div>
+      <h2 class="sl-h2">1996–2002: right on value, wrong on time</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>5 Dec 1996: Greenspan asks how we'd know when "irrational exuberance" had unduly escalated asset values. The Nasdaq then <strong>nearly quadruples</strong>. Tiger Management, a value fund that wouldn't buy the tech story, closes at the end of <strong>March 2000</strong> after losses and withdrawals, weeks from the top. The Nasdaq closes at <strong>5,048.62</strong> on <strong>10 March 2000</strong> and <strong>1,114.11</strong> on <strong>9 October 2002</strong>: about <strong>−78%</strong>. It doesn't close above that peak again until 2015.</p>
+      </div>
+      <div class="sl-quote">Limits of arbitrage (Shleifer &amp; Vishny, 1997): a manager who fights a mispricing that gets worse loses clients exactly when the bet is best. Being early is the same as being wrong, for a while.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">January 2021: GameStop and a narrative with a villain</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>A heavily shorted retailer, a Reddit forum, and a story anyone could follow: buy enough and the shorts must cover. From under $20 at the end of 2020 (pre-split) to an intraday high of about <strong>$483</strong> on <strong>28 January</strong>. Melvin Capital took <strong>$2.75bn</strong> from Citadel and Point72 on 25 January and closed in 2022. Brokers restricted buying on 28 January. Within weeks most of the spike was gone, and the late buyers held the losses.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Displacement</b>The internet, or a heavily shorted stock</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · Herding</b>Copy earlier buyers; doubts go silent; story spreads</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Sceptics</b>Margin-called or lose clients; forced out</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Leveraged buyers</b>Price stalls; forced to sell</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Nasdaq −78%; GME gives back the spike</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · What this desk found</div>
+      <h2 class="sl-h2">Crowding warnings don't time the turn</h2>
+      <p class="sl-sub">The folk claim: "you can see the herd crowding in, and that tells you a break is coming."</p>
+      <div class="sl-stamp null" data-evidence="breadth-narrowing" data-evidence-date="2026-09-23">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>breadth-narrowing:</strong> 35 narrowing events in 23 years. Direction at 20 days <strong>−0.5% [−2.70, +1.57]</strong>; range +0.37 [−0.10, +0.85], and extreme broadening does the same (+0.28). A description of concentration, not a timing signal.</span>
+      </div>
+      <div class="sl-stamp null" data-evidence="dispersion-crowded-week" data-evidence-date="2026-09-23">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>dispersion-crowded-week:</strong> 68 crowded setups. Next week SPX500 <strong>+0.07 [−0.06, +0.23]</strong>, NQ +0.07 [−0.03, +0.17]. Not a wild week.</span>
+      </div>
+      <div class="sl-stamp validated" data-evidence="dispersion-reset" data-evidence-date="2026-09-27">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>dispersion-reset, backwards from the story:</strong> a crowd that starts unwinding precedes a <em>calmer</em> week (SPX500 <strong>−0.122 [−0.190, −0.005]</strong>). Direction null. Thin sample, so not a trigger.</span>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · Do this now</div>
+      <h2 class="sl-h2">The narrative check, before you join or fight a crowd</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">1</div><p><strong>Thesis without the price.</strong> One sentence that doesn't mention it already going up.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">2</div><p><strong>My own signal.</strong> What did I see myself, before I knew what everyone else was doing?</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">3</div><p><strong>The marginal buyer.</strong> Who buys from here? "People who haven't heard yet" means the cascade is near its end.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">4</div><p><strong>The forced seller.</strong> Who's on leverage, and what price forces them out?</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">5</div><p><strong>Survival.</strong> If I'm right but six months early and the move against me doubles first, am I still in?</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <p class="sl-p">The first two people both passed. Person 3's own signal says Good. What does Bayes' rule tell them?</p>
+        <button class="sl-quiz-opt">Buy: their own signal is all they really know</button>
+        <button class="sl-quiz-opt" data-correct="true">Pass: d + s = −1, so the odds of Good are below 1</button>
+        <button class="sl-quiz-opt">Flip a coin</button>
+        <div class="sl-quiz-explain">Two revealed Bad signals outweigh one private Good one. Person 3 passes, which reveals nothing, so everyone after them is in the same position: a cascade.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <p class="sl-p">At p = 0.8, how often does a copying crowd lock onto the wrong answer?</p>
+        <button class="sl-quiz-opt">About 0.2%</button>
+        <button class="sl-quiz-opt" data-correct="true">About 5.9%</button>
+        <button class="sl-quiz-opt">About 20%</button>
+        <div class="sl-quiz-explain">q²/(p²+q²) = 0.04/0.68 ≈ 5.9%. The 0.2% is what 20 independent votes would give: copying costs most of the crowd's information.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <p class="sl-p">Why did Tiger Management close in March 2000, weeks before its view was proved right?</p>
+        <button class="sl-quiz-opt">Its analysis of tech valuations was wrong</button>
+        <button class="sl-quiz-opt" data-correct="true">Years of losses and withdrawals from fighting the bubble: limits of arbitrage</button>
+        <button class="sl-quiz-opt">Regulators shut it down</button>
+        <div class="sl-quiz-explain">Clients judge managers on recent results. A mispricing that keeps widening drains capital exactly when the bet is most attractive.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <p class="sl-p">"Dispersion is high but now falling: the crowd is unwinding and the break has started." What did the desk find?</p>
+        <button class="sl-quiz-opt">Confirmed: a wider week follows</button>
+        <button class="sl-quiz-opt" data-correct="true">The reverse: a calmer week follows, and direction is null</button>
+        <button class="sl-quiz-opt">Never tested</button>
+        <div class="sl-quiz-explain">dispersion-reset was pre-registered with the story's expectation and came back with the opposite sign: SPX500 −0.122 over the next week.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Herding can be rational for each person and wrong for the group: once revealed signals net to two, everyone copies and later information is thrown away.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>P(wrong cascade) = q²/(p²+q²): 15.5% at p = 0.7, against 3.3% for 20 independent votes.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Narratives carry the cascade; leverage powers Minsky's stages, with forced buying on the way up and forced selling on the way down.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Being early is the same as being wrong, for a while: Nasdaq nearly ×4 after the 1996 warning, then −78% from March 2000. Tiger closed weeks from the top.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Desk: crowding doesn't time the turn (breadth-narrowing, dispersion-crowded-week: null), and unwinding precedes a calmer week, not a break (dispersion-reset).</p></div>
+      </div>
+      <div class="sl-callout green">
+        <div class="sl-callout-label">What this now lets you do</div>
+        <p>Tell when your trade is adding information and when it's just copying. Separate a real displacement from the price put on it. Size a contrarian view so that being early can't force you out.</p>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Drawdowns and Risk of Ruin</h3>
+        <p>Every story in this lesson ends with someone forced out before they were proved right. Next: the arithmetic of drawdowns, and how to size so that it can't happen to you.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="drawdowns-risk-of-ruin-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="herding-narratives-bubbles.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="overconfidence-overtrading-micro.html">← Previous: Overconfidence</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Information cascade, same rule as the full lesson. Truth = Good.
+  var N = 20;
+  var pEl = document.getElementById('hc-p');
+  if (!pEl) return;
+  var g = document.getElementById('hc-agents');
+  var readout = document.getElementById('hc-readout');
+  var NS = 'http://www.w3.org/2000/svg';
+  function runCrowd(p){
+    var d = 0, out = [];
+    for (var i = 0; i < N; i++){
+      var s = Math.random() < p ? 1 : -1;
+      var cascade = Math.abs(d) >= 2;
+      var a = cascade ? (d > 0 ? 1 : -1) : s;
+      if (!cascade) d += s;
+      out.push({ s: s, a: a, cascade: cascade, ignored: cascade && a !== s });
+    }
+    return out;
+  }
+  function el(tag, attrs){ var e = document.createElementNS(NS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function theory(p){ var q = 1 - p; return q * q / (p * p + q * q); }
+  function majWrong(p){
+    var q = 1 - p, s = 0, c = 1;
+    for (var k = 0; k <= N; k++){
+      if (k > 0) c = c * (N - k + 1) / k;
+      var pk = c * Math.pow(p, k) * Math.pow(q, N - k);
+      if (k < N / 2) s += pk; else if (k === N / 2) s += 0.5 * pk;
+    }
+    return s;
+  }
+  function draw(crowd){
+    while (g.firstChild) g.removeChild(g.firstChild);
+    crowd.forEach(function(ag, i){
+      var cx = 50 + (i % 10) * 60, cy = 45 + Math.floor(i / 10) * 105;
+      g.appendChild(el('circle', { cx: cx, cy: cy, r: 21, style: 'fill:' + (ag.a > 0 ? 'var(--green)' : 'var(--red)') + ';opacity:.85' }));
+      g.appendChild(el('circle', { cx: cx, cy: cy, r: 7, style: 'fill:' + (ag.s > 0 ? 'var(--green)' : 'var(--red)') + ';stroke:var(--bg);stroke-width:2' }));
+      if (ag.cascade) g.appendChild(el('circle', { cx: cx, cy: cy, r: 26, style: 'fill:none;stroke:var(--amber);stroke-width:1.5;stroke-dasharray:3,3' }));
+      var t = el('text', { x: cx, y: cy + 42, 'text-anchor': 'middle', 'font-size': '10', 'font-family': "'DM Mono',monospace", fill: 'var(--text3)' });
+      t.textContent = '#' + (i + 1);
+      g.appendChild(t);
+    });
+  }
+  function fresh(){
+    var p = parseFloat(pEl.value);
+    document.getElementById('hc-p-val').textContent = p.toFixed(2);
+    var c = runCrowd(p);
+    draw(c);
+    var ign = c.filter(function(a){ return a.ignored; }).length;
+    readout.innerHTML = '<div>This crowd ended <b>' + (c[N - 1].a > 0 ? 'right (Good)' : 'wrong (Bad)') + '</b> · <b>' + ign + '</b> people ignored their own signal</div><div>Theory: wrong cascade <b>' + (theory(p) * 100).toFixed(1) + '%</b> vs 20 independent votes <b>' + (majWrong(p) * 100).toFixed(1) + '%</b></div>';
+  }
+  function many(){
+    var p = parseFloat(pEl.value), R = 5000, wrong = 0;
+    for (var r = 0; r < R; r++) if (runCrowd(p)[N - 1].a < 0) wrong++;
+    readout.innerHTML = '<div>5,000 crowds at p = ' + p.toFixed(2) + ': herd wrong <b>' + (wrong / R * 100).toFixed(1) + '%</b> (theory ' + (theory(p) * 100).toFixed(1) + '%)</div><div>20 independent votes wrong: <b>' + (majWrong(p) * 100).toFixed(1) + '%</b></div>';
+  }
+  pEl.addEventListener('input', fresh);
+  document.getElementById('hc-new').addEventListener('click', fresh);
+  document.getElementById('hc-many').addEventListener('click', many);
+  fresh();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+</body>
+</html>
