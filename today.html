@@ -1467,6 +1467,13 @@ WHAT IT IS NOT. Not direction — every sentence it produces is about range. Not
     <h3 class="help" title="Median/P75 time (as a fraction of the trading day) a driftless model expects price to take reaching the O-C median target, given today's σ and however much distance remains right now — closed-form Brownian math, NOT backtested, a reference line only. If more time has elapsed than the median first-passage time predicts and the level still hasn't been reached, the trade thesis may be running behind schedule on timing grounds, independent of P&amp;L."><span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Time budget — on schedule or running long?</span></h3>
     <div class="dr-sec-body"><div id="drTimeBudget"></div></div>
   </div>
+<div class="dr-sec" id="drLineStateSec" data-seckey="linestate" style="display:none">
+    <h3 class="help" title="Four readings about today's lines, none of them a direction call. TAG: implied vol ÷ the σ the lines were drawn from: CONTINUE (lines likely too tight), FAIR, EXHAUST (lines likely too wide), scored nightly on the Daily Read page. MOVES LATELY: variance ratio at 30m–8h over the last 20 London days, extending or giving back against this market's own last year. MARKET CLOCK: how much of a typical day's movement is usually done by now, and whether today's range is ahead of or behind that. DOLLAR TRADE: how much of this pair's 60-day movement was the dollar.">
+      <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Today's lines: tag, moves &amp; clock</span>
+      <span class="chip neu" style="font-size:9px">context · not a signal</span>
+    </h3>
+    <div class="dr-sec-body"><div id="drLineState"><span class="muted">loading…</span></div></div>
+  </div>
 <div class="dr-sec" id="drIvRvSec" data-seckey="ivrv" style="display:none">
       <h3 class="help" title="Realised volatility is what this market HAS done (close-to-close, annualised). Implied is what the options market is CHARGING for the next 30 days. The gap between them is a risk premium, not a direction — a high IV-RV spread says options are expensive relative to recent movement, which is context for sizing and for whether to buy or sell premium, never a buy/sell signal on the underlying.">
         <span class="dr-sec-h" onclick="toggleDrSec(this)"><span class="dr-chevron">▾</span><i class="ev c" title="context — measured, not predictive">~</i>Realised vs implied volatility</span>
@@ -4056,15 +4063,95 @@ async function loadIvRvAll() {
 function ivRvChip(r) {
   const v = _ivRvAll[r.name];
   if (!v) return '';
-  // Only worth a chip when the gap is wide enough to change a decision.
-  if (v.ratio > 0.85 && v.ratio < 1.2) return '';
-  const rich = v.ratio >= 1.2;
-  const tip = `The options market is pricing ${v.iv}% annualised volatility while this pair has actually been running at ${v.rv}% — a ratio of ${v.ratio}. `
+  // Upgraded 2026-10-03 (analysis/exhaustion_residual/): `rv` here is the forecast's own σ (vol_annual), so this ratio
+  // is implied vol ÷ the σ the lines were drawn from. Cut-offs are the research terciles (per pair where fitted), and
+  // the meaning follows the evidence: rich = lines too tight -> breaks continue (a threat to FADES); cheap = lines too
+  // wide -> outer lines cap. The old text said rich "favours fading spikes", which the line research contradicts.
+  const t = _lsTagFor(r.name, v.ratio);
+  if (!t || t.tag === 'fair') return '';
+  const rich = t.tag === 'continue';
+  const tip = `Options price ${v.iv}% annualised volatility; the Vol Forecast lines were drawn from ${v.rv}%, a ratio of ${v.ratio}${t.provisional ? ' (provisional cut-offs for this market)' : ''}. `
     + (rich
-        ? 'Options look EXPENSIVE relative to realised movement: the market is paying up for a move that has not been happening. That favours selling premium or fading spikes, and it warns that expectations are already elevated.'
-        : 'Options look CHEAP relative to realised movement: the market is charging less than this pair has actually been delivering. Breakout risk is under-priced.')
-    + ' A price, not a forecast — it says nothing about direction.';
-  return `<span class="chip ${rich ? 'warn' : 'neu'}" title="${esc0(tip)}">σ ${rich ? 'rich' : 'cheap'} ${v.ratio}×</span>`;
+        ? 'Options expect MORE movement than the lines allow, so the lines are likely too tight: on such days the p75 range line was passed ~35% of the time vs 25% by design, and breaks tended to run on. A threat to fades; supportive of following breaks (the Rich-Vol Break Record).'
+        : 'Options expect LESS movement than the lines allow, so the lines are likely too wide: the p75 range line was passed only ~13% of the time. The outer lines tend to cap the day: take profit there, do not chase breakouts.')
+    + ' Range, not direction.';
+  return `<span class="chip ${rich ? 'warn' : 'range'}" title="${esc0(tip)}">σ ${rich ? 'rich' : 'cheap'} ${v.ratio}× · ${_LS_WORD[t.tag]}</span>`;
+}
+
+// ── Line state: Daily Read tags + Surface Lab reads (/api/today-reads, ~5 KB, every 15 min) ──
+// Pair: today's line tag (implied vol ÷ the lines' own σ), extending vs giving back by horizon (variance ratio), the
+// live market clock, and how much of the pair is the dollar trade. Currency: dollar share of its USD pair and its
+// crosses' persistence. Global: what is hedging what, the curve regime, the tag count. Evidence: daily-read.html and
+// surface-lab.html (descriptive research, not pre-registered). Words chosen to avoid the HMM's "trending".
+let _lsReads = null;
+const _LS_ALIAS = { SPX500: 'SPX', US30: 'DOW', DE30: 'DAX', UK100: 'FTSE', NAS100: 'NQ', XAUUSD: 'GOLD' };
+const _lsKey = name => _LS_ALIAS[name] ?? name;
+const _LS_EDGES = { EURUSD: [0.959, 1.102], GBPUSD: [0.974, 1.093], AUDUSD: [0.967, 1.078], USDCAD: [0.951, 1.069], USDCHF: [0.980, 1.097], USDJPY: [1.044, 1.182] };
+const _LS_POOLED = [0.975, 1.103];        // pooled FX fit; used (and marked provisional) where a market has no fit of its own
+async function loadLineState() {
+  try {
+    const j = await jget('/api/today-reads');
+    if (j?.ok) { _lsReads = j; invalidateRows(); render(); if (drName && _drR) { try { renderDrawerLineState(_drR); } catch (e) { /* section stays as it was */ } } }
+  } catch (e) { /* the page works without it */ }
+}
+function _lsTagFor(name, ratio) {
+  const k = _lsKey(name), tt = _lsReads?.pair?.tagsToday?.[k], tn = _lsReads?.pair?.tagsNext?.[k];
+  const t = tt?.tag ? tt : tn;
+  if (t?.tag) return { tag: t.tag, ratio: t.ratio, provisional: t.provisional, source: 'Daily Read' };
+  if (ratio == null) return null;
+  const e = _LS_EDGES[k] ?? _LS_POOLED;
+  return { tag: ratio < e[0] ? 'exhaust' : ratio >= e[1] ? 'continue' : 'fair', ratio, provisional: !_LS_EDGES[k], source: 'edges' };
+}
+const _LS_WORD = { continue: 'CONTINUE', fair: 'FAIR', exhaust: 'EXHAUST' };
+const _LS_MEAN = {
+  continue: 'the lines are likely too tight today. Breaks of p50/p75 have tended to run on (the p75 range line was passed on ~35% of such days vs 25% by design). Do not fade; follow breaks.',
+  fair: 'options and the lines agree. A touch is close to a coin flip, and the line spacing already prices it.',
+  exhaust: 'the lines are likely too wide today. p75/p90 have tended to act as caps (p75 passed on ~13% of such days). Price stalls there rather than reversing: take profit at the line, do not chase.' };
+function renderDrawerLineState(r) {
+  const sec = $('drLineStateSec'), box = $('drLineState');
+  if (!sec || !box) return;
+  const k = _lsKey(r.name), R = _lsReads, iv = _ivRvAll[r.name], t = _lsTagFor(r.name, iv?.ratio ?? null);
+  const P = R?.pair?.persistence?.[k], clk = R?.pair?.clock?.[k];
+  const fx = /^[A-Z]{6}$/.test(k), ccy = fx && k.includes('USD') ? (k.startsWith('USD') ? k.slice(3) : k.slice(0, 3)) : null;
+  const cf = ccy ? R?.currency?.factors?.byCcy?.[ccy] : null, load = R?.pair?.pc1Loading?.[k];
+  const rows = [];
+  if (t) rows.push(`<div class="ccy-explain"><b>Today's lines:</b> <span class="chip ${t.tag === 'continue' ? 'warn' : t.tag === 'exhaust' ? 'range' : 'neu'}">${_LS_WORD[t.tag]}</span> implied vol ÷ the lines' σ = <b>${t.ratio}</b>${t.provisional ? ' <span class="muted">(provisional cut-offs)</span>' : ''}: ${_LS_MEAN[t.tag]}</div>`);
+  if (P?.byHorizon) rows.push(`<div class="ccy-explain"><b>Moves lately:</b> ${Object.entries(P.byHorizon).map(([h, o]) => `<span class="chip ${o.state === 'extending' ? 'warn' : o.state === 'giving back' ? 'range' : 'dim'}" title="variance ratio ${o.vr} over the last 20 London days, against this market's own last year">${h} ${o.state}</span>`).join(' ')}<br><span class="muted">After a giving-back stretch, line touches have continued 2–4 points more often; after extending stretches, fades did better. Context next to the tag, not a trigger.</span></div>`);
+  if (clk?.pace != null) rows.push(`<div class="ccy-explain"><b>Market clock:</b> about <b>${Math.round(clk.tau * 100)}%</b> of a typical day's movement is normally done by now. Range so far ${clk.rangeSoFarPct}% vs ~${clk.expectedSoFarPct}% expected by now: <b>${clk.read}</b> (${clk.pace}×). <span class="muted">Closed-form √time reference, not backtested.</span></div>`);
+  if (cf?.dollarShare != null) rows.push(`<div class="ccy-explain"><b>Dollar trade:</b> over 60 days, <b>${Math.round(cf.dollarShare * 100)}%</b> of ${cf.pair}'s movement was the dollar and ${Math.round(cf.ownShare * 100)}% was ${ccy}'s own story${load != null ? ` · loading on today's one-trade factor ${load}` : ''}. <span class="muted">A break here is ${cf.dollarShare >= 0.6 ? 'mostly a dollar bet' : cf.dollarShare <= 0.4 ? `mostly a ${ccy} bet` : 'a mix of both'}.</span></div>`);
+  if (!rows.length) { sec.style.display = 'none'; return; }
+  box.innerHTML = rows.join('') + `<div class="muted" style="font-size:11px;margin-top:4px"><a href="daily-read.html" target="_blank">Daily Read ↗</a> · <a href="surface-lab.html" target="_blank">Surface Lab ↗</a></div>`;
+  sec.style.display = '';
+}
+function lsCcyHtml(ccy) {
+  const R = _lsReads;
+  if (!R) return '';
+  const cf = R.currency?.factors?.byCcy?.[ccy], pe = R.currency?.persistence?.[ccy];
+  const tags = Object.entries({ ...(R.pair?.tagsNext ?? {}), ...(R.pair?.tagsToday ?? {}) }).filter(([k, v]) => k.includes(ccy) && v?.tag);
+  const bits = [];
+  if (ccy === 'USD' && cf) bits.push(`USD index ${cf.move20Pct >= 0 ? '+' : ''}${cf.move20Pct}% over 20 days against the other seven currencies.`);
+  if (ccy !== 'USD' && cf?.dollarShare != null) bits.push(`Over 60 days, <b>${Math.round(cf.dollarShare * 100)}%</b> of ${cf.pair}'s movement was the dollar and <b>${Math.round(cf.ownShare * 100)}%</b> was ${ccy}'s own story. ${cf.dollarShare >= 0.6 ? `A view on ${cf.pair} is mostly a dollar view.` : cf.dollarShare <= 0.4 ? `${ccy} is running its own story: a ${cf.pair} view is mostly a ${ccy} view.` : 'A mix of both.'} ${ccy} vs the basket: ${cf.move20Pct >= 0 ? '+' : ''}${cf.move20Pct}% over 20 days.`);
+  if (pe) bits.push(`Its ${pe.pairs} pairs at 4h: variance ratio ${pe.vr4hMean} on average, so moves have ${pe.vr4hMean < 0.9 ? 'mostly been giving back' : pe.vr4hMean > 1.02 ? 'mostly been extending' : 'been mixed'}.`);
+  if (tags.length) bits.push(`Line tags: ${tags.map(([k, v]) => `${k} <b>${_LS_WORD[v.tag]}</b>`).join(' · ')}.`);
+  if (!bits.length) return '';
+  return `<div class="dr-sec"><h3 class="help" title="Dollar share: the 60-day variance of this currency's USD pair split exactly into the dollar's part and this currency's own part, from equal-weight currency indices across all 27 pairs. Persistence: the average 4-hour variance ratio of this currency's pairs over the last 20 London days. Context, measured, not predictive.">Dollar or own story? (60 days)</h3><div class="ccy-explain">${bits.join('<br>')}</div><div class="muted" style="font-size:11px;margin-top:4px"><a href="surface-lab.html" target="_blank">Surface Lab ↗</a></div></div>`;
+}
+function lsHedgeHtml() {
+  const c = _lsReads?.global?.crossAsset;
+  if (!c) return '';
+  const side = n => c.sides?.[n];
+  const on = Object.keys(c.sides ?? {}).filter(n => side(n) === 'risk-on'), off = Object.keys(c.sides ?? {}).filter(n => side(n) === 'risk-off');
+  const fails = ['GOLD', 'UST10Y', 'USDJPY'].filter(n => side(n) === 'risk-on');
+  const nice = n => n === 'UST10Y' ? 'US bonds' : n === 'GOLD' ? 'gold' : n;
+  const fx = _lsReads.global.fxConcentration;
+  return `<div class="side-card"><h3 class="help" title="Cross-asset absorption ratio: PCA across FX majors, gold, silver, oil, US/EU indices, the Nikkei and US 10Y bonds over 60 days, signed so the Nasdaq loads positive. PC1 share = how much of everything is one risk trade. A market on the risk-off side moves against equities today; one on the risk-on side does not hedge them.">What is hedging what</h3>
+    <div class="ccy-explain">One trade drives <b>${Math.round(c.pc1 * 100)}%</b> of cross-asset movement (${c.pctile}th pct of the year).${fails.length ? ` <b class="neg">Not hedging equities today: ${fails.map(nice).join(', ')}</b>, which sit on the same side as the Nasdaq.` : ' Gold, bonds and the yen are on the risk-off side: the usual hedges are working.'}</div>
+    <div class="muted" style="font-size:11px;line-height:1.5">With equities: ${on.map(nice).join(', ')}<br>Against: ${off.map(nice).join(', ') || '–'}${fx ? `<br>FX alone: one dollar trade = ${Math.round(fx.pc1 * 100)}% of FX movement (${fx.pctile}th pct).` : ''} <a href="surface-lab.html" target="_blank">Surface Lab ↗</a></div></div>`;
+}
+function lsRatesLine() {
+  const q = _lsReads?.global?.rates;
+  if (!q) return '';
+  return `<div class="ccy-explain" style="margin-bottom:6px" title="4-week move in the 2Y and 10Y Treasury yields, named the way rates desks name it. Level = average yield; slope = 10Y − 3M; curvature = 2×5Y − 2Y − 10Y. Context: the evidence ledger found curve signals null as forward predictors.">Curve: <b>${esc0(q.regime ?? '–')}</b> · level ${q.factors?.level}% · slope ${q.factors?.slope} · last weeks: ${(q.lastRegimes ?? []).slice(-4).map(x => esc0(x ?? '–')).join(' → ')}</div>`;
 }
 
 // ── Tape speed: what kind of hour is this? ───────────────────────────────────
@@ -5977,6 +6064,7 @@ function openCcyDrawer(ccy) {
       <div class="csrow" title="Precise net score across ${det.n} pair${det.n === 1 ? '' : 's'} — the number behind the read above."><span class="ccy">${ccy}</span><span class="track"><span class="mid"></span>${scoreBar}</span><span class="val">${det.score == null ? '—' : (det.score >= 0 ? '+' : '') + det.score.toFixed(2)}</span></div>
       <div class="ccy-legs">${legsHtml}</div>
     </div>
+    ${lsCcyHtml(ccy)}
     <div class="dr-sec">
       <h3 class="help" title="Weekly CFTC Commitments of Traders — large speculators' net position in this currency's futures contract vs USD, as a share of open interest.">Positioning (COT, weekly)</h3>
       ${cotHtml}
@@ -8575,7 +8663,7 @@ function renderSidebar() {
 
     ${driverBoardHtml()}
 
-    <div class="side-card"><h3>Rates &amp; Curve Moves</h3><div id="moveList"><div class="muted">Loading…</div></div></div>
+    <div class="side-card"><h3>Rates &amp; Curve Moves</h3>${lsRatesLine()}<div id="moveList"><div class="muted">Loading…</div></div></div>
 
     <div class="side-card"><h3>Key Takeaways</h3>
       <div class="takeaway-list">${takeaways.length ? takeaways.map(([ic, cls, t]) => `<div class="takeaway"><span class="tic ${cls}">${ic}</span><span>${t}</span></div>`).join('') : '<div class="muted">Not enough live data yet.</div>'}</div>
@@ -8589,6 +8677,8 @@ function renderSidebar() {
         <div class="glance-cell"><div class="gv">${rangeConsumed}</div><div class="gl">Range Consumed</div></div>
         <div class="glance-cell"><div class="gv">${hiVol}</div><div class="gl">Elevated Vol</div></div>
         <div class="glance-cell"><div class="gv">${brief.news_flag ? '⚠' : '—'}</div><div class="gl">Event Risk</div></div>
+        <div class="glance-cell" title="Line tags for the session (Daily Read): CONTINUE = lines likely too tight · FAIR · EXHAUST = lines likely too wide"><div class="gv">${(() => { const c = _lsReads?.global?.tags?.counts; return c ? `${c.continue ?? 0}·${c.fair ?? 0}·${c.exhaust ?? 0}` : '–'; })()}</div><div class="gl">Lines C·F·E</div></div>
+        <div class="glance-cell" title="Share of all FX movement that is one (dollar) trade over 60 days"><div class="gv">${_lsReads?.global?.fxConcentration ? Math.round(_lsReads.global.fxConcentration.pc1 * 100) + '%' : '–'}</div><div class="gl">FX One-Trade</div></div>
       </div>
     </div>
 
@@ -8604,6 +8694,7 @@ function renderSidebar() {
     </div>
 
     ${booksCardHtml()}
+    ${lsHedgeHtml()}
     ${corrCardHtml()}
     <div class="side-card"><h3>Tools</h3>
       <div class="qtile-grid">
@@ -9679,6 +9770,7 @@ async function openDrawer(name) {
   try { renderDrawerCone(r); } catch { $('drConeSec').style.display = 'none'; }
   try { renderDrawerCostCarry(r); } catch { $('drCostCarrySec').style.display = 'none'; }
   try { renderDrawerTimeBudget(r); } catch { $('drTimeBudgetSec').style.display = 'none'; }
+  try { renderDrawerLineState(r); } catch { $('drLineStateSec').style.display = 'none'; }
   try { loadDrawerVumanchu(r); } catch { $('drVmSec').style.display = 'none'; }
   _startSessPathPolling(r);
   _startHandoffPolling(r);
@@ -12890,7 +12982,8 @@ async function generateMorningBrief() {
 }
 
 // ── Boot + refresh cadence ────────────────────────────────────────────────────
-loadAll().then(() => { pollPrices(); startLivePriceStream(); loadSpreads(); loadIvRvAll(); loadTapeSpeedAll(); });
+loadAll().then(() => { pollPrices(); startLivePriceStream(); loadSpreads(); loadIvRvAll(); loadTapeSpeedAll(); loadLineState(); });
+setInterval(() => { loadLineState(); }, 15 * 60_000);   // tags change nightly; the market clock moves through the day
 loadGate();
 loadMorningBrief();
 setInterval(loadGate, 60 * 60_000);            // calendar + risk state, hourly
