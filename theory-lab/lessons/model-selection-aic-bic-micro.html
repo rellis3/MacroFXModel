@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Choosing lags for a cement kiln</h2>
-      <p class="sl-sub">Hirotugu Akaike, Institute of Statistical Mathematics, Tokyo (1971–74); Gideon Schwarz, Hebrew University (1978).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">How many lags before you're fitting noise?</h2>
+      <p class="sl-sub">Akaike (1973–74) and Schwarz (1978) — standard for lag selection by the 1980s.</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Akaike worked on practical problems such as statistical control of cement kilns, which meant fitting autoregressive models and deciding how many lags to keep — this lesson's question exactly.</p>
-        <p>He recast it as finding the model closest to the truth in Kullback-Leibler terms, and called the result "an information criterion". Schwarz derived BIC from a Bayesian argument in 1978, in a paper just a few pages long.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Every forecast model has a dial — lags, factors, regimes. More always fits history better, so in-sample fit can't set it.</p>
+        <p>AIC and BIC charge for each extra parameter. By the 1980s they chose lag lengths in ARIMA, VAR and GARCH models; Pesaran and Timmermann (1995) used them to re-pick return forecasts in real time.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Pick the simplest model whose extra parameters earn their keep.</p>
       </div>
     </section>
 
@@ -274,7 +276,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>AIC/BIC only rank a candidate set against itself — a low score is a relative statement, not proof any candidate fits well in an absolute sense.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Comparisons require identical usable data — an AR(1) vs. AR(5) comparison is invalid unless both are re-fit on the same trimmed, aligned sample.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Neither criterion replaces a genuine out-of-sample check — they're a cheap first filter, standing in for, not replacing, validating the survivor on data it hasn't seen.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Akaike's work choosing autoregressive orders for industrial control (AIC, 1971–74) and Schwarz's short Bayesian paper (BIC, 1978).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: AIC and BIC became the standard way to choose lag lengths in forecasting models — AIC for prediction, BIC for parsimony.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

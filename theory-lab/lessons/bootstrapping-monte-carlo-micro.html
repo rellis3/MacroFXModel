@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Solitaire, a casino and a pocket knife</h2>
-      <p class="sl-sub">Stanislaw Ulam &amp; John von Neumann, Los Alamos (1946–47); Bradley Efron, Stanford (1979).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">One backtest, one path — how lucky was it?</h2>
+      <p class="sl-sub">Boyle (1977) for options; Brock, Lakonishok &amp; LeBaron (1992) and White (2000) for trading rules.</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Recovering from illness in 1946, Ulam wondered how often solitaire comes out — and realised dealing many hands beats calculating. With von Neumann he applied the idea to neutron physics at Los Alamos; Metropolis named it after the Monte Carlo casino.</p>
-        <p>Efron's 1979 bootstrap built on the jackknife (Quenouille's leave-one-out method, named by Tukey after the pocket knife). Resampling with replacement lets a sample estimate its own uncertainty — pulling itself up by its bootstraps.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>A backtest is one path through history; its Sharpe and drawdown have no tidy error formula, and path-dependent options have no closed-form price.</p>
+        <p>Boyle (1977) brought Monte Carlo to option pricing. Brock, Lakonishok and LeBaron (1992) bootstrapped returns to test technical rules, and White's Reality Check (2000) tested the best of many after the search.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Put error bars on a Sharpe, drawdown, VaR or option price by simulating many paths.</p>
       </div>
     </section>
 
@@ -289,7 +291,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Monte Carlo simulates from a fitted model (GARCH, GBM), not real observations — every synthetic path inherits any mis-specification baked into that model.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neither tool can leave the sample it started from — both describe what's plausible given what you already have, never what would happen under conditions that sample never contained.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Walk-forward validation, not resampling, is the tool that actually tests generalization — it evaluates a signal on real, later data it never touched during fitting.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Ulam's solitaire question and the Monte Carlo code name (1946–47), and Efron's 1979 bootstrap, a successor to the jackknife.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Monte Carlo option pricing (Boyle, 1977) and bootstrap tests of trading rules (Brock et al., 1992; White, 2000).</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

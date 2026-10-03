@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Bayes for people with only a pencil</h2>
-      <p class="sl-sub">Bayes (1763) and Laplace; named by Howard Raiffa &amp; Robert Schlaifer, Harvard Business School (1961).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Updating a belief every trade, in closed form</h2>
+      <p class="sl-sub">Raiffa &amp; Schlaifer (1961); in markets via Black–Litterman (1990–92) and the Kalman filter.</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Bayes' own essay inferred an unknown success rate from counts of successes and failures with a flat prior — the Beta(1,1) case. Laplace used the same maths for his "rule of succession", famously asking how likely the sun is to rise tomorrow.</p>
-        <p>The term came from two Harvard Business School professors, Raiffa and Schlaifer, in 1961. With no cheap computers available, they chose "natural conjugate" prior families so a manager's posterior could be updated by hand by adjusting a couple of numbers.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>A live win rate or mean can't wait for a numerical integration after every fill. Conjugate priors, catalogued by Raiffa and Schlaifer in 1961, make the update simple arithmetic on a couple of numbers.</p>
+        <p>That is the algebra inside Black–Litterman's closed-form posterior and the Kalman filter's update step. Beta-Binomial for hit rates and Normal-Normal for means are still a desk's fastest first answer.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Keep a live, uncertainty-aware estimate of a hit rate, mean or volatility that updates instantly.</p>
       </div>
     </section>
 
@@ -369,7 +371,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A "flat" prior is still an assumption — Beta(1,1) asserts every rate is equally plausible beforehand, which is itself a real claim.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Conjugacy is the exception, not the rule — most real likelihoods have no matching conjugate prior, which is the entire motivation for MCMC, next.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A narrow posterior is not a validated edge — it quantifies confidence about the observed sample, not whether that sample generalizes forward.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Bayes and Laplace worked the Beta-Binomial case; Raiffa &amp; Schlaifer (Harvard, 1961) named conjugate priors so updating could be done by hand.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: conjugate updating (Raiffa &amp; Schlaifer, 1961) is the closed-form algebra behind Black–Litterman and the Kalman filter, and the fastest way to track a live hit rate.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

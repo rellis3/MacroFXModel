@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A paradox, then a hierarchy that explained it</h2>
-      <p class="sl-sub">Charles Stein (1956); Lindley &amp; Smith (1972); Donald Rubin's "eight schools" (1981).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Hundreds of instruments, a few years of data each</h2>
+      <p class="sl-sub">Vasicek (1973) for betas; Jorion (1986) for expected returns; fund alphas by the 2000s.</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>In 1956 Charles Stein proved that, for three or more means, shrinking every group's average toward a common value beats using each average on its own. Many statisticians found it hard to believe.</p>
-        <p>Lindley and Smith (1972) made it natural: if groups come from a common population, shrinking toward it is just correct Bayesian inference. Rubin's 1981 analysis of SAT coaching at eight high schools — noisy effects, pulled together — is still the standard textbook example.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Estimated one at a time, each instrument's beta, alpha or Sharpe ratio comes out too extreme — the best looked partly lucky, the worst partly unlucky.</p>
+        <p>Vasicek (1973) shrank stock betas toward the cross-sectional average; Jorion (1986) did the same for expected returns. Hierarchical models now pool many short track records, pairs or managers at once.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Borrow strength from the group so short, noisy histories don't produce extreme estimates.</p>
       </div>
     </section>
 
@@ -380,7 +382,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The hyperprior θⱼ ~ N(μ,τ²) is what lets μ and τ² — and therefore every Bⱼ — be learned from the data, instead of an analyst guessing the pooling amount.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>James-Stein's result: shrinking several estimates toward a common target lowers total error even when the groups are truly unrelated — a fact about squared-error loss, not an assumption about the world.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A shrunk estimate is a better point estimate, not a validated forecast — and pooling groups that don't actually share structure can make things worse, not better.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Stein's shrinkage surprise (1956), Lindley &amp; Smith's hierarchical framing (1972), and Rubin's eight-schools SAT study (1981).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Vasicek's beta shrinkage (1973) and Jorion's Bayes-Stein returns (1986) — pooling many short, noisy histories.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

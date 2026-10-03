@@ -37,7 +37,7 @@
     <li>AIC \(= 2k - 2\ln\hat L\) charges a flat penalty of 2 per parameter and is oriented toward out-of-sample prediction (asymptotically equivalent to leave-one-out cross-validation); BIC \(= k\ln(n) - 2\ln\hat L\) charges \(\ln(n)\) per parameter — stricter than AIC once \(n>e^2\approx7.4\) — and is oriented toward finding the true, most-parsimonious model (it's model-selection consistent as \(n\to\infty\), AIC is not).</li>
     <li>The file's worked example (\(n=100\)): a 2-parameter Model A (\(-2\ln\hat L=100\)) and a 5-parameter Model B (\(-2\ln\hat L=94\)) tie exactly on AIC at 104 each, but BIC prefers Model A by about 7.8 points (109.21 vs. 117.03) — the same three extra parameters and the same 6-point deviance improvement read as "a dead heat" under AIC and "a clear win for the simpler model" under BIC.</li>
     <li>Neither criterion is a substitute for a genuine out-of-sample check — they're a cheap, principled first filter (Lego Principle 5 still applies), and this repo currently has no coded AIC/BIC step in any engine.</li>
-    <li>Where it came from: Akaike developed AIC (1971–74) while working on practical problems such as controlling cement kilns, where choosing an autoregressive model's order mattered; Schwarz's BIC (1978) came from a short Bayesian paper.</li>
+    <li>How it reached trading: AIC (1973–74) and BIC (1978) became the standard way to choose lag lengths in ARIMA, VAR and GARCH forecasting models, and Pesaran &amp; Timmermann (1995) used them to pick return-forecasting models in real time.</li>
   </ul>
 </div>
 
@@ -87,12 +87,22 @@
   </div>
 
   <div class="tl-origin">
-  <div class="tl-origin-label">Where this came from</div>
-  <h3>From controlling cement kilns to choosing a model</h3>
-  <div class="tl-origin-who">Hirotugu Akaike · 1971–74 · Institute of Statistical Mathematics, Tokyo &nbsp;|&nbsp; Gideon Schwarz · 1978 · Hebrew University of Jerusalem</div>
-  <p>Hirotugu Akaike spent much of the 1960s on very practical engineering problems at Japan's Institute of Statistical Mathematics, including statistical control of rotary cement kilns. To control a kiln you fit an autoregressive model to its readings, and you immediately face this lesson's question: how many lags? Too few and you miss the dynamics; too many and the model chases noise and controls badly. His first answer, the "final prediction error" criterion, was aimed squarely at that problem.</p>
-  <p>He then saw that the question could be framed in information-theoretic terms: choose the model expected to be closest to the truth in Kullback-Leibler distance, and correct the in-sample log-likelihood for its optimism. He presented the result at an information-theory symposium in 1971 (published 1973) and in the 1974 paper cited below. He called it simply "an information criterion"; the A came to be read as his name.</p>
-  <p>Gideon Schwarz, at the Hebrew University of Jerusalem, reached a different penalty in 1978 from a Bayesian argument, in a paper only a few pages long. The two criteria answer different questions — best prediction versus most probable true model — which is why they can disagree, and why it is worth computing both when choosing lag orders and feature sets.</p>
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>How many lags before you're fitting noise?</h3>
+  <div class="tl-origin-who">AIC (Akaike, 1973–74) · BIC (Schwarz, 1978) · standard for lag choice in econometric forecasting by the 1980s</div>
+  <p>Every forecasting model on a desk has a dial: how many lags of the rate differential, how many factors, how many regimes. Adding one always improves the in-sample fit, so in-sample fit alone cannot set the dial — and a model with too many parameters forecasts worse out of sample.</p>
+  <p>Akaike's criterion, developed in the early 1970s for choosing the order of autoregressive models in engineering control, and Schwarz's Bayesian criterion of 1978 gave a penalised answer. By the 1980s they were the default way to choose lag lengths in ARIMA, VAR and GARCH work, built into econometric software. Pesaran and Timmermann (1995) used AIC, BIC and related criteria to re-select stock-return forecasting models month by month, as a real-time investor would have had to.</p>
+  <p>On a desk today, AIC and BIC are the quick first screen on a model's size: AIC when the goal is forecast accuracy, BIC when you want the smallest model the data support — with walk-forward testing as the final judge.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Pick the simplest model — lags, factors, regimes — whose extra parameters earn their keep.</dd>
+      <dt>Takes in</dt><dd>Fitted models and their likelihoods (<a href="regression-diagnostics.html">Regression Diagnostics</a>, <a href="arima-var.html">ARIMA &amp; VAR</a>).</dd>
+      <dt>Hands on to</dt><dd>Out-of-sample checks and deeper criteria (<a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged CV</a>, <a href="mdl-information-criteria.html">MDL</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -518,7 +528,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>AIC/BIC only rank a candidate set against itself.</strong> A low AIC is a relative statement — the best of five bad models still "wins," which doesn't make it a good model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Comparisons require identical usable data.</strong> An AR(1) vs. AR(5) comparison is invalid unless both are re-fit on the same trimmed, aligned sample — the AR(5) model otherwise silently loses observations to lagged inputs.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither criterion replaces a genuine OOS check.</strong> Per Lego Principle 5, a model that "wins" on AIC/BIC still has to prove itself on a true in-sample/out-of-sample split with real costs before it earns any trust — and this repo has no coded AIC/BIC step yet.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Where it came from: industrial control in Japan.</strong> Akaike's AIC grew out of choosing autoregressive model orders for practical control problems such as cement kilns; Schwarz's BIC (1978) came separately from a Bayesian argument.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: setting the lag dial.</strong> By the 1980s AIC and BIC were the default for choosing lags in forecasting models; AIC for prediction, BIC for parsimony, walk-forward tests as the final judge.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

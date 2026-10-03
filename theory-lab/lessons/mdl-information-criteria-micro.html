@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A compression engineer looks at statistics</h2>
-      <p class="sl-sub">Jorma Rissanen, IBM Research San Jose (1978); earlier ideas from Solomonoff, Kolmogorov and Wallace &amp; Boulton.</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">A backtest that memorised history</h2>
+      <p class="sl-sub">Jorma Rissanen (1978) — in markets mostly through its BIC-equivalent penalty.</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Rissanen worked at IBM on control theory and data compression, including arithmetic coding. To a compression engineer, a better model is one that writes the data down in fewer bits.</p>
-        <p>In 1978 he made that a rule for choosing statistical models. Related ideas existed — Solomonoff and Kolmogorov's program-length complexity and Wallace &amp; Boulton's minimum message length (1968) — but MDL gave statisticians a criterion they could compute.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Enough rules and parameters can fit any history. MDL charges a model for its own complexity in the same unit as its fit: bits to describe the model plus the data it leaves unexplained.</p>
+        <p>Rissanen's 1978 penalty matches BIC, which is mainly how it reached markets — choosing lags, factors and regimes. It stays a research tool, and a sharp question for any backtest.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Test whether a model compresses the data or just memorises it.</p>
       </div>
     </section>
 
@@ -306,7 +308,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>BIC = 2ln(2)·DL(M), exactly, not approximately — verified on the AIC &amp; BIC lesson's own Model A/B numbers: 78.78 and 84.42 bits scale to 109.21 and 117.03 nats precisely.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Two unrelated derivations — Schwarz's 1978 Bayesian asymptotics, Rissanen's 1978 coding theory, the same year — landed on the same practical penalty. Reassuring convergence, not coincidence.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The bridge is specific to BIC, not AIC — AIC targets a different (out-of-sample, KL-divergence) quantity, so don't over-extend the equivalence.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Rissanen, an IBM compression engineer, turned "best model = shortest description" into MDL in 1978.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: MDL (Rissanen, 1978) matches BIC and reaches markets through lag, factor and regime choices — and as an overfitting test for backtests.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

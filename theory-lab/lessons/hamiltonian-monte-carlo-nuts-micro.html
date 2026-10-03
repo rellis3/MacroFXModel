@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">From quark simulations to Stan</h2>
-      <p class="sl-sub">Duane, Kennedy, Pendleton &amp; Roweth (1987); Radford Neal (1990s); Hoffman &amp; Gelman (2011–14).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Bayesian models too big for Gibbs to walk</h2>
+      <p class="sl-sub">Hoffman &amp; Gelman's NUTS (2011–14), via Stan (2012) and PyMC (2016 onward).</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Physicists simulating the strong force on a lattice needed to sample huge numbers of correlated variables. In 1987 they added fictitious momenta, followed Hamilton's equations, and fixed numerical errors with a Metropolis step: "Hybrid" Monte Carlo.</p>
-        <p>Radford Neal brought it to Bayesian statistics in the 1990s. Hoffman and Gelman's NUTS removed the hardest tuning knob and became the engine of Stan — named after Stanislaw Ulam, a co-inventor of Monte Carlo.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Pool dozens of instruments or model a hidden volatility path, and random-walk samplers crawl — tiny correlated steps, and fits that only look converged.</p>
+        <p>HMC uses the posterior's gradient to travel far per step. NUTS removed its tuning and became the default engine of Stan and PyMC, which is how it entered quant research.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Fit large, correlated Bayesian models quickly — and flag when a fit has failed.</p>
       </div>
     </section>
 
@@ -311,7 +313,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gradient-informed trajectories cover far more ground per proposal at a comparably high acceptance rate — dramatically less autocorrelation for the same compute.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Plain HMC trades one problem for another: step size ε and trajectory length L now have to be hand-tuned, and getting either wrong wastes compute or degrades mixing.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>NUTS removes L from that list — it grows the trajectory automatically and stops the moment it detects a U-turn, which is why it's the default sampler in Stan and PyMC.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: "Hybrid" Monte Carlo for lattice quark physics (1987), brought to statistics by Radford Neal and made automatic by NUTS in Stan.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: NUTS became the engine of Stan and PyMC — the practical way to fit large hierarchical and stochastic-volatility models.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

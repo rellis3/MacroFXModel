@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Atoms on MANIAC, then noisy pictures</h2>
-      <p class="sl-sub">Metropolis, the Rosenbluths and the Tellers, Los Alamos (1953); Stuart &amp; Donald Geman (1984).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Volatility you can never observe directly</h2>
+      <p class="sl-sub">Gelfand &amp; Smith (1990) into statistics; Jacquier, Polson &amp; Rossi (1994) into finance.</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Physicists at Los Alamos needed to simulate how many interacting particles behave — far too many dimensions to integrate. They ran a random accept/reject walk on the MANIAC computer. Later accounts credit Marshall Rosenbluth with working out the method and Arianna Rosenbluth with writing the code.</p>
-        <p>Gibbs sampling came from image processing: in 1984 the Geman brothers restored noisy pictures by resampling one pixel at a time from its conditional distribution. Statisticians adopted both methods widely after 1990.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Stochastic-volatility models treat volatility as a hidden random process. Their likelihood needs an integral over every possible volatility path — no formula, and the approximations of the 1980s could be poor.</p>
+        <p>Jacquier, Polson and Rossi (1994) sampled hidden volatilities and parameters together with MCMC, giving full posteriors. Gibbs samplers did the same for regime-switching models. It remains the research tool for any posterior with no closed form.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Fit models with hidden states or many parameters and show how uncertain the fit is.</p>
       </div>
     </section>
 
@@ -365,7 +367,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gibbs sampling is Metropolis-Hastings with the proposal set equal to the true full conditional — the ratio collapses to exactly 1, so every draw is accepted, with no tuning, but every conditional has to be sampleable.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Step size is a real tuning problem: too small crawls (high autocorrelation), too large gets rejected almost every time (also high autocorrelation) — both look like "it's running" without producing a useful sample.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A chain that ran isn't automatically a chain that converged — trace plots, burn-in, effective sample size, and multi-chain R̂ are the standard, non-optional checks before trusting any MCMC output.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Los Alamos physics on the MANIAC computer (1953, with the Rosenbluths doing much of the work) and the Gemans' image restoration (1984).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Jacquier, Polson &amp; Rossi (1994) used MCMC to fit stochastic-volatility models — then regimes and hierarchical models.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

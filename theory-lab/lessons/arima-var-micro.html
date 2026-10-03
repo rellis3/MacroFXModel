@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Airline passengers and a macro rebellion</h2>
-      <p class="sl-sub">George Box &amp; Gwilym Jenkins (1970); Christopher Sims (1980).</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Beating the random walk — or finding out you can't</h2>
+      <p class="sl-sub">Box &amp; Jenkins (1970); Sims (1980); Meese &amp; Rogoff (1983).</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Box (a former ICI statistician at Wisconsin) and Jenkins (Lancaster) worked on forecasting and controlling industrial processes. Their 1970 book turned AR/MA ideas into a step-by-step recipe; their model of 1949–60 airline passenger numbers is still the "airline model" benchmark.</p>
-        <p>Sims' 1980 VAR paper challenged big macro models whose identifying assumptions he called "incredible", letting a few variables explain each other instead. It contributed to his 2011 Nobel, shared with Thomas Sargent.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Box and Jenkins' 1970 recipe gave forecasters a disciplined model for one series. Sims' 1980 VARs let a few variables — rates, inflation, a currency — explain each other, and became standard at central banks.</p>
+        <p>Meese and Rogoff (1983) set the FX bar: out of sample, exchange-rate models, VARs included, did not beat a random walk. ARIMA is now the benchmark; VARs map how a shock spreads.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> Forecast from a series' own past and its neighbours', and show how a shock spreads.</p>
       </div>
     </section>
 
@@ -345,7 +347,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A single-equation regression can only see one arrow — a VAR estimates both cross-effects jointly, revealing bidirectional feedback a "Y on lagged X" regression never could.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Granger causality is a statistical claim, not a structural one — "X's lags improve forecasting Y," never "X makes Y happen."</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Single-series ARIMA is already live in this repo's alert pipeline; a multi-series VAR/Granger fit on the yield-spread/FX question is still a research candidate, not a shipped result.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Box &amp; Jenkins' 1970 recipe from industrial forecasting and control, and Sims' 1980 VARs against "incredible" macro assumptions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Box–Jenkins and Sims' VARs became central-bank and macro-desk workhorses; Meese &amp; Rogoff (1983) showed the random walk is the FX bar to beat.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
