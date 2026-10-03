@@ -7,6 +7,7 @@ on:
     paths:
       - 'theory-lab/**'
       - 'js/deskEvidence.js'
+      - 'js/lessonLinks.js'
       - 'js/*.test.mjs'
       - '.github/workflows/theory-lab.yml'
   push:
@@ -30,3 +31,5 @@ jobs:
         run: node js/lessonEvidence.test.mjs
       - name: Learning paths
         run: node js/lessonPaths.test.mjs
+      - name: Board links to lessons (files and anchors exist)
+        run: node js/lessonLinks.test.mjs
