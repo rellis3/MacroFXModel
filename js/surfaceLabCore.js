@@ -40,16 +40,19 @@ function corrMatrix(cols) {
 }
 
 // ── absorption ─────────────────────────────────────────────────────────────────────────────────────
-// closes: { pair: Map(date → close) } on a shared calendar. USD pairs define the dollar factor (+ = dollar up).
-export function absorption(closes, { window = 60, keep = 260, comps = 8 } = {}) {
+// closes: { name: Map(date → close) } on a shared calendar. USD pairs define the dollar factor (+ = dollar up).
+// anchor (optional): the member whose loading is made positive, e.g. the Nasdaq so PC1 > 0 reads "risk-on";
+// without it PC1 is signed so it rises with the dollar.
+export function absorption(closes, { window = 60, keep = 260, comps = 8, anchor = null } = {}) {
   const pairs = Object.keys(closes).sort();
   const dates = [...new Set(pairs.flatMap(p => [...closes[p].keys()]))].sort()
     .filter(d => pairs.filter(p => closes[p].has(d)).length >= pairs.length * 0.9);
   const ret = {};
   for (const p of pairs) { let prev = null; ret[p] = dates.map(d => { const c = closes[p].get(d) ?? prev; const x = prev && c ? Math.log(c / prev) : 0; prev = c ?? prev; return x; }); }
-  const usd = pairs.filter(p => /USD/.test(p)).map(p => [p, p.startsWith('USD') ? 1 : -1]);
+  const usd = pairs.filter(p => /^[A-Z]{6}$/.test(p) && /USD/.test(p)).map(p => [p, p.startsWith('USD') ? 1 : -1]);
   const dollar = dates.map((_, t) => usd.length ? mean(usd.map(([p, s]) => s * ret[p][t])) : 0);
-  const out = { pairs, dates: [], share: [], loadings: [], dollarCorr: [], dollarRet: [] };
+  const ai = anchor ? pairs.indexOf(anchor) : -1;
+  const out = { pairs, anchor: ai >= 0 ? anchor : null, dates: [], share: [], loadings: [], dollarCorr: [], dollarRet: [] };
   for (let t = Math.max(window, dates.length - keep); t < dates.length; t++) {
     const cols = pairs.map(p => ret[p].slice(t - window + 1, t + 1));
     const { values, vectors } = eigenSym(corrMatrix(cols));
@@ -59,7 +62,8 @@ export function absorption(closes, { window = 60, keep = 260, comps = 8 } = {}) 
     const dw = dollar.slice(t - window + 1, t + 1), mf = mean(f), md = mean(dw);
     let cv = 0, vf = 0, vd = 0; for (let k = 0; k < window; k++) { cv += (f[k] - mf) * (dw[k] - md); vf += (f[k] - mf) ** 2; vd += (dw[k] - md) ** 2; }
     let corr = cv / Math.sqrt(vf * vd || 1);
-    if (corr < 0) { pc1 = pc1.map(x => -x); corr = -corr; }      // sign so a positive loading = moves with the dollar
+    const flip = ai >= 0 ? pc1[ai] < 0 : corr < 0;              // anchor positive, else: positive = moves with the dollar
+    if (flip) { pc1 = pc1.map(x => -x); corr = -corr; }
     out.dates.push(dates[t]);
     out.share.push(values.slice(0, comps).map(x => r(x / tot)));
     out.loadings.push(pc1.map(x => r(x, 3)));

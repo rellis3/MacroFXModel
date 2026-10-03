@@ -51,6 +51,7 @@
     <p class="sub">The principles of COG's yield-curve explorer, applied to four kinds of analysis. Each surface puts a whole system on one picture, with time as an axis. Click any point to update the two cards. The boxes underneath explain the idea, say what it means for the systems you already run today, and give the test result.</p>
   </div>
   <div class="row"><span class="lab">Field</span><span id="fieldBtns" class="row"></span></div>
+  <div class="row" id="modeRow"><span class="lab">Universe</span><span id="modeBtns" class="row"></span></div>
   <div class="row" id="instRow"><span class="lab">Instrument</span><span id="instBtns" class="row"></span></div>
   <div class="row"><span class="lab">View</span><span id="viewBtns" class="row"></span><button class="chip" id="rebuild" type="button">↻ Rebuild now</button><span id="status"></span></div>
 
@@ -84,10 +85,12 @@ const base2 = () => ({ paper_bgcolor:C.panel, plot_bgcolor:C.panel, font:{ famil
 const layout3 = scene => ({ paper_bgcolor:C.panel, font:{ family:'ui-monospace,Menlo,monospace', color:C.text }, margin:{ l:0, r:0, t:0, b:0 }, showlegend:false, scene:Object.assign({ camera:VIEWS[S.view] }, scene) });
 const pct = x => x == null ? '–' : (x * 100).toFixed(0) + '%';
 const slotLab = s => `${String(Math.floor(s / 4)).padStart(2, '0')}:${String((s % 4) * 15).padStart(2, '0')}`;
+const CORE = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'GOLD', 'NQ', 'SPX', 'DAX'];
+const coreOr = (sym, all) => all.filter(s => CORE.includes(s) || s === sym);
 const HZ = q => ({ 2:'30m', 4:'1h', 8:'2h', 16:'4h', 32:'8h' }[q] ?? q * 15 + 'm');
 
 let D = null, wired = false;
-const S = { field:'absorption', inst:'EURUSD', view:'reading', pick:{} };
+const S = { field:'absorption', inst:'EURUSD', view:'reading', amode:'fx', pick:{} };
 try { const s = JSON.parse(localStorage.getItem('surfLab') || '{}'); if (s.field) S.field = s.field; if (s.inst) S.inst = s.inst; } catch {}
 const save = () => { try { localStorage.setItem('surfLab', JSON.stringify({ field:S.field, inst:S.inst })); } catch {} };
 
@@ -102,7 +105,9 @@ function chips(el, items, key) {
 
 // ── field: absorption ──────────────────────────────────────────────────────────────────────────────
 function fAbsorption() {
-  const A = D.absorption; if (!A) return empty('absorption');
+  const X = S.amode === 'cross';
+  const A = X ? D.crossAsset : D.absorption; if (!A) return empty(X ? 'cross-asset absorption' : 'absorption', D.errors?.[X ? 'crossAsset' : 'absorption']);
+  if (X) return fCross(A);
   const comps = A.share[0].map((_, k) => 'PC' + (k + 1));
   const j = S.pick.date ?? A.dates.length - 1, k = S.pick.comp ?? 0;
   const z = comps.map((_, kk) => A.dates.map((_, t) => A.share[t][kk]));
@@ -131,6 +136,35 @@ function fAbsorption() {
   extra(null);
 }
 
+function fCross(A) {
+  const comps = A.share[0].map((_, k) => 'PC' + (k + 1));
+  const j = S.pick.date ?? A.dates.length - 1, k = S.pick.comp ?? 0;
+  const z = comps.map((_, kk) => A.dates.map((_, t) => A.share[t][kk]));
+  Plotly.react('surf', [
+    { type:'surface', x:A.dates, y:comps, z, colorscale:SEQ, showscale:true, colorbar:{ title:{ text:'share of all movement', side:'right', font:{ color:C.muted, size:10 } }, tickformat:'.0%', tickfont:{ color:C.muted, size:10 }, thickness:10, len:0.6 },
+      contours:{ y:{ show:true, color:'rgba(230,237,243,.25)', width:1 } }, hovertemplate:'%{x}<br>%{y}: %{z:.1%} of all cross-asset movement<extra></extra>' },
+    { type:'scatter3d', mode:'lines', x:A.dates, y:A.dates.map(() => comps[k]), z:z[k], line:{ color:C.text, width:5 }, hoverinfo:'skip' },
+    { type:'scatter3d', mode:'lines', x:comps.map(() => A.dates[j]), y:comps, z:comps.map((_, kk) => A.share[j][kk]), line:{ color:C.pick, width:6 }, hoverinfo:'skip' },
+  ], layout3({ xaxis:ax3('date', { nticks:6 }), yaxis:ax3('factor (PC1 = biggest)'), zaxis:ax3('share', { tickformat:'.0%' }), aspectmode:'manual', aspectratio:{ x:1.7, y:1, z:0.6 } }), cfg);
+  head(`cross-asset absorption · ${A.pairs.length} markets · 60-day window`, `pick: ${A.dates[j]} · ${comps[k]} = ${pct(A.share[j][k])}`,
+    'FX majors, gold, silver, oil, US and European indices, the Nikkei and US 10-year bonds together. PC1 is how much of everything is one risk trade. Click to pick a date (amber) and a factor (white).');
+  const ld = A.pairs.map((p, i) => [p, A.loadings[j][i]]).sort((a, b) => b[1] - a[1]);
+  const l1 = base2(); l1.margin.b = 60; l1.yaxis.title = { text:'loading on PC1', font:{ size:10, color:C.muted } };
+  Plotly.react('c1', [{ type:'bar', x:ld.map(x => x[0]), y:ld.map(x => x[1]), marker:{ color:ld.map(x => x[1] >= 0 ? C.warm : C.cool) }, hovertemplate:'%{x}: %{y:.2f}<extra></extra>' }], Object.assign(l1, { bargap:0.25, xaxis:Object.assign(l1.xaxis, { tickangle:-60, tickfont:{ size:9 } }) }), cfg);
+  card(1, `1) the one risk trade on ${A.dates[j]}`, 'Signed so the Nasdaq loads positive: orange markets rise with risk-on, blue markets rise with risk-off. Watch where gold, USDJPY and bonds sit: that is what is acting as the hedge right now.');
+  const l2 = base2(); l2.yaxis.tickformat = '.0%'; l2.shapes = [{ type:'line', x0:A.dates[j], x1:A.dates[j], yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
+  Plotly.react('c2', [{ x:A.dates, y:z[k], mode:'lines', line:{ color:C.text, width:2 }, fill:'tozeroy', fillcolor:'rgba(74,142,232,.10)', hovertemplate:'%{x}: %{y:.1%}<extra></extra>' }], l2, cfg);
+  card(2, `2) ${comps[k]} share through the year`, `With ${A.pairs.length} markets, chance alone gives about ${pct(1 / A.pairs.length)} each. A rising PC1 means diversification is disappearing.`);
+  const n = A.now, sideOf = s => { const i = A.pairs.indexOf(s); return i < 0 ? '–' : (A.loadings[A.loadings.length - 1][i] >= 0 ? 'risk-on side' : 'risk-off side'); };
+  box('concept', `<p>The same <b>absorption ratio</b> as the FX view, run across asset classes at once. It is the measure Kritzman et al. built for systemic risk: when one factor absorbs most of the movement of very different markets, they are all one trade, and shocks spread instead of cancelling.</p><p>The loadings also show <b>what is hedging what</b> today. Gold, the yen and bonds usually sit on the risk-off side, but not always. When they flip to the risk-on side, they stop protecting you.</p>`);
+  box('systems', `<div class="now">Now (${esc(n.date)}): PC1 = <b>${pct(n.pc1)}</b> of all cross-asset movement, ${n.pctile}th percentile of the year · gold: ${sideOf('GOLD')} · USDJPY: ${sideOf('USDJPY')} · US 10Y bonds: ${sideOf('UST10Y')} · biggest: ${n.top.map(x => esc(x[0])).join(', ')}${A.skipped?.length ? ' · not loaded: ' + esc(A.skipped.join(', ')) : ''}</div>
+    <ul><li><b>All bots together:</b> when cross-asset PC1 is high, a gold long, an NQ long and a short-dollar trade can be the same bet. Count them as one when sizing.</li>
+    <li><b>Hedge Signals / Correlations pages:</b> a hedge only works if it sits on the other side of PC1. Card 1 shows whether it does today.</li>
+    <li><b>Gold system and NQ systems:</b> when gold sits on the risk-on side with NQ, a risk-off day hits both.</li></ul>`);
+  box('test', `<p>Not tested yet as a predictor. The FX-only version predicted no vol, range or direction (see the FX view), so treat this as a risk map. Kritzman et al. found sharp rises in absorption preceded US equity drawdowns, and that is the test to pre-register here.</p>`);
+  extra(null);
+}
+
 // ── field: persistence ────────────────────────────────────────────────────────────────────────────
 function fPersistence() {
   const P = D.persistence; const X = P?.byInst?.[S.inst]; if (!X) return empty('persistence', P?.errors?.[S.inst]);
@@ -148,14 +182,14 @@ function fPersistence() {
   const l1 = base2(); l1.yaxis.title = { text:'VR', font:{ size:10, color:C.muted } }; l1.showlegend = true; l1.legend = { orientation:'h', font:{ size:9, color:C.muted }, y:-0.25 };
   l1.shapes = [{ type:'line', xref:'paper', x0:0, x1:1, y0:1, y1:1, line:{ color:C.muted, dash:'dot', width:1 } }];
   const d0 = X.dates[j];
-  Plotly.react('c1', Object.entries(P.byInst).map(([sym, Y]) => { const t = Y.dates.indexOf(d0); return t < 0 ? null : { x:hz, y:Y.vr[t], name:sym, mode:'lines+markers', line:{ width:sym === S.inst ? 3 : 1, color:sym === S.inst ? C.pick : undefined }, opacity:sym === S.inst ? 1 : 0.55, hovertemplate:sym + ' %{x}: %{y:.2f}<extra></extra>' }; }).filter(Boolean), Object.assign(l1, { margin:{ l:48, r:12, t:8, b:60 } }), cfg);
-  card(1, `1) every instrument on ${d0}`, 'Across horizons, the picked instrument in amber. Nearly everything sits below 1 and falls with horizon: intraday moves partly give back.');
+  Plotly.react('c1', Object.entries(P.byInst).filter(([sym]) => coreOr(S.inst, Object.keys(P.byInst)).includes(sym)).map(([sym, Y]) => { const t = Y.dates.indexOf(d0); return t < 0 ? null : { x:hz, y:Y.vr[t], name:sym, mode:'lines+markers', line:{ width:sym === S.inst ? 3 : 1, color:sym === S.inst ? C.pick : undefined }, opacity:sym === S.inst ? 1 : 0.55, hovertemplate:sym + ' %{x}: %{y:.2f}<extra></extra>' }; }).filter(Boolean), Object.assign(l1, { margin:{ l:48, r:12, t:8, b:60 } }), cfg);
+  card(1, `1) the main markets on ${d0}`, 'Across horizons, the picked instrument in amber, with the main FX, gold and index markets. Nearly everything sits below 1 and falls with horizon: intraday moves partly give back.');
   const l2 = base2(); l2.shapes = [{ type:'line', xref:'paper', x0:0, x1:1, y0:1, y1:1, line:{ color:C.muted, dash:'dot', width:1 } }, { type:'line', x0:d0, x1:d0, yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
   Plotly.react('c2', [{ x:X.dates, y:z[k], mode:'lines', line:{ color:C.text, width:2 }, hovertemplate:'%{x}: %{y:.2f}<extra></extra>' }], l2, cfg);
   card(2, `2) ${S.inst} at ${hz[k]} through the year`, 'The regime is where this line sits against its own past. The bottom third is "reverting", the top third "trending".');
-  const regimes = Object.entries(P.byInst).map(([s, Y]) => `${esc(s)} <b>${esc(Y.now.regime)}</b> (${Y.now.vr4h})`).join(' · ');
+  const regimes = Object.entries(P.byInst).filter(([s]) => coreOr(S.inst, Object.keys(P.byInst)).includes(s)).map(([s, Y]) => `${esc(s)} <b>${esc(Y.now.regime)}</b> (${Y.now.vr4h})`).join(' · ');
   box('concept', `<p>The <b>variance ratio</b> (Lo & MacKinlay, 1988) compares how far price travels over a long block with how far it would travel if each short step were independent. VR = 1 is a random walk. Above 1, moves have been extending (trend). Below 1, they have been giving back (mean reversion).</p><p>Measuring it at 30 minutes, 1, 2, 4 and 8 hours at once shows the market's memory horizon by horizon. It asks the fade-or-continue question of the market itself, not of one line.</p>`);
-  box('systems', `<div class="now">4h regime vs each instrument's last year: ${regimes}</div>
+  box('systems', `<div class="now">4h regime vs each market's own last year (main markets + ${esc(S.inst)}): ${regimes}</div>
     <ul><li><b>Fade/Continue Book and Daily Read:</b> after a <b>reverting</b> 20 days, p75 touches continued 2–4 points more often in both halves of 10 years. After <b>trending</b> stretches they faded more. This matches the book's "counter-trend touches continue more" result, so read it as context next to the IV ÷ σ tag.</li>
     <li><b>Fade systems</b> (VuManChu fade, Forward-Track, Forecast-Style Fade): fades have the better backdrop when this instrument reads <b>trending</b>, the worst when it reads reverting.</li>
     <li><b>Rich-Vol Break Record:</b> a CONTINUE tag on a <b>reverting</b> instrument is the stronger break setup. Both point the same way.</li></ul>`);
@@ -243,6 +277,8 @@ function render() {
   chips($('fieldBtns'), Object.entries(FIELDS).map(([k, v]) => [k, v[0]]), 'field');
   const insts = Object.keys(D.persistence?.byInst ?? {});
   $('instRow').hidden = !['persistence', 'volTime'].includes(S.field);
+  $('modeRow').hidden = S.field !== 'absorption';
+  chips($('modeBtns'), [['fx', 'FX: 27 pairs'], ['cross', 'cross-asset: FX, gold, oil, indices, bonds']], 'amode');
   chips($('instBtns'), insts.map(i => [i, i]), 'inst');
   chips($('viewBtns'), Object.keys(VIEWS).map(v => [v, v]), 'view');
   if (!insts.includes(S.inst) && insts.length) S.inst = insts[0];
@@ -251,7 +287,7 @@ function render() {
 function wire() {
   $('surf').on?.('plotly_click', ev => {
     const p = ev.points?.[0]; if (!p) return;
-    if (S.field === 'absorption') { const t = D.absorption.dates.indexOf(p.x), k = typeof p.y === 'string' ? +p.y.slice(2) - 1 : null; if (t >= 0) S.pick.date = t; if (k >= 0) S.pick.comp = k; }
+    if (S.field === 'absorption') { const t = (S.amode === 'cross' ? D.crossAsset : D.absorption).dates.indexOf(p.x), k = typeof p.y === 'string' ? +p.y.slice(2) - 1 : null; if (t >= 0) S.pick.date = t; if (k >= 0) S.pick.comp = k; }
     if (S.field === 'persistence') { const X = D.persistence.byInst[S.inst], t = X.dates.indexOf(p.x), h = D.persistence.qs.map(HZ).indexOf(p.y); if (t >= 0) S.pick.date = t; if (h >= 0) S.pick.h = h; }
     if (S.field === 'volTime') { const V = D.volTime.byInst[S.inst], w = V.weeks.indexOf(p.x), sl = [...Array(96).keys()].map(slotLab).indexOf(p.y); if (w >= 0) S.pick.week = w; if (sl >= 0) S.pick.slot = sl; }
     if (S.field === 'rates') { const w = D.rates.weeks.indexOf(p.x), t = D.rates.tenors.indexOf(p.y); if (w >= 0) S.pick.week = w; if (t >= 0) S.pick.tenor = t; }

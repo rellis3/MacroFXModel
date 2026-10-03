@@ -12,8 +12,14 @@ const REBUILD_MS = 12 * 3600e3;
 export const FX27 = ['AUD_CAD', 'AUD_CHF', 'AUD_JPY', 'AUD_NZD', 'AUD_USD', 'CAD_CHF', 'CAD_JPY', 'CHF_JPY', 'EUR_AUD', 'EUR_CAD', 'EUR_CHF',
   'EUR_GBP', 'EUR_JPY', 'EUR_NZD', 'EUR_USD', 'GBP_AUD', 'GBP_CAD', 'GBP_CHF', 'GBP_JPY', 'GBP_NZD', 'GBP_USD', 'NZD_CAD', 'NZD_JPY',
   'NZD_USD', 'USD_CAD', 'USD_CHF', 'USD_JPY'];
-export const INTRADAY = [['EUR_USD', 'EURUSD'], ['GBP_USD', 'GBPUSD'], ['USD_JPY', 'USDJPY'], ['AUD_USD', 'AUDUSD'],
-  ['USD_CAD', 'USDCAD'], ['USD_CHF', 'USDCHF'], ['XAU_USD', 'GOLD'], ['NAS100_USD', 'NQ']];
+// Persistence + vol time: every FX pair, gold and the indices (about 6 OANDA requests each per build).
+export const INTRADAY = [...FX27.map(i => [i, i.replace('_', '')]), ['XAU_USD', 'GOLD'], ['NAS100_USD', 'NQ'], ['SPX500_USD', 'SPX'],
+  ['US30_USD', 'DOW'], ['US2000_USD', 'US2000'], ['DE30_EUR', 'DAX'], ['UK100_GBP', 'FTSE']];
+// Cross-asset absorption: is everything one risk-on/risk-off trade? Members that fail to load are skipped.
+export const CROSS = [['EUR_USD', 'EURUSD'], ['GBP_USD', 'GBPUSD'], ['USD_JPY', 'USDJPY'], ['AUD_USD', 'AUDUSD'], ['USD_CAD', 'USDCAD'],
+  ['USD_CHF', 'USDCHF'], ['NZD_USD', 'NZDUSD'], ['XAU_USD', 'GOLD'], ['XAG_USD', 'SILVER'], ['WTICO_USD', 'WTI'], ['NAS100_USD', 'NQ'],
+  ['SPX500_USD', 'SPX'], ['US30_USD', 'DOW'], ['US2000_USD', 'US2000'], ['DE30_EUR', 'DAX'], ['UK100_GBP', 'FTSE'], ['JP225_USD', 'NIKKEI'],
+  ['USB10Y_USD', 'UST10Y']];
 
 const daysAgoISO = n => new Date(Date.now() - n * 864e5).toISOString();
 const pctRank = (arr, x) => { const a = arr.filter(Number.isFinite); return a.length ? Math.round(a.filter(v => v <= x).length / a.length * 100) : null; };
@@ -29,14 +35,23 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, log = console })
     return new Map(bars.map(b => [b.datetime.slice(0, 10), +b.close]));
   };
 
+  const summarise = a => {
+    const share1 = a.share.map(s => s[0]), now = share1.at(-1);
+    const ld = a.loadings.at(-1).map((x, i) => [a.pairs[i], x]).sort((p, q) => Math.abs(q[1]) - Math.abs(p[1]));
+    return { date: a.dates.at(-1), pc1: now, pctile: pctRank(share1, now), dollarCorr: a.dollarCorr.at(-1),
+      dollar20: Math.round(a.dollarRet.slice(-20).reduce((s, x) => s + x, 0) * 1e4) / 100, top: ld.slice(0, 6) };
+  };
+  async function buildCross() {
+    const closes = {}, skipped = [];
+    for (const [inst, sym] of CROSS) { try { closes[sym] = await dailyCloses(inst, 470); } catch (e) { skipped.push(sym); } }
+    const a = absorption(closes, { window: 60, keep: 260, comps: 8, anchor: 'NQ' });
+    return { ...a, skipped, now: summarise(a) };
+  }
   async function buildAbsorption() {
     const closes = {};
     for (const inst of FX27) closes[inst.replace('_', '')] = await dailyCloses(inst, 470);
     const a = absorption(closes, { window: 60, keep: 260, comps: 8 });
-    const share1 = a.share.map(s => s[0]), now = share1.at(-1);
-    const ld = a.loadings.at(-1).map((x, i) => [a.pairs[i], x]).sort((p, q) => Math.abs(q[1]) - Math.abs(p[1]));
-    return { ...a, now: { date: a.dates.at(-1), pc1: now, pctile: pctRank(share1, now), dollarCorr: a.dollarCorr.at(-1),
-      dollar20: Math.round(a.dollarRet.slice(-20).reduce((s, x) => s + x, 0) * 1e4) / 100, top: ld.slice(0, 6) } };
+    return { ...a, now: summarise(a) };
   }
 
   async function buildIntraday() {
@@ -77,6 +92,7 @@ export function createSurfaceLab({ kv, fetchCandles, fetchFred, log = console })
       const out = { ...(prev ?? {}), errors: {} };
       const t0 = Date.now();
       try { out.absorption = await buildAbsorption(); } catch (e) { out.errors.absorption = String(e.message || e); }
+      try { out.crossAsset = await buildCross(); } catch (e) { out.errors.crossAsset = String(e.message || e); }
       try { Object.assign(out, await buildIntraday()); } catch (e) { out.errors.intraday = String(e.message || e); }
       try { out.rates = await buildRates(); } catch (e) { out.errors.rates = String(e.message || e); }
       out.builtAt = new Date().toISOString(); out.buildMs = Date.now() - t0;
