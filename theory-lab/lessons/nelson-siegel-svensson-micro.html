@@ -329,17 +329,21 @@
     </section>
 
     <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13 · Tested here</div>
-      <h2 class="sl-h2">The verdict, and where the textbook breaks</h2>
+      <div class="sl-kicker">Section 13<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: the fitted betas can be forecast well enough to trade the curve (Diebold-Li).</p>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Not tested on this desk.</strong> A fair test: daily Nelson-Siegel fits (fixed λ), each β forecast 1 and 12 months ahead, scored out of sample against a no-change forecast, with 2022 in the test window and trading costs included.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
         <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>curve-inversion</strong> (the spread form of β₁ &gt; 0): ten episodes since 1976, recession within 24 months after <strong>6 of 10 (CI [31%, 83%])</strong>; Nasdaq +12m +10.5% vs +13.0% control (p=0.33).</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-quote">A model fitted on the 2010s learned a β₁ that was almost always negative. Forecasting the betas assumes their behaviour is stable, and 2022 was a regime change in exactly that factor.</div>
     </section>
 
@@ -404,7 +408,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The curvature loading is zero at both ends and nonzero in the middle — β₂ sets the hump's size and direction, λ slides where along the maturity axis it sits.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Svensson adds one more term (β₃, λ₂) for a second, independent hump — six parameters instead of four, and the form central banks like the ECB and the Fed actually publish.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Fitting is nonlinear least squares, not algebra — λ has no closed-form solution and the optimizer can land on different local optima depending on where it starts.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2022. The level rose and β₁ flipped positive (the curve inverted); a hike-then-cut shape needed Svensson's second hump. Forecasting the betas is untested here; the inversion as a sell signal is null (curve-inversion).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2022. The level rose and β₁ flipped positive (the curve inverted); a hike-then-cut shape needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas is untested here; the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

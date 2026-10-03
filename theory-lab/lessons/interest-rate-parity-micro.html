@@ -195,10 +195,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>Rate-differential reasoning</h4><p>"The dollar is strong because the Fed is hiking" is the same interest-differential intuition CIP formalizes, whether or not the speaker ever writes the equation down.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎯</div><div><h4>Not the same as the carry trade</h4><p>The FX carry trade removes the forward hedge entirely and bets on where spot actually lands — a genuinely different, risk-bearing claim (uncovered interest rate parity) covered in the full lesson.</p></div></div>
       </div>
+<!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Reality check on this repo</div>
         <p>The full lesson's key-takeaways section states "nothing in this repo computes CIP, UIP, or a carry signal yet." That's now stale: <code>js/carryEngine.js</code> is a real, unit-tested FX carry factor — inverse-vol-sized, rebalanced, costed, with its own IS/OOS split — wired to a live <code>/api/fx-carry</code> endpoint in <code>server.js</code> and used as a leg in the multi-factor blend. What still isn't built here is a standalone CIP forward-pricing tool or a cross-currency-basis monitor — this deck's calculator, not repo code, is what prices the identity itself. So: a carry <em>signal</em> exists and is tested; a CIP/basis <em>tool</em> does not.</p>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="10">
@@ -223,16 +225,20 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
       <p class="sl-sub">The tempting claim: UIP fails, so holding the higher-yielder pays.</p>
+      <!-- DESK:START -->
       <div class="sl-stamp underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
         <span class="sl-stamp-tag">Desk test: too small to tell</span>
         <span><strong>fx-factor-book-v2:</strong> the carry basket made <strong>+0.61 out of sample, which is 1.5 SE</strong>, inside the 2021-26 rate-divergence era (in-sample <strong>−0.12</strong>). Sharpe SE <strong>0.41</strong>. Not an edge.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp context" data-evidence="yen-into-yields" data-evidence-date="2026-09-18">
         <span class="sl-stamp-tag">Desk data: base rate</span>
         <span><strong>yen-into-yields:</strong> the carry-unwind shape, <strong>35 episodes in 18 years</strong>, too few to score. AUD/JPY higher five sessions later 47%.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>CIP assumes someone can always borrow at a truly risk-free rate and has unlimited, free balance sheet to run the round trip. In 2008 neither held. UIP assumes a risk-neutral investor; the carry crash showed the "free" yield pickup is a premium for crashing in exactly the moments funding disappears.</p>
@@ -300,7 +306,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Forward points are the market's day-to-day quote of this exact identity — the same F − S gap this deck's calculator computes, updated live as spot and rates move.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Real CIP deviations are small, persistent, and about funding cost, not free lunches — the cross-currency basis reflects post-2008 balance-sheet constraints, and it's watched as a funding-stress signal in its own right.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Covered arbitrage and the carry trade are not the same claim — one is riskless and identity-enforced; the other drops the hedge and bears real, sometimes brutal, currency risk (the full lesson's subject).</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, autumn 2008: after Lehman, dollar funding vanished, nobody could arbitrage the gap, and CIP broke until the Fed's uncapped swap lines arrived. Carry crashed in the same weeks. The desk's carry test is UNDERPOWERED (+0.61 OOS, 1.5 SE): not an edge.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, autumn 2008: after Lehman, dollar funding vanished, nobody could arbitrage the gap, and CIP broke until the Fed's uncapped swap lines arrived. Carry crashed in the same weeks.<!-- DESK:START --> The desk's carry test is UNDERPOWERED (+0.61 OOS, 1.5 SE): not an edge.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

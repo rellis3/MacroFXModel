@@ -239,10 +239,12 @@
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>A displayed book is a photograph of one instant — resting orders are cancelled and replaced constantly ("phantom" or "flickering" liquidity), so a snapshot isn't a guarantee of what's still there when an order actually arrives. And price-time priority, while dominant, isn't universal: some futures markets use <strong>pro-rata</strong> matching, allocating fills proportionally to order size at a level rather than strictly by arrival time — which flips the strategy from "be early" to "be large." Always confirm which rule a venue actually uses.</p>
       </div>
+<!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Factual grounding — checked against this repo's actual code</div>
         <p>The full lesson tags this concept "not built or tested in this repo," and that check holds up: nothing in this codebase implements order-book depth, queue-position tracking, or price-time-priority matching. Several files explicitly acknowledge the absence rather than fill it — <code>volatilityExhaustion/tier5_liquidity.py</code> notes "we can't see spread or order-book depth (mid candles only)," and <code>js/macroFxZoneEngine.js</code> lists order-book liquidity as a deferred, untested spec item because this repo only has mid-price OANDA data. The theory here is real and correct; the repo simply doesn't have the data feed a live order book requires.</p>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -267,15 +269,17 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
-      <h2 class="sl-h2">Where the textbook breaks, and what's untested here</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what's untested here<!-- DESK:END --></h2>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The worked example treats the book as a fixed photograph. October 2014 showed two things it leaves out. <strong>Volume is not depth</strong>: a market can trade huge size while very little rests at any one price. And resting size is <strong>endogenous</strong>: market makers cancel in response to the very flow about to hit them, so the depth you see isn't the depth left when your order lands.</p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"The depth you see is the depth you'll get," and "book imbalance predicts the next move":</strong> not tested on this desk, which has mid-price candles and no order-book data. A fair test needs full depth-of-book data for a liquid futures contract. It would compare displayed size at the touch with size actually filled, by volatility regime and against matched calm periods, and score imbalance calls against the base rate. Everything fixed in advance.</span>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -339,7 +343,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Queue position — the ahead-of-you size A — can dominate a passive order's real fill probability, independent of price.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Depth and spread are two different, complementary liquidity measures — a tight spread with thin depth can still be expensive to trade in size.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A book snapshot is a photograph, not a guarantee — resting size can vanish before an order actually reaches it.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Volume is not depth. On 15 October 2014 the 10-year yield fell about 16bp and came back within 12 minutes on heavy volume and a thin touch, with no clear news. Whether displayed depth predicts your fill is untested here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Volume is not depth. On 15 October 2014 the 10-year yield fell about 16bp and came back within 12 minutes on heavy volume and a thin touch, with no clear news.<!-- DESK:START --> Whether displayed depth predicts your fill is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

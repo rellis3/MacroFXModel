@@ -10,7 +10,16 @@ export const DESK_END = '<!-- DESK:END -->';
 const DESK_BLOCK_RE = /<!-- DESK:START -->[\s\S]*?<!-- DESK:END -->\n?/g;
 
 export function stripDesk(html) {
-  return String(html).replace(DESK_BLOCK_RE, '');
+  const src = String(html);
+  const out = src.replace(DESK_BLOCK_RE, '');
+  if (out === src) return out;
+  // Removing a desk-only section or quiz question would leave gaps ("Section 05" then
+  // "Section 07", "Q4" then "Q6"), so renumber what is left, in the page's own format.
+  let sec = 0, q = 0;
+  return out
+    .replace(/(<div class="tl-section-mark"><span>Section )(\d+)(<\/span>)/g,
+      (m, a, n, b) => a + String(++sec).padStart(n.length, '0') + b)
+    .replace(/(<summary>Q)(\d+)(\.)/g, (m, a, n, b) => a + (++q) + b);
 }
 
 /** Markers must pair up and never nest; returns a list of problems (empty = fine). */

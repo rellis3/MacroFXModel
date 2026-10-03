@@ -17,7 +17,7 @@
   <h1 class="tl-title">Curve Fitting: Nelson-Siegel &amp; Svensson</h1>
   <p class="tl-dek">Bootstrapping gives you a curve that fits your bonds exactly and kinks unpredictably in between them. Nelson-Siegel and Svensson trade a sliver of that exact fit for a lot of stability — four (or six) numbers that describe an entire yield curve's level, slope and hump at once, and that central banks publish every single trading day.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Bootstrapping the Yield Curve</span>
   </div>
@@ -37,7 +37,7 @@
       <li>Svensson (1994) adds a second curvature term with its own decay parameter \(\lambda_2\), giving the curve two independent humps — the extra flexibility central banks like the ECB and the Fed actually use in their own published curves.</li>
       <li>Fitting either model to observed bond yields is a nonlinear least-squares problem with no closed-form solution — solved iteratively, and prone to different local optima depending on the starting guess, especially for \(\lambda\).</li>
       <li>The worked example plugs \(\beta_0=4.5\%,\ \beta_1=-2.0\%,\ \beta_2=1.0\%,\ \lambda=2.0\) into the formula by hand at 1Y, 2Y, 5Y and 10Y, producing 3.11%, 3.50%, 4.05% and 4.29% — a smooth, upward-sloping, gently humped curve generated entirely from four numbers.</li>
-      <li><strong>Real-world episode:</strong> 2022. As the Fed hiked, the level factor rose and the slope factor \(\beta_1\) flipped from negative to positive (the curve inverted), and a hike-then-cut shape put Svensson's second hump to work. Forecasting the betas (Diebold-Li) is <em>untested</em> here; reading the flip as a recession signal tested <strong>NULL</strong> (<code>curve-inversion</code>).</li>
+      <li><strong>Real-world episode:</strong> 2022. As the Fed hiked, the level factor rose and the slope factor \(\beta_1\) flipped from negative to positive (the curve inverted), and a hike-then-cut shape put Svensson's second hump to work.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is <em>untested</em> here; reading the flip as a recession signal tested <strong>NULL</strong> (<code>curve-inversion</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -628,6 +628,7 @@
     \(\beta_1\) that was almost always negative. 2022 was a regime change in exactly that factor.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Untested here: "the fitted factors can be forecast well enough to trade the curve."</strong>
@@ -637,12 +638,16 @@
     yield errors against a no-change forecast, with 2022 inside the test window and the cost of the curve
     trade included.</span>
   </div>
+  <!-- DESK:END -->
 
+<!-- DESK:START -->
   <p>
     The slope flip's most famous reading, inversion as a recession call, has been tested here in its spread
     form (10-year minus 2-year), not as the fitted \(\beta_1\):
   </p>
+<!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>curve-inversion: reading the flip as a sell signal fails.</strong> Ten inversion episodes since
@@ -650,6 +655,7 @@
     Forward Nasdaq at +12 months: <strong>+10.5% vs +13.0%</strong> for a month-matched control (p=0.33), and
     steepening episodes did worse (−1.1% at +12m, n=6). The fitted \(\beta_1\) itself has not been tested.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -752,7 +758,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fitting is nonlinear least squares, not a closed-form solve.</strong> \(\lambda\) sits inside the exponential, so it's estimated jointly with the betas by iterative optimization.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) (and \(\lambda_2\)) are the hard part.</strong> The optimization surface is prone to local minima and near-collinearity between the two decay parameters in Svensson — a single optimizer run from one starting guess isn't enough to trust.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The fitted curve is a smoothed approximation, not an exact reprice.</strong> Small residuals against the input bonds are normal — don't mistake fitting noise for a trading edge.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The factors are stable until the regime changes.</strong> In 2022 the slope factor \(\beta_1\) flipped from negative to positive as the Fed hiked, and a hike-then-cut curve needed Svensson's second hump. Forecasting the betas (Diebold-Li) is untested on this desk; reading the inversion as a sell signal is null (curve-inversion).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The factors are stable until the regime changes.</strong> In 2022 the slope factor \(\beta_1\) flipped from negative to positive as the Fed hiked, and a hike-then-cut curve needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is untested on this desk; reading the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

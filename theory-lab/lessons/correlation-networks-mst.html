@@ -17,7 +17,7 @@
   <h1 class="tl-title">Correlation Networks &amp; Minimum Spanning Trees</h1>
   <p class="tl-dek">A correlation matrix for even a modest basket is a wall of numbers nobody can eyeball. Turn it into a distance graph and prune it down to its minimum spanning tree, and the basket's clustering structure — who's really close to whom — becomes a picture instead of a table.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background theory, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — background theory<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Graph Theory Fundamentals &amp; Centrality Measures</span>
   </div>
@@ -35,9 +35,9 @@
       <li>Mantegna's (1999) transform \(d_{ij}=\sqrt{2(1-\rho_{ij})}\) fixes this: perfectly correlated pairs get distance 0, uncorrelated pairs get distance \(\sqrt{2}\), perfectly anti-correlated pairs get the maximum distance 2.</li>
       <li>The Minimum Spanning Tree (MST) is the subgraph that connects every node using the least total edge weight, with no cycles — built conceptually via Kruskal's algorithm (sort edges by distance, add the shortest one that doesn't close a loop, repeat) or Prim's (grow one connected tree outward, always adding the nearest unconnected node).</li>
       <li>A worked 5-node example computes all 10 pairwise distances from a plausible correlation matrix, runs Kruskal's algorithm by hand, and produces a 4-edge backbone tree that reveals a hub-and-outlier structure a raw correlation table doesn't show at a glance.</li>
-      <li>Mantegna's original 1999 application was a basket of Dow Jones equities; applying the same transform to FX/cross-asset baskets is a natural extension, not one this repo has tested or validated — that's stated plainly throughout this lesson.</li>
+      <li>Mantegna's original 1999 application was a basket of Dow Jones equities; applying the same transform to FX/cross-asset baskets is a natural extension<!-- DESK:START -->, not one this repo has tested or validated — that's stated plainly throughout this lesson<!-- DESK:END -->.</li>
       <li>PCA and the MST are different lenses on the exact same correlation matrix: PCA collapses it into a handful of ranked, orthogonal factors; the MST keeps every pairwise relationship intact as a sparse graph — the two aren't competitors, they show different things.</li>
-      <li><strong>Real-world episode:</strong> in March 2020's dash for cash, investors sold even Treasuries and gold, correlations converged, and every distance in the tree shrank at once. On this desk, a day when every index falls is followed by a wider week (<code>breadth-all-down</code>, VALIDATED, range only), not by a predictable direction.</li>
+      <li><strong>Real-world episode:</strong> in March 2020's dash for cash, investors sold even Treasuries and gold, correlations converged, and every distance in the tree shrank at once.<!-- DESK:START --> On this desk, a day when every index falls is followed by a wider week (<code>breadth-all-down</code>, VALIDATED, range only), not by a predictable direction.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -448,6 +448,7 @@
     pitfall in Section 04, shown at full size.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>breadth-all-down: when everything falls together, the next week runs wider, and nothing more.</strong>
@@ -458,7 +459,9 @@
     call or a crash call. It is an equity-index breadth test. A cross-asset tree collapsing has not itself been
     tested here.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="dispersion-crowded-week" data-evidence-date="2026-09-23">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>dispersion-crowded-week: the opposite state is not a warning at a week.</strong> High CBOE
@@ -466,6 +469,7 @@
     the collapsed one. 68 setups 2014-2026, next-5-session range vs control: <strong>SPX500 +0.07 [-0.06, +0.23],
     NQ +0.07 [-0.03, +0.17]</strong>. Null at five sessions and null on the tail.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this — and where it comes from</h2>
@@ -482,9 +486,9 @@
     example does — is a natural, structurally sound extension (currencies
     correlate, correlation can be turned into a distance, a distance graph
     can be pruned to an MST regardless of asset class), but it is a
-    <strong>different application than the one Mantegna tested</strong>, and
+    <strong>different application than the one Mantegna tested</strong><!-- DESK:START -->, and
     this repo has not validated whether an FX/cross-asset MST recovers
-    anything as clean or as tradeable as the equity-sector result. Treat the
+    anything as clean or as tradeable as the equity-sector result<!-- DESK:END -->. Treat the
     FX framing here as a plausible hypothesis worth building carefully, not
     as a proven technique simply because the underlying math is sound.
   </p>
@@ -559,9 +563,9 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The MST is the cheapest way to connect every node with no cycles.</strong> Built via Kruskal's (sort edges, add if no cycle) or Prim's (grow outward, always nearest) — both greedy, both provably optimal.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's backbone revealed a hub-and-outlier shape</strong> — EUR as the structural hub, JPY reached only through its single closest relationship — that the raw ten-number correlation table didn't show at a glance.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>PCA and the MST are complementary, not competing.</strong> PCA collapses a correlation matrix into ranked factors; the MST keeps every pairwise relationship as a sparse graph — different questions, same underlying matrix.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Mantegna's original result is an equities result.</strong> The FX/cross-asset framing in this lesson is a natural, structurally sound extension — it is not a technique this repo has tested or validated in that setting.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Mantegna's original result is an equities result.</strong> The FX/cross-asset framing in this lesson is a natural, structurally sound extension<!-- DESK:START --> — it is not a technique this repo has tested or validated in that setting<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A backbone picture is not a backtest.</strong> Seeing which instrument is structurally the outlier is a genuine diversification read, but it says nothing on its own about whether adding that instrument improves risk-adjusted returns.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The calm tree is not the crisis tree.</strong> In March 2020 forced selling pushed correlations toward 1 and the diversifiers moved in. Everything-down days precede a wider week here (SPX500 +0.31 ATR [+0.17, +0.45], <code>breadth-all-down</code>), with direction at the ordinary drift. Range, not a call.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The calm tree is not the crisis tree.</strong> In March 2020 forced selling pushed correlations toward 1 and the diversifiers moved in.<!-- DESK:START --> Everything-down days precede a wider week here (SPX500 +0.31 ATR [+0.17, +0.45], <code>breadth-all-down</code>), with direction at the ordinary drift. Range, not a call.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -635,7 +639,7 @@
       valid (correlation-to-distance and MST construction don't care what
       asset class the data comes from), but whether the resulting FX tree
       is similarly meaningful or useful for anything practical is a
-      separate empirical question this repo has not tested. The caution is
+      separate empirical question<!-- DESK:START --> this repo has not tested<!-- DESK:END -->. The caution is
       to treat the FX application as a reasonable hypothesis to test
       carefully, not as something already proven simply because the
       original equities version was.

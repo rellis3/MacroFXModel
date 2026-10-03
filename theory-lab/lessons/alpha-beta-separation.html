@@ -17,7 +17,7 @@
   <h1 class="tl-title">Alpha vs. Beta Separation</h1>
   <p class="tl-dek">Every return stream is secretly two things added together — a bet on the market (beta) and everything left over after that bet is removed (alpha). Telling them apart is what lets you size, hedge, and judge a strategy honestly.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet computed for any strategy in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet computed for any strategy in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer, Markowitz &amp; Black-Litterman</span>
   </div>
@@ -366,6 +366,7 @@
     clean \(\beta\) and a clean \(\alpha\) and says nothing about either problem.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict validated" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
     <span class="tl-verdict-tag">Desk test: held up</span>
     <span><strong>spread-sleeve-factor-audit: hedging out the shared currency factors raised the spread sleeves' Sharpe,
@@ -377,6 +378,7 @@
     net USD in the book, so the "relative value, not a dollar bet" reading is treated as unconfirmed until a hedge that
     also zeroes net USD is run.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -430,7 +432,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is hedgeable.</strong> Short the market/factor sized to the estimated β and the β terms cancel, leaving (in expectation) just α plus noise — a market-neutral version of the same strategy.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Portable alpha" means alpha severed from any one beta.</strong> Once hedged market-neutral, the isolated alpha stream can sit on top of any beta exposure you actually want — or none at all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a repackaging technique, not a source of edge.</strong> It only works once a genuine, statistically real alpha already exists — check the intercept's standard error before trusting it.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The residual can hide betas the regression never saw (2008).</strong> Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at once, because the alpha carried credit and liquidity risk and could not be cashed while margin calls came daily. On this desk, hedging out shared currency factors raised the spread sleeves' OOS Sharpe (combined 0.98→1.36), but a pending correction keeps "relative value, not a dollar bet" unconfirmed.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The residual can hide betas the regression never saw (2008).</strong> Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at once, because the alpha carried credit and liquidity risk and could not be cashed while margin calls came daily.<!-- DESK:START --> On this desk, hedging out shared currency factors raised the spread sleeves' OOS Sharpe (combined 0.98→1.36), but a pending correction keeps "relative value, not a dollar bet" unconfirmed.<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Hedging isn't free.</strong> Shorting the beta leg carries real financing/borrow costs and slippage, and a hedge sized to a stale, drifted β under- or over-hedges the true current exposure.</span></div>
   </div>
 

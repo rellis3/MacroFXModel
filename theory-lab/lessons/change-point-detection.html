@@ -17,7 +17,7 @@
   <h1 class="tl-title">Change-Point Detection</h1>
   <p class="tl-dek">A narrower question than the full regime models before it: not "which regime, at every point in history," just "has something changed, and roughly when" — answered as new data arrives, not by modeling every regime's dynamics at once.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Hidden Markov Models &amp; Regime Detection, Regime-Switching State Space Models</span>
   </div>
@@ -374,7 +374,7 @@
       flag is a false alarm from an unlucky run of correlated days (in which case a wider \(h\) or a BOCPD posterior
       that stays diffuse across several plausible run lengths would have said so). This is presented purely as an
       illustration of what the tool is <em>for</em> — it is explicitly not a claim that this monitor has been built,
-      backtested, or shown to add value over simply eyeballing a rolling P&amp;L chart in this repo.
+      backtested, or shown to add value over simply eyeballing a rolling P&amp;L chart<!-- DESK:START --> in this repo<!-- DESK:END -->.
     </p>
   </div>
 
@@ -444,6 +444,7 @@
     the change, once it came, was violent: the costliest part of the move came inside the detection delay.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "a change-point alarm gives you time to act on a new regime."</strong> There is no
@@ -454,6 +455,7 @@
     against matched non-alarm days, and count false alarms alongside the hits. Grading it on where an offline fit
     puts the break would only measure hindsight.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -534,8 +536,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>BOCPD (Adams &amp; MacKay, 2007) replaces the single number with a full posterior</strong> over the run length \(r_t\), updated online via a predictive likelihood and a hazard rate \(H\) — a constant \(H\) implies an exponential (geometric) prior on the gap between changepoints.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The central contrast of this lesson:</strong> change-point detection asks a narrower, operational question — has a change occurred, and roughly when — as opposed to the Hidden Markov Model and regime-switching state-space lessons' fuller job of modeling every regime and every transition probability throughout history.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A detected changepoint is a model output, not a certainty.</strong> CUSUM's threshold crossing is a binary call at a chosen bar; BOCPD's posterior is only as honest as its assumed hazard rate and predictive model — both should be treated as probabilistic, especially BOCPD's run-length estimate.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hindsight finds the break; real time finds it late (2020).</strong> An offline fit places the COVID break at February 20–24. An online detector quiet enough for 2019 needed several big days first, and the S&amp;P 500 fell more than 10% in six sessions. Whether an alarm leaves time to act is untested here.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hindsight finds the break; real time finds it late (2020).</strong> An offline fit places the COVID break at February 20–24. An online detector quiet enough for 2019 needed several big days first, and the S&amp;P 500 fell more than 10% in six sessions.<!-- DESK:START --> Whether an alarm leaves time to act is untested here.<!-- DESK:END --></span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only.</strong> Nothing here — CUSUM, BOCPD, or the P&amp;L-monitor scenario — is built, tested, or validated anywhere in this repo. Explaining the mechanism is not a claim that either tool has been shown to add value here.</span></div>
+    <!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

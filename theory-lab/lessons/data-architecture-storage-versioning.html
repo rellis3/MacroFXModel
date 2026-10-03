@@ -17,7 +17,7 @@
   <h1 class="tl-title">Data Architecture for Systematic Trading: Storage, Versioning &amp; Reproducibility</h1>
   <p class="tl-dek">The infrastructure layer underneath every other lesson in this category — how historical data is stored, why independently-recomputed "single sources of truth" quietly drift apart, and why a pipeline bug and a genuine strategy decay can look statistically identical from the equity curve alone.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains real industry practice, not a claim about this repo's own data pipeline</span>
+    <span class="tl-status concept">CONCEPT — explains real industry practice<!-- DESK:START -->, not a claim about this repo's own data pipeline<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="data-pipeline-raw-to-trading-ready.html">The Data Pipeline: Raw Feeds to Trading-Ready Data</a></span>
   </div>
@@ -37,7 +37,7 @@
       <li><strong>Schema versioning</strong>: a pipeline's output schema changing over time without a version tag silently breaks anything downstream that assumed the old shape.</li>
       <li>This lesson is the infrastructure <a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> assumes exists when it talks about reproducibility — and it connects directly to the same theme in <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a>.</li>
       <li>A pipeline bug and a genuine strategy-alpha decay can look statistically identical from the equity curve alone — reproducible, versioned data lineage is the only way to rule the pipeline out first.</li>
-      <li><strong>Real-world episode:</strong> on 1 August 2012 Knight Capital deployed new router code to seven of eight servers; a reused flag still meant "run the old Power Peg code" on the eighth, and about $440 million was lost in roughly 45 minutes. On this desk, backtest-to-live gaps (85.7% vs 39.6% win rate on one system) were audited as machinery first (<code>backtest-artifacts</code>, context).</li>
+      <li><strong>Real-world episode:</strong> on 1 August 2012 Knight Capital deployed new router code to seven of eight servers; a reused flag still meant "run the old Power Peg code" on the eighth, and about $440 million was lost in roughly 45 minutes.<!-- DESK:START --> On this desk, backtest-to-live gaps (85.7% vs 39.6% win rate on one system) were audited as machinery first (<code>backtest-artifacts</code>, context).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -353,6 +353,7 @@
     reads it. Knight's rollback put the old code back on top of the new meaning and spread the fault to every server.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
     <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>backtest-artifacts: when live falls short of backtest, rule out the machinery before calling it
@@ -361,6 +362,7 @@
     stops were not live for the first hour after entry. A volatility tool: 95% of "wins" scored before entry. This is
     the red box below in practice: each gap needed the engine audited, not the market blamed.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How practitioners actually use this</h2>

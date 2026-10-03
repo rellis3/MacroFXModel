@@ -271,11 +271,15 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>Not tested here:</strong> that this desk's cleaning choices leave its results unchanged. A fair test re-runs each validated study with the outlier filter on and off, forward-fill vs. flag-and-exclude, and checks removed prints against the venue's cancelled-trade record.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The fat-finger signature assumes the mistake is in the data: one wild tick, then a snap back. At J-Com the mistake was in the order and the data was faithful. An outlier filter answers "is this unusual?"; only the venue's record answers "did this happen?" A size bound (shares traded vs. shares in issue) would have caught it before the fact.</p>
@@ -343,7 +347,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Every missing-data strategy has a real failure case — forward-fill fakes calm, interpolation invents a path, flag-and-exclude shrinks the sample.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Cleaning must be causal — a statistic used to judge whether a point is bad may only use data available up to that point, never data from after it. Full-sample cleaning is a lookahead-bias bug, the same failure mode leakage warnings describe for features.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Log every cleaning decision — an unrecorded fix is indistinguishable from silent corruption once enough time has passed.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>An outlier is not an error: J-Com's 2005 fat finger (610,000 shares at ¥1) was printed accurately and the trades stood, costing roughly ¥40 billion. Flag extremes; remove only what the venue voided. Whether this desk's cleaning choices move its results is untested.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>An outlier is not an error: J-Com's 2005 fat finger (610,000 shares at ¥1) was printed accurately and the trades stood, costing roughly ¥40 billion. Flag extremes; remove only what the venue voided.<!-- DESK:START --> Whether this desk's cleaning choices move its results is untested.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

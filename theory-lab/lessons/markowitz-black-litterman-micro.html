@@ -305,10 +305,12 @@
         <div class="sl-icard"><div class="sl-icard-badge">🔒</div><div><h4>Hard position &amp; turnover constraints</h4><p>Cap any single position's weight, or how far the optimizer can move from a benchmark or last period's holdings, regardless of what the raw math wants.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚖</div><div><h4>Risk-parity / minimum-variance-only</h4><p>Skip the fragile expected-return vector entirely and optimize only on the comparatively stable covariance matrix — less "optimal," far more robust.</p></div></div>
       </div>
+<!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where this repo actually stands</div>
         <p>Checked against the current code, not just repeated from the full lesson: nothing in this repo runs either model. <code>portfolioBacktest/</code> sizes a pair trade beta-neutral off an OLS hedge ratio; the shared portfolio simulators (<code>pylego/portfolio_sim.py</code> and its motif variants) combine trades with fixed per-trade risk sizing and a concurrent-risk cap — none of it estimates a covariance matrix and solves for optimal weights, and none of it reverse-engineers an equilibrium prior. Every strategy here is still effectively single-instrument or single-pair; this remains the theory a future multi-instrument portfolio-construction layer would sit on, not a description of something already running.</p>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -333,11 +335,13 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
-      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"A mean-variance or Black-Litterman allocation across this desk's sleeves beats equal weights or equal risk out of sample"</strong> is not tested. A fair test: rolling estimation with no look-ahead, fixed-calendar rebalancing with costs, out-of-sample Sharpe, turnover and drawdown against 1/N and an equal-risk book. With few sleeves and a few years of overlap it may be too noisy to separate them, and that should be stated first.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The frontier assumes E[R] and Σ are known. They are estimated, and the optimiser has no term for estimation error, so it treats its own noise as signal. Inputs grow with N², history does not. Black-Litterman repairs the inputs but keeps the single-period, frictionless setting.</p>
@@ -405,7 +409,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Black-Litterman fixes this by starting from a market-equilibrium prior, Π = δΣw_mkt, and Bayesian-blending it with a handful of confidence-weighted investor views.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Confidence is a genuine, separate lever — the same view, stated with low versus high confidence, produces a smaller versus larger tilt away from equilibrium.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Black-Litterman tames the optimizer's instability; it does not validate the view — a confidently wrong view still pulls the posterior in the wrong direction, just not to an absurd degree.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Naive mean-variance failed in real portfolios: error maximisation (Michaud, 1989), errors in means about ten times as costly as in variances (Chopra &amp; Ziemba), and Black-Litterman built at Goldman for clients who hit that wall. Equal weights proved hard to beat out of sample; optimiser vs 1/N is untested here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Naive mean-variance failed in real portfolios: error maximisation (Michaud, 1989), errors in means about ten times as costly as in variances (Chopra &amp; Ziemba), and Black-Litterman built at Goldman for clients who hit that wall. Equal weights proved hard to beat out of sample<!-- DESK:START -->; optimiser vs 1/N is untested here<!-- DESK:END -->.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

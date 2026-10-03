@@ -17,7 +17,7 @@
   <h1 class="tl-title">Markowitz &amp; Black-Litterman</h1>
   <p class="tl-dek">Harry Markowitz gave portfolio construction its first real mathematics — and, almost immediately, practitioners discovered the mathematics was so sensitive to its own inputs that it was barely usable as written. Black-Litterman is the fix everyone actually uses: start from what the market already believes, and nudge it, rather than trying to specify the whole truth yourself.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — the theory behind this repo's diversification tooling</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — the theory behind this repo's diversification tooling<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: Linear Algebra &amp; Matrices, Correlation &amp; Linear Regression primer</span>
   </div>
@@ -31,21 +31,22 @@
   <div class="tl-tldr">
     <div class="tl-tldr-label">TL;DR</div>
     <ul>
-      <li>Portfolio variance is a quadratic form \(w^\top \Sigma w\), not a weighted average — the cross-covariance terms are exactly where diversification benefit lives, the same idea this project's own diversification research measures via effective-bets metrics rather than prescribes weights for.</li>
+      <li>Portfolio variance is a quadratic form \(w^\top \Sigma w\), not a weighted average — the cross-covariance terms are exactly where diversification benefit lives<!-- DESK:START -->, the same idea this project's own diversification research measures via effective-bets metrics rather than prescribes weights for<!-- DESK:END -->.</li>
       <li>Solving for the minimum-variance combination at every target return traces the <strong>efficient frontier</strong>; its leftmost point is the minimum-variance portfolio.</li>
       <li>Markowitz's optimizer is extremely sensitive to the expected-return inputs specifically (far more than to the covariance matrix) — small forecast nudges can flip "optimal" weights into extreme long/short corner solutions, the "error-maximization" flaw that kept it from being used naively for decades.</li>
       <li>Black-Litterman fixes this by starting from a market-equilibrium prior \(\Pi = \delta\Sigma w_{mkt}\) and Bayesian-blending it with a handful of confidence-weighted investor views, rather than asking for a precise forecast for every instrument.</li>
+<!-- DESK:START -->
       <li>Nothing in this repo currently runs either optimizer — every strategy here is single-instrument; this is the theory a future multi-instrument portfolio-construction layer, built on this project's own existing covariance machinery, would sit on.</li>
-      <li><strong>Real-world episode:</strong> for two decades managers who fed real forecasts into a mean-variance optimiser got extreme, unstable weights, the error maximisation Michaud named in 1989. Black and Litterman built their fix at Goldman around 1990–92 for clients who had hit that wall, and later studies found equal weights hard to beat out of sample. Optimiser versus equal weights is untested on this desk.</li>
+<!-- DESK:END -->
+      <li><strong>Real-world episode:</strong> for two decades managers who fed real forecasts into a mean-variance optimiser got extreme, unstable weights, the error maximisation Michaud named in 1989. Black and Litterman built their fix at Goldman around 1990–92 for clients who had hit that wall, and later studies found equal weights hard to beat out of sample.<!-- DESK:START --> Optimiser versus equal weights is untested on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-    Every strategy in this repo, so far, answers a single-instrument question:
-    given this pair, this level, this regime, what's the edge? Nothing in the
-    codebase currently answers the next question up — given a basket of
+    A single trading strategy<!-- DESK:START --> (every one in this repo, so far)<!-- DESK:END --> answers a single-instrument question:
+    given this pair, this level, this regime, what's the edge? On its own, it doesn't answer the next question up — given a basket of
     positions across many instruments, how much of each should you actually
     hold at once? That second question is portfolio construction, and it has
     had a formal mathematical answer since 1952: Harry Markowitz's mean-variance
@@ -55,18 +56,18 @@
     expected return and risk for any given set of assets and beliefs about them.
   </p>
   <p>
-    This repo already has real infrastructure one layer below this question:
+    <!-- DESK:START -->This repo already has real infrastructure one layer below this question:
     this project already computes correlation matrices and
     their eigenvalue structure to answer "how many genuinely independent bets
     does this basket have" (the subject of the PCA &amp; Factor Regimes lesson).
     Markowitz's framework is the natural next layer on top of exactly that
     correlation matrix — instead of just describing how concentrated a basket
-    is, it would prescribe <em>what weights to hold</em>. This lesson builds
+    is, it would prescribe <em>what weights to hold</em>. <!-- DESK:END -->This lesson builds
     that framework from the ground up, is honest about the well-documented
     practical flaw that kept it from being used naively for decades, and
     explains the fix — Black-Litterman — that turned it into something real
-    asset managers actually run. None of this is built here yet; this lesson
-    is the theory a future portfolio-construction layer would sit on.
+    asset managers actually run.<!-- DESK:START --> None of this is built here yet; this lesson
+    is the theory a future portfolio-construction layer would sit on.<!-- DESK:END -->
   </p>
 
   <div class="tl-box intuition">
@@ -182,9 +183,9 @@
     <em>subtracts</em> from total portfolio variance, meaning the combined
     position can genuinely be less risky than either instrument held alone.
     That's diversification benefit, made numerically explicit rather than
-    asserted qualitatively — and it's precisely the same covariance matrix
+    asserted qualitatively<!-- DESK:START --> — and it's precisely the same covariance matrix
     machinery this project already builds and
-    eigen-decomposes for its effective-bets metrics.
+    eigen-decomposes for its effective-bets metrics<!-- DESK:END -->.
   </p>
 
   <div class="tl-eli5">
@@ -233,8 +234,8 @@
     reason that is worth stating plainly rather than glossing over: the
     optimizer is <strong>extremely sensitive to the expected-return inputs</strong>,
     \(E[R_i]\), far more sensitive than to the covariance matrix \(\Sigma\).
-    Covariances can be estimated reasonably stably from historical data (that's
-    exactly the correlation-matrix machinery this repo already has); expected
+    Covariances can be estimated reasonably stably from historical data<!-- DESK:START --> (that's
+    exactly the correlation-matrix machinery this repo already has)<!-- DESK:END -->; expected
     returns cannot — a return forecast is inherently the least reliable, most
     opinion-laden number in the whole model, yet it's the input the optimizer's
     output depends on most violently.
@@ -473,8 +474,8 @@
     <p>
       A clean 2-asset instance of the same mean-variance optimizer described
       above: given two risky assets' expected returns, vols and their
-      correlation (and a fixed 2% risk-free rate, matching this repo's other
-      worked examples), the maximum-Sharpe (tangency) portfolio weight has a
+      correlation (and a fixed 2% risk-free rate<!-- DESK:START -->, matching this repo's other
+      worked examples<!-- DESK:END -->), the maximum-Sharpe (tangency) portfolio weight has a
       closed form. Starts on the worked example's numbers. Nudge the risky
       pair's expected return from 4% up toward 4.5% — the same half-point
       change the box above describes — and watch the weight swing live.
@@ -736,6 +737,7 @@
     measures directly.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "a mean-variance or Black-Litterman allocation across this desk's sleeves beats
@@ -745,6 +747,7 @@
     and an equal-risk book. With only a few sleeves and a few years of overlap, the comparison is likely to be too
     noisy to separate the methods, which should be stated before it is run.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -867,9 +870,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Markowitz's optimizer is extremely sensitive to the expected-return inputs specifically.</strong> A fraction-of-a-percent forecast nudge can flip "optimal" weights into extreme long/short corners — the well-documented "error-maximization" flaw.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Black-Litterman fixes this by starting from a market-equilibrium prior.</strong> \(\Pi = \delta\Sigma w_{mkt}\), Bayesian-blended with a handful of confidence-weighted investor views, replaces the fragile raw forecast vector.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Nobody runs unconstrained naive Markowitz in practice.</strong> Real desks use Black-Litterman or similar shrinkage, hard position/turnover constraints, or skip expected returns entirely with risk-parity/min-variance-only portfolios.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this is built in this repo yet.</strong> Every strategy here is single-instrument; a portfolio-construction layer would be genuinely new infrastructure, not a quick extension of the existing diversification tooling.</span></div>
+<!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Black-Litterman moderates the optimizer's instability — it does not validate the view.</strong> A confidently-stated but wrong view still pulls the posterior in the wrong direction; the model just prevents that pull from becoming an absurd position size.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Naive mean-variance failed in real portfolios, not just on paper.</strong> Michaud (1989) named error maximisation, Chopra &amp; Ziemba (1993) found errors in means about ten times as costly as errors in variances, Black-Litterman was built at Goldman for clients who had hit the wall, and DeMiguel et al. (2009) found none of fourteen optimisers consistently beat 1/N. Untested on this desk.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Naive mean-variance failed in real portfolios, not just on paper.</strong> Michaud (1989) named error maximisation, Chopra &amp; Ziemba (1993) found errors in means about ten times as costly as errors in variances, Black-Litterman was built at Goldman for clients who had hit the wall, and DeMiguel et al. (2009) found none of fourteen optimisers consistently beat 1/N.<!-- DESK:START --> Untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -894,8 +899,8 @@
     <summary>Q2. Why is the raw Markowitz optimizer so sensitive to the expected-return inputs specifically, more than to the covariance matrix?</summary>
     <div class="tl-answer">
       Covariances can be estimated with reasonable stability from historical
-      return data — that's exactly the kind of matrix this project
-      already builds. Expected returns
+      return data<!-- DESK:START --> — that's exactly the kind of matrix this project
+      already builds<!-- DESK:END -->. Expected returns
       cannot be estimated nearly as reliably; a forecast of future return is
       inherently the least certain input in the model, often little more than
       an informed guess with a wide error band. Yet the optimizer is solving
@@ -943,6 +948,7 @@
       represent.
     </div>
   </details>
+<!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q5. What, specifically, would need to be built for this repo to go from its current correlation/eigenvalue diversification tooling to an actual Black-Litterman-style portfolio optimizer, and why is that a large step rather than a small one?</summary>
     <div class="tl-answer">
@@ -962,6 +968,7 @@
       existing foundation, not a small extension of it.
     </div>
   </details>
+<!-- DESK:END -->
   <details class="tl-quiz">
     <summary>Q6. Why does the efficient frontier's lower branch (same risk as the minimum-variance portfolio's neighborhood, but lower return) never actually get held, even though it's mathematically reachable?</summary>
     <div class="tl-answer">

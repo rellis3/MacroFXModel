@@ -17,7 +17,7 @@
   <h1 class="tl-title">Dupire's Local Volatility Model</h1>
   <p class="tl-dek">Heston and SABR make volatility stochastic — its own random process, with its own source of noise. Dupire's 1994 result takes a third route: keep volatility a plain, deterministic number, but let that number depend on where the spot is and when. One equation, one source of randomness, and a formula that backs the whole thing out of the market's own option prices.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo; see the grounding note in Section 06 for the exact grep finding</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo; see the grounding note in Section 06 for the exact grep finding<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="institutional-bates-model.html">Bates Model: Stochastic Volatility + Jumps</a>, plus this Theory Lab's own <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a>, <a href="heston-model.html">The Heston Model</a>, and <a href="sabr-model.html">The SABR Model</a></span>
   </div>
@@ -681,6 +681,7 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
     \(S_T\).
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🗂️</div>
     <div class="tl-box-label">What's actually verified against this repo's code</div>
@@ -709,6 +710,7 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
       stochastic-volatility siblings, is pure theory background.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -721,8 +723,8 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
       describes. A client asks for a price on a down-and-out barrier option
       on the same pair and expiry. Pricing that barrier off a single flat
       \(\sigma\) (say, the ATM vol) would be internally inconsistent with the
-      desk's own marked vanilla smile — a client could, in principle, static-
-      hedge a claim on the barrier using a portfolio of the desk's own
+      desk's marked vanilla smile — a client could, in principle, static-
+      hedge a claim on the barrier using a portfolio of the desk's
       vanillas and arbitrage the mispricing between the two.
     </p>
     <p style="margin-bottom:0">
@@ -750,7 +752,9 @@ C(K,   T+Δt)= C(100, 1.1) = 11.0820</pre>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">≡</span><span><strong>Local vol is a calibration device; Heston/SABR are testable behavioral models.</strong> Exact repricing is guaranteed by construction, not evidence of a good model of dynamics — that question is a separate, harder one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Local vol's own implied forward-smile dynamics are widely considered unrealistic — typically too flat.</strong> This, not any fitting failure, is the main reason practitioners lean on stochastic-vol models or stochastic-local-vol (SLV) hybrids.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Raw, noisy market quotes cannot be differentiated directly.</strong> A smoothing or parametric-fitting step (a spline, or a SABR-style smile fit) has to come first — naive finite differences on real data are numerically unstable, especially in the denominator's second derivative.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no Dupire or local-vol implementation of any kind.</strong> The only "local vol" hits in the codebase are an unrelated ATR-bucketing label and the Lee-Mykland jump detector's rolling realized-vol window — not this lesson's model.</span></div>
+<!-- DESK:END -->
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the calibration anchor for exotics.</strong> Dupire and Derman &amp; Kani (both <em>Risk</em>, 1994) gave exotics desks one model that reprices every vanilla; its flat forward-smile dynamics are why FX and equity desks now often run local-stochastic-vol hybrids around it.</span></div>
   </div>
 

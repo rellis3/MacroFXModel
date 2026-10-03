@@ -36,8 +36,10 @@
     <li>Running \(m\) independent tests at \(\alpha=0.05\) each, the family-wise error rate (chance of at least one false positive) is \(\text{FWER}=1-(1-\alpha)^m\) — it climbs toward 1 fast, not linearly.</li>
     <li>At \(m=70\) (the interactive slider's default), FWER ≈ 97.2% and the expected number of false positives among pure-noise slices is \(70 \times 0.05 = 3.5\) — "3 out of 70 slices look significant" is what noise does, not a discovery.</li>
     <li>Bonferroni fixes this by shrinking the per-test bar to \(\alpha/m\) (a strict, correlation-agnostic worst case); Benjamini-Hochberg (FDR) uses a rank-dependent staircase, \(p_{(k)} \le \frac{k}{m}q\), that's more forgiving and better suited to correlated FX slices.</li>
+<!-- DESK:START -->
     <li>This is the mechanical basis for this repo's own house rule: "finding a few 'winners' among 70 slices is what noise does" — survivors must beat the chance-baseline and be IS-consistent, per Lego Principle 5.</li>
-    <li><strong>Real-world episode:</strong> finance's "factor zoo", where Harvey, Liu &amp; Zhu (2016) counted 316 published return factors and argued a new one should clear a t-statistic of about 3, not 2; and this desk's own rates-pivot test, where a confirmed rates low was followed by an up-move 54.1% of the time against a base rate of 54.1%.</li>
+<!-- DESK:END -->
+    <li><strong>Real-world episode:</strong> finance's "factor zoo", where Harvey, Liu &amp; Zhu (2016) counted 316 published return factors and argued a new one should clear a t-statistic of about 3, not 2<!-- DESK:START -->; and this desk's own rates-pivot test, where a confirmed rates low was followed by an up-move 54.1% of the time against a base rate of 54.1%<!-- DESK:END -->.</li>
   </ul>
 </div>
 
@@ -266,10 +268,10 @@
     there. If you expect a false positive rate of roughly \(\alpha\) per slice, the <em>expected
     number</em> of false positives across 70 pure-noise slices is \(70 \times 0.05 = 3.5\) — so
     finding "3 out of 70 slices look significant" is not a discovery. It is almost exactly what
-    you'd expect to see if there were no edge anywhere at all. This is the numeric backbone of the
+    you'd expect to see if there were no edge anywhere at all.<!-- DESK:START --> This is the numeric backbone of the
     house rule already written into this repo's own project memory: <em>"finding a few 'winners'
     among 70 slices is what noise does."</em> The math above is why that sentence is true, not just
-    a cautious-sounding guess.
+    a cautious-sounding guess.<!-- DESK:END -->
     </p>
     <p>
     Now apply the corrections. Bonferroni: \(\alpha_{\text{Bonf}} = 0.05 / 70 \approx 0.000714\) —
@@ -368,8 +370,8 @@
     This is what 70 tests of <strong>nothing</strong> look like — pure noise, no real edge anywhere.
     Under the null, p-values are uniformly distributed across 0 to 1, so each bin gets roughly the
     same count; purely by chance, about 3-4 of the 70 land below \(\alpha=0.05\) and would read as
-    "significant" if reported alone. That's exactly the "few winners among 70 slices" this repo's
-    own house rule warns about. The histogram is illustrative/schematic, not drawn from an actual run.
+    "significant" if reported alone.<!-- DESK:START --> That's exactly the "few winners among 70 slices" this repo's
+    own house rule warns about.<!-- DESK:END --> The histogram is illustrative/schematic, not drawn from an actual run.
     Use the slider above to see how the family-wise error rate and expected false-positive count
     change as \(m\) changes.
     </div>
@@ -427,10 +429,10 @@
   </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
-  <h2>It actually happened: the factor zoo, and a 54% that was nothing</h2>
+  <h2>It actually happened: the factor zoo<!-- DESK:START -->, and a 54% that was nothing<!-- DESK:END --></h2>
   <p>
-  The arithmetic in Section 02 is not a classroom hypothetical. It has played out across an entire academic field, and on
-  this desk's own test bench.
+  The arithmetic in Section 02 is not a classroom hypothetical. It has played out across an entire academic field<!-- DESK:START -->, and on
+  this desk's own test bench<!-- DESK:END -->.
   </p>
 
   <div class="tl-story" id="story-1">
@@ -470,6 +472,7 @@
     <div class="tl-chain-link end"><b>Outcome</b>316 published factors; Harvey, Liu &amp; Zhu raise the hurdle to t ≈ 3</div>
   </div>
 
+<!-- DESK:START -->
   <div class="tl-story" id="story-2">
     <div class="tl-story-label">It actually happened here</div>
     <h3>This desk, 2026: the rates pivot that "led" the Nasdaq 54% of the time</h3>
@@ -493,10 +496,11 @@
       both directions and both halves, which is why a lone lucky cell could never have been written up as a finding.
     </p>
   </div>
+<!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
-    <p>Hundreds of scientists each flip a coin twenty times, hunting for a "magic" coin, and only the ones whose coins landed heads a lot write it up. Read only those write-ups and magic coins seem to be everywhere. The desk's version: a setup "worked" 54 times in 100, but the market goes up 54 times in 100 anyway, so the setup added nothing at all.</p>
+    <p>Hundreds of scientists each flip a coin twenty times, hunting for a "magic" coin, and only the ones whose coins landed heads a lot write it up. Read only those write-ups and magic coins seem to be everywhere.<!-- DESK:START --> The desk's version: a setup "worked" 54 times in 100, but the market goes up 54 times in 100 anyway, so the setup added nothing at all.<!-- DESK:END --></p>
   </div>
 
   <h3>Where the textbook version breaks</h3>
@@ -505,15 +509,16 @@
   p-values against \(\frac{k}{m}q\). In published research \(m\) is unknowable. The tests that failed belong to
   other people and were never written up, and they were all run on the same shared history, so they are neither counted
   nor independent. Harvey, Liu &amp; Zhu had to <em>estimate</em> the hidden tests to set their hurdle. A correction can
-  only be as honest as the count fed into it, which is why this desk fixes its cells before a study runs and records the
-  nulls alongside the passes.
+  only be as honest as the count fed into it<!-- DESK:START -->, which is why this desk fixes its cells before a study runs and records the
+  nulls alongside the passes<!-- DESK:END -->.
   </p>
 
   <p>
-  The tempting claim this lesson exists to stop is "this setup is right X% of the time". The desk's verdict on its own
-  example:
+  The tempting claim this lesson exists to stop is "this setup is right X% of the time".<!-- DESK:START --> The desk's verdict on its own
+  example:<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="rates-pivot-lead" data-evidence-date="2026-09-25">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>rates-pivot-lead: a confirmed turn in short-term rates does not lead the Nasdaq.</strong> 2,430 confirmed
@@ -522,6 +527,7 @@
     0.15 execution gate. A confirmed rates low is followed by an up-move 54.1% of the time, and the base rate is 54.1%. In
     the ledger's words: "54% looked like an edge and was exactly nothing."</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -606,7 +612,7 @@
     correctly-FDR-controlled discovery only tells you the effect is unlikely to be pure noise — it
     says nothing about whether the effect size survives realistic costs, is large enough to trade,
     or remains stable outside the sample it was found in. This correction is necessary, not
-    sufficient (see Lego Principle 5's cost/OOS discipline).
+    sufficient<!-- DESK:START --> (see Lego Principle 5's cost/OOS discipline)<!-- DESK:END -->.
     </p>
   </div>
 
@@ -618,8 +624,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bonferroni (\(\alpha/m\)) is the strict, correlation-agnostic fix.</strong> It guarantees FWER ≤ α even in the worst case, at the cost of being needlessly harsh on correlated tests (like FX pairs sharing a USD factor).</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Benjamini-Hochberg (FDR) is the more forgiving alternative.</strong> Its rank-dependent staircase, \(p_{(k)}\le\frac{k}{m}q\), controls the expected proportion of false discoveries rather than banning any false positive outright — usually more useful for correlated, exploratory FX slicing.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The best of many is expected to look good, by construction.</strong> Being rank #1 of 70 tells you almost nothing on its own — someone has to be the minimum of 70 noise draws.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Surviving a correction is necessary, not sufficient.</strong> A statistically valid discovery still has to hold up in-sample consistently and on a genuine out-of-sample split with real costs before it's a tradeable edge (Lego Principle 5).</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A hit rate without its base rate is a winning ticket shown alone (rates-pivot-lead, NULL).</strong> Up 54.1% of the time after a confirmed rates low, against a 54.1% base rate; 0 of 15 cells real. And when \(m\) is hidden, as in the 316-factor zoo, the honest bar rises to t ≈ 3.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Surviving a correction is necessary, not sufficient.</strong> A statistically valid discovery still has to hold up in-sample consistently and on a genuine out-of-sample split with real costs before it's a tradeable edge<!-- DESK:START --> (Lego Principle 5)<!-- DESK:END -->.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A hit rate without its base rate is a winning ticket shown alone<!-- DESK:START --> (rates-pivot-lead, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> Up 54.1% of the time after a confirmed rates low, against a 54.1% base rate; 0 of 15 cells real.<!-- DESK:END --> And when \(m\) is hidden, as in the 316-factor zoo, the honest bar rises to t ≈ 3.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

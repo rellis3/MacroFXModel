@@ -246,6 +246,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Reality check — what this repo actually does</h2>
@@ -265,6 +266,7 @@
         <p>The stale "not yet tested" line describes the full lesson's own framing, not this codebase as it stands today. Real Engle-Granger cointegration screening exists and runs in <code>portfolioBacktest/portfolio_backtest.py</code> — and it's built carefully: the screen trains only on a leading in-sample window (<code>coint_train_bars</code>) before any trading starts, exactly the "no lookahead" discipline this lesson's own pitfalls section calls for. <code>forge/residual.py</code>'s ADF/half-life tools work on a different, basket-based residual rather than a classic two-series spread, but they're the same statistical machinery taught here, already in use.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12 · It actually happened</div>
@@ -290,16 +292,22 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found when it tested the claim</h2>
       <p class="sl-sub">The tempting claim: fit a levels regression, and when the residual's z-score is stretched, fade it.</p>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="residual-reversion-fx" data-evidence-date="2026-09-20">
         <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>residual-reversion-fx:</strong> fading price minus an OLS macro fair value, out of sample on 6 instruments. <strong>Only 1/6 (EURUSD)</strong> clears both a real icEdge and an above-coin-flip hit rate: chance-level, <strong>mean icEdge −0.030, mean hit rate 0.485</strong>. No economic force closes that gap.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
         <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>yield-spread-sleeve, the contrast:</strong> a spread with an anchor. The z-scored 2-year yield spread, out of sample 2015–2025: <strong>~109 trades, 63% win, PF 2.2</strong>. Backtest plus paper trading since 2026-07, not a forward record.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-quote"><strong>Where the textbook breaks:</strong> the test assumes tomorrow's spread comes from the same distribution as the sample. LTCM's σ came from years with no liquidity panic, and the force that pulls a spread back, other arbitrageurs with spare capital, became a forced seller. Stationary over decades is not stationary over the time your lenders give you.</div>
     </section>
 
@@ -363,12 +371,14 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Engle-Granger's two-step test is concrete: Step 1 regresses the levels for a hedge ratio β; Step 2 runs an ADF test — with stricter EG/MacKinnon critical values — on the residual spread.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Johansen generalizes to baskets of three or more series, avoiding the arbitrary Y-vs-X choice and finding how many equilibria exist at once.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Passing a cointegration test only clears the first bar — lookahead bias, structural breaks, data-mining across candidate pairs, and slow half-lives can all still sink a live pairs trade.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already runs Engle-Granger-screened pairs trading (<code>portfolioBacktest</code>) and ADF/half-life diagnostics (<code>forge/residual.py</code>) — the "concept only" framing is now out of date.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>LTCM 1998: genuinely leashed spreads still stretched far enough, at ~25:1 leverage, to end the fund. On this desk, fading an FX levels-regression residual was null (1/6 instruments, mean hit rate 0.485); the anchored 2Y yield spread is the validated contrast.</p></div>
+        <!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>LTCM 1998: genuinely leashed spreads still stretched far enough, at ~25:1 leverage, to end the fund.<!-- DESK:START --> On this desk, fading an FX levels-regression residual was null (1/6 instruments, mean hit rate 0.485); the anchored 2Y yield spread is the validated contrast.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Tell apart a correlated-looking chart from a genuinely tradeable spread before risking capital on it. Run the Engle-Granger two-step yourself — or read the code already doing it in this repo — and know what should convince you an ADF statistic actually cleared the stricter bar. Recognise that a pairs trade needs more than a plausible story: it needs a leash, not just two things that happened to lean the same way.</p>
+        <p>Tell apart a correlated-looking chart from a genuinely tradeable spread before risking capital on it. Run the Engle-Granger two-step yourself<!-- DESK:START --> — or read the code already doing it in this repo —<!-- DESK:END --> and know what should convince you an ADF statistic actually cleared the stricter bar. Recognise that a pairs trade needs more than a plausible story: it needs a leash, not just two things that happened to lean the same way.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

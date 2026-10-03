@@ -212,6 +212,7 @@
       <div class="sl-quote">The two contaminants can show up in the same dataset at once — sampling fast enough to resolve jumps precisely also picks up more microstructure noise. Serious realized-vol work usually checks more than one sampling frequency rather than trusting a single number blindly.</div>
     </section>
 
+<!-- DESK:START -->
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Measured on real data — and honestly reported when it didn't pay off</h2>
@@ -224,6 +225,7 @@
         <p>A diffusion-only volatility forecast, scaled by the trailing diffusive share of variance, needed to beat the raw forecast by ≥2% OOS QLIKE on days after a high-jump day. Actual result: <strong>−0.24% (FX majors), +0.26% (crosses), −0.16% (gold)</strong> — an order of magnitude short, sign disagreeing across classes. The underlying premise checked out as genuinely true (jump variance predicts lower future variance, β = −0.33, t = −10.3, replicating on 23/26 instruments) — the effect is real, just too small to survive as a forecast improvement. Per the repo's own pre-registered stop rule, this was never wired into the live forecaster.</p>
       </div>
     </section>
+<!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
@@ -289,6 +291,7 @@
         <div class="sl-quiz-explain">J/RV = 0.000009/0.00004 = 22.5%. It's a whole-session aggregate split — identifying which specific return was the jump needs a per-return detector (next lesson).</div>
       </div>
 
+<!-- DESK:START -->
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>In this repo, did using the RV/BV jump split actually improve the live volatility forecaster?</h4>
@@ -297,6 +300,7 @@
         <button class="sl-quiz-opt">The split was never actually computed on real data, only simulated</button>
         <div class="sl-quiz-explain">Phase 2 (validating jump share against known news events) passed cleanly. Phase 3 (using the split to beat the raw forecast OOS) missed its pre-registered bar by roughly an order of magnitude — a real but too-small effect, reported honestly as null rather than wired in.</div>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="14">
@@ -308,12 +312,14 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The π/2 constant is an exact correction for E[|Z|]² = 2/π, not a fitted or arbitrary number.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>J = max(RV−BV, 0) is a whole-session, aggregate jump share — not a timestamp for any individual return.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Realized kernels solve a related but different problem — microstructure noise, not jumps.</p></div>
+<!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo validated the measurement on real data against known news events, then honestly reported that using it to improve a forecast tested null.</p></div>
+<!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk: Barndorff-Nielsen &amp; Shephard (2004) split RV into continuous and jump parts; since jumps fade fast, vol forecasts treat them separately.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
-        <p>Read a realized-variance number knowing it might be hiding a jump inside it, and know exactly which second formula to reach for to check. Understand precisely why pairing neighboring returns — not squaring, not deleting outliers — is what makes an estimator jump-robust. And keep "the measurement is validated" and "the measurement improves a forecast" as two separate claims, the way this repo's own honest null result insists on.</p>
+        <p>Read a realized-variance number knowing it might be hiding a jump inside it, and know exactly which second formula to reach for to check. Understand precisely why pairing neighboring returns — not squaring, not deleting outliers — is what makes an estimator jump-robust. And keep "the measurement is validated" and "the measurement improves a forecast" as two separate claims<!-- DESK:START -->, the way this repo's own honest null result insists on<!-- DESK:END -->.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

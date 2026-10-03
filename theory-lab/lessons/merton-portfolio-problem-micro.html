@@ -275,11 +275,13 @@
         </div>
       </div>
       <div class="sl-quote">Both readings point the same direction, for different reasons: one says "half-Kelly is correct for who you honestly are," the other says "half-Kelly is safer given what you don't actually know." A practitioner using half-Kelly is usually leaning on both at once.</div>
+<!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Factual check against this repo's actual code</div>
         <p><strong>What the full lesson says:</strong> "Nothing here is built or validated in this repo" regarding risk-aversion-scaled or Kelly-based sizing — a sizing layer only gets applied on top of a signal that has already proven itself out-of-sample.</p>
         <p><strong>Verified directly against the current source</strong> (grepped <code>bot/</code>, <code>portfolioBacktest/</code>, and <code>js/positionSizerEngine.js</code> for "kelly", "gamma", "riskAversion"): that claim still holds. The one live sizer, <code>position-sizer.html</code> / <code>js/positionSizerEngine.js</code>, risks a fixed, hand-picked percentage of equity per trade scaled by forecast volatility — it takes no edge estimate (p, μ, or γ) as an input at all. There is no Kelly-fraction or Merton-fraction column anywhere in this repo's backtests, and no γ-scaled allocation logic in the bot code. Nothing is stale here; both the original lesson's claim and this fresh check agree.</p>
       </div>
+<!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">
@@ -316,11 +318,13 @@
 
     <section class="sl-slide" data-slide="14">
       <div class="sl-kicker">Section 13</div>
-      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"Sizing a validated sleeve at its Merton fraction, or 1/γ of it, gives the best growth for the drawdown here"</strong> is not tested. A fair test: walk-forward μ and σ, sizing at γ = 1, 2, 4 and a fixed-risk baseline, realistic costs including rebalancing trades, comparing realised growth and worst drawdown. A slow sleeve's few dozen to hundred trades make μ noisy, which itself argues for γ well above 1.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The constant fraction assumes continuous, costless rebalancing with no price impact, continuous paths and constant σ. 1998 broke all four. Above f = 1 the rule sells into losses, and the sale scales with f − 1: at high leverage the rebalancing trade is the risk.</p>
@@ -387,8 +391,10 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>For CRRA utility, the optimal risky-asset fraction is the constant f* = μ/(γσ²) — independent of current wealth or time remaining.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>γ=1 (log utility) reproduces Kelly's f* = μ/σ² exactly, term for term — Kelly is one specific setting of Merton's risk-aversion dial, not a rival theory.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>γ=2 gives exact half-Kelly, γ=4 gives exact quarter-Kelly — each investor's own precise optimum, and also a practical hedge against uncertain μ, σ², and γ itself.</p></div>
+<!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Nothing about Kelly- or risk-aversion-scaled sizing exists yet in this repo's actual code — the live sizer is a fixed, vol-scaled percentage with no edge or γ input, verified directly against the source.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Above f = 1 the constant fraction sells into losses, scaling with f − 1. At LTCM's roughly 25-to-1 in 1998, a 1% fall meant selling about a quarter of the book, and the market knew the positions. Sizing by the Merton fraction is untested on this desk.</p></div>
+<!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Above f = 1 the constant fraction sells into losses, scaling with f − 1. At LTCM's roughly 25-to-1 in 1998, a 1% fall meant selling about a quarter of the book, and the market knew the positions.<!-- DESK:START --> Sizing by the Merton fraction is untested on this desk.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

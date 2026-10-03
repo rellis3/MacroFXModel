@@ -231,6 +231,7 @@
       <p class="sl-p">13.2 of those 20 points came purely from carrying 1.2× the market's own excess return — exposure anyone could buy directly and cheaply with a futures contract. That's the number a fee should never be paid for.</p>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">What's actually live in this repo</h2>
@@ -242,6 +243,7 @@
         <p style="margin-top:10px"><strong>What's still conceptual:</strong> the regression's <em>alpha</em> term is computed internally (see <code>_ols_beta()</code>) but immediately discarded — never persisted, scored, or reported anywhere. No code in this repo isolates a hedged, market-neutral alpha stream or executes a portable-alpha overlay. So: beta estimation and monitoring is real and running; alpha isolation and portable alpha remain exactly what the full lesson calls them — a concept.</p>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
@@ -286,11 +288,15 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 12</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
         <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>Hedging out the shared currency factors raised the spread sleeves' Sharpe, with a correction pending.</strong> OOS Sharpe 2Y 1.02→1.33, 10Y 0.58→1.01, combined 0.98→1.36, OOS vol cut ~60-65% (2Y 14.1%→5.1%): ~55% of the raw book's risk was factor risk that did not pay. But in-sample is weak for every version, the OOS strength sits in 2022-24, and the factor-only hedge can leave net USD in the book, so "relative value, not a dollar bet" stays unconfirmed.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The market model treats ε as noise unrelated to r<sub>m</sub> and the overlay as frictionless. In 2008 the residual was tied to the market in the tail through credit and liquidity, which one market factor cannot see. And the legs had different liquidity: the beta leg settled in cash daily, the alpha leg took months.</p>
@@ -356,9 +362,11 @@
         <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Beta is cheap — it's exposure you could buy directly with an index future or ETF, no skill required. Alpha is the residual left after that's subtracted, and the part actually worth a fee.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Beta is hedgeable — short the market sized to the estimated β and the β terms cancel, leaving (in expectation) just α plus noise: a market-neutral version of the same strategy.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>"Portable" alpha means alpha severed from any one beta — once hedged market-neutral, it can sit on top of any beta exposure you actually want, or none at all.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>This repo's beta estimation is live (rolling OLS + Kalman filter, monitored against regime targets) — but alpha isolation and portable-alpha hedging remain conceptual; the regression's alpha term is computed and thrown away, not acted on.</p></div>
+        <!-- DESK:END -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It's a repackaging technique, not a source of edge — noisy intercepts, drifting betas, survivorship, and hedging costs can all quietly erase the "alpha" it claims to isolate.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Portable alpha in 2008 lost on both legs: the futures beta leg needed daily cash margin while the "alpha" leg, carrying hidden credit and liquidity beta, lost too and could not be redeemed fast. Hedging out shared factors raised this desk's spread-sleeve Sharpe, with a correction pending.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Portable alpha in 2008 lost on both legs: the futures beta leg needed daily cash margin while the "alpha" leg, carrying hidden credit and liquidity beta, lost too and could not be redeemed fast.<!-- DESK:START --> Hedging out shared factors raised this desk's spread-sleeve Sharpe, with a correction pending.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

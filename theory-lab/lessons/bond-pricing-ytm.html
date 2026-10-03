@@ -17,7 +17,7 @@
   <h1 class="tl-title">Bond Pricing &amp; Yield to Maturity</h1>
   <p class="tl-dek">A bond's price is nothing more than the present value of a known stream of future cash — the same discounting arithmetic as any other asset, applied to coupons and a face value instead of dividends. Yield to maturity flips the question around: given the price the market is actually charging, what single discount rate explains it?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: basic compounding / present value (covered in this curriculum's returns &amp; compounding primer)</span>
   </div>
@@ -635,6 +635,7 @@
     them when they arrive.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict null" data-evidence="yield-move-fx-range" data-evidence-date="2026-09-27">
     <span class="tl-verdict-tag">Desk test: nothing found</span>
     <span><strong>yield-move-fx-range: a big day in the 10-year did not reliably mean a wild FX session.</strong>
@@ -644,6 +645,7 @@
     sessions a yield <em>fall</em> widened range on 3 of 3 pairs (+0.109, +0.208, +0.090) while a yield
     <em>rise</em>, the 2022 kind, did so on 0 of 3.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -737,7 +739,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coupon rate vs. YTM tells you par/premium/discount.</strong> Coupon = YTM → par; coupon &gt; YTM → premium; coupon &lt; YTM → discount.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The price-yield relationship is curved, not straight.</strong> That curvature (convexity) is why a duration-only estimate of a price move is an approximation, not exact — the subject of the very next lesson.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Current yield is not YTM.</strong> Coupon ÷ price leaves out the pull to par: $50 on $1,100 is 4.55% current yield but about 3.78% YTM over ten years. DGS10 is a YTM-type yield, so it can't be rebuilt from coupon ÷ price.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The formula prices the cash flows, not your ability to hold them (2022).</strong> Only \(y\) moved, and the broad US bond index lost about 13%. A holder who can wait still gets par; one forced to sell, like SVB in 2023, realises the discount. And a big 10-year move did not reliably widen FX (yield-move-fx-range, NULL).</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The formula prices the cash flows, not your ability to hold them (2022).</strong> Only \(y\) moved, and the broad US bond index lost about 13%. A holder who can wait still gets par; one forced to sell, like SVB in 2023, realises the discount.<!-- DESK:START --> And a big 10-year move did not reliably widen FX (yield-move-fx-range, NULL).<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>YTM assumes coupons are reinvested at YTM itself.</strong> Real reinvestment happens at whatever rate prevails later — the realized return on a held bond can differ from its quoted YTM.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Clean price ≠ dirty price between coupon dates.</strong> The formula here assumes valuation exactly on a coupon date; real settlement amounts include accrued interest.</span></div>
   </div>

@@ -223,12 +223,14 @@
 
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">Pitfalls and what's in this repo</h2>
+      <h2 class="sl-h2">Pitfalls<!-- DESK:START --> and what's in this repo<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚠️</div><div><h4>Extrapolation into illiquid corners</h4><p>Deep OTM strikes or long maturities often have no real quotes at all — a local vol read off there is a modeling artifact, not a market fact.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🌐</div><div><h4>FX surface symmetries</h4><p>FX desks quote in delta, and known EUR/USD-vs-USD/EUR symmetries exist. Converting to a strike/maturity C(K,T) grid carelessly can break those symmetries.</p></div></div>
+<!-- DESK:START -->
         <div class="sl-icard"><div class="sl-icard-badge">✅</div><div><h4>No Dupire code in this repo</h4><p>A grep for "Dupire" across every .js/.py file returns zero hits.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>"local vol" hits are unrelated</h4><p>The only 4 "local vol" phrase hits are an ATR-bucketing label in bot/backtest.py and the Lee-Mykland jump detector's rolling realized-vol window — a different, older sense of "local," not Dupire's σ(S,t).</p></div></div>
+<!-- DESK:END -->
       </div>
     </section>
 

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Interest Rate Parity — Covered vs. Uncovered</h1>
   <p class="tl-dek">One of these two theories is an accounting identity enforced by riskless arbitrage and holds to within a fraction of a basis point. The other one is a genuine economic hypothesis about what markets expect — and it has failed, on average, in almost every dataset anyone has tested it on for forty years. That failure is not a footnote; it is the empirical basis of the entire FX carry trade.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — the foundational FX theory this repo hasn't formalized yet</span>
+    <span class="tl-status concept">CONCEPT — the foundational FX theory<!-- DESK:START --> this repo hasn't formalized yet<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Time Value of Money</span>
   </div>
@@ -38,7 +38,7 @@
     <li>The worked example prices a 1-year USD/EUR forward at \(S=1.10\), \(r_d=5\%\), \(r_f=3\%\) as \(F^\ast \approx 1.1214\), then shows a hypothetical mispriced forward of 1.15 yielding a riskless $26,818.18 arbitrage on $1,000,000 — the exact trade that keeps CIP pinned in practice.</li>
     <li>Fama (1984) tested UIP's one-for-one prediction and found the regression coefficient is typically negative (Froot &amp; Thaler's 1990 survey reports roughly −0.8, not +1) — the forward premium puzzle: high-yielding currencies have tended to appreciate or hold flat rather than depreciate as UIP predicts, which is the empirical basis of the FX carry trade.</li>
     <li>The JPY/AUD carry-trade scenario shows both sides at once: the interest differential (~4.2pp) was pocketed largely intact through calm 2023–mid-2024 markets, then AUD/JPY fell 10%+ in about two weeks after the BoJ's 31 July 2024 hike — the carry trade is short a fat left tail, not free money.</li>
-    <li><strong>Real-world episode:</strong> in autumn 2008 even covered parity broke. After Lehman, non-US banks scrambled for dollars through FX swaps, nobody had the balance sheet to arbitrage the gap, and it narrowed only once the Fed's swap lines went unlimited in mid-October. The yen carry trade crashed in the same weeks. The desk's own carry test is <code>fx-factor-book-v2</code>, UNDERPOWERED: +0.61 out of sample is 1.5 SE, so it is not an edge.</li>
+    <li><strong>Real-world episode:</strong> in autumn 2008 even covered parity broke. After Lehman, non-US banks scrambled for dollars through FX swaps, nobody had the balance sheet to arbitrage the gap, and it narrowed only once the Fed's swap lines went unlimited in mid-October. The yen carry trade crashed in the same weeks.<!-- DESK:START --> The desk's own carry test is <code>fx-factor-book-v2</code>, UNDERPOWERED: +0.61 out of sample is 1.5 SE, so it is not an edge.<!-- DESK:END --></li>
   </ul>
 </div>
 
@@ -606,10 +606,11 @@
 
   <p>
     The tempting trading claim in this lesson is the carry trade itself: <em>UIP fails, so holding the
-    higher-yielder pays.</em> This desk has tested a carry basket once, and has looked at the yen carry-unwind
-    shape. Neither licenses the claim.
+    higher-yielder pays.</em><!-- DESK:START --> This desk has tested a carry basket once, and has looked at the yen carry-unwind
+    shape. Neither licenses the claim.<!-- DESK:END -->
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict underpowered" data-evidence="fx-factor-book-v2" data-evidence-date="2026-09-27">
     <span class="tl-verdict-tag">Desk test: too small to tell</span>
     <span><strong>fx-factor-book-v2: the carry basket's Sharpe is not an edge here.</strong> The incumbent carry
@@ -618,7 +619,9 @@
     <strong>0.41</strong>. The ledger's own instruction: do not cite the carry basket's out-of-sample Sharpe as an
     edge.</span>
   </div>
+  <!-- DESK:END -->
 
+  <!-- DESK:START -->
   <div class="tl-verdict context" data-evidence="yen-into-yields" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Desk data: base rate</span>
     <span><strong>yen-into-yields: the carry-unwind shape is too rare to score.</strong> The yen firming while US
@@ -626,12 +629,15 @@
     47% of the time, EUR/JPY 62%, AUD/JPY 47%. The shape can be described; nothing can be claimed about the week
     after.</span>
   </div>
+  <!-- DESK:END -->
 
+<!-- DESK:START -->
   <p>
     One thing these boxes are not: evidence about the desk's validated yield-spread sleeve. That sleeve trades
     mean-reversion of a z-scored 2-year spread, a different claim from collecting carry, and it is not cited here as
     carry evidence. Covered parity itself, and the cross-currency basis, are untested on this desk.
   </p>
+<!-- DESK:END -->
 
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
@@ -673,8 +679,8 @@
   <p>
     <strong>Rate-differential signals more broadly</strong> underlie a huge
     amount of discretionary and systematic FX macro reasoning — central bank
-    divergence trades, "dollar smile" framing, and this project's own
-    empirical work on the US-Germany yield spread leading EUR/USD all start
+    divergence trades and "dollar smile" framing<!-- DESK:START -->, and this project's own
+    empirical work on the US-Germany yield spread leading EUR/USD<!-- DESK:END --> all start
     from the same interest-differential intuition IRP formalizes, whether or
     not the practitioner ever writes down the CIP/UIP equations explicitly.
   </p>
@@ -740,8 +746,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The higher-yielding currency trades forward at a discount, mechanically.</strong> This falls straight out of the no-arbitrage derivation and says nothing yet about where spot actually ends up.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The carry trade is short a fat left tail, not free money.</strong> The AUD/JPY unwind after the BoJ's 31 July 2024 hike erased years of accumulated carry in about two weeks.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A UIP "failure" is not an arbitrage opportunity.</strong> CIP is enforced by riskless arbitrage; a UIP deviation is a risk-bearing bet with a real downside, not a free lunch — and a "peso problem" can make a historical average look cleaner than the true underlying odds.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing in this repo computes CIP, UIP, or a carry signal yet.</strong> The forward premium puzzle is well-replicated in the broader literature — that is a different claim from a validated OOS edge on this repo's own data.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Even the identity needs someone to fund it, and carry is not an edge on this desk's data.</strong> In autumn 2008 CIP broke until the Fed's swap lines supplied the dollars arbitrageurs lacked. This desk's carry basket (fx-factor-book-v2, UNDERPOWERED) made +0.61 out of sample, 1.5 SE, with an in-sample of −0.12.</span></div>
+<!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Even the identity needs someone to fund it<!-- DESK:START -->, and carry is not an edge on this desk's data<!-- DESK:END -->.</strong> In autumn 2008 CIP broke until the Fed's swap lines supplied the dollars arbitrageurs lacked.<!-- DESK:START --> This desk's carry basket (fx-factor-book-v2, UNDERPOWERED) made +0.61 out of sample, 1.5 SE, with an in-sample of −0.12.<!-- DESK:END --></span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
@@ -823,6 +831,7 @@
       sample-independent measurement of the true expected return.
     </div>
   </details>
+<!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. Given that the forward premium puzzle is a well-replicated finding in the academic literature, why isn't that enough, on its own, for this repo to treat a carry-trade signal as validated?</summary>
     <div class="tl-answer">
@@ -838,6 +847,7 @@
       claim that a carry signal built in MacroFXModel would show an edge.
     </div>
   </details>
+<!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

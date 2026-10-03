@@ -255,7 +255,7 @@
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where this needs qualifying</div>
-        <p>Mantegna's original 1999 demonstration is an <strong>equities</strong> result — a Dow Jones basket, where the tree recovered recognizable industry clusters. Applying the same transform to an FX or cross-asset basket, as this lesson's worked example does, is mathematically sound but a <strong>different application than the one Mantegna tested</strong>. As of this lesson, that FX/cross-asset extension remains a concept — it is not built or tested anywhere in this repo's actual code (checked directly: no MST, graph-pruning, or correlation-to-distance logic exists in this repo's source alongside the correlation and eigenvalue tooling in <code>js/diversificationCore.js</code> and related files). Treat the FX framing as a plausible hypothesis worth testing carefully, not a proven technique.</p>
+        <p>Mantegna's original 1999 demonstration is an <strong>equities</strong> result — a Dow Jones basket, where the tree recovered recognizable industry clusters. Applying the same transform to an FX or cross-asset basket, as this lesson's worked example does, is mathematically sound but a <strong>different application than the one Mantegna tested</strong>.<!-- DESK:START --> As of this lesson, that FX/cross-asset extension remains a concept — it is not built or tested anywhere in this repo's actual code (checked directly: no MST, graph-pruning, or correlation-to-distance logic exists in this repo's source alongside the correlation and eigenvalue tooling in <code>js/diversificationCore.js</code> and related files).<!-- DESK:END --> Treat the FX framing as a plausible hypothesis worth testing carefully, not a proven technique.</p>
       </div>
     </section>
 
@@ -305,15 +305,21 @@
 
     <section class="sl-slide" data-slide="13">
       <div class="sl-kicker">Section 7</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
         <span class="sl-stamp-tag">Desk test: held up</span>
         <span><strong>breadth-all-down:</strong> all six indices down on one session (n=1,002 since 2008) → next-5 range <strong>SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]</strong>; two in a row +0.55 and +0.35. Direction 58-61% up, the ordinary drift. A range fact, not a bounce call. A cross-asset tree collapsing is not itself tested.</span>
       </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp null" data-evidence="dispersion-crowded-week" data-evidence-date="2026-09-23">
         <span class="sl-stamp-tag">Desk test: nothing found</span>
         <span><strong>dispersion-crowded-week:</strong> the opposite state, single stocks far apart under a calm index (68 setups), is not a wild week: SPX500 +0.07 [-0.06, +0.23], NQ +0.07 [-0.03, +0.17].</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>An MST is one correlation matrix from a trailing window, which quietly assumes correlations hold. In March 2020 a common need for cash drove every asset in the same week, a regime change faster than any window. January's tree described a market that was gone by mid-March.</p>
@@ -361,6 +367,7 @@
         <div class="sl-quiz-explain">By the time the sorted list reached GBP–CHF, both endpoints were already in the same connected component (via EUR–GBP and EUR–CHF). Adding it would close the EUR-GBP-CHF triangle into a cycle without connecting any new node — rejected regardless of how short it is.</div>
       </div>
 
+      <!-- DESK:START -->
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Is applying Mantegna's transform to an FX/cross-asset basket a technique this repo has validated?</h4>
@@ -369,6 +376,7 @@
         <button class="sl-quiz-opt">Yes — because the math is identical to the equities case</button>
         <div class="sl-quiz-explain">The transform and MST construction don't care what asset class the data comes from, so it runs correctly on FX data. But whether the resulting FX tree is economically meaningful is a separate empirical question — this repo has not tested it, and no MST/graph-pruning code exists here yet.</div>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="15">
@@ -380,8 +388,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Computing every pairwise distance gives a complete graph — fully connected, but still too dense to read as a picture.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Minimum Spanning Tree is the prune — exactly N−1 edges, no cycles, lowest possible total weight, built by Kruskal's (sort, add if no cycle) or Prim's (grow outward from a seed) algorithm.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The worked 5-node example revealed a hub-and-outlier shape — EUR as the structural hub, JPY reached only through AUD — that the raw ten-number table didn't show at a glance.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The FX/cross-asset application is a plausible extension of an equities result, not a validated one — and nothing in this repo's code builds or tests it yet.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The calm tree is not the crisis tree: in March 2020's dash for cash, correlations converged and the diversifiers moved in. Everything-down days precede a wider week on this desk's data (SPX500 +0.31 ATR), with direction at the ordinary drift.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The FX/cross-asset application is a plausible extension of an equities result, not a validated one<!-- DESK:START --> — and nothing in this repo's code builds or tests it yet<!-- DESK:END -->.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The calm tree is not the crisis tree: in March 2020's dash for cash, correlations converged and the diversifiers moved in.<!-- DESK:START --> Everything-down days precede a wider week on this desk's data (SPX500 +0.31 ATR), with direction at the ordinary drift.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

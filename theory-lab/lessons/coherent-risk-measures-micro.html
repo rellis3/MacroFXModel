@@ -274,18 +274,20 @@
 
     <section class="sl-slide" data-slide="12">
       <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">Where this shows up — and a check against this repo's code</h2>
+      <h2 class="sl-h2">Where this shows up<!-- DESK:START --> — and a check against this repo's code<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🏛</div><div><h4>Regulatory capital moved to ES</h4><p>The Basel Committee's Fundamental Review of the Trading Book (FRTB) replaced VaR-based market-risk capital with Expected Shortfall at 97.5% confidence, citing exactly this blind spot.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧩</div><div><h4>Convex risk measures optimize cleanly</h4><p>CVaR is provably convex — a direct consequence of coherence — so "minimize CVaR subject to a return target" is well-posed. Minimizing VaR directly is harder and can have multiple local optima.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🏢</div><div><h4>Aggregation across desks needs sub-additivity</h4><p>A firm-wide risk number built by summing desks' individual numbers needs the aggregation itself to behave sensibly — exactly where a naive VaR-only rollup can silently mislead a risk committee.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📋</div><div><h4>VaR didn't disappear — it got a companion</h4><p>Still simple, cheap, and intuitive to report, so it's typically shown alongside CVaR/ES today, not replaced by it.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Checked against this repo's actual code</div>
         <p>The full lesson describes this material as "conceptual… not a claim that any specific VaR/CVaR implementation is built or validated anywhere in this project." That's now out of date: <strong>js/metricsCore.js</strong> ships real <code>histVaR</code> and <code>histCVaR</code> functions — historical-quantile VaR and the mean-loss-beyond-that-quantile CVaR — which <strong>js/backtestStats.js</strong> actually calls to compute <code>var95</code>, <code>var99</code>, and <code>cvar95</code> on real strategy P&amp;L series. Separately, <strong>js/evtTail.js</strong>'s <code>potVarCvar()</code> computes GPD/POT-based VaR and CVaR for extrapolating past the sample. So VaR and CVaR — in both a plain historical form and a fitted-tail form — are built and running in this codebase today; a full coherence audit of this specific pipeline is the part that remains "conceptual."</p>
       </div>
-      <p class="sl-p">This is the first Risk Deep Dive in the curriculum, but not the first place these ideas surface. <a href="extreme-value-theory-micro.html">Extreme Value Theory, or How Bad It Gets, Given That It's Already Bad</a> already builds the peaks-over-threshold machinery behind <code>evtTail.js</code>'s fitted VaR/CVaR, and <a href="sharpe-family-deflated-micro.html">The Sharpe Ratio Doesn't Know How Many Times You Tried</a> covers the companion question of whether a risk-adjusted return number can be trusted at all.</p>
+      <!-- DESK:END -->
+      <p class="sl-p">This is the first Risk Deep Dive in the curriculum, but not the first place these ideas surface. <a href="extreme-value-theory-micro.html">Extreme Value Theory, or How Bad It Gets, Given That It's Already Bad</a> already builds the peaks-over-threshold machinery<!-- DESK:START --> behind <code>evtTail.js</code>'s fitted VaR/CVaR<!-- DESK:END -->, and <a href="sharpe-family-deflated-micro.html">The Sharpe Ratio Doesn't Know How Many Times You Tried</a> covers the companion question of whether a risk-adjusted return number can be trusted at all.</p>
     </section>
 
     <section class="sl-slide" data-slide="13">
@@ -321,11 +323,15 @@
 
     <section class="sl-slide" data-slide="15">
       <div class="sl-kicker">Section 14</div>
+      <!-- DESK:START -->
       <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
       <div class="sl-stamp untested">
         <span class="sl-stamp-tag">Not tested here</span>
         <span><strong>"Limit on Expected Shortfall instead of VaR, and the tail is under control"</strong> is not tested here: no limits or sizing on this desk run on either measure. A fair test would forecast daily VaR₉₅ and ES₉₇.₅ out of sample on the desk's own P&amp;L, count exceedances, and re-run the count after every model change.</span>
       </div>
+      <!-- DESK:END -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where the textbook version breaks</div>
         <p>The four axioms take the loss distribution as given and known. In 2012 it was a model output, chosen by the office the limit was meant to constrain, and built with an error. A CVaR computed from the same spreadsheet would have been understated too. Coherence describes the formula, not the inputs, so model risk sits upstream of the VaR-versus-CVaR choice.</p>
@@ -393,7 +399,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>CVaR is coherent — same example, CVaR sums exactly ($200 ≤ $200), which is why post-2008 regulation (FRTB) shifted capital requirements from VaR toward Expected Shortfall.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The failure needs a lumpy, tail-heavy distribution — smooth unimodal losses or perfectly correlated positions usually don't trigger it; defaults, jumps, and options are where it bites.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Coherence ≠ good estimation — a coherent formula fed a thin tail sample is still an unstable number; see Extreme Value Theory for the machinery built to stabilize it.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>A limit is only as honest as the model under it: in 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion. "ES beats VaR" is untested on this desk.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>A limit is only as honest as the model under it: in 2012 a VaR model change roughly halved the London Whale book's reported risk with no position cut, and losses passed $6 billion.<!-- DESK:START --> "ES beats VaR" is untested on this desk.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

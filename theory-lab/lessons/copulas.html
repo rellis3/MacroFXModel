@@ -24,7 +24,7 @@
     together far more often than that coefficient would ever suggest.
   </p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet built in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer; Extreme Value Theory helpful</span>
   </div>
@@ -45,18 +45,18 @@
       <li>The Gaussian copula has zero tail dependence (\(\lambda_L=0\)) for any correlation below 1, meaning extreme joint crashes become asymptotically independent events; the Clayton copula is built to have nonzero, asymmetric lower-tail dependence (\(\lambda_L=2^{-1/\theta}\), \(\lambda_U=0\)) that matches "crash together, don't necessarily rally together."</li>
       <li>Two dependence structures tuned to the same Kendall's \(\tau=0.40\) can imply wildly different joint-crash probabilities — asymptotically 0% (Gaussian) versus roughly 60% (Clayton) — while reporting an identical correlation-ish headline number.</li>
       <li>The Gaussian copula's industry-wide use in CDO pricing (David X. Li, 2000), fit mostly on calm historical data, understated real mortgage-default tail dependence and is a widely documented factor in how badly those tranches performed once the 2007-2008 crisis hit.</li>
-      <li><strong>Real-world episode:</strong> the super-senior CDO tranche lost money only if most of a pool defaulted together, so a zero-tail-dependence model priced it as near riskless. When US house prices fell nationwide, banks holding it wrote down tens of billions. Tail dependence on this desk's own instruments is untested.</li>
+      <li><strong>Real-world episode:</strong> the super-senior CDO tranche lost money only if most of a pool defaulted together, so a zero-tail-dependence model priced it as near riskless. When US house prices fell nationwide, banks holding it wrote down tens of billions.<!-- DESK:START --> Tail dependence on this desk's own instruments is untested.<!-- DESK:END --></li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-    Every correlation number this repo computes — the rolling Pearson
+    Every correlation number<!-- DESK:START --> this repo computes — the rolling Pearson
     correlation in this project's own pair-ranking tooling, the correlation matrix
     feeding the eigenvalue decomposition in this project's own diversification research,
     every "how related are these two instruments" question anywhere in the
-    codebase — is, underneath, the same single summary statistic: a number
+    codebase —<!-- DESK:END --> is, underneath, the same single summary statistic: a number
     between -1 and 1 that describes, on average, how linearly two series move
     together. It is an extremely useful number. It is also, by construction,
     blind to a specific and well-documented market phenomenon: two series can
@@ -647,6 +647,7 @@
     house-price fall, was barely in the calibration sample, so no fitting method could have recovered it from that data.
   </p>
 
+  <!-- DESK:START -->
   <div class="tl-verdict untested">
     <span class="tl-verdict-tag">Not tested here</span>
     <span><strong>Not tested here: "this desk's instruments crash together more often than their correlation
@@ -656,6 +657,7 @@
     count with a test pre-registered before the count is run. Expect few joint tail days, so the power has to be
     stated up front.</span>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
@@ -702,8 +704,8 @@
     convenient, thin-tailed dependence assumption is trusted well beyond the
     regime it was calibrated on, and it is exactly why choosing a copula
     family (Gaussian versus something with genuine tail dependence) is a
-    modeling decision that deserves the same scrutiny as any other assumption
-    in this repo's honest-validation discipline.
+    modeling decision that deserves the same scrutiny as any other assumption<!-- DESK:START -->
+    in this repo's honest-validation discipline<!-- DESK:END -->.
   </p>
 
   <div class="tl-solid amber">
@@ -721,8 +723,8 @@
     <p>
       Suppose two FX pairs show a comfortable rolling-window correlation of
       about 0.4 most of the time — the kind of number that, on a
-      correlation-based hedge score or diversification check like this repo's
-      this project's own pair-ranking tooling, reads as "meaningfully related but not
+      correlation-based hedge score or diversification check<!-- DESK:START --> like this repo's
+      this project's own pair-ranking tooling<!-- DESK:END -->, reads as "meaningfully related but not
       redundant": a portfolio holding both looks reasonably diversified,
       not like two copies of the same bet.
     </p>
@@ -739,8 +741,8 @@
       diversification benefit the correlation number implied doesn't fail
       randomly; it fails specifically during the risk-off shock, which is
       precisely when a book relies on it most. This is the exact blind spot a
-      linear-correlation-only view creates, and it is invisible to any tool —
-      in this repo or elsewhere — that only ever computes a single rolling
+      linear-correlation-only view creates, and it is invisible to any tool<!-- DESK:START --> —
+      in this repo or elsewhere —<!-- DESK:END --> that only ever computes a single rolling
       Pearson number and stops there.
     </p>
   </div>
@@ -778,8 +780,8 @@
       confidence interval on the estimate. A handful of joint crash
       observations in a 10-year sample is not enough to distinguish
       \(\lambda_L \approx 0.3\) from \(\lambda_L \approx 0.6\) with any real
-      precision — the same small-sample caution that applies throughout this
-      repo's tail-risk work (see the Extreme Value Theory lesson) applies
+      precision — the same small-sample caution that applies throughout <!-- DESK:START -->this
+      repo's <!-- DESK:END -->tail-risk work (see the Extreme Value Theory lesson) applies
       here with particular force, since a copula fit is trying to characterize
       exactly the rarest part of the data.
     </p>
@@ -790,8 +792,8 @@
       easy to simulate from. That is a real, legitimate reason to use it as a
       baseline — but it is not evidence that it's the right description of a
       specific pair's tail behavior. Any copula choice is itself a modeling
-      assumption, and per this repo's standard discipline (Lego Principle 5),
-      a claim that a tail-dependent copula improves risk management for a
+      assumption, and <!-- DESK:START -->per this repo's standard discipline (Lego Principle 5),
+      <!-- DESK:END -->a claim that a tail-dependent copula improves risk management for a
       specific book needs its own honest out-of-sample validation, not an
       appeal to the general reasonableness of the idea.
     </p>
@@ -806,8 +808,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Clayton copula is built for crash clustering.</strong> Nonzero lower-tail dependence, zero upper-tail dependence — "crash together, don't necessarily rally together."</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Same headline number, very different tail risk.</strong> Two structures tuned to identical Kendall's τ=0.40 can imply 0% versus roughly 60% joint-crash probability.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The 2008 Gaussian-copula/CDO history is a real cautionary tale.</strong> A thin-tailed model fit on calm historical data understated mortgage-default tail dependence at systemic scale.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The "safest" slice was a pure bet on the joint tail.</strong> Super-senior CDO tranches looked near riskless under \(\lambda_L=0\). The model's misfit was already visible in tranche-by-tranche implied correlations, and the losses ran to tens of billions. Whether this desk's own pairs are tail-dependent is untested.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The "safest" slice was a pure bet on the joint tail.</strong> Super-senior CDO tranches looked near riskless under \(\lambda_L=0\). The model's misfit was already visible in tranche-by-tranche implied correlations, and the losses ran to tens of billions.<!-- DESK:START --> Whether this desk's own pairs are tail-dependent is untested.<!-- DESK:END --></span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a flagged gap, not a built or validated tool.</strong> This repo has no copula implementation yet — any future module needs real crisis-period data and full OOS validation before it informs sizing.</span></div>
+    <!-- DESK:END -->
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
