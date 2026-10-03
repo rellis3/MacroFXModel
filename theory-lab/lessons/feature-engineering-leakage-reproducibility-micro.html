@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Feature Engineering, Leakage &amp; Reproducibility — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the worked z-score example, and a 6-question self-test?<a href="feature-engineering-leakage-reproducibility.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -250,7 +250,40 @@
     </section>
 
     <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">2010–2013: the spreadsheet behind the 90% threshold</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Reinhart and Rogoff's 2010 paper "Growth in a Time of Debt" found average growth of about <strong>−0.1%</strong> a year in advanced economies with public debt above 90% of GDP, a figure widely cited in the austerity debate. In 2013 graduate student Thomas Herndon couldn't reproduce it, got their spreadsheet, and with Michael Ash and Robert Pollin found an average that skipped five countries, excluded years, and equal weighting per country. Corrected: about <strong>2.2%</strong>.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>The authors</b>Result built in one working spreadsheet</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The spreadsheet</b>Five rows skipped; exclusion and weighting choices</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · reproducibility</b>No outsider can re-run the number</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Policy debate</b>Cites the threshold for three years</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Rebuilt: 2.2%, no cliff</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <div class="sl-stamp context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+        <span class="sl-stamp-tag">Context</span>
+        <span><strong>backtest-artifacts:</strong> a backtest that looks too good has a bug, usually in what it was allowed to see. A volatility tool: <strong>95% of "wins" scored before entry</strong>. A voting system: a survivorship fix sat on a deeper look-ahead; honest edge 0.23× cost. One mean-reversion system's entire edge: stops not live for the first hour.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Versioning data, code and parameters assumes the person re-running a result will notice when it is wrong. Reinhart and Rogoff's spreadsheet re-ran to −0.1% every time. Reproducing your own result catches drift; only an independent rebuild catches a mistake baked into the procedure.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -300,8 +333,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A feature is any computed input a model uses to predict something — and it only earns that role if it could have genuinely existed at the moment it's dated to.</p></div>
@@ -310,6 +343,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Target leakage: a feature derived from, or too tightly bound to, the very outcome being predicted — trivially "predictive" in a way that never survives contact with live data.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Reproducibility is a separate, practical discipline — fixed seeds, version-pinned data snapshots, and documented feature-computation code, or a "finding" quietly stops being reproducible.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already practices real causal feature computation in several modules — genuine progress, not a hypothetical concern, though it's scattered rather than centralized as unified point-in-time infrastructure.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Reproducible is not the same as right: Reinhart and Rogoff's −0.1% re-ran perfectly and became about 2.2% only when an outsider rebuilt it. Desk context: a volatility tool scored 95% of its "wins" before entry.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -460,5 +494,6 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

@@ -37,6 +37,7 @@
       <li><strong>Schema versioning</strong>: a pipeline's output schema changing over time without a version tag silently breaks anything downstream that assumed the old shape.</li>
       <li>This lesson is the infrastructure <a href="research-pipeline-hypothesis-to-backtest.html">The Research Pipeline: Hypothesis to Honest Backtest</a> assumes exists when it talks about reproducibility — and it connects directly to the same theme in <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a>.</li>
       <li>A pipeline bug and a genuine strategy-alpha decay can look statistically identical from the equity curve alone — reproducible, versioned data lineage is the only way to rule the pipeline out first.</li>
+      <li><strong>Real-world episode:</strong> on 1 August 2012 Knight Capital deployed new router code to seven of eight servers; a reused flag still meant "run the old Power Peg code" on the eighth, and about $440 million was lost in roughly 45 minutes. On this desk, backtest-to-live gaps (85.7% vs 39.6% win rate on one system) were audited as machinery first (<code>backtest-artifacts</code>, context).</li>
     </ul>
   </div>
 
@@ -288,6 +289,80 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: Knight Capital, eight copies and one stale flag</h2>
+  <p>
+    This lesson's two failure modes, independent copies that drift and a field whose meaning changes without a
+    version tag, are usually slow: they surface as a reconciliation break two years later. On 1 August 2012 both
+    happened in one morning, inside a live order router, and cost a firm most of its capital in under an hour.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1 August 2012: 45 minutes</h3>
+    <p>
+      Knight Capital was one of the largest market makers in US equities. The New York Stock Exchange was launching a
+      new Retail Liquidity Program on 1 August, and Knight updated the code in its automated order router to support
+      it. The router ran on <strong>eight servers</strong>. According to the SEC's later order, a technician copied the
+      new code to seven of them; the eighth kept the old code, and no one checked.
+    </p>
+    <p>
+      The new code reused a flag. That flag had once switched on an old function called "Power Peg", which had not
+      been used since 2003 but had never been removed. On seven servers the flag now meant "handle this as a Retail
+      Liquidity Program order". On the eighth it still meant "run Power Peg", and Power Peg's way of tracking filled
+      orders had been broken by an earlier code change. When the market opened, the eighth server kept sending child
+      orders as if nothing had filled. Automated error emails had gone out before the open; nobody acted on them.
+      While staff tried to stop it, they removed the new code from the seven good servers, which made all eight
+      behave like the stale one.
+    </p>
+    <p style="margin-bottom:0">
+      In about 45 minutes Knight's router produced more than 4 million executions in 154 stocks, building billions
+      of dollars of unwanted long and short positions. The loss was about $440 million by the firm's own estimate that
+      week; the SEC's 2013 order put it at more than $460 million and fined Knight $12 million. Knight needed emergency
+      outside capital within days and was later acquired.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>New exchange program</b>Knight must update its router before the 1 August launch</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Deployment</b>New code reaches seven of eight servers; no second check</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · versioning &amp; one source of truth</b>A reused flag means one thing on seven copies and another on the eighth, with no version check to catch it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The eighth server</b>Runs dormant Power Peg code that can't see fills, so it keeps sending orders</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About $440 million lost in roughly 45 minutes; the firm is rescued and later acquired</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept, in two of its forms at once. Eight copies of a component that was
+    meant to be one authoritative version; and a field whose meaning changed in place, exactly like the basis-points
+    column in the worked example, with nothing that made the change visible to the reader still using the old meaning.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Eight cooks share a kitchen, and the head chef changes what the red sticker on an order means: it used to mean "make soup forever" and now it means "make a sandwich". Seven cooks get the new instructions; one doesn't. Every red sticker that reaches that cook starts a pot of soup that never stops. Writing down which version of the rules each cook has, and checking it before service, is the whole fix.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The lesson frames drift and silent schema changes as slow problems in research data, found by reconciliation long
+    after the fact. Knight shows two assumptions failing. First, speed: when the reader of a field is a live order
+    router, a meaning mismatch is not a quiet bias but a loss compounding every second. Second, rollback: "revert to
+    the last version" is only safe if the meaning of every flag and field is versioned together with the code that
+    reads it. Knight's rollback put the old code back on top of the new meaning and spread the fault to every server.
+  </p>
+
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>backtest-artifacts: when live falls short of backtest, rule out the machinery before calling it
+    decay.</strong> The ledger's claim is that a backtest that looks too good has a bug, usually in what it was allowed
+    to see. The Fibonacci-level system: 85.7% backtest win rate vs 39.6% live. One mean-reversion system's entire edge:
+    stops were not live for the first hour after entry. A volatility tool: 95% of "wins" scored before entry. This is
+    the red box below in practice: each gap needed the engine audited, not the market blamed.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Institutional data engineering teams treat storage format, single-source-of-truth ownership, lineage,
@@ -330,7 +405,7 @@
     <p>If your car starts getting worse gas mileage, that could mean the engine is genuinely wearing out — or it could mean your gas gauge is broken and lying to you. From the dashboard alone, both look exactly the same: the number just keeps getting worse. The only way to tell them apart is to actually check the engine and the gauge separately, not just stare harder at the dashboard. Same idea here — you have to check the data pipeline itself, not just squint at the declining performance chart.</p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Columnar storage is the modern practitioner-standard for large historical tick/bar archives.</strong> Fast column-range reads, efficient compression, and schema evolution support are concrete, structural reasons — not fashion.</span></div>
@@ -339,9 +414,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An unversioned schema change breaks downstream consumers silently, not loudly.</strong> A renamed column or a changed unit doesn't error — it quietly misinterprets new data as if it still meant the old thing.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This lesson is the infrastructure the research-pipeline and feature-engineering reproducibility discussions assume exists.</strong> Pinning data/code/parameters together only works if the underlying architecture can actually deliver a pinned historical vintage.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A pipeline bug and genuine alpha decay look identical from the equity curve alone.</strong> Only reproducible, versioned lineage can rule the pipeline out before concluding the decline is real.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A version mismatch can run at market speed.</strong> Knight Capital lost about $440 million in roughly 45 minutes from one un-updated server and a flag whose meaning had changed. Version code and the meaning of every field it reads together, and make rollback restore both.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is columnar storage a better structural fit than row-oriented storage for large historical tick/bar datasets?</summary>
@@ -442,5 +518,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

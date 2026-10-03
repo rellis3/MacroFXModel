@@ -35,6 +35,7 @@
       <li>Standard detection: a <strong>rolling median/MAD-based outlier filter</strong> and a <strong>maximum-plausible-return-per-tick bound</strong> — both computed from data available up to that point, never the whole sample.</li>
       <li>Missing-data handling is a genuine tradeoff, not a default: <strong>forward-fill</strong> (simple, but manufactures a fake flat/zero-return period), <strong>interpolation</strong> (smooths the gap, but invents data that never existed), and <strong>flagging-and-excluding</strong> (honest, but shrinks the usable sample) — each has a case where it's the wrong choice.</li>
       <li><strong>Mandatory pitfall:</strong> cleaning with whole-sample statistics ("remove anything &gt;5σ from the full-sample mean") is itself a lookahead-bias bug, exactly like the feature-construction leaks in <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a> — a cleaning step must only use information available up to that point in time.</li>
+      <li><strong>Real-world episode:</strong> on 8 December 2005 a Mizuho trader sold 610,000 J-Com shares at ¥1 instead of 1 share at ¥610,000. The prints were accurate and the trades stood, at a cost of roughly ¥40 billion: an extreme print is not automatically a bad print. Whether this desk's own cleaning choices change its results is untested.</li>
     </ul>
   </div>
 
@@ -341,6 +342,82 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: the fat finger the tape was right about</h2>
+  <p>
+    Failure mode 1 above describes the classic fat-finger print: a manual entry error produces one wild tick, the
+    price snaps back, and the cleaning job is to flag it and not let it poison anything downstream. The most famous
+    fat finger in market history did not fit that picture, because the error was in the order, not in the data.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>8 December 2005: 610,000 shares at ¥1</h3>
+    <p>
+      J-Com, a Japanese recruitment company, listed on the Tokyo Stock Exchange's Mothers market on 8 December 2005.
+      A trader at Mizuho Securities meant to sell <strong>1 share at ¥610,000</strong>. The order went in as
+      <strong>610,000 shares at ¥1</strong>. J-Com had only about 14,500 shares in issue, so the order offered more
+      than forty times every share that existed. A warning was reported to have appeared and been overridden.
+    </p>
+    <p>
+      The price collapsed to the exchange's daily limit and the order kept filling. Mizuho tried to cancel it and
+      could not: a flaw in the exchange's own trading system stopped the cancellation going through. Other firms and
+      individual traders bought the shares, and the firm was left short far more stock than could ever be delivered.
+      The trades stood; the settlement of shares that did not exist was resolved in cash. Mizuho's loss was roughly
+      ¥40 billion. The exchange's president resigned within weeks, several securities firms that had profited later
+      agreed under official pressure to give up those gains, and in 2009 a Tokyo court ordered the exchange to pay
+      Mizuho about ¥10.7 billion for the failed cancellation.
+    </p>
+    <p style="margin-bottom:0">
+      For a data cleaner, the uncomfortable fact is this: every print on the J-Com tape that morning was accurate.
+      An outlier filter would have been right to flag the session as extreme. A cleaning rule that then
+      <em>replaced</em> those prints as "bad ticks" would have erased trades that really happened, losses that
+      were really booked, and the profits other traders really made.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Order entry</b>A trader types 610,000 shares at ¥1 instead of 1 share at ¥610,000</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Pre-trade checks</b>A warning is overridden; nothing stops an order for more than 40× the shares in issue</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The exchange</b>A system flaw blocks the cancel, so the order keeps executing at the daily limit</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · bad print vs. bad trade</b>The tape is accurate. Flagging is right; deleting it as a fat-finger tick would erase trades that stood</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Mizuho loses roughly ¥40 billion; the exchange's president resigns</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. Detection and handling really are separate decisions: the same
+    extreme session is "flag it" for detection and "keep it" for handling, because the venue's record says it
+    happened.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Someone at a bake sale meant to sell one cake for $610 and instead put up a sign selling 610 cakes for $1 each, and people really bought them. If you later tidied up the sales book by crossing out the "weird" $1 sales, the book would look normal, but it would be lying: those sales really happened and somebody really lost a lot of money.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The fat-finger signature in this lesson assumes the mistake lives in the data: one isolated tick, miles from its
+    neighbours, then a snap back. J-Com broke that assumption. The mistake lived in the order, the data recorded it
+    faithfully, and the extreme session was a real market event closer to the lesson's "halt and gap" case than to a
+    bad tick. An outlier filter answers "is this unusual?"; only the venue's trade record, including any trades it
+    later cancels, answers "did this happen?" A plausibility bound on <em>size</em> (shares traded against shares in
+    issue) would have caught the order before the fact; no price filter applied afterwards can tell you whether to
+    delete it.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: that this desk's cleaning choices leave its results unchanged.</strong> The desk's
+    ledger has no entry on data cleaning. A fair test would re-run each validated study with the outlier filter on and
+    off, and with forward-fill against flag-and-exclude for gaps, then report whether any verdict moves; and check every
+    print the filter removes against the venue's record of cancelled trades, so that only prints the venue itself
+    voided are dropped.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Production data-cleaning pipelines run these checks as streaming, one-tick-at-a-time computations —
@@ -390,7 +467,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Four distinct failure modes, four distinct signatures.</strong> Fat-finger prints, stale quotes, halts, and duplicate/out-of-order timestamps each need their own detection and handling — not one blanket rule.</span></div>
@@ -399,9 +476,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Every missing-data strategy has a real, concrete failure case.</strong> Forward-fill manufactures fake calm; interpolation invents data; flagging-and-excluding shrinks the sample. There is no universally-correct default.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Detection and handling are separate decisions.</strong> Flagging a bad value is a different question from deciding what, if anything, replaces it — conflating the two hides the tradeoff.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log every cleaning decision.</strong> An unrecorded fix is indistinguishable from silent corruption once enough time has passed.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An outlier is not the same as an error.</strong> J-Com's 2005 fat finger was a real, standing trade, recorded accurately. Flag extremes, but remove only what the venue says never happened, and log the decision.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is a stale quote often more dangerous to catch than an outright feed disconnect?</summary>

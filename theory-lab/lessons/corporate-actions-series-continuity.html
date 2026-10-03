@@ -36,6 +36,7 @@
       <li>Futures rolls: two named, well-known methodologies — <strong>back-adjustment ("Panama method")</strong>, which splices contracts by a constant additive offset so the roll date shows zero jump, and <strong>ratio-adjustment</strong>, which splices by a multiplicative ratio instead.</li>
       <li><strong>The real, well-documented tradeoff:</strong> a back-adjusted series can go negative or lose its relationship to actual historically-traded price levels — which breaks any calculation based on percentage returns off that level, even though it correctly fixes the jump problem.</li>
       <li>This is a classic, well-documented source of silent backtest corruption if missed — not a hypothetical edge case.</li>
+      <li><strong>Real-world episode:</strong> on 20 April 2020 the May WTI contract settled at −$37.63 while June stayed near $20. Depending on its roll rule, a "continuous" oil series shows that day as −$37.63, about $20, or (ratio-adjusted) sign-flipped. Whether this desk's signals survive a change of roll method is untested.</li>
     </ul>
   </div>
 
@@ -258,6 +259,76 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: the day "the oil price" depended on the roll rule</h2>
+  <p>
+    The red box above warns that a back-adjusted futures series can drift <em>negative</em>, and treats a negative
+    level as the tell-tale sign of an adjustment artifact. On 20 April 2020 a real, traded futures price went
+    negative, and every continuous series built on that contract had to decide what to show.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>20 April 2020: WTI settles at −$37.63</h3>
+    <p>
+      In the spring of 2020 lockdowns cut oil demand faster than producers could cut supply, and crude went into
+      storage. The NYMEX WTI contract is settled by physical delivery at Cushing, Oklahoma, so as storage there
+      filled, holding a contract into expiry meant needing somewhere to put a thousand barrels per contract. In early
+      April the exchange told the market its systems could handle negative prices.
+    </p>
+    <p>
+      On Monday 20 April, the day before the May contract's last trading day, long holders who could not take
+      delivery had to sell to almost nobody. The May contract settled at <strong>−$37.63 a barrel</strong>, the first
+      negative settlement in the contract's history, after settling at roughly $18 the Friday before. The June
+      contract, a month further out, stayed positive, at around $20. Products that held front-month contracts close
+      to expiry were caught: a retail oil product sold by Bank of China left its customers with heavy losses and
+      later drew regulatory penalties, while the largest US oil ETF had already been moving its holdings into later
+      months.
+    </p>
+    <p style="margin-bottom:0">
+      For this lesson the striking part came afterwards, in the data. "The oil price on 20 April 2020" has no single
+      answer. A front-month series that rolls at expiry shows −$37.63. A series that rolls a few days early, as many
+      vendor continuous contracts do, was already on June and never shows a negative print. A ratio-adjusted series
+      that rolls on that day has to divide by a negative number. Same market, same day, three histories.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Demand collapse</b>Lockdowns cut oil use; storage at the delivery point fills</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>May contract holders</b>Can't take delivery, so they must sell before expiry at any price</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The exchange</b>Settles May WTI at −$37.63 on 20 April, while June stays near $20</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · series continuity</b>The same day reads −$37.63, about $20, or sign-flipped, depending on when and how each continuous series rolls</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Backtests, screens and vol estimates built on different "oil price" series disagree about the same day</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. Nothing in the raw data was wrong. Every series was a faithful
+    splice of real settlements; the roll rule decided which settlements went in.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The lesson's methods assume two things that held for over a century of oil futures: traded prices are positive,
+    and the roll is a small gap between two nearby prices. Ratio-adjustment needs both, because it multiplies history
+    by old-price over new-price; with the old price at −$37.63 that ratio is negative and flips the sign of everything
+    before it. A percentage return on the front-month series, from about $18 to −$37.63, comes out near −300%, which a
+    simple return on a long position in an asset can never reach, while the dollar change is a real loss per barrel.
+    For futures the honest unit is dollar P&amp;L on the contract held, which is the Panama series' strength. And a
+    negative level stopped being proof of an artifact: it was the market.
+  </p>
+
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Untested</span>
+    <span><strong>Not tested here: that a breakout or trend signal on a continuous futures series reflects the market
+    rather than the roll.</strong> This desk has no ledger entry on roll handling. A fair test would rebuild the same
+    signal on a back-adjusted series, a ratio-adjusted series and per-contract data with explicit rolls, check that
+    the trades agree, and count how many signals fall within a few sessions of a roll date against the share of
+    sessions that are that close to a roll.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Serious futures research desks typically maintain <em>both</em> a back-adjusted and a ratio-adjusted
@@ -283,7 +354,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A raw price series is not directly usable across a split, dividend, or futures roll.</strong> The jump it shows is real in the raw data but fake as a tradeable return.</span></div>
@@ -292,9 +363,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither futures adjustment method is free.</strong> Back-adjusted series can drift to unusual or negative levels far in the past, breaking percentage-return math; ratio-adjusted series distort absolute historical price levels instead.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Getting this wrong is a classic, well-documented source of silent backtest corruption.</strong> An un-adjusted roll or split can manufacture large fake single-day returns that a momentum or breakout signal will misread as genuine market behavior.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Choose the adjustment method to match the calculation.</strong> Dollar P&amp;L and position sizing want back-adjustment; percentage-return statistics want ratio-adjustment.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A negative print can be real, and the roll rule decides whether you see it.</strong> On 20 April 2020 WTI settled at −$37.63; ratio-adjustment across that roll divides by a negative price, and a percentage return through zero is meaningless. Know the roll rule before trusting a "continuous" price.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does a 2-for-1 stock split make a raw, unadjusted price series show a fake 50% loss, and what does back-adjustment do to fix it?</summary>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The Data Pipeline — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full stage-by-stage writeup, worked example, and a 5-question self-test?<a href="data-pipeline-raw-to-trading-ready.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -339,7 +339,40 @@
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">6 May 2010: the Flash Crash</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>A fund sold 75,000 E-mini S&amp;P 500 contracts (about $4.1 billion) through a volume-targeting algorithm. The Dow fell close to 1,000 points, about 9%, in minutes and recovered most of it in roughly half an hour. The SEC–CFTC report described firms' own data-integrity checks pausing their trading as feeds stopped looking consistent. Market orders hit stub quotes: Accenture traded at one cent. After the close the venues cancelled over 20,000 trades, in more than 300 securities, executed more than 60% from the 2:40 p.m. price.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Sell program</b>Large E-mini algorithm, thin market</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Liquidity providers</b>Integrity checks trip; quotes pulled</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Order books</b>Stub quotes fill; Accenture at $0.01</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · capture, then clean</b>Raw prints captured; venues cancel trades hours later</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Two records of one afternoon</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">What this desk found, and where the textbook breaks</h2>
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Untested</span>
+        <span><strong>Not tested here:</strong> that the historical bars this desk backtests on match what its live feed showed at the time. A fair test records live bars as they form, re-fetches the same window from the historical source days later, and counts and sizes the bars that differ.</span>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The map assumes stages are passive and in order: capture fixes the truth, cleaning looks back at it. On 6 May firms' validation stages were part of the market, and cleaning needed the venues' cancellations, which arrived after the close. "Clean as of the close" and "clean as of next morning" are different datasets.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -389,8 +422,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Raw ≠ trading-ready — a tick passes through capture, validation, cleaning, normalization, bar construction, and storage before anything gets modeled on it.</p></div>
@@ -399,6 +432,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Time bars are the default — and the statistically weakest — because trading activity clusters unevenly across a session, and a fixed clock can't tell a quiet minute from a frantic one.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Volume and dollar bars sample by activity, not the clock, so each bar keeps representing a comparable slice of genuine turnover — pushing returns closer to IID and Gaussian.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This is the map, not the destination — cleaning, normalization, storage, and point-in-time serving each get their own dedicated lesson next in this category.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Capture first, correct later, and date the correction: on 6 May 2010 the venues cancelled over 20,000 trades after the close, so the raw and corrected tapes differ. Whether this desk's historical bars match what its live feed showed is untested.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
