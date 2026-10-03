@@ -37,6 +37,7 @@
       <li>Half-life of mean reversion is \(t_{1/2} = \ln(2)/\theta\), derived by solving the drift-only decay \(\mathbb{E}[X_t-\mu] = (X_0-\mu)e^{-\theta t}\) for the time the expected deviation shrinks by half.</li>
       <li>To fit this to daily data you regress an AR(1), \(X_t = \mu(1-\phi) + \phi X_{t-1} + \epsilon_t\), then convert \(\phi \to \theta\) via \(\theta = -\ln(\phi)/\Delta t\); the worked example uses \(\phi = 0.90 \Rightarrow \theta \approx 0.105\)/day \(\Rightarrow\) half-life \(\approx 6.58\) days (and contrasts \(\phi=0.98 \Rightarrow \approx 34.3\) days).</li>
       <li>The interactive slider defaults to \(\theta = 0.15\), showing a half-life of \(\approx 4.6\) days for the simulated mean-reverting path.</li>
+      <li><strong>Real-world episode:</strong> the August 2007 "quant quake". Crowded mean-reversion books lost heavily on 7–9 August as forced selling pushed prices further from fair value, then the reversion arrived on 10 August, too late for funds already forced out. This desk's OU-band test was underpowered (<code>ou-bands-fx-crosses</code>: only 4 of 68 trades reached the target) and its daily band fade was null (<code>daily-band-fade</code>).</li>
     </ul>
   </div>
 
@@ -486,6 +487,97 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the August 2007 "quant quake"</h2>
+  <p>
+    The pitfalls box below warns that a half-life describes the <em>expected</em> path, and that a single path
+    can widen before it narrows. In one week of August 2007 that happened to a whole industry at once, and it
+    happened because many funds were running the same rubber band.
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>7–10 August 2007: mean reversion runs backwards for three days</h3>
+    <p>
+      By the summer of 2007, losses on US subprime mortgages were spreading through credit markets. In the
+      week of 6 August, a different corner of the market broke: quantitative long/short equity funds. These
+      funds held large, diversified, market-neutral books built partly on short-horizon mean reversion. They
+      bought stocks that had fallen too far relative to their peers and sold stocks that had risen too far, and
+      waited for the drift term \(\theta(\mu - X_t)\) to close the gap. Without any obvious news in the stocks
+      themselves, many of these funds suffered sudden, severe losses over a few days. One large bank's flagship
+      quant fund took in about $3 billion of new capital in mid-August after its losses.
+    </p>
+    <p>
+      Amir Khandani and Andrew Lo reconstructed the week with a deliberately simple strategy: each day, buy the
+      previous day's losers and sell the previous day's winners, which is a pure bet on short-horizon reversion.
+      In their simulation it <strong>lost heavily on 7, 8 and 9 August and then rebounded sharply on 10
+      August</strong>. Their explanation, which they offered as a hypothesis, not a proven fact: at least one
+      large fund unwound a quant equity book quickly, probably to raise cash or cut risk after losses
+      elsewhere. Its selling pushed the same stocks the same way for days. Other funds holding similar positions
+      took losses, hit their own risk limits, and had to sell too. They also documented that the simple
+      strategy's returns had been shrinking for years as more money chased it, which pushed funds to use more
+      leverage to keep returns up.
+    </p>
+    <p style="margin-bottom:0">
+      The reversion did come, on Friday 10 August. Funds that had been forced to cut on the Wednesday and
+      Thursday sold near the bottom and missed it. That is the pitfall in the box below, "stopped out right
+      before the expected reversion would have arrived", happening to an industry rather than to one trade.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Credit turmoil, summer 2007</b>Subprime losses spread; funds exposed to credit need cash or less risk</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>A large fund (hypothesised)</b>Raises cash fast by unwinding its most liquid book, a quant long/short equity portfolio</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Prices</b>Its longs fall and its shorts rise, so the stocks crowded books own move away from "fair" together</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b>★ This lesson · θ(μ − X)</b>Reversion books read the gap as a bargain the drift term will close. But the push is a steady stream of selling, not random noise, so the gap widens for three days</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Similar quant funds</b>Losses hit risk limits, so they are forced to cut the same positions, which feeds the move</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Heavy losses 7–9 Aug; a sharp rebound on 10 Aug, too late for books already forced out</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> The OU model assumes that whatever pushes \(X\) away
+    from \(\mu\) is \(\sigma\,dW_t\): mean zero, no memory, independent of everyone's positions. In August 2007
+    the push was a large, persistent, one-directional flow, so it behaved like a drift <em>away</em> from
+    \(\mu\) for as long as it lasted. The model also treats \(\theta\) as a constant of nature. In practice the
+    pull-back is supplied by traders with capital to buy what others are selling. When those traders are the
+    ones being forced out, \(\theta\) drops toward zero exactly when the deviation is largest.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The rubber band pulling the ball back to the post was really a lot of people each holding a bit of the band. In August 2007 some of them had to let go all at once, and someone else was dragging the ball away on purpose. The ball went a long way from the post before everyone grabbed the band again, and by then many of the people who'd let go had already lost.</p>
+  </div>
+
+  <p>
+    The tempting trading claim is the one this lesson invites: <em>fit θ, put bands around μ, and fade price
+    when it is stretched, holding for about a half-life.</em> This desk has tested both a literal OU-band version
+    and a plainer band fade.
+  </p>
+
+  <div class="tl-verdict underpowered" data-evidence="ou-bands-fx-crosses" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Underpowered</span>
+    <span><strong>ou-bands-fx-crosses: OU-optimal entry/exit bands vs fixed ±2σ bands</strong> on AUD/NZD, EUR/CHF,
+    EUR/GBP and AUD/CAD. Only <strong>22 out-of-sample trades against a floor of 30</strong>, so this universe cannot
+    test the idea at daily frequency. Pooled OU +0.67 vs ±2σ −0.07 out of sample, but +0.07 vs +0.46 in sample.
+    The telling number: <strong>of 68 closed OU trades, 46 (68%) ended on the 3-half-life time stop, 18 on the stop,
+    and only 4 (6%) reached the OU target.</strong> These crosses mostly drifted part of the way back and rarely
+    finished the reversion.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="daily-band-fade" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>daily-band-fade: a daily close outside a volatility band, faded toward the EMA20.</strong>
+    Pre-registered, 25 FX pairs plus gold, 2016–2026, costs on. Vol band, 5 days, |z| ≥ 2: <strong>+0.08 sigma,
+    t 0.85</strong> against a shuffled-return null whose 95th percentile is 2.00. The vol-targeted book (485 trades)
+    made Sharpe 0.14 ± 0.30, the 82nd percentile of a random-entry control whose 95th is 0.40. Price outside the
+    band was no more likely to come back than shuffled prices were.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     OU fitting shows up most visibly in <strong>statistical arbitrage / pairs
@@ -576,7 +668,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OU equation is drift plus diffusion.</strong> \(dX_t = \theta(\mu-X_t)dt + \sigma dW_t\) — a predictable pull back toward \(\mu\), sized by \(\theta\), plus unpredictable noise sized by \(\sigma\).</span></div>
@@ -586,9 +678,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>φ ≥ 1 means the model doesn't apply, not "very slow reversion."</strong> The half-life formula breaks down (undefined or negative θ) — that's the algebra telling you to stop, not to force a number.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>θ, μ and σ are all assumed constant — real markets don't cooperate.</strong> A drifting "true" mean, small-sample bias toward φ≈1, and regime-dependent reversion speed can all distort a single full-sample fit.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This is a research candidate, not a described feature — it would need synthetic-data unit tests and a real OOS trade count before touching real prices.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A crowded rubber band can run backwards.</strong> In August 2007 forced selling pushed quant books' stocks away from fair value for three days before the reversion came. On this desk, OU bands on FX crosses were untestable (22 OOS trades; only 4 of 68 trades, 6%, reached the OU target) and a daily band fade was null (t 0.85).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What happens to the OU process, and to its half-life, as \(\theta \to 0\)?</summary>
@@ -764,5 +857,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Cointegration — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the worked AUD/USD example, and a 6-question self-test?<a href="cointegration.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -267,7 +267,44 @@
     </section>
 
     <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">LTCM, 1998: the leash held, the fund didn't</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Long-Term Capital Management, founded in 1994 and with Nobel laureates Myron Scholes and Robert Merton among its partners, ran <strong>convergence trades</strong>: pairs tied together by economics, such as the newest 30-year Treasury against a nearly identical older one that was only cheaper because it was harder to trade. The spreads were tiny, so leverage was roughly 25 times capital. After Russia devalued and defaulted on 17 August 1998, investors fled into the most liquid bonds. The spreads stretched far past their history, and LTCM lost about $4.6 billion in less than four months. On 23 September a consortium of 14 banks and brokers, convened by the New York Fed, put in about $3.6 billion to take the book over and unwind it.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Russia, Aug 1998</b>Devalues and defaults on domestic debt</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Global investors</b>Sell anything hard to trade, buy the most liquid bonds</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b>★ This lesson · the spread</b>A real leash, stretched far past its historical σ</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>LTCM, ~25:1</b>Margin calls force it to post collateral or cut</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Other arb desks</b>Cut the same trades, widening the spreads further</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>$3.6bn Fed-brokered takeover; fund wound down</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What this desk found when it tested the claim</h2>
+      <p class="sl-sub">The tempting claim: fit a levels regression, and when the residual's z-score is stretched, fade it.</p>
+      <div class="sl-stamp null" data-evidence="residual-reversion-fx" data-evidence-date="2026-09-20">
+        <span class="sl-stamp-tag">Null</span>
+        <span><strong>residual-reversion-fx:</strong> fading price minus an OLS macro fair value, out of sample on 6 instruments. <strong>Only 1/6 (EURUSD)</strong> clears both a real icEdge and an above-coin-flip hit rate: chance-level, <strong>mean icEdge −0.030, mean hit rate 0.485</strong>. No economic force closes that gap.</span>
+      </div>
+      <div class="sl-stamp validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17">
+        <span class="sl-stamp-tag">Validated</span>
+        <span><strong>yield-spread-sleeve, the contrast:</strong> a spread with an anchor. The z-scored 2-year yield spread, out of sample 2015–2025: <strong>~109 trades, 63% win, PF 2.2</strong>. Backtest plus paper trading since 2026-07, not a forward record.</span>
+      </div>
+      <div class="sl-quote"><strong>Where the textbook breaks:</strong> the test assumes tomorrow's spread comes from the same distribution as the sample. LTCM's σ came from years with no liquidity panic, and the force that pulls a spread back, other arbitrageurs with spare capital, became a forced seller. Stationary over decades is not stationary over the time your lenders give you.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -317,8 +354,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Correlation measures whether changes move together; cointegration asks whether the levels have a stable, bounded spread — a stronger, rarer condition.</p></div>
@@ -327,6 +364,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Johansen generalizes to baskets of three or more series, avoiding the arbitrary Y-vs-X choice and finding how many equilibria exist at once.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Passing a cointegration test only clears the first bar — lookahead bias, structural breaks, data-mining across candidate pairs, and slow half-lives can all still sink a live pairs trade.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already runs Engle-Granger-screened pairs trading (<code>portfolioBacktest</code>) and ADF/half-life diagnostics (<code>forge/residual.py</code>) — the "concept only" framing is now out of date.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>LTCM 1998: genuinely leashed spreads still stretched far enough, at ~25:1 leverage, to end the fund. On this desk, fading an FX levels-regression residual was null (1/6 instruments, mean hit rate 0.485); the anchored 2Y yield spread is the validated contrast.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -395,5 +433,6 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

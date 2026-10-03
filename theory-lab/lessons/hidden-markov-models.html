@@ -38,6 +38,7 @@
       <li>The worked example uses \(A_{11}=0.70\) (stay trending) and \(A_{22}=0.85\) (stay choppy), implying trending stretches last about 3.3 days on average and choppy stretches about 6.7 days — choppy is both stickier and, at a long-run share of ~66.7% vs. ~33.3%, more common.</li>
       <li>All practical HMM use reduces to three problems: evaluation (forward algorithm — how likely is this data under the model), decoding (Viterbi — the single most likely hidden state path), and learning (Baum-Welch, an EM variant — estimate \(A\) and the emission parameters from data).</li>
       <li>This is a concept lesson only — nothing here is built in this repo; it's an illustrative alternative to the existing hand-set <code>classifyRegime</code> and <code>dayTypeScore</code> classifiers, not a validated improvement over either.</li>
+      <li><strong>Real-world episode:</strong> 2022, when stocks and bonds fell together (S&amp;P 500 about −18%, the broad US bond index about −13%) after twenty years in which bonds had hedged stocks. A model whose states were learned on 2000–2021 had no state for it. This desk's spells of stocks and bonds falling together are mostly short (<code>stock-bond-flip</code>: median 5 sessions), and regime labels did not set up FX trades (<code>regime-divergence-fx</code>, null).</li>
     </ul>
   </div>
 
@@ -547,6 +548,90 @@
 </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 2022, when stocks and bonds fell together</h2>
+  <p>
+    An HMM can only infer states it has learned. Each state's emission distribution is fitted on history, and
+    the model then asks which of those known states best explains today. In 2022 the market moved into a state
+    that two decades of history had barely shown.
+  </p>
+
+  <div class="tl-story">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2022: the hedge stopped hedging</h3>
+    <p>
+      For roughly twenty years before 2022, US stock and Treasury returns were mostly <strong>negatively
+      correlated</strong>. On a bad day for stocks, bonds usually rallied, because the fear behind the sell-off
+      was weak growth, and weak growth meant lower rates. That made bonds the hedge in almost every balanced
+      portfolio. A two-state model fitted on those years would learn something like "calm: stocks up, bonds
+      quiet" and "stress: stocks down, bonds up". The second state's emission distribution would have bonds
+      rallying built into it.
+    </p>
+    <p>
+      Then inflation took over. US CPI inflation peaked at 9.1% year on year in June 2022. The Fed began raising
+      rates in March, then moved in 75bp steps from June. Now the fear was inflation and higher rates, which
+      hurt both assets at once. Bond prices fell as yields reset higher, and equities fell as the same higher
+      rates cut what future earnings were worth. Over the calendar year the S&amp;P 500 lost about 18% including
+      dividends and the broad US investment-grade bond index lost about 13%, its worst year on record. The
+      "stress" state everyone had modelled was the wrong stress.
+    </p>
+    <p style="margin-bottom:0">
+      This was not new to history: before about 2000, the stock-bond correlation had often been positive. It
+      was new to any model whose training window started after that.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Inflation surge</b>US CPI peaks at 9.1% y/y in June 2022</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Forced to tighten fast: hikes from March, then 75bp steps from June</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Bond holders</b>Reprice to a higher rate path, so bond prices fall instead of cushioning sell-offs</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Equity holders</b>Mark down future earnings at the higher rates, so stocks fall too</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link" style="border-color:var(--purple-bd);background:var(--purple-bg)"><b>★ This lesson · the hidden state</b>The regime flips from "bonds hedge stocks" to "both fall together". A model whose emission distributions were learned on 2000–2021 has no state that emits this, so \(P(S_t \mid O_{1:t})\) drifts toward the least-wrong known state</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Balanced portfolios lose on both legs: S&amp;P 500 about −18%, US bond index about −13%</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> The HMM in this lesson assumes a fixed set of states with
+    fixed emission distributions and a fixed transition matrix. 2022 broke all three at once. The state was
+    missing from the training window, the joint behaviour of stocks and bonds inside "stress" changed sign, and
+    the regime lasted far longer than a model fitted on brief flips would expect. More states and
+    Baum-Welch cannot learn a state the data never showed them. Only a longer history, or a judgement call
+    from outside the model, could have supplied it.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine your friend's photos only ever showed coats on cold days and t-shirts on warm days, so that's all you learned. Then one year it was cold and everyone wore t-shirts anyway, because something else had changed. Your guesses kept saying "warm" when it wasn't, because you'd never seen that combination before and had no box to put it in.</p>
+  </div>
+
+  <p>
+    The tempting trading claim: <em>work out which regime we're in, and that tells you what to do.</em> This desk
+    has measured how long stock-bond "falling together" spells last, and tested whether regime labels set up FX
+    trades.
+  </p>
+
+  <div class="tl-verdict context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Context</span>
+    <span><strong>stock-bond-flip: how long "stocks and bonds falling together" lasts.</strong> Negative 20-day
+    stock/yield correlation: <strong>71 episodes since 2008, median 5 sessions, p75 17; 17% of days</strong>. Only 36
+    clean flips, too few to test whether anything follows. As a rough check against this lesson's own formula
+    (not a test): if a constant stay-probability gave a median of 5 sessions, it would put the 75th percentile
+    near 10, not 17. The real spells have a longer tail than a fixed transition matrix produces.</span>
+  </div>
+
+  <div class="tl-verdict null" data-evidence="regime-divergence-fx" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>regime-divergence-fx: regime labels as an FX setup.</strong> Per-currency growth/inflation regime
+    labels (USD, GBP, EUR, CAD), 2008–2026. Diverging vs aligned months: <strong>EUR/USD range +0.03pp [−0.48, +0.52],
+    GBP/USD −0.33pp [−0.86, +0.23]</strong>, USD/CAD −0.09pp, EUR/GBP −0.11pp; return differences all through zero.
+    Knowing the regimes described the backdrop; it did not set up a trade.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   In real quantitative research, HMMs (and their econometric cousin, Markov-switching regression) show
@@ -625,7 +710,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An HMM infers a hidden regime from observable data</strong> instead of reading it off a hand-set rule — each state emits observations via its own probability distribution.</span></div>
@@ -635,9 +720,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Smoothed/Viterbi labels use future data — never use them live.</strong> A live signal needs the filtered probability \(P(S_t\mid O_{1:t})\), computed with only data up to now.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>More states always raise the likelihood — that's not evidence they're real.</strong> Use AIC/BIC and, above all, genuine OOS validation before trusting a richer state structure.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a concept lesson only.</strong> Nothing here is built in this repo — it's an illustrative alternative to <code>classifyRegime</code>/<code>dayTypeScore</code>, not a validated improvement over either.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An HMM cannot infer a state its history never showed it.</strong> In 2022 stocks and bonds fell together after two decades in which bonds had hedged stocks, so a model trained on those years had the wrong "stress" state. On this desk, regime labels did not set up FX trades (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. State the Markov property in your own words, and explain what it assumes away.</summary>
@@ -756,5 +842,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>
