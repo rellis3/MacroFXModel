@@ -177,3 +177,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',-apple-system,
 .sl-stamp.context .sl-stamp-tag{color:var(--blue);background:var(--blue-bg);border-color:var(--blue-bd)}
 .sl-stamp.underpowered .sl-stamp-tag,.sl-stamp.untested .sl-stamp-tag{color:var(--amber);background:var(--amber-bg);border-color:var(--amber-bd)}
 @media (max-width:600px){.sl-chain{flex-direction:column}.sl-chain-arrow{transform:rotate(90deg);align-self:center}}
+.sl-stamp-updated{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:12px;font-weight:600}
+.sl-stamp-ledger{margin-top:8px;font-size:12px}
+.sl-stamp-ledger summary{cursor:pointer;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px}
+.sl-stamp-ledger p{margin:6px 0 0;color:var(--text2);line-height:1.5}

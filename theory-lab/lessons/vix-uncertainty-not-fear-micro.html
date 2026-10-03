@@ -123,11 +123,11 @@
           <p>VIX above VIX3M. The next 30 days are priced as wilder than the next 90 — something is happening now.</p>
         </div>
       </div>
-      <div class="sl-stamp validated">
+      <div class="sl-stamp validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
         <span class="sl-stamp-tag">Validated</span>
         <span><strong>vix-inversion:</strong> first day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). Range, not direction.</span>
       </div>
-      <div class="sl-stamp validated">
+      <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
         <span class="sl-stamp-tag">Validated</span>
         <span><strong>mv-vixterm-range</strong>, an independent reproduction: next 20 sessions +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ, 14 de-clustered firings, both halves positive. <strong>Direction is null: 57% up against an 80%+ control.</strong></span>
       </div>
@@ -184,7 +184,7 @@
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The one "fear" test — and it failed</h2>
       <p class="sl-sub">If the VIX were a fear signal with a direction, the classic fear trade — buy gold — should pay after a spike.</p>
-      <div class="sl-stamp null">
+      <div class="sl-stamp null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
         <span class="sl-stamp-tag">Null</span>
         <span><strong>fear-gold:</strong> 58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on: excess -1.19% [-2.30, -0.48]. <strong>No fear bid in gold on average, and a month later gold had lagged its ordinary drift.</strong></span>
       </div>
@@ -296,5 +296,6 @@
   update();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

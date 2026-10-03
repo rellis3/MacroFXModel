@@ -152,10 +152,10 @@
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8 · The desk's verdict</div>
       <h2 class="sl-h2">The mechanism holds. The timing claims failed here.</h2>
-      <div class="sl-stamp null"><span class="sl-stamp-tag">Null</span><span><strong>"A 2-year shock means a volatile FX week" (front-end-shock).</strong> Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero).</span></div>
+      <div class="sl-stamp null" data-evidence="front-end-shock" data-evidence-date="2026-09-17"><span class="sl-stamp-tag">Null</span><span><strong>"A 2-year shock means a volatile FX week" (front-end-shock).</strong> Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero).</span></div>
       <div class="sl-stamp null"><span class="sl-stamp-tag">Null</span><span><strong>"Rates turn first, then equities" (rates-pivot-lead).</strong> 2,010 de-clustered events: Nasdaq −0.005% vs control [−0.021, +0.012]. Hit rate 54.1% against a 54.1% base rate. Rates and equities move in the <em>same</em> bar.</span></div>
       <div class="sl-stamp null"><span class="sl-stamp-tag">Null</span><span><strong>"Fear buys gold" (fear-gold).</strong> 58 VIX spikes: excess +0.07% [−0.42, +0.30] at five sessions, −1.19% [−2.30, −0.48] at twenty.</span></div>
-      <div class="sl-stamp context"><span class="sl-stamp-tag">Context</span><span><strong>Stocks and bonds falling together (stock-bond-flip).</strong> 71 episodes since 2008, median 5 sessions, p75 17. Too few clean flips to test what follows.</span></div>
+      <div class="sl-stamp context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17"><span class="sl-stamp-tag">Context</span><span><strong>Stocks and bonds falling together (stock-bond-flip).</strong> 71 episodes since 2008, median 5 sessions, p75 17. Too few clean flips to test what follows.</span></div>
     </section>
 
     <section class="sl-slide" data-slide="10">
@@ -436,5 +436,6 @@
   render();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

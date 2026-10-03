@@ -392,6 +392,27 @@ through, and what this desk found when it tested the claim.
 entry's own numbers; never round a null up. Slide decks use `.sl-chain` /
 `.sl-chain-link` / `.sl-stamp` / `.sl-stamp-tag` from `deck.css`, same variants.
 
+**Live verdicts (required whenever the ledger has an entry).** Tag the box with
+the ledger id and the ledger entry's date at the time of writing, and load the
+filler script before `</body>`:
+
+```html
+<div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+  <span class="tl-verdict-tag">Null</span><span>authored text</span></div>
+...
+<script src="../assets/verdicts.js" defer></script>
+```
+
+On the served site the script fetches `/theory-lab/desk-verdicts.json?ids=…`
+(only the ids asked for, only verdict/date/claim/result) and sets the tag from
+the ledger's *current* verdict, adds a collapsed "What the desk found", and
+shows an amber "re-tested since this lesson was written" note when the ledger
+entry is newer than `data-evidence-date` or the verdict changed. Offline it
+leaves the authored box untouched. `untested` boxes carry no `data-evidence`.
+`node js/lessonEvidence.test.mjs` checks every tag names a real ledger id,
+carries a date, and that its page loads the script; it also lists boxes written
+against an older entry so the prose can be refreshed.
+
 ---
 
 ## 6. Color system — what each color means

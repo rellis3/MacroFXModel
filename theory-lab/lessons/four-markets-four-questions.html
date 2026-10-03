@@ -354,12 +354,12 @@
     markets relate. Read them together and a pattern jumps out.
   </p>
 
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
     <span class="tl-verdict-tag">Null</span>
     <span><strong>Treasuries → equities: the inverted curve</strong> (<code>curve-inversion</code>). 12,581 daily observations 1976–2026 collapse to TEN inversion episodes. Recession within 24 months followed 6 of 10 — 60%, 95% CI [31%, 83%], an interval that contains a coin flip; within 12 months only 3 of 10. Forward Nasdaq against a month-matched control: +12m +10.5% vs +13.0% (p=0.33). The mirror killed it: steepening episodes returned −1.1% at +12m on n=6, worse than inversions. 2019-08: right about the recession, and +48.5% on the Nasdaq over the following year.</span>
   </div>
 
-  <div class="tl-verdict null">
+  <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Null</span>
     <span><strong>Treasuries → equities, intraday: "confirm the rates pivot, then pre-position"</strong> (<code>rates-pivot-lead</code>). 2,430 confirmed 2-year pivots, 2,010 de-clustered events at 1h: signed Nasdaq return −0.005% vs control [−0.021, +0.012]. Null at 1h, 2h and 4h, in both directions and both halves, and well powered. A confirmed rates low is followed by an up-move 54.1% of the time — and the base rate is 54.1%. Rates and equities move in the same bar, not in sequence.</span>
   </div>
@@ -369,7 +369,7 @@
     <span><strong>Treasuries → FX: "a front-end shock means a volatile FX week"</strong> (<code>front-end-shock</code>). Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero); after a 2Y DOWN shock USD/JPY was marginally wider (+0.33).</span>
   </div>
 
-  <div class="tl-verdict validated">
+  <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Validated</span>
     <span><strong>Options, read inside its own market: VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Range, not direction.</span>
   </div>
@@ -645,5 +645,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

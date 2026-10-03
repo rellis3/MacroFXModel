@@ -409,12 +409,12 @@
     the one that treats the VIX as a fear signal with a direction — is null.
   </p>
 
-  <div class="tl-verdict validated">
+  <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
     <span class="tl-verdict-tag">Validated</span>
     <span><strong>VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). <em>Range, not direction. Applies on the first day of an inversion; the effect on later days of a long inversion was not tested.</em></span>
   </div>
 
-  <div class="tl-verdict validated">
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
     <span class="tl-verdict-tag">Validated</span>
     <span><strong>An inverted VIX curve → a wider month, reproduced independently</strong> (<code>mv-vixterm-range</code>). Pre-registered: the range ratio over the next 20 sessions is +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ against a matched control, on 14 de-clustered firings (8% of sessions). Holds in both halves of the sample (+0.70 early, +0.35 late), so it is not one episode. <strong>Direction is null: 57% up against an 80%+ control.</strong> It independently reproduces the VIX-inversion result from a different harness — the main reason to believe it.</span>
   </div>
@@ -627,5 +627,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

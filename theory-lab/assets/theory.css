@@ -416,3 +416,8 @@ body.tl-tts-open #page{padding-bottom:calc(var(--tl-tts-bar-h, 90px) + 20px)}
 .tl-story h3{font-size:16px;margin:0 0 8px}
 .tl-story p{font-size:14px;color:var(--text2);margin:0 0 10px}
 @media (max-width:600px){.tl-chain{flex-direction:column}.tl-chain-arrow{transform:rotate(90deg)}}
+/* Live-ledger additions injected by assets/verdicts.js. */
+.tl-verdict-updated{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber);border-radius:var(--r);padding:6px 10px;margin-bottom:8px;font-size:12px;font-weight:600}
+.tl-verdict-ledger{margin-top:8px;font-size:12px}
+.tl-verdict-ledger summary{cursor:pointer;color:var(--text3);font-family:'DM Mono',monospace;font-size:11px}
+.tl-verdict-ledger p{margin:6px 0 0;color:var(--text2);line-height:1.55}

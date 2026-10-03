@@ -34473,6 +34473,21 @@ if (HIDE_DRILL_PRACTICE) {
   });
 }
 
+// Desk verdicts for Theory Lab lessons. A lesson tags a verdict box with
+// data-evidence="<ledger id>" and theory-lab/assets/verdicts.js asks for those ids
+// here, so a re-run study updates every lesson citing it with no lesson edit.
+// Lives under /theory-lab/ (education zone) because js/deskEvidence.js itself is
+// main-zone; only the requested ids and only the public fields go out -- never
+// the ledger's `doc` paths or its prompt-facing `use` directives.
+app.get('/theory-lab/desk-verdicts.json', (req, res) => {
+  const ids = String(req.query.ids || '').split(',').filter(id => /^[a-z0-9-]{1,64}$/.test(id)).slice(0, 60);
+  const entries = {};
+  for (const e of _DESK_EVIDENCE) {
+    if (ids.includes(e.id)) entries[e.id] = { verdict: e.verdict, date: e.date, claim: e.claim, result: e.result };
+  }
+  res.set('Cache-Control', 'no-cache').json({ entries });
+});
+
 // Dashboard static assets — served from project root.
 // journal.html and backtest.html are served as-is; index.html is the fallback.
 app.use(express.static(__dirname, {
