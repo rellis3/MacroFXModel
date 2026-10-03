@@ -35,7 +35,8 @@
       <li>For an investor with constant relative risk aversion \(\gamma\), the HJB equation solves out to a clean, wealth- and horizon-independent constant allocation: \(f^*=\mu/(\gamma\sigma^2)\) — the "Merton fraction."</li>
       <li>Setting \(\gamma=1\) (log utility) reduces this exactly, term for term, to the Kelly Criterion's \(f^*=\mu/\sigma^2\) — not an approximation, but a literal algebraic identity, because maximizing expected log-wealth is identical, as an optimization problem, to expected-utility maximization under \(U(c)=\ln c\).</li>
       <li>Fractional Kelly (e.g. half-Kelly for \(\gamma=2\)) is reframed as the exact utility-optimum for a more risk-averse investor, not a safety discount off one "true" answer.</li>
-      <li>This is the final lesson of the numbered Theory Lab curriculum, closing the loop by deriving the very first sizing formula the series introduced — and it still ends on the same discipline that governs everything in this repo: a piece of math is a tool, not a result, until it's proven on out-of-sample data with real costs.</li>
+      <li>This is the final lesson of the numbered Theory Lab curriculum, closing the loop by deriving the very first sizing formula the series introduced — and it still ends on the same discipline that governs everything<!-- DESK:START --> in this repo<!-- DESK:END -->: a piece of math is a tool, not a result, until it's proven on out-of-sample data with real costs.</li>
+      <li><strong>Real-world episode:</strong> LTCM, where Robert Merton was a partner, ran about 25-to-1 in 1998. At that leverage a constant fraction means a 1% fall in the positions forces selling about a quarter of the book, and after Russia's default the market knew the positions, so the rebalancing the model assumes free could not be done.<!-- DESK:START --> Sizing by the Merton fraction is untested on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -370,8 +371,8 @@
     <h3>Two traders, identical edge, different risk aversion — and two different, both-correct bet sizes</h3>
     <p>
       Two traders run the exact same systematic FX strategy. It has been
-      honestly validated out-of-sample (per this repo's own OOS-Sharpe
-      discipline), and both traders agree on its \(\mu\) (expected excess
+      honestly validated out-of-sample<!-- DESK:START --> (per this repo's own OOS-Sharpe
+      discipline)<!-- DESK:END -->, and both traders agree on its \(\mu\) (expected excess
       return) and \(\sigma^2\) (variance) — there is no disagreement about the
       edge itself, only about how much of their own capital they are willing
       to put behind it.
@@ -495,6 +496,86 @@
   </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: LTCM, 1998, and the rebalancing nobody could do</h2>
+  <p>
+    The pitfalls box below says the constant-fraction result assumes continuous, frictionless rebalancing. That
+    sounds like a technicality. It is not, once \(f\) is large. The clearest case involves the author of this lesson's
+    model himself.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Holding a constant fraction at 25 to 1</h3>
+    <p>
+      Robert Merton was a partner in Long-Term Capital Management, founded in 1994 by John Meriwether, alongside Myron
+      Scholes; the two shared the 1997 Nobel prize. The fund's trades were small, highly levered convergence bets, and
+      the full story, told through leverage and through spreads, is in <a href="kelly-criterion.html">Kelly Criterion
+      &amp; Position Sizing</a> and <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>. Nothing public says LTCM sized its
+      book with the formula in this lesson, so this is not a claim that Merton's model failed. It is about one assumption
+      this lesson's result shares with every levered book: that you can always rebalance back to your target fraction
+      at the current price.
+    </p>
+    <p>
+      In early 1998 LTCM held well over $100 billion of balance-sheet assets on under $5 billion of capital, roughly 25
+      to 1. Run the constant-fraction rule at that leverage. If the positions fall 1% in value, wealth falls by about 25%, and to keep
+      the same fraction \(f\) the position must shrink to match: the fund must sell <strong>about a quarter of
+      everything it owns</strong>. With \(f&lt;1\) the same rule says "buy after a fall"; with \(f&gt;1\) it says "sell
+      after a fall", and the larger \(f\), the larger the sale relative to the move.
+    </p>
+    <p style="margin-bottom:0">
+      After Russia devalued and defaulted on 17 August 1998, investors fled to the most liquid bonds and LTCM's spreads
+      widened together. Its lenders wanted more collateral, which is the de-levering the rule demands, enforced from
+      outside. But much of the market knew roughly what LTCM held, so selling meant moving prices against itself, and
+      every sale deepened the next mark. By late September it had lost about $4.6 billion. On 23 September the New York
+      Fed brought together fourteen banks and brokers, who put in about $3.6 billion to take over the portfolio and wind
+      it down. Many of the trades did converge later, after the fund could no longer hold them.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock · Russia, 17 Aug 1998</b>Devaluation and default; a global rush to liquid bonds</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Spreads</b>LTCM's convergence trades widen together, across markets that had looked unrelated</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the constant fraction</b>At \(f\approx25\), staying at \(f\) means a 1% fall in the positions requires selling about a quarter of the book</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Lenders and counterparties</b>Demand collateral, forcing the de-levering; the market knows the positions, so every sale moves prices against the fund</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About $4.6bn lost; a $3.6bn consortium takeover on 23 Sept 1998</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. \(f^*\) is a constant fraction of wealth, so whenever \(f&gt;1\) it is a
+    rule that sells into losses, and the sale scales with \(f-1\). Merton's derivation assumes that sale happens
+    instantly and costlessly at the quoted price. At 25 to 1, in a crowded market, it could not.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Merton's rule is like always carrying the same share of your weight in a backpack. If you're carrying less than your own weight, that's easy to keep right. If you borrowed so much you're carrying 25 times your weight, every little stumble means you must drop a quarter of the load right now, and if everyone is watching you drop it, they won't pay you much for what you drop.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The constant-fraction result assumes continuous rebalancing, no transaction costs, no price impact from your own
+    trades and a return process with continuous paths and constant \(\sigma\). 1998 broke all four together: the
+    spreads gapped, volatility jumped, the trades needed to restore \(f\) were large enough to move the market, and
+    lenders forced the timing. The lesson's own pitfall about a "no-trade region" under costs is the mild version of
+    this; price impact at high leverage is the severe one.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Not tested here: "sizing a validated sleeve at its Merton fraction, or a fraction \(1/\gamma\) of it,
+    gives the best growth for the drawdown on this desk's data."</strong> No sizing rule has been scored against
+    alternatives here. A fair test would estimate \(\mu\) and \(\sigma\) walk-forward with no look-ahead, size at
+    \(\gamma = 1, 2, 4\) and at a fixed-risk baseline, charge realistic costs including the rebalancing trades, and
+    compare realised growth and worst drawdown. With the few dozen to hundred trades a slow macro sleeve produces, the
+    \(\mu\) estimate will be noisy, which is itself an argument for \(\gamma\) well above 1.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Merton's 1969 and 1971 papers are foundational texts in continuous-time
@@ -584,7 +665,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Merton generalizes Kelly, it doesn't compete with it.</strong> Kelly's \(f^*=\mu/\sigma^2\) is the exact \(\gamma=1\) special case of Merton's \(f^*=\mu/(\gamma\sigma^2)\) — a literal algebraic identity, not an approximation.</span></div>
@@ -593,10 +674,13 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fractional Kelly is a mathematically exact optimum, not a discount.</strong> An investor with \(\gamma=2\) betting half-Kelly isn't being cautious relative to "the" right answer — half-Kelly is their own personal, exact optimum.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>γ is elicited, not observed.</strong> Just like \(\mu\) and \(\sigma^2\) are estimates, an investor's risk aversion must be inferred indirectly (surveys, revealed behavior, risk-premia calibration) — plugging in an over-precise γ overstates confidence in \(f^*\).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The clean constant-fraction result assumes away real frictions.</strong> Transaction costs turn the optimal policy into a "no-trade region"; time-varying \(\mu,\sigma\) (regimes, jumps) mean the "optimal constant" is only as stable as the return distribution actually is.</span></div>
+<!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here is built or validated in this repo.</strong> This lesson closes a theoretical loop; a sizing layer only ever gets applied on top of a signal that has already proven itself on real OOS Sharpe with a non-trivial trade count.</span></div>
+<!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Above \(f=1\), the constant fraction sells into losses, and the sale scales with \(f-1\) (LTCM, 1998).</strong> At roughly 25 to 1, a 1% fall in the positions demands selling about a quarter of the book; after Russia's default that rebalancing could not be done at quoted prices.<!-- DESK:START --> Sizing by the Merton fraction is untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does Merton's formula \(f^*=\mu/(\gamma\sigma^2)\) reduce exactly to Kelly's \(f^*=\mu/\sigma^2\) when \(\gamma=1\), rather than just approximately?</summary>

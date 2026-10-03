@@ -35,9 +35,10 @@
     <ul>
       <li>A random variable maps outcomes to numbers; expectation \(E[X]=\sum_i x_i P(X=x_i)\) is its probability-weighted average, and variance \(Var(X)=E[X^2]-(E[X])^2\) measures the typical squared spread around that average (worked example: a fair die has \(E[X]=3.5\), \(Var(X)\approx2.92\), \(\sigma\approx1.71\)).</li>
       <li>Two events are independent when \(P(A\cap B)=P(A)P(B)\) — knowing one tells you nothing about the other. Consecutive coin flips qualify; consecutive days of market volatility generally do not (volatility clustering).</li>
-      <li>The Law of Large Numbers guarantees a sample average converges to the true \(E[X]\) as \(n\to\infty\), but says nothing about how close it is at any small, fixed \(n\) — the reasoning behind this repo's "≥30 OOS trades" floor.</li>
+      <li>The Law of Large Numbers guarantees a sample average converges to the true \(E[X]\) as \(n\to\infty\), but says nothing about how close it is at any small, fixed \(n\)<!-- DESK:START --> — the reasoning behind this repo's "≥30 OOS trades" floor<!-- DESK:END -->.</li>
       <li>The Central Limit Theorem: the average of many independent copies of <em>any</em> random variable with finite mean/variance approaches a normal distribution as \(n\) grows — even a flat, uniform die roll's average becomes bell-shaped by \(n=30\) — which is why so many aggregated financial quantities look roughly normal even when no individual ingredient is.</li>
       <li>That CLT justification depends on independence, and daily financial returns visibly violate it via volatility clustering — so "assume returns are approximately normal" is a defensible starting point that gets corrected (e.g. by GARCH), not a settled fact.</li>
+      <li><strong>How it reached trading:</strong> Bachelier (1900) priced options as expected payoffs, and Harrison, Kreps and Pliska (1979–81) proved that every arbitrage-free price is a discounted expectation, which is how derivatives are priced today.</li>
     </ul>
   </div>
 
@@ -50,7 +51,7 @@
     <em>is</em>, or what it means to attach one to a number that changes from
     day to day — it assumes you already have the vocabulary. This primer
     supplies that vocabulary. It is the layer underneath almost everything
-    else in this repo: a return, a P&amp;L outcome, a volatility estimate, and
+    else<!-- DESK:START --> in this repo<!-- DESK:END -->: a return, a P&amp;L outcome, a volatility estimate, and
     a classifier's flag are all <strong>random variables</strong> — numbers
     whose value isn't known in advance but whose long-run behavior can still
     be described precisely. Expectation and variance are the two numbers used
@@ -65,7 +66,7 @@
   <p>
     None of this is trading-specific. It is the same mathematics used in
     insurance, physics, polling, and quality control. Reading it as general
-    literacy — not as a repo module — is the right frame; the payoff is that
+    literacy<!-- DESK:START --> — not as a repo module —<!-- DESK:END --> is the right frame; the payoff is that
     every later lesson that says "assume normality" or "the sample mean
     converges" is now a claim you can evaluate instead of a phrase you take on
     faith.
@@ -99,6 +100,25 @@
       but because so many observed quantities are themselves sums of many
       smaller, mostly-independent pieces.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>What is a trade worth before it resolves?</h3>
+    <div class="tl-origin-who">Price as expectation · Bachelier, 1900 — risk-neutral pricing · Harrison, Kreps &amp; Pliska, 1979–81</div>
+    <p>Every trade is a bet on outcomes that have not happened yet. Without probability a trader can list scenarios but cannot put one number on a position, compare two trades or say what an option should cost. (Expectation itself began in 1654, with Pascal and Fermat splitting the stakes of an unfinished game.)</p>
+    <p>Bachelier's 1900 thesis priced options on French government bonds as an expected payoff under a model of price changes. In 1979 Michael Harrison and David Kreps, followed by Harrison and Stanley Pliska in 1981, showed that if there is no arbitrage, every derivative price is a discounted expectation under a "risk-neutral" probability, the framework pricing libraries still use. Breeden and Litzenberger (1978) showed the reverse direction: option prices reveal the probabilities the market implies.</p>
+    <p>On a desk, probability is expected P&amp;L and hit rates in a backtest, the odds of a policy move read off interest-rate futures, and the loss probabilities behind risk limits.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Turning uncertain outcomes into numbers you can act on: the expected value of a trade, the chance of a loss, and the probabilities a market price implies.</dd>
+        <dt>Takes in</dt><dd>Distributions and the normal curve (<a href="primer-stats-normal.html">Statistics &amp; the Normal Distribution</a>).</dd>
+        <dt>Hands on to</dt><dd>Co-movement, pricing measures and sizing (<a href="primer-correlation-regression.html">Correlation &amp; Regression</a>, <a href="girsanov-risk-neutral.html">Girsanov &amp; the Risk-Neutral Measure</a>, <a href="kelly-criterion.html">Kelly Criterion</a>, <a href="bayesian-inference.html">Bayesian Inference</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -653,12 +673,12 @@
       \(n\) you happen to have. A 20-trade backtest's average return can sit
       meaningfully far from the strategy's true expected return; treating a
       small-sample average as if it already equaled the true mean is a direct
-      misreading of what the LLN guarantees. This is the same concern behind
+      misreading of what the LLN guarantees.<!-- DESK:START --> This is the same concern behind
       this repo's Lego Principle requirement of a "non-trivial OOS trade
       count (≥30)" before trusting an out-of-sample Sharpe number — 30 is not
       a magic number that suddenly invokes the LLN or CLT, it's a practical
       floor meant to keep the sample average from being dominated by a
-      handful of lucky or unlucky trades.
+      handful of lucky or unlucky trades.<!-- DESK:END -->
     </p>
     <p>
       <strong>Treating variance as risk without asking whether the
@@ -668,8 +688,8 @@
       strategies with rare large wins, or reversion strategies with rare large
       losses — the variance can understate the risk that actually matters
       (the size and likelihood of the bad tail specifically). Skewness and
-      kurtosis, covered in the Descriptive Statistics primer and used directly
-      in this project's own performance-metrics code, exist precisely to capture
+      kurtosis, covered in the Descriptive Statistics primer<!-- DESK:START --> and used directly
+      in this project's own performance-metrics code<!-- DESK:END -->, exist precisely to capture
       what variance alone misses.
     </p>
   </div>
@@ -680,10 +700,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A random variable is a rule-governed unknown.</strong> It maps outcomes in a sample space to numbers — a return, a P&amp;L, a day-type flag are all random variables in this precise sense.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Expectation is a probability-weighted average.</strong> \(E[X]=\sum_i x_i P(X=x_i)\) generalizes the plain sample mean to the case where outcomes aren't equally likely.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Variance is the same spread idea, at the population level.</strong> \(Var(X)=E[X^2]-(E[X])^2\) is the theoretical counterpart of the sample-variance formula from the Descriptive Statistics primer.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Law of Large Numbers guarantees convergence, eventually.</strong> A sample average approaches the true \(E[X]\) as \(n\to\infty\) — but says nothing about how close it is at any small, fixed \(n\), which is exactly why this repo requires ≥30 OOS trades before trusting a Sharpe number.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Law of Large Numbers guarantees convergence, eventually.</strong> A sample average approaches the true \(E[X]\) as \(n\to\infty\) — but says nothing about how close it is at any small, fixed \(n\)<!-- DESK:START -->, which is exactly why this repo requires ≥30 OOS trades before trusting a Sharpe number<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The CLT explains why sums look normal.</strong> The average of many independent copies of almost any random variable — even a flat die roll — approaches a normal distribution as \(n\) grows, which is why so many aggregated financial quantities look roughly bell-shaped.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The CLT's guarantee depends on independence.</strong> Daily financial returns violate it via volatility clustering — big moves cluster in time rather than scattering independently — which is exactly why "assume normal, then correct" (GARCH) is the honest framing, not "assume normal, done."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Variance alone hides skew.</strong> It penalizes upside and downside deviations identically, which understates the risk that actually matters for a strategy with a lopsided return distribution.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>A price is a probability-weighted average.</strong> Bachelier (1900) priced options as expected payoffs; Harrison, Kreps and Pliska (1979–81) showed every arbitrage-free price is a discounted expectation. Expected P&amp;L is the same calculation.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -856,5 +877,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

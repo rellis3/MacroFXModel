@@ -17,7 +17,7 @@
   <h1 class="tl-title">Entropy, KL Divergence &amp; Mutual Information</h1>
   <p class="tl-dek">Correlation only sees straight-line relationships. This lesson builds the machinery — entropy, KL divergence, mutual information — that measures how much two variables actually tell each other, in bits, whether or not the relationship is a straight line at all.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — background math, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Probability Primer, Correlation &amp; Regression primer</span>
   </div>
@@ -36,6 +36,7 @@
       <li>The worked example below computes both directions on a concrete biased-coin-vs-model pair: 0.919 bits one way, 2.329 bits the other — a 2.5× gap from swapping which distribution is "truth" and which is "model."</li>
       <li>Mutual information \(I(X;Y) = D_{\text{KL}}\big(P(X,Y)\,\|\,P(X)P(Y)\big) = H(X) - H(X|Y)\) measures how much knowing \(Y\) shrinks your uncertainty about \(X\) — a <em>nonlinear</em> generalization of correlation that catches relationships correlation is structurally blind to.</li>
       <li>The \(Y=X^2\) worked example makes this concrete and exact: linear correlation between \(X\) and \(Y\) is precisely zero, while mutual information comes out to 1.522 bits — clear, computable evidence that "uncorrelated" and "independent" are not the same claim.</li>
+      <li><strong>How it reached trading:</strong> through Kelly's 1956 result that the best growth rate on a noisy tip equals its information rate, which Thorp took from blackjack to markets, and later through relative-entropy calibration of option prices in the 1990s.</li>
     </ul>
   </div>
 
@@ -90,6 +91,23 @@
     doesn't care whether the relationship is a straight line, a curve, a threshold, or something with
     no simple shape at all.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing an edge in bits</h3>
+    <div class="tl-origin-who">Kelly, 1956 → Thorp, 1960s; relative entropy in option pricing, 1990s</div>
+    <p>Before information theory there was no common unit for "how much does this signal tell me?" A correlation captures only linear dependence and says nothing about how much to bet. In 1956 John Kelly, a colleague of Shannon's at Bell Labs, showed that a gambler acting on a noisy private tip maximises long-run growth by betting a fraction set by his edge, and that the best achievable growth rate equals the information rate of the tip: Shannon's quantity, in bits.</p>
+    <p>Edward Thorp took Kelly's rule to blackjack in the early 1960s and then to markets, sizing warrant and convertible arbitrage at Princeton Newport Partners from 1969. In the 1990s relative entropy (KL divergence) entered derivatives pricing: Stutzer (1996) and Avellaneda and co-authors (1997) chose risk-neutral distributions by minimising KL distance to a prior, matching observed option prices while adding as little information as possible.</p>
+    <p>On a desk today these quantities do three jobs: mutual information ranks features by nonlinear predictive content, KL divergence flags when the current return distribution has drifted from a reference period, and cross-entropy is the loss most classification models train on.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much does this variable actually tell us, about the next return or about whether the distribution has changed, beyond what linear correlation sees?</dd>
+        <dt>Takes in</dt><dd>Return distributions and their probabilities from <a href="primer-probability.html">Probability</a>.</dd>
+        <dt>Hands on to</dt><dd>Directional flow in <a href="transfer-entropy-causality.html">Transfer Entropy</a>, distribution-shift alarms in <a href="change-point-detection.html">Change-Point Detection</a>, and bet size from edge in <a href="kelly-criterion.html">the Kelly criterion</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -509,14 +527,14 @@
     distributions. Estimating \(I(X;Y)\) from a finite, noisy, continuous sample requires binning or
     kernel-density estimation, both of which introduce their own bias — a naive estimator can report
     a spuriously large mutual information purely from overfitting the joint density to a small
-    sample, the same overfitting risk this repo's validation discipline warns about everywhere else.
+    sample<!-- DESK:START -->, the same overfitting risk this repo's validation discipline warns about everywhere else<!-- DESK:END -->.
     </p>
     <p>
     <strong>Mutual information detects <em>any</em> dependence, not a <em>useful</em> one.</strong> A
     provably nonzero \(I(X;Y)\) says the two variables are not independent — it does not say the
     relationship is strong enough, stable enough, or simple enough to trade on. Detecting a
-    dependency and having an edge are different claims; explaining the concept is not itself a claim
-    that it produces edge in this repo.
+    dependency and having an edge are different claims<!-- DESK:START -->; explaining the concept is not itself a claim
+    that it produces edge in this repo<!-- DESK:END -->.
     </p>
   </div>
 
@@ -529,6 +547,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mutual information is a symmetric, nonlinear generalization of correlation.</strong> \(I(X;Y)=H(X)-H(X|Y)=I(Y;X)\ge0\), zero exactly when independent — a strictly more general question than "is there a straight-line relationship."</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The \(Y=X^2\) example proves the gap concretely.</strong> Correlation exactly 0; mutual information exactly 1.522 bits, cross-checked two independent ways. Uncorrelated does not mean unrelated.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Detecting dependence is not the same as finding a tradeable edge.</strong> A nonzero mutual information says two variables aren't independent — nothing more. This lesson explains a measurement tool, not a signal.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Information measures were in markets early.</strong> Kelly (1956) tied a bettor's growth rate to the information in his edge and Thorp took it to markets; today mutual information ranks nonlinear features and KL divergence flags when the return distribution has shifted.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

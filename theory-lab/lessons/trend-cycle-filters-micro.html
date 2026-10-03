@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Trend/Cycle Filters — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, the real-time bias worked example, and a 6-question self-test?<a href="trend-cycle-filters.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -294,7 +294,42 @@
     </section>
 
     <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">The 1970s: an output gap that wasn't there</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>In the 1970s US policymakers believed the economy had lots of spare capacity: a large negative output gap. But trend growth had slowed, with productivity fading from the late 1960s and the 1973 oil shock hitting supply. A trend fitted to the fast-growth years and carried to the newest quarter sat too high, so the gap looked deeply negative and policy stayed loose while inflation rose. Orphanides (<em>AER</em>, 2001) rebuilt the real-time numbers: far more negative than today's estimates for the same quarters. With van Norden (<em>REStat</em>, 2002) he showed that, across methods including HP, gap revisions were about as large as the gap itself, and came mainly from the <strong>end of the sample</strong>, not from revised GDP.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Trend growth slows</b>Productivity fades; 1973 oil shock</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Economists</b>Must estimate potential from past data</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · end-of-sample trend</b>Newest trend reading too high: slack that isn't there</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Policymakers</b>Seeing slack, keep policy loose</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Inflation rises; revised gaps show far less slack</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>"The output gap tells you where rates or currencies go next"</strong> is not tested here: the desk has no real-time gap series. A fair test would rebuild the gap each quarter from the data vintages available then (one-sided filter or Hamilton's regression), score its sign against what followed in 2-year yields and the currency versus a no-change benchmark, and report how often that sign was later revised away.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The HP objective treats every τ_t alike, but the newest one has data on one side only, and it is the one decisions use. The textbook also assumes a smooth trend separable from the cycle. A trend slowdown (the 1970s) or a collapse (2020) gets split between the two in a way only later data can fix, so the real-time gap mixes a real cycle with a trend error of unknown size.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -344,8 +379,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>y_t = τ_t + c_t + ε_t — the trend/cycle decomposition. None of the three pieces is directly observed, only their sum; every filter is a modeling choice, not a measurement.</p></div>
@@ -353,7 +388,8 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Hamilton (2018): HP has two real, documented flaws — end-of-sample bias hitting the newest, most decision-relevant data hardest, and spurious cyclicality manufactured even from a pure random walk.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Butterworth borrows an explicit order + frequency cutoff from electrical engineering, trading HP's implicit smoothness dial for a stated frequency boundary.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Baxter-King is a finite band-pass moving average targeting the classic 6–32 quarter cycle band, at the cost of losing K observations at each end of the sample.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three filters is built or tested anywhere in this repo's trading code today — verified while building this lesson; all three remain concept-only tools explained here as modeling background, not a claim of edge.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of these three filters is built or tested anywhere in this repo's trading code today — verified while building this lesson; all three remain concept-only tools explained here as modeling background, not a claim of edge.</p></div><!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The 1970s: real-time output gaps showed slack that revised estimates later erased, and most of the revision came from the end of the sample, not from revised GDP (Orphanides &amp; van Norden, 2002).<!-- DESK:START --> Whether a gap reading predicts rates or FX is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

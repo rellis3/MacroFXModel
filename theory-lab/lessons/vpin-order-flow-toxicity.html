@@ -17,7 +17,7 @@
   <h1 class="tl-title">Order Flow Toxicity &amp; VPIN</h1>
   <p class="tl-dek">A metric built to answer one question in real time — "is the flow hitting this book right now unusually informed?" — by watching volume instead of the clock, and a famous, still-contested claim that it flashed a warning before the market fell apart in minutes.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: market-microstructure.html (Kyle's Lambda &amp; Glosten-Milgrom)</span>
   </div>
@@ -37,6 +37,7 @@
       <li>VPIN is the rolling average, over the last \(n\) buckets, of each bucket's absolute order imbalance \(|V_\text{buy}-V_\text{sell}|\), normalized by bucket volume — a number between 0 and 1 that rises when volume is one-sided.</li>
       <li>VPIN is famous for allegedly spiking before the May 6, 2010 "Flash Crash" — but that claim is genuinely disputed in the academic literature, not a settled predictive triumph, and this lesson covers the critique as seriously as the original claim.</li>
       <li>The worked example below runs 5 hypothetical buckets through the full calculation by hand and lands on VPIN ≈ 0.58 — a high, "one-sided-flow" reading, and shows exactly what number is actually being averaged.</li>
+      <li><strong>Real-world episode:</strong> what the order flow on 6 May 2010 actually was, per the SEC/CFTC staff report. The big seller was hedging, not informed. Much of the volume was intermediaries passing the same contracts back and forth: more than 27,000 contracts in 14 seconds for a net change of about 200. Both push VPIN up mechanically, so a high reading that day doesn't settle the dispute either way.<!-- DESK:START --> Whether a high VPIN warns of a rougher tape ahead is <strong>untested</strong> on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -527,6 +528,82 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: what the flow really was on 6 May 2010</h2>
+
+  <p>
+    The scenario box above sets out the argument about whether VPIN <em>warned</em> of the Flash Crash. This section
+    looks at something more basic that both sides take as given: what the order flow going into those volume buckets
+    actually was. The joint SEC/CFTC staff report published that September reconstructed it trade by trade.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Toxic to market makers, and nobody knew anything</h3>
+    <p>
+      The large seller at the center of the day was a mutual fund complex <strong>hedging</strong> an existing equity
+      position. It sold 75,000 E-mini S&amp;P 500 contracts, about $4.1 billion, through an algorithm set to sell a fixed
+      share of the previous minute's volume, with no limit on price or time. In Glosten-Milgrom terms it was a noise
+      trader: it was trading for a reason unrelated to what the index was worth. It was just a very large, very
+      one-sided noise trader.
+    </p>
+    <p>
+      High-frequency traders and other intermediaries bought the first contracts, and then had to get rid of them.
+      They sold aggressively, much of it to each other. In one 14-second stretch they traded <strong>more than 27,000
+      contracts, about 49% of all volume, while their net holding changed by only about 200 contracts</strong>. The
+      report called this "hot potato" trading. Volume exploded, and because the sell algorithm was keyed to volume, it
+      sold faster too.
+    </p>
+    <p style="margin-bottom:0">
+      Now feed that tape into this lesson's machinery. The volume clock closes a bucket every \(V\) contracts, so
+      recycled hot-potato volume makes buckets close faster, even though no new information arrived. Prices were
+      falling hard inside each bucket, so Bulk Volume Classification, \(V_\text{buy}=V\cdot Z(\Delta P/\sigma_{\Delta P})\),
+      labels most of every bucket as selling. Both push VPIN toward 1. The flow really was toxic to anyone providing
+      liquidity: buy-side depth in the E-mini fell to less than 1% of its morning level. But it was toxic because it was
+      one-sided and enormous, not because anyone in it knew something.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Hedger</b>Sells 75,000 E-mini contracts at a fixed share of volume, with no price limit</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Intermediaries</b>Buy, then must unload: 27,000+ contracts traded in 14 seconds for a net change of about 200</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>VPIN · this lesson</b>Recycled volume speeds the volume clock; falling prices make BVC call each bucket a sell; the imbalance average climbs</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Liquidity providers</b>Hurt by one-sided flow whoever is behind it: they pull back</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>E-mini buy depth under 1% of the morning's; VPIN high, and the argument over what that meant still open</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>VPIN counts how lopsided the trading is, and it counts faster when there's more trading. On the day of the Flash Crash, one big seller wasn't hiding a secret; it just had a lot to sell. Then a group of fast traders kept passing the same contracts back and forth like a hot potato, which looked like loads of extra trading. The counter went up because the trading was lopsided and busy, not because anybody knew anything.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    VPIN inherits two assumptions. From Glosten-Milgrom, it inherits the idea that one-sided flow means
+    <strong>informed</strong> flow. On 6 May the biggest one-sided flow was an uninformed hedge, which hurt market makers
+    just as badly, so "toxic" and "informed" came apart. From the volume clock, it inherits the idea that
+    <strong>volume tracks the arrival of information</strong>. Hot-potato trading is volume with no new information and
+    almost no change in anyone's position. A measure that rises mechanically with big one-way price moves and with
+    recycled volume will look high in a crash whether or not it carried advance warning, and that is exactly the gap
+    the Andersen &amp; Bondarenko critique points at.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Untested here: "a high VPIN reading warns of a rougher tape ahead."</strong> This desk has no trade-level
+    futures tape and has never computed VPIN. A fair test would fix the bucket size \(V\), the window \(n\) and a
+    threshold in advance, and compute VPIN on many years of E-mini trades. It would take the first crossing of the
+    threshold as the event and compare the following hour's range against control periods matched on the volatility
+    just before, because VPIN mechanically rises with volatility. It would report the false-alarm rate next to the hit
+    rate, and require the effect to hold in both halves of the sample.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Whatever one concludes about the Flash Crash specifically, the underlying
@@ -597,12 +674,12 @@
       <strong>Using VPIN as a look-ahead-biased backtest input.</strong> Like
       any rolling statistic, VPIN computed with a window that includes data
       from after the decision point it's supposedly informing is not a live,
-      tradeable signal — a subtle version of the exact lookahead-bias trap
-      this project's own house rules warn about for any rolling series.
+      tradeable signal — a subtle version of the exact lookahead-bias trap<!-- DESK:START -->
+      this project's own house rules warn about<!-- DESK:END --> for any rolling series.
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN's real innovation is the volume clock, not a new theory.</strong> Bucketing by traded volume instead of elapsed time better tracks the rate at which new information enters the market, on the theory that informed traders reveal themselves by trading more, not on a fixed schedule.</span></div>
@@ -610,10 +687,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN is a rolling, normalized average of order imbalance.</strong> \(\text{VPIN}=\frac{1}{nV}\sum|V_\text{buy,τ}-V_\text{sell,τ}|\), bounded between 0 (balanced flow) and 1 (fully one-sided flow) over the window.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The Flash Crash "early warning" claim is genuinely disputed, not settled.</strong> Andersen &amp; Bondarenko's critique — sensitivity to the BVC method and to the \(V\)/\(n\) parameters, and comparable VPIN elevations at other times without a crash following — is a serious, unresolved challenge to the original claim, not a footnote to dismiss.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>BVC classifies a bucket, not a trade.</strong> It infers direction purely from an aggregate price move, standardized by volatility — a statistical proxy for order flow, not a verified per-trade buyer/seller tag the way a genuine tick-rule classifier is.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"VPIN predicted the Flash Crash" is not a fact to repeat as settled.</strong> It is one side of an active academic argument — treat it, and this whole metric's forecasting track record, with the same "built ≠ works ≠ has edge" discipline this project applies to every other signal.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"VPIN predicted the Flash Crash" is not a fact to repeat as settled.</strong> It is one side of an active academic argument — treat it, and this whole metric's forecasting track record, with the same "built ≠ works ≠ has edge" discipline<!-- DESK:START --> this project applies to every other signal<!-- DESK:END -->.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Toxic is not the same as informed.</strong> On 6 May 2010 the big seller was hedging, and intermediaries traded more than 27,000 contracts in 14 seconds for a net change of about 200. One-sided, recycled volume pushes VPIN up whether or not anyone knows anything.<!-- DESK:START --> Whether VPIN warns of a rougher tape is untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What is the single core mechanical difference between a VPIN volume bucket and an ordinary time bar?</summary>

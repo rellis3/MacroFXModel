@@ -17,7 +17,7 @@
   <h1 class="tl-title">Hierarchical Risk Parity</h1>
   <p class="tl-dek">Mean-variance optimization needs to invert the covariance matrix — a matrix that gets more numerically fragile the more correlated its assets are. Hierarchical Risk Parity's answer is to never invert it at all: cluster the assets by similarity first, then allocate down the resulting tree.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — theory only, no clustering-based allocator built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT — theory only<!-- DESK:START -->, no clustering-based allocator built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Markowitz &amp; Black-Litterman, Risk Parity &amp; Equal Risk Contribution</span>
   </div>
@@ -35,7 +35,8 @@
       <li>Hierarchical Risk Parity (HRP), from Marcos López de Prado's 2016 paper, sidesteps the inversion entirely, in three stages: <strong>tree clustering</strong> (group assets by a correlation-distance metric into a dendrogram), <strong>quasi-diagonalization</strong> (reorder the covariance matrix by dendrogram leaf order so similar assets sit adjacent), and <strong>recursive bisection</strong> (allocate weight top-down by splitting the tree and assigning inverse-variance-proportional weight to each half).</li>
       <li>The correlation-distance metric \(d_{ij} = \sqrt{0.5(1-\rho_{ij})}\) turns "how correlated" into "how far apart," which is what a standard hierarchical clustering algorithm needs to build the dendrogram.</li>
       <li>The claimed benefit, stated as the source's own claim: HRP never inverts the full covariance matrix, and López de Prado reports it as more robust out-of-sample than mean-variance optimization on ill-conditioned matrices.</li>
-      <li>This repo has not independently validated that OOS claim on its own instrument universe — it's reported here as the published result, not as something re-tested and confirmed in this codebase.</li>
+      <!-- DESK:START --><li>This repo has not independently validated that OOS claim on its own instrument universe — it's reported here as the published result, not as something re-tested and confirmed in this codebase.</li><!-- DESK:END -->
+      <li><strong>Real-world episode:</strong> in autumn 2008 the carry unwind pushed high-yielding currencies to move almost as one, so the covariance matrix became close to singular exactly when allocation mattered most: Markowitz's curse, the problem HRP was built around.<!-- DESK:START --> HRP versus simpler allocators is untested on this desk's FX universe.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -437,6 +438,82 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: autumn 2008, when the blocs became one bet each</h2>
+  <p>
+    López de Prado's paper opens with a problem he called <em>Markowitz's curse</em>: the more correlated the assets,
+    the more a portfolio needs diversifying, and the more unstable the inverse-covariance solution becomes. That is a
+    statement about crises, because crises are when correlations jump. Autumn 2008 in currency markets shows both
+    halves of the curse, and the shape of the tree this lesson builds, in a few weeks.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>September–October 2008: the carry unwind sorts G10 into two blocs</h3>
+    <p>
+      Going into 2008, a popular trade was to borrow in low-yielding currencies, mainly the yen and the Swiss franc, and
+      hold high-yielding ones such as the Australian and New Zealand dollars. A book of several high-yielders funded in
+      several low-yielders looked diversified: different countries, different central banks, different economies.
+      Measured on the calm years before, their correlations were positive but well short of one.
+    </p>
+    <p>
+      After Lehman Brothers failed on 15 September 2008, funding dried up and investors facing losses and margin calls
+      unwound carry positions together. The high-yielders fell as one block: AUD/USD dropped by more than a third
+      between its July high and late October. The yen rose sharply against almost everything. (The funding side of the
+      same weeks, where covered interest parity broke, is in <a href="interest-rate-parity.html">Interest Rate
+      Parity</a>.) Within each bloc, correlations rose toward one, so the rows of the covariance matrix for the
+      high-yielders became close to duplicates of each other. A basket of five "different" carry trades had become, for
+      risk purposes, one carry trade.
+    </p>
+    <p style="margin-bottom:0">
+      This is exactly the regime this lesson is built for, and it cuts both ways. A covariance matrix with
+      near-duplicate rows is close to singular, so any allocator that inverts it is least reliable exactly when the
+      allocation matters most. At the same time the tree became <em>easier</em> to read: within-bloc distances
+      \(d_{ij}=\sqrt{\tfrac12(1-\rho_{ij})}\) shrank toward zero and the risk-on and safe-haven blocs pulled apart, which
+      is the structure HRP's recursive bisection allocates across. The catch is the order of events. The tree an
+      allocator held in August was estimated on calm data, before the blocs had tightened.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock · Lehman fails</b>15 Sept 2008: funding dries up, losses spread</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Leveraged carry holders</b>Margin calls force them to sell high-yielders and buy back yen and dollars, all at once</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Correlations</b>High-yielders move almost as one; the yen moves against all of them</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · Markowitz's curse</b>Near-duplicate rows make \(\Sigma\) close to singular: inverse-covariance weights are least reliable just as the blocs sharpen</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>"Diversified" carry baskets lose as one bet; AUD/USD down more than a third in about three months</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: the problem HRP was designed around. It does not say HRP would have
+    made money in 2008. It says the instability HRP avoids is real, and that it peaks in the same weeks correlation goes
+    to one.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    HRP avoids the matrix inversion, not the estimation. Its tree, its leaf order and every split's inverse variance are
+    read from a correlation matrix estimated on past data, and in 2008 that matrix changed within weeks: within-bloc
+    correlations rose toward one and volatilities jumped several-fold. A tree built in the calm would have grouped the
+    blocs roughly right but weighted them on calm variances, so the high-yield bloc, the one about to fall, would have
+    looked cheaper in risk terms than it was. Correlation-distance also assumes a single linear correlation describes
+    each pair, when in a crisis the relationship in the tail is what matters.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Not tested here: "HRP gives a steadier out-of-sample book than inverse-volatility, ERC or minimum
+    variance on this desk's FX universe."</strong> No clustering allocator has been run on this desk's data. A fair test
+    would re-estimate every method on a rolling window with no look-ahead, freeze the linkage method before looking,
+    and compare out-of-sample realised volatility, turnover and worst drawdown, with stress windows such as 2008 and
+    March 2020 reported separately. Realised volatility is the right target: with only a handful of G10 crosses, a
+    Sharpe-ratio comparison would be too noisy to tell these methods apart.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     HRP is used in practice specifically as an alternative to mean-variance
@@ -453,6 +530,7 @@
     gracefully as correlation increases, where matrix inversion degrades
     catastrophically.
   </p>
+  <!-- DESK:START -->
   <p>
     <strong>This repo has not independently validated that OOS advantage on
     its own instrument universe.</strong> The claim above is reported
@@ -463,6 +541,7 @@
     costs, is an open empirical question, not a settled one just because the
     original paper reported a positive result on its own dataset.
   </p>
+  <!-- DESK:END -->
 
   <div class="tl-icard-grid">
     <div class="tl-icard">
@@ -516,25 +595,26 @@
       <strong>The claimed OOS advantage is the source's own result, not an
       independently re-proven one.</strong> Treat "HRP beats mean-variance
       OOS on ill-conditioned matrices" the way this whole site treats every
-      other backtested claim: real, published, worth knowing — and not yet
+      other backtested claim: real, published, worth knowing<!-- DESK:START --> — and not yet
       confirmed on this project's own data until it's actually been tested
-      here, with real costs and a genuine out-of-sample split.
+      here, with real costs and a genuine out-of-sample split<!-- DESK:END -->.
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Mean-variance optimization needs \(\Sigma^{-1}\), and inversion gets numerically fragile as assets become more correlated.</strong> This is a mechanical fragility, separate from and additional to the expected-return fragility the Markowitz lesson covers.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>HRP runs in three stages — cluster, reorder, bisect — and never inverts the full covariance matrix at any of them.</strong> Every calculation is a small, well-conditioned sub-problem.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The correlation-distance metric \(d_{ij}=\sqrt{0.5(1-\rho_{ij})}\) is what turns a correlation matrix into something a standard clustering algorithm can use.</strong> Same idea a correlation-network/MST view uses.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Recursive bisection allocates by inverse cluster variance at every split.</strong> The lower-variance side of each split always receives the larger share, cascading down to a final weight per asset.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The claimed OOS robustness advantage is López de Prado's own reported result, not independently re-confirmed here.</strong> This repo has not tested HRP against alternatives on its own instrument universe.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The claimed OOS robustness advantage is López de Prado's own reported result, not independently re-confirmed here.</strong><!-- DESK:START --> This repo has not tested HRP against alternatives on its own instrument universe.<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dendrogram is not unique.</strong> Different linkage methods (single, complete, average, Ward) can produce meaningfully different trees, and therefore different final weights, from the identical correlation matrix.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> Every strategy here is single-instrument; a clustering-based allocator would be genuinely new infrastructure, untested on this project's data.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Not built or validated in this repo.</strong> Every strategy here is single-instrument; a clustering-based allocator would be genuinely new infrastructure, untested on this project's data.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Markowitz's curse peaks in a crisis (autumn 2008).</strong> The carry unwind made high-yielding currencies move almost as one, so \(\Sigma\) went close to singular just as allocation mattered most. HRP avoids that inversion but not the estimation: its tree and variances were still read from calm data.<!-- DESK:START --> Untested on this desk's FX universe.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does mean-variance optimization become more numerically fragile as a basket's assets become more correlated, even setting the expected-return problem aside entirely?</summary>
@@ -569,7 +649,7 @@
   <details class="tl-quiz">
     <summary>Q6. Why is "HRP is more robust out-of-sample than mean-variance optimization" described in this lesson as a claim rather than a settled fact?</summary>
     <div class="tl-answer">
-      Because it is López de Prado's own reported empirical result from his 2016 paper's own dataset and setup — a real, peer-reviewed finding, but one that has not been independently re-tested on this repo's own instrument universe, with this repo's own costs and a genuine in-sample/out-of-sample split. A published result being real and worth knowing is not the same as it having been confirmed to hold here; this site's own discipline treats every backtested claim, including a well-cited academic one, as needing its own OOS test before being trusted for this specific use case.
+      Because it is López de Prado's own reported empirical result from his 2016 paper's own dataset and setup — a real, peer-reviewed finding<!-- DESK:START -->, but one that has not been independently re-tested on this repo's own instrument universe, with this repo's own costs and a genuine in-sample/out-of-sample split<!-- DESK:END -->. A published result being real and worth knowing is not the same as it having been confirmed to hold here; this site's own discipline treats every backtested claim, including a well-cited academic one, as needing its own OOS test before being trusted for this specific use case.
     </div>
   </details>
 
@@ -692,5 +772,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

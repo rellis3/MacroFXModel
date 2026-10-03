@@ -27,7 +27,7 @@
   <h1 class="tl-title">Order Flow Imbalance &amp; the Microprice</h1>
   <p class="tl-dek">Every method earlier in this category reconstructs something about trading from historical data after the fact — who was probably the aggressor, how much of the spread was adverse selection, how much of the day's volume was informed. This lesson closes the category by building the two signals a live electronic desk actually watches update by update, tick by tick, right now.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no OFI, microprice, or queue-imbalance code exists anywhere in this repo (verified by grepping every .py/.js file); the closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed cost query for full order-book depth data, whose own comments note this repo's primary venue — OANDA spot FX — has no order book at all</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no OFI, microprice, or queue-imbalance code exists anywhere in this repo (verified by grepping every .py/.js file); the closest real artifact is <code>oi_recon/databento_orderbook_cost_estimate.py</code>, a never-executed cost query for full order-book depth data, whose own comments note this repo's primary venue — OANDA spot FX — has no order book at all<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="institutional-pin.html">PIN: The Probability of Informed Trading</a>, <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
   </div>
@@ -46,6 +46,7 @@
       <li><strong>Queue imbalance</strong>, \(QI = \frac{Q_b-Q_a}{Q_b+Q_a}\), is the simpler quantity underneath the microprice's logic — and algebraically, \(P_{\text{micro}} = M + \tfrac{S}{2}\cdot QI\), the naive midpoint plus half the spread times the queue imbalance. The two concepts aren't just related in spirit; one is a rearrangement of the other.</li>
       <li>A worked four-snapshot toy example below shows the microprice pulling further and further from the naive midpoint as a book's queue imbalance builds from 0 to 0.5 — and then shows the price actually ticking in the direction that imbalance predicted, exactly as the theory says it should.</li>
       <li>This closes the category's arc: trade classification signs individual trades from public quotes; Roll and Glosten-Milgrom explain and estimate why a spread exists at all; PIN estimates how much of a day's trading is informed. OFI and the microprice are the real-time, order-book-level signals that translate all of that historical-statistical machinery into something a live desk can watch move, update by update.</li>
+      <li><strong>How it reached trading:</strong> Cont, Kukanov &amp; Stoikov (2014) showed short-horizon price moves track the imbalance of best-quote events, and with Stoikov's 2018 microprice this became a standard input for high-frequency market makers and execution algorithms.</li>
     </ul>
   </div>
 
@@ -102,6 +103,23 @@
       posted prices ignores this entirely; the microprice leans the estimate toward
       whichever side looks easier to blow through.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Seeing the next tick in the queues</h3>
+    <div class="tl-origin-who">Order flow imbalance · Cont, Kukanov &amp; Stoikov, 2014; microprice, Stoikov, 2018 → HFT and execution algorithms</div>
+    <p>Classic order-flow measures were built from signed trades, which first had to be classified and only appear when someone crosses the spread. Most of what happens on an electronic book is quotes being added, cancelled and refilled, and that activity moves price before trades do.</p>
+    <p>Rama Cont, Arseniy Kukanov and Sasha Stoikov's <em>The price impact of order book events</em> (Journal of Financial Econometrics, 2014) showed that over short intervals, price changes in US stocks are close to linear in the net imbalance of best-quote events, with a slope that falls as depth rises. Stoikov's 2018 micro-price paper (Quantitative Finance) turned queue imbalance into a fair-value estimate that forecasts the next mid better than the mid itself.</p>
+    <p>Today book imbalance and the microprice are standard short-horizon inputs for high-frequency market makers and for execution algorithms deciding whether to wait passively in the queue or cross the spread.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which way is the next tick likely to go, judging by what the top of the book is doing now?</dd>
+        <dt>Takes in</dt><dd>Best-bid and best-ask price and size updates from <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>, with the depth from <a href="institutional-market-depth-slope.html">Market Depth &amp; Slope</a> setting how far a unit of imbalance moves price.</dd>
+        <dt>Hands on to</dt><dd>Passive-versus-aggressive order placement in <a href="execution-algorithms.html">Execution Algorithms</a>, and a better quote centre for <a href="institutional-avellaneda-stoikov.html">Avellaneda-Stoikov</a> market making.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -490,7 +508,7 @@
     </div>
   </div>
 
-  <div class="tl-solid blue">
+  <!-- DESK:START --><div class="tl-solid blue">
     <strong>What this repo actually contains, checked directly rather than assumed.</strong>
     A repo-wide search of every <code>.py</code> and <code>.js</code> file for
     "microprice," "queue imbalance," "order flow imbalance," and the bare string
@@ -506,7 +524,7 @@
     <strong>has no order book at all</strong> to compute either signal from — a real
     and specific reason both signals in this lesson remain genuinely conceptual
     here, not a gap likely to close by accident.
-  </div>
+  </div><!-- DESK:END -->
 
   <div class="tl-box pitfall">
     <div class="tl-icon-badge red">⚠️</div>
@@ -598,6 +616,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both signals live and die on displayed size that can vanish an instant later.</strong> Spoofed or fleeting resting orders can manufacture a misleading reading in either formula.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both signals are short-horizon by construction.</strong> Treating a single reading as a forecast beyond the next few ticks or updates misuses what they were built to measure.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This closes the category's arc:</strong> lessons 1–4 explain and estimate spreads and informed trading from historical data; OFI and the microprice are the real-time, order-book-level signals a live desk actually watches, tick by tick.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk these are short-horizon execution inputs.</strong> Market makers centre quotes on the microprice, and execution algorithms read book imbalance to decide whether to rest in the queue or cross the spread (Cont, Kukanov &amp; Stoikov, 2014; Stoikov, 2018).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

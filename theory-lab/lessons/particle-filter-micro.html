@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Volatility you can't see, in a model that won't linearise</h2>
+      <p class="sl-sub">Particle filters · stochastic-volatility econometrics, late 1990s–2000s</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Stochastic-volatility and jump models have a hidden variance with non-Gaussian shocks, where Kalman-type filters stop being accurate, and full-sample MCMC was too slow to rerun on every new price.</p>
+        <p>The 1993 bootstrap filter was adapted within a few years: Pitt &amp; Shephard (1999) demonstrated it on stochastic volatility, and Johannes, Polson &amp; Stroud (2009) used it to extract volatility and jumps from asset prices as they arrive.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> what is the hidden volatility, jump or regime right now, when the model will not linearise?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Why the closed form quietly disappears</h2>
       <p class="sl-sub">The Kalman recursion isn't a general-purpose trick — it's a special case that happens to have an exact answer.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">The true posterior, once either assumption breaks, can be skewed, fat-tailed, or genuinely <strong>multimodal</strong> — two or more separate clusters of plausible states, not one bump. A single mean and variance cannot represent "probably here, but there's a real chance it's actually over there instead." Something else has to.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Trade one confident guess for a crowd of guessers</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The intuition</div>
@@ -53,8 +66,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Same state-space idea, generalized</h2>
       <p class="sl-sub">Nothing about "a hidden state that evolves and produces noisy observations" changed — only what f, h, and the noise are allowed to be.</p>
       <div class="sl-compare">
@@ -74,8 +87,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">One cycle, four steps</h2>
       <p class="sl-sub">Initialize once; then propagate, weight, and (sometimes) resample, every single time a new observation arrives.</p>
       <div class="sl-icard-grid">
@@ -87,8 +100,8 @@
       <div class="sl-note">Steps 2 and 3 repeat every time step. Step 4 is conditional — it only fires when the swarm actually needs it, which is exactly what the next few slides quantify.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Watch the cycle run, one time step at a time</h2>
       <p class="sl-sub">Five particles tracking a state whose true value is fixed at 1.30. Step through what happens to the swarm as observations arrive.</p>
       <div class="sl-card">
@@ -144,8 +157,8 @@
       <p class="sl-p">Notice what resampling actually buys: it doesn't make the swarm "know more" about the true state than the data already implied — it reallocates a fixed number of particles away from candidates the data has ruled out and toward the ones it still supports.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Degeneracy: the swarm collapsing to one opinion</h2>
       <p class="sl-sub">Left unchecked, the weighting step has a well-known failure mode.</p>
       <div class="sl-card">
@@ -166,8 +179,8 @@
       <p class="sl-p">Degeneracy is what motivates step 4 of the cycle in the first place: without resampling, one particle's weight tends to dominate almost completely after enough steps, and the population of N particles is effectively wasted on candidates that no longer matter. A common rule of thumb triggers resampling whenever N_eff drops below N/2.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Reweight a swarm live, and watch N_eff move</h2>
       <p class="sl-sub">Particles (blue dots) sit at fixed positions along the state axis; size and opacity encode weight. Drag the slider to change how many particles are in play.</p>
       <div class="sl-card">
@@ -195,8 +208,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Compute N_eff yourself</h2>
       <p class="sl-sub">Type any set of unnormalized likelihood values below — the calculator normalizes them into weights and computes N_eff, live.</p>
       <div class="sl-card">
@@ -219,8 +232,8 @@
       <p class="sl-p">The defaults are five particles' raw likelihoods against one observation — the exact numbers work out to N_eff ≈ 4.83 out of 5, a healthy swarm. Zero out every field to see the guard against dividing by zero; leave one blank to see the guard against missing input.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Resampling isn't a free fix</h2>
       <p class="sl-sub">Cloning a credible particle isn't the same as generating new information about where the state actually is.</p>
       <div class="sl-compare">
@@ -244,8 +257,8 @@
       <div class="sl-quote">The fix for both failure modes is the same one already on the diagnostic slide: resample only when N_eff actually drops below a threshold, commonly N/2 — not unconditionally, and not never. Resampling is a real trade-off between fighting degeneracy and preserving diversity, not a correction with no cost.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">What a swarm can track that one bell curve can't</h2>
       <p class="sl-sub">Picture a hedge ratio that usually drifts slowly — but around a scheduled rate decision, it sometimes re-prices in a single discontinuous jump instead.</p>
       <div class="sl-svgwrap">
@@ -268,23 +281,25 @@
       <div class="sl-note">This is presented as an illustration of what the method is for, not a claim that this exact hedge-ratio scenario has been built, backtested, or shown to add anything over the existing linear approach.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
-      <h2 class="sl-h2">Where this shows up — and what's actually running here</h2>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where this shows up<!-- DESK:START --> — and what's actually running here<!-- DESK:END --></h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🤖</div><div><h4>Robot localization</h4><p>A robot with a rough map and noisy sensors, genuinely uncertain which of several matching corridors it's in — "Monte Carlo Localization" is a direct particle-filter application.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📡</div><div><h4>Radar/sonar tracking</h4><p>A maneuvering target whose motion isn't well described by a straight line — the same nonlinear-dynamics problem this lesson generalizes the Kalman filter to handle.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🎥</div><div><h4>Video object tracking</h4><p>A target temporarily occluded and later reappearing is a genuinely multimodal situation — exactly the shape a single Gaussian estimate handles poorly.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📈</div><div><h4>Stochastic volatility, jump-diffusion</h4><p>Estimating a latent, continuously evolving volatility path, or fitting a model where price paths jump discontinuously — both genuinely nonlinear or non-Gaussian state-space problems.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Factual grounding — the full lesson's status line is now out of date</div>
         <p>The full <em>particle-filter.html</em> lesson labels this a "CONCEPT — not built or tested anywhere in this repo," and its takeaways state plainly: "Not built, not prototyped, not validated in this repo." That was true when written, but it no longer is: <code>js/particleFilter.js</code> now implements a real bootstrap particle filter — 200 particles, systematic resampling, resampling triggered when N_eff falls below N/2 — used for live 5-minute regime classification (BULL/BEAR/RANGE/CHOP) across instruments, gated by <code>FEATURE_FLAGS.PARTICLE_FILTER</code> in <code>js/config.js</code>, which is currently set to <strong>true</strong>, and wired into <code>js/main.js</code>'s live dashboard output. That is a genuinely different problem from the continuous hedge-ratio-tracking scenario this lesson illustrates — it tracks a discrete 4-state Markov regime, not a continuous nonlinear state — so the specific hedge-ratio scenario above remains hypothetical. But the core algorithm this lesson teaches — predict, weight, systematically resample, gated on N_eff — is not merely a concept in this repo; it is live, enabled-by-default code.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -334,8 +349,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>The Kalman filter's closed form only exists because linear dynamics plus Gaussian noise happen to keep the posterior exactly Gaussian — break either assumption and there's generally no formula left.</p></div>
@@ -344,6 +359,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>N_eff = 1/Σ(w_i²) measures swarm health — from N (every particle informative) down to 1 (total degeneracy, one particle carries everything).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Resampling fixes degeneracy but costs diversity (particle impoverishment) — trigger it on N_eff crossing a threshold, not unconditionally and not never.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Unlike a Kalman filter, a particle swarm can hold two or more live, separate clusters of belief at once — a genuinely multimodal state a single Gaussian can never represent.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>In markets the particle filter is a volatility tracker: it filters latent volatility and jumps out of returns when the model is too non-Gaussian for a Kalman filter (Pitt &amp; Shephard, 1999).</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

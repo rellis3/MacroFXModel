@@ -17,7 +17,7 @@
   <h1 class="tl-title">Clustering for Market Structure: k-Means &amp; Hierarchical Clustering</h1>
   <p class="tl-dek">Two ways of asking the same question with no labeled answer key: which of these things behave alike? k-means picks a number of groups and iterates toward them; hierarchical clustering builds a full tree of every possible grouping at once. Both are honest tools for finding structure — and both are unsupervised, which means neither one can tell you on its own whether what it found is real.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>, Correlation &amp; Linear Regression primer</span>
   </div>
@@ -36,6 +36,7 @@
       <li><strong>Hierarchical (agglomerative) clustering</strong> builds a full dendrogram instead: start with every point as its own cluster, repeatedly merge the two closest clusters by some linkage rule (single, complete, or average), and record every merge — no \(k\) needs to be chosen upfront, only where to cut the finished tree.</li>
       <li>This Theory Lab's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> lesson already uses exactly this dendrogram-building technique — for one specific purpose, allocating portfolio weight down the tree. This lesson is the general-purpose version of the same tool: the same dendrogram machinery applies just as directly to regime discovery, grouping similar instruments by behavior, or any other "what clusters with what" question that has nothing to do with position sizing.</li>
       <li><strong>The mandatory caveat:</strong> clustering is unsupervised — there is no ground-truth label to check a clustering's answer against. A clean-looking split into groups is not, by itself, evidence that the groups mean anything; every clustering result has to be sanity-checked against real domain knowledge, never trusted just because an algorithm produced it.</li>
+      <li><strong>How it reached trading:</strong> Mantegna (1999) built a correlation tree of US stocks that recovered industry groups from prices alone, and López de Prado's Hierarchical Risk Parity (2016) turned that tree into an allocation method.</li>
     </ul>
   </div>
 
@@ -97,6 +98,41 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>k-means is like being handed exactly 4 empty boxes and told "sort your toys into these 4 boxes so similar toys end up together" — you have to decide on 4 boxes before you even start. Hierarchical clustering is different: you just keep taping the two most similar toys together, over and over, until it's all one giant taped-together pile, and you can look at the tape lines afterward to decide where you'd want to cut it into however many groups you actually want.</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Which assets really move together?</h3>
+    <div class="tl-origin-who">Correlation clustering · Mantegna (1999); into portfolio construction with López de Prado's HRP (2016)</div>
+    <p>
+    Traders grouped assets by label: industry codes, country, asset class. Those
+    labels can be wrong about co-movement. A bank stock may trade like a bond proxy, and
+    two "different" sectors may sell off together. Clustering, whose k-means version began
+    as a 1950s signal-processing method, groups things by how they actually behave
+    instead.
+    </p>
+    <p>
+    Rosario Mantegna, a physicist, brought it to markets in 1999. He turned
+    stock-return correlations into distances, \(d=\sqrt{2(1-\rho)}\), and built a
+    hierarchical tree of US stocks that recovered industry groupings from prices alone,
+    the same year S&amp;P and MSCI launched the GICS sector standard. In 2016 Marcos
+    López de Prado's Hierarchical Risk Parity used the same correlation-distance tree to
+    allocate risk, avoiding the unstable matrix inversion of mean-variance
+    optimisation.
+    </p>
+    <p>
+    On desks, clustering is used for risk buckets and diversification checks, to shortlist
+    pairs for cointegration tests, to spot crowded trades, and to label market regimes by
+    grouping dates rather than assets.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Group assets, or dates, by how they actually behave, so diversification, pair selection and regime labels rest on data rather than sector labels.</dd>
+        <dt>Takes in</dt><dd>A correlation matrix from <a href="primer-correlation-regression.html">correlation and regression</a>, ideally de-noised with <a href="random-matrix-theory.html">random matrix theory</a>; trees of it are drawn in <a href="correlation-networks-mst.html">correlation networks and MSTs</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a> for allocation, <a href="cointegration.html">cointegration</a> tests on the pairs inside a cluster, and <a href="anomaly-detection-isolation-autoencoders.html">anomaly detection</a> for what fits no cluster.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -622,6 +658,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither the elbow method nor the silhouette score gives a provably correct k.</strong> Both are heuristics for a judgment call, and they can disagree with each other on the identical data.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>k-means assumes roughly round, similarly-sized clusters and needs standardized features and multiple restarts.</strong> None of these are optional in a serious application.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Clustering is unsupervised — there is no ground truth to validate against.</strong> A clean-looking cluster split is never, by itself, proof the groups are meaningful; every result needs an independent sanity check against real domain knowledge before being trusted.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>In markets, clustering replaces sector labels with behaviour.</strong> Mantegna's 1999 correlation tree recovered industries from prices alone, and Hierarchical Risk Parity (2016) uses the same tree to allocate risk. Desks also use it for risk buckets, pair shortlists and regime labels.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Quantile Regression</h1>
   <p class="tl-dek">OLS answers "what's the average outcome given these conditions?" Risk questions ask "what's the bad outcome given these conditions?" — a different question that needs a different loss function, not just a different confidence level.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a conditional-quantile estimation technique; not built or used anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — explains a conditional-quantile estimation technique; not built or used anywhere in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="regression-diagnostics.html">Regression Diagnostics</a> (OLS mechanics assumed) and <a href="cornish-fisher-expansion.html">Cornish-Fisher Expansion</a> (the contrasting static approach to the same question)</span>
   </div>
@@ -36,6 +36,7 @@
       <li>Fitting at \(\tau=0.05\) directly models the conditional 5th-percentile return given predictors — a direct route to a conditional VaR that <a href="cornish-fisher-expansion.html">Cornish-Fisher</a> cannot offer, because CF only ever adjusts the unconditional distribution's own skew and kurtosis.</li>
       <li><strong>The central contrast:</strong> Cornish-Fisher is a <em>static</em> adjustment — same correction every day, driven by the unconditional sample skew/kurtosis. Quantile regression is <em>conditional</em> — the fitted quantile moves with the predictors, directly capturing changing risk conditions (e.g. today's realized volatility) that a static moment-based correction cannot see.</li>
       <li>The worked toy example below fits real quantile regression lines at \(\tau=0.1\) and \(\tau=0.9\) alongside an OLS mean line on the same heteroskedastic scatter — the two quantile lines have genuinely different slopes than the mean line and visibly fan apart as the spread widens, exactly what a single mean-regression line can't show.</li>
+      <li><strong>Real-world episode:</strong> "Vulnerable Growth" (Adrian, Boyarchenko &amp; Giannone, 2019) fitted quantile regressions of US GDP growth on financial conditions: as conditions tightened, as in 2008, the lower quantiles fell sharply while the median barely moved. The IMF built its Growth-at-Risk framework on it, though out-of-sample studies later found the tail signal weaker.</li>
     </ul>
   </div>
 
@@ -400,6 +401,82 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: "Vulnerable Growth" and the 2008 recession</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The middle of the forecast barely moved; the bottom fell away</h3>
+    <p>
+      Economists forecasting US growth in 2007 and 2008 were mostly forecasting the <em>mean</em>, an OLS-style
+      \(E[Y\mid X]\). As the housing and credit crisis spread, those central forecasts were cut, but in steps,
+      and the recession that followed was far deeper than the central path had suggested. The fourth quarter of
+      2008 was the US economy's worst quarter in decades.
+    </p>
+    <p>
+      Almost a decade later Tobias Adrian, Nina Boyarchenko and Domenico Giannone, then at the New York Fed, asked the
+      question this lesson's pinball loss is built for. They ran <strong>quantile regressions</strong> of future
+      US GDP growth on current growth and the Chicago Fed's National Financial Conditions Index, which summarises
+      credit spreads, volatility and funding markets. Their paper, "Vulnerable Growth" (<em>American Economic
+      Review</em>, 2019), found a striking asymmetry. As financial conditions tightened, the fitted
+      <strong>lower quantiles</strong> of next year's growth fell sharply, while the median and upper quantiles
+      barely moved. Tight financial conditions mostly changed how bad things could get, not the typical outcome.
+    </p>
+    <p>
+      The idea became policy. The IMF built its <strong>Growth-at-Risk</strong> framework on it, introduced in its
+      Global Financial Stability Report of October 2017, and central banks and the IMF now publish
+      "growth-at-risk" estimates: the 5th percentile of the growth forecast distribution, conditional on today's
+      financial conditions. That is \(q_{0.05}(x)\) from Section 02, with \(x\) the financial conditions index.
+    </p>
+    <p style="margin-bottom:0">
+      The honest postscript: later out-of-sample studies, including Plagborg-Møller, Reichlin, Ricco and Hasenzagl
+      ("When Is Growth at Risk?", 2020), found the tail signal weaker than in-sample fits suggested and mostly at
+      short horizons. The conditions index also tightens as a crisis unfolds, not years ahead of it. The method
+      reads a fatter left tail when the predictor moves; it cannot see a crisis the predictor hasn't registered.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Credit losses</b>Housing and mortgage losses spread through banks and funding markets, 2007–08</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Lenders</b>Must protect capital, so credit spreads widen, volatility rises and funding gets scarcer</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Financial conditions index</b>Summarises that tightening in one predictor \(x\)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · conditional quantile</b>The fitted 5th percentile of future growth falls far; the median barely moves</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A recession far deeper than the central path; a decade later the IMF adopts Growth-at-Risk</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: the same predictor moves \(q_{0.05}(x)\) and \(q_{0.5}(x)\) by
+    very different amounts, which a single mean regression cannot show.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>When the roads get icy, the usual time for your drive to school hardly changes. What changes is the bad day: the chance of a really long trip goes way up. Looking only at the usual time would tell you nothing is wrong. Looking at the slowest days tells you to set off early.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The textbook fit assumes the relationship between predictor and quantile is stable and that there is enough
+    tail data to pin the low-\(\tau\) line down. Severe recessions are rare: a fit at \(\tau=0.05\) on postwar US
+    data is anchored by a handful of episodes, which is the "extreme \(\tau\) needs data in the tail" pitfall below,
+    in its starkest form. And the predictor is only as early as the financial stress it measures.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>The nearest claim this desk has tested: today's conditions change the <em>width</em> of what comes
+    next.</strong> Not a quantile regression, but the same conditional-spread idea. On the first day of a VIX
+    inversion (near-term fear priced above the 3-month), the next five sessions' range against matched controls was
+    SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero).
+    Inversions are brief (median 1 session). Like "Vulnerable Growth", it moves the spread, not the middle: a range
+    statement, never a direction.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <ul>
     <li>
@@ -469,7 +546,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>OLS fits the conditional mean; quantile regression fits a conditional quantile.</strong> The asymmetric pinball loss ρ_τ, not squared error, is what makes the loss-minimizing fit land on a specific quantile instead of the average.</span></div>
@@ -477,10 +554,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cornish-Fisher is static; quantile regression is conditional.</strong> This is the lesson's central contrast — a CF adjustment is fixed from unconditional S and K, while a quantile-regression quantile moves with live predictors like today's realized volatility.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The toy example shows it concretely.</strong> The τ=0.1–τ=0.9 band width grew roughly sixfold from x=1 to x=10 — information a single OLS mean line structurally cannot carry.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Quantile crossing is a real limitation, not an edge case.</strong> Separately-fit quantile lines aren't guaranteed to stay correctly ordered at every predictor value — the direct structural cousin of Cornish-Fisher's own non-monotonicity problem.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique and its worked toy example precisely; it is not a claim that quantile regression is fitted or used anywhere in this project.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Conditions move the tail more than the middle, and the tail is thinly sampled.</strong> In "Vulnerable Growth" tighter financial conditions dropped the 5th percentile of future growth while the median barely moved, but rare recessions anchor that fit and out-of-sample tests found the signal weaker.<!-- DESK:START --> This desk's nearest test (vix-inversion, validated) also moves the range, not the direction.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique and its worked toy example precisely<!-- DESK:START -->; it is not a claim that quantile regression is fitted or used anywhere in this project<!-- DESK:END -->.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What quantity does OLS estimate, and what quantity does quantile regression at τ=0.05 estimate — in your own words?</summary>
@@ -627,5 +705,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Wavelets &amp; Time-Frequency Analysis</h1>
   <p class="tl-dek">The Fourier transform can tell you which cycles a series contains — but not when they happened. Wavelets trade a single global spectrum for a picture of frequency content changing over time, which is exactly what a non-stationary series needs.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — a classical signal-processing tool, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — a classical signal-processing tool, explained here as background knowledge, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a>, <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></span>
   </div>
@@ -37,6 +37,7 @@
       <li>A worked example below hand-computes a one-level Haar wavelet transform on an 8-point series with a single embedded shock, showing the transform pinpoint <em>exactly when</em> the shock occurred — something no Fourier-domain view of the same 8 points would localize in time.</li>
       <li>Common named wavelet families — Morlet (smooth, good frequency resolution) and Haar (simple, good at localizing sharp jumps) — trade off time resolution against frequency resolution differently; neither is "the" correct choice, and picking one is itself a modeling decision.</li>
       <li>Explaining wavelets is not a claim that a scalogram produces trading edge — it is background for reading a time-frequency plot correctly, and for knowing when it is the right tool over a plain periodogram.</li>
+      <li><strong>How it reached trading:</strong> economists took wavelets from 1980s signal processing in the 1990s (Ramsey &amp; Lampart, 1998) and finance followed (Gençay, Selçuk &amp; Whitcher, 2002) to measure how correlations and betas differ by horizon and shift over time.</li>
     </ul>
   </div>
 
@@ -73,6 +74,23 @@
       precise frequency resolution to get that timing information back — there is no free lunch here, only a
       different, often more useful, trade-off.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>The same two markets, related differently at each horizon</h3>
+    <div class="tl-origin-who">Wavelets · Ramsey &amp; Lampart, 1998; Gençay, Selçuk &amp; Whitcher, 2002</div>
+    <p>A day trader and a pension allocator can look at the same two series and see different relationships, yet a single correlation or beta, or a Fourier spectrum over the whole sample, averages every horizon and every period together. Developed in 1980s signal processing, wavelets reached economics in the 1990s as a way to split a relationship by timescale.</p>
+    <p>James Ramsey and Camille Lampart (1998) decomposed the money–income and consumption–income relationships by timescale and found they differ markedly across horizons. Gençay, Selçuk &amp; Whitcher's 2002 book brought the toolkit to finance, and their later work estimated betas scale by scale, finding systematic risk that depends on the horizon. Wavelet coherence became a common way to show co-movement between markets switching on and off across both time and frequency.</p>
+    <p>On a desk: multi-horizon views of correlation and beta, denoising a series before estimation, and estimating long memory one scale at a time.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How does this series, or this relationship, behave at each horizon, and when did that change?</dd>
+        <dt>Takes in</dt><dd>The frequency view from <a href="fourier-analysis-frequency-domain.html">Fourier Analysis</a>.</dd>
+        <dt>Hands on to</dt><dd>Scale-by-scale long-memory estimates for <a href="hurst-variance-ratio.html">Hurst &amp; Variance Ratio</a> and <a href="fractional-brownian-motion.html">fBm</a>; any scalogram "hit" must survive <a href="multiple-testing.html">Multiple Testing</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -382,6 +400,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Time resolution and frequency resolution trade off against each other, always.</strong> No wavelet choice escapes this — Haar favors sharp timing, Morlet favors clean frequency separation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Edge effects (the cone of influence) and multiple-comparisons risk are real.</strong> Scalogram readings near the sample's edges, or an isolated "hot spot" scanned out of many cells, both need extra scrutiny before being trusted.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains a technique, not a claim of edge.</strong> A scalogram is a descriptive lens for how cyclical behavior evolves over time — turning that into a trading rule still needs the same honest OOS bar as anything else.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>In markets, wavelets answer "at which horizon?"</strong> A relationship can be strong at monthly scales, absent at daily ones, and switch on and off over time; wavelets measure it scale by scale instead of averaging everything into one number.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

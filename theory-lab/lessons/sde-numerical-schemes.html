@@ -36,6 +36,7 @@
       <li>The standard result (Kloeden &amp; Platen, 1992): Euler-Maruyama has <strong>strong order 0.5</strong> and <strong>weak order 1.0</strong> — its path-tracking accuracy is markedly worse than its distributional accuracy.</li>
       <li>The <strong>Milstein scheme</strong> adds one extra term, \(\tfrac12\sigma\sigma'(\Delta W_n^2-\Delta t)\), lifting strong order to 1.0 — a genuine pathwise improvement, at the cost of needing the diffusion coefficient's derivative \(\sigma'\).</li>
       <li>A hand-worked Euler-Maruyama simulation of GBM, checked step by step against the closed-form solution, and a real Monte Carlo convergence study both confirm the 0.5/1.0 theoretical orders numerically in this lesson, not just by citation.</li>
+      <li>How it reached trading: Boyle (1977) priced options by simulating paths, and by the 1990s Euler-Maruyama stepping was the engine for path-dependent options; it now also runs CVA and simulated-VaR engines.</li>
     </ul>
   </div>
 
@@ -88,6 +89,23 @@
       Lemma out of) — which is exactly why the error analysis below needs its
       own machinery, distinct from ordinary Euler's-method error analysis.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing the options no formula covers</h3>
+    <div class="tl-origin-who">Monte Carlo time-stepping · Boyle, 1977; standard for path-dependent products by the 1990s</div>
+    <p>Closed forms exist for European options under simple models. An Asian option paying on an average price, a barrier, or almost anything under stochastic volatility has none, and before simulation desks were limited to lattices and approximations.</p>
+    <p>Phelim Boyle's 1977 paper "Options: A Monte Carlo approach" priced options by simulating price paths, and Kemna &amp; Vorst (1990) used simulation with a control variate for average-rate options. Each path is a chain of Euler-Maruyama steps; Milstein's 1974 correction and, for Heston, Andersen's 2008 scheme handle the cases where plain Euler is biased.</p>
+    <p>Today the Euler step is the inner loop of exotic pricers, of counterparty-exposure (CVA) engines that simulate whole portfolios forward, and of simulation-based VaR. The time step is a risk choice: too coarse, and barrier or zero-variance bias leaks into the price.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Turn a model's SDE into simulated paths that can be averaged into prices and risk numbers.</dd>
+        <dt>Takes in</dt><dd>A well-posed model from <a href="sde-existence-uniqueness.html">Existence &amp; uniqueness</a>, simulated under the measure from <a href="girsanov-risk-neutral.html">Girsanov &amp; risk-neutral pricing</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="multivariate-correlated-sdes.html">Correlated multi-asset SDEs</a>, <a href="bootstrapping-monte-carlo.html">Bootstrapping &amp; Monte Carlo</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -498,6 +516,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Milstein's extra ½σσ'(ΔW²−Δt) term lifts strong order to 1.0.</strong> A genuine pathwise-accuracy improvement — fitted at 0.980 in this lesson's own Monte Carlo study, strictly below Euler-Maruyama's error at every step size tested.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Milstein needs the diffusion's derivative, σ' — not free.</strong> Trivial for GBM's linear σ(x)=σx, but a real added cost (and, in multiple dimensions, a Lévy-area simulation problem) for a general local-volatility surface.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Matching a step size to the wrong convergence notion silently mis-prices path-dependent payoffs.</strong> A step size fine enough for weak (distributional) accuracy is not automatically fine enough for strong (pathwise) accuracy.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>It is the engine of every desk simulation.</strong> Boyle (1977) brought Monte Carlo to option pricing and Kemna &amp; Vorst (1990) to average-rate options; Euler-Maruyama steps, with Milstein or Andersen fixes, now drive exotic pricing, CVA and simulated VaR.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

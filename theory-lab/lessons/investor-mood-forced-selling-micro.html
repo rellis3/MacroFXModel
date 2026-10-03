@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mood, Quote and Forced Selling — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .ob-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Mood, the Quote and Forced Selling — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full margin, VaR and vol-target math, both stories in depth and a 6-question self-test?<a href="investor-mood-forced-selling.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">How Markets Talk to Each Other · 2 of 5</div>
+      <h1 class="sl-h1">Mood, the Quote <em>and Forced Selling</em></h1>
+      <p class="sl-lede">A price is where the last willing buyer met the last willing seller. Most days both are choosing. In a crisis one side stops choosing: margin calls, redemptions and risk limits turn sellers into people who must sell — at any price, whatever they can.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">The quote is a meeting point, not a verdict</h2>
+      <p class="sl-sub">The printed price is the last trade — one marginal buyer and one marginal seller, for whatever small size they traded.</p>
+      <div class="sl-row"><div class="sl-box">p̄ = Σ pᵢqᵢ / Σ qᵢ</div></div>
+      <p class="sl-p">A sell order bigger than the best bid fills it, then the next level down, and the next — it <strong>walks the book</strong>. Your average price is the size-weighted average of every level you touched; the last fill is lower still. Impact grows roughly with the square root of size relative to normal volume, scaled by volatility.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Four kinds of move — the fourth gets forgotten</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">🙂</div><div><h4>Optimism</h4><p>People buying because they like what they see.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">😟</div><div><h4>Fear</h4><p>People selling because they don't.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">❓</div><div><h4>Uncertainty</h4><p>Nobody knows — shows up as volatility, not direction.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚙</div><div><h4>Systematic</h4><p>Selling because a rule or contract says so: margin call, redemption, VaR breach, vol-target cut. Ask "was this <em>forced</em>?"</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Voluntary versus forced</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">Voluntary seller</span><ul><li>Sells because their view changed</li><li>Has a floor price — below it, waits</li><li>Chooses what to sell</li><li>Can spread it over days</li></ul></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">Forced seller</span><ul><li>Sells because a rule says so</li><li>No floor price</li><li>Sells what turns into cash fastest — the liquid, the profitable, the safe</li><li>Must sell now</li></ul></div>
+      </div>
+      <div class="sl-quote">Forced sellers sell <strong>what they can, not what they want</strong>. That is why unrelated assets fall together — they share a holder raising cash — and why "correlations go to one".</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Margin calls: a 10% fall can force a 44% sale</h2>
+      <p class="sl-sub">Equity E = A − L. To get back to the lender's maximum leverage λ, sell S = A′ − λ·E′.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-calc-row">
+          <div class="sl-calc-field"><label>Assets A</label><input type="number" class="sl-input" id="mg-A" value="500" step="10"></div>
+          <div class="sl-calc-field"><label>Max leverage λ</label><input type="number" class="sl-input" id="mg-L" value="5" step="0.5"></div>
+          <div class="sl-calc-field"><label>Price fall (%)</label><input type="number" class="sl-input" id="mg-x" value="10" step="1"></div>
+        </div>
+        <div class="sl-calc-steps">
+          <div>Loan = <b id="mg-loan">400</b> · equity before = <b id="mg-e0">100</b></div>
+          <div>After the fall: A′ = <b id="mg-a1">450</b> · E′ = <b id="mg-e1">50</b> · leverage = <b id="mg-lev">9.0</b>×</div>
+        </div>
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Forced sale S</div><div class="sl-calc-result-val" id="mg-s">200</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Share of holdings</div><div class="sl-calc-result-val" id="mg-pct">44%</div></div>
+        </div>
+        <div class="sl-note" id="mg-note">Lenders also tend to cut λ when markets get volatile, which makes the required sale bigger exactly when selling is most costly.</div>
+        <button type="button" class="sl-reset-btn" id="mg-reset">Reset to 500 / 5× / 10%</button>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">The dealer-inventory spiral</h2>
+      <div class="sl-row"><div class="sl-box">Q_max = VaR limit / (z·σ·√h)</div></div>
+      <p class="sl-p">Same risk limit, double the volatility → a dealer may hold half the inventory. In a dealer-run market like government bonds, that is a direct cut in how much selling the market can absorb.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Bond vol rises</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Forced to hold less inventory</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Smaller size, wider spreads</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Each sale moves price further; vol rises again</div>
+      </div>
+      <p class="sl-p">Vol-targeting funds add a second loop: exposure w = σ*/σ̂, so when measured vol doubles, they halve exposure — mechanically, all at once.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Walk the book — forced vs voluntary</h2>
+      <p class="sl-sub">Toy book: bid level i holds (20 + 12i)/m units at vol multiple m; at higher vol the top round(m)−1 levels are pulled.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="ob-btnrow" id="ob-type">
+          <button type="button" class="sl-tab active" data-type="forced">Forced (must sell it all)</button>
+          <button type="button" class="sl-tab" data-type="vol">Voluntary (floor 99.70)</button>
+        </div>
+        <div class="sl-svgwrap">
+          <svg id="ob-svg" viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Depth chart of an order book: bids as green bars to the left of a central price column, asks red to the right; the sell order's consumed size is shaded red.">
+            <text x="160" y="16" text-anchor="middle" font-size="11" style="fill:var(--green)">Bids (buyers)</text>
+            <text x="490" y="16" text-anchor="middle" font-size="11" style="fill:var(--red)">Asks (sellers)</text>
+            <g id="ob-rows"></g>
+            <line id="ob-mid" x1="20" x2="620" y1="0" y2="0" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+            <text id="ob-midlbl" x="624" y="0" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" style="fill:var(--text3)">mid 100.00</text>
+            <line id="ob-new" x1="20" x2="300" y1="0" y2="0" style="stroke:var(--amber);stroke-width:2"/>
+            <text id="ob-newlbl" x="24" y="0" font-size="10" font-family="'DM Mono',monospace" style="fill:var(--amber)">deepest fill</text>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Size to sell</span><span class="sl-live" id="ob-q-val">300</span></div>
+        <input type="range" class="sl-slider" id="ob-q" min="0" max="1100" step="10" value="300">
+        <div class="sl-sliderhead" style="margin-top:10px"><span>Volatility (× normal)</span><span class="sl-live" id="ob-m-val">1.0×</span></div>
+        <input type="range" class="sl-slider" id="ob-m" min="1" max="4" step="0.5" value="1">
+        <div class="sl-calc-steps">
+          <div>Sold <b id="ob-sold">300</b> · average <b id="ob-vwap">99.79</b> (<b id="ob-avgbp">−21</b>bp) · last fill <b id="ob-last">99.70</b> (<b id="ob-lastbp">−30</b>bp)</div>
+          <div>Unsold <b id="ob-unsold">0</b></div>
+        </div>
+        <div class="sl-note">300 units at 1×: last fill −30bp. Same 300 at 2×: −50bp. Voluntary seller at 2×: sells 140 and waits. The forced seller can't wait.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">March 2020: the dash for cash</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>COVID-19: everyone needs cash at once</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Funds, foreign holders, levered RV funds</b>Sell the most liquid asset: Treasuries</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Dealers</b>Balance sheets full; liquidity drains</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>15 &amp; 23 March</b>Fed cuts to near zero, buys Treasuries without limit</div>
+      </div>
+      <p class="sl-p">For several days in mid-March, Treasury yields rose while stocks fell — the world's safe asset sold because it was the easiest thing to sell. Even gold fell for a stretch. The scramble subsided once a buyer with no risk limit arrived.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">March 2021: Archegos and the race to sell first</h2>
+      <p class="sl-p">A family office built huge, concentrated positions — ViacomCBS and several US-listed Chinese companies among them — through total return swaps at several prime brokers, so no bank saw the whole thing. ViacomCBS fell after announcing a share sale in the week of 22 March; Archegos missed margin calls; on Friday 26 March banks sold large blocks regardless of price.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">Sold early</span><p>Better prices, smaller losses.</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">Sold late</span><p>Walked a book others had already emptied. Credit Suisse later reported a loss of about $5.5 billion; Nomura close to $3 billion.</p></div>
+      </div>
+    </section>
+
+<!-- DESK:START -->
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+<!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>All indices down → wider week (breadth-all-down).</strong> n=1,002 since 2008: next-5 range SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]. Direction 58–61% up, the ordinary drift. <em>Range, not a bounce call.</em></span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Crowded, underwater retail = squeeze fuel (squeeze-fuel).</strong> Not wider than matched days on any of four instruments over nine years; direction flat. Retail is ~60% long on every major every day.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>Fear buys gold (fear-gold).</strong> Excess +0.07% [−0.42, +0.30] at five sessions, −1.19% [−2.30, −0.48] at twenty. In a liquidation gold is something to sell.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>The rally's leader leads the decline.</strong> Not tested here; a fair test must control for beta, since the leader is usually the high-beta sector.</span></div>
+      <!-- DESK:END -->
+<!-- DESK:START -->
+    </section>
+<!-- DESK:END -->
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>Why can selling a large block average well below the quoted price?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The quote is for a small size; the order walks down through lower bids</button>
+        <button class="sl-quiz-opt">Exchanges charge a penalty for large orders</button>
+        <button class="sl-quiz-opt">The quote is always wrong</button>
+        <div class="sl-quiz-explain">The average fill is Σpᵢqᵢ/Σqᵢ over every level touched — below the best bid, with the last fill lower still.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>A dealer's VaR limit is fixed and volatility triples. Their maximum inventory…</h4>
+        <button class="sl-quiz-opt">…triples</button>
+        <button class="sl-quiz-opt" data-correct="true">…falls to one third</button>
+        <button class="sl-quiz-opt">…is unchanged</button>
+        <div class="sl-quiz-explain">Q_max = limit / (zσ√h), so it scales as 1/σ. Less inventory means a thinner book, bigger moves, and more volatility.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Why did Treasuries fall alongside stocks in mid-March 2020?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They were the easiest thing to sell for cash — forced sellers sell what they can</button>
+        <button class="sl-quiz-opt">Investors expected US default</button>
+        <button class="sl-quiz-opt">The Fed was selling them</button>
+        <div class="sl-quiz-explain">Redemptions, foreign dollar needs and leveraged unwinds all raised cash from the most liquid asset. The selling was about who held Treasuries, not about Treasuries.</div>
+      </div>
+<!-- DESK:START -->
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Every index closes down today. What does this desk's evidence say about next week?</h4>
+        <button class="sl-quiz-opt">It will bounce — forced selling always reverses</button>
+        <button class="sl-quiz-opt" data-correct="true">It has tended to be wider, with no edge on direction</button>
+        <button class="sl-quiz-opt">It will keep falling</button>
+        <div class="sl-quiz-explain">breadth-all-down: SPX500 +0.31 ATR, NAS100 +0.26 on next-5-session range. Five sessions later the market was up 58–61% of the time — the ordinary drift.</div>
+      </div>
+<!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A quote is where the marginal buyer and seller met, for a small size. Big orders walk the book.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Add "systematic" to fear, optimism and uncertainty: margin calls, redemptions, VaR limits and vol targets force price-insensitive selling.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Leverage multiplies it: at 5×, a 10% fall forces a 44% sale. Higher vol shrinks dealer inventory as 1/σ, thinning the book.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Forced sellers sell what they can — Treasuries and gold fell with stocks in March 2020. Correlations go to one.</p></div>
+<!-- DESK:START -->
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Validated here: an all-down day precedes a wider week (range, not direction). Tested null: retail squeeze fuel; fear-bid gold. Untested: leader leads the decline.</p></div>
+<!-- DESK:END -->
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>The VIX Is an Uncertainty Index, Not a Fear Gauge</h3>
+        <p>What the VIX actually measures — both sides of the option market — and what a spike does and does not tell you.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="vix-uncertainty-not-fear-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="investor-mood-forced-selling.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="domino-chain-cross-asset-micro.html">← Previous: The Domino Effect</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 5 — margin-call calculator: S = A' - lambda * E'.
+  (function(){
+    var A = document.getElementById('mg-A'), L = document.getElementById('mg-L'), X = document.getElementById('mg-x');
+    if (!A) return;
+    var out = {
+      loan: document.getElementById('mg-loan'), e0: document.getElementById('mg-e0'),
+      a1: document.getElementById('mg-a1'), e1: document.getElementById('mg-e1'),
+      lev: document.getElementById('mg-lev'), s: document.getElementById('mg-s'),
+      pct: document.getElementById('mg-pct'), note: document.getElementById('mg-note')
+    };
+    var NOTE = out.note.textContent;
+    function dash(){ ['loan','e0','a1','e1','lev','s','pct'].forEach(function(k){ out[k].textContent = '—'; }); }
+    function calc(){
+      var a = parseFloat(A.value), lam = parseFloat(L.value), x = parseFloat(X.value)/100;
+      if (!isFinite(a) || !isFinite(lam) || !isFinite(x) || a <= 0 || lam < 1 || x < 0 || x >= 1){
+        dash(); out.note.textContent = '(enter assets > 0, leverage ≥ 1, and a fall between 0% and 99%)'; return;
+      }
+      var e0 = a/lam, loan = a - e0, a1 = a*(1 - x), e1 = a1 - loan;
+      out.loan.textContent = loan.toFixed(0); out.e0.textContent = e0.toFixed(0);
+      out.a1.textContent = a1.toFixed(0); out.e1.textContent = e1.toFixed(0);
+      if (e1 <= 0){
+        out.lev.textContent = '∞'; out.s.textContent = a1.toFixed(0); out.pct.textContent = '100%';
+        out.note.textContent = '(equity wiped out: the lender liquidates everything, and the loss beyond that is theirs)';
+        return;
+      }
+      var s = Math.max(0, a1 - lam*e1);
+      out.lev.textContent = (a1/e1).toFixed(1);
+      out.s.textContent = s.toFixed(0);
+      out.pct.textContent = (s/a1*100).toFixed(0) + '%';
+      out.note.textContent = NOTE;
+    }
+    [A, L, X].forEach(function(i){ i.addEventListener('input', calc); });
+    document.getElementById('mg-reset').addEventListener('click', function(){ A.value = 500; L.value = 5; X.value = 10; calc(); });
+    calc();
+  })();
+
+  // Slide 7 — order-book toy (same arithmetic as the full lesson).
+  (function(){
+    var svg = document.getElementById('ob-svg');
+    if (!svg) return;
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var NB = 12, NA = 5, MID = 100, TICK = 0.05, LIMIT = 99.70;
+    var ROW_H = 19, TOP = 30, CX_L = 300, CX_R = 340, SCALE = 270/155;
+    var rowsG = document.getElementById('ob-rows');
+    var qIn = document.getElementById('ob-q'), mIn = document.getElementById('ob-m');
+    var sellerType = 'forced';
+
+    function el(name, attrs, style){
+      var e = document.createElementNS(SVGNS, name);
+      for (var k in attrs) e.setAttribute(k, attrs[k]);
+      if (style) e.setAttribute('style', style);
+      return e;
+    }
+    function levelSize(i, m){ var pulled = Math.round(m) - 1; return i < pulled ? 0 : (20 + 12*i)/m; }
+    function bidPrice(i){ return +(MID - TICK - TICK*i).toFixed(2); }
+    function askPrice(j){ return +(MID + TICK + TICK*j).toFixed(2); }
+    function rowY(r){ return TOP + r*ROW_H; }
+    function walk(Q, m, limit){
+      var rem = Q, cost = 0, sold = 0, last = null, fills = [];
+      for (var i = 0; i < NB; i++){
+        var p = bidPrice(i), q = levelSize(i, m), f = 0;
+        if (limit !== null && p < limit - 1e-9){ fills.push(0); continue; }
+        if (rem > 1e-9 && q > 0){ f = Math.min(rem, q); cost += f*p; sold += f; rem -= f; last = p; }
+        fills.push(f);
+      }
+      return { sold: sold, vwap: sold > 0 ? cost/sold : null, last: last, unsold: rem, fills: fills };
+    }
+    function fmtBp(p){ var v = Math.round((p - MID)/MID*10000); return (v > 0 ? '+' : (v < 0 ? '−' : '')) + Math.abs(v); }
+
+    function render(){
+      var Q = parseFloat(qIn.value), m = parseFloat(mIn.value);
+      var res = walk(Q, m, sellerType === 'vol' ? LIMIT : null);
+      while (rowsG.firstChild) rowsG.removeChild(rowsG.firstChild);
+      for (var j = 0; j < NA; j++){
+        var y = rowY(NA - 1 - j), sz = levelSize(j, m);
+        rowsG.appendChild(el('rect', { x: CX_R, y: y - 7, width: Math.max(0, sz*SCALE), height: 14, rx: 2 }, 'fill:var(--red);opacity:0.45'));
+        var t = el('text', { x: 320, y: y + 4, 'text-anchor': 'middle', 'font-size': 9.5, 'font-family': "'DM Mono',monospace" }, 'fill:var(--text3)');
+        t.textContent = askPrice(j).toFixed(2); rowsG.appendChild(t);
+      }
+      for (var i = 0; i < NB; i++){
+        var yb = rowY(NA + i), s = levelSize(i, m), f = res.fills[i], w = s*SCALE, wf = f*SCALE, p = bidPrice(i);
+        var belowLimit = sellerType === 'vol' && p < LIMIT - 1e-9;
+        rowsG.appendChild(el('rect', { x: CX_L - w, y: yb - 7, width: Math.max(0, w), height: 14, rx: 2 }, 'fill:var(--green);opacity:' + (belowLimit ? 0.25 : 0.55)));
+        if (wf > 0) rowsG.appendChild(el('rect', { x: CX_L - wf, y: yb - 7, width: wf, height: 14, rx: 2 }, 'fill:var(--red);opacity:0.85'));
+        if (s === 0){
+          var e = el('text', { x: CX_L - 6, y: yb + 4, 'text-anchor': 'end', 'font-size': 9 }, 'fill:var(--text3)');
+          e.textContent = 'quote pulled'; rowsG.appendChild(e);
+        }
+        var tb = el('text', { x: 320, y: yb + 4, 'text-anchor': 'middle', 'font-size': 9.5, 'font-family': "'DM Mono',monospace" }, 'fill:' + (p < LIMIT - 1e-9 ? 'var(--text3)' : 'var(--text2)'));
+        tb.textContent = p.toFixed(2); rowsG.appendChild(tb);
+        var qt = el('text', { x: 360, y: yb + 4, 'font-size': 9, 'font-family': "'DM Mono',monospace" }, 'fill:var(--text3)');
+        qt.textContent = s > 0 ? Math.round(s) + (f > 0 ? ' (sold ' + Math.round(f) + ')' : '') : '';
+        rowsG.appendChild(qt);
+      }
+      var midY = rowY(NA) - ROW_H/2;
+      var mid = document.getElementById('ob-mid'); mid.setAttribute('y1', midY); mid.setAttribute('y2', midY);
+      document.getElementById('ob-midlbl').setAttribute('y', midY - 3);
+      var nl = document.getElementById('ob-new'), nlb = document.getElementById('ob-newlbl');
+      if (res.last !== null){
+        var idx = Math.round((MID - TICK - res.last)/TICK);
+        var y2 = rowY(NA + idx) + 9;
+        nl.setAttribute('y1', y2); nl.setAttribute('y2', y2); nl.style.display = '';
+        nlb.setAttribute('y', y2 + 11); nlb.style.display = '';
+        nlb.textContent = res.unsold > 1e-9 && sellerType === 'forced' ? 'book exhausted — price gaps lower' : 'deepest fill ' + res.last.toFixed(2);
+      } else { nl.style.display = 'none'; nlb.style.display = 'none'; }
+
+      document.getElementById('ob-q-val').textContent = Q.toFixed(0);
+      document.getElementById('ob-m-val').textContent = m.toFixed(1) + '×';
+      document.getElementById('ob-sold').textContent = Math.round(res.sold);
+      document.getElementById('ob-vwap').textContent = res.vwap === null ? '—' : res.vwap.toFixed(2);
+      document.getElementById('ob-avgbp').textContent = res.vwap === null ? '—' : fmtBp(res.vwap);
+      document.getElementById('ob-last').textContent = res.last === null ? '—' : res.last.toFixed(2);
+      document.getElementById('ob-lastbp').textContent = res.last === null ? '—' : fmtBp(res.last);
+      document.getElementById('ob-unsold').textContent = Math.round(res.unsold) + (res.unsold > 1e-9 ? (sellerType === 'vol' ? ' (waits)' : ' (no bids left in view)') : '');
+    }
+
+    qIn.addEventListener('input', render);
+    mIn.addEventListener('input', render);
+    var typeBtns = Array.prototype.slice.call(document.querySelectorAll('#ob-type .sl-tab'));
+    typeBtns.forEach(function(b){
+      b.addEventListener('click', function(){
+        typeBtns.forEach(function(x){ x.classList.remove('active'); });
+        b.classList.add('active');
+        sellerType = b.getAttribute('data-type');
+        render();
+      });
+    });
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

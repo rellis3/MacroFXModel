@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Change-Point Detection — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, worked example, and 6-question self-test?<a href="change-point-detection.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -274,6 +274,7 @@
       </div>
     </section>
 
+    <!-- DESK:START -->
     <section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">What's actually running in this repo</h2>
@@ -289,9 +290,47 @@
         <div class="sl-icard"><div class="sl-icard-badge">○</div><div><h4>CUSUM — concept only</h4><p>No implementation found anywhere in this repo's trading code, exactly as the full lesson says.</p></div></div>
       </div>
     </section>
+    <!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">February–March 2020: obvious afterwards, late in real time</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>The S&amp;P 500 closed at a record on <strong>February 19, 2020</strong>. After the weekend outbreak in northern Italy it fell hard from February 24, and by February 27 it was more than 10% off the record, the fastest such correction on record, in six sessions. On March 16 it fell about 12% and the VIX closed above 82. An offline fit, which sees the whole year, puts the break at February 20–24. An online CUSUM tuned to stay quiet through calm 2019 needs several large days to accumulate before it crosses h. The recovery was the same in reverse: the index was back at a record by August 18, 2020, weeks before a detector could flag calm again.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Virus spreads</b>Late Feb 2020: outbreaks outside China</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Risk limits</b>Volatility-sized funds must cut as volatility jumps</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The tape</b>−10% in six sessions; −12% on March 16</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · online detection</b>The alarm needs several big days; the offline fit places the break at the start</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>The alarm confirms what the P&amp;L already shows</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <!-- DESK:START -->
+      <h2 class="sl-h2">What this desk can say, and where the textbook breaks</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>"A change-point alarm gives you time to act on a new regime"</strong> is not tested here. The BOCPD exit rule above has no ledger test of what followed its alarms. A fair test would run the detector strictly online, with k, h or H fixed in advance, score each alarm by what came <em>after</em> it against matched days, and count false alarms too. Grading it on where an offline fit puts the break only measures hindsight.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The textbook detector assumes a clean shift in one parameter with independent noise either side. March 2020 shifted the mean and the variance at once, with clustered days, so a mean-shift CUSUM calibrated on a calm year watched the wrong statistic at the wrong noise level. And the costliest part of the move came inside the detection delay.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -331,6 +370,7 @@
         <div class="sl-quiz-explain">A constant H means the chance of a change at any step doesn't depend on how long the current run has lasted — the same memorylessness that gives a constant-rate Poisson process exponential waiting times.</div>
       </div>
 
+      <!-- DESK:START -->
       <div class="sl-quiz-q" data-q="5">
         <div class="sl-quiz-num">Question 5</div>
         <h4>Is BOCPD used anywhere in this repo's live trading code today?</h4>
@@ -339,10 +379,11 @@
         <button class="sl-quiz-opt">Yes, but only inside the backtest engine, never live</button>
         <div class="sl-quiz-explain">A Gaussian BOCPD detector runs per pair every poll; its change_prob closes a position once it stays above bocpd_thresh (70%) for 2 consecutive polls (exit code X6). CUSUM, by contrast, has no implementation anywhere in the repo's trading code.</div>
       </div>
+      <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Change-point detection asks a narrower, operational question than the two prior lessons: has something changed, and roughly when — not "characterize every regime and every transition probability."</p></div>
@@ -350,7 +391,10 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>k and h trade off directly — smaller values catch shifts faster but raise false alarms; larger values are calmer but slower. There is no parameter-free way out of that curve.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>BOCPD replaces the single number with a full posterior over the run length r_t, updated via a hazard rate H and a predictive likelihood — richer, but only as honest as those assumptions.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>A constant hazard rate implies a memoryless, exponential prior on the gap between changes — a real modeling assumption, not a law of how change actually arrives.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>In this repo specifically: BOCPD (RegimeV2/bocpd.py) is live in regime_bot_v2.py's X6 exit gate; CUSUM remains conceptual only — verified while building this lesson.</p></div>
+        <!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>February–March 2020: an offline fit finds the break at February 20–24; an online detector quiet enough for 2019 fired only after several big days, with the S&amp;P 500 already 10% down.<!-- DESK:START --> Whether an alarm leaves time to act is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

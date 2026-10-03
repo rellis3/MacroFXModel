@@ -35,16 +35,17 @@
     <ul>
       <li>Covariance measures whether two variables tend to sit above/below their own means <em>together</em> (positive) or on opposite sides (negative) — the same deviation-product machinery as variance, just applied to two variables.</li>
       <li>Correlation \(r\) rescales covariance by both variables' standard deviations into a unitless number bounded \([-1,1]\) — but \(r=0\) only means no <em>linear</em> tendency, not "no relationship" (\(y=x^2\) is a deterministic relationship with \(r\approx 0\)).</li>
-      <li>OLS regression fits \(Y=\alpha+\beta X+\epsilon\) by minimizing the sum of squared residuals; the calculus collapses to \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this project's own regression code implements.</li>
+      <li>OLS regression fits \(Y=\alpha+\beta X+\epsilon\) by minimizing the sum of squared residuals; the calculus collapses to \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\)<!-- DESK:START --> — the exact formula this project's own regression code implements<!-- DESK:END -->.</li>
       <li>\(R^2 = 1-\mathrm{SSR}/\mathrm{SST}\) is the fraction of \(Y\)'s variance the fitted line explains, and equals \(r^2\) exactly for simple (one-predictor) regression — but \(R^2\) only ever weakly increases as predictors are added, even useless ones, so a high in-sample \(R^2\) alone proves nothing.</li>
       <li>Correlation is never proof of causation (ice cream sales and drowning deaths correlate because both follow warm weather, not each other); the interactive chart's noise slider shows \(r\) and \(R^2\) degrading as scatter widens around a fixed true slope.</li>
+      <li><strong>How it reached trading:</strong> Sharpe's single-index model and CAPM (1963–64) made beta a regression slope, and Ederington (1979) used the same slope as the hedge ratio for the new financial futures.</li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-    Nearly every piece of quantitative reasoning in this repo eventually rests
+    Nearly every piece of quantitative reasoning<!-- DESK:START --> in this repo<!-- DESK:END --> eventually rests
     on one of two questions: "do these two things move together?" and "if I
     had to draw one straight line through this relationship, what would it
     be?" The Cointegration lesson asks whether two price <em>levels</em> share
@@ -117,6 +118,25 @@
       the practical, tradeable number: for every one-unit move in X, how many
       units does Y tend to move.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>How much of this position is just the market?</h3>
+    <div class="tl-origin-who">Regression beta · Sharpe, 1963–64 — futures hedge ratios · Ederington, 1979</div>
+    <p>A stock that rose 12% in a year when the market rose 10% may have done nothing special. Without a way to split a return into the part explained by the market and the part left over, traders could not price market risk, hedge it, or tell skill from exposure.</p>
+    <p>William Sharpe's single-index model (1963) and his Capital Asset Pricing Model (1964) answered with a regression: the slope of an asset's returns on the market's is its beta, the part of its risk that diversification cannot remove. In 1979 Louis Ederington applied the same least-squares slope to the new financial futures markets as the minimum-variance hedge ratio. Correlation, Galton's 1888 measure from his heredity studies, became the input to Markowitz-style covariance matrices.</p>
+    <p>On a desk today, regression slopes are pair hedge ratios, betas to the market or to factors, and the "alpha" left after them; correlations feed every portfolio risk number.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Measuring how much one series moves with another: the hedge ratio or beta to apply, and the residual left after it.</dd>
+        <dt>Takes in</dt><dd>Expectation, variance and the normal curve (<a href="primer-probability.html">Probability</a>, <a href="primer-stats-normal.html">Statistics &amp; the Normal Distribution</a>).</dd>
+        <dt>Hands on to</dt><dd>Betas, spreads and moving hedge ratios (<a href="institutional-capm.html">CAPM</a>, <a href="cointegration.html">Cointegration</a>, <a href="kalman-filter.html">Kalman Filter</a>, <a href="regression-diagnostics.html">Regression Diagnostics</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -316,7 +336,7 @@
     <div class="tl-fp purple">
       <div class="tl-fp-term">β̂</div>
       <div class="tl-fp-name">The OLS slope</div>
-      <div class="tl-fp-desc">The exact formula this project's own regression code implements</div>
+      <!-- DESK:START --><div class="tl-fp-desc">The exact formula this project's own regression code implements</div><!-- DESK:END -->
     </div>
   </div>
 
@@ -327,11 +347,11 @@
     covariance and variance first — the OLS slope is not a separate concept
     from correlation, it <em>is</em> covariance, just normalized by \(X\)'s
     own spread instead of by both variables' spreads (which is what
-    correlation does). This is the identical formula
+    correlation does).<!-- DESK:START --> This is the identical formula
     this project's own regression code implements — there the "\(X\)" is simply the bar
     index (0, 1, 2, …), so the fitted slope is a per-bar drift/trend rate
     rather than a slope against another price series, but the underlying
-    least-squares arithmetic is identical.
+    least-squares arithmetic is identical.<!-- DESK:END -->
   </p>
 
   <div class="tl-eli5">
@@ -651,9 +671,9 @@
       its own, should raise scrutiny rather than confidence — check the
       number of predictors relative to the sample size, and prefer an
       <em>adjusted</em> \(R^2\) (which penalizes added predictors) or true
-      out-of-sample performance over the raw in-sample number, consistent
+      out-of-sample performance over the raw in-sample number<!-- DESK:START -->, consistent
       with this repo's broader discipline of never trusting an in-sample
-      metric as evidence of anything by itself.
+      metric as evidence of anything by itself<!-- DESK:END -->.
     </p>
     <p>
       <strong>Standard OLS inference assumes well-behaved errors.</strong>
@@ -667,10 +687,10 @@
       the standard errors the software reports are simply wrong (usually too
       small, making a relationship look more statistically significant than
       it is), even though the point estimate \(\hat\beta\) itself can still
-      be a reasonable estimate. This repo's own build discipline calls for
+      be a reasonable estimate.<!-- DESK:START --> This repo's own build discipline calls for
       checking exactly this before trusting a regression coefficient's
       significance — Durbin-Watson for autocorrelation, Breusch-Pagan for
-      heteroskedasticity — rather than reading a low p-value at face value.
+      heteroskedasticity — rather than reading a low p-value at face value.<!-- DESK:END -->
     </p>
   </div>
 
@@ -678,11 +698,12 @@
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Covariance measures co-movement; correlation rescales it to [-1, 1].</strong> Dividing by \(\sigma_X\sigma_Y\) cancels the units out, making \(r\) comparable across any two series regardless of what they're measured in.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OLS slope IS covariance, just normalized differently.</strong> \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — the exact formula this project's own regression code implements.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The OLS slope IS covariance, just normalized differently.</strong> \(\hat\beta = \mathrm{Cov}(X,Y)/\mathrm{Var}(X)\)<!-- DESK:START --> — the exact formula this project's own regression code implements<!-- DESK:END -->.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(R^2 = r^2\) only for simple (one-predictor) regression.</strong> The identity breaks the moment a second predictor is added — that's exactly why R² can't be trusted blindly with more predictors in the model.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r=0\) means no linear relationship, not "no relationship."</strong> \(y=x^2\) is a perfect deterministic relationship with \(r\approx0\) — always look at a scatter plot, not just the coefficient.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Adding predictors always weakly increases R², even useless ones.</strong> OLS can always set a new coefficient to zero, so the fit never gets worse — a high in-sample R² with many predictors proves nothing on its own.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Correlation is never proof of causation.</strong> Confounding (a shared third driver) is the default explanation to rule out, not a rare edge case — treating a high r as a causal link is the single most common misuse of this tool.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Beta and the hedge ratio are regression slopes.</strong> Sharpe (1963–64) measured market risk with one; Ederington (1979) hedged futures with one. What is left over is the alpha or the spread.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -948,5 +969,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

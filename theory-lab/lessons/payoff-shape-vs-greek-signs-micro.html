@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Same Greeks, Different Risk — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Same Greeks, Different Risk — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the parity proof, the Taylor-expansion worked example and a 6-question self-test?<a href="payoff-shape-vs-greek-signs.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Options from the Ground Up · Lesson 2 of 3</div>
+      <h1 class="sl-h1">Same Greeks, <em>Different Risk</em></h1>
+      <p class="sl-lede">A short put and a short call are both short gamma, long theta and short vega. One can lose at most the strike. The other can lose without limit. The Greeks are local slopes; the payoff is the whole road — cliff included.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Same row of signs…</h2>
+      <p class="sl-sub">K = 100, 30 days, σ = 20%, r = 2%. Sell a put for 2.20, sell a call for 2.37.</p>
+      <div class="sl-calc-steps" style="font-size:13px">
+        <div>Short put: Δ <b>+0.477</b> · Γ <b>−0.0695</b> · Θ <b>+0.0353</b>/day · ν <b>−0.114</b></div>
+        <div>Short call: Δ <b>−0.523</b> · Γ <b>−0.0695</b> · Θ <b>+0.0408</b>/day · ν <b>−0.114</b></div>
+      </div>
+      <p class="sl-p">Gamma and vega are not just the same sign — they are the <strong>same number</strong>. Deltas differ by exactly 1. Thetas differ by a tiny financing term.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">Short put worst case</span><p><strong>−97.80</strong> (price can only fall to zero)</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">Short call worst case</span><p><strong>Unlimited</strong> (price has no ceiling)</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">Slide the price — watch signs hold while losses split</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Expiry profit and loss of a short put and a short call at strike 100 for prices 0 to 250; the put's loss flattens at minus 97.8, the call's keeps falling">
+            <line x1="60" y1="46.7" x2="610" y2="46.7" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--border2);stroke-width:1"/>
+            <line x1="280" y1="20" x2="280" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+            <line x1="60" y1="177.1" x2="610" y2="177.1" style="stroke:var(--amber);stroke-width:1;stroke-dasharray:4,4;opacity:.6"/>
+            <text x="606" y="172" text-anchor="end" font-size="10" fill="var(--amber)">short put floor −97.80</text>
+            <text x="60" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="280" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">K=100</text>
+            <text x="500" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">200</text>
+            <text x="52" y="51" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="52" y="264" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−160</text>
+            <polyline id="m-sg-put" points="" style="fill:none;stroke:var(--amber);stroke-width:3"/>
+            <polyline id="m-sg-call" points="" style="fill:none;stroke:var(--red);stroke-width:3"/>
+            <line id="m-sg-mark" x1="280" y1="20" x2="280" y2="260" style="stroke:var(--blue);stroke-width:1.5;stroke-dasharray:2,2"/>
+            <circle id="m-sg-dp" cx="280" cy="46.7" r="5" style="fill:var(--amber)"/>
+            <circle id="m-sg-dc" cx="280" cy="46.7" r="5" style="fill:var(--red)"/>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Underlying price</span><span class="sl-live" id="m-sg-s-val">S = 100</span></div>
+        <input type="range" class="sl-slider" id="m-sg-s" min="1" max="250" step="1" value="100">
+        <div class="sl-calc-steps">
+          <div>Short put: Δ <b id="m-sg-pd">—</b> · Γ <b id="m-sg-pg">—</b> · Θ <b id="m-sg-pt">—</b> · ν <b id="m-sg-pv">—</b> · expiry P&amp;L <b id="m-sg-pe">—</b></div>
+          <div>Short call: Δ <b id="m-sg-cd">—</b> · Γ <b id="m-sg-cg">—</b> · Θ <b id="m-sg-ct">—</b> · ν <b id="m-sg-cv">—</b> · expiry P&amp;L <b id="m-sg-ce">—</b></div>
+        </div>
+        <div class="sl-note">Amber = short put, red = short call, at expiry. Greeks are today's, 30 days left. Past ~140 the call's gamma and vega read ≈0 — the Greeks go quiet while the loss keeps growing.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">Why: a short call is a short put plus a straight line</h2>
+      <div class="sl-row"><div class="sl-box">−C</div><div class="sl-arrow">=</div><div class="sl-box amber">−P</div><div class="sl-arrow">−</div><div class="sl-box">(S − Ke⁻ʳᵗ)</div></div>
+      <p class="sl-p">Put-call parity, negated. The extra piece is a <strong>short forward</strong>: delta −1, gamma 0, vega 0, almost no theta.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">What the Greeks see</span><p>Gamma and vega of the forward are zero, so the two shorts show identical curvature and vol exposure.</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">What the Greeks miss</span><p>The forward is a straight line with no floor. It carries the short call's entire unbounded tail.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Greeks are a Taylor expansion — local by design</h2>
+      <div class="sl-row"><div class="sl-box">δV ≈ Δ·δS + ½Γ·δS² + Θ·δt + ν·δσ</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>A ±50 move, Greeks vs reality</div>
+        <div class="sl-calc-steps" style="font-size:13px">
+          <div>Short call, +50: Taylor says <b>−113.0</b> · true reprice <b>−47.80</b></div>
+          <div>Short put, −50: Taylor says <b>−110.7</b> · true reprice <b>−47.63</b></div>
+        </div>
+        <div class="sl-verdict">The quadratic assumes gamma stays at its ATM value across the whole move. It doesn't: once deep in the money, gamma collapses and delta saturates. Locally the two shorts are mirror images; the Taylor estimate can't tell them apart.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Where they part: a 100-point move</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">Fall to 0</span><p>Short put loses <strong>97.80</strong>. That's the most it can ever lose.</p></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">Rise to 200</span><p>Short call loses <strong>97.80</strong> — then 197.80 at 300, 397.80 at 500. No floor.</p></div>
+      </div>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Sizing rule</div>
+        <p>Size each short by its <strong>stressed loss</strong>, not its Greek columns. And for a short call, the stress level has to be chosen — the contract never supplies a worst case.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">The squeeze chain</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Tradable supply shrinks, or a buying wave hits</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Call writers</b>Short-call delta heads to −1; must buy the underlying to stay hedged</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Short sellers</b>Margin grows, borrow recalled; must buy to close</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Forced buyers, thin sellers — price and losses climb with no floor</div>
+      </div>
+      <p class="sl-p">Deep in the money, a short call behaves like short stock: every point of rally is a point of loss.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">October 2008: Volkswagen</h2>
+      <p class="sl-p">On Sunday 26 October 2008 Porsche disclosed control of about 74% of VW's ordinary shares — roughly 43% outright, most of the rest via cash-settled options. Lower Saxony held about 20%. Only a few percent were left to trade, against heavy short interest.</p>
+      <p class="sl-p">Over two trading days VW rose roughly fivefold, above €1,000 intraday on 28 October — briefly the world's most valuable listed company. The squeeze eased after Porsche said it would release some of its position.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">January 2021: the replay</div>
+        <p>GameStop: retail buying, much of it via short-dated calls, met heavy short interest; the price multiplied many times in weeks. Short-seller Melvin Capital needed about $2.75 billion from Citadel and Point72, and brokers restricted buying on 28 January. Nobody's delta was wrong on a Monday. The payoff had no ceiling.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
+      <h2 class="sl-h2">The dealer-level version<!-- DESK:START -->: what the desk found<!-- DESK:END --></h2>
+      <p class="sl-sub">A dealer book that has sold options is "short gamma" — this lesson, aggregated. The folk claim: short gamma amplifies moves, long gamma damps them, and so gamma tells you what's next.</p>
+      <!-- DESK:START -->
+      <div class="sl-stamp validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+        <span class="sl-stamp-tag">Desk test: held up (range only)</span>
+        <span><strong>793 days of Nasdaq futures, pre-registered.</strong> Next-day range vs a Brownian baseline +0.176 wider on short-gamma days (p 0.0008), +0.315 vol-matched; 4/4 specs, 6/6 years. But short-gamma days sit at ≈1.02 — ordinary — while long-gamma days sit at ≈0.85. <strong>Long gamma is quiet</strong>; short gamma isn't wild.</span>
+      </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null">
+        <span class="sl-stamp-tag">Desk test: no direction found</span>
+        <span><strong>No direction from gamma</strong> — the adjacent wall-magnet test scored 48.8% out-of-sample vs a 49.9% placebo. <strong>Not FX</strong> — tested there, doesn't carry.</span>
+      </div>
+      <!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Pitfalls</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Same Greeks, same risk"</h4><p>Identical gamma and vega; worst cases 97.80 vs unlimited.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Gamma ≈ 0 means safe"</h4><p>Low gamma means <em>linear</em>, not <em>small</em>. A deep-ITM short call loses one-for-one.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">≈</div><div><h4>"Bounded means small"</h4><p>The short put risks 97.80 to earn 2.20 — about 44× the premium.</p></div></div>
+        <!-- DESK:START --><div class="sl-icard"><div class="sl-icard-badge">✗</div><div><h4>"Short gamma = breakout"</h4><p>Tested: short-gamma days are ordinary; gamma carries no direction; nothing on FX.</p></div></div><!-- DESK:END -->
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>At the same strike, short put and short call gamma are…</h4>
+        <button class="sl-quiz-opt">Opposite in sign</button>
+        <button class="sl-quiz-opt" data-correct="true">Identical — same sign and same size</button>
+        <button class="sl-quiz-opt">Same sign, but the call's is always larger</button>
+        <div class="sl-quiz-explain">−C = −P − (S − Ke⁻ʳᵗ). The forward is linear in S, so its gamma is zero and the two shorts' gammas are equal.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Where does the short call's unlimited tail come from?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The short forward that separates it from a short put</button>
+        <button class="sl-quiz-opt">Its larger vega</button>
+        <button class="sl-quiz-opt">Its higher theta</button>
+        <div class="sl-quiz-explain">The forward is a straight line with no floor; its gamma and vega are zero, so the Greeks can't register it.</div>
+      </div>
+
+      <!-- DESK:START -->
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>The desk's verdict on "dealer short gamma" is…</h4>
+        <button class="sl-quiz-opt">Short gamma predicts breakouts in FX</button>
+        <button class="sl-quiz-opt" data-correct="true">A range effect on the Nasdaq only — long gamma is quiet; no direction; not FX</button>
+        <button class="sl-quiz-opt">Untested</button>
+        <div class="sl-quiz-explain">+0.176 (p 0.0008) wider on short-gamma days vs baseline over 793 Nasdaq days; long-gamma days ≈0.85 are the informative state. Direction falsified (48.8% vs 49.9% placebo); doesn't carry to FX.</div>
+      </div>
+      <!-- DESK:END -->
+
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>Why did the Taylor estimate say −113 for a +50 move when the truth was −47.8?</h4>
+        <button class="sl-quiz-opt" data-correct="true">It held gamma at its ATM value; in reality gamma collapses deep in the money</button>
+        <button class="sl-quiz-opt">Black-Scholes is wrong for large moves</button>
+        <button class="sl-quiz-opt">Theta offset most of the loss</button>
+        <div class="sl-quiz-explain">The Greeks are a local expansion. A 50-point move on a 30-day option is not local — the full reprice is the honest number.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Short put and short call share gamma, theta and vega signs — gamma and vega are exactly equal.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Short call = short put + short forward. The forward is invisible to gamma and vega and carries the whole unlimited tail.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Greeks are local slopes; payoffs are global. Size by stressed loss, not Greek columns.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Deep ITM, a short call's Greeks go quiet while it loses one-for-one — low gamma means linear, not small.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Dealer gamma, tested: a Nasdaq range effect (long gamma quiet). Direction falsified. Not FX.</p></div><!-- DESK:END -->
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>The Covered Call Is a Short Put</h3>
+        <p>Long stock plus a short call has the same expiry payoff as a naked short put — two strategies usually taught separately, one position.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="covered-call-equals-short-put-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="payoff-shape-vs-greek-signs.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="options-four-positions-micro.html">← Previous: The Four Option Positions</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  function erf(x){
+    var sign = x < 0 ? -1 : 1; x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    return sign*(1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x));
+  }
+  function N(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function n(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+  function bs(type, S, K, r, sig, T){
+    var sq = Math.sqrt(T), d1 = (Math.log(S/K) + (r + sig*sig/2)*T)/(sig*sq), d2 = d1 - sig*sq;
+    var disc = K*Math.exp(-r*T), g = n(d1)/(S*sig*sq), v = S*n(d1)*sq/100, decay = -S*n(d1)*sig/(2*sq);
+    if (type === 'call') return { price: S*N(d1) - disc*N(d2), delta: N(d1), gamma: g, theta: (decay - r*disc*N(d2))/365, vega: v };
+    return { price: disc*N(-d2) - S*N(-d1), delta: N(d1) - 1, gamma: g, theta: (decay + r*disc*N(-d2))/365, vega: v };
+  }
+  var slider = document.getElementById('m-sg-s');
+  if (!slider) return;
+  var K = 100, R = 0.02, SIG = 0.20, T = 30/365;
+  var pP = bs('put', 100, K, R, SIG, T).price, pC = bs('call', 100, K, R, SIG, T).price;
+  function sx(s){ return 60 + s/250*550; }
+  function py(p){ return Math.max(20, Math.min(260, 20 + (20 - p)*240/180)); }
+  var a = [], b = [];
+  for (var i=0;i<=250;i++){
+    a.push(sx(i).toFixed(1)+','+py(pP - Math.max(K-i,0)).toFixed(1));
+    b.push(sx(i).toFixed(1)+','+py(pC - Math.max(i-K,0)).toFixed(1));
+  }
+  document.getElementById('m-sg-put').setAttribute('points', a.join(' '));
+  document.getElementById('m-sg-call').setAttribute('points', b.join(' '));
+  function f(x, dp){ var v = x.toFixed(dp); if (parseFloat(v) === 0) return (0).toFixed(dp); return (x > 0 ? '+' : '') + v; }
+  function set(id, t){ document.getElementById(id).textContent = t; }
+  function upd(){
+    var s = parseFloat(slider.value), P = bs('put', s, K, R, SIG, T), C = bs('call', s, K, R, SIG, T);
+    var ep = pP - Math.max(K-s,0), ec = pC - Math.max(s-K,0);
+    set('m-sg-s-val', 'S = ' + s);
+    set('m-sg-pd', f(-P.delta,3)); set('m-sg-pg', f(-P.gamma,4)); set('m-sg-pt', f(-P.theta,4)); set('m-sg-pv', f(-P.vega,3)); set('m-sg-pe', f(ep,2));
+    set('m-sg-cd', f(-C.delta,3)); set('m-sg-cg', f(-C.gamma,4)); set('m-sg-ct', f(-C.theta,4)); set('m-sg-cv', f(-C.vega,3)); set('m-sg-ce', f(ec,2));
+    var x = sx(s), m = document.getElementById('m-sg-mark');
+    m.setAttribute('x1', x); m.setAttribute('x2', x);
+    var dp = document.getElementById('m-sg-dp'), dc = document.getElementById('m-sg-dc');
+    dp.setAttribute('cx', x); dp.setAttribute('cy', py(ep));
+    dc.setAttribute('cx', x); dc.setAttribute('cy', py(ec));
+  }
+  slider.addEventListener('input', upd);
+  upd();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Decision Trees &amp; Random Forests</h1>
   <p class="tl-dek">A single tree grown all the way down can memorize its training data almost perfectly — which is the problem, not the achievement. Random forests fix this by averaging many decorrelated trees instead of trusting one.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="model-selection-aic-bic.html">Model Selection: AIC &amp; BIC</a> (bias-variance framing)</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Averaging \(B\) correlated estimators does not drive variance to zero as \(B\to\infty\); it converges to \(\rho\sigma^2\), where \(\rho\) is the average pairwise correlation between trees. Feature subsampling lowers \(\rho\) directly — this, not just "more trees," is the actual lever.</li>
       <li>Forests naturally produce a genuinely useful practical output: <strong>feature importance</strong> (mean decrease in impurity, or the more reliable permutation importance) — and an internal, free validation estimate from the roughly one-third of rows left out of each bootstrap sample (out-of-bag error).</li>
       <li>None of this says a specific feature set fed into a forest produces real trading edge — a strong general-purpose method and a validated signal are two different claims, kept separate throughout this lesson.</li>
+      <li><strong>How it reached trading:</strong> Trees reached finance through credit scoring, and Gu, Kelly &amp; Xiu (2020) showed tree ensembles beating linear models at predicting stock returns.</li>
     </ul>
   </div>
 
@@ -97,6 +98,43 @@
       feature subset a tree was given — survives the averaging and comes
       through in the vote.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Interactions a linear factor model can't see</h3>
+    <div class="tl-origin-who">Trees and random forests · credit scoring by 2010 (Khandani, Kim &amp; Lo); return prediction, Gu, Kelly &amp; Xiu (2020)</div>
+    <p>
+    Cross-sectional return models were linear for decades: regress returns on a
+    few characteristics, as in Fama–MacBeth. If momentum works only in small, illiquid
+    stocks, a linear model misses it unless someone thinks to add that interaction by
+    hand. A tree finds such conditional rules on its own, and a forest of trees, built by
+    the statistician Leo Breiman for general prediction problems, averages away much of
+    a single tree's noise.
+    </p>
+    <p>
+    Finance used trees first for credit. Amir Khandani, Adlar Kim and Andrew Lo
+    (2010) built tree-based consumer credit-risk forecasts from a bank's transaction
+    data. For returns, the landmark is Shihao Gu, Bryan Kelly and Dacheng Xiu's
+    "Empirical Asset Pricing via Machine Learning" (2020). On nearly 30,000 US stocks
+    over sixty years and 94 characteristics, tree ensembles and neural networks beat
+    linear regressions out of sample, and the authors traced the gain to nonlinear
+    interactions, led by momentum, liquidity and volatility signals.
+    </p>
+    <p>
+    On a desk today, a random forest is the standard nonlinear baseline for
+    cross-sectional and event-labelled prediction. Its feature importances are used to
+    screen signals, and forests are often used as the second-stage "should I take this
+    trade?" model in meta-labelling.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Predict a return or a trade label from many characteristics when the effect of one depends on another.</dd>
+        <dt>Takes in</dt><dd>Leak-free features from <a href="feature-engineering-leakage-reproducibility.html">feature engineering</a> and labels such as <a href="institutional-triple-barrier-labeling.html">triple-barrier labels</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="gradient-boosting.html">Gradient boosting</a> as the stronger tree ensemble, and <a href="walk-forward-purged-cv.html">purged walk-forward validation</a> to test whether the forecast is real.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -630,6 +668,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Averaging \(B\) correlated trees converges to a variance floor of \(\rho\sigma^2\), not zero.</strong> Lowering the trees' pairwise correlation matters as much as growing more of them.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Feature importance (MDI or permutation) and OOB error are genuinely useful, low-cost byproducts</strong> of the bagging design — not something bolted on afterward.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A trained forest's feature importances say nothing on their own about real trading edge.</strong> That question needs a genuine out-of-sample test with costs, kept entirely separate from "the method works well in general."</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Forests are the nonlinear baseline in return prediction.</strong> Gu, Kelly &amp; Xiu (2020) found tree ensembles beat linear regressions out of sample on US stocks, mainly by catching interactions, and desks use forests for signal screening and meta-labelling.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

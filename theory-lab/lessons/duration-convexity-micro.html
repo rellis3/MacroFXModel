@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Duration &amp; Convexity — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, a live scratch calculator, and a 5-question self-test?<a href="duration-convexity.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -224,7 +224,42 @@
     </section>
 
     <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">Silicon Valley Bank, March 2023</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>In 2020–21 SVB's deposits roughly tripled. It put much of the cash into long-dated Treasuries and mortgage bonds, much of it labelled held to maturity. The Fed then hiked from near zero to 4.50–4.75% by February 2023. By end-2022 those securities were worth about <strong>$15bn below book value</strong>, against about $16bn of equity. On 8 March 2023 SVB sold about $21bn of securities at a $1.8bn loss. Depositors pulled <strong>about $42bn on 9 March</strong>, and the bank was closed on 10 March.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Deposit flood</b>Cash pours in while rates sit near zero</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>SVB</b>Buys long-dated bonds for yield</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The Fed</b>Hikes to 4.50–4.75% in under a year</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson</b>ΔP/P ≈ −D<sub>mod</sub>×Δy; negative convexity lengthens the mortgage bonds</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Depositors</b>See a realised loss; pull $42bn in a day</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Closed 10 March; the paper loss became real</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
+      <!-- DESK:START --><h2 class="sl-h2">The verdict, and where the textbook breaks</h2><!-- DESK:END -->
+      <p class="sl-sub">The tempting claim: a duration-matched book is protected from a rate shock.</p>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>Not tested on this desk.</strong> No ledger entry measures bond-portfolio P&amp;L. A fair test needs a bond book and its hedge priced across many large-move days, realised P&amp;L scored against the duration-only and duration+convexity predictions, and a liability side measured under stress rather than assumed.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-quote">Duration was right about the <strong>size</strong> of SVB's loss. The textbook framing assumes the liabilities stay put. SVB's deposits behaved like overnight money, and UK LDI funds (September 2022) faced daily collateral calls on leveraged duration. And SVB's mortgage bonds had <em>negative</em> convexity.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -274,8 +309,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bond price is a function of yield, P(y) — and duration and convexity are nothing more than the first two Taylor terms of that one function, evaluated at today's yield.</p></div>
@@ -284,6 +319,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Convexity is the second-order Taylor term, ½×C×(Δy)² — always non-negative for a plain bond, so the true curve always sits on or above its tangent line.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>That's why duration alone always underestimates a plain bond's true price after any yield move, and why a same-sized yield fall produces a bigger dollar gain than a yield rise produces a dollar loss.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Desks size and hedge in duration/DV01 terms daily, but trade convexity as its own factor — especially once it turns negative, as it can for callable or mortgage-backed bonds.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: SVB, March 2023. Duration sized a ~$15bn loss against ~$16bn of equity; a $42bn one-day deposit run forced it to be realised. Duration says nothing about whether you'll have to sell.<!-- DESK:START --> Untested on this desk.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -467,5 +503,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

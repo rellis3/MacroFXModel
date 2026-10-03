@@ -5,6 +5,15 @@
    interactive widgets (a custom slider, a calculator), a small inline
    <script> wiring just those up. Never copy this file; every visual-guide
    lesson should link to it directly. */
+// Cross-device sync (assets/sync.js) loads only once this browser has linked a sync
+// code on paths.html; it then pushes reading progress when the tab is hidden.
+(function(){ try {
+  var me = document.currentScript;
+  if (me && localStorage.getItem('theoryLabSyncCode') && !window.TLSync) {
+    var s = document.createElement('script'); s.src = me.src.replace(/[^\/?#]+(\?.*)?$/, 'sync.js'); s.async = true;
+    document.head.appendChild(s);
+  }
+} catch (e) {} })();
 (function(){
   var slides = Array.prototype.slice.call(document.querySelectorAll('.sl-slide'));
   var total = slides.length;
@@ -142,4 +151,41 @@
       });
     });
   });
+
+  // On a phone the "read the complete lesson" banner costs about a fifth of the
+  // screen, so the slide has to be scrolled from the first moment. Show it long
+  // enough to be read, then fold it away (after 3s, or on the first scroll or
+  // navigation, whichever comes first) and leave a compact "Full lesson" link in
+  // the top bar so the way out is never lost. Wider screens keep the banner.
+  (function(){
+    var note = document.querySelector('.sl-fullnote');
+    if (!note || !window.matchMedia || !window.matchMedia('(max-width: 700px)').matches) return;
+    // The top bar's title wraps to three lines on a phone; the suffix adds nothing there.
+    var tt = document.querySelector('.sl-toptitle');
+    if (tt) tt.textContent = tt.textContent.replace(/\s*[—–-]\s*Visual Guide\s*$/i, '');
+    var link = note.querySelector('a');
+    var done = false;
+    function collapse(){
+      if (done) return;
+      done = true;
+      note.classList.add('sl-fullnote-gone');
+      note.setAttribute('aria-hidden', 'true');
+      if (link) link.setAttribute('tabindex', '-1');
+      var count = document.querySelector('.sl-topcount');
+      if (link && count) {
+        var a = document.createElement('a');
+        a.className = 'sl-fulllink';
+        a.href = link.getAttribute('href');
+        a.textContent = 'Full lesson';
+        a.setAttribute('aria-label', 'Read the complete lesson');
+        count.parentNode.insertBefore(a, count);
+      }
+    }
+    setTimeout(collapse, 3000);
+    viewport.addEventListener('scroll', collapse, { passive: true, once: true });
+    viewport.addEventListener('touchstart', collapse, { passive: true, once: true });
+    prevBtn.addEventListener('click', collapse);
+    nextBtn.addEventListener('click', collapse);
+    document.addEventListener('keydown', collapse, { once: true });
+  })();
 })();

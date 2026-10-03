@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Random Matrix Theory — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the Laloux et al. case study, and a 6-question self-test?<a href="random-matrix-theory.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Most of a correlation matrix is noise</h2>
+      <p class="sl-sub">Random matrix theory · Laloux, Cizeau, Bouchaud &amp; Potters and Plerou et al., 1999</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>An optimiser inverts a correlation matrix with more parameters than the data can pin down, and loads up on spurious low-risk combinations. In 1999 Laloux, Cizeau, Bouchaud &amp; Potters and Plerou et al. compared stock correlation matrices with the Marchenko–Pastur band.</p>
+        <p>Only a handful of eigenvalues, the market and some sectors, stood clearly above the noise. Cleaning the rest, alongside Ledoit–Wolf shrinkage, became a standard step before mean-variance or risk-parity optimisation.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> which eigenvalues are signal, and which are noise to clean before optimising?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Even zero correlation doesn't look like zero</h2>
       <p class="sl-sub">A correlation matrix built from finite history always spreads its eigenvalues away from 1 — even when the true, underlying correlations are exactly zero.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">Flip a fair coin 20 times and you'll almost never land exactly 10 heads, 10 tails — 12-8, 8-12, sometimes 15-5. None of that means the coin is rigged; it's what "no real pattern, finite sample" looks like. Random Matrix Theory hands correlation-matrix eigenvalues the exact equivalent of that "how much wobble is normal" band.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The thought experiment: correlate pure noise with itself</h2>
       <p class="sl-sub">Take it literally, not abstractly.</p>
       <div class="sl-card">
@@ -55,10 +68,10 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The Marchenko-Pastur law names the exact noise band</h2>
-      <p class="sl-sub">Marchenko &amp; Pastur (1967) proved the spread from Section 2 isn't just "some spread" — it converges to a specific, computable distribution with a hard edge.</p>
+      <p class="sl-sub">Marchenko &amp; Pastur (1967) proved the spread from Section 3 isn't just "some spread" — it converges to a specific, computable distribution with a hard edge.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">N/T</div><div><h4>q — the shape parameter</h4><p>q = N/T: instruments relative to independent observations. The single ratio the entire noise band depends on — not N alone, not T alone.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">↓</div><div><h4>λ_min — the floor</h4><p>λ_min = (1 − √q)². The lowest eigenvalue a pure-noise correlation matrix is expected to produce at this N/T.</p></div></div>
@@ -68,8 +81,8 @@
       <p class="sl-p">A smaller q — more history per instrument — pushes √q toward 0, so both edges converge on 1: the band tightens because sample correlations converge more tightly to their true (zero) value. A larger q pushes the band wide open: λ_min falls toward 0, λ_max climbs well above 1, and a much bigger eigenvalue is needed before it's distinguishable from chance.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Drag q and watch the noise band move</h2>
       <p class="sl-sub">q = N/T. Every eigenvalue a pure-noise correlation matrix could produce falls inside the shaded band below.</p>
       <div class="sl-card">
@@ -101,8 +114,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Structured market, or pure noise?</h2>
       <p class="sl-sub">Same style of histogram, two very different baskets. Compare where the bars fall relative to the band.</p>
       <div class="sl-card">
@@ -146,8 +159,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Compute your own noise band</h2>
       <p class="sl-sub">Enter a basket size, a lookback window, and an average variance. σ² = 1 matches a correlation matrix; raise it for a covariance matrix's eigenvalue bounds.</p>
       <div class="sl-card">
@@ -173,8 +186,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Thirty FX pairs, one year of daily returns</h2>
       <p class="sl-sub">q = 30/250 = 0.12 → noise band ≈ [0.43, 1.81]. Now check the real eigenvalues against it.</p>
       <div class="sl-compare">
@@ -198,8 +211,8 @@
       <p class="sl-p">That doesn't mean PC2 is definitely meaningless in reality — it means this sample, at this size, cannot tell the difference. Building on top of it as if it could is overfitting to noise while believing it's structure.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">A binary screen, or a full cleanup</h2>
       <p class="sl-sub">Practitioners use this idea two ways — one this lesson covers, one it only names.</p>
       <div class="sl-compare">
@@ -215,19 +228,21 @@
       <div class="sl-quote">The landmark real-world application: Laloux, Cizeau, Bouchaud &amp; Potters (1999) found that the great majority of eigenvalues in a real stock-market correlation matrix, built across several hundred U.S. stocks, fell inside the Marchenko-Pastur band computed from their actual N and T — while a small handful, led by one dominant market factor, sat far outside it. That paper is generally credited with launching "RMT filtering" as a standard risk-management technique.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Where this plugs into the rest of the curriculum</h2>
       <p class="sl-p">This lesson builds directly on <a href="pca-factors-micro.html" style="color:var(--blue)">PCA &amp; Factor Models</a>: same N instruments, same T observations, same correlation matrix, same ranked eigenvalues λ₁ ≥ λ₂ ≥ … ≥ λ_N. PCA tells you how to rank them and read off a candidate factor; the Marchenko-Pastur band is the missing step that tells you which of those candidates have actually earned the name "factor," versus which ones are exactly what an unlucky sample window would produce anyway.</p>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's current code</div>
         <p><code>js/diversificationCore.js</code> already computes a correlation matrix's eigenvalues (<code>symmetricEigenvalues</code>) and feeds them into three effective-number-of-bets metrics — <code>effectiveBetsPCA</code>, <code>effectiveBetsEntropy</code>, <code>effectiveBetsWeighted</code>. As of this lesson, none of them compares a single eigenvalue against a Marchenko-Pastur λ_min/λ_max band — there is no noise-band check anywhere in that file, or elsewhere in the codebase, against the spectrum it already produces. The full lesson's claim that this check "is not currently run in this repo" still holds; nothing here is stale.</p>
       </div>
-      <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself — a concrete, unbuilt guardrail, not a claim about what the repo currently does.</p>
+      <!-- DESK:END -->
+      <p class="sl-p">Practically: a basket's effective-bets score can look reassuringly close to N while partly resting on eigenvalues that are noise-band artifacts, not real diversification. Flagging which eigenvalues clear the band would add an honest caveat to that number without changing the formula itself<!-- DESK:START --> — a concrete, unbuilt guardrail, not a claim about what the repo currently does<!-- DESK:END -->.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the rule gets misapplied</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🚫</div><div><h4>"Inside the band" ≠ proof of nothing</h4><p>It's a statistical-power limit, not a certainty — a real, modest factor can still hide there at small T.</p></div></div>
@@ -238,8 +253,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -289,8 +304,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Finite samples always spread eigenvalues away from 1, even for truly independent series — that's pure sampling noise, not evidence of structure.</p></div>
@@ -298,7 +313,10 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Only the ratio q matters, not N or T alone — more history per instrument narrows the band; more instruments relative to history widens it.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The decision rule: an eigenvalue inside the band is suspect; one sitting several multiples above λ_max is a strong factor candidate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>"Inside the band" is a power limit, not proof of zero structure — and edge effects mean a value just above λ_max is a weaker signal than one far above it.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's diversificationCore.js already has the eigenvalues this check would need — running it is a concrete, unbuilt guardrail on the effective-bets metric, not something it currently does.</p></div>
+        <!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>RMT reached markets in 1999 (Laloux et al.; Plerou et al.): most eigenvalues of a stock correlation matrix are noise, so a cleaned matrix, not the raw one, goes into the optimiser.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -414,5 +432,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

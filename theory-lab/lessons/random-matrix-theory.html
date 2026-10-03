@@ -17,7 +17,7 @@
   <h1 class="tl-title">Random Matrix Theory &amp; the Marchenko-Pastur Law</h1>
   <p class="tl-dek">The PCA lesson showed how to split a correlation matrix into ranked eigenvalues. It never asked the harder question: with only a finite sample of history, how many of those eigenvalues are real, and how many are exactly what pure noise looks like when you don't have enough data?</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — extends the eigenvalue math used elsewhere in this project's diversification research</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — extends the eigenvalue math used elsewhere in this project's diversification research<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: Principal Component Analysis &amp; Factor Regimes, Linear Algebra &amp; Matrices</span>
   </div>
@@ -34,7 +34,10 @@
       <li>A correlation matrix built from finite history always spreads its eigenvalues away from 1 — even for instruments that are truly independent — purely from sampling noise, the same way 20 fair coin flips rarely land exactly 10-10.</li>
       <li>The Marchenko-Pastur law gives the exact "noise band" \([\lambda_{\min}, \lambda_{\max}] = [(1-\sqrt{q})^2, (1+\sqrt{q})^2]\) that pure-noise eigenvalues are expected to fall inside, where \(q = N/T\) (instruments over observations).</li>
       <li>Worked example in this lesson: \(N=30\) FX pairs, \(T=250\) days gives \(q=0.12\), so \(\lambda_{\min}\approx0.43\) and \(\lambda_{\max}\approx1.81\) — the basket's \(\lambda_1=8.2\) clears that band easily (a real factor), while \(\lambda_2\)–\(\lambda_4\) all land inside it (indistinguishable from noise).</li>
+      <!-- DESK:START -->
       <li>This project's existing effective-number-of-bets calculation already consumes the full eigenvalue spectrum but does not run this noise-band check against it — a concrete, unbuilt guardrail, not something the repo currently does.</li>
+      <!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> two physics groups showed in 1999 (Laloux et al.; Plerou et al.) that most eigenvalues of stock correlation matrices sit inside the Marchenko–Pastur noise band, and cleaning them became a standard step before portfolio optimisation.</li>
     </ul>
   </div>
 
@@ -92,6 +95,23 @@
       obviously a biased coin. An eigenvalue far outside it is a different
       story — that's the equivalent of flipping 19 heads out of 20.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Most of a correlation matrix is noise</h3>
+    <div class="tl-origin-who">Random matrix theory · Laloux, Cizeau, Bouchaud &amp; Potters and Plerou et al., 1999</div>
+    <p>A portfolio optimiser inverts a correlation matrix estimated from history. With hundreds of assets and a few years of data, that matrix has more parameters than the data can pin down, and the optimiser piles weight into spurious low-risk combinations. There was no clean test of which parts of an estimated matrix were real.</p>
+    <p>In 1999 two physics groups, Laloux, Cizeau, Bouchaud &amp; Potters in Paris and Plerou, Gopikrishnan, Rosenow, Amaral &amp; Stanley in Boston, compared large US stock correlation matrices with the Marchenko–Pastur noise band and found only a handful of eigenvalues, the market mode and some sector modes, clearly above it. Bouchaud and Potters worked at the hedge fund Capital Fund Management, and their group went on to show that optimising with a cleaned matrix brings realised risk much closer to predicted risk.</p>
+    <p>On a desk today, cleaning or shrinking the covariance matrix is a standard step before mean-variance or risk-parity optimisation, alongside Ledoit–Wolf shrinkage, and the noise band is a quick check on how many factors are real.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which eigenvalues of an estimated correlation matrix are signal, and which are sampling noise to clean away before optimising?</dd>
+        <dt>Takes in</dt><dd>The eigen-decomposition from <a href="pca-factors.html">PCA &amp; Factors</a> and <a href="linear-algebra-matrices.html">Linear Algebra</a>.</dd>
+        <dt>Hands on to</dt><dd>A cleaned matrix for <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> and <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>; compare <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit–Wolf shrinkage</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -504,8 +524,8 @@
       <strong>Applying the raw i.i.d. assumption to real returns without
       caveat.</strong> The theorem assumes the underlying series are
       independent and identically distributed with fixed variance. Real
-      asset returns have time-varying volatility (the exact subject of this
-      repo's GARCH/HV lessons), fat tails, and autocorrelation — none of
+      asset returns have time-varying volatility (the exact subject of the
+      GARCH/HV lessons), fat tails, and autocorrelation — none of
       which the textbook Marchenko-Pastur derivation assumes. In practice
       this mostly affects how tightly real noise hugs the theoretical band
       (studies generally find it's still a good practical benchmark, per
@@ -544,7 +564,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only the ratio q=N/T matters</strong>, not N or T individually — more history per instrument narrows the band; more instruments relative to history widens it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: N=30, T=250 gives q=0.12.</strong> λ₁=8.2 clears the ~0.43–1.81 band easily (a real factor); λ₂–λ₄ all land inside it (indistinguishable from noise).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Inside the band" doesn't prove there's no structure.</strong> It means this sample can't currently distinguish that eigenvalue from noise — a real but modest factor can still hide there.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This noise-band check is not currently run in this repo.</strong> This project's existing effective-number-of-bets calculation already has the eigenvalues it would need — this is a concrete, unbuilt guardrail, not a claim about existing behavior.</span></div>
+    <!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its job is to stop an optimiser trading on noise.</strong> Since 1999 (Laloux et al.; Plerou et al.) the Marchenko–Pastur band has been used to separate real factors from sampling noise, so a cleaned matrix, not the raw one, goes into the optimiser.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -631,6 +654,7 @@
       be estimated.
     </div>
   </details>
+  <!-- DESK:START -->
   <details class="tl-quiz">
     <summary>Q6. This project's own code already computes eigenvalues and feeds them into an effective-bets metric. What specific step is missing to apply this lesson's noise-band test, and why would it matter?</summary>
     <div class="tl-answer">
@@ -651,6 +675,7 @@
       number without requiring the metric's formula itself to change.
     </div>
   </details>
+  <!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
@@ -692,5 +717,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

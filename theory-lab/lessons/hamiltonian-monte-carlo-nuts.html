@@ -17,7 +17,7 @@
   <h1 class="tl-title">Hamiltonian Monte Carlo &amp; NUTS</h1>
   <p class="tl-dek">Plain Metropolis-Hastings explores a posterior by stumbling around blindly. Hamiltonian Monte Carlo gives the sampler momentum and a gradient to roll downhill with — and NUTS removes the one dial that made HMC itself hard to drive.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not a claim this repo has built or validated it</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not a claim this repo has built or validated it<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: MCMC: Metropolis-Hastings &amp; Gibbs Sampling</span>
   </div>
@@ -36,6 +36,7 @@
       <li>Because each proposal follows the gradient of the log-posterior instead of wandering blindly, HMC can propose a move far from the current point while still keeping a high acceptance rate — dramatically less autocorrelation per unit of computation than random-walk Metropolis.</li>
       <li><strong>NUTS (No-U-Turn Sampler)</strong> removes HMC's own hardest tuning knob — the trajectory length \(L\) — by adaptively growing the simulated path via recursive doubling and stopping automatically the moment the trajectory starts to double back on itself (a "U-turn"). It is the default sampler in Stan and PyMC, not a niche technique.</li>
       <li>The <a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a> lesson's correlated, funnel-shaped group/hyperparameter posteriors are exactly the geometry where plain Metropolis-Hastings and Gibbs sampling crawl — and exactly where HMC/NUTS's gradient-informed steps make fitting such models practical at real scale.</li>
+      <li>How it reached trading: NUTS (Hoffman &amp; Gelman, 2011–14) became the engine of Stan and PyMC, which is how quant researchers came to fit hierarchical and stochastic-volatility models that older samplers handled badly.</li>
     </ul>
   </div>
 
@@ -92,6 +93,25 @@
       energy), so a ball naturally settles into and lingers around exactly
       the regions a sampler should be spending most of its time in.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Bayesian models too big for Gibbs to walk</h3>
+  <div class="tl-origin-who">HMC &amp; NUTS · Hoffman &amp; Gelman, 2011–14; into quant research through Stan (2012) and PyMC (2016 onward)</div>
+  <p>Once a desk's Bayesian models grew — a hierarchical model pooling dozens of instruments, a stochastic-volatility model with a hidden path as long as the data — random-walk Metropolis and Gibbs samplers slowed to a crawl, taking tiny correlated steps and sometimes looking converged when they were not.</p>
+  <p>HMC, invented for lattice physics in 1987, moves using the gradient of the posterior and so travels far in one step. It stayed an expert's tool until Hoffman and Gelman's No-U-Turn Sampler removed most of the tuning; NUTS became the default engine of Stan (2012) and of PyMC3 (2016). Those open-source tools are how it reached quant research — Quantopian's open-source pyfolio, for example, shipped a Bayesian tear sheet for strategy returns built on PyMC3.</p>
+  <p>On a desk today it is a research-stage tool: it fits hierarchical, stochastic-volatility and regime models fast enough to refit regularly, and its diagnostics (divergences, R-hat) say when a fit should not be trusted.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Fit large, correlated Bayesian models quickly and reliably — and flag, through its diagnostics, when a fit has failed.</dd>
+      <dt>Takes in</dt><dd>The Markov-chain idea and a posterior to sample (<a href="mcmc-metropolis-gibbs.html">MCMC</a>).</dd>
+      <dt>Hands on to</dt><dd>The models it makes practical (<a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a>, <a href="regime-switching-state-space.html">Regime Switching &amp; State Space</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -524,7 +544,7 @@
       fraction of the iterations the Gibbs sampler needed. This describes the
       mechanics of why NUTS is reached for on this class of problem, not a
       claim that this specific hierarchical model has been built, fit, or
-      benchmarked anywhere in this repo.
+      benchmarked<!-- DESK:START --> anywhere in this repo<!-- DESK:END -->.
     </p>
   </div>
 
@@ -611,6 +631,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Hierarchical models' funnel-shaped, correlated posteriors are exactly where this matters most</strong> — the geometry plain Metropolis-Hastings/Gibbs sampling struggles with is the geometry HMC/NUTS's gradient-informed steps are built to handle.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Step size and the mass matrix are still real tuning surfaces,</strong> even though NUTS automates trajectory length — a mistuned ε or a badly scaled M degrades performance in concrete, diagnosable ways (divergences, low acceptance).</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This lesson explains a sampling algorithm, not a trading signal.</strong> HMC/NUTS is a way to draw from a posterior that's hard for simpler samplers to reach — whatever model it's applied to still has to earn its keep OOS, exactly like every other idea in this curriculum.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: through Stan and PyMC.</strong> NUTS made gradient-based sampling automatic; via open-source probabilistic-programming tools it became the practical way to fit the large Bayesian models quant research relies on.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">MDPs, Value Functions &amp; the Bellman Equation</h1>
   <p class="tl-dek">The formal object underneath every reinforcement-learning method: a Markov Decision Process, and the recursive identity — value equals immediate reward plus discounted value of what comes next — that makes it solvable at all.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Kelly Criterion &amp; Position Sizing</span>
   </div>
@@ -37,6 +37,7 @@
       <li>The Bellman <em>optimality</em> equation replaces "average over the policy's actions" with "take the best one": \(V^*(s) = \max_a \sum_{s'} P(s'|s,a)[R(s,a,s') + \gamma V^*(s')]\), and its action-value twin \(Q^*(s,a)\) scores a specific action directly.</li>
       <li>Worked example in this lesson: a 3-state flat/long/short position MDP solved by value iteration — the numbers climb steadily every sweep and settle at a fixed point that also happens to encode the sensible policy (stay long, don't stay short).</li>
       <li>This is the shared foundation both follow-up lessons build on: Q-learning (next lesson) turns this into a learning rule when \(P\) and \(R\) aren't known in advance; policy gradients (lesson 3) skip the \(\max_a\) altogether for continuous actions.</li>
+      <li><strong>How it reached trading:</strong> Samuelson and Merton (1969–71) used it to solve lifetime portfolio choice, and Cox, Ross &amp; Rubinstein's 1979 binomial tree made backward induction the standard way to price American options.</li>
     </ul>
   </div>
 
@@ -97,6 +98,46 @@
       fat tails. You build the exact math on the idealization first, then
       reason carefully about where the real world will diverge from it.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>When the best move depends on every move after it</h3>
+    <div class="tl-origin-who">Dynamic programming · into finance via Samuelson &amp; Merton (1969–71) and Cox, Ross &amp; Rubinstein (1979)</div>
+    <p>
+    Before dynamic programming reached finance, portfolio theory was a one-shot
+    decision: Markowitz (1952) chose weights for a single period and stopped. That
+    cannot handle an investor who rebalances every year, or an American option whose
+    holder may exercise on any date. In both cases the right action today depends on
+    what you will be able to do tomorrow. Built by Richard Bellman for 1950s planning
+    problems, the recursion in this lesson is exactly the tool for that.
+    </p>
+    <p>
+    In 1969 Paul Samuelson (in discrete time) and Robert Merton (in continuous time)
+    each used it to solve lifetime consumption and portfolio choice, and Merton's 1971
+    paper made the continuous-time version, the Hamilton–Jacobi–Bellman equation, the
+    standard tool for dynamic asset allocation. In 1979 Cox, Ross &amp; Rubinstein's
+    binomial tree priced an American option by working backwards from expiry, taking at
+    every node the larger of "exercise now" and "the discounted value of continuing".
+    That max is the Bellman equation. Bertsimas &amp; Lo (1998) used the same recursion
+    to split a large order optimally over time.
+    </p>
+    <p>
+    On a desk today the recursion runs in every American and Bermudan option price:
+    on trees and grids, and in Longstaff &amp; Schwartz's (2001) least-squares Monte
+    Carlo, which estimates the continuation value by regression. It also sits under
+    dynamic hedging and execution scheduling, and it is the target that the
+    reinforcement-learning lessons after this one try to approximate when the model
+    of the market is unknown.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Put a value on being in a state, assuming you act optimally from there on. That continuation value decides exercise-or-hold, rebalance-or-wait, trade-now-or-later.</dd>
+        <dt>Takes in</dt><dd>States and transition probabilities (for example regimes from <a href="hidden-markov-models.html">Hidden Markov Models</a>) and a reward that encodes the objective, such as the log growth of the <a href="kelly-criterion.html">Kelly criterion</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="merton-portfolio-problem.html">Merton’s portfolio problem</a> (the continuous-time version), <a href="market-impact-almgren-chriss.html">Almgren–Chriss execution</a>, and <a href="q-learning-temporal-difference.html">Q-learning</a> when the transition model has to be learned instead.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -530,6 +571,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(Q^*(s,a)\) scores actions directly, and \(V^*(s)=\max_a Q^*(s,a)\).</strong> This exact rewriting — \(Q^*\) in terms of itself one step later — is what Q-learning's update rule is built from.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Value iteration converges to a fixed point that also encodes the optimal policy.</strong> In the worked example the greedy action at each state stabilizes long before the values themselves fully converge.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This whole chapter assumes the model (\(P\) and \(R\)) is known.</strong> Real problems almost never hand you an explicit transition table — that gap is exactly what the next lesson's learning rule is for.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>On a desk, this is backward induction.</strong> Every American or Bermudan option price on a tree, grid or Longstaff–Schwartz Monte Carlo, and Merton's dynamic portfolio choice, solves this same "act now versus continuation value" recursion.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

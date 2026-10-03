@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Selling Winners, Holding Losers — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local to this lesson: the portfolio exercise and the 20-trade self-audit table. */
+  .hs-port{width:100%;border-collapse:collapse;font-size:13px}
+  .hs-port th{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);text-align:left;padding:6px 6px;border-bottom:1px solid var(--border2);font-weight:600}
+  .hs-port td{padding:7px 6px;border-bottom:1px solid var(--border);color:var(--text2);font-family:'DM Mono',monospace}
+  .hs-port td.hs-name{font-family:'DM Sans',sans-serif;color:var(--text)}
+  .hs-port tr.hs-sold td{background:var(--purple-bg)}
+  .hs-port tr.hs-sold td.hs-name{color:var(--purple);font-weight:600}
+  .hs-port tr.hs-sold td.hs-name::before{content:"SELL \00b7 ";font-family:'DM Mono',monospace;font-size:10.5px}
+  .hs-port td.hs-up,.hs-up{color:var(--green)}
+  .hs-port td.hs-dn,.hs-dn{color:var(--red)}
+  .hs-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;max-width:100%}
+  .hs-audit{width:100%;border-collapse:collapse;font-size:12.5px;min-width:430px}
+  .hs-audit th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:left;padding:5px 4px;border-bottom:1px solid var(--border2);font-weight:600;vertical-align:bottom}
+  .hs-audit td{padding:3px 4px;border-bottom:1px solid var(--border);color:var(--text2);font-family:'DM Mono',monospace}
+  .hs-audit select,.hs-audit input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12.5px;padding:4px 5px;box-sizing:border-box}
+  .hs-audit input:focus,.hs-audit select:focus{outline:none;border-color:var(--blue)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Human Side / Selling Winners, Holding Losers</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Human Side · Lesson 2 of 6</div>
+  <h1 class="tl-title">Selling Winners, Holding Losers</h1>
+  <p class="tl-dek">The disposition effect: why you cash in what's working and keep what isn't, how it was measured in 10,000 real brokerage accounts, and how to measure it in your own last 20 trades.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~18 min read</span>
+    <span>Prereqs: <a href="loss-aversion-prospect-theory.html">Why a Loss Hurts Twice as Much</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="disposition-effect-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li>The <strong>disposition effect</strong> (Shefrin and Statman, 1985) is the habit of selling winners too early and riding losers too long. It is the previous lesson's S-curve, acted out on a portfolio.</li>
+      <li>Terrance Odean (1998) measured it in about <strong>10,000 accounts</strong> at a US discount broker (1987–1993). On days they sold, investors realised <strong>14.8%</strong> of the gains available to them but only <strong>9.8%</strong> of the losses: PGR 0.148 vs PLR 0.098.</li>
+      <li>It cost them. The winners they sold went on to <strong>beat the losers they kept by about 3.4 percentage points</strong> over the following year.</li>
+      <li>It is also <strong>tax-backwards</strong>: realised gains are taxed and realised losses can offset them, so tax logic says defer gains and take losses. In Odean's data the pattern reversed only in December, the tax-loss-selling month.</li>
+      <li>Two hands-on tools below: a portfolio exercise that computes your PGR and PLR and the tax bill, and a <strong>self-audit of your last 20 closed trades</strong>.</li>
+      <!-- DESK:START --><li><strong>Desk verdict: untested.</strong> No ledger entry measures the desk's own trades this way.</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="loss-aversion-prospect-theory.html">previous lesson</a> drew the value curve: concave for gains, so you
+    lock them in; convex and steeper for losses, so you gamble rather than book them. That was about single choices.
+    This lesson is about what the curve does to a whole portfolio over months: it leaves you holding a collection of
+    your worst ideas while your best ones have been sold.
+  </p>
+  <p>
+    It also matters because it is one of the best-measured biases in finance. It has been found in real brokerage
+    records, in other countries, in laboratory markets and among professionals. You do not have to take anyone's word
+    for whether you have it. By the end of this page you can measure it in your own trades with two numbers.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Selling a winner feels like being right. Selling a loser feels like admitting you were wrong.</h3>
+    <p>
+      When you sell a stock for a profit, the trade becomes a story with a happy ending: you were right, and the gain
+      is now safe. When you sell for a loss, it becomes a story with an unhappy ending, and the regret is real and
+      immediate. Holding the loser keeps the story open. Maybe it comes back. Hersh Shefrin and Meir Statman, who
+      named the effect in 1985, explained it with exactly these ingredients: the prospect-theory curve, <strong>mental
+      accounting</strong> (each position is its own little account you want to close in the black), <strong>regret
+      aversion</strong>, and the difficulty of <strong>self-control</strong>.
+    </p>
+    <p style="margin-bottom:0">
+      The market does not know or care what price you paid. Whether you should hold a stock tomorrow depends on its
+      future, not on your entry. The disposition effect is what happens when your entry price gets a vote anyway.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You have a box of toys to swap. Some are now worth more than you paid, some less. You keep swapping away the good ones because swapping feels like winning, and you keep the broken ones because giving them up would mean admitting you made a bad swap. After a while your box is full of broken toys.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>How to measure it: PGR and PLR</h2>
+  <p>
+    A naive test would count how many winners and losers people sell. That fails: in a rising market most positions
+    are winners, so people sell more winners for no psychological reason at all. Odean's fix was to compare what was
+    sold with what <em>could have been</em> sold on the same day.
+  </p>
+  <p>
+    On each day an investor sells anything, every position in the account falls into one of four boxes, measured
+    against its purchase price:
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard"><div class="tl-icon-badge green">✓</div><h4>Realised gain (RG)</h4><p>A position above its buy price that was sold that day.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge blue">⏸</div><h4>Paper gain (PG)</h4><p>A position above its buy price that was <em>not</em> sold that day.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge red">✗</div><h4>Realised loss (RL)</h4><p>A position below its buy price that was sold that day.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge amber">⏸</div><h4>Paper loss (PL)</h4><p>A position below its buy price that was <em>not</em> sold that day.</p></div>
+  </div>
+  <p>Add up the counts over every sale day, then compute two proportions:</p>
+  <div class="tl-math">\[ \text{PGR} = \frac{RG}{RG + PG} \qquad\qquad \text{PLR} = \frac{RL}{RL + PL} \]</div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c2"><code>PGR</code><span>proportion of gains realised: of the winners you could have sold, the share you did</span></div>
+    <div class="tl-eq-chip c4"><code>PLR</code><span>proportion of losses realised: of the losers you could have sold, the share you did</span></div>
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp green"><div class="tl-fp-term">PGR</div><div class="tl-fp-name">How readily you bank gains</div><div class="tl-fp-desc">Odean's investors: 0.148</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">PLR</div><div class="tl-fp-name">How readily you take losses</div><div class="tl-fp-desc">Odean's investors: 0.098</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">PGR − PLR</div><div class="tl-fp-name">The disposition gap</div><div class="tl-fp-desc">Above zero: you sell winners more readily than losers</div></div>
+  </div>
+  <p>
+    If your entry price did not affect your selling, PGR and PLR would be about equal. A gap of 0.148 against 0.098
+    means a winner was roughly <strong>1.5 times as likely</strong> to be sold as a loser on any given sale day.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(RG\)</td><td>Realised gains: count of winning positions sold on sale days.</td></tr>
+    <tr><td>\(PG\)</td><td>Paper gains: count of winning positions held on sale days.</td></tr>
+    <tr><td>\(RL\)</td><td>Realised losses: count of losing positions sold on sale days.</td></tr>
+    <tr><td>\(PL\)</td><td>Paper losses: count of losing positions held on sale days.</td></tr>
+    <tr><td>\(\text{PGR}\)</td><td>Proportion of gains realised, \(RG/(RG+PG)\).</td></tr>
+    <tr><td>\(\text{PLR}\)</td><td>Proportion of losses realised, \(RL/(RL+PL)\).</td></tr>
+    <tr><td>\(t\)</td><td>Tax rate on realised gains (illustrative, used in the exercise below).</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Try it: raise $9,500 from this portfolio</h2>
+  <p>
+    You hold six positions (made-up names, round numbers). You need <strong>$9,500 in cash</strong> by Friday. Click
+    rows to choose what to sell. Go with your instinct first, then try the other way.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Your sale day: tap rows to sell</div>
+    <div class="hs-scroll">
+      <table class="hs-port" id="pf-table">
+        <tr><th>Holding</th><th>Bought</th><th>Now</th><th>Value</th><th>P&amp;L</th></tr>
+      </table>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Tax on realised gains (illustrative)</span><span class="tl-live" id="pf-tax-val">20%</span></div>
+        <input type="range" id="pf-tax" min="0" max="40" step="1" value="20">
+      </div>
+    </div>
+    <div class="tl-readout" id="pf-cash"></div>
+    <div class="tl-readout" id="pf-pnl"></div>
+    <div class="tl-readout" id="pf-ratios"></div>
+    <div class="tl-readout" id="pf-tax-out"></div>
+    <svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing your proportion of gains realised and losses realised with Odean's 1998 averages of 0.148 and 0.098" style="margin-top:12px">
+      <line x1="70" y1="190" x2="610" y2="190" style="stroke:var(--border2);stroke-width:1"/>
+      <line x1="70" y1="190" x2="70" y2="20" style="stroke:var(--border2);stroke-width:1"/>
+      <text x="62" y="194" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="62" y="109" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <text x="62" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+      <line x1="70" y1="105" x2="610" y2="105" style="stroke:var(--border);stroke-width:1;stroke-dasharray:2,4"/>
+      <rect x="110" y="164.8" width="60" height="25.2" style="fill:var(--green)"/>
+      <rect x="180" y="173.3" width="60" height="16.7" style="fill:var(--amber)"/>
+      <rect id="pf-bar-pgr" x="400" y="190" width="60" height="0" style="fill:var(--green)"/>
+      <rect id="pf-bar-plr" x="470" y="190" width="60" height="0" style="fill:var(--amber)"/>
+      <text x="140" y="159" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">0.148</text>
+      <text x="210" y="168" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">0.098</text>
+      <text id="pf-lbl-pgr" x="430" y="184" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">—</text>
+      <text id="pf-lbl-plr" x="500" y="184" text-anchor="middle" font-size="10" font-family="'DM Mono',monospace" fill="var(--text2)">—</text>
+      <text x="175" y="208" text-anchor="middle" font-size="11" fill="var(--text2)">Odean (1998), 10,000 accounts</text>
+      <text x="465" y="208" text-anchor="middle" font-size="11" fill="var(--text2)">You, this sale day</text>
+      <rect x="250" y="30" width="10" height="10" style="fill:var(--green)"/><text x="265" y="39" font-size="10.5" fill="var(--text2)">PGR (gains realised)</text>
+      <rect x="400" y="30" width="10" height="10" style="fill:var(--amber)"/><text x="415" y="39" font-size="10.5" fill="var(--text2)">PLR (losses realised)</text>
+    </svg>
+    <div class="tl-btnrow" style="margin-top:8px">
+      <button type="button" class="tl-btn" id="pf-reset">Clear selection</button>
+    </div>
+    <div class="tl-chart-caption">
+      Real arithmetic. One sale day is a tiny sample, so your bars swing between 0 and 1; Odean's are averages over
+      thousands of accounts and years. Tax is a flat illustrative rate. Real rules differ by country and holding period,
+      and limit how losses can be offset, so treat the tax line as direction, not advice.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>The instinctive sale versus the tax-aware sale</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Instinct: sell the two big winners</h4>
+        <p>Alder (+$1,200) and Cedar (+$1,200) raise $11,400. Realised P&amp;L <strong>+$2,400</strong>; at 20% the tax bill is <strong>$480</strong>. Three winners were available and two were sold: PGR = 2/3 = 0.67. Three losers were available and none was sold: PLR = 0/3 = 0.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Tax-aware: sell the two biggest losers</h4>
+        <p>Birch (−$2,000) and Delta (−$1,200) raise $9,800. Realised P&amp;L <strong>−$3,200</strong>, which at 20% is worth up to <strong>$640</strong> of tax saved against gains elsewhere. PGR = 0, PLR = 2/3.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>The difference</h4>
+        <p>Same cash need, and the portfolio's total value is identical either way, but the tax outcome is $1,120 apart. And you now own the opposite set of stocks. Odean's data says which set tends to do better next: the winners.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>When you sell something for more than you paid, the tax collector takes a slice. When you sell for less, the tax collector gives you a little credit. So if you have to sell something anyway, selling the loser is usually cheaper, even though it feels worse.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: 10,000 accounts, seven years</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Odean's brokerage records, 1987–1993</h3>
+    <p>
+      In the 1990s Terrance Odean obtained the trading records of <strong>10,000 randomly selected accounts</strong> at a
+      large US discount brokerage, covering 1987 to 1993. These were real investors trading their own money, with
+      no advice from the broker. His 1998 paper, <em>Are Investors Reluctant to Realize Their Losses?</em>, applied the
+      PGR/PLR method to every sale day in the data.
+    </p>
+    <p>
+      Across the year the answer was clear: <strong>PGR 0.148 against PLR 0.098</strong>. Investors realised gains
+      about one and a half times as readily as losses. Odean then checked the obvious innocent explanations.
+      Rebalancing (trimming a position that has grown too big) did not account for it, and neither did the higher
+      trading costs of low-priced shares. The pattern held up.
+    </p>
+    <p>
+      The one month it reversed was <strong>December</strong>, when losses were realised more readily than gains.
+      December is when US investors sell losers to cut their tax bill. In other words, people <em>knew</em> losses were
+      worth taking. They just needed a deadline to overcome the reluctance.
+    </p>
+    <p style="margin-bottom:0">
+      The cost: a natural defence is "I sold the winner because it had run its course, and kept the loser because it was
+      due a bounce." Odean tested it. Over the following year the <strong>winners investors sold beat the losers they
+      kept by about 3.4 percentage points</strong> (in returns above the market). The belief that losers would bounce back
+      was not borne out by what happened next. These investors would have done better doing the exact opposite of their
+      instinct.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link concept"><b>★ This lesson · disposition effect</b>Selling a winner closes a happy story; selling a loser makes the regret real, so the loser is kept</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Investor needs cash</b>Must sell something; picks the winners</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Tax authority</b>Taxes the realised gain now; no loss is realised to offset it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The portfolio</b>Left holding the laggards; the stocks that were working are gone</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Sold winners beat kept losers by ~3.4 pp the next year; tax paid early</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept.</p>
+
+  <h3>It is not just one dataset</h3>
+  <p>
+    Mark Grinblatt and Matti Keloharju (2001) found the same reluctance to realise losses in Finland's complete
+    national shareholding records. Martin Weber and Colin Camerer (1998) produced it in a laboratory market where the
+    "stocks" were designed so that past price told you nothing useful, so the behaviour cannot be a sensible bet on
+    reversal. And it reaches prices: Andrea Frazzini (2006) used mutual-fund holdings to estimate the gains and losses
+    sitting in each stock, and found that prices <strong>under-react to news</strong> when holders are sitting on
+    gains (they sell into good news too early) or losses (they refuse to sell into bad news). Grinblatt and Bing Han
+    (2005) linked the same mechanism to momentum in stock returns.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    Not every sale of a winner is the bias. Trimming a position that has grown to an oversized share of the book is
+    risk management, and a profit target set <em>before</em> entry is a plan, not a feeling. PGR and PLR measure a
+    tendency across many decisions; they cannot tell you whether any one sale was right. And for a trader who holds one
+    position at a time, there are no paper gains or losses to count on the day of a sale. For that trader the
+    fingerprint is different: <strong>losers held longer than winners</strong>. The self-audit below measures both.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>"Cut your losers and let your winners run" beats the reverse.</strong> Not tested here. The desk's
+    ledger holds tests of market claims, not of how its own trades are closed, so there is no PGR/PLR or
+    holding-time comparison on record. The evidence above is from investors' accounts in published studies. A desk test
+    would need its closed-trade log with the open positions at each exit, and a pre-registered threshold for what gap
+    counts as a finding.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Exercise: audit your last 20 closed trades</h2>
+  <p>
+    For each of your last 20 exits, enter whether it closed as a win or a loss, how many <em>other</em> open positions
+    were in profit and in loss at that moment, and how many days you held it. Your broker's trade history has all of
+    this. Nothing leaves your browser.
+  </p>
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Your disposition self-audit</div>
+    <div class="hs-scroll">
+      <table class="hs-audit" id="au-table">
+        <tr><th>#</th><th>Closed as</th><th>Other open positions in profit</th><th>Other open positions in loss</th><th>Days held</th></tr>
+      </table>
+    </div>
+    <div class="tl-btnrow" style="margin-top:10px">
+      <button type="button" class="tl-btn" id="au-example">Fill with an example</button>
+      <button type="button" class="tl-btn" id="au-clear">Clear</button>
+    </div>
+    <div class="tl-readout" id="au-counts"></div>
+    <div class="tl-readout" id="au-ratios"></div>
+    <div class="tl-readout" id="au-hold"></div>
+    <div class="tl-readout" id="au-verdict"></div>
+    <div class="tl-chart-caption">
+      Each "win" row adds one realised gain and each "loss" row one realised loss; the open-position columns add the
+      paper gains and losses on that exit's day. Twenty trades is a small sample: a PGR/PLR ratio between about 0.8 and
+      1.25 is no clear pattern either way. Your entries are kept only in this browser so you can come back to them.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>How practitioners deal with it</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard"><div class="tl-icon-badge green">📋</div><h4>Exits written at entry</h4><p>A stop and a target (or a trailing rule) decided while flat. The exit is then a plan being carried out, not a judgement made while feeling the P&amp;L.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge blue">🔄</div><h4>The "fresh eyes" test</h4><p>For each holding: if I had this much cash instead, would I buy this today? A "no" is a sell, whatever the entry price.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge amber">🧾</div><h4>Tax-loss harvesting</h4><p>Deliberately realising losses to offset gains, in the spirit of George Constantinides's (1983) result that tax-optimal trading takes losses and defers gains. Check local wash-sale rules.</p></div>
+    <div class="tl-icard"><div class="tl-icon-badge purple">📊</div><h4>Measure, don't guess</h4><p>Run the self-audit every quarter. Professionals review the exits, not just the entries. Most disposition is invisible until it is counted.</p></div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The swing trader with a lopsided payoff</h3>
+    <p style="margin-bottom:0">
+      A trader's journal shows 60% winners, which feels like a good strategy, but the account is flat over the year.
+      The audit explains it: winners were held 3 days on average, losers 9, and the average loss was about 1.5 times the
+      average win. At 60% wins and a 1.5× loss size, the expected result per trade is
+      \(0.6 \times 1 - 0.4 \times 1.5 = 0\). The edge is real; the disposition effect is giving all of it back. The fix
+      is not a new signal. It is a written exit rule applied to both sides.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <p style="margin-bottom:0">
+      Not built. The desk's evidence ledger covers market claims, and its studies fix exit rules in advance, which
+      removes discretionary exits from the research itself. Live trading exits have not been audited for PGR/PLR.
+      Related: <a href="kelly-criterion.html">Kelly Criterion</a> for why the win/loss size ratio matters as much as
+      the hit rate.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <ul>
+      <li><strong>Counting sales instead of opportunities.</strong> "I sold 12 winners and 8 losers" says nothing in a rising market. Compare with what you could have sold: that is the whole point of PGR and PLR.</li>
+      <li><strong>Over-correcting.</strong> Dumping every loser instantly is not the cure; following a pre-set exit rule is.</li>
+      <li><strong>Anchoring on the entry when averaging in.</strong> If you bought at three prices, which one is "the" entry? Your brain picks the one that tells the nicest story. Use the average cost, and better still, ignore it and use the fresh-eyes test.</li>
+      <li><strong>Treating tax as an afterthought.</strong> The tax difference between selling winners and selling losers is real money, every year, and it compounds.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The disposition effect is the S-curve on a portfolio.</strong> Bank gains (concave), avoid booking losses (convex, steeper): Shefrin and Statman, 1985.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Measure it with PGR and PLR.</strong> Odean's 10,000 accounts: 0.148 vs 0.098, a winner about 1.5 times as likely to be sold as a loser.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>It costs money twice.</strong> The winners sold beat the losers kept by about 3.4 percentage points the next year, and selling gains first pays tax that selling losses would have saved.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>December shows it is a choice.</strong> Faced with a tax deadline, the same investors took losses readily.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Audit your own exits.</strong> PGR vs PLR if you hold several positions; days held for winners vs losers if you hold one at a time.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested on this desk.</strong> No ledger entry measures how the desk's own trades are closed.</span></div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is "I sold more winners than losers last year" not evidence of the disposition effect?</summary>
+    <div class="tl-answer">In a rising market most positions are winners, so you would sell more winners even at random. PGR and PLR divide by what was available to sell on each sale day, so they compare like with like.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. On a sale day you hold 5 winners and 3 losers and sell 2 winners and 0 losers. What are PGR and PLR for that day?</summary>
+    <div class="tl-answer">RG = 2, PG = 3, so PGR = 2/5 = 0.40. RL = 0, PL = 3, so PLR = 0/3 = 0. A strong disposition-style day.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. What did Odean find about the stocks investors sold versus the ones they kept?</summary>
+    <div class="tl-answer">Over the following year the winners they sold outperformed the losers they kept by about 3.4 percentage points in returns above the market. The usual justification, that losers were due a bounce, was not supported.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why is the disposition effect tax-inefficient, and what does the December result add?</summary>
+    <div class="tl-answer">Realised gains are taxed and realised losses can offset them, so tax logic says defer gains and take losses: the opposite of the bias. In December, when the tax deadline approached, Odean's investors realised losses more readily than gains, showing they could take losses when the incentive was salient.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. You only ever hold one position at a time. How do you check yourself for the disposition effect?</summary>
+    <div class="tl-answer">PGR and PLR need other open positions on the sale day, so they do not apply. Compare the average holding time of losing trades with winning trades (and average loss size with average win size). Losers held clearly longer than winners is the fingerprint.</div>
+  </details>
+  <!-- DESK:START -->
+  <details class="tl-quiz">
+    <summary>Q6. What is this desk's verdict on "cut losers, let winners run"?</summary>
+    <div class="tl-answer">Untested. The ledger has no entry on how the desk's own trades are closed. The published evidence is strong, but it is about investors in those studies, not a measured result on this desk.</div>
+  </details>
+  <!-- DESK:END -->
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Hersh Shefrin and Meir Statman, "The Disposition to Sell Winners Too Early and Ride Losers Too Long: Theory and Evidence", <em>Journal of Finance</em> 40(3), 1985 — names the effect and explains it with prospect theory, mental accounting, regret aversion and self-control.</li>
+    <li>Terrance Odean, "Are Investors Reluctant to Realize Their Losses?", <em>Journal of Finance</em> 53(5), 1998 — the 10,000-account study, PGR/PLR, the December reversal and the subsequent-returns test.</li>
+    <li>Martin Weber and Colin Camerer, "The Disposition Effect in Securities Trading: An Experimental Analysis", <em>Journal of Economic Behavior &amp; Organization</em> 33, 1998 — the effect in a controlled laboratory market.</li>
+    <li>Mark Grinblatt and Matti Keloharju, "What Makes Investors Trade?", <em>Journal of Finance</em> 56(2), 2001 — reluctance to realise losses in Finnish national records.</li>
+    <li>Andrea Frazzini, "The Disposition Effect and Underreaction to News", <em>Journal of Finance</em> 61(4), 2006 — how the effect slows prices' response to news.</li>
+    <li>Mark Grinblatt and Bing Han, "Prospect Theory, Mental Accounting, and Momentum", <em>Journal of Financial Economics</em> 78(2), 2005 — the link to momentum.</li>
+    <li>George Constantinides, "Capital Market Equilibrium with Personal Tax", <em>Econometrica</em> 51(3), 1983 — why tax-optimal trading realises losses and defers gains.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="loss-aversion-prospect-theory.html">← Why a Loss Hurts Twice as Much</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="overconfidence-overtrading.html">Overconfidence and the Cost of Trading Too Much →</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  function money(n){ var r = Math.round(n); return (r < 0 ? '−$' : (r > 0 ? '+$' : '$')) + Math.abs(r).toLocaleString('en-US'); }
+  function cash(n){ return '$' + Math.round(n).toLocaleString('en-US'); }
+  function ratio(a, b){ return (a + b) > 0 ? a / (a + b) : NaN; }
+  function f3(x){ return isNaN(x) ? '—' : x.toFixed(2); }
+
+  // ---- Portfolio exercise ----
+  (function(){
+    var table = document.getElementById('pf-table');
+    if (!table) return;
+    var TARGET = 9500;
+    var H = [
+      { n: 'Alder Foods',    q: 100, b: 40, p: 52 },
+      { n: 'Birch Tech',     q: 100, b: 80, p: 60 },
+      { n: 'Cedar Energy',   q: 200, b: 25, p: 31 },
+      { n: 'Delta Shipping', q: 100, b: 50, p: 38 },
+      { n: 'Elm Retail',     q: 100, b: 60, p: 66 },
+      { n: 'Fir Pharma',     q: 150, b: 30, p: 24 }
+    ];
+    var rows = [];
+    H.forEach(function(h, i){
+      h.sold = false;
+      var pnl = (h.p - h.b) * h.q, pct = (h.p / h.b - 1) * 100;
+      var tr = document.createElement('tr');
+      tr.style.cursor = 'pointer';
+      tr.innerHTML = '<td class="hs-name">' + h.n + '</td><td>$' + h.b + '</td><td>$' + h.p + '</td><td>' + cash(h.p * h.q) +
+        '</td><td class="' + (pnl >= 0 ? 'hs-up' : 'hs-dn') + '">' + money(pnl) + ' (' + (pct >= 0 ? '+' : '−') + Math.abs(pct).toFixed(0) + '%)</td>';
+      tr.addEventListener('click', function(){ h.sold = !h.sold; tr.classList.toggle('hs-sold', h.sold); update(); });
+      table.appendChild(tr);
+      rows.push(tr);
+    });
+    var taxS = document.getElementById('pf-tax');
+    function bar(id, lbl, val){
+      var r = document.getElementById(id), t = document.getElementById(lbl);
+      var hgt = isNaN(val) ? 0 : val * 170;
+      r.setAttribute('height', hgt.toFixed(1));
+      r.setAttribute('y', (190 - hgt).toFixed(1));
+      t.setAttribute('y', (184 - hgt).toFixed(1));
+      t.textContent = isNaN(val) ? '—' : val.toFixed(2);
+    }
+    function update(){
+      var t = parseInt(taxS.value, 10) / 100;
+      document.getElementById('pf-tax-val').textContent = Math.round(t * 100) + '%';
+      var raised = 0, real = 0, paper = 0, RG = 0, PG = 0, RL = 0, PL = 0;
+      H.forEach(function(h){
+        var pnl = (h.p - h.b) * h.q;
+        if (h.sold){ raised += h.p * h.q; real += pnl; if (pnl > 0) RG++; else RL++; }
+        else { paper += pnl; if (pnl > 0) PG++; else PL++; }
+      });
+      var any = RG + RL > 0;
+      document.getElementById('pf-cash').innerHTML = 'Cash raised: <b>' + cash(raised) + '</b> of ' + cash(TARGET) +
+        (raised >= TARGET ? ' ✔ enough' : ' — sell more');
+      document.getElementById('pf-pnl').innerHTML = 'Realised P&amp;L <b>' + money(real) + '</b> · paper P&amp;L still open <b>' + money(paper) +
+        '</b> · total unchanged at <b>' + money(real + paper) + '</b>';
+      var pgr = any ? ratio(RG, PG) : NaN, plr = any ? ratio(RL, PL) : NaN;
+      document.getElementById('pf-ratios').innerHTML = any
+        ? 'RG ' + RG + ', PG ' + PG + ', RL ' + RL + ', PL ' + PL + ' → PGR <b>' + f3(pgr) + '</b> · PLR <b>' + f3(plr) + '</b>' +
+          (pgr > plr ? ' — a disposition-style sale' : (pgr < plr ? ' — the tax-aware direction' : ''))
+        : 'Select at least one holding to sell.';
+      var taxTxt;
+      if (!any) taxTxt = 'Tax: nothing realised yet.';
+      else if (real > 0) taxTxt = 'Tax due on the realised gain at ' + Math.round(t * 100) + '%: <b>' + cash(real * t) + '</b>';
+      else if (real < 0) taxTxt = 'Realised loss can offset gains elsewhere: up to <b>' + cash(-real * t) + '</b> of tax saved at ' + Math.round(t * 100) + '%';
+      else taxTxt = 'Realised P&amp;L nets to zero: no tax either way.';
+      document.getElementById('pf-tax-out').innerHTML = taxTxt;
+      bar('pf-bar-pgr', 'pf-lbl-pgr', pgr);
+      bar('pf-bar-plr', 'pf-lbl-plr', plr);
+    }
+    taxS.addEventListener('input', update);
+    document.getElementById('pf-reset').addEventListener('click', function(){
+      H.forEach(function(h, i){ h.sold = false; rows[i].classList.remove('hs-sold'); });
+      update();
+    });
+    update();
+  })();
+
+  // ---- 20-trade self-audit ----
+  (function(){
+    var table = document.getElementById('au-table');
+    if (!table) return;
+    var N = 20, KEY = 'theoryLabDispositionAudit';
+    var cells = [];
+    for (var i = 0; i < N; i++){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + (i + 1) + '</td>' +
+        '<td><select aria-label="Trade ' + (i + 1) + ' closed as"><option value="">—</option><option value="W">Win</option><option value="L">Loss</option></select></td>' +
+        '<td><input type="number" min="0" step="1" inputmode="numeric" aria-label="Trade ' + (i + 1) + ' other positions in profit"></td>' +
+        '<td><input type="number" min="0" step="1" inputmode="numeric" aria-label="Trade ' + (i + 1) + ' other positions in loss"></td>' +
+        '<td><input type="number" min="0" step="1" inputmode="numeric" aria-label="Trade ' + (i + 1) + ' days held"></td>';
+      table.appendChild(tr);
+      var c = { r: tr.querySelector('select') };
+      var ins = tr.querySelectorAll('input');
+      c.pg = ins[0]; c.pl = ins[1]; c.d = ins[2];
+      cells.push(c);
+    }
+    function num(el){ var v = parseFloat(el.value); return isFinite(v) && v >= 0 ? v : 0; }
+    function save(){
+      try {
+        localStorage.setItem(KEY, JSON.stringify(cells.map(function(c){ return [c.r.value, c.pg.value, c.pl.value, c.d.value]; })));
+      } catch(e) {}
+    }
+    function load(data){
+      cells.forEach(function(c, i){
+        var row = data[i] || ['', '', '', ''];
+        c.r.value = row[0]; c.pg.value = row[1]; c.pl.value = row[2]; c.d.value = row[3];
+      });
+    }
+    function update(){
+      var RG = 0, RL = 0, PG = 0, PL = 0, dW = 0, nW = 0, dL = 0, nL = 0, nPaper = 0;
+      cells.forEach(function(c){
+        if (!c.r.value) return;
+        PG += num(c.pg); PL += num(c.pl);
+        nPaper += num(c.pg) + num(c.pl);
+        var hasDays = c.d.value !== '' && isFinite(parseFloat(c.d.value));
+        if (c.r.value === 'W'){ RG++; if (hasDays){ dW += num(c.d); nW++; } }
+        else { RL++; if (hasDays){ dL += num(c.d); nL++; } }
+      });
+      var n = RG + RL;
+      document.getElementById('au-counts').innerHTML = n
+        ? 'Exits entered: <b>' + n + '</b> · RG ' + RG + ', PG ' + PG + ', RL ' + RL + ', PL ' + PL
+        : 'Enter your trades, or tap "Fill with an example".';
+      var pgr = ratio(RG, PG), plr = ratio(RL, PL);
+      var ratioTxt = '—';
+      if (!isNaN(pgr) && !isNaN(plr) && plr > 0) ratioTxt = (pgr / plr).toFixed(2) + '×';
+      document.getElementById('au-ratios').innerHTML = n
+        ? 'PGR <b>' + f3(pgr) + '</b> · PLR <b>' + f3(plr) + '</b> · PGR ÷ PLR <b>' + ratioTxt + '</b> (Odean\'s investors: 0.148 ÷ 0.098 ≈ 1.5×)'
+        : '';
+      var hw = nW ? dW / nW : NaN, hl = nL ? dL / nL : NaN;
+      document.getElementById('au-hold').innerHTML = (nW || nL)
+        ? 'Average days held: winners <b>' + (isNaN(hw) ? '—' : hw.toFixed(1)) + '</b> · losers <b>' + (isNaN(hl) ? '—' : hl.toFixed(1)) + '</b>' +
+          (!isNaN(hw) && !isNaN(hl) && hw > 0 ? ' · losers held <b>' + (hl / hw).toFixed(2) + '×</b> as long' : '')
+        : '';
+      var verdict = '';
+      if (n >= 5){
+        var parts = [];
+        if (nPaper === 0) parts.push('You had no other open positions at your exits, so PGR and PLR cannot separate anything: use the holding-time line.');
+        else if (!isNaN(pgr) && !isNaN(plr)){
+          var r = plr > 0 ? pgr / plr : (pgr > 0 ? Infinity : 1);
+          if (r > 1.25) parts.push('PGR is clearly above PLR: you bank winners more readily than you take losses, the disposition pattern.');
+          else if (r < 0.8) parts.push('PLR is above PGR: you take losses more readily than gains, the opposite of the usual bias.');
+          else parts.push('PGR and PLR are close: no clear disposition pattern in this sample.');
+        }
+        if (!isNaN(hw) && !isNaN(hl) && hw > 0){
+          if (hl / hw > 1.25) parts.push('Losers are held noticeably longer than winners, the same fingerprint seen from the clock.');
+          else if (hl / hw < 0.8) parts.push('Winners are held longer than losers: letting winners run.');
+        }
+        verdict = parts.join(' ');
+      } else if (n > 0) verdict = 'Enter at least 5 exits for a reading (20 is better, and still a small sample).';
+      document.getElementById('au-verdict').textContent = verdict;
+      document.getElementById('au-verdict').style.display = verdict ? 'block' : 'none';
+      save();
+    }
+    cells.forEach(function(c){
+      [c.r, c.pg, c.pl, c.d].forEach(function(el){ el.addEventListener('input', update); el.addEventListener('change', update); });
+    });
+    // A made-up example with a disposition tilt: 12 wins held briefly, 8 losses held longer.
+    var EXAMPLE = [
+      ['W','2','3','3'],['L','2','2','9'],['W','3','2','2'],['W','1','3','4'],['L','3','1','11'],
+      ['W','2','2','3'],['W','2','4','2'],['L','1','3','8'],['W','3','3','5'],['W','1','2','3'],
+      ['L','2','2','12'],['W','2','3','2'],['L','3','2','7'],['W','2','2','4'],['W','1','3','3'],
+      ['L','2','3','10'],['W','3','2','2'],['L','1','2','9'],['W','2','3','3'],['L','2','4','6']
+    ];
+    document.getElementById('au-example').addEventListener('click', function(){ load(EXAMPLE); update(); });
+    document.getElementById('au-clear').addEventListener('click', function(){ load([]); update(); });
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(e) {}
+    if (Array.isArray(saved)) load(saved);
+    update();
+  })();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

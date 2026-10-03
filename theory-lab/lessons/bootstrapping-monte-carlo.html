@@ -17,7 +17,7 @@
   <h1 class="tl-title">Bootstrapping &amp; Monte Carlo Simulation</h1>
   <p class="tl-dek">Two ways to manufacture "many possible outcomes" out of a single dataset — and the one, easy-to-miss reason neither one tells you whether a signal will work on data it has never seen.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — formalizes a validation discipline used throughout this project</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — formalizes a validation discipline used throughout this project<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: Probability &amp; Random Variables primer</span>
   </div>
@@ -37,7 +37,8 @@
       <li>For time series (volatility clustering, serial correlation), a plain bootstrap shuffles that structure away and understates uncertainty — the block bootstrap resamples contiguous blocks instead, so short-term dependence survives in the resample.</li>
       <li>Monte Carlo simulation is a different move: fit a parametric model (GARCH, GBM) to the data and generate brand-new synthetic paths from it, rather than resampling real observations.</li>
       <li>Both tools only describe what's plausible given what you already have — the one sample, or a model fitted to that sample — never what would happen against market conditions that sample never contained.</li>
-      <li>As this project's own working philosophy states: "Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
+      <li><!-- DESK:START -->As this project's own working philosophy states: <!-- DESK:END -->"Don't let Monte Carlo stand in for OOS. Resampling from a strategy's own realized return distribution shows the range of outcomes consistent with that mean/std — it says nothing about whether the signal generalizes to data it hasn't seen. It's a legitimate expectation-setting tool; label it as that, not as robustness evidence."</li>
+      <li>How it reached trading: Boyle (1977) brought Monte Carlo into option pricing, and Brock, Lakonishok &amp; LeBaron (1992) and White's Reality Check (2000) made the bootstrap the standard way to test trading rules and put error bars on backtests.</li>
     </ul>
   </div>
 
@@ -52,8 +53,8 @@
     moved around? Bootstrapping and Monte Carlo simulation are the two
     standard tools for answering variants of that question without needing a
     second, independent dataset. They are genuinely useful, widely used in
-    finance, and completely legitimate techniques. They are also, this
-    project's own house discipline states plainly, not a substitute for
+    finance, and completely legitimate techniques. They are also<!-- DESK:START -->, this
+    project's own house discipline states plainly,<!-- DESK:END --> not a substitute for
     testing whether a signal generalizes:
   </p>
   <p>
@@ -64,15 +65,15 @@
     it as that, not as robustness evidence."</em>
   </p>
   <p>
-    That sentence is asserted in this repo's house rules without derivation.
-    This lesson is the from-scratch statistical explanation of exactly why
+    <!-- DESK:START -->That sentence is asserted in this repo's house rules without derivation.
+    <!-- DESK:END -->This lesson is the from-scratch statistical explanation of exactly why
     it's correct — what the bootstrap and Monte Carlo simulation each
     mechanically do, what question each one actually answers, and why that
     question is a different question from "does this signal have real,
-    generalizable edge." Status badge above is set to CONCEPT rather than
+    generalizable edge."<!-- DESK:START --> Status badge above is set to CONCEPT rather than
     ALREADY IN USE for a specific reason: this lesson formalizes a rule the
     repo already follows in prose (the quoted paragraph above), rather than
-    describing a new brick or module.
+    describing a new brick or module.<!-- DESK:END -->
   </p>
 
   <div class="tl-box intuition">
@@ -107,6 +108,25 @@
       model built from that sample — never what would happen against a market
       condition that sample never contained.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>One backtest, one path — how lucky was it?</h3>
+  <div class="tl-origin-who">Monte Carlo into option pricing: Boyle, 1977 · bootstrap into trading-rule tests: Brock, Lakonishok &amp; LeBaron, 1992; White, 2000</div>
+  <p>A backtest is a single path through history. Its Sharpe ratio and maximum drawdown have no tidy standard-error formula, and an option whose payoff depends on the whole price path has no closed-form price. For both, traders needed a way to generate many plausible alternative paths.</p>
+  <p>Phelim Boyle (1977) brought Monte Carlo simulation into option pricing; it is now how desks value path-dependent exotics and run Monte Carlo VaR. Efron's 1979 bootstrap reached trading research when Brock, Lakonishok and LeBaron (1992) resampled returns to test whether technical trading rules beat what random-walk and GARCH-type null models produce. Sullivan, Timmermann and White (1999) and White's Reality Check (2000) extended it with block resampling to test the best of many rules after the search.</p>
+  <p>On a desk today the bootstrap puts confidence intervals on a strategy's Sharpe and drawdown, and Monte Carlo generates the stress paths behind risk limits and option prices.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Put error bars on numbers with no formula — a Sharpe ratio, a max drawdown, a VaR, an exotic's price — by resampling or simulating many paths.</dd>
+      <dt>Takes in</dt><dd>A strategy's out-of-sample returns or a fitted price model (<a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged CV</a>, <a href="garch-volatility.html">GARCH</a>).</dd>
+      <dt>Hands on to</dt><dd>Data-snooping tests and risk limits (<a href="institutional-reality-check-spa.html">Reality Check &amp; SPA</a>, <a href="sharpe-family-deflated.html">Deflated Sharpe</a>, <a href="drawdowns-risk-of-ruin.html">Drawdowns &amp; Risk of Ruin</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -232,7 +252,7 @@
     The plain bootstrap above assumes each \(x_i\) is drawn independently, and
     that assumption is baked into the resampling step: picking \(x_7^{*}\) has
     no effect on the chance of picking \(x_{12}^{*}\) next. Financial time
-    series routinely violate that assumption in exactly the way this repo's
+    series routinely violate that assumption in exactly the way
     other lessons describe elsewhere in this tier: adjacent observations carry
     real serial correlation — volatility clustering, trending runs, mean-
     reverting bounces — so treating each day or each trade as an
@@ -338,10 +358,10 @@
     for tomorrow's regime, every synthetic path inherits that same
     mis-specification, no matter how many thousands of paths you generate.
     Neither procedure has any mechanism for learning about data outside the
-    sample it started from. That is exactly why this repo's own house
+    sample it started from.<!-- DESK:START --> That is exactly why this repo's own house
     discipline states the rule quoted at the top of this lesson, and the rest of this
     page exists to make precisely why that rule is true, not just asserted,
-    fully explicit.
+    fully explicit.<!-- DESK:END -->
   </p>
 
   <div class="tl-solid red">
@@ -436,8 +456,8 @@
       same mechanical procedure, with \(T\) swapped from "sample mean" to
       "Sharpe ratio computed on the resampled sequence of trades," is precisely
       how a bootstrap confidence interval for a strategy's Sharpe ratio is
-      built — and precisely the technique the Repo Connection box below warns
-      against over-trusting. Five trades is a deliberately extreme example to
+      built<!-- DESK:START --> — and precisely the technique the Repo Connection box below warns
+      against over-trusting<!-- DESK:END -->. Five trades is a deliberately extreme example to
       make the mechanism vivid; the same logic, and the same limitation, apply
       identically whether \(n\) is 5 or 500 — resampling can characterize the
       spread <em>within</em> the sample you have, but it cannot conjure a
@@ -538,7 +558,7 @@
     outside trading proper: simulating thousands of possible future market
     paths to show a saver the range of retirement-portfolio outcomes
     consistent with an assumed return and volatility — a legitimate
-    expectation-setting exercise that, just as this project's own rule states, is
+    expectation-setting exercise that<!-- DESK:START -->, just as this project's own rule states,<!-- DESK:END --> is
     never sold as a guarantee the future will resemble any one simulated path.
   </p>
 
@@ -634,6 +654,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Neither tool can leave the sample it started from.</strong> Both describe what's plausible given what you already have — never what would happen under conditions that sample never contained.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A narrow bootstrap interval is not robustness evidence.</strong> It proves the sample is internally consistent, not that the underlying signal generalizes — conflating the two is a documented, easy way backtests mislead their own authors.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walk-forward validation is the tool that actually tests generalization.</strong> It splits real history into a fitting period and a genuinely separate later testing period the signal never touched — bootstrapping and Monte Carlo cannot substitute for that, no matter how many replicates are run.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: error bars on a single backtest.</strong> Monte Carlo prices path-dependent options (Boyle, 1977); the bootstrap tests trading rules (Brock, Lakonishok &amp; LeBaron, 1992; White, 2000) and sizes the luck in a Sharpe or drawdown.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -717,7 +738,7 @@
     </div>
   </details>
   <details class="tl-quiz">
-    <summary>Q6. Given this project's own validation rule, what tool should actually be used to test whether a signal generalizes, and how does it differ structurally from bootstrapping or Monte Carlo?</summary>
+    <summary>Q6. Given the validation rule quoted at the top of this lesson, what tool should actually be used to test whether a signal generalizes, and how does it differ structurally from bootstrapping or Monte Carlo?</summary>
     <div class="tl-answer">
       Walk-forward validation with a purged cross-validation split (this
       tier's previous lesson) is the tool built for that question. It differs
@@ -829,5 +850,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

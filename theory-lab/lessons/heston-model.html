@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Heston Model</h1>
   <p class="tl-dek">Black-Scholes prices every option off one fixed \(\sigma\) forever — Heston's 1993 fix is to stop treating volatility as a constant at all and instead let it be its own random process, mean-reverting and correlated with price, the same way GARCH already treats it in discrete time.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet built in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: GARCH &amp; Volatility Clustering, Black-Scholes-Merton Option Pricing</span>
   </div>
@@ -34,8 +34,9 @@
       <li>Heston (1993) replaces Black-Scholes' one constant \(\sigma\) with a second stochastic process \(v_t\) for the instantaneous variance, mean-reverting toward a long-run level \(\theta\) at speed \(\kappa\) with its own noise \(\xi\sqrt{v_t}\,dW_t^2\) — a CIR-type process.</li>
       <li>The two Brownian motions driving price and variance are allowed to correlate (\(\rho\)); empirically \(\rho\) is usually negative, the "leverage effect" where volatility spikes when price falls.</li>
       <li>That negative \(\rho\) is exactly what generates a realistic volatility smile/skew — it makes large down-moves disproportionately likely to coincide with a vol spike, so low-strike puts price with higher implied vol than at-the-money, something flat-\(\sigma\) Black-Scholes structurally cannot produce.</li>
-      <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion, already running in this project's own volatility research.</li>
-      <li>Prices come from a semi-closed-form solution via the model's characteristic function, not a simple algebraic formula — this repo has no options-pricing module of any kind, so this lesson is pure theory background.</li>
+      <li>The variance SDE is the same OU "rubber band" mean-reversion this Theory Lab already covers, just pointed at variance instead of price — informally the continuous-time cousin of GARCH(1,1)'s discrete-time "variance depends on yesterday's shock and yesterday's forecast" recursion<!-- DESK:START -->, already running in this project's own volatility research<!-- DESK:END -->.</li>
+      <li>Prices come from a semi-closed-form solution via the model's characteristic function, not a simple algebraic formula<!-- DESK:START --> — this repo has no options-pricing module of any kind, so this lesson is pure theory background<!-- DESK:END -->.</li>
+      <li>How it reached trading: the permanent post-1987 skew broke Black-Scholes; Heston (1993) gave desks a correlated stochastic-vol model with near-closed-form prices, covering currency options from the start, and it is now a base for many FX and equity exotics models.</li>
     </ul>
   </div>
 
@@ -106,6 +107,23 @@
       itself randomly wiggling and mean-reverting, and it tends to get bigger
       exactly when price falls.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>After the 1987 crash, a skew that would not go away</h3>
+    <div class="tl-origin-who">Stochastic volatility · Heston, 1993; jumps for FX options, Bates, 1996</div>
+    <p>Before October 1987, implied volatility on index options was fairly flat across strikes; afterwards out-of-the-money puts stayed richer, and the skew became permanent. Black-Scholes, with one constant \(\sigma\), cannot produce it, and earlier stochastic-volatility models (Hull &amp; White, 1987; Stein &amp; Stein, 1991) lacked either price–volatility correlation or fast pricing.</p>
+    <p>Steven Heston (1993) took the square-root process Cox, Ingersoll &amp; Ross had used for interest rates, correlated it with the price, and priced options through a characteristic function and one numerical integral. His title names bond and currency options, and Bates (1996) added jumps to fit Deutsche mark options, so FX was part of the model's story from the start.</p>
+    <p>On desks it became the reference stochastic-volatility model: a base for the local-stochastic-volatility models used on FX and equity exotics, a benchmark for model risk, and the standard test case for Fourier pricing methods such as Carr–Madan.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What joint dynamics for spot and its volatility reproduce the smile, including how it moves when spot moves?</dd>
+        <dt>Takes in</dt><dd>The quoted smile from <a href="vega-volatility-surface.html">Vega &amp; the volatility surface</a>; the pricing measure from <a href="girsanov-risk-neutral.html">Girsanov &amp; risk-neutral pricing</a>; the Feller check from <a href="sde-existence-uniqueness.html">Existence &amp; uniqueness</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="fft-option-pricing-carr-madan.html">Carr-Madan FFT pricing</a>, <a href="institutional-bates-model.html">the Bates model</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -484,7 +502,7 @@
       says nothing, by itself, about whether a strategy built on top of that
       calibration (e.g. trading realized vs. implied variance, or a
       volatility-risk-premium harvesting strategy) would show a real edge
-      out-of-sample. Per this repo's validation discipline, that would need to
+      out-of-sample. Under an honest validation discipline, that would need to
       be tested on data the calibration didn't see, not assumed from a tight
       in-sample fit.
     </p>
@@ -499,7 +517,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Set ρ=0 and ξ→0 and Heston collapses back to flat Black-Scholes.</strong> The smile is earned specifically by ξ≠0 (variance actually moves) combined with ρ≠0 (that movement is linked to price direction).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Prices need a semi-closed-form numerical step, not simple algebra.</strong> Naive characteristic-function implementations are known to hit branch-cut discontinuities that silently misprice for some parameter combinations.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good smile fit is curve-fitting by construction, not a validated edge.</strong> Calibrating Heston to today's option prices says nothing, by itself, about whether a strategy built on it would show real edge out-of-sample.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in this project's own volatility research, not a description of existing code.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing module at all.</strong> This lesson is pure theory background — a continuous-time cousin of the GARCH sigma already running in this project's own volatility research, not a description of existing code.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Heston became the desk's reference stochastic-vol model.</strong> Built in 1993 for the post-1987 skew and extended with jumps for FX options by Bates (1996), it now anchors local-stochastic-vol exotics pricing and Fourier methods such as Carr–Madan.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -574,7 +593,7 @@
       closed-form pricing machinery, which is explicitly out of scope here.
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Does this repo have an options-pricing module or a Heston implementation? What does it have instead that connects to this lesson's theory, and how exactly are the two related?</summary>
     <div class="tl-answer">
       No — this repo has no options-pricing module of any kind, and this
@@ -590,12 +609,12 @@
       are conceptual cousins sharing the same core idea, not the same model
       and not code that has been ported between them.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>
   <ul class="tl-refs">
-    <li>Steven L. Heston, "A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options," <em>Review of Financial Studies</em>, 1993 — the original paper. Notably, it explicitly covers currency options as one of its applications, directly relevant to this repo's FX focus.</li>
+    <li>Steven L. Heston, "A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options," <em>Review of Financial Studies</em>, 1993 — the original paper. Notably, it explicitly covers currency options as one of its applications<!-- DESK:START -->, directly relevant to this repo's FX focus<!-- DESK:END -->.</li>
     <li>David S. Bates, "Jumps and Stochastic Volatility: Exchange Rate Processes Implicit in Deutsche Mark Options," <em>Review of Financial Studies</em>, 1996 — the widely cited stochastic-vol-plus-jumps extension combining Heston's variance process with a Merton-style jump term, and, like Heston's own paper, built on FX/currency option data.</li>
     <li>Rama Cont &amp; Peter Tankov, <em>Financial Modelling with Jump Processes</em>, Chapman &amp; Hall/CRC, 2004 — the same standard reference cited in the Merton jump-diffusion lesson, covering stochastic volatility and combined jump/stochastic-vol models in the broader Lévy/affine-process framework.</li>
     <li>Jim Gatheral, <em>The Volatility Surface: A Practitioner's Guide</em>, Wiley, 2006 — a standard practitioner-level treatment of Heston, local volatility, and the empirical shape of the smile/skew, written by a working quant.</li>
@@ -634,5 +653,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

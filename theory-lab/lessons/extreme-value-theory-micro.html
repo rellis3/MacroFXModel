@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Extreme Value Theory — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, the live GPD tail-fit chart, and a 6-question self-test?<a href="extreme-value-theory.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -200,7 +200,7 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
+    <!-- DESK:START --><section class="sl-slide" data-slide="11">
       <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Reality check: what's actually built in this repo</h2>
       <p class="sl-sub">The full lesson makes a specific claim about this codebase. It's worth checking against the code itself rather than taking it on faith — same as any other number in this curriculum.</p>
@@ -213,10 +213,52 @@
         <p>That's stale. <code>js/extremesCore.js</code> and <code>js/evtTail.js</code> both implement a full peaks-over-threshold / GPD fit (Hosking–Wallis probability-weighted moments) — and it's wired into real pages, not left as unused math. <code>level-atlas-vote-portfolio.html</code> reports an "EVT VaR 99.5% / CVaR 99.5%" per portfolio straight from a strategy's own daily-return tail; <code>analytics-desk.html</code> and <code>forecast-coverage.html</code> use the same fit to diagnose how fat-tailed price-band breaks are.</p>
       </div>
       <p class="sl-p">The trade-count caution in the lesson is still fair, narrowly read: the built fit needs roughly 30+ tail-crossing <em>days</em> of daily returns — gated at that minimum right in the code — not 1,000+ individual trades, because it's fit on a strategy's daily P&amp;L series, not its trade log. The GPD layer exists; it's just built on a different unit of data than "trade count" implies.</p>
-    </section>
+    </section><!-- DESK:END -->
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">19 October 1987: the day a normal curve forbids</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>The S&amp;P 500 fell about <strong>20%</strong> in one session; the Dow fell <strong>22.6%</strong>, nearly double the worst days of the 1929 crash (about 12–13%). With daily moves then around 1%, that is on the order of <strong>twenty standard deviations</strong>: impossible under a normal curve. And it came in a cluster: Dow about −4.6% the Friday before, about +10% two sessions after.</p>
+      </div>
+      <p class="sl-p">The starred link is this lesson's concept: an exceedance far beyond the sample.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Heavy week; Dow −4.6% Friday 16th</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Portfolio insurers</b>Hedging rules force futures selling</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Exchanges</b>Overwhelmed; stocks open late, prices gap</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Tail ξ&gt;0</b>One exceedance far past the sample</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>S&amp;P −20%, then wild swings: a cluster</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what the desk found<!-- DESK:END --></h2>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>Untested here:</strong> that a GPD-extrapolated VaR is breached at its advertised rate. A fair test: decades of daily index data incl. 1987/2008/2020, rolling declustered POT fits on past data only, breach counts at 99.5% and 99.9% vs 0.5% and 0.1%, with historical VaR as the baseline.</span>
+      </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="mv-extreme-forward" data-evidence-date="2026-09-23">
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
+        <span><strong>mv-extreme-forward:</strong> "a rare move means something follows." Range +0.15 [−0.04, 0.40] SPX500, +0.15 [−0.15, 0.44] NQ, 15 firings; direction 73% up vs a 79% control.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The normal tail is far too thin. EVT does better but leans on two assumptions 1987 strained: exceedances are independent (they clustered), and the shape near the threshold continues further out (a crisis-only mechanism switched on).</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -266,8 +308,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Historical VaR/CVaR are honest but run out of road far in the tail — beyond roughly the 99.5th percentile they're really just naming your worst day or two.</p></div>
@@ -275,6 +317,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The shape parameter ξ is the entire payload: heavy/Pareto (ξ&gt;0), exponential (ξ=0), or hard-ceiling bounded (ξ&lt;0).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A fitted GPD gives you VaR/CVaR at any confidence level, even past your sample — but that's an extrapolation assumption, not a measurement, and it's unverifiable at the exact quantile you're extrapolating to.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Report the empirical and EVT-extrapolated numbers together — the gap between them is itself information about how much you're relying on the model.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>1987: a roughly 20-sigma day, impossible under a normal and rare under a heavy tail, arriving in a cluster.<!-- DESK:START --> GPD calibration out of sample is untested here; "something follows a rare move" is null (mv-extreme-forward).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -462,5 +505,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

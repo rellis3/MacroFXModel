@@ -17,7 +17,7 @@
   <h1 class="tl-title">Deep Q-Networks &amp; Function Approximation</h1>
   <p class="tl-dek">What happens when the Q-table gets too big to write down — replacing it with a neural network that generalizes, and the two tricks that keep that replacement from destabilizing the very learning process it's supposed to speed up.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Q-Learning &amp; Temporal-Difference Methods</span>
   </div>
@@ -38,6 +38,7 @@
       <li>DQN is a <strong>value-based</strong> deep RL method — it still needs \(\max_{a'}\) over actions, which is exactly why <a href="policy-gradients-actor-critic.html">policy gradients and actor-critic methods</a> exist as the policy-based alternative for a continuous action space like a position size, where that max becomes a nested optimization problem all over again.</li>
       <li>Worked example: a tiny 6-transition replay buffer, a random mini-batch drawn from it, and a target-network-vs-online-network computation done side by side with toy numbers.</li>
       <li><strong>Mandatory honest framing:</strong> DQN is genuinely impressive on well-defined games with a dense, clear reward (its original Atari benchmark) — but swapping a table for a neural function approximator adds complexity and removes interpretability, which makes a poorly specified reward or an unrealistic simulated environment an even bigger risk here than in tabular Q-learning, not a smaller one.</li>
+      <li><strong>How it reached trading:</strong> From the late 2010s researchers applied deep Q-learning to execution and to futures trading (Zhang, Zohren &amp; Roberts, 2020), replacing hand-bucketed states with a network.</li>
     </ul>
   </div>
 
@@ -95,6 +96,44 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>Imagine trying to memorize the price of every single house that has ever existed, one by one, so you know exactly what any house is worth. That's the Q-table — it works, but only for houses you've literally seen before. Now imagine instead learning general rules like "bigger houses cost more, houses near good schools cost more" — that's the neural network. It can guess a fair price for a brand-new house it's never seen, as long as it's roughly similar to houses it has learned from. The table can't do that at all; it just shrugs at anything new.</p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Too many market states for a table</h3>
+    <div class="tl-origin-who">Deep Q-learning · into trading and execution research from the late 2010s</div>
+    <p>
+    Tabular Q-learning works only if the market is chopped into a few buckets. The
+    2006 execution work, for example, used a handful of discrete levels for time,
+    inventory and spread. A real state (twenty order-book levels, recent returns,
+    volatility, inventory) has far too many combinations for a table. DQN, built at
+    DeepMind in 2013–15 to play video games from raw pixels, replaced the table with a
+    neural network and added the replay buffer and target network that keep training
+    stable.
+    </p>
+    <p>
+    Finance researchers picked it up within a few years. Studies applied deep
+    Q-learning to optimal execution with order-book features, and Zihao Zhang, Stefan
+    Zohren and Stephen Roberts (2020) compared DQN with policy-gradient and actor-critic
+    agents on about fifty futures contracts. Their agents were rewarded for volatility-
+    scaled returns net of costs, and in their backtests they beat classic time-series
+    momentum. Banks also publicised reinforcement-learning execution agents from the
+    late 2010s, though without detailed methods.
+    </p>
+    <p>
+    On a desk, DQN fits decisions with a small set of discrete actions: buy, hold
+    or sell, or which order type to send next. The caution from its origin carries over.
+    It was proven where the score is clean and frequent, and a market reward is
+    noisy, delayed and changes regime.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Score a small menu of discrete actions (buy, hold, sell, or which order to send) from a rich state vector that a table could never hold.</dd>
+        <dt>Takes in</dt><dd>The update rule from <a href="q-learning-temporal-difference.html">Q-learning</a>, and leak-free state features from <a href="feature-engineering-leakage-reproducibility.html">feature engineering</a> and <a href="limit-order-books.html">limit order books</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="execution-algorithms.html">Execution algorithms</a> for order choice, <a href="walk-forward-purged-cv.html">walk-forward validation</a> for an honest test, and <a href="policy-gradients-actor-critic.html">policy gradients</a> when the action is a continuous size.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -569,6 +608,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(L(\theta)=E[(r+\gamma\max_{a'}Q(s',a';\theta^-)-Q(s,a;\theta))^2]\) is the same TD target from tabular Q-learning,</strong> now trained as a squared-error loss by gradient descent instead of a direct table overwrite.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DQN is value-based and still needs \(\max_{a'}\);</strong> policy gradient and actor-critic methods are the policy-based alternative for continuous action spaces, where that max stops being a simple lookup.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A neural function approximator makes the "it's just an optimizer, not a strategy" caution bigger, not smaller.</strong> More complexity and less interpretability than a Q-table means a poorly specified reward or an unrealistic simulated environment is an even easier way for a DQN to "solve" a backtest and still fail live.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>In trading, DQN is a research tool for discrete choices.</strong> It has been applied to execution and futures trading since the late 2010s. It was proven on clean, dense game scores, while a market reward is noisy and sparse, so its backtests need extra scepticism.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

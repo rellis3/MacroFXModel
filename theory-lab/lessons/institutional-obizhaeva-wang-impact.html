@@ -27,7 +27,7 @@
   <h1 class="tl-title">Obizhaeva-Wang Transient Price Impact</h1>
   <p class="tl-dek">Kyle's impact is permanent because it's information, and it never fades. Almgren-Chriss's temporary impact reverts the instant you stop trading, with no memory of what you did a moment ago. Obizhaeva-Wang sits in between: impact that decays, but not instantly — a limit-order-book "reservoir" that needs real time to refill — and that one assumption is enough to turn the optimal way to trade a large order from a smooth curve into something lumpier at both ends.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — grepped every <code>.js</code> and <code>.py</code> file in this repo, case-insensitive, for "resilien", "transient impact", and "Obizhaeva": no resilience-based transient-impact model, no decaying-impact state variable, and no Obizhaeva-Wang mechanics exist anywhere here. The only "resilien-" hits are <code>bot/main.py</code>'s <code>ResilientStreamHandler</code>/<code>ResilientFileHandler</code> — retry-safe logging handlers, unrelated to market microstructure or price impact in any way</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — grepped every <code>.js</code> and <code>.py</code> file in this repo, case-insensitive, for "resilien", "transient impact", and "Obizhaeva": no resilience-based transient-impact model, no decaying-impact state variable, and no Obizhaeva-Wang mechanics exist anywhere here. The only "resilien-" hits are <code>bot/main.py</code>'s <code>ResilientStreamHandler</code>/<code>ResilientFileHandler</code> — retry-safe logging handlers, unrelated to market microstructure or price impact in any way<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Market Microstructure Invariance</a>, <a href="market-impact-almgren-chriss.html">Market Impact Models &amp; Almgren-Chriss</a></span>
   </div>
@@ -47,6 +47,7 @@
       <li>Because of that finite memory, the optimal execution schedule under this model is famously <strong>not</strong> a smooth curve. It typically features discrete <strong>block trades</strong> at the very start and end of the horizon, with lighter, smoother trading in between — because a block placed in the middle has to push through your own still-decaying earlier impact, while blocks at the two boundaries don't pay that penalty.</li>
       <li>A toy numeric illustration below (\(\rho=2\), \(\kappa=0.01\), \(Q=100\) units over 5 evenly-spaced trades) puts a real number on it: trading it all in one block costs ≈50.0; spreading it evenly costs ≈26.45; a simple front-and-back-loaded split costs ≈25.92 — cheapest, but only by a modest ~2%, because bigger boundary blocks also cost more in instantaneous self-impact. That tension, not a free lunch, is the actual content of the result.</li>
       <li>Same impact-vs-risk trade-off as Almgren-Chriss underneath it all — trade fast and pay more impact, trade slow and eat more timing risk. The resilience assumption doesn't change <em>that</em> trade-off; it changes the <em>shape</em> of the answer.</li>
+      <li><strong>How it reached trading:</strong> Obizhaeva &amp; Wang (2005 working paper, 2013) gave execution desks impact that decays at a finite rate, and with the propagator models that followed it shapes how algorithms space out child orders.</li>
     </ul>
   </div>
 
@@ -103,6 +104,23 @@
       information changing anyone's beliefs — it's purely a mechanical, liquidity-supply story, and that's
       exactly what makes it transient rather than permanent.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Impact that fades, but not instantly</h3>
+    <div class="tl-origin-who">Transient impact · Obizhaeva &amp; Wang, working paper 2005, published 2013 → execution scheduling</div>
+    <p>Almgren-Chriss (2000) gave execution desks their first standard schedule, but its temporary impact has no memory: stop trading and it vanishes at once. Traders slicing a large order know the book does not refill that fast, so a child order sent too soon after the last one pays for both.</p>
+    <p>Anna Obizhaeva and Jiang Wang modelled the order book as a reservoir that refills at a finite rate (resilience), first as a 2005 NBER working paper and then in the Journal of Financial Markets in 2013. Its result (blocks at the start and end, steady trading in between) changed how execution researchers thought about schedule shape. Alfonsi, Fruth &amp; Schied (2010) extended it to general book shapes, and Gatheral (2010) linked decaying impact to no-arbitrage conditions, alongside the propagator models of Bouchaud and co-authors.</p>
+    <p>Today decaying-impact (propagator) models are a standard part of execution research and of how algorithm designers set the spacing between child orders.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How fast does the book recover after I trade, and how should that space out my child orders?</dd>
+        <dt>Takes in</dt><dd>Order size from <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Invariance</a>, the impact-versus-risk trade-off of <a href="market-impact-almgren-chriss.html">Almgren-Chriss</a>, and book depth from <a href="institutional-market-depth-slope.html">Market Depth &amp; Slope</a>.</dd>
+        <dt>Hands on to</dt><dd>Child-order scheduling in <a href="execution-algorithms.html">Execution Algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -382,6 +400,7 @@
     the target participation rate would otherwise allow it — both are informal, practitioner-level echoes of
     "don't trade into your own still-decaying impact."
   </p>
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">🗂️</div>
     <div class="tl-box-label">What's actually verified against this repo's code</div>
@@ -402,6 +421,7 @@
       all elsewhere in this curriculum, does not implement either family of impact model.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <div class="tl-box scenario">
     <div class="tl-icon-badge amber">🎯</div>
@@ -471,6 +491,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>More front/back-loading isn't automatically better.</strong> Pushing the boundary blocks to their extreme (two blocks, nothing in between) cost <em>more</em> in the worked example than a moderate split — bigger blocks pay more instantaneous self-impact, which can outweigh the decay savings.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Linear impact, pure exponential resilience, and a hard-to-estimate, regime-varying \(\rho\)</strong> are the model's real limitations — a stylized approximation of book dynamics, not a literal description of one.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This is not the Kyle-Obizhaeva Invariance framework.</strong> Same coauthor, different paper, different question — nothing here says how \(\rho\) or \(\kappa\) should scale across assets or regimes.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it sets the spacing of child orders.</strong> Resilience, how fast the book refills, decides how long to wait between slices; decaying-impact (propagator) models in this family are standard in execution research.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

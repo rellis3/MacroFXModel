@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Nelson-Siegel &amp; Svensson — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">16</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the interactive chart, and a 5-question self-test?<a href="nelson-siegel-svensson.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -309,7 +309,46 @@
     </section>
 
     <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+      <div class="sl-kicker">Section 12 · It actually happened</div>
+      <h2 class="sl-h2">2022: the year the factors moved</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Through 2021 the US curve had a low level and a negative slope: short rates near zero, the 10-year around 1.5%. From March 2022 the Fed hiked faster than at any time since the early 1980s, including four 75bp moves in a row. The 2-year went from about 0.7% to about 4.4% in 2022; from July the 2-year stayed above the 10-year. In 2023 bills yielded more than 2-years, which yielded more than 10-years: a hike-then-cut shape.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Inflation</b>Far above target, 2021–22</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The Fed</b>Four 75bp hikes in a row</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Front end</b>2-year ~0.7% → ~4.4%</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson</b>β₀ rises; β₁ flips from negative to positive: the curve inverts</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>A two-regime curve: Svensson's second hump earns its place</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
+      <p class="sl-sub">The tempting claim: the fitted betas can be forecast well enough to trade the curve (Diebold-Li).</p>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>Not tested on this desk.</strong> A fair test: daily Nelson-Siegel fits (fixed λ), each β forecast 1 and 12 months ahead, scored out of sample against a no-change forecast, with 2022 in the test window and trading costs included.</span>
+      </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
+        <span><strong>curve-inversion</strong> (the spread form of β₁ &gt; 0): ten episodes since 1976, recession within 24 months after <strong>6 of 10 (CI [31%, 83%])</strong>; Nasdaq +12m +10.5% vs +13.0% control (p=0.33).</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-quote">A model fitted on the 2010s learned a β₁ that was almost always negative. Forecasting the betas assumes their behaviour is stable, and 2022 was a regime change in exactly that factor.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -359,8 +398,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Bootstrapping is exact at its input bonds and unconstrained everywhere else — sparse or noisy inputs can kink the curve between them, or make extrapolation past the last bond close to a guess.</p></div>
@@ -369,6 +408,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The curvature loading is zero at both ends and nonzero in the middle — β₂ sets the hump's size and direction, λ slides where along the maturity axis it sits.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Svensson adds one more term (β₃, λ₂) for a second, independent hump — six parameters instead of four, and the form central banks like the ECB and the Fed actually publish.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Fitting is nonlinear least squares, not algebra — λ has no closed-form solution and the optimizer can land on different local optima depending on where it starts.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: 2022. The level rose and β₁ flipped positive (the curve inverted); a hike-then-cut shape needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas is untested here; the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -535,5 +575,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

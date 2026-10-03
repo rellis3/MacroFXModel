@@ -17,7 +17,7 @@
   <h1 class="tl-title">Fourier Analysis &amp; the Frequency Domain</h1>
   <p class="tl-dek">Every time series can be rewritten as a sum of sine waves at different speeds — the Fourier transform is the machinery that finds which speeds are actually present, and how strongly, without ever telling you when they happened.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — a classical signal-processing tool, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — a classical signal-processing tool, explained here as background knowledge, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a></span>
   </div>
@@ -36,6 +36,7 @@
       <li>A worked example below builds a synthetic 10-point series with a known, deterministic period-5 (weekly) cycle and recovers that exact cycle from its periodogram using nothing but Euler's identity and a geometric-sum argument — no fitting, no guessing.</li>
       <li>Honestly: raw FX (or equity) return series tend to produce a periodogram that is close to flat across most frequencies — consistent with near-random-walk behavior, the same story this Theory Lab's ACF/PACF and Hurst/variance-ratio lessons already tell from different angles. This tool earns its keep on volume, volatility, and seasonality series far more reliably than on raw price returns.</li>
       <li>Explaining how the Fourier transform works is not a claim that spectral analysis produces trading edge here — it's background knowledge for reading a periodogram correctly, and for understanding exactly what the next lesson's wavelets fix about it.</li>
+      <li><strong>How it reached trading:</strong> Granger brought spectral analysis to economics and stock prices in the 1960s (finding mostly noise and a "typical spectral shape"), and Carr &amp; Madan's 1999 FFT method made it a standard option-pricing engine.</li>
     </ul>
   </div>
 
@@ -73,6 +74,23 @@
       the Fourier transform is the mathematical version of the ear that pulls those individual "notes" back out of the
       mixed signal.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Is there really a cycle in this series?</h3>
+    <div class="tl-origin-who">Spectral analysis · Granger &amp; Morgenstern, 1963; Granger, 1966 → FFT option pricing, Carr &amp; Madan, 1999</div>
+    <p>Market and business-cycle folklore was full of cycles, weekly, monthly and multi-year, but there was no standard way to test whether a periodicity was real or an artefact of eyeballing a chart. In the 1960s Clive Granger brought the periodogram to economics: his 1963 study with Oskar Morgenstern found New York stock-price spectra close to white noise, and his 1966 <em>Econometrica</em> paper showed that most economic series share a "typical spectral shape", with power piled up at low frequencies rather than in sharp cycles.</p>
+    <p>The fast Fourier transform later gave markets a second, larger use. Carr &amp; Madan (1999) priced options by applying the FFT to the characteristic function of the log price, valuing a whole grid of strikes at once; it became a standard way to calibrate Heston-type models.</p>
+    <p>On a desk today: checking a series for seasonality or a genuine cycle before trading one, seeing which horizons carry the variance, and pricing options under models known only through their characteristic function.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which horizons carry the variance in this series, and is any apparent cycle real?</dd>
+        <dt>Takes in</dt><dd>A stationary series, prepared as in <a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="wavelets-time-frequency.html">Wavelets</a> when cycles shift over time, <a href="trend-cycle-filters.html">trend-cycle filters</a>, and <a href="fft-option-pricing-carr-madan.html">FFT option pricing</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -390,6 +408,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Raw FX/equity return periodograms tend to be close to flat.</strong> Consistent with near-random-walk behavior — the same conclusion this Theory Lab's ACF/PACF and Hurst/variance-ratio lessons reach from other angles. This tool is better suited to volume, volatility, or seasonality series.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Only stationary series have a stable, interpretable spectrum.</strong> Run this on returns (or another properly stationary series), not raw trending price levels.</span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains a technique, not a claim of edge.</strong> Nothing here is a trading signal — it's the background needed to read a periodogram, and to understand what the next lesson's wavelets add on top.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its first market result was a null.</strong> Granger &amp; Morgenstern (1963) found stock-price spectra close to white noise, and Granger (1966) found economic series dominated by low frequencies rather than sharp cycles, so a flat periodogram is a legitimate, common answer. The FFT's bigger desk role today is option pricing (Carr &amp; Madan, 1999).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

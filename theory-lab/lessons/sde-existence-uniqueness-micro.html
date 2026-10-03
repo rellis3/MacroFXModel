@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Existence &amp; Uniqueness of SDE Solutions — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full theorem statement, the GBM caveat in full, and a 5-question self-test?<a href="sde-existence-uniqueness.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Will this model even produce a price?</h2>
+      <p class="sl-sub">CIR · 1985 · Heston · 1993 · Andersen · 2008</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>A model is an SDE a desk will simulate and hedge with. If it has no solution, or several, its Monte Carlo prices are noise. Black-Scholes and Vasicek pass easily.</p>
+        <p>The square-root models, CIR (1985) and Heston (1993), sit outside the basic conditions. Yamada–Watanabe and Feller's condition decide whether rates or variance can hit zero, and fitted Heston parameters often fail Feller's test.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> confirm a model defines one sensible path per draw of noise before anyone prices with it.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Writing an equation down doesn't make it true</h2>
       <p class="sl-sub">Every SDE in this curriculum is a special case of the same general form.</p>
       <div class="sl-row">
@@ -38,8 +51,8 @@
       <div class="sl-quote">This is the exact same question ordinary differential equations had to answer first. Write dx/dt = f(x) with x(0) = x₀, and it's tempting to assume a curve x(t) simply exists for all time and is the only one doing so. Neither is automatic — and the classical fix, the <strong>Picard-Lindelöf theorem</strong>, is the direct ancestor of the SDE result this deck builds toward.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two different ways it can break</h2>
       <p class="sl-sub">Worth keeping these separate — they're genuinely different failures, with different fixes.</p>
       <div class="sl-icard-grid">
@@ -50,8 +63,8 @@
       <p class="sl-p">The existence-and-uniqueness theorem coming up next is the stochastic-calculus analogue of Picard-Lindelöf, built to control all of these at once — with two conditions on μ and σ, checked together, with the same constant.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Condition one — Lipschitz: no infinitely steep hills</h2>
       <p class="sl-sub">Rules out non-uniqueness. Holding for all x, y and all t in the horizon of interest:</p>
       <div class="sl-row">
@@ -64,8 +77,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Condition two — linear growth: no unbounded horsepower</h2>
       <p class="sl-sub">Rules out finite-time blow-up. Holding for all x and all t in the horizon of interest:</p>
       <div class="sl-row">
@@ -75,8 +88,8 @@
       <p class="sl-p">Given <strong>both</strong> conditions, holding with the <em>same</em> constant K, a unique strong solution X_t exists on [0,T] for any fixed T. The proof mirrors Picard-Lindelöf almost exactly: successive approximations (Picard iteration), with Lipschitz forcing them to converge and linear growth stopping the limit from escaping to infinity first.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Three coefficients, three verdicts</h2>
       <p class="sl-sub">Same two conditions, checked against three different real coefficient families from this curriculum.</p>
       <div class="sl-card">
@@ -92,7 +105,7 @@
         </div>
         <div class="sl-panel" id="verdict-2">
           <div class="sl-row"><div class="sl-box amber">Lipschitz ✗ at x=0</div><div class="sl-box green">Growth ✓</div></div>
-          <div class="sl-verdict">σ(x)=σ√|x| has infinite slope right at zero, so no finite K bounds it there — the standard theorem from Section 3-4 doesn't apply. But it never grows faster than linearly, so the failure is narrow and local, not explosive. This is exactly why CIR needs the separate, weaker <strong>Yamada-Watanabe conditions</strong> instead of an outright rejection — a failed Lipschitz check means "use the more careful theorem," not "abandon the model."</div>
+          <div class="sl-verdict">σ(x)=σ√|x| has infinite slope right at zero, so no finite K bounds it there — the standard theorem from Section 4-5 doesn't apply. But it never grows faster than linearly, so the failure is narrow and local, not explosive. This is exactly why CIR needs the separate, weaker <strong>Yamada-Watanabe conditions</strong> instead of an outright rejection — a failed Lipschitz check means "use the more careful theorem," not "abandon the model."</div>
         </div>
         <div class="sl-panel" id="verdict-3">
           <div class="sl-row"><div class="sl-box red">Lipschitz ~ (local only)</div><div class="sl-box red">Growth ✗</div></div>
@@ -101,8 +114,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">What "growth condition satisfied" looks like on a chart</h2>
       <p class="sl-sub">Same starting value, X(0)=1. One path stays bounded; the other doesn't survive to t=1.</p>
       <div class="sl-card">
@@ -135,8 +148,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Cross the linear-growth threshold, live</h2>
       <p class="sl-sub">Drag p. dX/dt = X^p, X(0)=1 is the deterministic illustration — the same shape of failure the SDE growth condition targets.</p>
       <div class="sl-card">
@@ -159,8 +172,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Check a mean-reverting SDE's coefficients, live</h2>
       <p class="sl-sub">dX_t = θ(μ−X_t)dt + σdW_t — the same drift shape as ou-mean-reversion.html. Starts on θ=0.15, μ=0, σ=0.02, tested at x=5.</p>
       <div class="sl-card">
@@ -182,8 +195,8 @@
       <p class="sl-p">Because θ(μ−x) is exactly linear in x, its Lipschitz constant is exact everywhere: K = θ, no region-dependence, no caveats. This is the same reason GBM's μx and σx are so clean — linear coefficients are the one case where the honest Lipschitz constant is trivial to state.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Why the earlier lessons got this for free</h2>
       <div class="sl-compare">
         <div class="sl-ccard green">
@@ -211,8 +224,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where this shows up as actual due diligence</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🧪</div><div><h4>Vetting a new coefficient specification</h4><p>Any time a model departs from the standard families — a custom local-volatility surface, a bespoke jump-diffusion drift — checking Lipschitz and growth (or citing a paper that already has) is the first honest gate before trusting simulated output.</p></div></div>
@@ -222,8 +235,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -273,8 +286,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Writing dX_t = μ(X_t,t)dt + σ(X_t,t)dW_t down doesn't automatically mean a unique process satisfying it exists — that has to be checked, coefficient by coefficient.</p></div>
@@ -283,6 +296,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>OU's affine drift and GBM's level-proportional coefficients satisfy both conditions cleanly and cheaply — the quiet reason those closed-form solutions exist at all.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>CIR's σ(x)=σ√|x| fails Lipschitz at x=0 but not growth — a narrow failure that needs Yamada-Watanabe, not a verdict that the model is broken.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Superlinear growth (like σ(x)=σ₀x^1.5, or the illustrative dX/dt=X^p for p&gt;1) is the dangerous failure — no solution exists at all past some finite time, for any method.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: a model-validation check that became live with CIR (1985) and Heston (1993), whose fitted parameters often fail the Feller condition.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

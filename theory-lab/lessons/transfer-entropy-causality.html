@@ -17,7 +17,7 @@
   <h1 class="tl-title">Transfer Entropy &amp; Information-Theoretic Causality</h1>
   <p class="tl-dek">Granger causality asks whether one series' past linearly improves a forecast of another. Transfer entropy asks the same directional question without assuming the relationship is linear at all — and comes with the same hard warning attached: it measures predictive information flow, never causation in the formal sense.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — background math, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; ARIMA &amp; VAR (for the Granger causality bridge)</span>
   </div>
@@ -36,6 +36,7 @@
       <li>Transfer entropy is directional and generally asymmetric: \(TE_{X\to Y} \ne TE_{Y\to X}\) — that asymmetry is exactly what gives it a causality-<em>like</em> signal, the same way Granger causality's directionality does.</li>
       <li>The worked example below constructs an exact, fully-derived case — \(X\) is pure noise driving \(Y\) through a noisy one-step channel — where \(TE_{X\to Y}\approx 0.531\) bits while \(TE_{Y\to X}=0\) bits <em>exactly</em>, real numbers from a real (if synthetic) process, not fitted or estimated from a sample.</li>
       <li><strong>Mandatory caveat:</strong> transfer entropy detects predictive information flow — it is not causation in the formal, interventionist (Pearl do-calculus) sense. An unobserved common driver can produce a nonzero, asymmetric transfer entropy with no direct causal link at all, exactly as with Granger causality.</li>
+      <li><strong>How it reached trading:</strong> within two years of Schreiber's 2000 physics paper it was measuring information flow between stock indices (Marschinski &amp; Kantz, 2002), as a nonlinear extension of Granger-style lead-lag tests.</li>
     </ul>
   </div>
 
@@ -84,6 +85,23 @@
     versus how much moves the other way, computed as two separate numbers that are allowed to (and
     usually do) disagree.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Who leads whom, when the link isn't linear</h3>
+    <div class="tl-origin-who">Transfer entropy · Schreiber, 2000 → financial lead-lag from Marschinski &amp; Kantz, 2002</div>
+    <p>Lead-lag between markets was measured with Granger's 1969 test: does X's past improve a linear forecast of Y? That misses links that only appear in the tails, in volatility, or above a threshold, and mutual information, which does catch nonlinear dependence, cannot say which way the influence runs.</p>
+    <p>Schreiber's 2000 measure fixed both, and finance took it up within two years: Marschinski &amp; Kantz (2002) built an improved estimator and applied it to information flow between the Dow Jones and DAX indices. Through the 2010s it became a standard tool in financial econometrics and econophysics for mapping flows between stock indices, credit and bond markets, and later crypto assets.</p>
+    <p>On a desk it is a nonlinear cross-check on a Granger result (which market moves first, and does that hold without assuming linearity?) and a way to draw directed edges for spillover networks. It needs a lot of data and a significance test against shuffled series.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Does X's past tell us anything about Y's future, in which direction, whether or not the link is linear?</dd>
+        <dt>Takes in</dt><dd>Entropy and mutual information from <a href="entropy-kl-mutual-information.html">Entropy, KL &amp; MI</a>, and the linear baseline in <a href="institutional-granger-causality.html">Granger causality</a>.</dd>
+        <dt>Hands on to</dt><dd>Directed edges for <a href="systemic-risk-networks.html">Systemic Risk Networks</a>; any lead-lag "hit" must also survive <a href="multiple-testing.html">Multiple Testing</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -367,8 +385,8 @@
     would be a genuinely different and more informative finding than the linear result alone — though
     it would still need the same honest treatment: a real out-of-sample check, and the causal caveat
     above stated plainly, before it is treated as anything more than "the spread's history carries
-    predictive content for FX that a linear model missed." No such test has been run in this repo;
-    this is an illustration of what the tool is for, not a result.
+    predictive content for FX that a linear model missed."<!-- DESK:START --> No such test has been run in this repo;
+    this is an illustration of what the tool is for, not a result.<!-- DESK:END -->
     </p>
   </div>
 
@@ -413,7 +431,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The directional asymmetry is the whole point.</strong> \(TE_{X\to Y}\ne TE_{Y\to X}\) in general — the worked example proves it exactly: 0.531 bits one way, 0 bits the other, by construction.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Transfer entropy is not causation in the formal sense — full stop.</strong> It measures predictive information flow, never a Pearl-style interventionist causal claim. An unobserved common driver can produce a clean, asymmetric, nonzero result with zero direct causal link.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real-sample estimation is harder than this lesson's exact example.</strong> Binning/kernel choices for a finite sample introduce estimation bias — treat any reported transfer entropy number from real data with the same skepticism as an estimated mutual information.</span></div>
+    <!-- DESK:START -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Nothing here has been fitted in this repo.</strong> The yield-spread/FX widening scenario above illustrates what the tool answers, not a result already produced — explaining the technique is not a claim it produces edge.</span></div>
+    <!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is a nonlinear lead-lag check.</strong> It asks Granger's question (does X's past predict Y?) without assuming linearity; for Gaussian data the two answers coincide, so it only earns its extra data cost when the link is nonlinear.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

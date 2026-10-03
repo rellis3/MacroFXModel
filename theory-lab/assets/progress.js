@@ -4,6 +4,15 @@
 // number, and persists it to localStorage under theoryLabProgress[slug].
 // Everything here is local to this browser — there is no account and no
 // server; hub.html reads the same key to paint per-card progress rings.
+// Cross-device sync (assets/sync.js) loads only once this browser has linked a sync
+// code on paths.html; it then pushes reading progress when the tab is hidden.
+(function(){ try {
+  var me = document.currentScript;
+  if (me && localStorage.getItem('theoryLabSyncCode') && !window.TLSync) {
+    var s = document.createElement('script'); s.src = me.src.replace(/[^\/?#]+(\?.*)?$/, 'sync.js'); s.async = true;
+    document.head.appendChild(s);
+  }
+} catch (e) {} })();
 (function(){
   'use strict';
   var STORAGE_KEY = 'theoryLabProgress';

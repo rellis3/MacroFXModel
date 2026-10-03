@@ -1278,6 +1278,7 @@
 <script src="js/commandHub.js"></script>
 <script src="js/scratchpad.js"></script>
 <script src="js/siteApiMap.js"></script>
+<script src="js/dataMap.js"></script>
 
 <!-- Market Outlook horizon toggle — switches the per-pair Outlook chip (card
      face) between Daily (the page's existing per-pair reads — no overlay),
@@ -1311,6 +1312,7 @@
   <button class="hbtn" onclick="loadAll(true)">⟳ Refresh</button>
   <button class="hbtn" onclick="openSiteMap()" title="Site map — all pages with descriptions">🗺 Site Map</button>
   <button class="hbtn" onclick="openApiMap()" title="API map — every backend endpoint, what it does, who calls it">🔌 API Map</button>
+  <button class="hbtn" onclick="openDataMap()" title="Data map — every data feed, what it is for, where it is used, when it last updated">🗄 Data Map</button>
   <button class="hbtn" id="themeToggleBtn" onclick="toggleTheme()">☀️ Light</button>
   <a class="hbtn" href="index.html">Dashboard</a>
 </div>
@@ -8608,6 +8610,7 @@ function renderSidebar() {
         <a class="qtile" href="macro-scorecard.html"><span class="qt-ic">📊</span><span class="qt-t">Macro Scorecard</span><span class="qt-s">Cross-engine ranking</span></a>
         <a class="qtile" href="brief-config.html"><span class="qt-ic">⚙</span><span class="qt-t">Brief Config</span><span class="qt-s">Auto-generation setup</span></a>
         <div class="qtile" onclick="openSiteMap()"><span class="qt-ic">🗺</span><span class="qt-t">Full Site Map</span><span class="qt-s">Every page, explained</span></div>
+        <div class="qtile" onclick="openDataMap()"><span class="qt-ic">🗄</span><span class="qt-t">Data Map</span><span class="qt-s">Every feed, where used, how fresh</span></div>
       </div>
     </div>`;
 }

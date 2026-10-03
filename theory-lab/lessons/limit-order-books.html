@@ -27,7 +27,7 @@
   <h1 class="tl-title">Limit Order Books &amp; Queue Dynamics</h1>
   <p class="tl-dek">Every quoted price hides a whole ladder of resting orders underneath it — how that ladder is organized, what happens when a market order tears through it, and why the order sitting first in line at a price gets treated completely differently from the order sitting last.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: <a href="market-microstructure.html">Market Microstructure</a></span>
   </div>
@@ -46,6 +46,7 @@
       <li>A limit order rests and waits, providing liquidity at a chosen price; a market order takes immediately, consuming whatever size is resting, walking through successively worse price levels if one level alone isn't enough to fill it.</li>
       <li>Queue position is not a detail — it is often the entire economics of a passive order. Two identical resting orders at the identical price can have completely different fill probabilities purely because of how many shares/contracts are queued ahead of one versus the other.</li>
       <li>Worked example: a 600-unit market buy order against a small three-level ask ladder walks through all of level 1, all of level 2, and part of level 3, landing at a volume-weighted average price about 0.8 pips worse than the best quoted ask — a concrete illustration of "walking the book."</li>
+      <li><strong>Real-world episode:</strong> the 15 October 2014 US Treasury "flash rally." The 10-year yield fell 16 basis points and came back within 12 minutes, with no clear news in that window. Volume was heavy but resting depth at the best prices was thin, so each order walked further through the ladder.<!-- DESK:START --> Whether displayed depth tells you the depth you will actually get is <strong>untested</strong> on this desk, which has no order-book data.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -506,6 +507,81 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the Treasury flash rally, 15 October 2014</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Twelve minutes in the deepest bond market in the world</h3>
+    <p>
+      US Treasuries are usually described as the deepest, most liquid market there is. On the morning of 15 October
+      2014 yields were already falling: US retail sales for September came in weaker than expected at 8:30 am Eastern,
+      against a background of worries about global growth. Trading was heavy.
+    </p>
+    <p>
+      Then, between <strong>9:33 and 9:45 am</strong>, the 10-year yield fell about <strong>16 basis points</strong>
+      and rose straight back again. The 10-year yield's range for the day was 37 basis points. A move of that size,
+      that fast, in that market, was almost unheard of, and the joint staff report later published by the Treasury, the
+      Fed, the New York Fed, the SEC and the CFTC found <strong>no clear news or policy announcement</strong> in that
+      12-minute window that could explain it.
+    </p>
+    <p>
+      What the report did find is a description of this lesson's ladder under stress. Trading volume was very high, but
+      the size resting at the best bid and offer had been thin all morning and thinned further during the window. Bank
+      dealers, the traditional market makers, pulled back on their resting orders. Principal trading firms, mostly
+      automated, made up most of the volume and kept trading, but showed little resting size at any one price and
+      cancelled and replaced quotes quickly. So each market order took what was at the touch, found little behind it,
+      and moved on to the next level, then the next. Nobody had to know anything. A thin ladder plus heavy one-way
+      flow was enough. The report also noted that a meaningful share of the volume was "self-trading", where a single
+      firm was on both sides of the trade.
+    </p>
+    <p style="margin-bottom:0">
+      Put it in the worked example's terms. A 600-unit market buy against 200 / 300 / 500 units of resting size paid
+      0.8 pips over the best ask. Cut every level to a tenth of that size, and the same order walks right through
+      the ladder and keeps going. Its average fill gets worse level by level, and the last trade becomes the new price.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Weak retail sales at 8:30; yields already falling on heavy volume</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Bank dealers</b>Pull back resting orders; less size sits at each price</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Automated firms</b>Keep trading heavily, but show little size and cancel quickly</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>The book · this lesson</b>Depth at the touch is thin, so each market order walks several levels and the price steps through the ladder</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>10-year yield down about 16bp and back within 12 minutes, with no clear news</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The deli counter from the start of this lesson usually has long lines at every price. One morning most of the people in line wandered off, though the shop was busier than ever. Customers who wanted serving "right now" had to keep going to the next, pricier line, because each line had only one or two people in it. The price jumped, not because anyone knew a secret, but because the lines were short.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The worked example treats the book as a fixed photograph: known sizes at known levels, waiting to be consumed.
+    October 2014 shows the two things that photograph leaves out. First, <strong>volume is not depth</strong>. A market
+    can trade enormous size while very little rests at any one price, because the same liquidity is posted, hit and
+    replaced in a fraction of a second. Second, resting size is <strong>endogenous</strong>: market makers cancel in
+    response to the very flow that is about to consume them, so the depth you see when you decide is not the depth
+    left when your order arrives. The "photograph, not a guarantee" pitfall above is the small version. This was the
+    same thing across the whole market at once.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Untested here: "the depth you see is the depth you'll get," and its cousin, "book imbalance tells you
+    where price goes next."</strong> This desk works from mid-price candles with no order-book depth, so neither claim has
+    been tested. A fair test would need full depth-of-book data (every add, cancel and trade) for a liquid futures
+    contract. It would compare the displayed size at the touch just before each market order with the size actually
+    filled there, by volatility regime and against matched calm periods. It would also count how often a book imbalance
+    reading is followed by a move its way, measured against the base rate. All of that would be fixed in advance.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Understanding the book as a live, level-by-level structure — rather than as a
@@ -591,7 +667,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The book is two ladders of price levels, each holding a queue.</strong> Bids sorted highest-to-lowest, asks sorted lowest-to-highest, and every level's size is the sum of possibly many separate resting orders.</span></div>
@@ -600,9 +676,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Queue position can dominate price for a passive order's real economics.</strong> Two identical resting orders at the identical price can have very different fill probabilities purely due to how much size queued up ahead of each one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Depth and the spread are two different, complementary liquidity measures.</strong> A tight spread with thin depth can still be expensive to trade in any real size — always check both, not just the quoted spread.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A book snapshot is a photograph, not a guarantee.</strong> Resting size can be cancelled or replaced before an order actually reaches it — treating a stale snapshot as available liquidity overstates what a trade will really get filled against.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Volume is not depth, and depth leaves under stress.</strong> On 15 October 2014 the 10-year Treasury yield fell about 16bp and came back within 12 minutes, with no clear news, on heavy volume but thin resting size at the touch.<!-- DESK:START --> Whether displayed depth predicts the fill you get is untested on this desk, which has no order-book data.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What does "price-time priority" actually guarantee, in order?</summary>

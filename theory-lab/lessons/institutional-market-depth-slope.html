@@ -27,7 +27,7 @@
   <h1 class="tl-title">Market Depth, Order-Book Slope &amp; Depth Imbalance</h1>
   <p class="tl-dek">A limit order book has a shape even when nobody is trading it — how much size sits right at the best price, and how much more shows up as you look one, two, five ticks further away. Slope describes that shape; depth imbalance describes which side of it is heavier. Neither one needs a single executed trade to compute, which is exactly what separates them from every flow-based signal this Theory Lab has covered so far.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — no order-book depth, slope, or depth-imbalance code exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file for "depth", "orderbook", "order.book", and "bookImbalance"-style terms. The closest genuinely <em>running</em> code is a different kind of object entirely: <code>js/positionBookMetrics.js</code>, called live from <code>_worker.js</code> against OANDA's <code>positionBook</code> endpoint, computes retail long/short crowding, pain, and overhead percentages from a head-count, 20-minute-stale position heatmap spanning the whole historical price range — not bid/ask resting size at defined tick distances from a live top-of-book, which is what this lesson's slope and depth-imbalance formulas require. <code>scripts/fetch_oanda_books.py</code> is a genuine, but never-yet-executed, backfill script for OANDA's raw <code>orderBook</code>/<code>positionBook</code> history (no <code>data/books/</code> directory exists on disk). This sharpens, and stays consistent with, the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson's own finding that this repo's primary FX venue, OANDA spot, has no order book at all in the live-matching-engine sense — the closest thing it does expose (positionBook/orderBook) is retail-aggregated, price-bucketed, and 20 minutes stale, not a resting bid/ask ladder.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — no order-book depth, slope, or depth-imbalance code exists anywhere in this repo, verified by grepping every <code>.js</code>/<code>.py</code> file for "depth", "orderbook", "order.book", and "bookImbalance"-style terms. The closest genuinely <em>running</em> code is a different kind of object entirely: <code>js/positionBookMetrics.js</code>, called live from <code>_worker.js</code> against OANDA's <code>positionBook</code> endpoint, computes retail long/short crowding, pain, and overhead percentages from a head-count, 20-minute-stale position heatmap spanning the whole historical price range — not bid/ask resting size at defined tick distances from a live top-of-book, which is what this lesson's slope and depth-imbalance formulas require. <code>scripts/fetch_oanda_books.py</code> is a genuine, but never-yet-executed, backfill script for OANDA's raw <code>orderBook</code>/<code>positionBook</code> history (no <code>data/books/</code> directory exists on disk). This sharpens, and stays consistent with, the sibling <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lesson's own finding that this repo's primary FX venue, OANDA spot, has no order book at all in the live-matching-engine sense — the closest thing it does expose (positionBook/orderBook) is retail-aggregated, price-bucketed, and 20 minutes stale, not a resting bid/ask ladder.<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>, <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance &amp; the Microprice</a></span>
   </div>
@@ -47,6 +47,7 @@
       <li>Depth imbalance is a <strong>resting-liquidity</strong> signal built from one snapshot of what's sitting on the book. Order Flow Imbalance (the sibling lesson) is a <strong>trade-flow</strong> signal built from a sequence of book <em>changes</em> over time. They frequently agree, but they are answering genuinely different questions from genuinely different data, and this lesson keeps that distinction explicit throughout.</li>
       <li>Order-book slope is also easy to confuse with Kyle's λ (covered in the sibling <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Invariance</a> lesson) — both describe "how much does size move price," but λ is a reduced-form statistic estimated from a history of trades, while slope is a purely geometric property of a single book snapshot that needs no trade history at all.</li>
       <li>A worked toy order book below computes cumulative depth, slope under both conventions, and depth imbalance by hand — verified to match the live calculator's own output exactly.</li>
+      <li><strong>How it reached trading:</strong> Electronic order books made depth visible, researchers such as Næs &amp; Skjeltorp (2006) measured its slope, and desks and regulators now read it as a live liquidity gauge before sizing orders.</li>
     </ul>
   </div>
 
@@ -124,6 +125,23 @@
       through right now — exactly the intuition behind reading a bid-heavy
       or ask-heavy book as short-horizon pressure.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>How much size can the book take right now?</h3>
+    <div class="tl-origin-who">Order-book depth and slope · electronic limit-order books from the 1980s–90s; Næs &amp; Skjeltorp, 2006</div>
+    <p>On a trading floor or in a dealer market, depth beyond the best quote was invisible: you found it by trading. Electronic limit-order books (Toronto's CATS from 1977, the Paris Bourse's CAC system from 1986, London's SETS from 1997) published the whole queue, and with it a measurable shape.</p>
+    <p>Researchers read that shape directly: Biais, Hillion &amp; Spatt (1995) on the Paris Bourse book, and Næs &amp; Skjeltorp (2006) on the Oslo Stock Exchange, who tied order-book slope to the volume–volatility relation. Regulators then used depth as a stress gauge: the US agencies' joint staff report on the 15 October 2014 Treasury "flash rally" documented how order-book depth thinned around the event.</p>
+    <p>Today desks read depth before sizing child orders, and risk managers watch top-of-book depth in benchmark futures such as the E-mini and Treasury futures as a live liquidity gauge.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much size is resting near the touch, and which side is heavier?</dd>
+        <dt>Takes in</dt><dd>Book snapshots from <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>.</dd>
+        <dt>Hands on to</dt><dd>The imbalance signals of <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a>, the resilience in <a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang</a>, and child-order sizing in <a href="execution-algorithms.html">Execution Algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -489,9 +507,9 @@
       same way.
     </p>
     <p>
-      Nothing above is a claim this repo runs this analysis on live data —
+      <!-- DESK:START -->Nothing above is a claim this repo runs this analysis on live data —
       see the status badge above for exactly what does and doesn't exist here
-      today. It illustrates how a desk that <em>did</em> have a genuine,
+      today. <!-- DESK:END -->It illustrates how a desk that <em>did</em> have a genuine,
       continuously-updating top-of-book feed would actually use these two
       numbers together, which is the point of the exercise.
     </p>
@@ -542,9 +560,9 @@
       primarily OTC across multiple competing ECNs and bank-to-bank venues,
       each with its own separate book. A slope or depth-imbalance figure
       computed from one venue's book describes that venue only — not "the FX
-      market's" depth as a whole — and this repo's own primary venue, OANDA
+      market's" depth as a whole<!-- DESK:START --> — and this repo's own primary venue, OANDA
       spot, doesn't even expose a live top-of-book ladder to begin with (see
-      the status badge above). A naive depth read that ignores fragmentation
+      the status badge above)<!-- DESK:END -->. A naive depth read that ignores fragmentation
       entirely can be badly misleading about how much liquidity genuinely
       exists across the market.
     </p>
@@ -576,6 +594,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Depth imbalance (a resting snapshot) and Order Flow Imbalance (a sequence of changes) are genuinely different signals</strong> that can disagree at the same instant — one is not a substitute for the other.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Slope is a static book-shape statistic; Kyle's λ is a statistically-estimated, trade-based price-impact coefficient.</strong> They're related in spirit but built from entirely different data and computed in entirely different ways.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Displayed depth can be hidden (icebergs) or fabricated (spoofing), and FX has no single consolidated book to read it from anyway.</strong> Neither formula in this lesson can detect either distortion on its own.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk depth is the live liquidity gauge.</strong> Execution desks check it before sizing child orders, and regulators used thinning depth to explain the October 2014 Treasury flash rally.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

@@ -27,7 +27,7 @@
   <h1 class="tl-title">CoVaR: Conditional Value-at-Risk for Systemic Risk</h1>
   <p class="tl-dek">Plain VaR asks how bad institution j's own losses can get. CoVaR asks a genuinely different question: how bad can j's losses get <em>given that institution i is already in distress</em> — a measure of spillover and co-movement, not standalone risk. Despite the near-identical name, this is not the same thing as CVaR (Conditional VaR / Expected Shortfall) from the coherent-risk-measures lesson, and confusing the two is one of the easiest mistakes to make in this literature.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — grepping this repo's actual <code>.js</code>/<code>.py</code> source (case-insensitive, for "CoVaR", "systemic.risk", and "quantile.regression") turns up no CoVaR or systemic-risk-spillover measure of any kind anywhere in this codebase. The only "systemic risk" hits at all are two unrelated, descriptive comment/message strings — <code>RegimeV2/macro_overlay.py</code>'s docstring "True when VIX &gt; 25 — elevated systemic risk" and a formatter string in <code>RegimeV2/formatter.py</code> reading "All FX vol indices elevated simultaneously — systemic risk-off, not pair-specific" — both of which label a VIX threshold and a display message, not any co-movement or spillover calculation between two series. The general linear quantile-regression machinery this lesson's estimation approach relies on is covered separately in the sibling <a href="quantile-regression.html">Quantile Regression</a> lesson; see that lesson's own status badge for exactly which narrower piece of that machinery (a pinball-loss scoring rule, not the full q<sub>τ</sub>(x)=x&#8868;β<sub>τ</sub> regression) is actually load-bearing elsewhere in this repo's code.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — grepping this repo's actual <code>.js</code>/<code>.py</code> source (case-insensitive, for "CoVaR", "systemic.risk", and "quantile.regression") turns up no CoVaR or systemic-risk-spillover measure of any kind anywhere in this codebase. The only "systemic risk" hits at all are two unrelated, descriptive comment/message strings — <code>RegimeV2/macro_overlay.py</code>'s docstring "True when VIX &gt; 25 — elevated systemic risk" and a formatter string in <code>RegimeV2/formatter.py</code> reading "All FX vol indices elevated simultaneously — systemic risk-off, not pair-specific" — both of which label a VIX threshold and a display message, not any co-movement or spillover calculation between two series. The general linear quantile-regression machinery this lesson's estimation approach relies on is covered separately in the sibling <a href="quantile-regression.html">Quantile Regression</a> lesson; see that lesson's own status badge for exactly which narrower piece of that machinery (a pinball-loss scoring rule, not the full q<sub>τ</sub>(x)=x&#8868;β<sub>τ</sub> regression) is actually load-bearing elsewhere in this repo's code.<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> (for the CoVaR/CVaR naming distinction), <a href="quantile-regression.html">Quantile Regression</a> (the estimation machinery this lesson leans on)</span>
   </div>
@@ -47,6 +47,7 @@
       <li><strong>CoVaR and CVaR are not the same thing</strong>, despite the near-identical three letters. CVaR (from <a href="coherent-risk-measures.html">Coherent Risk Measures</a>) is the average loss <em>within</em> one distribution's own tail. CoVaR is a VaR of one variable conditioned on a <em>different</em> variable's distress — a co-movement statistic across two series, not a tail-averaging statistic within one.</li>
       <li>The original 2016 paper's setting is banking-sector systemic risk. Applying the same machinery to "how does EM currency risk (j) respond to elevated USD funding stress (i)" is a practically useful extension — but it's an application by analogy to a different domain, not something the original paper itself studied.</li>
       <li>A small toy dataset and a live calculator below compute CoVaR and ΔCoVaR by hand from a fitted conditional-quantile line, and the Pitfalls section is explicit about threshold arbitrariness, small-sample noise, and why CoVaR is a pairwise statistic, not a full network map of systemic risk.</li>
+      <li><strong>How it reached trading:</strong> Adrian &amp; Brunnermeier's CoVaR (NY Fed staff report 2008, AER 2016) became a standard post-crisis systemic-risk measure, and on a desk it answers what your VaR becomes when another market is in distress.</li>
     </ul>
   </div>
 
@@ -95,6 +96,23 @@
       contribution i's distress makes to j's risk, stripped of j's own
       baseline susceptibility.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Your risk when someone else is in trouble</h3>
+    <div class="tl-origin-who">CoVaR · Adrian &amp; Brunnermeier, 2008 working paper → post-crisis systemic-risk monitoring</div>
+    <p>Before 2008, VaR was measured one institution or one book at a time. It said nothing about how much worse your losses get when a counterparty, a funding market or the banking sector as a whole is already in distress, which is exactly what drove losses in 2007–08.</p>
+    <p>Tobias Adrian and Markus Brunnermeier circulated CoVaR as a Federal Reserve Bank of New York staff report in 2008, and published it in the <em>American Economic Review</em> in 2016. With NYU's SRISK and the marginal expected shortfall, it became one of the standard market-based systemic-risk measures in central-bank and academic financial-stability work.</p>
+    <p>On a trading or risk desk the same quantile-regression idea answers a conditional question: if this funding market, currency or counterparty hits its own VaR, what does my book's VaR become?</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much worse does one position's or institution's tail get when another one is in distress?</dd>
+        <dt>Takes in</dt><dd>Conditional quantiles from <a href="quantile-regression.html">Quantile Regression</a> and the VaR definition in <a href="coherent-risk-measures.html">Coherent Risk Measures</a>.</dd>
+        <dt>Hands on to</dt><dd>Contagion maps in <a href="systemic-risk-networks.html">Systemic Risk Networks</a>, scenarios in <a href="stress-testing-scenario-analysis.html">Stress Testing</a>, and the hedges of <a href="tail-risk-hedging-convexity.html">Tail-Risk Hedging</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -637,6 +655,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>CoVaR is not CVaR.</strong> CVaR averages a loss within one variable's own tail; CoVaR conditions a quantile of one variable on a different variable's distress. Sharing letters is the only thing they share.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Applying CoVaR to FX/macro pairs is an application by analogy,</strong> not something the original 2016 banking-sector paper itself studied — a genuinely useful extension, presented honestly as one.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>ΔCoVaR is a co-movement statistic, not proof of causation, and not a full network map.</strong> Threshold choice, small-sample noise, and the pairwise (not systemic-network) scope of the measure all need to be stated plainly alongside any ΔCoVaR number.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is a conditional tail check.</strong> Since Adrian &amp; Brunnermeier (2008), regulators and risk teams ask not only "what is my VaR?" but "what is my VaR when that funding market or counterparty is at its own VaR?"</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

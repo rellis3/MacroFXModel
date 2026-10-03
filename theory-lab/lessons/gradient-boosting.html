@@ -17,7 +17,7 @@
   <h1 class="tl-title">Gradient Boosting</h1>
   <p class="tl-dek">Instead of averaging many independent trees, build them one at a time, each one trained specifically to correct what the ensemble so far still gets wrong — the dominant technique on structured, tabular data, and a method whose strength is not, by itself, evidence about any specific FX or macro feature set.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: <a href="decision-trees-random-forests.html">Decision Trees &amp; Random Forests</a></span>
   </div>
@@ -36,6 +36,7 @@
       <li>For squared-error loss, the negative gradient is literally the residual, \(y_i - F_{m-1}(x_i)\) — stated explicitly, this is the intuitive special case: each new tree is quite literally fit to what's still left over.</li>
       <li>Production implementations — XGBoost (Chen &amp; Guestrin, 2016), LightGBM, CatBoost — add regularization terms that penalize tree complexity directly in the objective, efficient handling of missing values, and histogram-based split-finding for speed, without changing the core sequential-correction idea.</li>
       <li><strong>Mandatory honest framing:</strong> gradient-boosted trees are genuinely, consistently the strongest general-purpose method on structured/tabular prediction problems — that is a statement about the method. It says nothing about whether any specific set of FX or macro features handed to it contains real, out-of-sample-validated trading edge, and a model this flexible makes leakage-free, honest out-of-sample testing more important, not less, because it can fit noise very convincingly.</li>
+      <li><strong>How it reached trading:</strong> Gu, Kelly &amp; Xiu (2020) included boosted trees among the models that beat linear regressions on stock returns, and XGBoost and LightGBM made them standard quant tooling.</li>
     </ul>
   </div>
 
@@ -95,6 +96,41 @@
       is allowed to overcorrect and swing the whole committee's estimate too
       far in one step.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Squeezing the most signal out of a table of features</h3>
+    <div class="tl-origin-who">Boosted trees · in return prediction (Gu, Kelly &amp; Xiu, 2020) and, with XGBoost (2016) and LightGBM (2017), on quant desks</div>
+    <p>
+    Most quant data is a table: one row per stock-day or per event, with dozens
+    or hundreds of feature columns. Linear models miss the nonlinear structure in it,
+    while neural networks are hard to tune on such tables and need lots of data. Boosting,
+    a 1990s machine-learning idea, builds a strong model from many small trees, each one
+    fixing what the ensemble still gets wrong.
+    </p>
+    <p>
+    It entered finance through credit scoring and default prediction, then return
+    prediction. Gu, Kelly &amp; Xiu (2020) included boosted regression trees among the
+    nonlinear models that beat linear regressions on US stock returns. What made it
+    everyday desk tooling was fast, regularised software: XGBoost (Chen &amp; Guestrin,
+    2016) and Microsoft's LightGBM (2017), which can train on millions of rows in minutes
+    and handle missing values natively.
+    </p>
+    <p>
+    On desks today, a boosted-tree model is a standard first serious model for
+    cross-sectional equity signals, intraday features and credit. Because it fits
+    whatever patterns the data contain, real or not, it is always the model that most
+    needs a purged walk-forward test and a correction for how many variants were tried.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Fit the strongest nonlinear forecast from a table of features. It is the model most likely to find a real pattern, and also the most likely to fit noise.</dd>
+        <dt>Takes in</dt><dd>The tree-splitting machinery of <a href="decision-trees-random-forests.html">decision trees</a>, and leak-free features from <a href="feature-engineering-leakage-reproducibility.html">feature engineering</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="walk-forward-purged-cv.html">Purged walk-forward validation</a>, then <a href="sharpe-family-deflated.html">the deflated Sharpe ratio</a> to discount for the many variants tried.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -523,6 +559,7 @@
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>XGBoost, LightGBM, and CatBoost</strong> are the real, dominant production implementations — regularization, histogram-based splitting, and careful categorical handling on top of the same sequential-correction core, not a different algorithm.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Being the strongest general-purpose method on tabular data is not evidence any specific FX/macro feature set fed into it has real edge.</strong> Those are two entirely different claims — state which one is meant, every time this method is proposed for a real strategy.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This exact flexibility is what makes leakage-free, honest out-of-sample validation more important, not less.</strong> A model this powerful fits noise very convincingly — a falling training or leaked-validation loss looks identical to real generalization until tested on genuinely held-out data.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>Boosted trees are a standard quant model for tabular data.</strong> They are used in return prediction (Gu, Kelly &amp; Xiu, 2020) and credit, and are fast enough to train on millions of rows with XGBoost or LightGBM. Their power to fit is exactly why they need the strictest out-of-sample test.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -679,5 +716,7 @@
   recompute();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

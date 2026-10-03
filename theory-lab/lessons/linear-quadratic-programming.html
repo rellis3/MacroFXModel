@@ -17,7 +17,7 @@
   <h1 class="tl-title">Linear &amp; Quadratic Programming</h1>
   <p class="tl-dek">The two specific, extremely well-studied families of convex problem that turn "portfolio construction with real-world constraints" from a research question into a solved, off-the-shelf computation.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Convex Optimization</span>
   </div>
@@ -36,6 +36,7 @@
       <li>Markowitz's textbook closed-form solution (pure linear algebra — invert a matrix, done) only works for the <em>equality</em>-constrained version. The moment you add box constraints — no shorting (\(w_i\ge0\)), position caps (\(w_i\le0.1\)) — you don't know in advance which constraints will bind, and the clean formula breaks.</li>
       <li>Real portfolio construction always has box constraints, which is exactly why practitioners hand the problem to a QP solver rather than plugging numbers into the closed-form Markowitz formula.</li>
       <li>The worked example solves a tiny 2-variable LP by evaluating every vertex of its feasible region, and separately writes out a fully-specified 3-asset Markowitz QP with box constraints \(0\le w_i\le0.4\) — a solver's actual input, not something meant to be solved by hand.</li>
+      <li>How it reached trading: Markowitz's portfolio problem is a QP (Wolfe's 1959 algorithm solved it), and LPs entered finance through bond cash-flow matching and, from 2000, expected-shortfall optimisation (Rockafellar &amp; Uryasev).</li>
     </ul>
   </div>
 
@@ -104,6 +105,23 @@
       structural reason QPs need a genuinely different algorithm than "check
       the corners" — the answer could be anywhere, not just at a vertex.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Making the optimiser fast enough for a real universe</h3>
+    <div class="tl-origin-who">LP &amp; QP in finance · Wolfe, 1959; Sharpe, 1963; Rockafellar &amp; Uryasev, 2000</div>
+    <p>Markowitz's problem is a quadratic program, and in the late 1950s and early 1960s solving it for hundreds of securities with a full covariance matrix strained the computers of the day. Philip Wolfe's 1959 simplex method for quadratic programming gave a general algorithm, and Sharpe's 1963 single-index model was explicitly a way to cut the computation down.</p>
+    <p>Linear programming, developed for planning problems by Kantorovich and Dantzig in 1939–47, found its own finance jobs: matching a pension fund's liability cash flows with the cheapest bond portfolio, the mean-absolute-deviation portfolio model of Konno and Yamazaki (1991), and Rockafellar and Uryasev's result (2000) that minimising expected shortfall (CVaR) over scenarios is a linear program.</p>
+    <p>On desks today QP solvers run index tracking, factor-neutral portfolio construction and rebalancing with transaction costs, and LPs handle cash-flow matching and scenario-based tail-risk limits.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Solve the constrained portfolio problem exactly and quickly when the objective is linear or quadratic.</dd>
+        <dt>Takes in</dt><dd>The optimality conditions from <a href="convex-optimization.html">Convex optimisation</a>; the mean-variance inputs from <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="factor-based-portfolio-construction.html">Factor-based portfolio construction</a>; CVaR limits in <a href="coherent-risk-measures.html">Coherent risk measures</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -550,6 +568,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Box constraints are exactly why real portfolios need a QP solver, not the closed-form Markowitz formula.</strong> You can't know in advance which constraints will bind, so there's no single fixed matrix to invert.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Interior-point methods are the dominant modern algorithm for large LPs and QPs.</strong> They cut through the interior via a barrier function rather than hopping vertex to vertex, and generally scale better on the largest, sparsest problems.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>An "optimal" solver output can be optimal with respect to the wrong constraints.</strong> A stale or misconfigured position cap doesn't error out — it silently changes what "optimal" means for that solve.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Portfolio construction runs on LP and QP solvers.</strong> Mean-variance is a QP (Wolfe, 1959; Sharpe's 1963 shortcut existed because it was costly to solve); cash-flow matching and CVaR minimisation (Rockafellar &amp; Uryasev, 2000) are LPs.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

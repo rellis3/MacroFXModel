@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drawdowns and Risk of Ruin — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  .dd-table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0}
+  .dd-table th,.dd-table td{border-bottom:1px solid var(--border);padding:6px 8px;text-align:right;font-family:'DM Mono',monospace}
+  .dd-table th{color:var(--text3);font-weight:500;font-size:11px}
+  .dd-table td:first-child,.dd-table th:first-child{text-align:left;font-family:'DM Sans',sans-serif}
+  .dd-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">Drawdowns and Risk of Ruin — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the exact streak recursion, the maximum-drawdown maths, the ruin-versus-size curve and a 6-question self-test?<a href="drawdowns-risk-of-ruin.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">The Human Side · 5 of 6</div>
+      <h1 class="sl-h1">Drawdowns, Risk of Ruin, <em>and Why Good Systems Get Abandoned</em></h1>
+      <p class="sl-lede">A system with a real edge still loses eight in a row, still sits underwater for months, and still makes you doubt it at exactly the wrong moment. Here is the arithmetic of the bad stretch — so you can tell "normal" from "broken" before you are inside one.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Losses are asymmetric</h2>
+      <div class="sl-row"><div class="sl-box">gain needed = d / (1 − d)</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-sliderhead"><span>Drawdown</span><span class="sl-live" id="rc-d-val">50%</span></div>
+        <input type="range" class="sl-slider" id="rc-d" min="1" max="90" step="1" value="50">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">What is left</div><div class="sl-calc-result-val" id="rc-left">50%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Gain needed to recover</div><div class="sl-calc-result-val" id="rc-g">+100.0%</div></div>
+        </div>
+        <div class="sl-note">−20% needs +25%. −50% needs +100%. −75% needs +300%. Small holes are nearly symmetric; big ones are not.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">"1 in 595" is the wrong number</h2>
+      <p class="sl-p">At a 55% win rate, the chance a run of 8 losses starts on <em>this</em> trade is 0.45⁸ ≈ 1 in 595. But you don't take one trade — you take hundreds, and every one of them is a possible starting point.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Exact calculator (no simulation)</div>
+        <div class="sl-sliderhead"><span>Win rate</span><span class="sl-live" id="sk-p-val">55%</span></div>
+        <input type="range" class="sl-slider" id="sk-p" min="20" max="80" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Trades</span><span class="sl-live" id="sk-n-val">300</span></div>
+        <input type="range" class="sl-slider" id="sk-n" min="20" max="2000" step="10" value="300">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Losing run of at least</span><span class="sl-live" id="sk-k-val">8</span></div>
+        <input type="range" class="sl-slider" id="sk-k" min="2" max="20" step="1" value="8">
+        <div class="sl-calc-row" style="margin-top:10px">
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Somewhere in the run</div><div class="sl-calc-result-val" id="sk-any">24.0%</div></div>
+          <div class="sl-calc-result"><div class="sl-calc-result-label">Expected longest run</div><div class="sl-calc-result-val" id="sk-exp">6.6</div></div>
+        </div>
+        <div class="sl-note" id="sk-note"></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">At 55%, streaks are normal</h2>
+      <table class="dd-table">
+        <tr><th>Trades</th><th>run ≥ 5</th><th>run ≥ 6</th><th>run ≥ 7</th><th>run ≥ 8</th><th>longest (exp.)</th></tr>
+        <tr><td>100</td><td>64.7%</td><td>36.3%</td><td>17.9%</td><td>8.4%</td><td>5.3</td></tr>
+        <tr><td>300</td><td>95.9%</td><td>75.2%</td><td>46.0%</td><td>24.0%</td><td>6.6</td></tr>
+        <tr><td>1,000</td><td>100.0%</td><td>99.1%</td><td>87.5%</td><td>60.4%</td><td>8.1</td></tr>
+      </table>
+      <div class="sl-quote">A run of 6 is more likely than not by 152 trades; a run of 8 by about 750. Real losses also cluster in bad regimes, so real streaks run <strong>longer</strong> than this, not shorter.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">The worst hole only gets deeper</h2>
+      <p class="sl-sub">Maximum drawdown is a running maximum — it can only stay the same or grow. Same 55% edge, 2% risk per trade, 2,000 simulated traders:</p>
+      <table class="dd-table">
+        <tr><th>Trades</th><th>median max DD</th><th>90th pct</th><th>ended below start</th></tr>
+        <tr><td>100</td><td>15.0%</td><td>24.8%</td><td>19.4%</td></tr>
+        <tr><td>300</td><td>21.2%</td><td>31.2%</td><td>5.3%</td></tr>
+        <tr><td>1,000</td><td>29.6%</td><td>41.0%</td><td>0.1%</td></tr>
+      </table>
+      <p class="sl-p">The longer you trade, the surer you are to be up — and the deeper the worst hole you'll have sat in. It scales with volatility relative to edge: a backtest's single max drawdown is one draw, and live trading usually beats it.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Forty traders, one system</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it — seeded, so it's reproducible</div>
+        <div class="sl-svgwrap">
+          <svg id="mc-svg" viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Forty simulated equity curves on a log scale. The deepest-drawdown path is red, the median-ending path blue, and a dashed amber line marks half the starting equity.">
+            <g id="mc-grid"></g>
+            <g id="mc-paths"></g>
+          </svg>
+        </div>
+        <div class="sl-sliderhead"><span>Win rate</span><span class="sl-live" id="mc-p-val">55%</span></div>
+        <input type="range" class="sl-slider" id="mc-p" min="30" max="75" step="1" value="55">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Payoff ratio (avg win ÷ avg loss)</span><span class="sl-live" id="mc-b-val">1.00</span></div>
+        <input type="range" class="sl-slider" id="mc-b" min="0.5" max="3" step="0.05" value="1">
+        <div class="sl-sliderhead" style="margin-top:8px"><span>Risk per trade</span><span class="sl-live" id="mc-r-val">2%</span></div>
+        <input type="range" class="sl-slider" id="mc-r" min="0.25" max="25" step="0.25" value="2">
+        <div class="dd-btnrow">
+          <button type="button" class="sl-tab" id="mc-reroll">🎲 Re-roll</button>
+          <button type="button" class="sl-tab" id="mc-reset">Seed 42</button>
+        </div>
+        <div class="sl-calc-steps" id="mc-out"></div>
+        <div class="sl-note">300 trades each. Red = deepest drawdown of the forty, blue = median ending. Try 10% risk (full Kelly here). Then 50% win rate, payoff 1: no edge — and the curves look just as "normal".</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
+      <h2 class="sl-h2">Bet size decides ruin, not win rate</h2>
+      <div class="sl-row"><div class="sl-box">edge E = p·b − q · Kelly f* = p − q/b</div></div>
+      <p class="sl-sub">p = 55%, b = 1 → E = 0.10R, f* = 10%. 300 trades, 2,000 traders per size; "ruin" = touching 50% of start.</p>
+      <table class="dd-table">
+        <tr><th>Risk / trade</th><th>1%</th><th>2%</th><th>5% (½K)</th><th>10% (K)</th><th>20%</th></tr>
+        <tr><td>Touched −50%</td><td>0.0%</td><td>0.1%</td><td>8.6%</td><td>42.1%</td><td>84.1%</td></tr>
+        <tr><td>Median end</td><td>1.33×</td><td>1.72×</td><td>3.08×</td><td>4.49×</td><td>0.96×</td></tr>
+      </table>
+      <p class="sl-p">Past Kelly you take more risk for <strong>less</strong> growth. Overstate your win rate and "half Kelly" quietly becomes full Kelly. More in <a href="kelly-criterion-micro.html">the Kelly guide</a>.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
+      <h2 class="sl-h2">How a good system gets abandoned</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>An ordinary losing streak</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The account</b>Drawdown deepens; recovery needs more than the loss</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson · the drawdown low</b>Judged by recent results, not the tested record</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>The trader</b>Switches off at the bottom; moves to what just worked</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Loss locked in; recovery happens without them</div>
+      </div>
+      <p class="sl-p">Recency, loss aversion and performance-chasing all push the same way. Morningstar's "Mind the Gap" studies keep finding the average investor earns less than the funds they hold — money arrives after good runs and leaves after bad ones.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · It actually happened</div>
+      <h2 class="sl-h2">Value's lost decade, ~2007–2020</h2>
+      <p class="sl-p">Buying cheap stocks over expensive ones is one of the most-studied premiums in finance. Measured by the standard academic value factor, it then suffered the longest, deepest drawdown in its recorded history — sharpest in 2018–2020 as growth and tech kept winning.</p>
+      <p class="sl-p">"Value is dead" became a common refrain; managers saw years of outflows and some closed. From November 2020 — the month of the first effective vaccine results — value rebounded sharply through 2021 and 2022. Those who left near the bottom took the loss and missed the recovery.</p>
+      <div class="sl-callout amber"><div class="sl-callout-label">Not a promise</div><p>This doesn't prove every drawdown recovers. It shows that a long, deep drawdown is exactly what a real premium can look like from the inside.</p></div>
+    </section>
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9 · It actually happened</div>
+      <h2 class="sl-h2">March 2000: Tiger closes near the turn</h2>
+      <p class="sl-p">Julian Robertson's Tiger Management, one of the great hedge funds of the 1980s and 90s, refused to chase internet stocks, lagged badly through the late-90s boom, and suffered heavy losses and redemptions.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">Late March 2000</span><p>Robertson announces he is closing the funds and returning outside money, saying in effect he no longer understands the market.</p></div>
+        <div class="sl-ccard green"><span class="sl-ctag green">What followed</span><p>The Nasdaq had peaked earlier that month. The bubble deflated, and the cheap, unloved stocks Tiger favoured did far better over the following years.</p></div>
+      </div>
+    </section>
+
+    <!-- DESK:START -->
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10 · The desk's verdict</div>
+      <h2 class="sl-h2">What was tested here</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>"A deep drawdown means the edge is gone."</strong> Not testable from a drawdown alone — an edge and no edge produce drawdowns that look alike for hundreds of trades. Test the live record against the tested one instead.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp validated" data-evidence="yield-spread-sleeve" data-evidence-date="2026-07-17"><span class="sl-stamp-tag">Desk test: held up</span><span><strong>The desk's one fully-audited strategy</strong> (2-year yield-spread FX sleeve): ~109 out-of-sample trades, 63% win, PF 2.2. This lesson's maths: a run of 4 losses has a 73.5% chance over 109 trades, a run of 5 a 37.7% chance. Even a validated edge should expect four or five in a row. <em>Backtest evidence; not forward-proven.</em></span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="trend-following-fx" data-evidence-date="2026-07-20"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>The flip side: trend following on FX.</strong> FX-only basket null, confirmed with an independent rebuild; multi-asset only modest (~0.3 out of sample). Some drawdowns are no edge at all — and only a test tells you which.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+    </section>
+    <!-- DESK:END -->
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11 · Your exercise</div>
+      <h2 class="sl-h2">Write your drawdown rules before you need them</h2>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">1</div><div><h4>Your streak</h4><p>Put your win rate and yearly trade count into the calculator. Write down the run length that's more likely than not this year.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">2</div><div><h4>Your normal drawdown</h4><p>Simulate your settings; write down the 90th-percentile max drawdown. Shallower than that is normal.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">3</div><div><h4>Size to it</h4><p>Can't live with that number? Cut risk per trade now. Stay at or under half Kelly.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">4</div><div><h4>Define "broken"</h4><p>A statistical rule, e.g. live win rate 2.5 SDs below tested after 100+ trades. Only that rule switches the system off.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>You're down 40% from the peak. What gain gets you back?</h4>
+        <button class="sl-quiz-opt">+40%</button>
+        <button class="sl-quiz-opt" data-correct="true">+66.7%</button>
+        <button class="sl-quiz-opt">+80%</button>
+        <div class="sl-quiz-explain">d/(1−d) = 0.4/0.6 = 66.7%. The 60% that's left has to grow by two-thirds.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>At 55% wins, how likely is a run of 8+ losses somewhere in 300 trades?</h4>
+        <button class="sl-quiz-opt">About 1 in 595 — almost never</button>
+        <button class="sl-quiz-opt" data-correct="true">About 24%</button>
+        <button class="sl-quiz-opt">Over 90%</button>
+        <div class="sl-quiz-explain">1 in 595 is for one starting trade. Counted over all starting points, it's 24.0% — and more likely than not by ~750 trades.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>Same 55% edge. Which change most raises the chance of being cut in half?</h4>
+        <button class="sl-quiz-opt">Trading 1,000 times instead of 300 at 2% risk</button>
+        <button class="sl-quiz-opt" data-correct="true">Risking 10% per trade instead of 2%</button>
+        <button class="sl-quiz-opt">A slightly lower payoff ratio at 1% risk</button>
+        <div class="sl-quiz-explain">Size drives ruin: touching −50% in 300 trades goes from 0.1% at 2% risk to 42.1% at 10% (full Kelly).</div>
+      </div>
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>What's the right evidence that a system's edge has gone?</h4>
+        <button class="sl-quiz-opt">The drawdown is the deepest you've seen</button>
+        <button class="sl-quiz-opt">You've lost money for three months</button>
+        <button class="sl-quiz-opt" data-correct="true">The live record fails a test you wrote down in advance</button>
+        <div class="sl-quiz-explain">Drawdowns look the same with and without an edge. Only a pre-stated test of the live record against the tested one can separate them.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Recovery needs d/(1−d): −50% needs +100%. Keep drawdowns small.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Compute streaks, don't feel them. At 55%, 8 in a row is 24% over 300 trades.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>Max drawdown grows with time and with volatility relative to edge. Live will usually beat the backtest's worst.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Bet size decides ruin. Stay at or below half Kelly.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p><!-- DESK:START -->Untested here: "a drawdown means the edge is gone". Tested null: FX trend following. <!-- DESK:END -->Decide on rules written in advance — in both directions.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Judge the Decision, Not the Result</h3>
+        <p>Outcome bias, hindsight bias, and the decision journal — how to learn from trades when luck is loud.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="process-vs-outcome-decision-journals-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="drawdowns-risk-of-ruin.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="herding-narratives-bubbles-micro.html">← Previous: Herding, Narratives and Bubbles</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  var SVGNS = 'http://www.w3.org/2000/svg', FONT = "'DM Mono',monospace";
+  function el(name, attrs, style, text){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (style) e.setAttribute('style', style);
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function clear(g){ while (g.firstChild) g.removeChild(g.firstChild); }
+
+  // Slide 2 — recovery: g = d/(1-d).
+  (function(){
+    var inp = document.getElementById('rc-d');
+    function render(){
+      var d = parseFloat(inp.value) / 100;
+      document.getElementById('rc-d-val').textContent = Math.round(d * 100) + '%';
+      document.getElementById('rc-left').textContent = Math.round((1 - d) * 100) + '%';
+      document.getElementById('rc-g').textContent = '+' + (d / (1 - d) * 100).toFixed(1) + '%';
+    }
+    inp.addEventListener('input', render); render();
+  })();
+
+  // Slide 3 — exact P(at least one losing run >= k in n trades), DP over current run length.
+  function pRun(n, k, q){
+    var st = new Float64Array(k), hit = 0; st[0] = 1;
+    for (var t = 0; t < n; t++){
+      var nx = new Float64Array(k);
+      for (var r = 0; r < k; r++){
+        var v = st[r]; if (!v) continue;
+        nx[0] += v * (1 - q);
+        if (r + 1 >= k) hit += v * q; else nx[r + 1] += v * q;
+      }
+      st = nx;
+    }
+    return hit;
+  }
+  (function(){
+    var pIn = document.getElementById('sk-p'), nIn = document.getElementById('sk-n'), kIn = document.getElementById('sk-k');
+    function render(){
+      var p = parseFloat(pIn.value) / 100, n = parseInt(nIn.value, 10), k = parseInt(kIn.value, 10), q = 1 - p, e = 0, half = null;
+      document.getElementById('sk-p-val').textContent = Math.round(p * 100) + '%';
+      document.getElementById('sk-n-val').textContent = n;
+      document.getElementById('sk-k-val').textContent = k;
+      for (var j = 1; j <= n; j++){ var pj = pRun(n, j, q); if (pj >= 0.5) half = j; if (pj < 1e-7) break; e += pj; }
+      document.getElementById('sk-any').textContent = (pRun(n, k, q) * 100).toFixed(1) + '%';
+      document.getElementById('sk-exp').textContent = e.toFixed(1);
+      document.getElementById('sk-note').textContent = 'From any one starting trade: 1 in ' + Math.round(1 / Math.pow(q, k)).toLocaleString() + '. The longest run you should more likely than not see in ' + n + ' trades: ' + (half === null ? '—' : half) + '.';
+    }
+    [pIn, nIn, kIn].forEach(function(i){ i.addEventListener('input', render); });
+    render();
+  })();
+
+  // Slide 6 — seeded Monte Carlo (mulberry32), same model as the full lesson.
+  (function(){
+    function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+    function quant(arr, p){ var a = arr.slice().sort(function(x, y){ return x - y; }); var i = (a.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return a[lo] + (a[hi] - a[lo]) * (i - lo); }
+    var pIn = document.getElementById('mc-p'), bIn = document.getElementById('mc-b'), rIn = document.getElementById('mc-r');
+    var N = 300, SIMS = 1000, KEEP = 40, seed = 42;
+    function render(){
+      var p = parseFloat(pIn.value) / 100, b = parseFloat(bIn.value), r = parseFloat(rIn.value) / 100;
+      document.getElementById('mc-p-val').textContent = Math.round(p * 100) + '%';
+      document.getElementById('mc-b-val').textContent = b.toFixed(2);
+      document.getElementById('mc-r-val').textContent = (r * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
+      var rnd = mulberry32(seed), res = [], paths = [];
+      for (var s = 0; s < SIMS; s++){
+        var eq = 1, peak = 1, mdd = 0, run = 0, longest = 0, ruined = false, path = s < KEEP ? [1] : null;
+        for (var t = 0; t < N; t++){
+          if (rnd() < p){ eq *= 1 + b * r; run = 0; } else { eq *= 1 - r; run++; if (run > longest) longest = run; }
+          if (eq > peak) peak = eq;
+          var dd = 1 - eq / peak; if (dd > mdd) mdd = dd;
+          if (eq <= 0.5) ruined = true;
+          if (path) path.push(eq);
+        }
+        res.push({ end: eq, mdd: mdd, longest: longest, ruined: ruined });
+        if (path) paths.push({ path: path, mdd: mdd, end: eq });
+      }
+      var X0 = 56, X1 = 624, Y0 = 240, Y1 = 12, lo = Math.log(0.45), hi = Math.log(1.2);
+      paths.forEach(function(pp){ pp.path.forEach(function(v){ var l = Math.log(v); if (l < lo) lo = l; if (l > hi) hi = l; }); });
+      function px(t){ return X0 + (X1 - X0) * t / N; }
+      function py(v){ return Y0 - (Y0 - Y1) * (Math.log(Math.max(v, 1e-9)) - lo) / (hi - lo); }
+      var grid = document.getElementById('mc-grid'), pg = document.getElementById('mc-paths');
+      clear(grid); clear(pg);
+      [0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256].forEach(function(v){
+        var l = Math.log(v); if (l < lo || l > hi) return;
+        grid.appendChild(el('line', { x1: X0, x2: X1, y1: py(v), y2: py(v) }, 'stroke:' + (v === 1 ? 'var(--text3)' : 'var(--border)') + ';stroke-width:1'));
+        grid.appendChild(el('text', { x: X0 - 6, y: py(v) + 4, 'text-anchor': 'end', 'font-size': 11, 'font-family': FONT }, 'fill:var(--text3)', v + '×'));
+      });
+      grid.appendChild(el('line', { x1: X0, x2: X1, y1: py(0.5), y2: py(0.5) }, 'stroke:var(--amber);stroke-width:1.2;stroke-dasharray:5,4'));
+      var worst = 0, medEnd = quant(paths.map(function(pp){ return pp.end; }), 0.5), medIdx = 0, best = Infinity;
+      paths.forEach(function(pp, i){
+        if (pp.mdd > paths[worst].mdd) worst = i;
+        var dist = Math.abs(Math.log(pp.end) - Math.log(medEnd)); if (dist < best){ best = dist; medIdx = i; }
+      });
+      function dOf(path){ var d = ''; for (var t = 0; t < path.length; t++) d += (t ? 'L' : 'M') + px(t).toFixed(1) + ',' + py(path[t]).toFixed(1); return d; }
+      paths.forEach(function(pp, i){ if (i !== worst && i !== medIdx) pg.appendChild(el('path', { d: dOf(pp.path), fill: 'none' }, 'stroke:var(--text3);stroke-width:1;opacity:0.45')); });
+      pg.appendChild(el('path', { d: dOf(paths[medIdx].path), fill: 'none' }, 'stroke:var(--blue);stroke-width:2.2'));
+      pg.appendChild(el('path', { d: dOf(paths[worst].path), fill: 'none' }, 'stroke:var(--red);stroke-width:2.2'));
+      var mdds = res.map(function(x){ return x.mdd; }), longs = res.map(function(x){ return x.longest; });
+      var E = p * b - (1 - p), kelly = p - (1 - p) / b;
+      document.getElementById('mc-out').innerHTML =
+        '<div>Seed <b>' + seed + '</b> · edge <b>' + (E >= 0 ? '+' : '−') + Math.abs(E).toFixed(2) + 'R</b>/trade · Kelly <b>' + (kelly > 0 ? (kelly * 100).toFixed(1) + '%' : 'none') + '</b></div>' +
+        '<div>Max drawdown: median <b>' + (quant(mdds, 0.5) * 100).toFixed(1) + '%</b>, 90th pct <b>' + (quant(mdds, 0.9) * 100).toFixed(1) + '%</b></div>' +
+        '<div>Longest losing run: median <b>' + quant(longs, 0.5) + '</b>, worst <b>' + Math.max.apply(null, longs) + '</b> · touched 50%: <b>' + (res.filter(function(x){ return x.ruined; }).length / SIMS * 100).toFixed(1) + '%</b></div>';
+    }
+    [pIn, bIn, rIn].forEach(function(i){ i.addEventListener('input', render); });
+    document.getElementById('mc-reroll').addEventListener('click', function(){ seed = 1 + Math.floor(Math.random() * 99999); render(); });
+    document.getElementById('mc-reset').addEventListener('click', function(){ seed = 42; render(); });
+    render();
+  })();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

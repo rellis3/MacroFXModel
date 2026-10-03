@@ -17,7 +17,7 @@
   <h1 class="tl-title">Duration &amp; Convexity</h1>
   <p class="tl-dek">Duration is a bond's average cash-flow timing, in disguise — and, in a completely different disguise, the first term of a Taylor expansion of price around yield. Convexity is the second term, and it's the reason a duration-only estimate always underestimates a bond's true price after a yield move.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Bond Pricing &amp; Yield to Maturity</span>
   </div>
@@ -37,6 +37,7 @@
       <li>DV01 (dollar value of a basis point, also called PVBP) is duration expressed in dollars per 1bp of yield move — the practical, position-sizing version of the same sensitivity.</li>
       <li>The worked example reuses Lesson 1's 5-year, 4% coupon, $1,000 face bond at 5% YTM (\(P=\$956.71\)): Macaulay duration ≈ 4.62 years, modified duration ≈ 4.40 years. For a 100bp yield rise, duration-only predicts \$914.61; duration+convexity predicts \$915.78; the exact re-priced value (at 6% YTM) is \$915.75 — convexity closes nearly the entire \$1.14 gap.</li>
       <li>The interactive chart overlays the true price-yield curve with the duration-only tangent line and the duration+convexity quadratic, both recomputed live as you drag the current-yield slider.</li>
+      <li><strong>Real-world episode:</strong> Silicon Valley Bank, March 2023. A long-duration bond book bought while rates sat near zero fell about $15 billion below its book value as the Fed hiked. When SVB sold securities to raise cash, depositors pulled about $42 billion in one day and the bank failed.<!-- DESK:START --> Whether a duration-matched book is safe is <em>untested</em> on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -501,6 +502,99 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: Silicon Valley Bank, March 2023</h2>
+  <p>
+    The scenario above is a hedge that works for small moves and fails for big ones. The most
+    expensive duration lesson of recent years was simpler: a bank that owned a lot of duration, did
+    not hedge it, and then had to sell.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2020–2023: a bond book bought at the bottom of rates</h3>
+    <p>
+      During the tech boom of 2020 and 2021, deposits at Silicon Valley Bank, the main bank for many US
+      start-ups and venture funds, roughly tripled. Loans grew far more slowly, so the bank put much of the
+      new cash into securities: US Treasuries and, above all, agency mortgage-backed securities. They paid
+      little, but more than cash, and the longer the maturity the more they paid. A large part of the
+      portfolio was classified as <strong>held to maturity</strong>. That accounting label keeps falls in
+      market value out of reported earnings and regulatory capital, on the premise that the bank will never
+      need to sell.
+    </p>
+    <p>
+      Then rates rose. The Fed lifted its target range from near zero in March 2022 to 4.50–4.75% by
+      February 2023. This lesson's first-order formula says what that does to a bond book:
+      \(\Delta P/P \approx -D_{mod}\,\Delta y\). As illustrative arithmetic only (these are not SVB's own
+      figures), a book with \(D_{mod}=6\) facing a 2.5 percentage-point rise in yields loses about
+      \(6\times2.5\%=15\%\) of its value on duration alone. The mortgage bonds made it worse through the
+      negative convexity flagged in this lesson's pitfalls. As rates rose, homeowners stopped refinancing,
+      prepayments slowed, and the bonds' duration lengthened just as yields went up. By the end of 2022,
+      SVB's held-to-maturity securities were worth about <strong>$15 billion less than their book
+      value</strong>, against total shareholders' equity of about <strong>$16 billion</strong>.
+    </p>
+    <p>
+      On March 8, 2023, SVB said it had sold about $21 billion of securities at a loss of about
+      $1.8 billion, and that it would raise new capital. Most of its deposits were above the FDIC's insurance
+      limit, and its depositors were a small, closely connected group. On March 9 they withdrew about
+      <strong>$42 billion in a single day</strong>. On March 10 California regulators closed the bank and
+      appointed the FDIC as receiver. At the time it was the second-largest bank failure in US history. The
+      Fed's emergency response is covered in <a href="fed-corridor-iorb-srf-discount-window.html">The Fed's
+      Corridor</a>.
+    </p>
+    <p style="margin-bottom:0">
+      Six months earlier the same arithmetic had hit UK pension funds through leverage. Many used
+      liability-driven investment (LDI) funds that held more duration than their capital, by borrowing
+      against gilts and using swaps, so each basis point cost more DV01 per pound of capital. After the UK
+      government's "mini-budget" of 23 September 2022, long-dated gilt yields rose by more than a full
+      percentage point within days. Collateral calls forced LDI funds to sell gilts, which pushed yields
+      higher still. On 28 September the Bank of England announced temporary purchases of long-dated gilts
+      to stop the spiral.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>2020–21 · Deposit flood</b>Start-up cash pours in while rates sit near zero</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>SVB</b>Loans can't absorb it, so it buys long-dated Treasuries and mortgage bonds for yield, much of them held to maturity</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Raises rates from near zero to 4.50–4.75% in under a year</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · duration</b>\(\Delta P/P\approx -D_{mod}\Delta y\): the book falls about $15bn below book value, and the mortgage bonds' negative convexity lengthens their duration as yields rise</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>SVB, 8 March 2023</b>Forced to raise cash, it sells about $21bn of securities, realising a $1.8bn loss</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Uninsured depositors</b>Pull about $42bn in one day</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Bank closed on 10 March; the loss on paper became a real one</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> Duration tells you what a bond book is worth after a
+    rate move. It says nothing about whether you will be forced to sell at that price. "Held to maturity"
+    and duration matching (immunization) both assume the liabilities stay put, that deposits or a pension
+    fund's collateral are as patient as the assets. SVB's deposits behaved like overnight money, and the LDI
+    funds' collateral calls arrived daily. The formula was right about the size of the loss. The assumption
+    that nobody would ever have to realise it was wrong. And the "convexity is always a gift" result never
+    covered SVB's mortgage bonds, whose convexity was negative.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The bank bought lots of long IOUs when interest rates were tiny. When rates jumped, those IOUs were worth much less to anyone else. That would have been fine if nobody needed their money back early. But the bank's customers all asked for their money on the same day, so it had to sell the IOUs at the low price.</p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Untested here: "a duration-matched book is protected from a rate shock."</strong> No entry in
+    this desk's ledger measures bond-portfolio P&amp;L, so nothing here confirms or refutes it. A fair test would
+    need daily prices for a bond book and its hedge across many large-move days, scoring the realised P&amp;L
+    against both the duration-only and the duration-plus-convexity prediction. It would also need the part SVB
+    adds: a liability side whose behaviour under stress is measured, not assumed.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>Duration is the primary risk-sizing unit on every fixed-income
@@ -591,7 +685,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Macaulay duration is a payment-weighted average time.</strong> Each cash flow's weight is its share of the bond's present value — a genuine weighted average, in years.</span></div>
@@ -601,9 +695,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>DV01/PVBP is duration in dollars-per-basis-point.</strong> Same information, denominated the way trading desks actually size hedges.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Both measures assume a parallel yield-curve shift.</strong> Real curve moves are rarely perfectly parallel — a duration-neutral book can still lose money on a steepening or flattening.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Convexity can be negative for callable/mortgage instruments.</strong> An embedded prepayment or call option changes the bond's cash-flow schedule as yields move, which can flip the "always positive" result this lesson derives for a plain bond.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Duration sizes the loss; it can't tell you whether you'll have to take it.</strong> SVB, March 2023: a bond book about $15bn below book value, against about $16bn of equity, became a real loss once depositors left. Held-to-maturity accounting and immunization both assume patient liabilities.<!-- DESK:START --> Whether a duration-matched book is safe is untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is a coupon-paying bond's Macaulay duration always less than its time to maturity?</summary>
@@ -893,5 +988,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

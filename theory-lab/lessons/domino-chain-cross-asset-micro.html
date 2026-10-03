@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Domino Effect — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local: an amber tag variant for "untested here" (deck.css has red/green/blue only). */
+  .sl-ctag.amber{background:rgba(251,191,36,.15);color:var(--amber)}
+  .dm-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+</style>
+</head>
+<body>
+<!-- DESK:START --><script>window.TL_DESK = 1;</script><!-- DESK:END -->
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">The Domino Effect — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Prefer the full mechanism-by-mechanism walk-through, the worked example and a 6-question self-test?<a href="domino-chain-cross-asset.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">How Markets Talk to Each Other · 1 of 5</div>
+      <h1 class="sl-h1">The Domino Effect: <em>One Shock Through the Whole Board</em></h1>
+      <p class="sl-lede">A hot inflation number does not hit one market. It knocks over the 2-year yield, which knocks over the dollar, gold, equities and credit — all priced off the same few shared inputs. This deck walks the chain, shows it biting in real crises<!-- DESK:START -->, and then shows where the popular version was tested here and failed<!-- DESK:END -->.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">Section 1</div>
+      <h2 class="sl-h2">Everything is priced with the same ruler</h2>
+      <p class="sl-sub">Bonds, currencies, gold and shares are all sums done with the same few numbers: expected policy rates, expected inflation, the real yield, the dollar.</p>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">📏</div><div><h4>Change a shared input…</h4><p>…and every price built on it must be redone at once. Not copying — arithmetic.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🔎</div><div><h4>So the chain is a diagnostic</h4><p>If the 2-year jumped, the dollar firmed and gold slipped in the same minute, the shared input was the expected policy rate.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⏱</div><div><h4>…and only weakly a forecast</h4><p>Whether the dominoes fall <em>in sequence</em> — so you could trade the later ones — is a separate claim. Hold that thought for slide 9.</p></div></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
+      <h2 class="sl-h2">The textbook chain for a hot CPI print</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>CPI prints hot</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Rates traders</b>Price fewer cuts; 2-year jumps</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>FX desks</b>Dollar firms, USD/JPY up</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Gold &amp; equities</b>Real yield up: gold down, multiples down</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Credit wider, volatility up</div>
+      </div>
+      <p class="sl-p">Every arrow is somebody being <strong>forced</strong> to reprice: a bond holder whose fixed coupon is now worth less, a gold holder whose metal now costs more to carry, a shareholder whose future profits are discounted harder.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
+      <h2 class="sl-h2">The front end moves first — and which end moved more is the clue</h2>
+      <div class="sl-row"><div class="sl-box">ΔP/P ≈ −D · Δy</div></div>
+      <p class="sl-p">The 2-year is mostly a forecast of the policy rate over two years, so a surprise about this month's prices moves it a lot. The 10-year averages over far longer, so it moves less.</p>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">2-year up more</span><p>Bear flattening: a short-run inflation / policy shock.</p></div>
+        <div class="sl-ccard neutral"><span class="sl-ctag blue">10-year up more</span><p>Bear steepening: term premium, government supply, or doubts about inflation credibility.</p></div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
+      <h2 class="sl-h2">Split the yield before reading gold or growth stocks</h2>
+      <div class="sl-row"><div class="sl-box">nominal</div><div class="sl-arrow">=</div><div class="sl-box green">real yield</div><div class="sl-arrow">+</div><div class="sl-box amber">breakeven</div></div>
+      <div class="sl-compare">
+        <div class="sl-ccard red"><span class="sl-ctag red">Real yield up</span><p>Money got more expensive. Gold (pays nothing) costs more to hold. Future profits are discounted harder: P/E = 1/(k − g) falls as k rises.</p></div>
+        <div class="sl-ccard green"><span class="sl-ctag green">Breakeven up</span><p>More inflation expected. That is gold's friend, and not a tightening at all.</p></div>
+      </div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Quick number</div>
+        <p>k = 8%, g = 3% → P/E = 1/0.05 = 20.0. Real yield +5bp → k = 8.05% → P/E = 19.80. About −1% with earnings unchanged. Small changes in k − g move multiples a lot.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
+      <h2 class="sl-h2">Step through the dominoes</h2>
+      <p class="sl-sub">Pick a starting shock, then press Next.<!-- DESK:START --> Each link carries what this desk found when it tested the claim attached to it.<!-- DESK:END --></p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="dm-btnrow" id="dom-scen">
+          <button type="button" class="sl-tab active" data-scen="cpi">Hot CPI</button>
+          <button type="button" class="sl-tab" data-scen="oil">Oil spike</button>
+          <button type="button" class="sl-tab" data-scen="gilt">UK gilts 2022</button>
+          <button type="button" class="sl-tab" data-scen="yen">Yen carry 2024</button>
+        </div>
+        <div class="sl-svgwrap">
+          <svg id="dom-svg" viewBox="0 0 680 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A network of market nodes connected by arrows; step through each link of the chosen shock and see each node's direction.">
+            <defs>
+              <marker id="dom-ah-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--border2)"/></marker>
+              <marker id="dom-ah-past" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--blue)"/></marker>
+              <marker id="dom-ah-cur" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--amber)"/></marker>
+            </defs>
+            <g id="dom-edges"></g>
+            <g id="dom-nodes"></g>
+          </svg>
+        </div>
+        <div class="dm-btnrow">
+          <button type="button" class="sl-reset-btn" id="dom-prev">← Back</button>
+          <button type="button" class="sl-reset-btn" id="dom-next">Next domino →</button>
+          <button type="button" class="sl-reset-btn" id="dom-reset">Reset</button>
+        </div>
+        <div class="sl-calc-steps">
+          <div><b id="dom-count">Step 0 of 8</b> · <span id="dom-head">The shock lands.</span></div>
+        </div>
+        <span class="sl-ctag blue" id="dom-tag" style="margin-top:10px">Mechanism</span>
+        <div class="sl-verdict" id="dom-text">Press "Next domino" to watch it travel.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6 · It actually happened</div>
+      <h2 class="sl-h2">UK gilts, Sept–Oct 2022: a link broke, then the chain became a loop</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>23 Sept</b>Unfunded "mini-budget"</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Gilt investors</b>Long yields spike</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>LDI funds</b>Collateral calls → forced gilt sales → yields up again</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>28 Sept</b>Bank of England buys long gilts</div>
+      </div>
+      <p class="sl-p">The broken link: higher yields should support a currency, but <strong>sterling fell</strong> to an all-time low against the dollar on 26 September. A yield rise driven by doubt about the government is a risk premium, not an attraction. Pension LDI funds' leveraged hedges then forced them to sell gilts for cash, pushing yields up further — until a buyer with no balance-sheet limit stepped in. The purchases ended on 14 October.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7 · It actually happened</div>
+      <h2 class="sl-h2">August 2024: the same links, run backwards, under leverage</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Late Jul – 2 Aug</b>BoJ hikes; weak US jobs report</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>FX</b>Yen jumps; USD/JPY falls</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Carry traders</b>Yen-funded positions forced to cut</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>5 Aug</b>Nikkei −12%+, VIX briefly above 60</div>
+      </div>
+      <p class="sl-p">Here US yields <em>fell</em> and equities fell with them — the mirror of the hot-CPI chain. The Nikkei's drop was its worst day since 1987, and it rebounded sharply the next session. Forced de-risking, not a new view on earnings.</p>
+    </section>
+
+    <!-- DESK:START -->
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8 · The desk's verdict</div>
+      <h2 class="sl-h2">The mechanism holds. The timing claims failed here.</h2>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="front-end-shock" data-evidence-date="2026-09-17"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"A 2-year shock means a volatile FX week" (front-end-shock).</strong> Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero).</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"Rates turn first, then equities" (rates-pivot-lead).</strong> 2,010 de-clustered events: Nasdaq −0.005% vs control [−0.021, +0.012]. Hit rate 54.1% against a 54.1% base rate. Rates and equities move in the <em>same</em> bar.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>"Fear buys gold" (fear-gold).</strong> 58 VIX spikes: excess +0.07% [−0.42, +0.30] at five sessions, −1.19% [−2.30, −0.48] at twenty.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp context" data-evidence="stock-bond-flip" data-evidence-date="2026-09-17"><span class="sl-stamp-tag">Desk data: base rate</span><span><strong>Stocks and bonds falling together (stock-bond-flip).</strong> 71 episodes since 2008, median 5 sessions, p75 17. Too few clean flips to test what follows.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+    </section>
+    <!-- DESK:END -->
+
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">So what is the chain for?</h2>
+      <div class="sl-compare">
+        <div class="sl-ccard green"><span class="sl-ctag green">Use it for</span><ul><li>Naming which shared input moved</li><li>Reading which curve leg led</li><li>Spotting a broken link (yields up, currency down)</li><li>Knowing what would contradict your reading</li></ul></div>
+        <div class="sl-ccard red"><span class="sl-ctag red">Don't use it for</span><ul><li>Pre-positioning in equities off a rates turn</li><li>Calling a wild FX week off a 2-year shock</li><li>Waiting for a "fear bid" in gold</li><li>Saying oil will reach breakevens "later"</li></ul></div>
+      </div>
+      <div class="sl-quote">The dominoes fall <strong>together</strong>, in the same bar, because every market reprices off the same input at once. The chain explains the five minutes; it does not hand you the next five days.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>CPI is hot; the 2-year rises 20bp and the 10-year 6bp. What does the curve say?</h4>
+        <button class="sl-quiz-opt" data-correct="true">A short-run policy shock — the front end led (bear flattening)</button>
+        <button class="sl-quiz-opt">A long-run credibility shock — the long end led</button>
+        <button class="sl-quiz-opt">Nothing — only the size of the move matters</button>
+        <div class="sl-quiz-explain">The front end is a forecast of the next couple of years of policy. It moving much more than the 10-year means the market repriced the central bank's next moves.</div>
+      </div>
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>The 10-year rises 10bp and the breakeven rises 10bp. What should gold's rates domino do?</h4>
+        <button class="sl-quiz-opt">Fall — yields rose</button>
+        <button class="sl-quiz-opt" data-correct="true">Nothing from rates — the real yield didn't move; the whole rise was inflation expectations</button>
+        <button class="sl-quiz-opt">Rise because of fear</button>
+        <div class="sl-quiz-explain">Nominal = real + breakeven, so the real yield is unchanged. Gold's carrying cost didn't rise.<!-- DESK:START --> (And "fear buys gold" tested null here.)<!-- DESK:END --></div>
+      </div>
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>In Sept 2022 UK yields soared and sterling fell. Why?</h4>
+        <button class="sl-quiz-opt" data-correct="true">The yield rise was a credibility premium — investors wanted out, so money left the currency too</button>
+        <button class="sl-quiz-opt">Higher yields always weaken a currency</button>
+        <button class="sl-quiz-opt">The Bank of England cut rates</button>
+        <div class="sl-quiz-explain">The usual link (higher rate → more attractive currency) assumes the rise reflects expected policy. A rise driven by doubt about the government's finances is a risk premium, and the link runs backwards.</div>
+      </div>
+      <!-- DESK:START -->
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>"The 2-year just broke higher — short Nasdaq before it catches up." What did the desk find?</h4>
+        <button class="sl-quiz-opt">Validated — rates lead equities by about an hour</button>
+        <button class="sl-quiz-opt" data-correct="true">Null — rates and equities move in the same bar; the hit rate equalled the 54.1% base rate</button>
+        <button class="sl-quiz-opt">Untested</button>
+        <div class="sl-quiz-explain">rates-pivot-lead: 2,010 de-clustered events, Nasdaq −0.005% vs control. Null at 1h, 2h and 4h, in both directions.</div>
+      </div>
+      <!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Dominoes are real because every asset is priced off the same shared inputs: policy-rate path, inflation expectations, real yields, the dollar.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Split before you read: nominal = real + breakeven, and 2-year vs 10-year says whether it is a short-run or long-run story.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>A broken link is the signal — yields up with the currency down meant "credibility shock" on day one in 2022.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Leverage turns a chain into a loop: LDI collateral calls in 2022, yen-funded carry in 2024.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">05</div><p><!-- DESK:START -->Tested null here: rates leading equities, 2-year shocks meaning a wild FX week, fear buying gold. <!-- DESK:END -->The dominoes fall together, not in a queue.</p></div>
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Next in this series</div>
+        <h3>Mood, the Quote and Forced Selling</h3>
+        <p>What a price actually is, why some sellers have no choice, and why forced selling dumps what is liquid rather than what is bad.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="investor-mood-forced-selling-micro.html">Next lesson →</a>
+          <a class="sl-btn ghost" href="domino-chain-cross-asset.html">Read the full lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Domino stepper (same engine as the full lesson; deck palette).
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var svg = document.getElementById('dom-svg');
+  if (!svg) return;
+  var NODE_FILL = 'var(--panel2)';
+  var W = 132, H = 46;
+  var TAGS = {
+    mech: { label: 'Mechanism', cls: 'blue' },
+    nul: { label: 'Tested null here', cls: 'red' },
+    ctx: { label: 'Context only', cls: 'blue' },
+    unt: { label: 'Untested here', cls: 'amber' },
+    broke: { label: 'Link broke', cls: 'red' }
+  };
+  var MARK = { up: '▲ up', down: '▼ down', mixed: '◆ mixed', wider: '▲ wider' };
+  var SCEN = {
+    cpi: {
+      nodes: [
+        { id: 'shock', label: 'Hot CPI print', x: 78, y: 190 },
+        { id: 'y2', label: '2-year yield', x: 245, y: 90 },
+        { id: 'real', label: 'Real yields', x: 245, y: 230 },
+        { id: 'usd', label: 'US dollar', x: 425, y: 40 },
+        { id: 'jpy', label: 'USD/JPY', x: 600, y: 40 },
+        { id: 'gold', label: 'Gold', x: 425, y: 150 },
+        { id: 'eq', label: 'Equities', x: 425, y: 270 },
+        { id: 'credit', label: 'Credit spreads', x: 600, y: 210 },
+        { id: 'vol', label: 'Volatility', x: 600, y: 340 }
+      ],
+      steps: [
+        { from: 'shock', to: 'y2', dir: 'up', tag: 'mech', head: 'Rates traders price fewer cuts.', text: 'The 2-year is mostly a forecast of the policy rate over two years, so it reprices first and most.' },
+        { from: 'y2', to: 'usd', dir: 'up', tag: 'nul', head: 'Higher US rates pull money into dollars.', text: 'Holds in the same bar. As a forecast: "Forward coupling null; the relationship is real only in the same bar" (yields-to-fx-direction).' },
+        { from: 'usd', to: 'jpy', dir: 'up', tag: 'nul', head: 'USD/JPY pops.', text: 'front-end-shock: after 2Y UP shocks, EUR/USD and GBP/USD ran CALMER the next week (−0.34 and −0.28 ATR). Not a volatile FX week.' },
+        { from: 'y2', to: 'real', dir: 'up', bend: 0, tag: 'mech', head: 'The rise spreads into real yields.', text: 'Nominal = real + breakeven. Whatever the breakeven does not absorb lands in the real yield.' },
+        { from: 'real', to: 'gold', dir: 'down', tag: 'ctx', head: 'Holding gold costs more.', text: 'which-gold (context): rates drove gold in only 19% of rolling windows; neither rates nor the dollar in 45%. fear-gold tested null.' },
+        { from: 'real', to: 'eq', dir: 'down', tag: 'nul', head: 'Future profits discounted harder.', text: 'rates-pivot-lead tested null: rates and equities move in the SAME bar, not in sequence.' },
+        { from: 'eq', to: 'credit', dir: 'wider', tag: 'ctx', head: 'Lenders demand more for the same risk.', text: 'The equity–credit ordering holds as a description here, not as a validated forward signal.' },
+        { from: 'eq', to: 'vol', dir: 'up', tag: 'ctx', head: 'Stocks and bonds fall together.', text: 'stock-bond-flip (context): 71 episodes since 2008, median 5 sessions. Too few clean flips to test what follows.' }
+      ]
+    },
+    oil: {
+      nodes: [
+        { id: 'shock', label: 'Oil spike', x: 78, y: 190 },
+        { id: 'be', label: 'Breakevens', x: 250, y: 90 },
+        { id: 'y2', label: '2-year yield', x: 250, y: 280 },
+        { id: 'curve', label: 'Curve (2s10s)', x: 600, y: 340 },
+        { id: 'usd', label: 'US dollar', x: 430, y: 60 },
+        { id: 'gold', label: 'Gold', x: 600, y: 140 },
+        { id: 'eq', label: 'Equity multiples', x: 430, y: 220 }
+      ],
+      steps: [
+        { from: 'shock', to: 'be', dir: 'up', tag: 'nul', head: 'Inflation expectations rise.', text: 'oil-to-breakevens tested null on the LAG: they move in the same window or not at all. Never write "not yet".' },
+        { from: 'be', to: 'y2', dir: 'up', tag: 'unt', head: 'Easing bets collapse.', text: 'Priced Fed easing is not on this desk, so this link is untested here.' },
+        { from: 'y2', to: 'curve', dir: 'mixed', tag: 'mech', head: 'Read which end moved more.', text: '2-year up more than 10-year: a short-run inflation shock. If the 2-year stops rising while oil keeps rising, the market is looking through it.' },
+        { from: 'y2', to: 'usd', dir: 'up', tag: 'nul', head: 'The dollar firms.', text: 'Same-bar mechanism; as a forecast, tested null (yields-to-fx-direction).' },
+        { from: 'be', to: 'gold', dir: 'mixed', tag: 'ctx', head: 'Gold gets two opposite pushes.', text: 'Breakevens up helps gold; real yields and the dollar up hurt it. Which wins varies (which-gold, context).' },
+        { from: 'y2', to: 'eq', dir: 'down', tag: 'nul', head: 'Multiples compress.', text: 'Price falls even if earnings estimates rise. The equity move arrives in the same bar as rates (rates-pivot-lead).' }
+      ]
+    },
+    gilt: {
+      nodes: [
+        { id: 'shock', label: 'Unfunded budget', x: 78, y: 200 },
+        { id: 'long', label: 'Long gilt yields', x: 255, y: 110 },
+        { id: 'ldi', label: 'LDI collateral calls', x: 450, y: 110 },
+        { id: 'sales', label: 'Forced gilt sales', x: 450, y: 270 },
+        { id: 'gbp', label: 'Sterling', x: 255, y: 320 },
+        { id: 'boe', label: 'Bank of England', x: 605, y: 30 }
+      ],
+      steps: [
+        { from: 'shock', to: 'long', dir: 'up', tag: 'mech', head: '23 Sept 2022: a credibility premium.', text: 'Large unfunded tax cuts; long-dated gilt yields rise at a pace rarely seen in a major bond market.' },
+        { from: 'shock', to: 'gbp', dir: 'down', tag: 'broke', head: 'The textbook FX link runs backwards.', text: 'Sterling FELL, to an all-time low against the dollar on 26 September. A yield rise driven by doubt is a risk premium, not an attraction.' },
+        { from: 'long', to: 'ldi', dir: 'up', tag: 'mech', head: 'Leveraged hedges lose value.', text: 'Pension LDI funds face collateral calls on leveraged gilt and swap positions.' },
+        { from: 'ldi', to: 'sales', dir: 'up', tag: 'mech', head: 'Sell what can be sold today.', text: 'To raise cash in hours, funds sell their most liquid holding: gilts.' },
+        { from: 'sales', to: 'long', dir: 'up', bend: 40, tag: 'mech', head: 'The chain becomes a loop.', text: 'Forced selling lifts yields, which triggers more calls, which forces more selling.' },
+        { from: 'boe', to: 'long', dir: 'down', bend: 30, tag: 'mech', head: '28 Sept: a buyer with no balance-sheet limit.', text: 'The Bank of England buys long-dated gilts on financial-stability grounds. Purchases end 14 October.' }
+      ]
+    },
+    yen: {
+      nodes: [
+        { id: 'shock', label: 'BoJ hike + soft US jobs', x: 85, y: 190 },
+        { id: 'jpy', label: 'USD/JPY', x: 265, y: 100 },
+        { id: 'carry', label: 'Yen-funded carry', x: 450, y: 100 },
+        { id: 'eq', label: 'Equities', x: 450, y: 270 },
+        { id: 'vol', label: 'Volatility', x: 610, y: 190 }
+      ],
+      steps: [
+        { from: 'shock', to: 'jpy', dir: 'down', tag: 'mech', head: 'The rate gap narrows from both ends.', text: 'BoJ hikes at the end of July 2024; a weak US jobs report on 2 August brings US cuts closer. The yen jumps.' },
+        { from: 'jpy', to: 'carry', dir: 'down', tag: 'ctx', head: 'Borrowed yen costs more to repay.', text: 'yen-into-yields (context): only 35 such episodes in 18 years — too few to score.' },
+        { from: 'carry', to: 'eq', dir: 'down', tag: 'unt', head: 'Cut risk everywhere.', text: '5 August: the Nikkei 225 falls more than 12%, its worst day since 1987.' },
+        { from: 'eq', to: 'vol', dir: 'up', tag: 'mech', head: 'Protection is bid.', text: 'The VIX briefly trades above 60 intraday.' },
+        { from: 'vol', to: 'eq', dir: 'down', bend: 60, tag: 'unt', head: 'Vol-targeting feeds back.', text: 'Funds sized by recent volatility cut exposure as vol rises. Then the loop runs out: the Nikkei rebounds sharply the next session.' }
+      ]
+    }
+  };
+
+  var scenKey = 'cpi', cur = -1;
+  var gEdges = document.getElementById('dom-edges');
+  var gNodes = document.getElementById('dom-nodes');
+  var countEl = document.getElementById('dom-count');
+  var headEl = document.getElementById('dom-head');
+  var textEl = document.getElementById('dom-text');
+  var tagEl = document.getElementById('dom-tag');
+  var prevBtn = document.getElementById('dom-prev');
+  var nextBtn = document.getElementById('dom-next');
+
+  function el(name, attrs){
+    var e = document.createElementNS(SVGNS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function nodeById(s, id){
+    for (var i=0;i<s.nodes.length;i++) if (s.nodes[i].id === id) return s.nodes[i];
+    return null;
+  }
+  function clip(n, tx, ty, gap){
+    var dx = tx - n.x, dy = ty - n.y;
+    var tX = dx === 0 ? Infinity : (W/2 + gap)/Math.abs(dx);
+    var tY = dy === 0 ? Infinity : (H/2 + gap)/Math.abs(dy);
+    var t = Math.min(tX, tY);
+    return [n.x + dx*t, n.y + dy*t];
+  }
+  function edgePath(a, b, bend){
+    var mx = (a.x + b.x)/2, my = (a.y + b.y)/2;
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx*dx + dy*dy) || 1;
+    var cx = mx + (-dy/len)*bend, cy = my + (dx/len)*bend;
+    var p0 = clip(a, cx, cy, 2), p1 = clip(b, cx, cy, 5);
+    return 'M' + p0[0].toFixed(1) + ',' + p0[1].toFixed(1) + ' Q' + cx.toFixed(1) + ',' + cy.toFixed(1) + ' ' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1);
+  }
+
+  function render(){
+    var s = SCEN[scenKey];
+    while (gEdges.firstChild) gEdges.removeChild(gEdges.firstChild);
+    while (gNodes.firstChild) gNodes.removeChild(gNodes.firstChild);
+    var reached = { shock: true }, markOf = {}, curTo = null;
+    s.steps.forEach(function(st, i){
+      var a = nodeById(s, st.from), b = nodeById(s, st.to);
+      var state = i < cur ? 'past' : (i === cur ? 'cur' : 'dim');
+      var stroke = state === 'past' ? 'var(--blue)' : (state === 'cur' ? 'var(--amber)' : 'var(--border2)');
+      var p = el('path', { d: edgePath(a, b, st.bend || 0), 'marker-end': 'url(#dom-ah-' + state + ')' });
+      p.setAttribute('style', 'fill:none;stroke:' + stroke + ';stroke-width:' + (state === 'cur' ? 3 : 1.6) + (state === 'dim' ? ';stroke-dasharray:4,4' : ''));
+      gEdges.appendChild(p);
+      if (i <= cur){ reached[st.from] = true; reached[st.to] = true; markOf[st.to] = st.dir; }
+      if (i === cur) curTo = st.to;
+    });
+    s.nodes.forEach(function(n){
+      var on = !!reached[n.id];
+      var isShock = n.id === 'shock';
+      var stroke = n.id === curTo ? 'var(--amber)' : (isShock ? 'var(--red)' : (on ? 'var(--blue)' : 'var(--border2)'));
+      var g = el('g', {});
+      var r = el('rect', { x: n.x - W/2, y: n.y - H/2, width: W, height: H, rx: 8 });
+      r.setAttribute('style', 'fill:' + NODE_FILL + ';stroke:' + stroke + ';stroke-width:' + (n.id === curTo ? 2.5 : 1.3) + ';opacity:' + (on ? 1 : 0.55));
+      g.appendChild(r);
+      var t1 = el('text', { x: n.x, y: n.y - 3, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 600, 'font-family': "'DM Sans',sans-serif" });
+      t1.setAttribute('style', 'fill:var(--text);opacity:' + (on ? 1 : 0.6));
+      t1.textContent = n.label;
+      g.appendChild(t1);
+      var m = markOf[n.id];
+      var t2 = el('text', { x: n.x, y: n.y + 14, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Mono',monospace" });
+      var col = isShock ? 'var(--red)' : (m === 'down' ? 'var(--red)' : (m === 'mixed' ? 'var(--amber)' : (m ? 'var(--green)' : 'var(--text3)')));
+      t2.setAttribute('style', 'fill:' + col);
+      t2.textContent = isShock ? 'the shock' : (m ? MARK[m] : '—');
+      g.appendChild(t2);
+      gNodes.appendChild(g);
+    });
+    countEl.textContent = 'Step ' + (cur + 1) + ' of ' + s.steps.length;
+    if (cur < 0){
+      headEl.textContent = 'The shock lands: ' + nodeById(s, 'shock').label + '.';
+      textEl.textContent = 'Press "Next domino" to watch it travel, one link at a time.';
+      tagEl.textContent = TAGS.mech.label; tagEl.className = 'sl-ctag blue';
+    } else {
+      var st = s.steps[cur];
+      headEl.textContent = st.head;
+      // The desk's test notes on each link are admin-only (the server strips
+      // window.TL_DESK for everyone else): shared readers get the mechanism alone.
+      var tg = (!window.TL_DESK && (st.tag === 'nul' || st.tag === 'ctx' || st.tag === 'unt')) ? 'mech' : st.tag;
+      textEl.textContent = window.TL_DESK ? st.text : (st.text.split(/(?<=\.)\s+/).filter(function (x) {
+        return !/tested|desk|ledger|untested|\bnull\b|n=|\bCI\b|base rate|context only/i.test(x);
+      }).join(' ') || st.head);
+      tagEl.textContent = TAGS[tg].label;
+      tagEl.className = 'sl-ctag ' + TAGS[tg].cls;
+    }
+    prevBtn.disabled = cur < 0;
+    nextBtn.disabled = cur >= s.steps.length - 1;
+  }
+
+  nextBtn.addEventListener('click', function(){
+    if (cur < SCEN[scenKey].steps.length - 1){ cur++; render(); }
+  });
+  prevBtn.addEventListener('click', function(){
+    if (cur >= 0){ cur--; render(); }
+  });
+  document.getElementById('dom-reset').addEventListener('click', function(){ cur = -1; render(); });
+  var scenBtns = Array.prototype.slice.call(document.querySelectorAll('#dom-scen .sl-tab'));
+  scenBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      scenBtns.forEach(function(x){ x.classList.remove('active'); });
+      b.classList.add('active');
+      scenKey = b.getAttribute('data-scen'); cur = -1; render();
+    });
+  });
+  render();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

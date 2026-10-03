@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The VIX Is an Uncertainty Index, Not a Fear Gauge — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: the four horizon/preset button rows sit under the bell chart. */
+  .vx-btnrow-label{font-size:11px;color:var(--text3);margin-right:4px}
+  .vx-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+  .vx-num{width:110px;background:var(--s2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:5px 8px}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / The VIX Is an Uncertainty Index</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 3 of 5</div>
+  <h1 class="tl-title">The VIX Is an Uncertainty Index, Not a Fear Gauge</h1>
+  <p class="tl-dek">The VIX is a price, not a mood. It's built from puts <em>and</em> calls, it measures how big the next month's moves are expected to be, and on its own it says nothing about which way they'll go. Read it as a size, convert it into points, and you'll stop being fooled by the nickname.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~17 min read</span>
+    <span>Prereqs: Vega &amp; the Volatility Surface (helpful, not required)</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="vix-uncertainty-not-fear-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>What it is:</strong> the VIX is the 30-day implied volatility of the S&amp;P 500, computed from the prices of a whole strip of out-of-the-money puts <em>and</em> calls — a variance-swap-style number: the square root of the market's expected variance, times 100.</li>
+      <li><strong>How to read it:</strong> divide by \(\sqrt{12}\) for a one-month, one-standard-deviation move. A VIX of 20 ≈ ±5.8% over the next month; divide by about 16 for a day (≈ ±1.25%).</li>
+      <li><strong>Why "fear gauge" misleads:</strong> it prices uncertainty in <em>both</em> directions. It usually rises when stocks fall only because people pay up for crash protection — it can, and sometimes does, rise in a rally.</li>
+      <li><strong>The shape matters:</strong> normally the VIX sits below the 3-month VIX3M (contango). When the 30-day climbs above it (backwardation), near-term uncertainty is being priced above the longer horizon<!-- DESK:START --> — and this desk found the following week runs <em>wider</em><!-- DESK:END -->.</li>
+      <!-- DESK:START --><li><strong>The desk's verdicts are all about size:</strong> <code>vix-inversion</code>, <code>mv-vixterm-range</code> and <code>iv-over-rv-wider</code> are validated <em>range</em> findings; <code>fear-gold</code> — "fear buys gold" — is <strong>null</strong>. Vol tells you about size, never sign.</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The VIX is printed on almost every market screen, and nearly every
+    headline calls it "Wall Street's fear gauge". The nickname is old — it
+    comes from an academic paper literally titled <em>The Investor Fear
+    Gauge</em> — and it's stuck because the VIX usually jumps on days stocks
+    fall. But the nickname smuggles in a claim the number itself doesn't
+    make: that a high VIX tells you the market is about to go <em>down</em>.
+  </p>
+  <p>
+    It doesn't. The VIX is a price for <em>movement</em>. It tells you how
+    large the market collectively expects the next 30 days of S&amp;P 500
+    moves to be, measured from what people are paying for options on both
+    sides. That makes it one of the most useful numbers on the board — a
+    direct read of expected <em>range</em> — as long as you read it as a
+    size and not a direction. This lesson is the third of five in
+    <strong>How Markets Talk to Each Other</strong>: lesson 1 traced how
+    <a href="domino-chain-cross-asset.html">one shock dominoes across the
+    board</a>, lesson 2 covered <a href="investor-mood-forced-selling.html">mood
+    and forced selling</a>, and here we take the options market's own
+    question — <em>how uncertain is everyone?</em> — and answer it properly.
+    The <a href="four-markets-four-questions.html">capstone</a> then puts all
+    four markets' questions side by side.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>A weather forecast for wind speed, not wind direction</h3>
+    <p>
+      Think of the VIX as a forecast of how hard the wind will blow over the
+      next month — not which way. A storm warning tells you to tie things
+      down; it doesn't tell you whether the gusts will come from the north or
+      the south. Options buyers pay for protection against big moves, and the
+      more they pay, the stronger the wind the market is bracing for.
+    </p>
+    <p style="margin-bottom:0">
+      The reason it <em>usually</em> spikes on down days is human, not
+      mathematical: people are far more eager to insure against a crash than
+      against a melt-up, so the demand for downside protection is what
+      normally drives the price. But the forecast itself is symmetric. When
+      enough people want to bet on, or protect against, a big move
+      <em>up</em>, the VIX rises too.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a bouncy-castle shop. When lots of people think tomorrow might be a really bumpy day, they all rush to buy bouncy castles and the price goes up. The VIX is just the price of bouncy castles. A high price tells you everyone expects a bumpy ride — it doesn't tell you whether they'll bounce up or fall down.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Four steps: what the VIX actually computes, how to turn it into an
+    expected move, why it can rise in a rally, and how its term structure and
+    its gap to realised volatility add information the level alone doesn't.
+  </p>
+
+  <h3>1. What the VIX computes: expected variance, from a strip of options</h3>
+  <p>
+    The VIX is not the implied volatility of one option. Since 2003 it has
+    been built "model-free" from the prices of a wide strip of out-of-the-money
+    S&amp;P 500 index options — puts below the forward price, calls above it —
+    at the two expiries that bracket 30 days, then interpolated to exactly 30
+    days. For each expiry the published formula is:
+  </p>
+  <div class="tl-math">
+    \[ \sigma^2 = \frac{2}{T}\sum_i \frac{\Delta K_i}{K_i^2}\, e^{RT}\, Q(K_i) \;-\; \frac{1}{T}\left(\frac{F}{K_0}-1\right)^2 \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Q(Kᵢ)</code><span>the mid price of the out-of-the-money option at strike Kᵢ — a put below K₀, a call above it</span></div>
+    <div class="tl-eq-chip c2"><code>ΔKᵢ / Kᵢ²</code><span>each strike's weight: the strike spacing, divided by the strike squared — so low-strike puts count for more per dollar</span></div>
+    <div class="tl-eq-chip c3"><code>2/T · e^{RT}</code><span>scaling to an annual variance, and carrying the option prices forward at the risk-free rate</span></div>
+    <div class="tl-eq-chip c4"><code>(F/K₀ − 1)²/T</code><span>a small correction because K₀, the first strike below the forward F, isn't exactly at the forward</span></div>
+  </div>
+  <p>
+    Read the first term carefully. It is a weighted sum of option prices, and
+    every out-of-the-money option on <em>both sides</em> of the forward is in
+    it. This is the same replication behind a variance swap — the sum is the
+    price of a portfolio whose payoff tracks realised variance (see
+    <a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger
+    &amp; Variance Swaps</a> for the derivation). The two expiries' variances
+    are interpolated to 30 days, and then:
+  </p>
+  <div class="tl-math">
+    \[ \text{VIX} = 100 \times \sqrt{\sigma^2_{30\text{-day}}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">σ²₃₀</div><div class="tl-fp-name">Expected variance</div><div class="tl-fp-desc">The market's price for the next 30 days of squared moves, annualised</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">√</div><div class="tl-fp-name">Back to volatility</div><div class="tl-fp-desc">Square root turns variance into a standard deviation</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">× 100</div><div class="tl-fp-name">Quote in points</div><div class="tl-fp-desc">0.20 annual vol is printed as "VIX 20"</div></div>
+  </div>
+  <p>
+    Nothing in that construction knows which way the market will go. A
+    put is in the sum; so is a call. The VIX is the market's price for the
+    <em>size</em> of moves — squared, so up-moves and down-moves count the
+    same.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>To work out the VIX, you look at the price of lots of "insurance tickets" — some pay out if the market falls a lot, some pay out if it rises a lot. You add up what they all cost, and that total tells you how wild everyone thinks the next month will be. Both kinds of ticket go in the pile, so the answer can't tell you which way.</p>
+  </div>
+
+  <h3>2. From a VIX number to an expected move</h3>
+  <p>
+    Because the VIX is an annualised standard deviation in percent, you scale
+    it to any horizon with the square root of time (the same \(\sqrt{t}\) rule
+    that drives every random-walk model):
+  </p>
+  <div class="tl-math">
+    \[ \sigma_{h} \approx \frac{\text{VIX}}{100}\times\sqrt{h} \qquad\Rightarrow\qquad \sigma_{\text{1m}}\approx\frac{\text{VIX}}{\sqrt{12}},\;\; \sigma_{\text{1w}}\approx\frac{\text{VIX}}{\sqrt{52}},\;\; \sigma_{\text{1d}}\approx\frac{\text{VIX}}{\sqrt{252}}\approx\frac{\text{VIX}}{16} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σₕ</code><span>the one-standard-deviation move over horizon h, in % of the index</span></div>
+    <div class="tl-eq-chip c2"><code>h</code><span>the horizon as a fraction of a year — 1/12 for a month, 1/52 for a week, 1/252 for a trading day</span></div>
+    <div class="tl-eq-chip c3"><code>√252 ≈ 16</code><span>the trader's "rule of 16": divide the VIX by 16 for a one-day move</span></div>
+  </div>
+  <p>
+    So a VIX of 20 means a one-month 1σ move of about 20/√12 ≈ <strong>5.8%</strong>.
+    Under a normal approximation, roughly two months in three should land
+    inside ±5.8%, and about one in twenty outside ±11.5%. Real returns are
+    fatter-tailed than a bell curve and the VIX is a <em>risk-neutral</em>
+    price that typically includes an insurance premium, so treat these as an
+    order-of-magnitude guide, not a probability promise. (The VIX itself is
+    defined on 30 <em>calendar</em> days; dividing by √12, √52 or √252 is the
+    standard trader shorthand, and the differences are small.)
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Turn a VIX reading into an expected move</div>
+    <svg id="vx-svg" viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A bell curve of expected S&amp;P 500 percentage moves over the chosen horizon. The shaded inner band is plus or minus one standard deviation and the lighter outer band plus or minus two; raising the VIX widens and flattens the bell.">
+      <line x1="40" y1="250" x2="620" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <path id="vx-band2" d="" style="fill:var(--blue);fill-opacity:.12;stroke:none"/>
+      <path id="vx-band1" d="" style="fill:var(--blue);fill-opacity:.30;stroke:none"/>
+      <polyline id="vx-curve" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <line x1="330" y1="24" x2="330" y2="250" style="stroke:var(--text3);stroke-width:1;stroke-dasharray:3,3"/>
+      <line id="vx-m1" x1="0" y1="40" x2="0" y2="250" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <line id="vx-p1" x1="0" y1="40" x2="0" y2="250" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <text id="vx-m1t" x="0" y="34" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--amber)"></text>
+      <text id="vx-p1t" x="0" y="34" text-anchor="middle" font-size="10.5" font-family="'DM Mono',monospace" fill="var(--amber)"></text>
+      <g id="vx-ticks"></g>
+      <text x="330" y="284" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">S&amp;P 500 move over the horizon (%) →</text>
+      <text x="44" y="20" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">down moves</text>
+      <text x="616" y="20" text-anchor="end" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">up moves</text>
+    </svg>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>VIX level</span><span class="tl-live" id="vx-val">VIX = 20.0</span></div>
+        <input type="range" id="vx-slider" min="9" max="85" step="0.5" value="20">
+        <div class="tl-hint">Drag up and the bell gets wider and flatter. Notice it stays centred on zero: nothing about a higher VIX shifts the middle of the distribution.</div>
+      </div>
+    </div>
+    <div class="vx-row">
+      <span class="vx-btnrow-label">Horizon:</span>
+      <button type="button" class="tl-btn" data-h="day">1 day</button>
+      <button type="button" class="tl-btn" data-h="week">1 week</button>
+      <button type="button" class="tl-btn active" data-h="month">1 month</button>
+    </div>
+    <div class="vx-row">
+      <span class="vx-btnrow-label">Presets:</span>
+      <button type="button" class="tl-btn" data-vix="12">Calm (12)</button>
+      <button type="button" class="tl-btn" data-vix="20">About normal (20)</button>
+      <button type="button" class="tl-btn" data-vix="37.32">5 Feb 2018 close (37.32)</button>
+      <button type="button" class="tl-btn" data-vix="82.69">16 Mar 2020 close (82.69)</button>
+    </div>
+    <div class="vx-row">
+      <span class="vx-btnrow-label">Index level:</span>
+      <input type="number" class="vx-num" id="vx-level" value="5000" min="1" step="50">
+    </div>
+    <div class="tl-readout" id="vx-readout">—</div>
+    <div class="tl-chart-caption">
+      Computed live: horizon σ = VIX/100 × √h with h = 1/252, 1/52 or 1/12. The inner band is ±1σ (about 68% of outcomes if moves were normal), the outer band ±2σ (about 95%). The x-axis is fixed per horizon so you can see the bell widen; at very high VIX readings it runs off the edge — that's the point.
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Divide the VIX by 16 and that's roughly how much the market might wiggle in one normal day, in percent. VIX 16? About 1% a day. VIX 32? About 2% a day. The bigger the number, the bigger the wiggle — but a wiggle can go either way.</p>
+  </div>
+
+  <h3>3. Why it can rise in a rally</h3>
+  <p>
+    Because calls are in the sum, a rush to buy upside — a squeeze, a
+    speculative frenzy in call options, or genuine two-sided uncertainty
+    before a binary event — lifts the VIX just as surely as a rush to buy
+    puts. It's less common only because of <strong>skew</strong>: S&amp;P
+    puts are almost always priced at higher implied vol than equally distant
+    calls, since institutions buy downside protection as a matter of routine
+    and few need upside protection. That asymmetry, plus the \(1/K^2\)
+    weighting that gives low strikes more say, is why the index is usually
+    <em>driven</em> by downside demand even though it <em>measures</em> both
+    sides. Stocks and the VIX moving the same way on a given day is the tell
+    that the uncertainty being priced isn't only about a fall.
+  </p>
+
+  <h3>4. Term structure and implied vs realised</h3>
+  <p>
+    The VIX has siblings at other horizons; the most used is <strong>VIX3M</strong>,
+    the same calculation over three months. Comparing the two gives the
+    term structure:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Contango — VIX below VIX3M (the usual state)</h4>
+      <p>Near-term calm is priced below longer-term uncertainty: "nothing's happening now, but anything could happen over three months." Most days look like this.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Backwardation — VIX above VIX3M (inversion)</h4>
+      <p>The next 30 days are priced as more uncertain than the next 90. Something is happening <em>now</em>.<!-- DESK:START --> On this desk's data such inversions are brief — the median lasts one session.<!-- DESK:END --></p>
+    </div>
+  </div>
+  <p>
+    The second comparison is <strong>implied vs realised</strong>. Implied
+    volatility (the VIX) is what the market is <em>paying for</em>; realised
+    volatility is what the index actually did, measured from its own
+    returns. On average implied sits above realised — option sellers earn an
+    insurance premium for bearing crash risk, the well-documented
+    <em>variance risk premium</em>. The folk extension is that when implied
+    is <em>very</em> far above realised, the market is "over-insured" and
+    will calm down.<!-- DESK:START --> This desk tested exactly that, and found the opposite
+    (Section 05).<!-- DESK:END -->
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>VIX</td><td>Cboe Volatility Index: 30-day implied volatility of the S&amp;P 500, in annualised % points.</td></tr>
+    <tr><td>VIX3M</td><td>The same calculation over a 3-month horizon.</td></tr>
+    <tr><td>\(\sigma^2\)</td><td>Expected (risk-neutral) variance, annualised.</td></tr>
+    <tr><td>\(\sigma_h\)</td><td>One-standard-deviation move over horizon \(h\).</td></tr>
+    <tr><td>\(h\)</td><td>Horizon as a fraction of a year (1/12, 1/52, 1/252).</td></tr>
+    <tr><td>\(T\)</td><td>Time to the option expiry, in years.</td></tr>
+    <tr><td>\(K_i,\ \Delta K_i\)</td><td>The i-th strike, and the spacing between neighbouring strikes.</td></tr>
+    <tr><td>\(K_0\)</td><td>The first listed strike at or below the forward price.</td></tr>
+    <tr><td>\(F\)</td><td>The forward index level implied by option prices.</td></tr>
+    <tr><td>\(Q(K_i)\)</td><td>Mid price of the out-of-the-money option at \(K_i\).</td></tr>
+    <tr><td>\(R\)</td><td>Risk-free rate to that expiry.</td></tr>
+    <tr><td>ATR</td><td>Average True Range — a common yardstick for "how wide was the range".</td></tr>
+  </table></div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>VIX 20, S&amp;P 500 at 5,000</h3>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>One month</h4>
+        <p>\(20/\sqrt{12} = 5.77\%\). Of 5,000 that's about <strong>±289 points</strong> for a 1σ month; ±577 for 2σ.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>One week</h4>
+        <p>\(20/\sqrt{52} = 2.77\%\) → about <strong>±139 points</strong>.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>One day</h4>
+        <p>\(20/\sqrt{252} = 1.26\%\) → about <strong>±63 points</strong>. Rule of 16: 20/16 = 1.25%, close enough.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>Now double the VIX to 40</h4>
+        <p>Every number doubles: ±11.5% a month, ±2.5% a day. The centre of the bell has not moved an inch. The market is paying for twice the <em>size</em> — it has said nothing new about <em>direction</em>.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The chain: who is forced to do what</h2>
+  <p>
+    The VIX doesn't move by itself; it moves because specific actors are
+    forced to pay more, or charge more, for options. A typical spike runs:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>A surprise — a data print, a big gap, a funding scare — makes the next month's range genuinely harder to call</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Hedgers</b>Portfolio managers with mandates must protect: they buy puts (and some buy calls to cover shorts)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Market makers</b>Now short more options and more gamma, they must raise the implied vol they quote to be paid for that risk</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The formula</b>Higher out-of-the-money option prices on the strip mechanically lift σ², so the VIX prints higher</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Short-vol sellers</b>Funds that sold vol for income are hit on mark-to-market and must buy it back — more demand, higher still</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A wider expected range — priced in both directions. The chain says how big; it never says which way</div>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>5 February 2018: "Volmageddon"</h3>
+    <p>
+      Through 2017 the VIX spent long stretches at historically low levels,
+      and exchange-traded products that paid out when volatility stayed low —
+      "short-vol" or inverse-VIX notes — grew popular. These products
+      rebalanced daily, which meant that when VIX futures rose late in a
+      session, they had to <em>buy</em> VIX futures into the close to keep
+      their exposure on target. They were the "short-vol sellers" link of the
+      chain above, with the forced buying written into their rules.
+    </p>
+    <p>
+      On Monday 5 February 2018 the S&amp;P 500 fell about 4% and the VIX
+      closed at 37.32, against 17.31 the previous Friday — <strong>more than
+      doubling in a single session</strong>. The rebalancing demand piled into
+      the move. Overnight, the largest inverse-VIX exchange-traded note lost
+      more than 90% of its indicative value, and its issuer announced it
+      would terminate the note. The forced buyers made the spike bigger; the
+      spike destroyed the forced buyers.
+    </p>
+    <p style="margin-bottom:0">
+      Note what the VIX did and didn't tell anyone. The <em>size</em> of the
+      next few weeks was genuinely larger — the index stayed volatile into
+      the following week. But the VIX gave no signal about where the S&amp;P
+      would be a few months later; it had told people how hard to tie things
+      down, not which way the wind would blow.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>5 August 2024: an intraday print above 65</h3>
+    <p style="margin-bottom:0">
+      During the global unwind of yen-funded carry trades, Japan's Nikkei
+      fell more than 12% on 5 August 2024. Before and just after the US open
+      the VIX printed above 65 <em>intraday</em> — one of its highest readings
+      on record — yet it closed the same day near 39, and was back near the
+      high teens within a couple of weeks. Part of the intraday spike came from
+      thin, wide quotes on the out-of-the-money options in the strip before
+      liquidity returned: because the VIX is computed from option mid-prices,
+      a gap in quotes can lift it even before anyone has traded much. The
+      lesson: an intraday VIX print is a price in a stressed market, not a
+      settled measurement — check the close, and check the term structure.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📏</div>
+      <h4>Size positions and stops</h4>
+      <p>Convert the VIX to a daily or weekly 1σ move and size so that an ordinary move doesn't take you out. A higher VIX means smaller size for the same risk — not a different direction.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📈</div>
+      <h4>Watch the term structure</h4>
+      <p>VIX vs VIX3M is the cleanest "is something happening now?" flag. A first-day inversion is a range warning, not a bottom call or a crash call.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">⚖️</div>
+      <h4>Implied vs realised</h4>
+      <p>Option traders compare what they're paying (implied) with what they're getting (realised). The gap is the insurance premium<!-- DESK:START --> — but an extreme gap has, on this desk's data, preceded <em>wider</em> ranges, not calmer ones<!-- DESK:END -->.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🔀</div>
+      <h4>Read the skew separately</h4>
+      <p>How much more downside puts cost than upside calls is a different question from the overall level — it's where the "fear" actually lives. Cboe publishes a SKEW index for exactly this.</p>
+    </div>
+  </div>
+
+<!-- DESK:START -->  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What this desk found when it tested it</h2>
+  <p>
+    Four verdicts from the desk's ledger bear directly on the VIX. Three are
+    validated, and every one of them is a <em>range</em> finding. The fourth —
+    the one that treats the VIX as a fear signal with a direction — is null.
+  </p><!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session). <em>Range, not direction. Applies on the first day of an inversion; the effect on later days of a long inversion was not tested.</em></span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>An inverted VIX curve → a wider month, reproduced independently</strong> (<code>mv-vixterm-range</code>). Pre-registered: the range ratio over the next 20 sessions is +0.52 [0.38, 0.88] on SPX500 and +0.44 [0.26, 0.78] on NQ against a matched control, on 14 de-clustered firings (8% of sessions). Holds in both halves of the sample (+0.70 early, +0.35 late), so it is not one episode. <strong>Direction is null: 57% up against an 80%+ control.</strong> It independently reproduces the VIX-inversion result from a different harness — the main reason to believe it.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>"Implied far above realised means over-insured, it'll calm down" — the opposite</strong> (<code>iv-over-rv-wider</code>). VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range +0.38 ATR [+0.11, +0.62], next-20 +0.56; SPX500 next-20 +0.67 [+0.13, +1.21] (next-5 +0.17, null). Realised catches up to implied. <em>A reason to expect wider indices over the coming weeks, not calmer ones. Range, not direction.</em></span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>"Fear buys gold"</strong> (<code>fear-gold</code>). 58 VIX spikes (+5 points in five sessions) 2010-2026. Gold five sessions on +0.42% vs +0.35% ordinary: excess +0.07% [-0.42, +0.30]; higher at five sessions 53% [41-66]. Twenty sessions on +0.01% vs +1.20%: excess -1.19% [-2.30, -0.48]. Spiked then gave back half by day 20: 24% of spikes; the rest never spiked. <em>No fear bid in gold on average, and a month after a fear spike gold has lagged its ordinary drift.</em></span>
+  </div>
+  <!-- DESK:END -->
+
+<!-- DESK:START -->  <div class="tl-solid blue">
+    <strong>The house rule these four verdicts add up to:</strong> volatility tells you about <em>size</em>, never about <em>sign</em>. Every validated VIX finding here widens the expected range; none of them says which way. The one test that read the VIX as a directional fear signal — fear buys gold — failed.
+  </div><!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <p style="margin-bottom:0">
+      The four verdicts above are entries in <code>js/deskEvidence.js</code>, the ledger the board and briefs read before writing any prose about volatility. The VIX and VIX3M levels and their inversion flag are on the board today. Cboe's SKEW and VVIX series are pulled daily but are <strong>not yet tested</strong> or catalogued — so nothing on this page claims anything about them beyond their definition.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <ul>
+      <li><strong>"VIX is high, so stocks will fall."</strong> The VIX is priced from both sides. A high reading says moves will be bigger; it is silent on direction<!-- DESK:START -->, and this desk's own direction checks came back null<!-- DESK:END -->.</li>
+      <li><strong>Treating the 1σ move as a cap.</strong> About one month in three should land outside ±1σ even under a bell curve, and real returns have fatter tails than a bell curve.</li>
+      <li><strong>Quoting an intraday spike as "the VIX".</strong> Intraday prints in a thin market can be lifted by wide option quotes; check the close and VIX3M before reading anything into it.</li>
+      <li><strong>Buying "VIX" and expecting the index.</strong> You can't buy the index itself; VIX futures and the products built on them roll along the term structure, and in normal contango that roll is a steady cost.</li>
+      <!-- DESK:START --><li><strong>"Over-insured means it'll calm down."</strong> Tested here: an extreme implied-over-realised ratio preceded <em>wider</em> ranges.</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The VIX is 30-day implied vol from a strip of puts and calls.</strong> It's the square root of the market's expected variance, times 100 — a price for size.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VIX ÷ √12 is a one-month 1σ move.</strong> VIX 20 ≈ ±5.8% a month; VIX ÷ 16 ≈ the daily move.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted VIX curve means a wider coming week and month</strong> — validated twice here, from two harnesses. Range, not direction.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Implied far above realised preceded wider ranges, not calmer ones.</strong> Realised catches up to implied.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>"Fear buys gold" is null.</strong> After 58 VIX spikes gold showed no excess at five sessions (+0.07% [-0.42, +0.30]) and lagged by 1.19% at twenty.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The bell curve is a guide, not a promise.</strong> Real returns are fat-tailed, the VIX includes an insurance premium, and intraday prints can mislead.</span></div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Why is "fear gauge" a misleading name for the VIX?</summary>
+    <div class="tl-answer">Because the calculation uses out-of-the-money puts <em>and</em> calls and squares the moves it prices, so it measures the expected size of moves in either direction. It usually rises when stocks fall only because demand for downside protection dominates; it says nothing on its own about which way the market will go.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. The VIX is 30 and the S&amp;P is at 6,000. What is the approximate one-day and one-month 1σ move in points?</summary>
+    <div class="tl-answer">Daily: 30/√252 ≈ 1.89% → about ±113 points (rule of 16 gives 1.875%). Monthly: 30/√12 ≈ 8.66% → about ±520 points.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Stocks are up 1.5% today and the VIX is also up. Is that possible, and what might it mean?</summary>
+    <div class="tl-answer">Yes. Calls are part of the VIX strip; heavy demand for upside calls, or genuine two-sided uncertainty, lifts implied variance. It suggests the uncertainty being priced isn't only about a fall — the market is paying for bigger moves, possibly in the direction it's already going.</div>
+  </details>
+<!-- DESK:START -->  <details class="tl-quiz">
+    <summary>Q4. What does "VIX above VIX3M" mean, and what did this desk find follows it?</summary>
+    <div class="tl-answer">Backwardation: the next 30 days are priced as more uncertain than the next 3 months — something is happening now. On the first day of an inversion, the next 5 sessions ran wider than matched controls (SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43; 86 entries since 2008). The finding is about range, not direction.</div>
+  </details><!-- DESK:END -->
+<!-- DESK:START -->  <details class="tl-quiz">
+    <summary>Q5. A colleague says: "Implied vol is way above realised — everyone's over-hedged, so expect things to calm down." What does this desk's evidence say?</summary>
+    <div class="tl-answer">The opposite. With VIX ÷ 20-session realised SPX vol in the top decile (88 first days since 2010), the following 20 sessions ran wider: SPX500 +0.67 ATR [+0.13, +1.21], NAS100 +0.56. Realised volatility caught up to implied rather than implied falling back.</div>
+  </details><!-- DESK:END -->
+  <details class="tl-quiz">
+    <summary>Q6. Why did the February 2018 VIX spike feed on itself?</summary>
+    <div class="tl-answer">Short-vol exchange-traded products rebalanced daily, so when VIX futures rose they were forced to buy VIX futures to keep their exposure on target. That forced buying pushed volatility higher still, which hit their value further — until the largest inverse-VIX note lost more than 90% of its indicative value overnight and its issuer terminated it.</div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Cboe Global Markets, <em>Cboe Volatility Index (VIX) White Paper</em> — the official methodology, including the strip formula and the 30-day interpolation.</li>
+    <li>Robert E. Whaley, "The Investor Fear Gauge", <em>Journal of Portfolio Management</em>, 2000 — where the nickname comes from.</li>
+    <li>Robert E. Whaley, "Understanding the VIX", <em>Journal of Portfolio Management</em>, 2009 — the same author on what the index does and doesn't measure.</li>
+    <li>Kresimir Demeterfi, Emanuel Derman, Michael Kamal &amp; Joseph Zou, "More Than You Ever Wanted to Know About Volatility Swaps", Goldman Sachs Quantitative Strategies Research Notes, 1999 — the replication behind the model-free VIX.</li>
+    <li>Peter Carr &amp; Liuren Wu, "Variance Risk Premiums", <em>Review of Financial Studies</em>, 2009 — why implied usually sits above realised.</li>
+    <li><a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> · <a href="institutional-breeden-litzenberger-variance-swaps.html">Breeden-Litzenberger &amp; Variance Swaps</a> · <a href="tail-risk-hedging-convexity.html">Tail-Risk Hedging &amp; Convexity</a> · <a href="garch-volatility.html">GARCH Volatility</a> — related lessons in this lab.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="investor-mood-forced-selling.html">← Mood, the Quote and Forced Selling</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="yield-curve-growth-expectations.html">What the Yield Curve Says About Growth →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // VIX → expected-move calculator. sigma_h = VIX/100 * sqrt(h); normal pdf drawn
+  // on a per-horizon fixed x-axis so widening is visible.
+  var svg = document.getElementById('vx-svg');
+  var slider = document.getElementById('vx-slider');
+  if (!svg || !slider) return;
+  var H = { day: 1/252, week: 1/52, month: 1/12 };
+  var HNAME = { day: 'day', week: 'week', month: 'month' };
+  var horizon = 'month';
+  var X0 = 40, X1 = 620, XC = 330, YB = 250, YT = 44;
+  var VMIN = 9;
+
+  var curve = document.getElementById('vx-curve');
+  var band1 = document.getElementById('vx-band1');
+  var band2 = document.getElementById('vx-band2');
+  var m1 = document.getElementById('vx-m1'), p1 = document.getElementById('vx-p1');
+  var m1t = document.getElementById('vx-m1t'), p1t = document.getElementById('vx-p1t');
+  var ticks = document.getElementById('vx-ticks');
+  var valEl = document.getElementById('vx-val');
+  var levelEl = document.getElementById('vx-level');
+  var readout = document.getElementById('vx-readout');
+
+  function sig(vix, h){ return vix/100*Math.sqrt(H[h])*100; } // in %
+  function pdf(x, s){ return Math.exp(-0.5*(x/s)*(x/s))/(s*Math.sqrt(2*Math.PI)); }
+  function halfRange(h){ return 4*sig(30, h); }          // x-axis half-width (%)
+  function xPix(x, h){ return XC + x/halfRange(h)*(X1-XC); }
+  function yPix(d, h){ var dmax = pdf(0, sig(VMIN, h)); return YB - d/dmax*(YB-YT); }
+
+  function drawTicks(h){
+    while (ticks.firstChild) ticks.removeChild(ticks.firstChild);
+    var R = halfRange(h);
+    var step = R > 20 ? 10 : (R > 10 ? 5 : 2);
+    for (var v = -Math.floor(R/step)*step; v <= R + 1e-9; v += step){
+      var x = xPix(v, h);
+      var ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+      ln.setAttribute('x1', x); ln.setAttribute('x2', x); ln.setAttribute('y1', YB); ln.setAttribute('y2', YB+4);
+      ln.setAttribute('style','stroke:var(--text3);stroke-width:1');
+      ticks.appendChild(ln);
+      var t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x', x); t.setAttribute('y', YB+16); t.setAttribute('text-anchor','middle');
+      t.setAttribute('font-size','9.5'); t.setAttribute('font-family',"'DM Mono',monospace"); t.setAttribute('fill','var(--text3)');
+      t.textContent = (v > 0 ? '+' : '') + v + '%';
+      ticks.appendChild(t);
+    }
+  }
+
+  function areaPath(a, b, s, h){
+    var R = halfRange(h);
+    a = Math.max(a, -R); b = Math.min(b, R);
+    var pts = [], N = 80;
+    for (var i = 0; i <= N; i++){ var x = a + (b-a)*i/N; pts.push(xPix(x,h).toFixed(1)+','+yPix(pdf(x,s),h).toFixed(1)); }
+    return 'M' + xPix(a,h).toFixed(1) + ',' + YB + ' L' + pts.join(' L') + ' L' + xPix(b,h).toFixed(1) + ',' + YB + ' Z';
+  }
+
+  function fmt(n, d){ return n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d}); }
+
+  function update(){
+    var vix = parseFloat(slider.value);
+    var s = sig(vix, horizon);
+    var R = halfRange(horizon);
+    var pts = [], N = 160;
+    for (var i = 0; i <= N; i++){ var x = -R + 2*R*i/N; pts.push(xPix(x,horizon).toFixed(1)+','+yPix(pdf(x,s),horizon).toFixed(1)); }
+    curve.setAttribute('points', pts.join(' '));
+    band2.setAttribute('d', areaPath(-2*s, 2*s, s, horizon));
+    band1.setAttribute('d', areaPath(-s, s, s, horizon));
+    var xm = Math.max(X0, xPix(-s, horizon)), xp = Math.min(X1, xPix(s, horizon));
+    [m1, p1].forEach(function(el, k){ var x = k ? xp : xm; el.setAttribute('x1', x); el.setAttribute('x2', x); });
+    m1t.setAttribute('x', xm); p1t.setAttribute('x', xp);
+    m1t.textContent = '−' + s.toFixed(2) + '%'; p1t.textContent = '+' + s.toFixed(2) + '%';
+    valEl.textContent = 'VIX = ' + vix.toFixed(vix % 1 ? 2 : 1);
+    var L = parseFloat(levelEl.value);
+    var pts1 = isFinite(L) && L > 0 ? ' ≈ ±' + fmt(L*s/100, 0) + ' pts' : '';
+    var pts2 = isFinite(L) && L > 0 ? ' ≈ ±' + fmt(L*2*s/100, 0) + ' pts' : '';
+    readout.innerHTML = 'Annualised σ = <b>' + vix.toFixed(2) + '%</b> · 1-' + HNAME[horizon] + ' 1σ = <b>±' + s.toFixed(2) + '%</b>' + pts1 +
+      ' · 2σ = <b>±' + (2*s).toFixed(2) + '%</b>' + pts2 + ' · centre of the bell: <b>0%</b> (no direction)';
+  }
+
+  document.querySelectorAll('[data-h]').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('[data-h]').forEach(function(o){ o.classList.remove('active'); });
+      b.classList.add('active'); horizon = b.getAttribute('data-h'); drawTicks(horizon); update();
+    });
+  });
+  document.querySelectorAll('[data-vix]').forEach(function(b){
+    b.addEventListener('click', function(){ slider.value = b.getAttribute('data-vix'); update(); });
+  });
+  slider.addEventListener('input', update);
+  levelEl.addEventListener('input', update);
+  drawTicks(horizon);
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

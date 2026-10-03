@@ -17,7 +17,7 @@
   <h1 class="tl-title">Trend/Cycle Filters: Hodrick-Prescott, Butterworth &amp; Baxter-King</h1>
   <p class="tl-dek">Splitting a series into "the slow-moving trend" and "the cycle riding on top of it" is one of the most-used, and most-criticized, moves in applied macroeconomics — the Hodrick-Prescott filter is everywhere, has a documented, load-bearing flaw, and the band-pass alternatives exist specifically because of it.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — classical macro/signal-processing filters, explained here as background knowledge, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — classical macro/signal-processing filters, explained here as background knowledge<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: <a href="fourier-analysis-frequency-domain.html">Fourier Analysis &amp; the Frequency Domain</a></span>
   </div>
@@ -36,6 +36,7 @@
       <li>James Hamilton's 2018 paper is a genuine, load-bearing caveat, not a footnote: the HP filter suffers a well-documented end-of-sample bias, and can manufacture spurious cyclical dynamics that aren't in the true data-generating process at all — serious enough that Hamilton titled the paper "Why You Should Never Use the Hodrick-Prescott Filter."</li>
       <li>Butterworth and Baxter-King filters are band-pass alternatives, designed to isolate one specific cycle-length band (classically the 6-to-32-quarter "business cycle" band) while damping frequencies outside it — motivated in part by dissatisfaction with HP's known flaws.</li>
       <li>Explaining these filters is not a claim that trend/cycle decomposition produces trading edge — it's a description of a widely used (and widely debated) modeling choice, with an honestly stated, citation-backed flaw front and center.</li>
+      <li><strong>Real-world episode:</strong> in the 1970s, real-time US output-gap estimates showed far more slack than later revised estimates did, and policy stayed loose while inflation rose (Orphanides, 2001). Orphanides &amp; van Norden (2002) found the revisions came mainly from the end of the sample, the HP filter included, not from revised data.</li>
     </ul>
   </div>
 
@@ -372,6 +373,81 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: the 1970s output gap that wasn't there</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Policy set on the newest point of a trend, the least reliable one</h3>
+    <p>
+      The scenario above is a hypothetical desk revising its 2019 gap after 2020. The best-documented real case is
+      fifty years older, and it shaped how economists think about this whole lesson.
+    </p>
+    <p>
+      In the 1970s US policymakers judged that the economy was running well below its potential: a large negative
+      output gap, meaning plenty of spare capacity. The estimates came from trend lines fitted to past output and
+      carried forward. But trend growth had slowed. Productivity growth fell from the late 1960s, and the 1973 oil
+      shock hit supply further. A trend fitted to the strong 1950s and 1960s, extended to the newest quarter,
+      sat too high, so the gap between that trend and actual output looked deeply negative. Policy that believes
+      there is lots of slack stays looser than it otherwise would. Inflation rose through the decade, into double
+      digits by its end.
+    </p>
+    <p>
+      Athanasios Orphanides, then a Federal Reserve economist, rebuilt the numbers policymakers actually had at the
+      time ("Monetary Policy Rules Based on Real-Time Data", <em>American Economic Review</em>, 2001). The real-time
+      gaps were far more negative than the gaps economists estimate today for the same quarters. Much of the "slack"
+      had never existed.
+    </p>
+    <p style="margin-bottom:0">
+      Then, with Simon van Norden ("The Unreliability of Output-Gap Estimates in Real Time", <em>Review of Economics
+      and Statistics</em>, 2002), he asked why. Across many detrending methods, the HP filter included, revisions to
+      the gap were about as large as the gap itself. The main culprit was not revised GDP data. It was the
+      <strong>end of the sample</strong>: the trend estimate at the newest observation changes as later data
+      arrive. That is Section 02's end-point problem, measured on the numbers policy was really set on.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Trend growth slows</b>Productivity growth fades from the late 1960s; the 1973 oil shock hits supply</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Economists</b>Must estimate potential output from past data, so the trend at the newest quarter still reflects the fast-growth years</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · end-of-sample trend</b>The latest trend reading sits too high, so the measured gap shows slack that isn't there</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Policymakers</b>Seeing slack, keep policy looser than an accurate gap would have called for</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Inflation rises through the 1970s; revised gaps later show far less slack than was believed</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: the trend estimate \(\tau_T\) at the last observation, which every
+    two-sided filter computes with half its window missing.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You guess how tall you "should" be by drawing a line through how fast you grew when you were little. But you've slowed down, as everyone does. The line says you should be much taller than you are, so you think you're way behind and eat extra to catch up. Years later, with the whole growth chart filled in, it's clear you were never behind at all.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The HP minimisation treats every \(\tau_t\) the same, but the newest one has data on only one side, and it is
+    the one decisions use. The textbook also assumes trend and cycle are separable, with the trend smooth. A slowdown
+    in trend growth (the 1970s) or a collapse like 2020's gets split between trend and cycle in a way only later data
+    can correct, so the real-time gap mixes a genuine cycle with a trend error of unknown size.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Not tested here: "the output gap (or any trend/cycle reading) tells you where rates or currencies
+    go next."</strong> This desk has no real-time gap series and no test of one. A fair test would rebuild the gap
+    as it would have looked each quarter, from the data vintages available at the time (a one-sided filter, or
+    Hamilton's regression), never the revised history. It would then score the real-time gap's sign against what
+    followed in 2-year yields and the currency, against a no-change benchmark, and report how often the real-time sign
+    was later revised away.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     The HP filter has been, for decades, the default tool for output-gap and potential-GDP estimation across central
@@ -415,7 +491,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Trend/cycle decomposition is y_t = τ_t + c_t + ε_t, estimated by a chosen rule.</strong> None of the three components is directly observed, and no filter recovers a "true" trend — each is a modeling choice.</span></div>
@@ -423,10 +499,11 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Hamilton (2018): the HP filter has real, documented flaws.</strong> End-of-sample bias hits the most recent (most decision-relevant) observations hardest, and the filter can manufacture spurious cyclicality even from a pure random walk.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Butterworth and Baxter-King isolate an explicit cycle-length band instead.</strong> Baxter-King's classic 6-32 quarter "business cycle" band trades HP's end-point bias for a stated, cleaner data-loss tradeoff (losing K observations at each end).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The "business cycle band" is a convention, not a law.</strong> 6-32 quarters is Baxter &amp; King's chosen default, not a universal constant true of every series or every economy.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The newest gap estimate is the one that misleads (1970s).</strong> Real-time output gaps showed slack that revised data later erased; Orphanides &amp; van Norden (2002) traced most of the revision to the end of the sample, not to revised GDP.<!-- DESK:START --> Whether a gap reading predicts rates or FX is untested here.<!-- DESK:END --></span></div>
     <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>This lesson explains modeling tools, not a claim of edge.</strong> A trend/cycle split is descriptive; turning it into a trading rule still needs the same honest out-of-sample bar as anything else in this curriculum.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What does the second-difference penalty term in the HP objective actually penalize, and what does λ→∞ do to the trend as a result?</summary>

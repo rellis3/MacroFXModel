@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Swap Curves &amp; OIS Discounting — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live swap-valuation calculator, and a 5-question self-test?<a href="swap-curves-ois.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -244,7 +244,40 @@
     </section>
 
     <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">LIBOR: the rate that was an estimate</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>LIBOR was a survey: panel banks reported what they <em>could</em> borrow at. From August 2007 real interbank lending dried up, and a high answer signalled weakness, so some banks submitted low; traders had also long asked for favourable fixes. The record LIBOR-OIS spread (about 364bp, October 2008) was if anything flattered. Barclays settled for about <strong>$450m</strong> in June 2012, UBS for about <strong>$1.5bn</strong> that December. In 2017 the FCA said it would stop compelling submissions after 2021.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>2007–08</b>Banks stop lending to each other unsecured</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Panel banks</b>Estimate with few real trades; some answer low</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson</b>Collateralised trades move to OIS discounting: two curves, not one</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Regulators</b>2012 settlements; 2017 end-date</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>SOFR replaces the survey; USD LIBOR ends June 2023</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11<!-- DESK:START --> · Tested here<!-- DESK:END --></div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and the verdict<!-- DESK:END --></h2>
+      <p class="sl-sub">The tempting claim: the funding spread is a real-time stress gauge. Its SOFR-era form: SOFR above the Fed's floor, or the SRF being drawn.</p>
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
+        <span><strong>funding-stress:</strong> 2,123 SOFR sessions, 2018–2026. SOFR over the floor away from month-end: only 15 episodes, <strong>12 of 15 on the 14th–18th</strong>. SRF drawn: SPX500 <strong>−0.561 ATR [−0.984, −0.181]</strong>, a calmer tape; drawn on 667 of 2,123 sessions (31%).</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-quote">The single-curve shortcut assumes the floating index is a near risk-free <strong>market price</strong>. LIBOR was a credit-risky survey. SOFR fixes both, but has its own failure mode, plumbing: 5.25% on 17 September 2019.<!-- DESK:START --> And the desk's sample has no 2008-style banking crisis in it.<!-- DESK:END --></div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -294,8 +327,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A swap exchanges fixed for floating cashflows on a notional that's never itself exchanged — only the net difference changes hands each period.</p></div>
@@ -304,6 +337,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Post-2008, OIS replaced LIBOR for discounting collateralized derivatives, because LIBOR embeds bank credit risk that a secured, overnight rate essentially doesn't.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The multi-curve framework splits discounting (OIS) from forecasting floating resets (a separate SOFR-forward curve) — pre-2008 these were, in effect, one curve.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>LIBOR was retired for two separate reasons — its embedded credit risk, and a 2012 manipulation scandal — and replaced by SOFR, a transaction-based overnight rate, through a multi-year transition ending in mid-2023.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Real-world episode: LIBOR was a survey that was lowballed in the crisis; 2012 settlements (Barclays ~$450m, UBS ~$1.5bn) led to SOFR.<!-- DESK:START --> Desk verdict, NULL: SOFR above the floor and SRF use are not stress signals (funding-stress).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -435,5 +469,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

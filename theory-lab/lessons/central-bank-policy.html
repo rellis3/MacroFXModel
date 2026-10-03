@@ -39,6 +39,7 @@
       <li>The single most important practical fact in this lesson: it is the <strong>hawkish or dovish surprise relative to what was already priced</strong> — not the absolute hawkish/dovish stance itself — that moves a currency. A "hawkish hold" can rally a currency the market expected to be cut.</li>
       <li>When both mandate halves point the same way (inflation and unemployment both say "tighten," or both say "ease"), the committee acts decisively. When they conflict — the <strong>stagflation trap</strong>, both inflation and unemployment rising together — the committee fractures, the dot plot goes mixed, and guidance turns vague and data-dependent.</li>
       <li>The Taylor Rule lesson elsewhere in this curriculum formalizes the same reasoning as an equation; this lesson is the qualitative vocabulary layer underneath it — how the committee actually talks and votes before any of that gets reduced to a number.</li>
+      <li><strong>Real-world episodes:</strong> Draghi's "whatever it takes" (July 2012) repriced euro-area bonds with no action behind it; the SNB's removal of its 1.20 EUR/CHF floor (15 January 2015) was a near-unpriced surprise that sent the pair below 0.90 within minutes.<!-- DESK:START --> On this desk's data the size of a surprise widens the range (<code>surprise-size</code>, VALIDATED), but the statement's tone gives no next-day direction (<code>cb-tone-direction</code>, NULL).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -447,6 +448,138 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>It actually happened: words without action, and action against the words</h2>
+  <p>
+    The three scenarios above are clean cases built for teaching. Two real episodes show the two extremes of the
+    lesson's central idea, the gap between what was priced and what the central bank delivered. In the first, a
+    sentence moved markets with no action behind it. In the second, an action destroyed a promise the market had
+    priced as certain.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>July 2012: "whatever it takes"</h3>
+    <p style="margin-bottom:0">
+      In the summer of 2012 the euro-area debt crisis was at its worst, and Spain's 10-year government yield had
+      climbed above 7%. On 26 July 2012, at an investment conference in London, ECB President Mario Draghi said
+      that within its mandate the ECB was ready to do "whatever it takes" to preserve the euro. No policy changed
+      that day. In September the ECB announced Outright Monetary Transactions (OMT), a programme to buy the bonds of
+      countries that requested support under conditions, and Spanish and Italian yields fell a long way over the
+      following months. OMT has never been used. This is <strong>forward guidance</strong> (Section 02) and <strong>jawboning</strong>
+      (Section 06) at full strength: the market repriced on a credible promise of action, and the action was never
+      needed.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>15 January 2015: the Swiss franc floor goes</h3>
+    <p>
+      In September 2011, with investors piling into the franc as a safe haven, the Swiss National Bank set a
+      <strong>minimum exchange rate of 1.20 francs per euro</strong>. It promised to defend the floor with the
+      utmost determination and to buy foreign currency in unlimited quantities, and it did, for more than three
+      years. Its balance sheet swelled with euro assets. The floor was the most heavily priced policy promise in FX:
+      EUR/CHF sat just above 1.20, and options and positions assumed it would hold. Days before the end, an SNB
+      official had publicly reaffirmed the floor as central to its policy.
+    </p>
+    <p>
+      On the morning of 15 January 2015 the SNB scrapped the floor without warning and cut its deposit rate to
+      −0.75%. The ECB was widely expected to launch large-scale bond buying, which it announced a week later; keeping
+      the floor would have meant buying euros on an even larger scale. EUR/CHF fell from 1.20 to below 0.90 within
+      minutes as liquidity vanished, a move of more than 25% at the low in a major currency, before recovering part
+      of the way. Stop-loss orders filled far beyond their levels. The retail broker FXCM was left with client
+      losses beyond their deposits and needed a $300 million rescue loan; Alpari UK went into insolvency.
+    </p>
+    <p style="margin-bottom:0">
+      In this lesson's vocabulary it was the largest possible surprise: the market had priced a near-zero chance of
+      the outcome. It was also a <strong>reaction-function shift</strong> rather than a reaction within the old rule.
+      Nothing in the Swiss data that morning forced the move. The SNB changed what it was willing to do.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>SNB floor</b>Sept 2011: EUR/CHF minimum of 1.20, unlimited intervention promised</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The SNB</b>Forced to buy euros on a vast scale to keep the promise; balance sheet balloons</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The ECB</b>Expected to launch QE, which would force even bigger SNB purchases</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock concept"><b>★ This lesson: surprise vs priced</b>SNB drops the floor with no warning; the market had priced almost no chance of it</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Market makers</b>Pull their prices; stop-losses fill far through their levels</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>EUR/CHF below 0.90 within minutes; a broker rescued, another insolvent</div>
+  </div>
+  <p>
+    The starred link is the lesson's core quantity, surprise = actual − priced, at its maximum. The links before it
+    explain why a "certain" promise was in fact under growing strain.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>"Priced" assumes the price can move smoothly to the new level</h3>
+    <p style="margin-bottom:0">
+      The surprise framework treats the reaction as a repricing proportional to the gap between actual and priced.
+      That assumes a continuous market in which there is always a next price. On 15 January 2015 the price gapped:
+      there were no bids between the old level and the new one, and stops became market orders filled far away. It
+      also assumes the reaction function is stable enough to price. A commitment that is costly to keep can be
+      dropped, and the more completely it is priced, the bigger the gap when it goes.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <p>
+    The tempting trading claim in this lesson is <em>the surprise, or the tone, tells you which way the currency goes
+    next.</em> This desk has tested three versions of it on central-bank decision days, almost all of them ordinary. None
+    contains a 2015-style break.
+  </p>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="surprise-size" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>surprise-size: the size of a surprise widens the session, and says nothing about direction.</strong>
+    For rate decisions: EUR/USD <strong>+0.38 ATR</strong> on the day and <strong>+0.51</strong> on big surprises,
+    GBP/USD +0.38 the session after, USD/JPY +0.24. The ledger's own use: scale the expected range, never a
+    direction.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="cb-tone-direction" data-evidence-date="2026-08-20">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>cb-tone-direction: the statement's tone is priced in half an hour.</strong> N=82 FOMC meetings.
+    First-30-minute reaction vs next-day dollar: sign agreement <strong>46%</strong>, t = 0.32. Lexicon
+    Δhawkishness vs next day: t = −0.75, though it <em>is</em> priced inside 30 minutes (t = 2.04). Do not carry the
+    tone forward as a next-day lean.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="priced-in" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>priced-in: prior repricing does not make decision day calmer.</strong> 85 FOMC decision days since
+    2016. Decision-day range is about <strong>1.3 ATR</strong> on EUR/USD, USD/JPY, gold and SPX500 whether the prior
+    20-session move in the 2-year was in the bottom tercile (&lt;5bp) or the top (&gt;16bp). Differences −0.11 to
+    +0.07, intervals across zero.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <p>
+    Read together: the surprise is real and it moves the <em>range</em>, which is this lesson's claim. What the
+    surprise or the tone does <em>not</em> give you, on this desk's data, is the next day's direction, and "it was
+    already priced" did not make a Fed day any quieter.
+  </p>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In 2012 a central banker said "we'll do whatever it takes", everyone believed him, and things calmed down without him doing anything. In 2015 the Swiss central bank had promised for years to hold its money at one price, everyone believed that too, and then one morning it simply stopped. Because nobody had expected it, the price didn't slide; it fell off a cliff, and some companies that had bet on the promise went bust.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     The single most important practical fact in this whole lesson is that price action is driven by the
@@ -522,7 +655,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The dual mandate is the lens.</strong> Maximum employment and price stability are the two goals every projection, vote, and rate decision is argued through.</span></div>
@@ -532,9 +665,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It's the surprise, not the stance, that moves price.</strong> A hawkish hold can rally a currency the market expected to be cut; a hike can weaken one if the market expected more.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The dot plot has a documented weak predictive track record.</strong> Dots are revised almost every meeting and have repeatedly missed the eventual path — read it as current opinion, not a promise.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A reaction-function shift is a different, bigger event than reacting within an unchanged one.</strong> The same-looking hawkish move can mean the committee is simply following the data, or that it re-weighted the mandate itself — the second is the more violent repricing.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The surprise sizes the range, not the direction.</strong><!-- DESK:START --> surprise-size is VALIDATED as a range effect (EUR/USD +0.38 ATR on rate-decision days). The tone is NULL as a next-day lean (cb-tone-direction: sign agreement 46%, t = 0.32), and prior repricing did not calm decision day (priced-in, NULL).<!-- DESK:END --> And a fully priced promise, like the SNB floor, can gap rather than reprice.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is stagflation harder for a central bank to handle than fighting inflation or fighting unemployment alone?</summary>
@@ -648,5 +782,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

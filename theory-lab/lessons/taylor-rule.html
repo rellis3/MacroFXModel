@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Taylor Rule</h1>
   <p class="tl-dek">A formula that turns two macro numbers — how far inflation sits from target, and how hot the economy is running — into what a central bank's policy rate "should" be, and why the GAP between that number and what a central bank is actually doing is one of the most closely watched signals in FX.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — the mechanism behind this repo's yield-spread/FX lead-lag notes</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — the mechanism behind this repo's yield-spread/FX lead-lag notes<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: None required — Interest Rate Parity helpful for framing</span>
   </div>
@@ -37,7 +37,8 @@
       <li>Worked example: \(r^{*}=2\%\), \(\pi=3\%\), \(\pi^{*}=2\%\), output gap \(=+1\%\), \(a=b=0.5\) → \(i = 2+3+0.5(1)+0.5(1) = 6\%\).</li>
       <li>What traders actually watch isn't the level of \(i\) itself but the gap between the Taylor-implied rate and the actual policy rate.</li>
       <li>"Behind the curve" means actual policy sits below the implied rate (looser than the data justify, hawkish-repricing risk); "ahead of the curve" means actual policy sits above it (tighter than justified, cut risk).</li>
-      <li>This repo has no Taylor-Rule calculator built yet — this lesson is the theory behind the existing yield-spread notes, not a shipped tool.</li>
+      <!-- DESK:START --><li>This repo has no Taylor-Rule calculator built yet — this lesson is the theory behind the existing yield-spread notes, not a shipped tool.</li><!-- DESK:END -->
+      <li><strong>Real-world episode:</strong> in 2021 the Fed held 0–0.25% and called inflation "transitory" while the rule, on this lesson's coefficients, pointed to several percentage points higher. The gap stayed open for a year, then closed with 75bp hikes and a 20-year-high dollar.<!-- DESK:START --> The Taylor gap as a signal is untested here, and the yields-lead-FX step is <code>yields-to-fx-direction</code>, NULL.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -45,7 +46,7 @@
   <h2>Why this matters</h2>
   <p>
     Every "rates drive FX" story — carry trades, yield-spread momentum, hawkish/dovish repricing, the whole
-    apparatus this project's own prior research notes spend two lessons on — takes one
+    apparatus<!-- DESK:START --> this project's own prior research notes spend two lessons on<!-- DESK:END --> — takes one
     thing as given: that a central bank sets its policy rate in response to inflation and the state of the real
     economy. That response is not just a vague tendency traders intuit from experience; economists have a specific,
     almost embarrassingly simple formula for it, published by the Stanford economist John B. Taylor in 1993, that
@@ -54,7 +55,7 @@
     every major central bank publishes its own version, financial media quotes it during every hiking or cutting
     cycle, and trading desks recompute it the moment a CPI or GDP print lands.
   </p>
-  <p>
+<!-- DESK:START -->  <p>
     The reason a builder on this repo should care is specific: the Transatlantic Yield Spread lesson
     (this project's own prior research notes, Lesson 2) treats the US 10-year vs Bund spread — and the Fed
     vs ECB rate paths behind it — as an observed input, something you read off a screen and trade the lead-lag
@@ -63,7 +64,7 @@
     mechanism — not a replacement for the yield-spread work already in this repo, but the theory that explains why
     the spread moves the way it does, and gives you a way to ask, independently, whether the current rate path looks
     "caught up" with the data or not.
-  </p>
+  </p><!-- DESK:END -->
 
   <div class="tl-box intuition">
     <div class="tl-icon-badge blue">💡</div>
@@ -366,7 +367,7 @@
     On a trading desk, the rule's real use is comparative and dynamic, not a single-country snapshot: computing
     (even roughly) a Taylor-implied rate for two economies at once — say the US and the euro area — turns directly
     into an expected relative rate-path story, which is the theoretical engine behind the rate-differential /
-    yield-spread trades this repo's own education notes already study empirically. A widening gap between one
+    yield-spread trades<!-- DESK:START --> this repo's own education notes already study empirically<!-- DESK:END -->. A widening gap between one
     country's implied-minus-actual rate and another's is a candidate <em>leading</em> explanation for why a yield
     spread between the two might be about to move, before the spread itself has visibly shifted.
   </p>
@@ -418,8 +419,8 @@
       </div>
       <div class="tl-step">
         <div class="tl-step-num">5</div>
-        <div class="tl-step-body"><h4>Connect it to the currency</h4><p>Per the same rate-differential mechanism the
-        Transatlantic Yield Spread lesson documents (this project's own prior research notes, Lesson 2, §2.2–2.3):
+        <div class="tl-step-body"><h4>Connect it to the currency</h4><p>Per the same rate-differential mechanism<!-- DESK:START --> the
+        Transatlantic Yield Spread lesson documents (this project's own prior research notes, Lesson 2, §2.2–2.3)<!-- DESK:END -->:
         capital flows toward the higher, or the higher-<em>expected</em>, yield. If the front end is under-pricing
         how much tightening the data justify, the trader's view is that yields here are more likely to rise than
         fall from current levels relative to a peer currency whose own Taylor gap didn't just move — which, all
@@ -482,18 +483,122 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: 2021–22, the widest gap in a generation</h2>
+  <p>
+    Section 02 mentions in passing that "behind the curve" was everywhere in the financial press in 2021–22. This
+    is that episode in full. It is the clearest modern case of a Taylor gap opening wide, staying open for a year, and
+    then closing violently.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>From "transitory" to the fastest hiking cycle in four decades</h3>
+    <p>
+      Through 2021, US inflation climbed as economies reopened and supply chains jammed. The FOMC's statements
+      described the rise as largely reflecting <strong>transitory</strong> factors. The policy rate stayed at
+      0–0.25%, and the Fed was still buying Treasuries and mortgage bonds every month. Its own guidance said asset
+      purchases would wind down before rates rose, so even once tapering began in November 2021, a hike had to
+      wait for the purchases to end. On 30 November 2021, Chair Powell told the Senate it was probably time to
+      retire the word "transitory".
+    </p>
+    <p>
+      Now plug early-2022 numbers into the rule from Section 02, using this lesson's coefficients. Core PCE
+      inflation was running above 5%. Take \(\pi = 5\%\), \(\pi^{*}=2\%\), \(r^{*}=2\%\), \(a=b=0.5\), and
+      generously set the output gap to zero, even though unemployment was below 4%:
+    </p>
+    <div class="tl-math">\[ i = 2 + 5 + 0.5(5-2) + 0.5(0) = 8.5\% \quad\text{vs. an actual rate of } 0\text{–}0.25\% \]</div>
+    <p>
+      That is an illustrative calculation with the lesson's own inputs, not an official Fed figure. Even with a much
+      lower \(r^{*}\) of 0.5%, the rule says 7%. Every reasonable version of the rule put the gap at several
+      percentage points. John Taylor was among those arguing publicly that policy sat far below what his rule
+      implied.
+    </p>
+    <p style="margin-bottom:0">
+      The Fed raised rates on 16 March 2022, by a quarter point. US CPI inflation peaked at 9.1% in June 2022. That
+      month the FOMC raised by 75 basis points, the largest single move since 1994, and three more 75s followed.
+      By July 2023 the target range was 5.25–5.50%, more than five percentage points in about sixteen months. The
+      currency side looked like the lesson's scenario at scale: EUR/USD fell below parity in July 2022 for the first
+      time in about twenty years, and the dollar index reached a twenty-year high that September.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Reopening shock</b>Demand returns into jammed supply chains; inflation climbs through 2021</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Judges it transitory; bound by its own guidance to finish bond buying before hiking</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: the Taylor gap</b>Rule-implied rate sits several points above 0–0.25%, far behind the curve</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Inflation</b>Broadens instead of fading; CPI peaks at 9.1% in June 2022</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Forced to close the gap fast: 75bp steps, 5.25–5.50% by July 2023</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The dollar reaches a 20-year high; EUR/USD below parity</div>
+  </div>
+  <p>
+    The starred link is the gap from Section 02. It was visible to anyone with a calculator for most of a year
+    before the first hike. The gap told you which way the pressure ran, not when it would be released.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>The rule reacts to today's numbers; the committee reacted to its forecast</h3>
+    <p style="margin-bottom:0">
+      The Taylor Rule assumes the bank responds mechanically, each period, to current inflation and output gaps. In
+      2021 the Fed responded to its <em>forecast</em> that inflation would fade. It was also bound by its own
+      forward guidance on sequencing, and it faced a post-pandemic output gap and \(r^{*}\) that were unusually
+      hard to estimate. None of those are in the formula. The rule was right about the direction and silent on the
+      timing, which is the "a wide gap is not a dated forecast" caveat, at full size.
+    </p>
+  </div>
+
+  <p>
+    The tempting trading claim in this lesson is <em>a wide Taylor gap means hawkish repricing is coming, so lean
+    long the currency.</em><!-- DESK:START --> This desk has not tested the Taylor gap itself. It has tested the last link of that
+    chain: whether a move in yields tells you where FX goes next.<!-- DESK:END -->
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>The Taylor gap as an FX signal has not been tested here.</strong> A fair test would need
+    real-time data vintages (what the committee actually knew on the day, per the Orphanides critique above), a rule
+    specification fixed before looking, the gap computed for both economies in a pair, a horizon of months rather
+    than days, and a comparison against the plain 2-year spread to see whether the rule adds anything. 2021–22 is a
+    single episode and proves nothing on its own.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="yields-to-fx-direction" data-evidence-date="2026-08-23">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>yields-to-fx-direction: a yield move does not tell you where the pair goes next.</strong> Forward
+    coupling is null; the relationship is real only in the same bar. The scenario's step 5, from "the front end
+    reprices" to "lean long the currency", is the step this null covers. Rates and FX move together; one does not
+    lead the other on this desk's data.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In 2021 the formula was shouting that the Fed's interest rate should be much higher, like a thermostat reading 30 degrees while the heating stayed on. The Fed thought the heat would pass by itself, so it waited. It didn't pass, and in 2022 the Fed had to turn the heating off very hard and very fast. The formula was right that a change was coming. It just couldn't say when.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The rule is a baseline plus two dials.</strong> \(i = r^{*}+\pi+a(\pi-\pi^{*})+b(y-y^{*})\) — a neutral rate, corrected for how far inflation and output sit from target/potential.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both gaps can reinforce or offset.</strong> In the worked example, a hot inflation gap and a positive output gap both add tightening (2→6%); they can just as easily pull in opposite directions.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>What moves markets is the GAP, not the level.</strong> Traders watch \(i_{\text{implied}} - i_{\text{actual}}\) — a measure of unresolved policy pressure, not the rule's raw output in isolation.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Behind the curve" vs. "ahead of the curve."</strong> Actual policy below the implied rate signals more tightening still needed (hawkish-repricing risk); above it signals cut risk.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has no Taylor-Rule calculator built yet.</strong> This lesson is the theory behind the existing yield-spread notes — a natural, currently-missing companion piece, not a shipped tool.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo has no Taylor-Rule calculator built yet.</strong> This lesson is the theory behind the existing yield-spread notes — a natural, currently-missing companion piece, not a shipped tool.</span></div><!-- DESK:END -->
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(r^{*}\) and the output gap are estimates, not observed facts.</strong> Different proxies can shift the implied rate by a full percentage point or more from the same CPI print.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A wide gap is not a dated forecast.</strong> The Fed itself publishes several competing reference rules — real deviations from any one of them can persist for years before correcting.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>2021–22: the gap was right about direction and silent on timing.</strong> It sat open for about a year before the first hike.<!-- DESK:START --> The Taylor gap as an FX signal is untested here, and the yield-move-to-FX-direction step is tested NULL (yields-to-fx-direction): the coupling is real only in the same bar.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What does a positive output gap (\(y-y^{*}\)) mean, and why does the rule respond to it?</summary>
@@ -541,8 +646,8 @@
       justify, so more tightening (or slower cuts) is likely still needed, skewing hawkish-repricing risk higher —
       typically currency-supportive as expected yields rise. Ahead of the curve: the actual rate sits above the
       implied rate — policy is already tighter than the gaps justify, skewing cut risk higher — typically a drag on
-      the currency as expected yields fall, via the same rate-differential mechanism documented in the Transatlantic
-      Yield Spread lesson.
+      the currency as expected yields fall, via the same rate-differential mechanism<!-- DESK:START --> documented in the Transatlantic
+      Yield Spread lesson<!-- DESK:END -->.
     </div>
   </details>
   <details class="tl-quiz">
@@ -641,5 +746,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

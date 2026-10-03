@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Systemic Risk &amp; Contagion Networks — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the published DebtRank node-state bookkeeping, and a 5-question self-test?<a href="systemic-risk-networks.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -251,7 +251,7 @@
       </div>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Said plainly</div>
-        <p>DebtRank and the network-contagion framing here are a financial-stability and market-structure research tool — the kind of analysis central banks and regulators run on interbank exposure data to stress-test the system. It is not, and is not presented here as, a component of any trading strategy in this repo. A repo-wide check for DebtRank, exposure-network, or contagion-modeling code found none — confirming this is still accurately described as theory, not built infrastructure.</p>
+        <p>DebtRank and the network-contagion framing here are a financial-stability and market-structure research tool — the kind of analysis central banks and regulators run on interbank exposure data to stress-test the system. It is not, and is not presented here as, a component of any trading strategy<!-- DESK:START --> in this repo<!-- DESK:END -->.<!-- DESK:START --> A repo-wide check for DebtRank, exposure-network, or contagion-modeling code found none — confirming this is still accurately described as theory, not built infrastructure.<!-- DESK:END --></p>
       </div>
     </section>
 
@@ -270,7 +270,42 @@
     </section>
 
     <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">AIG, September 2008: too interconnected to fail</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>AIG's Financial Products unit had sold credit default swaps to many large banks, protecting their top-rated slices of mortgage-backed CDOs. The contracts made AIG post collateral when those securities fell in value or when its own rating was cut. On 15 September 2008, the day Lehman filed, AIG was downgraded and the collateral demands outran what it could raise. The next day the New York Fed agreed to lend it up to <strong>$85 billion</strong>. Officials argued its failure would have hit every bank whose hedges it had written, all at once.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>House prices fall; mortgage CDOs lose value</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>AIG</b>Owes collateral to many banks as values fall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Rating agencies</b>Downgrade AIG: more collateral than it can raise</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>Network ★ this lesson</b>If AIG fails, every bank's hedge fails together</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Fed and Treasury</b>Forced to rescue it; counterparties later paid in full</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk can say<!-- DESK:END --></h2>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>"Stress at a highly connected institution warns of a wider tape"</strong> is not tested here. The desk has no exposure-network data. A fair test would pre-register a public proxy, such as CDS jumps at the most connected banks, against a volatility-matched control on next-week range. It would test the proxy, not the network.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>DebtRank runs on a fixed W matrix, and distress travels when capital is lost. AIG's edges were contingent: collateral owed jumped with every fall in value and with its own downgrade, so the weights grew as distress rose, and cash drained out before any default. The swap exposures were private, so nobody could run the cascade in advance. The rescue stopped it, so AIG's DebtRank was never observed.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -320,8 +355,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Exposure networks are contractual, not statistical — a directed, capital-weighted edge means "if j defaults, i specifically loses money," a different relationship than Lesson 2's correlation edges.</p></div>
@@ -330,6 +365,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Cascades can amplify, not just redistribute — the worked example's total settled distress (≈1.04) exceeded the size of the initiating shock (1.00).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>DebtRank is eigenvector centrality's dynamic cousin — same recursive shape, but simulating a real shock forward through time instead of describing a fixed structural score.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Real bilateral exposure data is confidential and regulator-held — this machinery is genuinely used at central banks, but only because they have reporting data nobody else can access.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>AIG, 2008: protection sold to many banks made one node's failure everyone's. Its edges were contingent (collateral jumped with each downgrade), so cash moved before default.<!-- DESK:START --> Contagion stress as a trading signal is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -425,5 +461,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

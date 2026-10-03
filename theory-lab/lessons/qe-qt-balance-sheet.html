@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QE and QT — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: the T-account stepper's action buttons wrap on a phone. */
+  .qe-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Market Plumbing / QE and QT</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Market Plumbing · Lesson 2 of 2</div>
+  <h1 class="tl-title">QE and QT: What the Fed's Balance Sheet Actually Does</h1>
+  <p class="tl-dek">"The Fed is printing money" is half right and half misleading. Quantitative easing is a swap on two balance sheets — bonds out of the market, bank reserves in — and once you can draw the T-account, every argument about what QE and QT do to yields, to funding markets and to the corridor gets much easier to follow.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~18 min read</span>
+    <span>Prereqs: The Fed's Corridor (Lesson 1), Bond Pricing &amp; YTM</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="qe-qt-balance-sheet-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>QE is a swap, not a gift.</strong> The Fed buys Treasuries or mortgage-backed securities and pays with newly created bank reserves. Its assets go up by \(X\), its liabilities (reserves) go up by the same \(X\). The private sector ends up holding fewer bonds and more reserves — not more wealth.</li>
+      <li><strong>Three channels are usually named:</strong> portfolio balance / duration extraction (fewer long bonds in private hands → lower term premium), signalling (buying bonds tells you rates will stay low for longer) and liquidity (a big buyer in a broken market).</li>
+      <li><strong>QT in this cycle has been runoff, not selling.</strong> The Fed lets bonds mature and does not reinvest the principal above a monthly cap. Reserves fall as the Treasury refinances that debt with private buyers.</li>
+      <li><strong>Reserves can go from "ample" to "scarce" without warning.</strong> September 2019 is the episode that showed where the line was: reserves had been drained by QT and other flows, and overnight repo rates jumped far above the Fed's range on a mid-month tax-and-settlement date.</li>
+      <!-- DESK:START --><li><strong>The desk has not tested QE → yields.</strong> It is an open study (Fed balance sheet against the 10-year, episode by episode, mirrored against QT). What it <em>has</em> tested is the plumbing end — and <code>funding-stress</code> came back <strong>null</strong>.</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="central-bank-policy.html">Central Bank Policy</a> lesson
+    introduces QE, QT and tapering in one card each — enough vocabulary to read
+    a headline. This lesson goes one level down, to the mechanics. Lesson 1 of
+    this sequence, <a href="fed-corridor-iorb-srf-discount-window.html">The
+    Fed's Corridor</a>, explained how the Fed sets the overnight rate with a
+    floor (interest on reserves) and a ceiling (the Standing Repo Facility).
+    That corridor only works if there are <em>enough reserves</em> in the
+    system. QE is how the Fed created most of the reserves that exist today;
+    QT is how it drains them. So QE is not a separate topic from the corridor —
+    it is the reason the corridor looks the way it does.
+  </p>
+  <p>
+    It also matters for reading the bond market. Long-dated yields — the
+    10-year that mortgages loosely track, the 30-year that pension funds care
+    about — are partly the market's expected path of policy rates and partly a
+    <em>term premium</em> for tying money up for a long time. QE is the only
+    tool the Fed has that is aimed squarely at that second piece. If you want
+    to know why a 10-year yield moved and whether the Fed had anything to do
+    with it, you need this lesson.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The Fed swaps a bond for cash that only banks can hold</h3>
+    <p>
+      Picture a pension fund holding a 10-year Treasury. The Fed buys it. The
+      pension fund now has a bank deposit instead of a bond. Its bank, in turn,
+      has a new reserve balance at the Fed. Nobody got richer — a bond turned
+      into a deposit — but two things changed. The market now holds one fewer
+      long bond, so whoever still wants long bonds has to accept a lower yield
+      to get one. And the banking system now holds more reserves, the
+      super-safe money that banks settle with each other in.
+    </p>
+    <p style="margin-bottom:0">
+      QT runs the film backwards. A bond the Fed owns matures; the Treasury
+      pays it off by selling a new bond to a private buyer; that buyer's
+      deposit and its bank's reserves shrink. One more long bond in private
+      hands, a little less in reserves. Do it slowly enough and nobody
+      notices — until the reserves run short.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Imagine a playground where kids trade marbles (bonds) and tokens (reserves). The head teacher can make new tokens. When the teacher buys marbles with brand-new tokens, there are fewer marbles to go round, so marbles get pricier — that's QE pushing bond prices up and yields down. When the teacher stops replacing marbles as they get "used up", tokens quietly disappear from the playground — that's QT. If tokens get too rare, kids suddenly can't trade with each other, and things go wrong very fast.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The mechanics, step by step</h2>
+
+  <h3>1. The T-account: what a purchase actually is</h3>
+  <p>
+    Every balance sheet balances: assets equal liabilities plus capital. When
+    the Fed buys a security, it pays by crediting the seller's bank with a
+    reserve balance — an entry it creates on its own books. Nothing has to be
+    borrowed or raised first. The Fed's assets and liabilities rise together:
+  </p>
+  <div class="tl-math">
+    \[ \Delta\,\text{Securities}_{\text{Fed}} = \Delta\,\text{Reserves} = X \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>Securities</code><span>the Fed's asset side — Treasuries and agency MBS bought</span></div>
+    <div class="tl-eq-chip c2"><code>Reserves</code><span>the Fed's liability — balances banks hold in their Fed accounts</span></div>
+    <div class="tl-eq-chip c3"><code>X</code><span>the size of the purchase, in dollars</span></div>
+  </div>
+  <p>
+    That is the entire "money printing". It is a real expansion of the
+    monetary base, but it is matched one for one by an asset the Fed now owns.
+    (The real balance sheet has other liabilities too — currency, the
+    Treasury's account, reverse repos — that also move reserves around. This
+    lesson ignores them to keep the core swap visible; they matter in
+    practice, especially for the 2019 and 2022–24 stories below.)
+  </p>
+
+  <h3>2. It matters who sold</h3>
+  <p>
+    If a <strong>bank</strong> sells, the bank swaps one asset (the Treasury)
+    for another (reserves). Its balance sheet does not grow. If a
+    <strong>non-bank</strong> sells — a pension fund, an insurer, a foreign
+    investor — the Fed pays the seller's bank, which credits the seller's
+    deposit. Now the bank's balance sheet grows on both sides (reserves up,
+    deposits up), and the seller has swapped a bond for a deposit. Most QE
+    bonds were in fact bought from non-banks through dealers, which is why QE
+    expanded both reserves <em>and</em> bank deposits. The stepper below shows
+    both cases and the QT reverse.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Four balance sheets, one purchase — press a button to apply it</div>
+    <svg id="qe-svg" viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four T-accounts — the Fed, the banking system, a pension fund and the Treasury — showing the change in each item after a QE purchase from a bank, a QE purchase from a pension fund, or a QT runoff, plus a running gauge of total bank reserves">
+      <g id="qe-boxes"></g>
+      <text x="20" y="338" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text2)">Bank reserves in the system (illustrative running total, $bn)</text>
+      <rect x="20" y="346" width="150" height="16" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+      <rect x="170" y="346" width="100" height="16" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+      <rect x="270" y="346" width="350" height="16" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+      <text x="95" y="378" text-anchor="middle" font-size="9.5" font-family="'DM Sans',sans-serif" fill="var(--red)">scarce</text>
+      <text x="220" y="378" text-anchor="middle" font-size="9.5" font-family="'DM Sans',sans-serif" fill="var(--amber)">near the edge</text>
+      <text x="445" y="378" text-anchor="middle" font-size="9.5" font-family="'DM Sans',sans-serif" fill="var(--green)">ample</text>
+      <text x="20" y="394" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="620" y="394" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">6,000</text>
+      <line id="qe-gauge" x1="0" y1="340" x2="0" y2="368" style="stroke:var(--text);stroke-width:3"/>
+    </svg>
+    <div class="qe-actions">
+      <button type="button" class="tl-btn" id="qe-bank">QE: Fed buys from a bank</button>
+      <button type="button" class="tl-btn" id="qe-pension">QE: Fed buys from a pension fund</button>
+      <button type="button" class="tl-btn" id="qe-runoff">QT: a Fed bond matures, not replaced</button>
+      <button type="button" class="tl-btn" id="qe-reset">Reset</button>
+    </div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Size of each operation, \(X\)</span><span class="tl-live" id="qe-x-val">$250bn</span></div>
+        <input type="range" id="qe-x" min="25" max="500" step="25" value="250">
+        <div class="tl-hint">Each button applies one operation of this size. The four boxes show the change from the LAST operation; the gauge keeps a running total.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="qe-readout">Reserves <b id="qe-res">3,000</b> $bn · Fed securities <b id="qe-sec">5,000</b> $bn · Treasuries held by the private sector <b id="qe-priv">20,000</b> $bn</div>
+    <div class="tl-chart-caption">Starting totals and the gauge's zones are <strong>illustrative</strong>, not real data — nobody knows the true "scarce" line in advance, and it moves over time (September 2019 is how the Fed found out where it was). The accounting is exact: in every box, the change in assets equals the change in liabilities, and the Fed's securities and the system's reserves always move together. Other liabilities (currency, the Treasury's account, reverse repo) are left out on purpose.</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Press "QE" a few times and watch the reserve bar grow; press "QT" and watch it shrink. Every box always adds up — whatever goes in on one side goes in on the other. Nothing magic appears: a bond just turns into a token.</p>
+  </div>
+
+  <h3>3. Why it moves yields: three channels</h3>
+  <p>
+    A long yield can be split, roughly, into what the market expects
+    short-term policy rates to average over the bond's life, plus a term
+    premium for bearing the risk of holding a long bond instead of rolling
+    short ones:
+  </p>
+  <div class="tl-math">
+    \[ y_n \;\approx\; \underbrace{\frac{1}{n}\sum_{i=0}^{n-1} \mathbb{E}_t\!\left[r_{t+i}\right]}_{\text{expected policy path}} \;+\; \underbrace{TP_n}_{\text{term premium}} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">y<sub>n</sub></div>
+      <div class="tl-fp-name">The n-year yield</div>
+      <div class="tl-fp-desc">What you see on the screen — the 10-year, say</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">(1/n)ΣE[r]</div>
+      <div class="tl-fp-name">Expected policy path</div>
+      <div class="tl-fp-desc">The average short rate the market expects over the n years. Signalling works here.</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">TP<sub>n</sub></div>
+      <div class="tl-fp-name">Term premium</div>
+      <div class="tl-fp-desc">Extra yield for bearing duration risk. Portfolio balance works here.</div>
+    </div>
+  </div>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⚖️</div>
+      <h4>Portfolio balance / duration extraction</h4>
+      <p>The Fed removes long bonds — and with them, interest-rate risk ("duration") — from private portfolios. Investors who still want that kind of asset bid up what is left, pushing down the term premium. Some get pushed into corporate bonds, mortgages or equities instead.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📣</div>
+      <h4>Signalling</h4>
+      <p>A central bank buying trillions of long bonds is unlikely to raise rates soon. QE makes the "low for long" promise more believable, lowering the expected-path piece. This is why <em>announcements</em> can move yields before a single bond is bought.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🚰</div>
+      <h4>Liquidity / market functioning</h4>
+      <p>When a market is broken — sellers and no buyers, as in March 2020 — a buyer of last resort restores trading. This channel is about stopping a fire sale, not about the level of yields.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🏦</div>
+      <h4>Reserves themselves</h4>
+      <p>QE leaves banks holding reserves they cannot lend out to the public or move off the Fed's books — only swap between themselves. The widely taught "reserves get multiplied into loans" story is a poor description of a system with trillions in excess reserves.</p>
+    </div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(X\)</td><td>The size of one purchase or runoff, in dollars.</td></tr>
+    <tr><td>\(y_n\)</td><td>The yield on an \(n\)-year bond.</td></tr>
+    <tr><td>\(r_{t+i}\)</td><td>The short-term policy rate in year \(t+i\).</td></tr>
+    <tr><td>\(\mathbb{E}_t[\cdot]\)</td><td>The market's expectation, as of today \(t\).</td></tr>
+    <tr><td>\(TP_n\)</td><td>The \(n\)-year term premium — not directly observed; estimated by models, and estimates disagree.</td></tr>
+    <tr><td>\(D_{\text{mod}}\)</td><td>Modified duration — the percentage price change of a bond for a 1-point (100bp) change in its yield.</td></tr>
+    <tr><td>DV01</td><td>Dollar value of one basis point — how many dollars a holding gains or loses when its yield moves 0.01%.</td></tr>
+  </table></div>
+
+  <h3>4. QT: runoff with caps, not sales</h3>
+  <p>
+    In both of its QT programmes (2017–19 and from 2022), the Fed did not sell
+    bonds into the market. It let them mature and stopped reinvesting the
+    principal — up to a monthly cap. Principal above the cap was reinvested.
+    When a Fed-held Treasury matures, the Treasury still owes that money, so
+    it borrows it from the public by issuing a new bond; the buyer pays out of
+    a bank deposit, and reserves fall by the same amount. Selling would do the
+    same accounting faster and with a visible price impact; runoff does it
+    quietly and on a schedule everyone knows in advance. That is deliberate:
+    the Fed has described QT as meant to run quietly in the background while
+    the policy rate does the active work.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>QT is like not refilling a cookie jar as cookies get eaten, instead of tipping cookies out. You only let a certain number go each month, so the jar empties slowly and nobody panics.</p>
+  </div>
+
+  <h3>5. Ample versus scarce — and the link back to the corridor</h3>
+  <p>
+    Before 2008 the Fed ran a <em>scarce</em>-reserves system: banks held only
+    a thin layer of reserves, and the Fed nudged the overnight rate by adding
+    or draining small amounts every day. QE flooded the system, so the Fed
+    switched to an <em>ample</em>-reserves system: so many reserves that the
+    overnight rate sits on the floor the Fed pays on them (interest on
+    reserve balances, IORB — see <a href="fed-corridor-iorb-srf-discount-window.html">Lesson 1</a>).
+    In an ample system, small changes in reserves barely move rates. The
+    problem is that "ample" has no sign on it. Drain reserves with QT, and at
+    some unknown point the curve relating reserves to the overnight rate turns
+    steep — a little less cash suddenly means a much higher repo rate.
+  </p>
+  <div class="tl-solid red">
+    <strong>The trap:</strong> the danger point for QT is not visible from the
+    total amount of reserves. It depends on how reserves are spread across
+    banks, how much each bank wants to hold for its own rules, and on
+    calendar days that drain cash all at once. The Fed has only ever found the
+    line by crossing it.
+  </div>
+
+  <div class="tl-chart">
+    <div class="tl-chart-label">The Fed's balance sheet, 2007 onward — shape only, phases annotated</div>
+    <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schematic of the Federal Reserve's total assets: flat below one trillion before 2008, stepping up through QE1, QE2 and QE3 to about four and a half trillion, drifting down during QT1 to 2019, jumping in 2020 to about nine trillion by 2022, then falling during QT2">
+      <line x1="50" y1="220" x2="620" y2="220" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="50" y1="220" x2="50" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="18" y="120" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 18 120)">Total assets (shape)</text>
+      <g font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)" text-anchor="middle">
+        <text x="65" y="234">2007</text><text x="155" y="234">2010</text><text x="245" y="234">2013</text><text x="335" y="234">2016</text><text x="425" y="234">2019</text><text x="515" y="234">2022</text><text x="605" y="234">2025</text>
+      </g>
+      <!-- schematic path: x = 65 + (year-2007)*30 ; y = 220 - assets_tn*20 -->
+      <path d="M50,202 L95,202 L110,176 L125,174 L170,166 L185,156 L230,154 L245,134 L290,130 L335,130 L365,132 L380,136 L425,145 L440,138 L455,80 L470,72 L500,44 L515,42 L530,48 L560,66 L590,78 L615,82" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>
+      <g font-size="10" font-family="'DM Sans',sans-serif">
+        <text x="100" y="196" fill="var(--green)">QE1</text>
+        <text x="168" y="158" fill="var(--green)">QE2</text>
+        <text x="236" y="126" fill="var(--green)">QE3</text>
+        <text x="390" y="126" fill="var(--red)">QT1</text>
+        <text x="428" y="160" fill="var(--amber)">Sept 2019</text>
+        <text x="420" y="64" fill="var(--green)">2020</text>
+        <text x="548" y="56" fill="var(--red)">QT2</text>
+      </g>
+      <g font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text2)">
+        <text x="56" y="214">≈$0.9tn</text>
+        <text x="280" y="120">≈$4.5tn</text>
+        <text x="500" y="34">≈$9tn</text>
+      </g>
+    </svg>
+    <div class="tl-chart-caption">A schematic, drawn by hand to show the shape — not a plot of the data. The three labelled levels (under $1 trillion before the crisis, roughly $4.5 trillion after QE3, close to $9 trillion at the 2022 peak) are the round figures this lesson is confident of; everything between them is shape only.<!-- DESK:START --> The desk has the weekly series and can draw the real thing.<!-- DESK:END --></div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>How much interest-rate risk does a $100bn purchase take out of the market?</h3>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The bond</h4>
+          <p>A 10-year Treasury trading at par with a 4% coupon, paid twice a year. For a par bond the modified duration has a closed form (see <a href="duration-convexity.html">Duration &amp; Convexity</a>):</p>
+          <div class="tl-math">\[ D_{\text{mod}} = \frac{1}{y}\left(1-\frac{1}{(1+y/2)^{2n}}\right) = \frac{1}{0.04}\left(1-\frac{1}{1.02^{20}}\right) = 25(1-0.6730) \approx 8.18 \]</div>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>The risk per basis point</h4>
+          <p>DV01 = holding × \(D_{\text{mod}}\) × 0.0001 = $100bn × 8.18 × 0.0001 ≈ <strong>$82 million per basis point</strong>.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>What it means</h4>
+          <p style="margin-bottom:0">After the purchase, private investors as a group carry about $82m less exposure to every 1bp move in long yields. That exposure now sits on the Fed's books, and the investors hold reserves-backed deposits, which carry essentially none. Repeat it across trillions and the private sector is holding far less duration than it otherwise would — which is the whole of the portfolio-balance argument. Swap the bond for a 2-year note (duration under 2) and the same $100bn takes out a fraction as much risk, which is why the Fed's later programmes leaned toward longer maturities when the goal was the long end.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>November 2008 – March 2009: QE1</h3>
+    <p>With the policy rate on its way to zero after Lehman, the Fed announced in late November 2008 that it would buy up to $100 billion of debt issued by Fannie Mae and Freddie Mac and up to $500 billion of agency mortgage-backed securities — the first large-scale asset purchases of the crisis, aimed at the mortgage market. In March 2009 it expanded the programme and added up to $300 billion of longer-term Treasuries. The 10-year yield fell by about half a percentage point on the day of the March announcement — the kind of announcement-day move that later event studies were built around.</p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>May–September 2013: the taper tantrum</h3>
+    <p>In May 2013, Chairman Bernanke told Congress that the Fed could begin to slow the pace of its QE3 purchases within the next few meetings. Nothing had been sold; nothing had even stopped. The 10-year yield nonetheless climbed from around 1.6% in early May to near 3% by September, and emerging-market currencies and bonds sold off hard. The actual taper did not begin until January 2014. The episode is the cleanest real-world case of the <strong>signalling</strong> channel running in reverse: markets repriced the expected path of policy on the hint that purchases would slow.</p>
+  </div>
+
+  <div class="tl-story" id="story-3">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>September 2019: QT finds the floor</h3>
+    <p>QT1 began in October 2017, shrinking the balance sheet with caps that started at $10 billion a month and stepped up. The Fed ended the runoff in 2019. In mid-September 2019 — on a day when corporate tax payments and Treasury coupon settlement both pulled cash out of the banking system — overnight repo rates spiked far above the Fed's target range, with SOFR printing above 5% against a range of 2.00–2.25%. The Fed ran its first overnight repo operations in more than a decade and, in October, began buying Treasury bills to rebuild reserves, stressing that this was not QE. Reserves had crossed from "ample" toward "scarce", and nobody had seen the line coming.</p>
+  </div>
+
+  <div class="tl-story" id="story-4">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2020: purchases "in the amounts needed"</h3>
+    <p>In the March 2020 dash for cash, even Treasuries — the safest, most liquid market in the world — stopped trading normally as investors sold whatever they could. On 15 March the Fed announced at least $500 billion of Treasury and $200 billion of MBS purchases; on 23 March it dropped the limit and said it would buy in the amounts needed to support smooth market functioning. This was the <strong>liquidity</strong> channel in its purest form. The balance sheet went from a little over $4 trillion to past $7 trillion within about three months, and kept growing to close to $9 trillion by 2022.</p>
+  </div>
+
+  <div class="tl-story" id="story-5">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>June 2022: QT2 starts</h3>
+    <p>With inflation high, the Fed finished tapering its purchases in March 2022, announced its runoff plan in May and began QT on 1 June: caps of $30 billion a month in Treasuries and $17.5 billion in MBS, doubling to $60 billion and $35 billion after three months. It slowed the Treasury cap in June 2024 and again in 2025 — saying the slower pace was meant to approach the ample–scarce line gradually and reduce the risk of money-market stress.</p>
+  </div>
+
+  <p>Put together, the mechanism the stories share looks like this:</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Fed</b>Buys long bonds, pays with new reserves</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Sellers</b>Forced to swap duration for deposits; must re-buy risk elsewhere or accept less yield</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Bond market</b>Fewer long bonds in private hands → term premium compressed</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Banks</b>Hold far more reserves → overnight rates sit on the IORB floor</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>QT reverses it</b>Reserves drain until, at an unknown point, repo spikes (2019)</div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Reading a balance-sheet headline</h3>
+    <p>
+      An FOMC statement announces that the monthly cap on Treasury runoff will
+      be cut. A trader asks three questions in order. <strong>Signal or
+      plumbing?</strong> A slower runoff has been framed by the Fed as
+      plumbing — avoiding a 2019 — not as an easing of policy, so the expected
+      rate path should barely move. <strong>Duration?</strong> A lower cap means
+      the Treasury refinances less of the Fed's maturing debt with the public,
+      so slightly less duration lands in private hands each month; any effect
+      should show up, if at all, in the term premium of long maturities.
+      <strong>Funding?</strong> Reserves drain more slowly, so month-end and
+      mid-month repo pressure should be a little less acute.
+    </p>
+    <p style="margin-bottom:0">
+      Notice what is missing: a confident directional call on the 10-year. The
+      honest version of this read is about <em>which channel</em> the news
+      touches, not how many basis points it is worth<!-- DESK:START --> — because, as Section 05
+      shows, this desk has not measured that<!-- DESK:END -->.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">📊</div>
+      <h4>Watching the weekly balance sheet</h4>
+      <p>The Fed publishes its balance sheet every week (the H.4.1 release). Desks watch total assets, reserve balances, the Treasury's cash account and reverse-repo usage together, because reserves are what is left after the other liabilities move.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🧭</div>
+      <h4>Term-premium models</h4>
+      <p>Since the term premium is not observed, desks lean on published model estimates (for example the New York Fed's Adrian-Crump-Moench series) to judge whether a long-end move is "expected path" or "premium". The models disagree with each other, so treat them as a lens, not a measurement.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📅</div>
+      <h4>Funding-calendar awareness</h4>
+      <p>Mid-month tax and settlement dates and month- and quarter-ends drain reserves in lumps. In a QT environment those are the days to expect repo to print high — as calendar, not as crisis.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🗣️</div>
+      <h4>Parsing the language</h4>
+      <p>"Not QE" (the 2019 bill purchases) and "smooth market functioning" (2020) each tell you which channel the Fed means to use. The words carry the signal the purchases themselves might not.</p>
+    </div>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What the desk found</h2>
+  <p>
+    The central folk claim here — <em>"QE pushes long yields down and QT pushes
+    them up"</em> — has <strong>not been tested on this desk</strong>.
+  </p>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>QE → yields, mirrored against QT:</strong> both series are on hand (the Fed's weekly total assets and the daily 10-year yield), and the study is an open item: episode-level, each purchase or runoff phase as one unit, with QT run as the mirror. Until it runs, this lesson's yield channels are explained, not measured. No number from this desk supports or rejects them.</span>
+  </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
+  <p>
+    What the desk <em>has</em> tested is the other end of the chain — the
+    plumbing that QT drains. Both results say the same thing: what looks like
+    stress in the funding market is mostly the calendar.
+  </p>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>funding-stress — tested, nothing found.</strong> 2,123 SOFR sessions, 2018-04 to 2026-09. Headline SOFR ≥ 3bp over the floor away from month-end left just 15 episodes — untestable against a pre-registered floor of 20 — and 12 of those 15 fall on the 14th–18th of a month: mid-month tax and settlement dates, the same calendar as September 2019. Standing Repo Facility drawn: 21 episodes, and it came back <em>against</em> the written expectation — SPX500 next-5-session range −0.561 ATR [−0.984, −0.181] versus control, i.e. <strong>calmer</strong>, not wider. EUR/USD −0.483 [−1.150, +0.119] and USD/JPY +0.417 [−0.066, +0.963] are null. Direction null on all three. The SRF is drawn on 667 of 2,123 sessions (31%), so "the backstop was used" is routine plumbing, not a stress marker.</span>
+  </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
+  <div class="tl-verdict context" data-evidence="repo-stress-range" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>repo-stress-range:</strong> SOFR's 99th percentile 10bp or more above the floor, 26 episodes 2018–2026 — next-five-session range versus matched control SPX500 +0.14 ATR [−0.54, +0.98], EUR/USD +0.13 [−0.37, +0.65], USD/JPY +0.08 [−0.76, +0.93]. The setup fires on a quarter of all sessions since 2024: month-end plumbing, not stress.</span>
+  </div>
+  <!-- DESK:END -->
+  <p>
+    <strong>The academic evidence is real but debated.</strong> Event studies
+    of the 2008–09 announcements — notably Gagnon, Raskin, Remache and Sack
+    (2011) — found sizeable falls in long yields and term premia on
+    announcement days. Krishnamurthy and Vissing-Jorgensen (2011) argued the
+    effects ran through several channels at once (signalling among them) and
+    depended on <em>which</em> assets were bought, which complicates a pure
+    duration story. Whether what matters is the <em>stock</em> the Fed holds
+    or the <em>flow</em> of its purchases is still contested (D'Amico and King,
+    2013, is a standard reference on that distinction), and the effects of
+    later rounds are generally found to be smaller than QE1's. Announcement-day
+    moves are also not the same as lasting moves.<!-- DESK:START --> None of this is a desk
+    result.<!-- DESK:END -->
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>Two series catalogued, one study open, two plumbing results banked</h3>
+    <p style="margin-bottom:0">
+      <code>WALCL</code> (Fed total assets) and <code>DGS10</code> are both in
+      the data catalogue; the QE → yields study is open item 3 in
+      <code>MD files/SESSION_2026-10-02_TAKEAWAY.md</code> and has not been
+      run. The plumbing results above are the <code>funding-stress</code>
+      (null) and <code>repo-stress-range</code> (context) entries in
+      <code>js/deskEvidence.js</code>. A related open item,
+      <code>discount-window-stress</code>, would add the 2008 and SVB crisis
+      weeks that the SOFR sample lacks.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where QE and QT get misread</h3>
+    <p><strong>"QE is printing money that floods into the economy."</strong> It creates reserves, which stay inside the banking system. Deposits rise only when non-banks sell, and those deposits replace a bond they already owned. Any effect on spending runs through prices and yields, not through a pile of new cash.</p>
+    <p><strong>"QT means the Fed is dumping bonds."</strong> In this cycle it has been capped runoff. The Treasury, not the Fed, sells the replacement bonds to the market.</p>
+    <p><strong>"QE always lowers yields."</strong> During QE2 and QE3, long yields at times <em>rose</em> — as markets priced a stronger recovery. A yield is the sum of the expected path and the term premium; QE can push one down while the outlook pushes the other up.</p>
+    <!-- DESK:START --><p style="margin-bottom:0"><strong>"SOFR above the floor means stress."</strong> On this desk it has meant the calendar — month-end and mid-month — far more often than stress. See the verdicts above.</p><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>QE is a balance-sheet swap.</strong> Fed securities and bank reserves rise by the same \(X\); a non-bank seller also swaps a bond for a deposit. Nobody's net wealth goes up by \(X\).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Three channels: portfolio balance (term premium), signalling (expected path), liquidity (market functioning).</strong> Different episodes ran through different channels — 2013 was signalling, March 2020 was liquidity.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>QT is capped runoff, and it drains reserves.</strong> The danger point between ample and scarce is invisible in advance — September 2019 is where it showed itself.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><!-- DESK:START --><strong>QE → yields is untested here.</strong> The study is open (balance sheet vs the 10-year, episode-level, mirrored against QT). <!-- DESK:END -->The academic event-study evidence is real but debated, especially stock versus flow.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>funding-stress is NULL.</strong> SOFR over the floor away from month-end was 15 episodes, 12 of them on the 14th–18th — the calendar, untestable. A drawn SRF was followed by a <em>calmer</em> SPX500 (−0.561 ATR [−0.984, −0.181]) and is drawn on 31% of sessions. Do not read either as a stress signal.</span></div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. The Fed buys $200bn of Treasuries from a pension fund. Write the change on the Fed's, the banks' and the pension fund's balance sheets.</summary>
+    <div class="tl-answer">Fed: assets +$200bn Treasuries, liabilities +$200bn reserves. Banks: assets +$200bn reserves, liabilities +$200bn deposits (the pension fund's). Pension fund: assets −$200bn Treasuries, +$200bn deposits. Every sheet balances; the pension fund's wealth is unchanged — it swapped a bond for a deposit.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Why can a QE announcement move yields before any bonds are bought?</summary>
+    <div class="tl-answer">Through signalling: a large purchase commitment makes it more credible that policy rates will stay low for longer, lowering the expected-path part of the long yield immediately. Markets also price the future portfolio-balance effect as soon as the purchases are known. The taper tantrum is the reverse case — a hint of slower purchases lifted the 10-year by over a point before anything changed.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. How does QT reduce reserves if the Fed never sells a bond?</summary>
+    <div class="tl-answer">A Fed-held bond matures and the Fed does not reinvest. The Treasury repays the Fed and refinances by selling a new bond to a private buyer, who pays from a bank deposit; the buyer's bank loses that amount in reserves. Net: Fed securities −X, reserves −X, private Treasuries +X.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. What happened in September 2019, and why is it the link between QE/QT and the corridor?</summary>
+    <div class="tl-answer">After QT1 and other drains, reserves had fallen closer to scarce than anyone realised. On a mid-month tax and settlement date cash left the system all at once and overnight repo rates spiked far above the Fed's range (SOFR above 5% against 2.00–2.25%). The floor system only holds rates down if reserves are ample; QT had eroded that, and the Fed responded with repo operations and bill purchases. It is the episode that later motivated a standing repo facility as the corridor's ceiling.</div>
+  </details>
+  <!-- DESK:START -->
+  <details class="tl-quiz">
+    <summary>Q5. A colleague says: "SOFR printed 4bp over the floor mid-month and the SRF was drawn — risk-off coming." What does the desk's evidence say?</summary>
+    <div class="tl-answer">funding-stress is null. Away from month-end, SOFR over the floor clusters on the 14th–18th (12 of 15 episodes) — tax and settlement dates, not stress — and was too rare to test. The SRF is drawn on 31% of sessions, and SPX500 ranges were calmer after a draw, not wider. Direction was null throughout. The honest reading is "calendar plumbing" unless something else is going on.</div>
+  </details>
+  <!-- DESK:END -->
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Joseph Gagnon, Matthew Raskin, Julie Remache and Brian Sack (2011), "The Financial Market Effects of the Federal Reserve's Large-Scale Asset Purchases", <em>International Journal of Central Banking</em> — the standard event study of QE1 announcements.</li>
+    <li>Arvind Krishnamurthy and Annette Vissing-Jorgensen (2011), "The Effects of Quantitative Easing on Interest Rates: Channels and Implications for Policy", <em>Brookings Papers on Economic Activity</em> — separates the channels and argues effects depend on which assets were bought.</li>
+    <li>Stefania D'Amico and Thomas King (2013), "Flow and Stock Effects of Large-Scale Treasury Purchases", <em>Journal of Financial Economics</em> — the stock-versus-flow question.</li>
+    <li>Tobias Adrian, Richard Crump and Emanuel Moench (2013), "Pricing the Term Structure with Linear Regressions", <em>Journal of Financial Economics</em> — the term-premium model behind the New York Fed's published estimates.</li>
+    <li><a href="fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor</a> — Lesson 1 of this sequence: the floor and ceiling that ample reserves make work.</li>
+    <li><a href="central-bank-policy.html">Central Bank Policy</a> — the short QE / QT / taper vocabulary this lesson expands.</li>
+    <li><a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a> — the repo market QT drains.</li>
+    <li><a href="yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a> — the expected-path-plus-term-premium split, applied to the shape of the curve.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="fed-corridor-iorb-srf-discount-window.html">← The Fed's Corridor (Lesson 1)</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="central-bank-policy.html">Central Bank Policy →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // T-account stepper. Each operation is a list of (item, sign) changes per
+  // balance sheet; the size slider scales them. Running totals start from
+  // illustrative values and only ever move by the exact accounting.
+  var NS = 'http://www.w3.org/2000/svg';
+  var BOXES = [
+    { key: 'fed',     title: 'The Fed',                      x: 10,  y: 6 },
+    { key: 'bank',    title: 'Banking system',               x: 325, y: 6 },
+    { key: 'pension', title: 'Pension fund (non-bank)',      x: 10,  y: 166 },
+    { key: 'tsy',     title: 'US Treasury',                  x: 325, y: 166 }
+  ];
+  var OPS = {
+    bank: {
+      label: 'QE — Fed buys from a bank',
+      fed:     { A: [['Treasuries', 1]], L: [['Reserves', 1]] },
+      bank:    { A: [['Treasuries', -1], ['Reserves', 1]], L: [] },
+      pension: { A: [], L: [] },
+      tsy:     { A: [], L: [] },
+      dRes: 1, dSec: 1, dPriv: -1
+    },
+    pension: {
+      label: 'QE — Fed buys from a pension fund',
+      fed:     { A: [['Treasuries', 1]], L: [['Reserves', 1]] },
+      bank:    { A: [['Reserves', 1]], L: [['Deposits', 1]] },
+      pension: { A: [['Treasuries', -1], ['Deposits', 1]], L: [] },
+      tsy:     { A: [], L: [] },
+      dRes: 1, dSec: 1, dPriv: -1
+    },
+    runoff: {
+      label: 'QT — Fed bond matures; Treasury refinances with the pension fund',
+      fed:     { A: [['Treasuries', -1]], L: [['Reserves', -1]] },
+      bank:    { A: [['Reserves', -1]], L: [['Deposits', -1]] },
+      pension: { A: [['New Treasuries', 1], ['Deposits', -1]], L: [] },
+      tsy:     { A: [], L: [['Debt held by Fed', -1], ['Debt held by public', 1]] },
+      dRes: -1, dSec: -1, dPriv: 1
+    }
+  };
+  var START = { res: 3000, sec: 5000, priv: 20000 };
+  var state = { res: START.res, sec: START.sec, priv: START.priv, last: null };
+
+  var g = document.getElementById('qe-boxes');
+  var slider = document.getElementById('qe-x');
+  if (!g || !slider) return;
+  var xVal = document.getElementById('qe-x-val');
+  var gauge = document.getElementById('qe-gauge');
+  var resOut = document.getElementById('qe-res');
+  var secOut = document.getElementById('qe-sec');
+  var privOut = document.getElementById('qe-priv');
+
+  function el(tag, attrs, text){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function fmt(n){ return Math.round(n).toLocaleString('en-US'); }
+  function signed(n){ return (n > 0 ? '+' : n < 0 ? '−' : '') + '$' + fmt(Math.abs(n)) + 'bn'; }
+  function colour(n){ return n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--text3)'; }
+
+  function drawBox(b, side, X){
+    var W = 305, H = 150;
+    g.appendChild(el('rect', { x: b.x, y: b.y, width: W, height: H, rx: 8, style: 'fill:var(--s2);stroke:var(--border2)' }));
+    g.appendChild(el('text', { x: b.x + 10, y: b.y + 18, 'font-size': 12, 'font-weight': 600, 'font-family': "'DM Sans',sans-serif", fill: 'var(--text)' }, b.title));
+    g.appendChild(el('line', { x1: b.x + 8, y1: b.y + 26, x2: b.x + W - 8, y2: b.y + 26, style: 'stroke:var(--border2)' }));
+    g.appendChild(el('line', { x1: b.x + W / 2, y1: b.y + 26, x2: b.x + W / 2, y2: b.y + H - 26, style: 'stroke:var(--border2)' }));
+    g.appendChild(el('text', { x: b.x + 10, y: b.y + 40, 'font-size': 9.5, 'font-family': "'DM Sans',sans-serif", fill: 'var(--text3)' }, 'ASSETS'));
+    g.appendChild(el('text', { x: b.x + W / 2 + 8, y: b.y + 40, 'font-size': 9.5, 'font-family': "'DM Sans',sans-serif", fill: 'var(--text3)' }, 'LIABILITIES'));
+    var sumA = 0, sumL = 0;
+    if (!side) {
+      g.appendChild(el('text', { x: b.x + W / 2, y: b.y + 80, 'text-anchor': 'middle', 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif", fill: 'var(--text3)' }, 'press a button to apply an operation'));
+      return;
+    }
+    function rows(list, x0){
+      var s = 0;
+      list.forEach(function(item, i){
+        var v = item[1] * X; s += v;
+        var y = b.y + 58 + i * 30;
+        g.appendChild(el('text', { x: x0, y: y, 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif", fill: 'var(--text2)' }, item[0]));
+        g.appendChild(el('text', { x: x0, y: y + 14, 'font-size': 11.5, 'font-weight': 600, 'font-family': "'DM Mono',monospace", fill: colour(v) }, signed(v)));
+      });
+      if (!list.length) g.appendChild(el('text', { x: x0, y: b.y + 58, 'font-size': 10.5, 'font-family': "'DM Sans',sans-serif", fill: 'var(--text3)' }, 'no change'));
+      return s;
+    }
+    sumA = rows(side.A, b.x + 10);
+    sumL = rows(side.L, b.x + W / 2 + 8);
+    var ok = Math.abs(sumA - sumL) < 1e-9;
+    g.appendChild(el('text', { x: b.x + 10, y: b.y + H - 9, 'font-size': 10, 'font-family': "'DM Mono',monospace", fill: ok ? 'var(--green)' : 'var(--red)' },
+      'ΔA ' + signed(sumA) + '  =  ΔL ' + signed(sumL) + (ok ? '  ✓' : '  ✗')));
+  }
+
+  function render(){
+    var X = parseInt(slider.value, 10);
+    xVal.textContent = '$' + X + 'bn';
+    while (g.firstChild) g.removeChild(g.firstChild);
+    var op = state.last ? OPS[state.last] : null;
+    var X0 = state.lastX || X;
+    BOXES.forEach(function(b){ drawBox(b, op ? op[b.key] : null, X0); });
+    resOut.textContent = fmt(state.res);
+    secOut.textContent = fmt(state.sec);
+    privOut.textContent = fmt(state.priv);
+    var gx = 20 + Math.max(0, Math.min(6000, state.res)) / 6000 * 600;
+    gauge.setAttribute('x1', gx.toFixed(1));
+    gauge.setAttribute('x2', gx.toFixed(1));
+  }
+
+  function apply(key){
+    var X = parseInt(slider.value, 10);
+    var op = OPS[key];
+    // QT cannot run off more than the Fed holds, and reserves cannot go negative.
+    if (op.dSec < 0 && (state.sec < X || state.res < X)) return;
+    state.res += op.dRes * X;
+    state.sec += op.dSec * X;
+    state.priv += op.dPriv * X;
+    state.last = key; state.lastX = X;
+    render();
+  }
+
+  document.getElementById('qe-bank').addEventListener('click', function(){ apply('bank'); });
+  document.getElementById('qe-pension').addEventListener('click', function(){ apply('pension'); });
+  document.getElementById('qe-runoff').addEventListener('click', function(){ apply('runoff'); });
+  document.getElementById('qe-reset').addEventListener('click', function(){
+    state = { res: START.res, sec: START.sec, priv: START.priv, last: null };
+    render();
+  });
+  slider.addEventListener('input', function(){ xVal.textContent = '$' + slider.value + 'bn'; });
+  render();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

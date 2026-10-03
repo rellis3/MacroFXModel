@@ -361,6 +361,128 @@ Add `.tl-chart.interactive` plus a `.tl-controls`/`.tl-control` block (see
 `primer-stats-normal.html`'s z-score slider) if the chart recomputes live via
 a `<script>` — real math (e.g. the erf-based normal CDF), no fake numbers.
 
+### 5.16 Story layer — `.tl-chain`, `.tl-verdict`, `.tl-story`
+
+For lessons that bring theory to life: a real episode, the causal chain it ran
+through, and what this desk found when it tested the claim.
+
+```html
+<div class="tl-chain">
+  <div class="tl-chain-link shock"><b>Shock</b>Bond volatility jumps</div>
+  <div class="tl-chain-arrow">→</div>
+  <div class="tl-chain-link"><b>Dealers</b>Raise haircuts, shrink inventory</div>
+  <div class="tl-chain-arrow">→</div>
+  <div class="tl-chain-link end"><b>Outcome</b>Liquidity thins, vol rises further</div>
+</div>
+
+<div class="tl-verdict null">
+  <span class="tl-verdict-tag">Null</span>
+  <span><strong>Tested here:</strong> what the desk found, with n and the effect.</span>
+</div>
+
+<div class="tl-story">
+  <div class="tl-story-label">It actually happened</div>
+  <h3>September 2019: the repo spike</h3>
+  <p>...</p>
+</div>
+```
+
+Mark the one link that is the lesson's own concept with `.concept` (purple, 2px) and a
+"★ This lesson · …" label: `<div class="tl-chain-link concept"><b>★ This lesson · VaR</b>…</div>`
+(slides: `.sl-chain-link.concept`). No inline styles on chain links.
+
+**Framing (non-negotiable).** A verdict is about *this desk's test of a trading
+claim*, never about the theory the lesson teaches. Tag text says what was tested:
+"Desk test: held up", "Desk test: nothing found", "Desk data: base rate",
+"Desk test: too small to tell", "Not tested here". Every "nothing found" / "too small"
+box carries the scope line (added by `verdicts.js`): one desk's test, on its own data,
+instruments and period; not a verdict on the theory; the test itself may be what is off.
+Write takeaways the same way ("the desk's test found nothing"), never "the theory is wrong".
+
+`.tl-verdict` variants match `js/deskEvidence.js`: `validated` (green), `null`
+(red), `context` (blue), `underpowered` / `untested` (amber). Quote the ledger
+entry's own numbers; never round a null up. Slide decks use `.sl-chain` /
+`.sl-chain-link` / `.sl-stamp` / `.sl-stamp-tag` from `deck.css`, same variants.
+
+**Live verdicts (required whenever the ledger has an entry).** Tag the box with
+the ledger id and the ledger entry's date at the time of writing, and load the
+filler script before `</body>`:
+
+```html
+<div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+  <span class="tl-verdict-tag">Null</span><span>authored text</span></div>
+...
+<script src="../assets/verdicts.js" defer></script>
+```
+
+On the served site the script fetches `/theory-lab/desk-verdicts.json?ids=…`
+(only the ids asked for, only verdict/date/claim/result) and sets the tag from
+the ledger's *current* verdict, adds a collapsed "What the desk found", and
+shows an amber "re-tested since this lesson was written" note when the ledger
+entry is newer than `data-evidence-date` or the verdict changed. Offline it
+leaves the authored box untouched. `untested` boxes carry no `data-evidence`.
+`node js/lessonEvidence.test.mjs` checks every tag names a real ledger id,
+carries a date, and that its page loads the script; it also lists boxes written
+against an older entry so the prose can be refreshed.
+
+### 5.17 How it reached trading — `.tl-origin` + `.tl-role`
+
+For maths/ML lessons. Trading-first: who brought the idea into markets, when,
+and what traders could not do before it; then its job in the analysis. At most
+one clause on a non-finance origin, and only when it genuinely helps.
+
+```html
+<div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>A hedge ratio that won't sit still</h3>
+  <div class="tl-origin-who">Kalman filter · into markets from the 1980s–90s</div>
+  <p>...</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span>
+      <span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span>
+      <span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>The question it answers in the analysis.</dd>
+      <dt>Takes in</dt><dd>What feeds it (link the lesson).</dd>
+      <dt>Hands on to</dt><dd>What uses its output (link the lesson).</dd>
+    </dl>
+  </div>
+</div>
+```
+Slides: `.sl-origin` + `.sl-origin-label`, with `.sl-role-stages` / `.sl-role-stage(.on)`.
+
+### 5.18 Desk-only material — `<!-- DESK:START -->` / `<!-- DESK:END -->`
+
+The Theory Lab is shared with other readers, so anything about the owner's
+own desk or codebase (verdict boxes, "checked against this repo" callouts,
+status-badge tails, house rules) is wrapped in a marker pair. One source
+serves both audiences: the server strips every marked span for any reader
+who is not logged in with the education **admin** password
+(`HIDE_DESK_EDUCATION`, on by default; `0` turns stripping off).
+
+```html
+<!-- DESK:START -->
+<div class="tl-verdict validated" data-evidence="…">…</div>
+<!-- DESK:END -->
+
+…a worked numeric example<!-- DESK:START -->, then how it maps to the build<!-- DESK:END -->.
+```
+
+Rules:
+- Pairs never nest. Wrap a whole element, or a clause inside one sentence
+  that still reads correctly without it.
+- Don't hand-fix numbering: the strip renumbers section marks, "Section N"
+  kickers, `Q#` summaries, quiz numbers and recap rows itself.
+- Client-side desk extras check `window.TL_DESK`, which is set by a
+  `<script>window.TL_DESK = 1;</script>` placed inside a marker pair.
+- `market-reading.html` and the two capstone workbenches are admin-only
+  pages (404 for everyone else).
+- `node js/deskStrip.test.mjs` fails on any desk or repo mention left
+  outside markers, on unpaired markers, and on a page whose tags no longer
+  balance once stripped.
+
 ---
 
 ## 6. Color system — what each color means
@@ -430,6 +552,8 @@ def check_tags(path):
 **Internal links** — confirm every relative `href` actually resolves
 (`os.path.normpath(os.path.join(os.path.dirname(file), href))` should be a
 real file).
+
+**Shared view** — `node js/deskStrip.test.mjs` (see §5.18).
 
 **Class-usage cross-check** — every `tl-*` class used in the file should
 resolve to something defined in `theory-lab/assets/theory.css` (or, rarely, a

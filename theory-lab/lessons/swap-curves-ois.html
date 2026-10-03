@@ -17,7 +17,7 @@
   <h1 class="tl-title">Swap Curves &amp; OIS Discounting</h1>
   <p class="tl-dek">Government bond yields carry the idiosyncratic scars of whoever happens to be issuing and repo-ing that specific bond. A swap is a pure, unbundled bet on interest rates — which is exactly why swap curves, and increasingly OIS curves, replaced government bond curves as the market's working definition of "risk-free," and why the 2008 crisis forced the industry to split one curve into two.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Curve Fitting: Nelson-Siegel &amp; Svensson</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Post-2008, the industry moved from LIBOR discounting to <strong>OIS discounting</strong> for collateralized derivatives because LIBOR (an unsecured interbank lending rate) embeds bank credit risk, while OIS/SOFR (secured, overnight, nearly risk-free) essentially doesn't — the gap between the two blew out from a few basis points to well over 100bp during the crisis.</li>
       <li>The <strong>multi-curve framework</strong> formalizes the split: one curve (OIS) discounts cashflows to present value, a separate curve (a SOFR-derived forward curve) forecasts the floating leg's future resets — pre-2008 these were, in practice, the same curve; post-2008 they structurally are not.</li>
       <li>The worked example prices a 2-year annual-pay swap off a flat 3% OIS curve: the par rate comes out to ≈3.00%, and marking an off-market swap actually trading at a fixed rate of 3.2% gives a value to the fixed-rate payer of about <strong>−$38,269</strong> on a $10,000,000 notional — close to zero at the fair rate, meaningfully negative when locked into paying above it.</li>
+      <li><strong>Real-world episode:</strong> LIBOR in the crisis and after. In 2007–08 some panel banks submitted artificially low rates to look healthy, and traders had long asked for favourable fixes; Barclays (about $450m, June 2012) and UBS (about $1.5bn) settled, and a transaction-based SOFR replaced the survey.<!-- DESK:START --> The SOFR-era version of "the funding spread is a stress gauge" tested <strong>NULL</strong> here (<code>funding-stress</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -538,6 +539,90 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: LIBOR, the rate that was an estimate</h2>
+  <p>
+    Section 02 tells the LIBOR-OIS blowout, and the scenario above tells how LIBOR was replaced. Between the
+    two sits the part that made replacement unavoidable: during the crisis, the number itself could not be
+    trusted.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2007–2012: lowballing, then the settlements</h3>
+    <p>
+      LIBOR was not a traded price. Each morning a panel of banks answered a question, roughly "at what rate
+      could you borrow funds" unsecured from other banks at each tenor, and a trimmed average of the answers
+      was published. In calm markets those answers were backed by plenty of real interbank lending. From August
+      2007, as banks stopped trusting each other, unsecured term lending between banks dried up. The answers
+      became estimates with few transactions behind them, and a bank that reported a high borrowing cost was
+      telling the market it was in trouble.
+    </p>
+    <p>
+      Some banks answered low. Investigations later found two kinds of misconduct: traders asking submitters,
+      over years, to nudge the rate to suit their derivative positions, and, during the crisis, banks
+      submitting artificially low rates to look healthier. So the record LIBOR-OIS spread in Section 02's
+      chart, roughly 364bp in October 2008, was if anything flattering. In June 2012 Barclays agreed to pay
+      about <strong>$450 million</strong> to US and UK authorities, and its chief executive resigned days
+      later. UBS followed in December 2012 with about <strong>$1.5 billion</strong>. Other banks and brokers
+      settled over the following years.
+    </p>
+    <p style="margin-bottom:0">
+      LIBOR's administration moved to a new administrator in 2014. In July 2017 the UK's Financial Conduct
+      Authority said it would stop compelling banks to submit after 2021, which set the SOFR transition above in
+      motion. By then derivatives desks had already split their curves: collateralised trades discounted at OIS,
+      with LIBOR kept only as the index the floating leg paid. The multi-curve framework in this lesson is that
+      split, written down.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>From August 2007</b>Banks stop trusting each other; unsecured term lending dries up</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Panel banks</b>Asked for an estimate with few real trades behind it; a high answer signals weakness, so some answer low</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>LIBOR-OIS</b>Still blows out, to roughly 364bp in October 2008, and even that is flattered</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the discount curve</b>Collateralised trades move to OIS discounting; \(DF_{\text{OIS}}\) and the floating-rate forecast become two separate curves</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Regulators</b>Settlements from 2012 (Barclays about $450m, UBS about $1.5bn); in 2017, no compelled submissions after 2021</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Transaction-based SOFR replaces a survey; the last USD LIBOR settings end 30 June 2023</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> The single-curve telescoping result,
+    \(PV_{\text{float}}=N(1-DF(T_n))\), assumes the floating index is a rate you can actually lend and borrow at,
+    close to risk-free, and that it is a market price. LIBOR was neither. It carried bank credit risk, and it was
+    a survey, with the fewest real trades behind it exactly when it mattered most. SOFR fixes both by
+    construction, but a secured overnight rate has its own failure mode, which is plumbing: on September 17,
+    2019, SOFR printed 5.25% against a 2.00–2.25% target range (see
+    <a href="fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor</a>).
+  </p>
+
+  <p>
+    The tempting claim this lesson leaves behind is in Section 02: the funding spread is a real-time stress
+    gauge. LIBOR-OIS no longer exists, so the SOFR-era version is the one a trader would reach for: SOFR trading
+    above the Fed's floor, or the Standing Repo Facility being drawn.<!-- DESK:START --> This desk pre-registered that test.<!-- DESK:END -->
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>funding-stress: SOFR above the floor is the calendar, and a drawn SRF preceded a calmer
+    tape.</strong> 2,123 SOFR sessions, 2018-04 to 2026-09. Headline SOFR ≥ 3bp over the floor with month-end
+    excluded left just 15 episodes, below the pre-registered floor of 20, and <strong>12 of those 15 fall on the
+    14th–18th of a month</strong>. A drawn SRF (21 episodes) was followed by an SPX500 next-5-session range of
+    <strong>−0.561 ATR [−0.984, −0.181]</strong> versus control, and the SRF is drawn on <strong>667 of 2,123
+    sessions (31%)</strong>.</span>
+  </div>
+  <!-- DESK:END -->
+<!-- DESK:START -->  <p>
+    What this does not test: a credit spread like LIBOR-OIS, which measured whether banks trusted each other.
+    That gauge went with LIBOR, and the desk's sample starts in 2018 and contains no banking crisis of the 2008
+    kind.
+  </p><!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>CSA discounting.</strong> A collateralized derivative trade is
@@ -613,7 +698,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A swap exchanges fixed for floating with no notional exchange.</strong> The swap rate is the par rate — the fixed rate that zeroes out the swap's value at inception.</span></div>
@@ -622,9 +707,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The multi-curve framework splits discounting from forecasting</strong> — one curve (OIS) discounts, a separate curve (a SOFR-derived forward curve) forecasts floating resets; pre-2008 these were, in effect, one curve.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-free" is a practical approximation, not a literal one.</strong> Swap and OIS curves still carry their own collateral-currency and cross-currency basis effects.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The worked example is a deliberate simplification.</strong> A flat curve, single currency, and single CSA/collateral type — real desks maintain separate discount and forecast curves per collateral currency, not one flat number.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The SOFR-era stress gauge is null on this desk (funding-stress, NULL).</strong> SOFR above the floor is mostly mid-month tax and settlement dates (12 of 15 episodes), and a drawn SRF preceded a calmer tape (−0.561 ATR). LIBOR itself was a survey that was lowballed in the crisis, which is why it was replaced; a 2008-style credit spread is not what was tested.</span></div><!-- DESK:END -->
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is no notional exchanged in an interest rate swap, and what does that mean for counterparty risk relative to holding a bond of the same notional?</summary>
@@ -823,5 +909,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

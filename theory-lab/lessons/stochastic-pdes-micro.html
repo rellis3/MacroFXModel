@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Stochastic PDEs — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the Da Prato–Zabczyk citations, and a 6-question self-test?<a href="stochastic-pdes.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Moving the whole yield curve at once</h2>
+      <p class="sl-sub">Heath, Jarrow &amp; Morton · 1992 · Musiela · 1993</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Short-rate models (Vasicek 1977, CIR 1985) move every point on the curve with one factor and cannot match today's curve. HJM (1992) starts from the whole observed forward curve and evolves every forward rate, with drifts set by no-arbitrage.</p>
+        <p>Musiela (1993) rewrote HJM as one SPDE for the curve, and the LIBOR market model (1997) took the approach onto swaption desks. Curve risk, curve factors and Bermudan pricing build on it.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> evolve a whole curve, arbitrage-free, from today's market curve.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">One number, a few numbers, then a whole curve</h2>
       <p class="sl-sub">Everything in this sequence so far has lived in a small, finite space. This lesson is what happens when it stops being finite.</p>
       <div class="sl-icard-grid">
@@ -37,8 +50,8 @@
       <div class="sl-quote">Picture the entire forward interest-rate curve as a long rubber band stretched from "today" out to "30 years from now." A short-rate SDE watches one single point on that band bounce around. An SPDE describes the <strong>entire band</strong> flexing and rippling along its whole length at once — with nearby points on the band moving alike, but not identically.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Finite vector vs. whole curve, side by side</h2>
       <p class="sl-sub">Same randomness, two entirely different kinds of object being moved by it.</p>
       <div class="sl-card">
@@ -77,8 +90,8 @@
       <div class="sl-note">This is the entire conceptual jump this lesson is built around: finite-dimensional (ℝⁿ) versus infinite-dimensional (a space of functions). Everything below — the noise, the solution formula, the two named examples — is what has to change once the object being moved is a curve instead of a list of numbers.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The noise driving it is stranger than dW_t</h2>
       <p class="sl-sub">The canonical, simplest SPDE — the stochastic heat equation — makes the new difficulty concrete.</p>
       <div class="sl-card">
@@ -93,8 +106,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The same solution formula, one dimension up</h2>
       <p class="sl-sub">SPDEs aren't solved from scratch — the practical solution concept is a direct echo of a formula already used earlier in this sequence.</p>
       <div class="sl-compare">
@@ -114,8 +127,8 @@
       <div class="sl-quote">Same shape, same idea — "multiply by a growth factor and add up the random pushes along the way" — done for an entire field instead of a single number. <strong>e^(at)</strong> becomes <strong>S(t)</strong>; the ordinary Itô integral becomes a stochastic integral against a Q-Wiener process. Nothing about the logic changes, only the space it happens in.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">HJM/Musiela: one SPDE for the whole forward curve</h2>
       <p class="sl-sub">The most finance-relevant named example — and the direct generalization of the short-rate models earlier in this sequence.</p>
       <div class="sl-card">
@@ -131,8 +144,8 @@
       <p class="sl-p">The earlier <strong>yield-curve-construction</strong> and <strong>Nelson-Siegel-Svensson</strong> lessons in this curriculum fit a single <em>static snapshot</em> of f(t,·) at one moment — a photograph of the rubber band, not a model of how it moves. HJM/Musiela is what models the motion itself.</p>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Watch the whole curve wiggle</h2>
       <p class="sl-sub">Three snapshots of the same illustrative forward curve, each one randomly perturbed from the last — not three unrelated lines, one evolving object.</p>
       <div class="sl-card">
@@ -168,8 +181,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Nudge time forward, watch it wiggle</h2>
       <p class="sl-sub">Same illustrative curve, now advanced step by step. Each step applies a new seeded random perturbation — front end noisier than the back end — and redraws the whole shape.</p>
       <div class="sl-card">
@@ -195,8 +208,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The no-arbitrage drift, computed live</h2>
       <p class="sl-sub">Once a volatility structure σ(t,x) is specified, HJM's drift condition α(t,x) = σ(t,x) · ∫₀ˣσ(t,u)du is not optional — it's forced. Try different vol inputs below.</p>
       <div class="sl-card">
@@ -217,8 +230,8 @@
       <p class="sl-p">0.010 × 0.045 = 0.00045, or <strong>4.5 basis points</strong> of forced drift at that tenor. The modeller never gets to pick α independently — specify σ(t,x) across the whole curve, and the drift at every tenor is already decided.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The Zakai equation: filtering's own SPDE</h2>
       <p class="sl-sub">A second, completely different named SPDE — this one from continuous-time filtering, not term-structure modelling.</p>
       <div class="sl-card">
@@ -239,23 +252,25 @@
       <div class="sl-quote">Neither the Kalman filter nor the particle filter lesson earlier in this curriculum names the object both are — in different senses — solving. This is it: one linear SPDE governing how confidence about a hidden state evolves, given noisy continuous evidence.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
-      <h2 class="sl-h2">Genuinely advanced — and genuinely not what's running in this repo</h2>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Genuinely advanced<!-- DESK:START --> — and genuinely not what's running in this repo<!-- DESK:END --></h2>
       <p class="sl-sub">Worth being explicit about where this machinery actually gets used, and where it doesn't.</p>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🏦</div><div><h4>Specialist curve-modelling desks</h4><p>The HJM/Musiela framework, in something close to its full generality, is genuinely used where a book's exposure to curve <em>shape</em> — not just level — is large enough to justify the complexity.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Academic filtering research</h4><p>The Zakai equation is standard machinery in the nonlinear-filtering literature; the algorithms it motivates (Kalman, particle filters) are what actually reach production, not a direct SPDE solve.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">🧭</div><div><h4>A frontier worth recognizing, not a default tool</h4><p>Knowing the SPDE framing is most useful for judging when a finite-dimensional simplification is adequate — and when its assumptions are being stretched.</p></div></div>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
         <p>Checked directly rather than assumed: nothing in this codebase implements HJM/Musiela, a Zakai equation, or any whole-curve stochastic model — a repo-wide search turns up no such code anywhere. This curriculum's own <code>js/yieldCurveEngine.js</code> models the yield curve only as a single 2s10s slope number plus a z-score trend versus its own history — a level-and-trend signal, not even a static multi-tenor snapshot, let alone a stochastic model of the whole curve moving through time. That's fully consistent with this lesson's framing below: full SPDE machinery is real, rigorous, and used elsewhere, but nowhere in this repo, and it isn't meant to be — this is background theory for reading specialist material and the next lesson's neural-SPDE extension, not a build spec.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -305,8 +320,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>An SDE moves a finite vector of numbers randomly through time; an SPDE moves an entire curve or field — the direct infinite-dimensional generalization of everything else in this sequence.</p></div>
@@ -315,6 +330,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>HJM/Musiela writes the whole forward-rate curve's random motion as one SPDE; the no-arbitrage drift condition forces the drift the moment volatility is chosen — it's never a second, independent choice.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Vasicek, CIR, and Hull-White are the x=0-only special case of that same curve SPDE — a single short-rate SDE is what's left once every other tenor is discarded.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The Zakai equation is the SPDE an unnormalized filtering density evolves by — the Kalman filter solves it exactly in the linear-Gaussian case, a particle filter approximates it by Monte Carlo otherwise.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: HJM (1992) and Musiela's SPDE form (1993) model the whole forward curve; the LIBOR market model (1997) took it onto rates desks.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

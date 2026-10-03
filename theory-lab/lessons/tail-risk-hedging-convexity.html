@@ -17,7 +17,7 @@
   <h1 class="tl-title">Tail Risk Hedging &amp; Portfolio Convexity</h1>
   <p class="tl-dek">The shape of a portfolio's payoff curve — not just its expected return — decides whether it bleeds slowly and blows up occasionally, or pays a small constant premium for a large payoff exactly when it's needed.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a hedging framework; no tail-hedge overlay is built or backtested in this repo</span>
+    <span class="tl-status concept">CONCEPT — explains a hedging framework<!-- DESK:START -->; no tail-hedge overlay is built or backtested in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none required; option-Greeks familiarity helps but every term is defined here</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Common structures: far out-of-the-money puts (pure convexity, but expensive due to the volatility skew), put spreads/collars (cheaper, but capped), and volatility-linked hedges (pay off from a rise in volatility itself, not just price direction).</li>
       <li>The honest tradeoff is cost-of-carry: a tail hedge is designed to lose money in calm years, by construction — that "bleed" is the premium for the protection, not a flaw to be optimized away.</li>
       <li>Whether a specific tail-hedge program's payoff justifies its cost, over a specific real history, is an empirical question this lesson does not answer — it explains the mechanism, not a validated edge.</li>
+      <li><strong>Real-world episode:</strong> March 2020. After years in which standing put protection mostly expired worthless, the S&amp;P 500 fell about 34% in five weeks and the VIX closed at a record 82.69. Long far out-of-the-money puts paid on both price and volatility, while gold and even Treasuries sold off for a time in the dash for cash.<!-- DESK:START --> On this desk's data, gold is not a fear hedge (<code>fear-gold</code>, NULL).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -341,6 +342,72 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: March 2020, when convexity paid and "safe" assets didn't</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Years of bleed, five weeks of payoff, and the hedges that weren't</h3>
+    <p>
+      The decade before 2020 was mostly kind to US equity holders, with sharp but short-lived scares. For a standing
+      book of far out-of-the-money index puts, that meant what the scenario box above describes: most years the puts
+      expired worthless, and the premium was the worst line in the attribution report. Holding them took the
+      discipline the lesson asks for, because the calm years made them look like waste.
+    </p>
+    <p>
+      Then, from a record high on 19 February 2020, the S&amp;P 500 fell about <strong>34%</strong> in five weeks, to
+      23 March. On 16 March the VIX closed at <strong>82.69</strong>, a record. A put struck well below February's level
+      was hit by both channels at once: it went deep into the money, and the implied volatility it was priced on
+      exploded. Its value rose many times over. Specialist tail-hedging funds reported very large gains for the month,
+      gains that their clients' main portfolios were losing at the same time.
+    </p>
+    <p style="margin-bottom:0">
+      Assets that are often thought of as hedges did not behave like convexity. In the mid-March "dash for cash", when
+      leveraged investors sold whatever they could to raise dollars, <strong>gold fell sharply</strong> alongside stocks
+      for about a week. Even <strong>US Treasuries</strong> sold off, with yields rising while stocks fell, until the
+      Federal Reserve stepped in with very large purchases. Buying protection late was also expensive: puts bought after the fall had started cost far
+      more, because implied volatility had already jumped.
+    </p>
+  </div>
+
+  <p>The causal chain, link by link. The starred link is this lesson's concept.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Pandemic news reprices growth; S&amp;P 500 down about 34% in five weeks</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Leveraged investors</b>Margin calls and risk limits force them to sell what is liquid: stocks, gold, even Treasuries</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>"Safe" linear hedges</b>Their usual negative correlation fails under forced selling; they fall with stocks for a time</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ Long puts · convexity (\(\Gamma&gt;0\))</b>Deep in the money while implied vol explodes; the payoff accelerates as the fall deepens</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Hedged books are cushioned; the years of premium bleed were the price</div>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The worked example treats the hedge payoff as a fixed function of the index move. In 2020 much of the payoff came
+    from implied volatility jumping (vega), which the simple calm-year and crash-year table leaves out. The bigger
+    break is in the assumption behind <em>linear</em> hedges: that their correlation with stocks holds in a crisis.
+    Under forced selling, correlations among liquid assets jumped together. An option's payoff is set by contract, so it
+    does not depend on correlation holding, which is the whole case for paying for convexity rather than hoping for it.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="fear-gold" data-evidence-date="2026-09-21">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>fear-gold: gold is not a fear hedge on this desk's data.</strong> The tempting cheap alternative to
+    buying puts is "fear buys gold". Tested on <strong>58 VIX spikes</strong> (+5 points in five sessions) 2010-2026: gold
+    five sessions on +0.42% vs +0.35% ordinary, excess <strong>+0.07% [-0.42, +0.30]</strong>; twenty sessions on +0.01%
+    vs +1.20%, excess <strong>-1.19% [-2.30, -0.48]</strong>. No fear bid on average, and a month after a fear spike gold
+    has lagged its ordinary drift. Holding gold carries no option-like convexity.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>For years, people who bought crash insurance felt silly, because nothing crashed. Then in March 2020 everything crashed at once, and the insurance paid out big. Some people had counted on gold to protect them instead, but when everyone needed cash fast they sold their gold too, so it fell just when they needed it. Insurance pays because of the contract you bought, not because things usually move in opposite directions.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <ul>
     <li>
@@ -423,7 +490,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Convexity is curvature of payoff vs. the underlying.</strong> Positive convexity (Γ&gt;0) accelerates gains and caps losses; negative convexity (Γ&lt;0) caps gains and accelerates losses.</span></div>
@@ -431,10 +498,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Long convexity / tail hedges: small constant cost, large payoff exactly when needed.</strong> The worked example's calm-year drag (−1.5%/yr) versus crash-year payoff (+40%) shows the mechanism concretely.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The cost is real and by design — not a bug to eliminate.</strong> A tail hedge that never costs anything in calm markets isn't providing real protection; the premium bleed is the whole mechanism.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The multi-year compounding illustration is stylized, not empirical.</strong> Whether a specific hedge program's payoff justifies its cost over a specific real history depends entirely on the actual frequency and severity of crashes in that history — an empirical question this lesson does not claim to have answered.</span></div>
-    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or backtested in this repo.</strong> This lesson explains the mechanism and the honest tradeoff; it is not a validated tail-hedge overlay or a claim that any such overlay has edge.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Nothing here is built or backtested in this repo.</strong> This lesson explains the mechanism and the honest tradeoff; it is not a validated tail-hedge overlay or a claim that any such overlay has edge.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Gold is not a substitute for convexity<!-- DESK:START --> (<code>fear-gold</code>, NULL)<!-- DESK:END -->.</strong><!-- DESK:START --> 58 VIX spikes: no fear bid at five sessions (+0.07% [-0.42, +0.30]), and gold lagged by −1.19% at twenty.<!-- DESK:END --> In March 2020 gold and even Treasuries fell for a time in the dash for cash, while long puts paid on both price and volatility.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. In your own words, what does it mean for a portfolio to be "short convexity," and how does that differ from simply having a negative expected return?</summary>
@@ -616,5 +684,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

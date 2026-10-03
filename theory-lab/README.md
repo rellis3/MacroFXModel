@@ -45,6 +45,17 @@ Building or restyling a lesson? See
 every component in `assets/theory.css`, when to use it, copy-pasteable
 markup, the house content order, and a verification checklist.
 
+## Sharing: the desk-only layer
+
+Material about the owner's own desk and codebase sits inside
+`<!-- DESK:START -->…<!-- DESK:END -->` markers. The education **admin**
+login sees everything; every other reader (and anyone not logged in) gets
+the same pages with that material stripped server-side, and the capstone
+workbenches, Reading the Tape, the desk-verdict/capstone-board feeds and the
+`/education/` notes folder
+return 404. Set `HIDE_DESK_EDUCATION=0` to serve everything to everyone.
+Details in the style guide (§5.18).
+
 ## What every lesson page contains
 
 - Plain-English intuition before any math.
@@ -69,6 +80,35 @@ markup, the house content order, and a verification checklist.
 
 ## Curriculum map
 
+- **Start here** (`start.html`) — the newcomer's page: how a lesson is laid
+  out and where to begin by background. Visual-guide sentences sit inside
+  `<!-- MICRO:START -->…<!-- MICRO:END -->` and go when visual guides are hidden.
+- **Stories** (`stories.html`) — the episode-first way in: 38 real episodes
+  (Black Monday to the 2024 yen carry unwind), each with its causal chain
+  and a link to every lesson section that tells it. Built from the lessons'
+  own `.tl-story` boxes, which carry stable `id="story-N"` anchors.
+- **The Human Side** (6, full + visual guide) — the person at the screen:
+  loss aversion & prospect theory, the disposition effect, overconfidence &
+  overtrading, herding & bubbles, drawdowns & risk of ruin, and judging
+  decisions not results (with a decision journal). Each has a self-audit.
+- **Learning paths** (`paths.html`) — four goal-based routes (Volatility &
+  Options, Macro & FX, System Building, Risk & Portfolio) sharing one core,
+  each ending in a capstone. Defined in `assets/paths-data.js`; every lesson
+  on a path shows an "On your path" bar (`assets/paths.js`). Checked by
+  `node js/lessonPaths.test.mjs`.
+- **"How it reached trading"** (`.tl-origin` + `.tl-role`) — in 59 maths/ML
+  lessons: who brought the idea into markets and what it let traders do, plus
+  its job in the analysis pipeline (Data → Model → Signal → Test → Size & risk
+  → Execute); real-world episodes (`.tl-story`) now in 78 — every public lesson has one or the other.
+- **Theory in the Real World** (10, each with a full lesson and a visual
+  guide) — the story layer: hard theory told through real episodes, real
+  causal chains (`.tl-chain`), and this desk's own tested verdict on each
+  folk claim (`.tl-verdict`). Three sequences: *Options from the Ground Up*
+  (the four positions, payoff shape vs Greek signs, covered call ≡ short
+  put), *Market Plumbing* (the Fed corridor — IORB, SRF, discount window;
+  QE/QT), and *How Markets Talk to Each Other* (the domino chain, forced
+  selling, the VIX as uncertainty, the yield curve and growth, four markets
+  four questions). Sits above Foundation Mathematics on the hub.
 - **Foundation Mathematics** (5) — algebra/functions, trigonometry/logs/
   exponentials, complex numbers, partial derivatives/multivariable calculus,
   optimization basics. Start here if you've only done GCSE-level maths —

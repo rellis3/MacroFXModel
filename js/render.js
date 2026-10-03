@@ -6,6 +6,7 @@ import { calculateVolRegime, calculateOTCForecast, calcPositionSize, calculateRi
 import { computeRegimeTransition, renderARMAAndTransition, computeARMAForecast } from './arma.js';
 import { filterConfluences, enhanceConfluences, detectCrossSessionClusters, mergeCrossSources } from './confluences.js';
 import { renderOISidebar } from './oi.js';
+import { lessonLinkHTML } from './lessonLinks.js';
 import { loadAndRenderCompass } from './compass.js';
 import { renderSignalAndEntries } from './signal.js';
 import { aiRenderCardOnUpdate } from './ai.js';
@@ -643,13 +644,14 @@ ${calendarCtx.warnings.length > 0 ? `
         { lbl: '10Y TIPS', val: tips != null ? tips.toFixed(2) + '%' : '—', delta: null, col: tips != null ? (tips < 1 ? 'var(--green)' : tips > 2 ? 'var(--red)' : 'var(--text)') : 'var(--text3)' },
         { lbl: 'DXY', val: dxy != null ? dxy.toFixed(2) : '—', delta: dxyDelta != null ? (dxyDelta >= 0 ? '+' : '') + dxyDelta.toFixed(2) : null, col: 'var(--text)' },
         { lbl: 'Breakeven', val: bei != null ? bei.toFixed(2) + '%' : '—', delta: beiDelta != null ? (beiDelta >= 0 ? '+' : '') + beiDelta.toFixed(2) : null, col: bei != null ? (bei > 2.5 ? 'var(--amber)' : 'var(--text)') : 'var(--text3)' },
-        { lbl: 'VIX', val: vix != null ? vix.toFixed(1) : '—', delta: null, col: vix != null ? (vix > 25 ? 'var(--red)' : vix < 15 ? 'var(--green)' : 'var(--text)') : 'var(--text3)' },
+        { lbl: 'VIX', val: vix != null ? vix.toFixed(1) : '—', delta: null, col: vix != null ? (vix > 25 ? 'var(--red)' : vix < 15 ? 'var(--green)' : 'var(--text)') : 'var(--text3)', why: vix != null && vix > 25 ? 'vixElevated' : null },
       ];
       return `<div class="kpi-row">${kpis.map(k => `
         <div class="kpi-cell">
           <div class="kpi-lbl">${k.lbl}</div>
           <div class="kpi-val" style="color:${k.col}">${k.val}</div>
           ${k.delta != null ? `<div class="kpi-delta" style="color:${k.delta.startsWith('+') ? 'var(--green)' : 'var(--red)'}">${k.delta}</div>` : ''}
+          ${k.why ? `<div>${lessonLinkHTML(k.why)}</div>` : ''}
         </div>`).join('')}
       </div>`;
     })()}
@@ -994,6 +996,7 @@ ${calendarCtx.warnings.length > 0 ? `
           </div>
           <div class="curve-spread" style="color:${c.spread < 0 ? 'var(--red)' : c.spread < 50 ? 'var(--amber)' : 'var(--green)'}">${c.spread >= 0 ? '+' : ''}${c.spread.toFixed(0)}bp</div>
           <div class="curve-status ${c.statusClass}">${c.status}</div>
+          ${c.statusClass === 'inverted' ? lessonLinkHTML('curveInverted', 'margin-left:6px') : ''}
         </div>
       `).join('')}
     </div>

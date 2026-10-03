@@ -17,7 +17,7 @@
   <h1 class="tl-title">Convex Optimization</h1>
   <p class="tl-dek">The one shape-property of a problem that turns "found a good answer" into "found the best possible answer, guaranteed" — and exactly what breaks the guarantee the moment a real-world constraint gets in the way.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Newton-Raphson &amp; Gradient Descent</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Markowitz portfolio variance, \(w^\top \Sigma w\), is a convex quadratic function because a valid covariance matrix \(\Sigma\) is always positive semi-definite — which is exactly why mean-variance optimization is a well-posed, reliably solvable problem in the first place.</li>
       <li>The <strong>Lagrangian</strong> converts a constrained problem into an unconstrained one; the <strong>KKT conditions</strong> (stationarity, primal feasibility, dual feasibility, complementary slackness) are the necessary conditions a convex problem's true optimum must satisfy.</li>
       <li>Adding a realistic-sounding constraint — "hold at most 10 names" (a cardinality constraint) — can destroy convexity entirely, turning a cleanly solvable problem into a combinatorial one that needs heuristics rather than a guaranteed-optimal solve.</li>
+      <li>How it reached trading: Markowitz (1952–56) posed and solved portfolio choice as a constrained convex problem, and the KKT conditions certify the answer; every long-only or capped optimiser on a desk is checking them.</li>
     </ul>
   </div>
 
@@ -110,6 +111,23 @@
       convex optimization problem, and it's precisely this combination that
       makes "local optimum = global optimum" hold.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>The best portfolio that still obeys the rules</h3>
+    <div class="tl-origin-who">Constrained optimisation · Markowitz, 1952–56; KKT conditions, 1951</div>
+    <p>An unconstrained mean-variance optimiser has a closed form, and it is unusable: it shorts heavily, levers up and swings wildly with small changes in its inputs. Real mandates add no-short rules, position caps, sector limits and turnover budgets, and once inequality constraints appear there is no formula.</p>
+    <p>Markowitz's 1952 paper posed portfolio choice as exactly this kind of constrained convex problem, and in 1956 he published the critical-line algorithm to solve it with inequality constraints. The Karush–Kuhn–Tucker conditions, worked out in operations research around 1950, are what certify that a solution is optimal. Jagannathan and Ma (2003) showed the constraints also help statistically: a long-only cap acts like shrinkage on a noisy covariance matrix.</p>
+    <p>On a desk, convex solvers run portfolio construction, risk-budgeted and risk-parity allocation, and cost-aware rebalancing. Convexity is what guarantees the optimiser's answer is the global best, not a local accident.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Find the best allocation inside the book's constraints, with a guarantee that it is the true optimum.</dd>
+        <dt>Takes in</dt><dd>Expected returns and covariances from <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> and <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf shrinkage</a>; the step rules from <a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; gradient descent</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="linear-quadratic-programming.html">Linear &amp; quadratic programming</a>, <a href="risk-parity-erc.html">Risk parity</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -684,6 +702,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Markowitz portfolio variance is always convex.</strong> A valid covariance matrix is always PSD, so \(w^\top\Sigma w\) is a convex quadratic — the reason mean-variance optimization is reliably solvable.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The KKT conditions (stationarity, primal/dual feasibility, complementary slackness) are necessary and sufficient for a convex problem's true optimum.</strong> Complementary slackness in particular identifies exactly which constraints are binding.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A realistic-sounding constraint can destroy convexity entirely.</strong> Cardinality constraints ("at most 10 names") turn a clean, fast convex QP into a much harder combinatorial problem needing heuristics or mixed-integer solvers, with weaker guarantees.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Constraints are where portfolio optimisation becomes convex optimisation.</strong> Markowitz's 1956 critical-line algorithm handled no-short and cap constraints, KKT certifies the optimum, and Jagannathan &amp; Ma (2003) showed the constraints also tame estimation noise.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

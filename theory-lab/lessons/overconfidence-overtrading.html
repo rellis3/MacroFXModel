@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overconfidence and the Cost of Trading Too Much — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local to this lesson: the calibration quiz rows. */
+  .oc-quiz{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .oc-row{display:grid;grid-template-columns:1fr 110px 110px 34px;gap:8px;align-items:center;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:var(--r)}
+  .oc-q{font-size:13px;color:var(--text2);line-height:1.45}
+  .oc-q small{display:block;color:var(--text3);font-size:11px;margin-top:2px}
+  .oc-mark{font-family:'DM Mono',monospace;font-weight:700;text-align:center;font-size:15px}
+  .oc-mark.hit{color:var(--green)}
+  .oc-mark.miss{color:var(--red)}
+  .oc-ans{grid-column:1 / -1;font-size:12px;color:var(--text3);display:none}
+  .oc-ans.shown{display:block}
+  @media (max-width:600px){.oc-row{grid-template-columns:1fr 1fr 34px}.oc-q{grid-column:1 / -1}}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / The Human Side / Overconfidence and the Cost of Trading Too Much</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">The Human Side · Lesson 3 of 6</div>
+  <h1 class="tl-title">Overconfidence and the Cost of Trading Too Much</h1>
+  <p class="tl-dek">Most people believe they are better-than-average drivers, and most traders believe their next trade is better than average too. The data on tens of thousands of real brokerage accounts shows what that belief costs, and the bill arrives as turnover.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~20 min read</span>
+    <span>Prereqs: <a href="primer-returns-compounding.html">Returns &amp; Compounding</a>, <a href="primer-probability.html">Probability</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="overconfidence-overtrading-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Overconfidence is measurable.</strong> When people give 90% ranges for things they don't know, the truth lands inside far less than 90% of the time. US finance chiefs' 80% ranges for the stock market caught the actual return only 36% of the time.</li>
+      <li><strong>It shows up as trading.</strong> Barber &amp; Odean (2000) followed 66,465 households at a discount broker over 1991–96. The fifth that traded most earned <strong>11.4% a year net</strong>, while the market returned <strong>17.9%</strong>.</li>
+      <li><strong>Men traded 45% more than women</strong> in the same kind of data, and trading cut their net returns by 2.65 points a year against 1.72 for women (Barber &amp; Odean, 2001).</li>
+      <li><strong>The arithmetic is plain:</strong> annual cost drag ≈ turnover × round-trip cost. It compounds. A 2.5-point drag on a 10% return gives up about 43% of the gain over 20 years.</li>
+      <li><strong>Two quieter biases feed it:</strong> the illusion of control (acting makes you feel you've improved the odds) and hindsight bias (the past looks predictable, so the future feels predictable too).</li>
+      <!-- DESK:START --><li><strong>Desk verdicts:</strong> trading costs are a hard wall (execution-gate, validated: above a spread of 0.15 of the daily range, zero of 30 strategy cells made money). And a confidence score is not an edge: one of the desk's own systems was scored and its conviction vote was <em>anti</em>-predictive (conviction-vote, null).</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="disposition-effect.html">previous lesson</a> was about holding on: selling winners too early and
+    riding losers too long. This one is about the opposite muscle, the urge to <em>do something</em>. It matters
+    because it is the one bias whose cost you can compute to the decimal point. You don't need to agree with any
+    psychology to see the bill. Every round trip pays a spread and a commission. Trading more only pays if the extra
+    trades are good enough to cover that. The best evidence we have says that for most people they aren't.
+  </p>
+  <p>
+    It also ties straight into the rest of the curriculum. <a href="sharpe-family-deflated.html">Deflated Sharpe
+    ratios</a> exist because researchers fool themselves about the skill in a backtest. <a href="execution-algorithms.html">Execution
+    algorithms</a> exist because costs eat edge. And the <a href="kelly-criterion.html">Kelly criterion</a> shows that
+    betting as if your edge were bigger than it really is does more than lower returns. It can turn a winning
+    edge into a losing one.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>The trader who is always a little too sure</h3>
+    <p>
+      Picture two traders with exactly the same skill. One knows how much she doesn't know. She trades when
+      she has a real reason, and otherwise she leaves the position alone. The other feels a bit more certain
+      about every idea. His ranges are a bit narrower, his conviction a bit higher. So he trades more often, sizes a bit
+      bigger, and switches ideas faster.
+    </p>
+    <p style="margin-bottom:0">
+      Neither one has more edge than the other. But he pays the spread and commission three or four times as often.
+      Over a year that difference doesn't show up in any single trade. It shows up as a steady leak in the
+      account. Overconfidence rarely shows up as one spectacular mistake. Mostly it is a habit that charges a
+      small fee every time you act on it.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Every time you swap one toy for another at the toy swap, the swap stall keeps one sweet as a fee. If you're sure every new toy will be better, you swap all day and pay lots of sweets. Your toys aren't any better at the end. You just have fewer sweets.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Three pieces: how to measure overconfidence (calibration), how to price what it costs (cost drag), and how
+    that cost compounds. None of it is hard algebra. What makes it powerful is that each piece can be measured.
+  </p>
+
+  <h3>1. Calibration: do your 90% ranges catch the truth 90% of the time?</h3>
+  <p>
+    A forecaster is <em>calibrated</em> if the things they call 90% likely happen about 90% of the time. The cleanest
+    test asks for ranges. For each of \(N\) unknown quantities you give a low and a high value you are 90% sure
+    contains the answer. If you are calibrated, each range is a coin that lands "hit" with probability \(c = 0.9\),
+    so the number of hits \(H\) should follow a binomial distribution:
+  </p>
+  <div class="tl-math">
+    \[ H \sim \text{Binomial}(N,\,c), \qquad \Pr(H \le h) = \sum_{k=0}^{h} \binom{N}{k} c^{k}(1-c)^{N-k} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>H</code><span>how many of your ranges contained the true answer</span></div>
+    <div class="tl-eq-chip c2"><code>N</code><span>how many questions you answered</span></div>
+    <div class="tl-eq-chip c3"><code>c</code><span>the confidence you claimed: 0.9 for a 90% range</span></div>
+    <div class="tl-eq-chip c4"><code>Pr(H ≤ h)</code><span>how likely a calibrated person is to do this badly or worse</span></div>
+  </div>
+  <p>
+    The <strong>calibration gap</strong> is the claimed confidence minus the hit rate you actually achieved:
+  </p>
+  <div class="tl-math">
+    \[ \text{gap} = c - \frac{H}{N} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>gap &gt; 0</code><span>overconfident: your ranges were too narrow</span></div>
+    <div class="tl-eq-chip c2"><code>gap ≈ 0</code><span>calibrated: your stated confidence was honest</span></div>
+  </div>
+  <p>
+    With small \(N\) one miss means little. A calibrated person answering six questions misses at least one
+    about 47% of the time. Missing three or more is a different matter: the chance of that is about 1.6%. Large
+    studies remove the small-sample excuse. In study after study, people's "90%" ranges catch the truth well under
+    90% of the time, often closer to half. The most striking finance example comes from Ben-David, Graham &amp;
+    Harvey (2013). Over many years they asked US chief financial officers for 80% ranges on the next year's
+    stock-market return. The actual return fell inside those ranges only <strong>36%</strong> of the time.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you say "I'm 9-out-of-10 sure," you should be right about 9 times out of 10. Most grown-ups who say that are right more like 5 or 6 times out of 10. Their guesses aren't silly. They just draw the fence too tight.</p>
+  </div>
+
+  <h3>2. Cost drag: what each unit of turnover costs</h3>
+  <p>
+    Define annual <strong>turnover</strong> \(T\) as the fraction of the portfolio sold and replaced in a year
+    (100% means the whole book was swapped once). Each swap is a round trip: you sell one thing and buy another, and
+    pay the spread, commission and price impact on both legs. If one round trip costs a fraction \(k\) of the amount
+    traded, the yearly cost is approximately:
+  </p>
+  <div class="tl-math">
+    \[ D \approx T \times k \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">T</div><div class="tl-fp-name">Turnover</div><div class="tl-fp-desc">How many times a year the book is replaced. The habit you control.</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">k</div><div class="tl-fp-name">Round-trip cost</div><div class="tl-fp-desc">Spread + commission + impact, as a fraction of the trade. Set by the market and the broker.</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">D</div><div class="tl-fp-name">Drag</div><div class="tl-fp-desc">Return lost per year before skill is counted at all.</div></div>
+  </div>
+  <p>
+    The only way extra trading pays is if the trades you add earn more than \(k\) each, on average, after the fact.
+    That is the break-even test. It is a high bar, because the person who sells to you is also trading, and
+    often knows more. Odean (1999) took this test to the same brokerage data. The stocks investors bought went
+    on to do <em>worse</em> than the stocks they sold, even before any costs. The trades didn't just fail to cover
+    the fee. On average they lost money before the fee was charged.
+  </p>
+
+  <h3>3. Compounding turns a small leak into a large hole</h3>
+  <p>
+    A drag is subtracted every year, so it compounds. With gross annual return \(r\) and \(n\) years:
+  </p>
+  <div class="tl-math">
+    \[ W_{\text{gross}} = (1+r)^{n}, \qquad W_{\text{net}} = (1+r-D)^{n}, \qquad \text{share of gain lost} = 1 - \frac{W_{\text{net}}-1}{W_{\text{gross}}-1} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>W</code><span>wealth per 1 invested at the end</span></div>
+    <div class="tl-eq-chip c2"><code>r</code><span>what the portfolio earns before trading costs</span></div>
+    <div class="tl-eq-chip c3"><code>n</code><span>years</span></div>
+    <div class="tl-eq-chip c4"><code>share lost</code><span>the fraction of the profit that went to costs</span></div>
+  </div>
+  <p>
+    The share lost is always larger than \(D/r\), because the money paid in costs would itself have compounded.
+    Drag the sliders in the calculator below to see it.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(N\)</td><td>Number of range questions answered.</td></tr>
+    <tr><td>\(H\)</td><td>Number of ranges that contained the true answer (hits).</td></tr>
+    <tr><td>\(c\)</td><td>Claimed confidence for each range, e.g. 0.9.</td></tr>
+    <tr><td>\(\binom{N}{k}\)</td><td>"N choose k": the number of ways to get exactly k hits out of N.</td></tr>
+    <tr><td>\(T\)</td><td>Annual turnover: fraction of the portfolio replaced per year (2.5 = 250%).</td></tr>
+    <tr><td>\(k\)</td><td>Cost of one round trip as a fraction of the amount traded.</td></tr>
+    <tr><td>\(D\)</td><td>Annual cost drag, \(T \times k\).</td></tr>
+    <tr><td>\(r\)</td><td>Gross annual return, before trading costs.</td></tr>
+    <tr><td>\(n\)</td><td>Number of years.</td></tr>
+    <tr><td>\(W\)</td><td>Ending wealth per 1 unit invested.</td></tr>
+  </table></div>
+
+  <h3>Try it: how calibrated are you?</h3>
+  <p>
+    This is the lesson's exercise. Give a range for each quantity that you are <strong>90% sure</strong> contains
+    the true answer. No searching. A very wide range is allowed if that's honestly how unsure you are. Then
+    score yourself.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Calibration quiz: six 90% ranges</div>
+    <div class="oc-quiz" id="oc-quiz"></div>
+    <div class="tl-btnrow" style="margin-top:12px">
+      <button type="button" class="tl-btn active" id="oc-score">Score my ranges</button>
+      <button type="button" class="tl-btn" id="oc-reset">Clear</button>
+    </div>
+    <svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart comparing the share of your 90 percent ranges that contained the true answer against the 90 percent target">
+      <text x="20" y="44" font-size="12" font-family="'DM Sans',sans-serif" fill="var(--text2)">Target</text>
+      <rect x="110" y="28" width="450" height="22" rx="4" style="fill:var(--s3)"/>
+      <rect x="110" y="28" width="405" height="22" rx="4" style="fill:var(--green);opacity:.75"/>
+      <text x="525" y="44" font-size="12" font-family="'DM Mono',monospace" fill="var(--text)">90%</text>
+      <text x="20" y="94" font-size="12" font-family="'DM Sans',sans-serif" fill="var(--text2)">Your hits</text>
+      <rect x="110" y="78" width="450" height="22" rx="4" style="fill:var(--s3)"/>
+      <rect id="oc-bar" x="110" y="78" width="0" height="22" rx="4" style="fill:var(--amber)"/>
+      <text id="oc-bar-label" x="118" y="94" font-size="12" font-family="'DM Mono',monospace" fill="var(--text)">not scored yet</text>
+      <line x1="515" y1="20" x2="515" y2="108" style="stroke:var(--green);stroke-width:1.5;stroke-dasharray:3,3"/>
+      <text x="110" y="132" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">0%</text>
+      <text x="560" y="132" text-anchor="end" font-size="10.5" font-family="'DM Sans',sans-serif" fill="var(--text3)">100%</text>
+    </svg>
+    <div class="tl-readout" id="oc-readout">Fill in a low and a high for each row, then press "Score my ranges".</div>
+    <div class="tl-chart-caption">
+      Scoring uses the binomial formula above with \(c = 0.9\) and \(N = 6\). A calibrated person gets all six about
+      53% of the time and five about 35% of the time, so one miss proves nothing. Three or more misses happen to a
+      calibrated person less than 2% of the time. Your answers stay in this browser and are not sent anywhere.
+    </div>
+  </div>
+
+  <h3>Try it: the cost-drag calculator</h3>
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Growth of 100 over time: before costs vs after costs</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two growth curves of 100 invested: the upper curve compounds at the gross return, the lower at the gross return minus turnover times round-trip cost; the gap between them is the cost of trading">
+      <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="240" x2="60" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <text x="335" y="270" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Years →</text>
+      <text x="18" y="130" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 18 130)">Value of 100</text>
+      <text id="cd-ymax" x="54" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)"></text>
+      <text x="54" y="244" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="60" y="254" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text id="cd-xmax" x="610" y="254" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)"></text>
+      <path id="cd-gap" d="" style="fill:var(--red);opacity:.15"/>
+      <polyline id="cd-gross" points="" style="fill:none;stroke:var(--green);stroke-width:2.5"/>
+      <polyline id="cd-net" points="" style="fill:none;stroke:var(--red);stroke-width:2.5"/>
+    </svg>
+    <div class="tl-legend"><span><i style="background:var(--green)"></i>Before costs</span><span><i style="background:var(--red)"></i>After costs</span><span><i style="background:var(--red);opacity:.3"></i>What the trading cost</span></div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Gross return per year</span><span class="tl-live" id="cd-r-val">10%</span></div>
+        <input type="range" id="cd-r" min="0" max="15" step="0.5" value="10">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Turnover per year</span><span class="tl-live" id="cd-t-val">250%</span></div>
+        <input type="range" id="cd-t" min="0" max="1000" step="10" value="250">
+        <div class="tl-hint">100% = the whole portfolio replaced once a year.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Cost per round trip</span><span class="tl-live" id="cd-k-val">1.00%</span></div>
+        <input type="range" id="cd-k" min="0.05" max="3" step="0.05" value="1">
+        <div class="tl-hint">Spread + commission + impact, both legs.</div>
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Years</span><span class="tl-live" id="cd-n-val">20</span></div>
+        <input type="range" id="cd-n" min="5" max="40" step="1" value="20">
+      </div>
+    </div>
+    <div class="tl-readout" id="cd-readout"></div>
+    <div class="tl-chart-caption">
+      Computed live: \(D = T\times k\), \(W = 100(1+r)^n\) and \(100(1+r-D)^n\). Gross return is held fixed. The
+      calculator assumes the extra trades add no skill, which is the honest default, since Odean (1999) found
+      that the average trade made things worse even before costs.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Turnover of 250% at a 1% round-trip cost</h3>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The annual drag</h4>
+          <p>\(D = T\times k = 2.5 \times 1\% = 2.5\%\) a year. The portfolio is replaced every four to five months.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Twenty years, before and after</h4>
+          <p>At 10% gross: \(1.10^{20} = 6.727\). After costs, 7.5%: \(1.075^{20} = 4.248\).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The share of the gain lost</h4>
+          <div class="tl-math">\[ 1 - \frac{4.248 - 1}{6.727 - 1} = 1 - \frac{3.248}{5.727} \approx 43\% \]</div>
+          <p>A drag that is a quarter of the annual return takes away <strong>43% of the 20-year profit</strong>, because the money paid in costs never gets to compound.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>The intraday version: cost measured against the move</h3>
+    <p>
+      For a short-term trader the useful yardstick isn't cost per year. It is cost compared with the size of the move
+      you are trying to catch. Say a currency pair moves about 80 pips on a typical day (its ATR, average true range) and
+      costs 1.2 pips to trade round trip. That is 1.5% of the daily range: small. Now trade the same pair on a 5-minute
+      chart, where a typical move you target is 8 pips. The same 1.2 pips is now 15% of the move. Your edge has to be
+      larger than that before you make anything.
+    </p>
+    <p style="margin-bottom:0">
+      This is how overconfidence and cost drag compound each other. The confident trader drops to faster timeframes
+      ("more opportunities"). That raises the cost as a share of each move at exactly the point where their real edge,
+      if they have one, is weakest.<!-- DESK:START --> The desk tested this crossover directly. The result is below.<!-- DESK:END -->
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>Two quieter biases that feed it</h2>
+  <div class="tl-compare">
+    <div class="tl-compare-card blue">
+      <h4>Illusion of control</h4>
+      <p>
+        Ellen Langer (1975) ran a lottery in which some people chose their own ticket and others were handed
+        one. When later asked to sell, the people who had chosen asked for substantially more money, even though every
+        ticket had identical odds. The act of choosing made the outcome <em>feel</em> more controllable. In trading,
+        clicking the button, adjusting the stop, or watching the screen all create the same feeling. Activity is easily
+        mistaken for skill.
+      </p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Hindsight bias</h4>
+      <p>
+        Baruch Fischhoff (1975) showed that once people learn how an event turned out, they rate that outcome as
+        having been more predictable than they judged it beforehand. He called this "creeping determinism". Every
+        chart looks obvious from the right-hand edge. If the past was that predictable, you reason, the future must
+        be too. So your ranges narrow and you trade more.
+      </p>
+    </div>
+  </div>
+  <p>
+    A third mechanism, <strong>self-attribution</strong>, keeps the loop going: wins are credited to skill and
+    losses to bad luck. A run of good results therefore raises confidence more than a run of bad results lowers it.
+    That predicts something specific: people should trade <em>more</em> after doing well. The online-trading story
+    below fits that prediction.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Rolling the dice yourself feels luckier than letting someone else roll, but the dice don't know who's rolling. And after the game, everyone says "I knew that would happen", even the people who didn't.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: the brokerage accounts that told on us</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>1991–96: 66,465 households, and the ones who traded most</h3>
+    <p>
+      Brad Barber and Terrance Odean got the account records of 66,465 households at a large US discount broker for
+      1991–1996. That gave them every trade, every holding and every commission. They sorted the households by how
+      much they traded. The average household turned over about <strong>75%</strong> of its stock portfolio a
+      year and earned <strong>16.4%</strong> net, a little below the market. The fifth that traded most earned
+      <strong>11.4%</strong> a year net, while the market returned <strong>17.9%</strong>. Before costs the
+      active traders' picks were roughly as good as everyone else's. The gap came from costs: spread and
+      commission, paid over and over. The paper's title said it bluntly: <em>Trading Is Hazardous to Your
+      Wealth</em>.
+    </p>
+    <p style="margin-bottom:0">
+      The follow-up, <em>Boys Will Be Boys</em> (2001), used the same broker's data, split by gender. Psychology
+      research had found men tend to be more overconfident than women in areas like finance. If overconfidence drives
+      trading, men should trade more and lose more to it. They did. Men traded <strong>45% more</strong> than women,
+      and trading reduced men's net returns by <strong>2.65 percentage points a year</strong>, against
+      <strong>1.72</strong> for women. The gap between single men and single women was wider still.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The 1990s move online: doing well, then trading more</h3>
+    <p>
+      In the mid-1990s online brokers made trading faster and cheaper per click, and the late-1990s boom made it
+      exciting. Barber and Odean (2002) followed investors who switched from phone-based to online trading. The
+      investors who made the switch had been <strong>beating the market before they went online</strong>.
+      A good run is exactly what self-attribution turns into confidence. After switching, they traded more actively
+      and more speculatively, and their performance <strong>fell behind the market</strong>. The authors titled the
+      paper <em>Online Investors: Do the Slow Die First?</em>
+    </p>
+    <p style="margin-bottom:0">
+      Day trading is the extreme version. A later study of Taiwan's market, which records every trade by every
+      investor, followed day traders over many years. Barber, Lee, Liu and Odean (2014) found that <strong>fewer than
+      1%</strong> could be shown to profit reliably, year after year, net of fees. Most people who tried it lost money
+      and stopped. Overconfidence doesn't need a bubble to cost you. A boom just lets more people act on it at once.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>A run of wins</b>A good stretch, in a rising market that rewards almost everyone</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · Overconfidence</b>You credit skill, not luck; your ranges narrow; every idea feels above average</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>You, the trader</b>Act more: turnover rises, faster timeframes, quicker switches</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The market maker</b>Charges the spread on every round trip, win or lose; the broker charges commission</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Net returns lag; the most active lag most (11.4% vs 17.9%)</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: too-narrow error bars are what turn a winning streak into turnover.</p>
+
+  <!-- DESK:START -->
+  <h3>What the desk found</h3>
+  <p>
+    The folk claim this lesson is about is "if I'm confident, acting on it more often makes money." The desk hasn't
+    studied retail accounts. It has tested two pieces of that claim on its own systems: what costs do to short-horizon
+    edges, and whether a confidence score predicts which trades win.
+  </p>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="execution-gate" data-evidence-date="2026-09-02">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>execution-gate: when the spread is a large fraction of the day's range, no short-horizon edge survives it.</strong>
+    With spread ÷ ATR above <strong>0.15</strong>, <strong>zero of 30</strong> strategy × timeframe cells were profitable.
+    Cost outruns edge as the timeframe speeds up, and the crossover sits in the same place across strategies. In this
+    lesson's terms: moving to faster charts to "find more trades" buys you more trades, and each one costs more as a
+    share of the move.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="conviction-vote" data-evidence-date="2026-07-25">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>conviction-vote: a higher conviction score on an entry does not mean a better trade.</strong>
+    One of the desk's own automated systems gave every entry a conviction vote. When it was scored, the vote was
+    <strong>anti-predictive</strong> of outcome, and the system was a net loser (<strong>−£38k</strong>) on a
+    <strong>30% win rate</strong>, not because of a few deep losses. Confidence that has never been scored is a
+    feeling, not a measurement. That applies to a model as much as to a person.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Retail turnover and returns on this desk's markets.</strong> The household figures above are Barber
+    and Odean's, from US equities in the 1990s. Nothing here re-tests them for FX or index CFDs, or for today's lower
+    commissions. Lower commissions shrink \(k\) but not the spread. Cheaper trades also invite more of them, so
+    \(T\) tends to rise.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The grown-ups who swapped their toys most ended up with the fewest sweets. The boys swapped more than the girls and lost more sweets.<!-- DESK:START --> And when the desk let a robot say how sure it was about each swap, its "really sure" swaps turned out worse, not better.<!-- DESK:END --></p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <p>
+    Nobody fixes overconfidence by deciding to be humble. What works is building checks into the process, so that
+    the bias has to get past a rule before it reaches the order ticket:
+  </p>
+  <div class="tl-steps">
+    <div class="tl-step">
+      <div class="tl-step-num">1</div>
+      <div class="tl-step-body">
+        <h4>Write the range, not the point</h4>
+        <p>Before each trade, write the 80% range for where price will be at your exit time. Score those ranges every month the way the quiz above did. If fewer than 80% hit, widen your stops or cut your size until they do.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">2</div>
+      <div class="tl-step-body">
+        <h4>Compute cost ÷ move before the idea, not after</h4>
+        <p>Divide the round-trip cost by the typical move on your chosen timeframe. If it is a big share, the idea is dead before it starts, however good the chart looks.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">3</div>
+      <div class="tl-step-body">
+        <h4>Budget your turnover</h4>
+        <p>Set a maximum number of round trips per week or month, in advance. Then each trade has to beat the others for one of the limited slots. A budget makes you ask "is this better than my average idea?", which is the question overconfidence skips.</p>
+      </div>
+    </div>
+    <div class="tl-step">
+      <div class="tl-step-num">4</div>
+      <div class="tl-step-body">
+        <h4>Score your confidence</h4>
+        <p>If you tag trades "A", "B", "C", check after 50 trades whether the A trades actually did better. If they didn't, the tag is noise, and sizing up on it adds risk without adding edge. <a href="process-vs-outcome-decision-journals.html">Lesson 6</a> builds the journal that makes this possible.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Self-audit · do this now</div>
+    <h3>Five questions before your next trade</h3>
+    <p>Answer honestly. A "yes" to two or more means the trade is coming from the feeling, not the evidence.</p>
+    <ul>
+      <li>Is this my second or later trade in this market today?</li>
+      <li>Did my last two or three trades win, and do I feel "in the zone"?</li>
+      <li>Is my stop tighter than the market's typical noise, because I'm "sure" of the entry?</li>
+      <li>Have I switched to a faster chart than the one my plan was written for?</li>
+      <li>Would I struggle to write down the specific thing that would prove this trade wrong?</li>
+    </ul>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>A cost gate and a scored confidence vote</h3>
+    <p style="margin-bottom:0">
+      The desk runs the cost check in step 2 as a hard rule. Every instrument shows spread ÷ ATR, and any intraday idea
+      above 0.15 is dropped before it is researched. The desk also applies step 4 to itself. A system's conviction vote
+      was scored against outcomes, failed, and was recorded as a null rather than quietly dropped. Nothing on the
+      desk measures a human trader's calibration or turnover. That would be a journal, and Lesson 6 covers it.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where people get this wrong</h3>
+    <ul>
+      <li><strong>"Commissions are zero now, so turnover is free."</strong> The spread is still there, and so is the price impact. "Zero commission" brokers are typically paid through order flow instead, which isn't free to you either.</li>
+      <li><strong>Judging calibration from one miss.</strong> With six questions, a calibrated person misses at least one about 47% of the time. You need many forecasts before a gap means anything.</li>
+      <li><strong>Mistaking a bull market for skill.</strong> In 1991–96 almost everyone made money. The question is whether you beat a do-nothing alternative after costs, not whether you made money at all.</li>
+      <li><strong>Over-correcting into paralysis.</strong> The lesson is not "never trade." It is "trade when the expected edge clearly beats \(k\)." Doing nothing is also a position.</li>
+      <li><strong>Counting the wins and forgetting the costs.</strong> Most trading platforms show P&amp;L per trade before costs. Add spread and fees back in before you judge any streak.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Overconfidence is a measurable miscalibration.</strong> People's 90% ranges catch the truth far less than 90% of the time. CFOs' 80% stock-market ranges caught it 36% of the time.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>It costs money through turnover.</strong> The most active fifth of 66,465 households earned 11.4% net against the market's 17.9% (Barber &amp; Odean, 2000). Men traded 45% more than women and lost more to it (2001).</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Drag ≈ turnover × round-trip cost, and it compounds.</strong> 250% turnover at 1% costs 2.5 points a year, about 43% of a 20-year gain at 10%.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cost against the move is a hard wall (execution-gate, validated).</strong> Above a spread of 0.15 of ATR, zero of 30 strategy cells made money. Faster charts mean more trades, each costing more as a share of the move.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Illusion of control and hindsight bias feed the loop.</strong> Acting feels like improving the odds, and the past always looks predictable from the right-hand edge of the chart.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Confidence is not edge (conviction-vote, null).</strong> One of the desk's own systems scored its conviction on every entry. The score was anti-predictive, and the system lost money on a 30% win rate. Score your A/B/C tags before you size on them.</span></div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Someone answers ten 90%-range questions and gets 9 right. Are they calibrated?</summary>
+    <div class="tl-answer">On this evidence, yes: 9 of 10 is exactly the expected hit rate. Ten questions is still a small sample, though, so a calibrated person could easily have scored 8, and an overconfident one could have got lucky. Calibration is judged over many forecasts.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. Turnover is 400% a year and a round trip costs 0.5%. What is the annual drag, and what must the extra trades earn to justify it?</summary>
+    <div class="tl-answer">\(D = 4 \times 0.5\% = 2\%\) a year. To break even the trading has to add at least 2 points a year above what the portfolio would earn if you held it. That means each of the four round trips has to earn more than 0.5% above the alternative, on average, after the fact.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. In Barber &amp; Odean (2000), was the most active traders' underperformance mainly about bad stock picks or about costs?</summary>
+    <div class="tl-answer">Mainly costs. Before costs, the active households' returns were roughly comparable with everyone else's. The 11.4% vs 17.9% gap opened up after spread and commission, paid on very high turnover. Odean (1999) adds that the stocks traders bought did worse than the ones they sold, so the trades didn't add value even before costs.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Why does the "Boys Will Be Boys" result support overconfidence as the cause, rather than just "some people like trading"?</summary>
+    <div class="tl-answer">Psychology research had found men to be more overconfident than women in areas like finance. Overconfidence predicts that men will trade more <em>and</em> lose more from that trading. Both things happened: 45% more trading, and 2.65 vs 1.72 points of annual return lost. That makes the gender split a test of the prediction, not just a description of who trades.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A trader moves from the daily chart to the 5-minute chart "to get more opportunities". What happens to their costs<!-- DESK:START -->, using the execution-gate result<!-- DESK:END -->?</summary>
+    <div class="tl-answer">The cost of one round trip stays about the same in pips, but the move each trade aims for shrinks a lot. Cost as a share of the move (spread ÷ ATR on that timeframe) rises sharply.<!-- DESK:START --> The desk found that above 0.15, zero of 30 strategy × timeframe cells were profitable.<!-- DESK:END --> More opportunities, each with a worse cost-to-move ratio.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. You tag your trades A, B or C by conviction. What would tell you the tags are worth sizing on?</summary>
+    <div class="tl-answer">A scored record: after a decent sample (dozens of trades per tag, not five), A trades should do clearly better than C trades after costs. If they don't, the tag measures how you feel, not what happens next, and sizing on it adds risk without adding return.<!-- DESK:START --> The desk's conviction-vote null is exactly this check, and it failed.<!-- DESK:END --></div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Brad M. Barber &amp; Terrance Odean, "Trading Is Hazardous to Your Wealth: The Common Stock Investment Performance of Individual Investors", <em>Journal of Finance</em> 55(2), 2000. The 66,465 households.</li>
+    <li>Brad M. Barber &amp; Terrance Odean, "Boys Will Be Boys: Gender, Overconfidence, and Common Stock Investment", <em>Quarterly Journal of Economics</em> 116(1), 2001.</li>
+    <li>Brad M. Barber &amp; Terrance Odean, "Online Investors: Do the Slow Die First?", <em>Review of Financial Studies</em> 15(2), 2002.</li>
+    <li>Terrance Odean, "Do Investors Trade Too Much?", <em>American Economic Review</em> 89(5), 1999. Stocks bought did worse than stocks sold.</li>
+    <li>Terrance Odean, "Volume, Volatility, Price, and Profit When All Traders Are Above Average", <em>Journal of Finance</em> 53(6), 1998. The theory: overconfident traders trade more and do worse.</li>
+    <li>Brad M. Barber, Yi-Tsung Lee, Yu-Jane Liu &amp; Terrance Odean, "The Cross-Section of Speculator Skill: Evidence from Day Trading", <em>Journal of Financial Markets</em>, 2014.</li>
+    <li>Itzhak Ben-David, John R. Graham &amp; Campbell R. Harvey, "Managerial Miscalibration", <em>Quarterly Journal of Economics</em> 128(4), 2013. CFOs' 80% intervals, 36% hit rate.</li>
+    <li>Sarah Lichtenstein, Baruch Fischhoff &amp; Lawrence D. Phillips, "Calibration of Probabilities: The State of the Art to 1980", in Kahneman, Slovic &amp; Tversky (eds.), <em>Judgment under Uncertainty: Heuristics and Biases</em>, 1982.</li>
+    <li>Ellen J. Langer, "The Illusion of Control", <em>Journal of Personality and Social Psychology</em> 32(2), 1975.</li>
+    <li>Baruch Fischhoff, "Hindsight ≠ Foresight: The Effect of Outcome Knowledge on Judgment Under Uncertainty", <em>Journal of Experimental Psychology: Human Perception and Performance</em> 1(3), 1975.</li>
+    <li>In this curriculum: <a href="kelly-criterion.html">Kelly Criterion</a> (what over-estimating your edge does to sizing), <a href="sharpe-family-deflated.html">Deflated Sharpe</a> (overconfidence in a backtest), <a href="execution-algorithms.html">Execution Algorithms</a> (what a round trip really costs).</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="disposition-effect.html">← The Disposition Effect</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="herding-narratives-bubbles.html">Herding, Narratives and Bubbles →</a>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Calibration quiz. Answers are well-documented, stable facts.
+  var QS = [
+    { q: 'Height of Mount Everest', unit: 'metres', a: 8849, note: '8,849 m (2020 China–Nepal survey; older figure 8,848 m)', tol: 1 },
+    { q: 'Average distance from the Earth to the Moon', unit: 'km', a: 384400, note: 'about 384,400 km' },
+    { q: 'Number of member states of the United Nations', unit: 'countries', a: 193, note: '193 (since South Sudan joined in 2011)' },
+    { q: 'Fall in the Dow Jones Industrial Average on 19 October 1987', unit: '% in one day', a: 22.6, note: 'about 22.6%, still its largest one-day percentage fall' },
+    { q: 'Year Black and Scholes published their option-pricing paper', unit: 'year', a: 1973, note: '1973, in the Journal of Political Economy' },
+    { q: 'Year of the Buttonwood Agreement that founded the New York Stock Exchange', unit: 'year', a: 1792, note: '1792' }
+  ];
+  var host = document.getElementById('oc-quiz');
+  if (!host) return;
+  QS.forEach(function(item, i){
+    var row = document.createElement('div');
+    row.className = 'oc-row';
+    row.innerHTML = '<div class="oc-q">' + item.q + '<small>' + item.unit + '</small></div>' +
+      '<input type="number" class="tl-scratch-input" id="oc-lo-' + i + '" placeholder="low" aria-label="Low end of your 90% range">' +
+      '<input type="number" class="tl-scratch-input" id="oc-hi-' + i + '" placeholder="high" aria-label="High end of your 90% range">' +
+      '<div class="oc-mark" id="oc-mk-' + i + '"></div>' +
+      '<div class="oc-ans" id="oc-ans-' + i + '">Answer: ' + item.note + '</div>';
+    host.appendChild(row);
+  });
+  function binomCdf(h, n, p){
+    var s = 0;
+    for (var k = 0; k <= h; k++){
+      var c = 1;
+      for (var j = 0; j < k; j++) c = c * (n - j) / (j + 1);
+      s += c * Math.pow(p, k) * Math.pow(1 - p, n - k);
+    }
+    return s;
+  }
+  var readout = document.getElementById('oc-readout');
+  var bar = document.getElementById('oc-bar');
+  var barLabel = document.getElementById('oc-bar-label');
+  document.getElementById('oc-score').addEventListener('click', function(){
+    var hits = 0, answered = 0;
+    QS.forEach(function(item, i){
+      var lo = parseFloat(document.getElementById('oc-lo-' + i).value);
+      var hi = parseFloat(document.getElementById('oc-hi-' + i).value);
+      var mk = document.getElementById('oc-mk-' + i);
+      document.getElementById('oc-ans-' + i).classList.add('shown');
+      if (isNaN(lo) || isNaN(hi)) { mk.textContent = '–'; mk.className = 'oc-mark'; return; }
+      if (lo > hi) { var t = lo; lo = hi; hi = t; }
+      answered++;
+      var tol = item.tol || 0;
+      var hit = item.a >= lo - tol && item.a <= hi + tol;
+      if (hit) hits++;
+      mk.textContent = hit ? '✓' : '✗';
+      mk.className = 'oc-mark ' + (hit ? 'hit' : 'miss');
+    });
+    if (!answered) { readout.textContent = 'Give at least one range first.'; return; }
+    var rate = hits / answered;
+    bar.setAttribute('width', (450 * rate).toFixed(1));
+    bar.style.fill = rate >= 0.85 ? 'var(--green)' : (rate >= 0.6 ? 'var(--amber)' : 'var(--red)');
+    barLabel.textContent = Math.round(rate * 100) + '%  (' + hits + ' of ' + answered + ')';
+    var p = binomCdf(hits, answered, 0.9);
+    var gap = 0.9 - rate;
+    var verdict;
+    if (p >= 0.10) verdict = 'Consistent with being calibrated on this small sample.';
+    else if (p >= 0.02) verdict = 'Leaning overconfident: a calibrated person scores this low only ' + (p * 100).toFixed(1) + '% of the time.';
+    else verdict = 'Overconfident on this sample: a calibrated person scores this low only ' + (p * 100).toFixed(1) + '% of the time. Your ranges were too narrow.';
+    readout.innerHTML = 'Hits <b>' + hits + '/' + answered + '</b> · expected if calibrated <b>' + (0.9 * answered).toFixed(1) + '</b> · calibration gap <b>' + (gap >= 0 ? '+' : '') + (gap * 100).toFixed(0) + ' pts</b> · P(this few or fewer | calibrated) <b>' + (p * 100).toFixed(1) + '%</b><br>' + verdict;
+  });
+  document.getElementById('oc-reset').addEventListener('click', function(){
+    QS.forEach(function(item, i){
+      document.getElementById('oc-lo-' + i).value = '';
+      document.getElementById('oc-hi-' + i).value = '';
+      var mk = document.getElementById('oc-mk-' + i); mk.textContent = ''; mk.className = 'oc-mark';
+      document.getElementById('oc-ans-' + i).classList.remove('shown');
+    });
+    bar.setAttribute('width', '0');
+    barLabel.textContent = 'not scored yet';
+    readout.textContent = 'Fill in a low and a high for each row, then press "Score my ranges".';
+  });
+})();
+</script>
+<script>
+(function(){
+  // Cost-drag calculator: D = T*k; W = 100(1+r)^t and 100(1+r-D)^t.
+  var ids = ['r','t','k','n'];
+  var el = {};
+  ids.forEach(function(id){ el[id] = document.getElementById('cd-' + id); });
+  if (!el.r) return;
+  var X0 = 60, X1 = 610, Y0 = 240, Y1 = 20;
+  function fmt(x){ return x >= 1000 ? Math.round(x).toLocaleString('en-GB') : x.toFixed(0); }
+  function update(){
+    var r = parseFloat(el.r.value) / 100;
+    var T = parseFloat(el.t.value) / 100;
+    var k = parseFloat(el.k.value) / 100;
+    var n = parseInt(el.n.value, 10);
+    var D = T * k;
+    document.getElementById('cd-r-val').textContent = (r * 100).toFixed(1).replace(/\.0$/, '') + '%';
+    document.getElementById('cd-t-val').textContent = Math.round(T * 100) + '%';
+    document.getElementById('cd-k-val').textContent = (k * 100).toFixed(2) + '%';
+    document.getElementById('cd-n-val').textContent = n;
+    var gEnd = 100 * Math.pow(1 + r, n);
+    var netR = r - D;
+    var nEnd = 100 * Math.pow(Math.max(1 + netR, 0), n);
+    var yMax = Math.max(gEnd, nEnd, 110) * 1.05;
+    function xs(t){ return X0 + (t / n) * (X1 - X0); }
+    function ys(v){ return Y0 - (v / yMax) * (Y0 - Y1); }
+    var gp = [], np = [];
+    for (var t = 0; t <= n; t++){
+      gp.push(xs(t).toFixed(1) + ',' + ys(100 * Math.pow(1 + r, t)).toFixed(1));
+      np.push(xs(t).toFixed(1) + ',' + ys(100 * Math.pow(Math.max(1 + netR, 0), t)).toFixed(1));
+    }
+    document.getElementById('cd-gross').setAttribute('points', gp.join(' '));
+    document.getElementById('cd-net').setAttribute('points', np.join(' '));
+    document.getElementById('cd-gap').setAttribute('d', 'M' + gp.join(' L') + ' L' + np.slice().reverse().join(' L') + ' Z');
+    document.getElementById('cd-ymax').textContent = fmt(yMax);
+    document.getElementById('cd-xmax').textContent = n;
+    var gGain = gEnd - 100, nGain = nEnd - 100;
+    var lost = gGain > 0 ? (1 - nGain / gGain) : 0;
+    document.getElementById('cd-readout').innerHTML =
+      'Drag D = T × k = <b>' + (D * 100).toFixed(2) + '%</b>/yr · net return <b>' + (netR * 100).toFixed(2) + '%</b>/yr · after ' + n + ' years: <b>' + fmt(gEnd) + '</b> before costs vs <b>' + fmt(nEnd) + '</b> after' +
+      (gGain > 0 ? ' · share of gain lost to trading <b>' + (lost * 100).toFixed(0) + '%</b>' : '');
+  }
+  ids.forEach(function(id){ el[id].addEventListener('input', update); });
+  update();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

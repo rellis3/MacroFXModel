@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Transfer Entropy — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer the exact-bits worked derivation, the full causal caveat, and a 6-question self-test?<a href="transfer-entropy-causality.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Who leads whom, when the link isn't linear</h2>
+      <p class="sl-sub">Transfer entropy · Schreiber, 2000 → financial lead-lag from Marschinski &amp; Kantz, 2002</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Lead-lag between markets was measured with Granger's 1969 linear test, which misses links that live in the tails or in volatility; mutual information catches those but cannot say which way influence runs.</p>
+        <p>Schreiber's 2000 measure fixed both, and Marschinski &amp; Kantz (2002) applied it to flows between the Dow Jones and DAX. It is now a standard nonlinear cross-check on Granger results and a way to draw directed spillover edges.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> does X's past predict Y's future, in which direction, linear or not?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Granger causality only ever looks for a straight line</h2>
       <p class="sl-sub">Recall the test from the <a href="arima-var-micro.html" style="color:var(--blue);font-weight:600;text-decoration:none">ARIMA &amp; VAR guide</a>: fit Y on its own lags, add X's lags, and F-test whether that addition helps.</p>
       <div class="sl-row">
@@ -40,8 +53,8 @@
       <div class="sl-quote">Roosters crowing right before sunrise "Granger-cause" the sunrise by the narrow statistical definition — a rooster's crow is a fine linear predictor of dawn. Whatever tool replaces the linear regression underneath, that warning never goes away; it only gets carried forward, unchanged, to whatever comes next.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The model-free version: does X's past reduce your uncertainty about Y's future?</h2>
       <p class="sl-sub">Not "does adding X's lags improve a linear fit" — but "does knowing X's past tell you anything about Y's future that Y's own past didn't already tell you."</p>
       <div class="sl-row">
@@ -52,15 +65,15 @@
         <div class="sl-icard"><div class="sl-icard-badge">Xₜ₋₁</div><div><h4>The candidate source — X's past</h4><p>Does it carry genuinely new information?</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">|Yₜ₋₁</div><div><h4>Conditioned on Y's own past</h4><p>Held fixed so only X's contribution is counted — not Y predicting itself.</p></div></div>
       </div>
-      <p class="sl-p">This is a <strong>conditional mutual information</strong> — the mutual information from the previous lesson, computed within each fixed value of Yₜ₋₁ and averaged, the same way conditional entropy generalizes entropy. Because mutual information registers any form of statistical dependence, not just a linear one, transfer entropy catches exactly the nonlinear relationships Section 1's linear regression is structurally blind to — while asking the identical directional question.</p>
+      <p class="sl-p">This is a <strong>conditional mutual information</strong> — the mutual information from the previous lesson, computed within each fixed value of Yₜ₋₁ and averaged, the same way conditional entropy generalizes entropy. Because mutual information registers any form of statistical dependence, not just a linear one, transfer entropy catches exactly the nonlinear relationships Section 2's linear regression is structurally blind to — while asking the identical directional question.</p>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying</div>
         <p>Like ordinary mutual information, TE(X→Y) ≥ 0 always — it is built from an average of KL divergences, each individually nonnegative. Equality holds exactly when Xₜ₋₁ adds nothing to predicting Yₜ beyond what Yₜ₋₁ already provides. And nothing forces TE(X→Y) to equal TE(Y→X) — conditioning each direction on a <em>different</em> series' own past makes them two genuinely different computations.</p>
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">A relationship Granger causality catches, and one it misses</h2>
       <p class="sl-sub">Same underlying question — does X's past predict Y's future — asked of a linear channel and a nonlinear one. Switch tabs.</p>
       <div class="sl-card">
@@ -103,8 +116,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Two diagrams that can look identical from the outside</h2>
       <p class="sl-sub">Left: a real, one-directional flow of predictive information. Right: no direct link at all — just a hidden variable Z driving both series.</p>
       <div class="sl-compare">
@@ -149,8 +162,8 @@
       <div class="sl-quote">A diagram that looks structurally different from the one beside it can still produce a numerically similar-looking transfer-entropy reading. That coincidence isn't a flaw in the math to be fixed later — it's the entire reason the causation caveat exists, drawn instead of just stated.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Recompute the exact worked example, live</h2>
       <p class="sl-sub">Xₜ is a fair coin, independent across time. Yₜ = Xₜ₋₁ XOR a flip with probability ε. Change ε — both bars update.</p>
       <div class="sl-card">
@@ -190,8 +203,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">A confound can keep the reading elevated even with zero real link</h2>
       <p class="sl-sub">Drag Z's strength. The true, direct X→Y causal coefficient is fixed at exactly 0 for every position of this slider — it never moves.</p>
       <div class="sl-card">
@@ -216,8 +229,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">The message that must not get lost</h2>
       <div class="sl-compare">
         <div class="sl-ccard green">
@@ -244,8 +257,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Why this is much harder to compute from real data than Granger's regression</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
@@ -265,18 +278,20 @@
       <p class="sl-p">This lesson's worked example on the earlier slide is exact <em>by construction</em> — the process's true distributions are known, not estimated. A real, finite, noisy sample never comes with known distributions, which is precisely why a naive transfer-entropy estimator can report a spuriously large number purely from overfitting a small sample's joint density.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
-      <h2 class="sl-h2">Where this sits in the literature — and in this repo</h2>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
+      <h2 class="sl-h2">Where this sits in the literature<!-- DESK:START --> — and in this repo<!-- DESK:END --></h2>
       <p class="sl-p">Thomas Schreiber introduced transfer entropy (2000) explicitly as a model-free alternative to Granger causality for nonlinear systems. Barnett, Barrett &amp; Seth (2009) then proved the two are mathematically equivalent, up to a constant, for jointly Gaussian variables under a linear model — confirming transfer entropy is a strict generalization, adding real detection power only once the true relationship stops being linear. In neuroscience, it's a standard tool for directional flow between EEG or physiological channels, where nonlinear coupling is the norm rather than the exception.</p>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Factual grounding — verified against this repo's current source</div>
         <p>The full lesson tags itself "CONCEPT — not built or tested anywhere in this repo," and that check still holds: a repo-wide search finds no transfer-entropy code and no Granger-causality F-test or multi-series VAR fit anywhere in this codebase — confirming the same gap the ARIMA &amp; VAR visual guide already flagged for Granger causality and VAR. One thing worth not confusing: <code>js/goldMinerArbEngine.js</code> and <code>js/hedgeSignalV2Engine.js</code> do implement <strong>Engle-Granger cointegration</strong> tests — a different test, named after the same economist, that checks whether two non-stationary series share a long-run equilibrium. It is not the lagged-forecast-improvement test this lesson and the ARIMA &amp; VAR guide describe. Nothing here was stale; both claims check out as still accurate.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -317,8 +332,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Granger causality tests whether X's lagged values significantly improve a <strong>linear</strong> regression forecast of Y, beyond Y's own past — and is structurally blind to nonlinear predictive relationships.</p></div>
@@ -327,6 +342,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It reduces exactly to Granger causality for jointly Gaussian, linear systems (Barnett, Barrett &amp; Seth, 2009) — added detection power appears only once the relationship is genuinely nonlinear.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neither tool proves causation — an unobserved common driver Z can produce a nonzero, asymmetric reading with zero real direct link, exactly as demonstrated on the confounder slider.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Estimating transfer entropy from real data needs a full joint probability distribution — far more data than Granger's linear regression, and much more as the relevant lag length grows.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Transfer entropy reached markets as a nonlinear lead-lag test (Marschinski &amp; Kantz, 2002): Granger's question without the linearity, worth its data cost only when the link is nonlinear.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

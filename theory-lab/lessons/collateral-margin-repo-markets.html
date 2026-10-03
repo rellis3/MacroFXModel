@@ -17,7 +17,7 @@
   <h1 class="tl-title">Collateral, Margin &amp; Repo Markets</h1>
   <p class="tl-dek">Every leveraged position and every derivatives trade rests on a layer of plumbing most people never see: collateral posted as a buffer, discounted for its own riskiness, and lent overnight through a market that is quietly one of the largest and most important in the global financial system.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — institutional market-structure background, not a claim about anything built or traded in this repo</span>
+    <span class="tl-status concept">CONCEPT — institutional market-structure background<!-- DESK:START -->, not a claim about anything built or traded in this repo<!-- DESK:END --></span>
     <span>~15 min read</span>
     <span>Prereqs: none — self-contained</span>
   </div>
@@ -36,7 +36,9 @@
       <li><strong>Haircuts</strong> discount collateral below its market value to buffer against the collateral's own price volatility and the time it might take to liquidate it in a default — $100 of a volatile bond posted as collateral might count as only $95 of eligible collateral value, a 5% haircut.</li>
       <li>A <strong>repurchase agreement (repo)</strong> is economically a collateralized loan of cash: one party sells a security today with a simultaneous agreement to buy it back later at a slightly higher price — the price difference <em>is</em> the interest, called the repo rate.</li>
       <li><strong>SOFR</strong> — the modern USD reference rate covered in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a> — is literally computed from real overnight Treasury repo transaction data, a direct, concrete tie between this lesson and that one.</li>
-      <li>This is institutional market-structure background — the plumbing underneath leverage and derivatives — not a trading signal, and not a claim about anything built in this repo.</li>
+      <li><strong>Who's in the market:</strong> money market funds lend the cash, primary dealers borrow it to fund bond inventories, banks lend when it pays, and the Fed stands at both edges. A mid-month tax date pulls cash out of money funds and lifts SOFR. That's a calendar effect, covered in <a href="fed-corridor-iorb-srf-discount-window.html">The Fed's Corridor</a>.</li>
+      <li>This is institutional market-structure background — the plumbing underneath leverage and derivatives — not a trading signal<!-- DESK:START -->, and not a claim about anything built in this repo<!-- DESK:END -->.</li>
+      <li><strong>Real-world episode:</strong> in March 2020's dash for cash, exchanges raised futures margins and repo lenders tightened haircuts just as volatility jumped. Hedge funds in the leveraged Treasury basis trade had to sell bonds to meet the calls, Treasury yields rose while stocks fell, and the Fed bought roughly a trillion dollars of Treasuries within about a month. A margin spiral, run through this lesson's machinery.</li>
     </ul>
   </div>
 
@@ -371,6 +373,147 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>Who is in the repo market</h2>
+  <p>
+  The worked example above has two anonymous parties, a cash borrower and a cash lender. In the US Treasury repo
+  market those roles are filled by a fairly small cast, and each one comes with its own constraints. Knowing who sits
+  on which side explains most of what moves SOFR from day to day.
+  </p>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">💵</div>
+      <h4>Money market funds: the cash lenders</h4>
+      <p>They hold investors' cash and must keep it safe and available, so they lend it overnight in repo against Treasuries. They have no account at the Fed, so they can't earn interest on reserves. When investors withdraw, funds have less to lend that night.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">📑</div>
+      <h4>Primary dealers: the borrowers and middlemen</h4>
+      <p>The securities firms that trade directly with the New York Fed and bid at Treasury auctions. They carry large bond inventories and fund them overnight in repo, which makes them the biggest cash borrowers. They also pass cash on to hedge funds and other leveraged investors.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏦</div>
+      <h4>Banks: lenders when it pays</h4>
+      <p>Banks hold reserves at the Fed and earn interest on them. They lend into repo when the repo rate beats that, after the cost of using their balance sheet. Around month-ends and quarter-ends some shrink their balance sheets for reporting dates, which pulls cash out.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🏛️</div>
+      <h4>The Fed, at the edges</h4>
+      <p>The Fed doesn't set SOFR, but it stands at both edges. At the bottom, its overnight reverse repo facility takes cash from money funds at a fixed rate. At the top, the Standing Repo Facility lends cash against Treasuries at a fixed rate. Banks also have the discount window. The <a href="fed-corridor-iorb-srf-discount-window.html">Fed's Corridor</a> lesson covers each wall.</p>
+    </div>
+  </div>
+
+  <h3>The mid-month chain: a calendar effect, not a crisis</h3>
+  <p>
+  Put those actors together and you can trace why SOFR tends to lift around the middle of the month. Each step is
+  someone meeting a known obligation on a known date:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Mid-month tax date</b>Tax payments fall due; Treasury settlement often lands nearby</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Investors</b>Withdraw from money market funds to pay the bill</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Money market funds</b>Must meet redemptions, so pull cash out of repo</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Primary dealers</b>Still need the same funding, so bid for scarcer cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>SOFR lifts for a day or two, then settles</div>
+  </div>
+  <p>
+  This is plumbing working normally.<!-- DESK:START --> On this desk's data, 12 of 15 SOFR episodes above the Fed floor away from
+  month-end fell on the 14th–18th of a month, and the study recorded the pattern as a calendar effect rather than
+  stress (a NULL result for SOFR-as-warning).<!-- DESK:END --> The <a href="fed-corridor-iorb-srf-discount-window.html">Fed's Corridor</a>
+  lesson covers what caps the rise, and what happened in September 2019 when nothing did.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Money funds are like a big shared savings jar that lends cash out every night. On tax day, lots of people take money out of the jar to pay the government, so there's less to lend that night. The bond dealers still need the same amount, so they have to offer a bit more to get it. The next day the money flows back and things calm down.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>It actually happened: March 2020, the basis trade meets a margin call</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The safest collateral in the world, financed on a thin haircut</h3>
+    <p>
+      The mid-month chain above is plumbing doing its routine job. March 2020 showed what happens when the same
+      plumbing has to carry a stampede, and the pressure arrived through margin and haircuts rather than through
+      a tax date.
+    </p>
+    <p>
+      Going into 2020, a popular hedge fund trade was the <strong>Treasury cash-futures basis trade</strong>. A
+      fund buys a Treasury bond, sells the matching Treasury future, and pockets the small gap between their
+      prices as the two converge. The gap is tiny, so the trade only pays with leverage, and the leverage came
+      from this lesson's machinery. The fund finances the bond overnight in <strong>repo</strong>, where Treasuries
+      carry a low haircut (the scenario below uses 2%), and it posts <strong>initial margin</strong> on the short
+      future at the exchange. Most of the position is borrowed money, rolled every night.
+    </p>
+    <p>
+      In mid-March 2020, as the pandemic hit markets, investors around the world rushed for cash, the "dash for
+      cash", and sold even Treasuries. Volatility jumped, so the exchange raised initial margin on Treasury
+      futures, variation margin had to be paid daily as prices swung, and repo lenders could ask for bigger
+      haircuts or lend less. Funds running the basis trade had to find cash for all of it on the same days. The way
+      to raise it was to sell the bonds, and dealers, whose balance sheets were already full, could not absorb the
+      flood. Yields on Treasuries, normally the haven, <em>rose</em> sharply in the middle of the month while stocks
+      were falling.
+    </p>
+    <p style="margin-bottom:0">
+      The Federal Reserve stepped in on a scale never seen before. From March 15 it bought Treasuries in enormous
+      size, roughly a trillion dollars' worth within about a month, and greatly expanded its repo operations.
+      Economists at the Bank for International Settlements called the mechanism a <strong>margin spiral</strong>
+      (Schrimpf, Shin and Sushko, <em>BIS Bulletin</em>, 2020): higher margins force sales, sales move prices,
+      price moves raise margins again.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Dash for cash</b>Mid-March 2020: investors worldwide sell even Treasuries to raise cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Exchange and repo lenders</b>Facing higher volatility, must protect themselves: higher futures margin, bigger haircuts or less lending</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · margin and haircuts</b>Initial margin up, variation margin due daily, haircuts wider: a 2%-haircut trade needs fresh cash at once</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Hedge funds</b>Can't fund the bigger buffers, so they unwind: sell cash Treasuries, buy back futures</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Balance sheets already full, can't absorb the flow, so Treasury yields jump</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The Fed buys roughly a trillion dollars of Treasuries within about a month</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. A haircut and an initial margin are sized for normal volatility.
+    When volatility jumps they are re-sized upward, and the trades they finance have to find the difference in
+    cash, the same day.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You borrowed almost the whole price of a bike from the pawn shop, because bikes are "safe". One day everyone panics, and the shop says: from now on we'll only lend you a bit less, so pay us the difference today. You don't have the money, so you sell the bike. So does everyone else, at the same time, and bike prices fall. Then the shop asks for even more.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The textbook treats a haircut as a fixed property of the collateral: Treasuries are safe, so the haircut is
+    small. In March 2020 haircuts and margins turned out to be a function of volatility, and they rose exactly when
+    the borrower could least afford it. The textbook also assumes collateral can be sold near its market value. That
+    held only because the Fed became the buyer; without it, the liquidation price that the haircut is meant to
+    protect was itself moving.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="funding-stress" data-evidence-date="2026-10-02">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>funding-stress: on this desk's data, the overnight repo rate was not a stress warning.</strong> The
+    tempting read of this lesson is "watch repo rates; when funding gets expensive, trouble follows". Tested on 2,123
+    SOFR sessions, 2018-04 to 2026-09. SOFR ≥ 3bp over the floor away from month-end left just 15 episodes, too few
+    to test, and 12 of those 15 fall on the 14th–18th of a month. A drawn Standing Repo Facility (21 episodes) was
+    followed by a <em>calmer</em> SPX500 tape, −0.561 ATR [−0.984, −0.181] versus control, and the facility is drawn on
+    667 of 2,123 sessions (31%). March 2020's stress ran through margins and Treasury prices; a test on the overnight
+    rate alone is not built to see that.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   <strong>Funding an inventory of securities.</strong> A dealer or bank holding a large book of bonds needs to
@@ -428,18 +571,20 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Initial margin is forward-looking; variation margin is backward-looking.</strong> IM buffers against potential future exposure (sized via SPAN or ISDA SIMM); VM settles the realized mark-to-market change, typically daily.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A haircut discounts collateral below its market value</strong> to buffer against the collateral's own volatility and liquidation time — $100 of a volatile bond at a 5% haircut counts as only $95.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A repo is economically a collateralized loan</strong> structured legally as a sale and a simultaneous agreement to repurchase — the price difference between the two legs is the interest, the repo rate.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>SOFR is computed directly from overnight Treasury repo transaction data.</strong> A concrete, factual bridge from this lesson to the OIS-discounting machinery in <a href="swap-curves-ois.html">Swap Curves &amp; OIS Discounting</a>.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Money market funds lend, primary dealers borrow, the Fed sits at the edges.</strong> Tax date → money fund withdrawals → funds pull cash from repo → cash scarcer → SOFR lifts.<!-- DESK:START --> On this desk's data that pattern is the calendar, not a stress signal.<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The haircut ranges shown are illustrative, not a universal schedule.</strong> Real haircuts vary by counterparty, tenor, rating, and regulatory regime — treat the numbers here as order-of-magnitude, not a precise table.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional plumbing knowledge, not a trading signal.</strong> Nothing in this lesson is a claim about anything built, tested, or traded in this repo.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Haircuts and margins are not fixed; they rise with volatility (March 2020).</strong> The leveraged basis trade had to sell Treasuries to meet margin calls, a margin spiral the Fed stopped by buying roughly a trillion dollars of Treasuries.<!-- DESK:START --> On this desk's data the overnight rate is not the warning light either (funding-stress, NULL: 12 of 15 episodes on the 14th–18th).<!-- DESK:END --></span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>This is institutional plumbing knowledge, not a trading signal.</strong><!-- DESK:START --> Nothing in this lesson is a claim about anything built, tested, or traded in this repo.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What is the precise conceptual difference between initial margin and variation margin?</summary>
@@ -583,5 +728,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

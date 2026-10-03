@@ -17,7 +17,7 @@
   <h1 class="tl-title">The Kalman Filter &amp; Adaptive Relationships</h1>
   <p class="tl-dek">A recursive rule for tracking a hidden quantity — like a hedge ratio that drifts slowly rather than staying fixed — that blends yesterday's estimate with today's noisy observation in exactly the proportion each one deserves.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet built in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Bayesian Inference, Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -37,7 +37,8 @@
       <li>The gain \(K_t = P_{t\mid t-1}H_t / (H_t^2 P_{t\mid t-1} + R)\) is derived, not chosen — it's the ratio of prediction uncertainty to total (prediction + observation) uncertainty, so it moves toward 1 when the observation is trustworthy and toward 0 when it's noisy.</li>
       <li>The update step is exact Bayesian updating: the predicted distribution is the prior, the observation model is the likelihood, and — because both are Gaussian and linearly related (conjugacy) — the posterior comes out Gaussian too, with the closed-form mean/variance shown here instead of a numerical integral.</li>
       <li>The worked example tracks a hedge ratio starting at \(\hat{x}=1.20\): Day 1's gain is 0.804 (estimate moves to 1.321), Day 2's gain drops to 0.471 with no parameter changed (estimate moves to 1.311) — the gain keeps settling toward a steady state set purely by \(Q/R\).</li>
-      <li>This is presented as a genuine candidate for tracking a drifting hedge ratio or lead-lag coefficient in this repo — explicitly <strong>not built, not prototyped, not validated</strong>, and any use would need to beat the incumbent on true OOS performance first.</li>
+      <!-- DESK:START --><li>This is presented as a genuine candidate for tracking a drifting hedge ratio or lead-lag coefficient in this repo — explicitly <strong>not built, not prototyped, not validated</strong>, and any use would need to beat the incumbent on true OOS performance first.</li><!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> via 1980s state-space econometrics, then rates desks (Diebold, Rudebusch &amp; Aruoba's 2006 state-space yield curve) and pairs traders who needed a hedge ratio that drifts instead of jumping with the window.</li>
     </ul>
   </div>
 
@@ -67,8 +68,8 @@
     can drift as the underlying economics change — correlations widen and
     narrow with the macro regime, a company's sensitivity to its sector shifts
     as its business mix shifts, a spread's lead-lag relationship to a currency
-    pair strengthens or weakens with volatility (a pattern this project's own
-    macro research documents directly). If the true relationship is genuinely moving, you don't want a
+    pair strengthens or weakens with volatility<!-- DESK:START --> (a pattern this project's own
+    macro research documents directly)<!-- DESK:END -->. If the true relationship is genuinely moving, you don't want a
     number that's either "frozen for 60 days" (too slow to react) or "re-fit
     from scratch on a totally different window" (too jumpy and throws away
     everything you'd learned).
@@ -112,6 +113,23 @@
       A hedge ratio that drifts over time is exactly the same tracking problem
       with the boat's position replaced by an unobservable number.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A hedge ratio that won't sit still</h3>
+    <div class="tl-origin-who">Kalman filter · state-space econometrics in the 1980s → rates and stat-arb desks</div>
+    <p>Before it, a hedge ratio or beta came from a rolling OLS regression: one number per window, frozen until the next re-fit, and liable to jump whenever an old data point rolled out. There was no principled way to let a relationship drift and still say how sure you were of today's value. Built for control engineering in 1960, the filter reached economics once a regression coefficient was treated as a hidden state; Andrew Harvey's 1989 book <em>Forecasting, Structural Time Series Models and the Kalman Filter</em> made it part of the standard econometric toolkit.</p>
+    <p>Markets took it up on two fronts. On rates, the yield curve's level, slope and curvature became hidden states read off noisy bond yields: Diebold, Rudebusch &amp; Aruoba's 2006 state-space Nelson–Siegel model is the reference case, and Kalman-filter estimation of term-structure models was routine by then. In statistical arbitrage, Elliott, van der Hoek &amp; Malcolm's 2005 paper "Pairs Trading" modelled the spread as a hidden mean-reverting state observed with noise.</p>
+    <p>Today it is the default way a desk tracks a time-varying hedge ratio or beta in a pairs or relative-value book, and the estimation engine inside many term-structure and nowcasting models.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What is the relationship (hedge ratio, beta, curve factor) right now, and how sure are we of it?</dd>
+        <dt>Takes in</dt><dd>A noisy observed relationship, such as the OLS hedge ratio from <a href="primer-correlation-regression.html">Correlation &amp; Regression</a>, and the prior-to-posterior logic of <a href="bayesian-inference.html">Bayesian Inference</a>.</dd>
+        <dt>Hands on to</dt><dd>The spread that <a href="cointegration.html">Cointegration</a> and <a href="ou-mean-reversion.html">OU mean reversion</a> turn into an entry signal; the nonlinear cases go to <a href="kalman-smoother-ekf-ukf.html">the smoother, EKF &amp; UKF</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -642,9 +660,9 @@
       <strong>The linear-Gaussian assumption can be wrong in ways that matter.</strong>
       The closed-form recursion here is exactly optimal only if the process and
       observation noise are truly Gaussian. Real financial return series
-      routinely show fat left tails (this project's own working discipline
+      routinely show fat left tails<!-- DESK:START --> (this project's own working discipline
       calls for reporting skew/kurtosis and tail-risk stats precisely because
-      Sharpe alone hides that) — a standard Kalman filter run on such data is still a
+      Sharpe alone hides that)<!-- DESK:END --> — a standard Kalman filter run on such data is still a
       reasonable linear estimator, but it is no longer provably optimal, and
       its uncertainty estimates (\(P_{t\mid t}\)) can understate real tail risk.
     </p>
@@ -658,7 +676,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The update step is exact Bayesian updating.</strong> Predicted state = prior, observation model = likelihood, updated state = posterior — and because both are Gaussian and linearly related (conjugacy), the posterior comes out Gaussian too, with a closed form instead of a numerical integral.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gain settles toward a \(Q/R\) steady state.</strong> The worked example's gain fell from 0.804 (Day 1) to 0.471 (Day 2) with no parameter touched — purely because \(P\) shrank. Keep iterating and it approaches a steady state set entirely by \(Q/R\), which is the filter's self-chosen "effective window length."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Grid-searching \(Q\) and \(R\) against backtest performance is overfitting in disguise.</strong> It relocates the same window-length-tuning risk into a less legible, more sophisticated-looking parameterization — it does not remove it.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> The credit-leadlag / yield-spread lead-lag application described above is a genuine candidate, not a claim of improvement — any real use needs to beat the incumbent on true OOS performance first (Lego Principle 5).</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> The credit-leadlag / yield-spread lead-lag application described above is a genuine candidate, not a claim of improvement — any real use needs to beat the incumbent on true OOS performance first (Lego Principle 5).</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it replaces the rolling-window hedge ratio.</strong> Pairs and relative-value traders use it to track a drifting beta with a stated uncertainty; rates desks use the same recursion to read level, slope and curvature off noisy yields (Diebold, Rudebusch &amp; Aruoba, 2006).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -745,8 +764,8 @@
       result is functionally identical to tuning \(N\) by scanning for the
       best-looking window — the overfitting risk hasn't been removed, it has
       just moved into a parameterization that looks more sophisticated and is
-      therefore easier to mistake for something principled. Per this repo's
-      Lego Principle, any such choice still needs genuine out-of-sample
+      therefore easier to mistake for something principled. Any such choice<!-- DESK:START -->
+      (per this repo's Lego Principle)<!-- DESK:END --> still needs genuine out-of-sample
       validation before being trusted.
     </div>
   </details>
@@ -951,5 +970,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

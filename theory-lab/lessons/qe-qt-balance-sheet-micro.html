@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QE and QT — Visual Guide — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/deck.css">
+<style>
+  /* Local: stepper action buttons (deck.css has no generic small button). */
+  .qe-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px}
+  .qe-actions button{background:var(--panel2);border:1px solid var(--border2);color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:8px 12px;border-radius:8px;cursor:pointer}
+  .qe-actions button:hover{border-color:var(--blue-bd);color:var(--text)}
+</style>
+</head>
+<body>
+<div id="deck">
+  <div class="sl-topbar">
+    <a class="sl-back" href="../hub.html">← Theory Lab</a>
+    <div class="sl-toptitle">QE and QT — Visual Guide</div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+  </div>
+  <div class="sl-fullnote">Want the duration worked example, all five episodes in full and a 5-question self-test?<a href="qe-qt-balance-sheet.html">Read the complete lesson →</a></div>
+  <div class="sl-progress" id="sl-progress"></div>
+
+  <div class="sl-viewport" id="sl-viewport">
+
+    <section class="sl-slide active" data-slide="1">
+      <div class="sl-kicker">Market Plumbing · Lesson 2 of 2</div>
+      <h1 class="sl-h1">QE and QT: <em>What the Fed's Balance Sheet Actually Does</em></h1>
+      <p class="sl-lede">"The Fed is printing money" is half right. QE is a swap on two balance sheets — long bonds out of the market, bank reserves in. Learn to draw that swap and every argument about yields, funding markets and the Fed's corridor gets simpler.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="2">
+      <div class="sl-kicker">The core move</div>
+      <h2 class="sl-h2">A purchase is a swap, not a gift</h2>
+      <p class="sl-sub">The Fed pays for a bond by crediting the seller's bank with reserves it creates on its own books.</p>
+      <div class="sl-row"><div class="sl-box">Δ Fed securities</div><div class="sl-arrow">=</div><div class="sl-box green">Δ Reserves</div><div class="sl-arrow">=</div><div class="sl-box amber">X</div></div>
+      <p class="sl-p">Assets up by X, liabilities up by X. The private sector holds one fewer bond and more reserves — not more wealth. Reserves are money only banks can hold, used to settle with each other and with the Fed.</p>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Kept out on purpose</div>
+        <p>The real balance sheet has other liabilities — currency, the Treasury's account, reverse repos — that also shift reserves around. They matter in practice; they are left out here so the core swap stays visible.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Who sold matters</div>
+      <h2 class="sl-h2">Bank seller or non-bank seller</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-tabs" id="seller-tabs">
+          <button class="sl-tab active" data-panel="seller-1">A bank sells</button>
+          <button class="sl-tab" data-panel="seller-2">A pension fund sells</button>
+        </div>
+        <div class="sl-panel active" id="seller-1">
+          <div class="sl-row"><div class="sl-box">Bank: Treasuries −X</div><div class="sl-arrow">⇄</div><div class="sl-box green">Bank: Reserves +X</div></div>
+          <div class="sl-verdict">One asset swapped for another. The bank's balance sheet does not grow.</div>
+        </div>
+        <div class="sl-panel" id="seller-2">
+          <div class="sl-row"><div class="sl-box">Pension: Treasuries −X, Deposits +X</div><div class="sl-arrow">→</div><div class="sl-box green">Bank: Reserves +X, Deposits +X</div></div>
+          <div class="sl-verdict">The bank grows on both sides; the pension fund swapped a bond for a deposit. Most QE bonds were bought from non-banks, so QE raised deposits as well as reserves.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Interactive</div>
+      <h2 class="sl-h2">Four balance sheets — press a button</h2>
+      <p class="sl-sub">Boxes show the change from the last operation. Every box balances. The bar keeps a running total of reserves.</p>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Try it</div>
+        <div class="sl-svgwrap">
+          <svg viewBox="0 0 640 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Four T-accounts — the Fed, the banking system, a pension fund and the Treasury — showing the change in each item after a QE purchase or a QT runoff, with a running gauge of total reserves">
+            <g id="qe-boxes"></g>
+            <text x="20" y="338" font-size="11" fill="var(--text2)">Bank reserves (illustrative running total, $bn)</text>
+            <rect x="20" y="346" width="150" height="16" style="fill:var(--red-bg);stroke:var(--red-bd)"/>
+            <rect x="170" y="346" width="100" height="16" style="fill:var(--amber-bg);stroke:var(--amber-bd)"/>
+            <rect x="270" y="346" width="350" height="16" style="fill:var(--green-bg);stroke:var(--green-bd)"/>
+            <text x="95" y="378" text-anchor="middle" font-size="9.5" fill="var(--red)">scarce</text>
+            <text x="220" y="378" text-anchor="middle" font-size="9.5" fill="var(--amber)">near the edge</text>
+            <text x="445" y="378" text-anchor="middle" font-size="9.5" fill="var(--green)">ample</text>
+            <text x="20" y="394" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+            <text x="620" y="394" text-anchor="end" font-size="9" font-family="'DM Mono',monospace" fill="var(--text3)">6,000</text>
+            <line id="qe-gauge" x1="0" y1="340" x2="0" y2="368" style="stroke:var(--text);stroke-width:3"/>
+          </svg>
+        </div>
+        <div class="qe-actions">
+          <button type="button" id="qe-bank">QE: buy from a bank</button>
+          <button type="button" id="qe-pension">QE: buy from a pension fund</button>
+          <button type="button" id="qe-runoff">QT: let a bond mature</button>
+          <button type="button" id="qe-reset">Reset</button>
+        </div>
+        <div class="sl-sliderhead"><span>Size of each operation</span><span class="sl-live" id="qe-x-val">$250bn</span></div>
+        <input type="range" class="sl-slider" id="qe-x" min="25" max="500" step="25" value="250">
+        <div class="sl-calc-steps">
+          <div>Reserves <b id="qe-res">3,000</b> · Fed securities <b id="qe-sec">5,000</b> · Private Treasuries <b id="qe-priv">20,000</b> ($bn)</div>
+        </div>
+        <div class="sl-note">Starting totals and the gauge zones are illustrative, not data — the real "scarce" line is unknown in advance. The accounting is exact.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Why yields move</div>
+      <h2 class="sl-h2">A long yield = expected policy path + term premium</h2>
+      <div class="sl-row"><div class="sl-box">yₙ</div><div class="sl-arrow">≈</div><div class="sl-box green">(1/n)·ΣE[r]</div><div class="sl-arrow">+</div><div class="sl-box amber">TPₙ</div></div>
+      <div class="sl-icard-grid">
+        <div class="sl-icard"><div class="sl-icard-badge">⚖️</div><div><h4>Portfolio balance</h4><p>Fewer long bonds in private hands → investors bid up what is left → term premium (TP) falls.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">📣</div><div><h4>Signalling</h4><p>Buying trillions of bonds makes "low for long" credible → the expected-path piece falls. Announcements move yields before anything is bought.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">🚰</div><div><h4>Liquidity</h4><p>A buyer of last resort in a broken market. About stopping fire sales, not the level of yields.</p></div></div>
+      </div>
+      <p class="sl-p">Scale: $100bn of 4% 10-year par bonds (modified duration ≈ 8.18) carries about <strong>$82m of risk per basis point</strong>. QE moves that risk from private portfolios onto the Fed.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">The reverse</div>
+      <h2 class="sl-h2">QT: runoff with caps, not sales</h2>
+      <div class="sl-row"><div class="sl-box">Fed bond matures</div><div class="sl-arrow">→</div><div class="sl-box">Treasury refinances with a private buyer</div><div class="sl-arrow">→</div><div class="sl-box amber">Buyer's deposit and bank's reserves fall</div></div>
+      <p class="sl-p">In both programmes (2017–19 and from 2022) the Fed let bonds mature and stopped reinvesting principal up to a monthly cap. No bonds were sold into the market. Slow, scheduled, known in advance — meant to run quietly in the background while the policy rate does the work.</p>
+      <div class="sl-quote">The catch: every dollar of runoff is a dollar less in <strong>reserves</strong> — and the corridor only holds rates down while reserves are ample.</div>
+    </section>
+
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Ample vs scarce</div>
+      <h2 class="sl-h2">The line nobody can see</h2>
+      <p class="sl-p">With ample reserves, the overnight rate sits on the floor the Fed pays on reserves (IORB — <a href="fed-corridor-iorb-srf-discount-window-micro.html">Lesson 1</a>). Drain enough and, at an unknown point, a little less cash means a much higher repo rate.</p>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened — September 2019</div>
+        <p>After QT1, on a mid-month day when corporate tax payments and Treasury coupon settlement both pulled cash out of banks, overnight repo spiked far above the Fed's range — SOFR printed above 5% against a range of 2.00–2.25%. The Fed ran its first overnight repo operations in more than a decade and in October began buying bills to rebuild reserves, insisting it was not QE.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">It actually happened</div>
+      <h2 class="sl-h2">Four episodes, three channels</h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Pick one</div>
+        <div class="sl-tabs" id="ep-tabs">
+          <button class="sl-tab active" data-panel="ep-1">Nov 2008</button>
+          <button class="sl-tab" data-panel="ep-2">2013</button>
+          <button class="sl-tab" data-panel="ep-3">Mar 2020</button>
+          <button class="sl-tab" data-panel="ep-4">Jun 2022</button>
+        </div>
+        <div class="sl-panel active" id="ep-1">
+          <p class="sl-p" style="margin-top:0"><strong>QE1.</strong> Up to $100bn of Fannie/Freddie debt and $500bn of agency MBS, aimed at mortgages. Expanded in March 2009 with up to $300bn of longer-term Treasuries; the 10-year fell about half a point that day.</p>
+          <div class="sl-verdict">Channel: portfolio balance and signalling, in a market where policy rates had run out of room.</div>
+        </div>
+        <div class="sl-panel" id="ep-2">
+          <p class="sl-p" style="margin-top:0"><strong>The taper tantrum.</strong> In May 2013 Bernanke told Congress purchases could slow within a few meetings. Nothing was sold. The 10-year went from around 1.6% to near 3% by September; the actual taper began in January 2014.</p>
+          <div class="sl-verdict">Channel: signalling, in reverse.</div>
+        </div>
+        <div class="sl-panel" id="ep-3">
+          <p class="sl-p" style="margin-top:0"><strong>Dash for cash.</strong> Treasuries stopped trading normally. 15 March: at least $500bn Treasuries + $200bn MBS. 23 March: "in the amounts needed". Balance sheet from a little over $4tn to past $7tn in about three months.</p>
+          <div class="sl-verdict">Channel: liquidity, in its purest form.</div>
+        </div>
+        <div class="sl-panel" id="ep-4">
+          <p class="sl-p" style="margin-top:0"><strong>QT2 begins.</strong> 1 June 2022: caps of $30bn Treasuries + $17.5bn MBS a month, doubling after three months. Treasury cap slowed in June 2024 and again in 2025 to approach the ample–scarce line gradually.</p>
+          <div class="sl-verdict">Channel: the reverse of portfolio balance — and a slow drain on reserves.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">The chain</div>
+      <h2 class="sl-h2">Who is forced to do what</h2>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Fed</b>Buys long bonds with new reserves</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Sellers</b>Swap duration for deposits; re-buy risk or accept less yield</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Bond market</b>Term premium compressed</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Banks</b>Flooded with reserves; overnight rate on the floor</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>QT reverses it</b>Reserves drain until repo spikes (2019)</div>
+      </div>
+      <p class="sl-p">The academic evidence for the yield links is real but debated: event studies (Gagnon, Raskin, Remache &amp; Sack, 2011) found big announcement-day falls; Krishnamurthy &amp; Vissing-Jorgensen (2011) found several channels at once; whether the <em>stock</em> held or the <em>flow</em> of buying matters is still contested.</p>
+    </section>
+
+    <!-- DESK:START -->
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">What the desk found</div>
+      <h2 class="sl-h2">The yield half is untested. The plumbing half is null.</h2>
+    <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp untested"><span class="sl-stamp-tag">Not tested here</span><span><strong>QE → yields, mirrored against QT.</strong> Fed balance sheet and the 10-year are both on hand; the episode-level study is an open item and has not been run. No desk number supports or rejects it.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp null"><span class="sl-stamp-tag">Desk test: nothing found</span><span><strong>funding-stress.</strong> 2,123 SOFR sessions. SOFR ≥ 3bp over the floor away from month-end: 15 episodes, untestable, <strong>12 of 15 on the 14th–18th</strong> — tax and settlement dates. SRF drawn: 21 episodes, SPX500 range <strong>−0.561 ATR [−0.984, −0.181]</strong> — calmer, not wider. SRF drawn on 667 of 2,123 sessions (31%).</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp context" data-evidence="repo-stress-range" data-evidence-date="2026-09-20"><span class="sl-stamp-tag">Desk data: base rate</span><span><strong>repo-stress-range.</strong> SOFR 99th pct ≥ 10bp over the floor, 26 episodes: SPX500 +0.14 ATR [−0.54, +0.98] — month-end plumbing, not stress.</span></div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <p class="sl-p">The <a href="central-bank-policy-micro.html">Central Bank Policy</a> deck covers QE/QT vocabulary in brief.</p>
+    </section>
+      <!-- DESK:END -->
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Check yourself</div>
+      <h2 class="sl-h2">Check yourself</h2>
+      <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
+
+      <div class="sl-quiz-q" data-q="1">
+        <div class="sl-quiz-num">Question 1</div>
+        <h4>The Fed buys $200bn of Treasuries from a pension fund. What happens to bank reserves?</h4>
+        <button class="sl-quiz-opt" data-correct="true">They rise by $200bn, matched by $200bn of new deposits at the pension fund's bank</button>
+        <button class="sl-quiz-opt">Nothing — only the Fed's balance sheet changes</button>
+        <button class="sl-quiz-opt">They fall, because the pension fund withdrew cash</button>
+        <div class="sl-quiz-explain">The Fed pays by crediting the seller's bank with reserves; the bank credits the pension fund's deposit. Fed: securities +200, reserves +200. Bank: reserves +200, deposits +200.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="2">
+        <div class="sl-quiz-num">Question 2</div>
+        <h4>Why did long yields jump in the 2013 taper tantrum when nothing had been sold?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Signalling — a hint of slower purchases repriced the expected path of policy rates</button>
+        <button class="sl-quiz-opt">The Fed sold bonds to fund the taper</button>
+        <button class="sl-quiz-opt">Reserves became scarce overnight</button>
+        <div class="sl-quiz-explain">The yield is expected path plus term premium. A hint that QE would slow told markets rate hikes were closer — the signalling channel running backwards.</div>
+      </div>
+
+      <div class="sl-quiz-q" data-q="3">
+        <div class="sl-quiz-num">Question 3</div>
+        <h4>How did QT shrink reserves in 2022 without the Fed selling bonds?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Maturing bonds weren't reinvested; the Treasury refinanced with private buyers, whose deposits and banks' reserves fell</button>
+        <button class="sl-quiz-opt">The Fed charged banks a fee on reserves</button>
+        <button class="sl-quiz-opt">It couldn't — QT only works through sales</button>
+        <div class="sl-quiz-explain">Runoff: Fed securities −X, reserves −X, private Treasuries +X. Same accounting as a sale, done quietly and on a schedule.</div>
+      </div>
+
+      <!-- DESK:START -->
+      <div class="sl-quiz-q" data-q="4">
+        <div class="sl-quiz-num">Question 4</div>
+        <h4>SOFR prints 4bp over the floor on the 15th and the SRF is drawn. What does the desk's evidence say?</h4>
+        <button class="sl-quiz-opt" data-correct="true">Calendar plumbing — funding-stress is null; SRF draws were followed by calmer SPX500 ranges</button>
+        <button class="sl-quiz-opt">Risk-off is coming — the backstop was used</button>
+        <button class="sl-quiz-opt">The Fed will restart QE next meeting</button>
+        <div class="sl-quiz-explain">12 of 15 such episodes fall on the 14th–18th (tax and settlement), and the SRF is drawn on 31% of sessions. The one interval clear of zero points to a calmer tape — reported as measured, not as proof the backstop works.</div>
+      </div>
+      <!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Recap</div>
+      <h2 class="sl-h2">What to carry forward</h2>
+      <div class="sl-recap">
+        <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>QE is a swap: Fed securities and bank reserves rise by the same X. A non-bank seller swaps a bond for a deposit. No one's wealth rises by X.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">02</div><p>Three channels — portfolio balance (term premium), signalling (expected path), liquidity (market functioning). 2013 was signalling; March 2020 was liquidity.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>QT is capped runoff, and it drains reserves toward a scarce line nobody can see in advance — September 2019.</p></div>
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">04</div><p>QE → yields is <strong>untested</strong> on this desk; the academic evidence is real but debated (stock vs flow).</p></div><!-- DESK:END -->
+        <!-- DESK:START --><div class="sl-recap-row"><div class="sl-recap-num">05</div><p><strong>funding-stress is NULL</strong>: SOFR over the floor is the calendar, and a drawn SRF was followed by a calmer tape.</p></div><!-- DESK:END -->
+      </div>
+      <div class="sl-teaser">
+        <div class="sl-teaser-label">Where to go next</div>
+        <h3>The Fed's Corridor</h3>
+        <p>Lesson 1 of this sequence — the IORB floor, the SRF ceiling and the discount window that ample reserves keep working.</p>
+        <div class="sl-teaser-btns">
+          <a class="sl-btn" href="fed-corridor-iorb-srf-discount-window-micro.html">← Lesson 1</a>
+          <a class="sl-btn ghost" href="qe-qt-balance-sheet.html">Read the full QE/QT lesson →</a>
+          <a class="sl-btn ghost" href="../hub.html">Back to Theory Lab hub</a>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="sl-navbar">
+    <button class="sl-navbtn" id="sl-prev">← Back</button>
+    <div class="sl-navhint">Use arrow keys to move through the lesson</div>
+    <button class="sl-navbtn primary" id="sl-next">Next →</button>
+  </div>
+</div>
+
+<script src="../assets/deck.js"></script>
+<script>
+(function(){
+  // Slide 4 — T-account stepper (same accounting as the full lesson).
+  var NS = 'http://www.w3.org/2000/svg';
+  var BOXES = [
+    { key: 'fed',     title: 'The Fed',                 x: 10,  y: 6 },
+    { key: 'bank',    title: 'Banking system',          x: 325, y: 6 },
+    { key: 'pension', title: 'Pension fund (non-bank)', x: 10,  y: 166 },
+    { key: 'tsy',     title: 'US Treasury',             x: 325, y: 166 }
+  ];
+  var OPS = {
+    bank:    { fed: { A: [['Treasuries', 1]], L: [['Reserves', 1]] }, bank: { A: [['Treasuries', -1], ['Reserves', 1]], L: [] }, pension: { A: [], L: [] }, tsy: { A: [], L: [] }, dRes: 1, dSec: 1, dPriv: -1 },
+    pension: { fed: { A: [['Treasuries', 1]], L: [['Reserves', 1]] }, bank: { A: [['Reserves', 1]], L: [['Deposits', 1]] }, pension: { A: [['Treasuries', -1], ['Deposits', 1]], L: [] }, tsy: { A: [], L: [] }, dRes: 1, dSec: 1, dPriv: -1 },
+    runoff:  { fed: { A: [['Treasuries', -1]], L: [['Reserves', -1]] }, bank: { A: [['Reserves', -1]], L: [['Deposits', -1]] }, pension: { A: [['New Treasuries', 1], ['Deposits', -1]], L: [] }, tsy: { A: [], L: [['Debt held by Fed', -1], ['Debt held by public', 1]] }, dRes: -1, dSec: -1, dPriv: 1 }
+  };
+  var START = { res: 3000, sec: 5000, priv: 20000 };
+  var state = { res: START.res, sec: START.sec, priv: START.priv, last: null };
+  var g = document.getElementById('qe-boxes');
+  var slider = document.getElementById('qe-x');
+  if (!g || !slider) return;
+  var xVal = document.getElementById('qe-x-val');
+  var gauge = document.getElementById('qe-gauge');
+
+  function el(tag, attrs, text){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function fmt(n){ return Math.round(n).toLocaleString('en-US'); }
+  function signed(n){ return (n > 0 ? '+' : n < 0 ? '−' : '') + '$' + fmt(Math.abs(n)) + 'bn'; }
+  function colour(n){ return n > 0 ? 'var(--green)' : n < 0 ? 'var(--red)' : 'var(--text3)'; }
+
+  function drawBox(b, side, X){
+    var W = 305, H = 150;
+    g.appendChild(el('rect', { x: b.x, y: b.y, width: W, height: H, rx: 8, style: 'fill:var(--panel2);stroke:var(--border2)' }));
+    g.appendChild(el('text', { x: b.x + 10, y: b.y + 18, 'font-size': 12, 'font-weight': 600, fill: 'var(--text)' }, b.title));
+    g.appendChild(el('line', { x1: b.x + 8, y1: b.y + 26, x2: b.x + W - 8, y2: b.y + 26, style: 'stroke:var(--border2)' }));
+    g.appendChild(el('line', { x1: b.x + W / 2, y1: b.y + 26, x2: b.x + W / 2, y2: b.y + H - 26, style: 'stroke:var(--border2)' }));
+    g.appendChild(el('text', { x: b.x + 10, y: b.y + 40, 'font-size': 9.5, fill: 'var(--text3)' }, 'ASSETS'));
+    g.appendChild(el('text', { x: b.x + W / 2 + 8, y: b.y + 40, 'font-size': 9.5, fill: 'var(--text3)' }, 'LIABILITIES'));
+    if (!side) {
+      g.appendChild(el('text', { x: b.x + W / 2, y: b.y + 80, 'text-anchor': 'middle', 'font-size': 10.5, fill: 'var(--text3)' }, 'press a button below'));
+      return;
+    }
+    function rows(list, x0){
+      var s = 0;
+      list.forEach(function(item, i){
+        var v = item[1] * X; s += v;
+        var y = b.y + 58 + i * 30;
+        g.appendChild(el('text', { x: x0, y: y, 'font-size': 10.5, fill: 'var(--text2)' }, item[0]));
+        g.appendChild(el('text', { x: x0, y: y + 14, 'font-size': 11.5, 'font-weight': 600, 'font-family': "'DM Mono',monospace", fill: colour(v) }, signed(v)));
+      });
+      if (!list.length) g.appendChild(el('text', { x: x0, y: b.y + 58, 'font-size': 10.5, fill: 'var(--text3)' }, 'no change'));
+      return s;
+    }
+    var sumA = rows(side.A, b.x + 10);
+    var sumL = rows(side.L, b.x + W / 2 + 8);
+    var ok = Math.abs(sumA - sumL) < 1e-9;
+    g.appendChild(el('text', { x: b.x + 10, y: b.y + H - 9, 'font-size': 10, 'font-family': "'DM Mono',monospace", fill: ok ? 'var(--green)' : 'var(--red)' },
+      'ΔA ' + signed(sumA) + '  =  ΔL ' + signed(sumL) + (ok ? '  ✓' : '  ✗')));
+  }
+
+  function render(){
+    xVal.textContent = '$' + slider.value + 'bn';
+    while (g.firstChild) g.removeChild(g.firstChild);
+    var op = state.last ? OPS[state.last] : null;
+    BOXES.forEach(function(b){ drawBox(b, op ? op[b.key] : null, state.lastX || 0); });
+    document.getElementById('qe-res').textContent = fmt(state.res);
+    document.getElementById('qe-sec').textContent = fmt(state.sec);
+    document.getElementById('qe-priv').textContent = fmt(state.priv);
+    var gx = 20 + Math.max(0, Math.min(6000, state.res)) / 6000 * 600;
+    gauge.setAttribute('x1', gx.toFixed(1));
+    gauge.setAttribute('x2', gx.toFixed(1));
+  }
+  function apply(key){
+    var X = parseInt(slider.value, 10);
+    var op = OPS[key];
+    if (op.dSec < 0 && (state.sec < X || state.res < X)) return;
+    state.res += op.dRes * X; state.sec += op.dSec * X; state.priv += op.dPriv * X;
+    state.last = key; state.lastX = X;
+    render();
+  }
+  document.getElementById('qe-bank').addEventListener('click', function(){ apply('bank'); });
+  document.getElementById('qe-pension').addEventListener('click', function(){ apply('pension'); });
+  document.getElementById('qe-runoff').addEventListener('click', function(){ apply('runoff'); });
+  document.getElementById('qe-reset').addEventListener('click', function(){
+    state = { res: START.res, sec: START.sec, priv: START.priv, last: null };
+    render();
+  });
+  slider.addEventListener('input', function(){ xVal.textContent = '$' + slider.value + 'bn'; });
+  render();
+})();
+</script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

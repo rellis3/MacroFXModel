@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">MDPs, Value Functions &amp; the Bellman Equation — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a hand-worked value-iteration table, and a 5-question self-test?<a href="mdp-bellman-equation.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">When the best move depends on every move after it</h2>
+      <p class="sl-sub">Dynamic programming · into finance via Samuelson &amp; Merton (1969–71) and Cox, Ross &amp; Rubinstein (1979)</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Markowitz (1952) chose weights for one period and stopped, which can't handle rebalancing or an American option that can be exercised any day. In 1969 Samuelson and Merton used Bellman's recursion to solve lifetime portfolio choice. In 1979 Cox, Ross &amp; Rubinstein priced American options by backward induction on a binomial tree: at every node, the larger of "exercise now" and "continue".</p>
+        <p>It is still how desks price American and Bermudan options, on trees or with Longstaff &amp; Schwartz's (2001) least-squares Monte Carlo, and it sits under dynamic hedging and execution scheduling.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> value each state assuming you act optimally afterwards, so you know whether to act now or wait.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The five pieces of a Markov Decision Process</h2>
       <p class="sl-sub">Formally, an MDP is the tuple (S, A, P, R, γ). Nothing more is added later — everything in this lesson is built from just these five things.</p>
       <div class="sl-icard-grid">
@@ -34,13 +47,13 @@
         <div class="sl-icard"><div class="sl-icard-badge">A</div><div><h4>Actions</h4><p>The choices available in a given state — hold, close, open — possibly a different set per state.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">P</div><div><h4>Transition probabilities — P(s′|s,a)</h4><p>The chance of landing in state s′, given action a was taken in state s. Not always certain — opening a position doesn't guarantee which way the market moves next.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">R</div><div><h4>Rewards — R(s,a,s′)</h4><p>The immediate payoff or cost of one specific transition.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">γ</div><div><h4>Discount factor</h4><p>A number between 0 and 1 saying how much a reward one step in the future is worth today — the subject of Section 4.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">γ</div><div><h4>Discount factor</h4><p>A number between 0 and 1 saying how much a reward one step in the future is worth today — the subject of Section 5.</p></div></div>
       </div>
       <p class="sl-p">A rule for choosing actions — possibly randomized — is called a <strong>policy</strong>, written π(a|s): the probability of taking action a while in state s. Everything downstream in RL is either evaluating a policy (how good is this way of acting?) or improving one (is there a better way to act?).</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">A tiny 3-state MDP, drawn out</h2>
       <p class="sl-sub">Flat, Long, and Short, with two actions per state. Every number in the rest of this deck is solved from this exact diagram.</p>
       <div class="sl-card">
@@ -78,8 +91,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">"Markov" means the past stops mattering</h2>
       <p class="sl-sub">The simplifying assumption that makes an MDP tractable at all.</p>
       <div class="sl-compare">
@@ -103,8 +116,8 @@
       <div class="sl-quote">This is the same move as assuming you know your edge exactly in the Kelly derivation, or ignoring fat tails in a normal-distribution primer: build the exact math on a clean idealization first, then reason carefully about where the real world will diverge from it. Real price processes carry momentum and regime memory that a small state (just "current position," say) doesn't capture — the usual fix is enlarging the state to include recent history, at the cost of a much bigger state space.</div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">The discount factor sets how patient the agent is</h2>
       <p class="sl-sub">Drag the slider. Each bar is γ raised to the power of how many steps in the future it is — the weight that reward gets in today's value.</p>
       <div class="sl-card">
@@ -143,8 +156,8 @@
       <p class="sl-p">A low γ makes an agent <strong>myopic</strong> — only the next reward or two really counts, and the bars collapse to almost nothing after a few steps. A high γ makes it <strong>far-sighted</strong> — rewards many steps away still carry real weight today. γ is doing two jobs at once: economically, a reward tomorrow is worth less than the same reward today (the same logic behind discounting a bond's future coupons); mathematically, it's what keeps an infinite sum of rewards from adding up to infinity.</p>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The value function compresses a whole future into one number</h2>
       <p class="sl-sub">Fix a policy π. V<sup>π</sup>(s) is the expected sum of every future reward, each shrunk by how far away it is.</p>
       <div class="sl-icard-grid">
@@ -155,8 +168,8 @@
       <div class="sl-quote">This single number compresses an entire infinite future into one comparable quantity — exactly the same compression a bond's price performs on a stream of future coupons, or that the Kelly criterion's log-growth objective performs on an entire sequence of compounding bets. Reduce a whole future to one number you can actually maximize, and comparing two situations becomes comparing two numbers.</div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Where the Bellman equation actually comes from</h2>
       <p class="sl-sub">It isn't a new assumption bolted onto the value function — it falls straight out of splitting an infinite sum. Step through it.</p>
       <div class="sl-card">
@@ -182,8 +195,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">One Bellman backup, live</h2>
       <p class="sl-sub">V(s) = r + γ · V(s′). Change any field — the defaults match the Long/Hold numbers from the diagram above.</p>
       <div class="sl-card">
@@ -208,8 +221,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Value iteration: repeat the backup until it stops moving</h2>
       <p class="sl-sub">Start every state's value at zero. Apply the Bellman backup to every state, every sweep, using last sweep's numbers. Step through it on the 3-state MDP (γ=0.9).</p>
       <div class="sl-card">
@@ -248,8 +261,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Grading a state versus grading one specific move</h2>
       <p class="sl-sub">Everything so far evaluated a fixed policy. Optimality asks a sharper question: what's the best possible value, over every policy?</p>
       <div class="sl-compare">
@@ -265,20 +278,21 @@
       <div class="sl-quote">Knowing the score for every individual action is more directly useful than knowing only a state's overall score, because it tells you exactly which move to make — not just how happy to be. This particular rewriting, Q* in terms of itself one step later, is the exact identity the next lesson's Q-learning update rule is built from directly.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the MDP framing quietly goes wrong</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Assuming a market is actually Markov</h4><p>Real price processes carry momentum, volatility clustering, and regime memory that a naively small state doesn't capture — the state has to be enlarged to compensate, at the cost of a much bigger state space.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Treating V<sup>π</sup> as achievable, not just expected</h4><p>The value function is an expectation over an entire distribution of future paths. One realized trajectory can and will look nothing like the average — the same trap the Kelly lesson raises about expected value versus long-run compounded growth.</p></div></div>
-        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Picking γ without thinking about it</h4><p>γ isn't a free technical knob — it encodes how much future reward genuinely matters, and the optimal policy can change qualitatively depending on it, as Section 4's slider showed even in this 3-state toy.</p></div></div>
+        <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>Picking γ without thinking about it</h4><p>γ isn't a free technical knob — it encodes how much future reward genuinely matters, and the optimal policy can change qualitatively depending on it, as Section 5's slider showed even in this 3-state toy.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚠</div><div><h4>The model has to actually be known</h4><p>Value iteration needs P(s′|s,a) and R(s,a,s′) for every state-action pair up front. Real environments — a market, a robot, a game — rarely hand you that table explicitly.</p></div></div>
       </div>
       <p class="sl-p">That last gap is exactly the reason the field moved beyond this chapter: learning values from sampled experience, without ever needing an explicit P or R, is the entire subject of the next lesson.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <!-- DESK:START -->
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Checked against this repo's actual code</h2>
       <p class="sl-sub">The full lesson tags this topic as a pure concept. Here's what verifying that against the live codebase actually found.</p>
       <div class="sl-callout amber">
@@ -287,9 +301,10 @@
       </div>
       <p class="sl-p">Worth carrying forward: the same recursive idea shows up under different names — discrete Bellman equation here, continuous HJB equation there — well before anything in this repo calls itself "reinforcement learning."</p>
     </section>
+    <!-- DESK:END -->
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -339,8 +354,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>An MDP is the tuple (S, A, P, R, γ) — states, actions, transition probabilities, rewards, and a discount factor. It's the standard formalism for any sequential decision problem.</p></div>
@@ -349,10 +364,11 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The Bellman equation — value now equals reward now plus γ times the value of what's next — is a recursive identity, not a new assumption. It falls straight out of splitting an infinite sum.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Bellman optimality equation swaps "average over the policy's actions" for "take the best one," turning policy evaluation into policy search.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Value iteration converges to a fixed point that also encodes the optimal policy — often the greedy policy stabilizes long before the numbers themselves stop moving.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Samuelson and Merton (1969–71) used the recursion for dynamic portfolio choice, and Cox, Ross &amp; Rubinstein (1979) made backward induction the way to price American options.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
-        <p>Read any reinforcement-learning method — Q-learning, policy gradients, deep Q-networks — as a different way of approximating this one recursive identity, rather than an unrelated algorithm to memorize. Make "how patient is this decision rule" an explicit, tunable number (γ) instead of a vague feeling. Recognize the same value-now-equals-reward-plus-discounted-later idea when it shows up under a different name, like the Hamilton-Jacobi-Bellman control already running in this repo's beta-monitoring system.</p>
+        <p>Read any reinforcement-learning method — Q-learning, policy gradients, deep Q-networks — as a different way of approximating this one recursive identity, rather than an unrelated algorithm to memorize. Make "how patient is this decision rule" an explicit, tunable number (γ) instead of a vague feeling. Recognize the same value-now-equals-reward-plus-discounted-later idea when it shows up under a different name<!-- DESK:START -->, like the Hamilton-Jacobi-Bellman control already running in this repo's beta-monitoring system<!-- DESK:END -->.</p>
       </div>
       <div class="sl-teaser">
         <div class="sl-teaser-label">Next in this series</div>

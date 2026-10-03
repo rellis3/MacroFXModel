@@ -38,13 +38,14 @@
       <li>Compounding costs you: the geometric growth rate is approximately \(g \approx \mu - \sigma^2/2\) (volatility drag), which is why a bumpy return stream compounds slower than a steady one with the same average return.</li>
       <li>Overbetting isn't just riskier, it's provably worse — growth rises up to \(f^*\), then falls, hitting zero exactly at \(2f^*\) and going negative beyond it, even though every individual bet still has positive expected value.</li>
       <li>Worked example in this lesson: \(p=0.55\) gives full Kelly \(f^*=10\%\) of bankroll; half-Kelly (5%) captures ~75% of full Kelly's growth rate while cutting typical drawdown by roughly half or more.</li>
+      <li><strong>Real-world episode:</strong> LTCM in 1998 sized tiny convergence edges against variance measured in calm years, at roughly 25 to 1. When Russia defaulted, the spreads widened together, margin calls forced selling, and about $4.6 billion was gone within weeks. On illustrative numbers, tripling σ cuts \(f^*\) ninefold and turns the same leverage's growth negative.<!-- DESK:START --> Kelly sizing itself is untested on this desk.<!-- DESK:END --></li>
     </ul>
   </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
   <p>
-    Every strategy in this repo eventually produces the same two outputs: a
+    Every strategy<!-- DESK:START --> in this repo<!-- DESK:END --> eventually produces the same two outputs: a
     direction (fade or follow, long or short) and a size. Fourteen lessons in
     this series — dozens of pages of code — are almost entirely about the
     first output. This page is about the second, and it deserves the same
@@ -69,12 +70,12 @@
     This lesson sits under "Risk &amp; Sizing" rather than "Signals" on
     purpose. Kelly sizing cannot manufacture an edge that isn't there, and
     used carelessly it will happily size up a fake or overestimated edge into
-    a ruinous bet. It is a formalization of a question this repo's own
+    a ruinous bet.<!-- DESK:START --> It is a formalization of a question this repo's own
     working philosophy already raises — it states plainly that
     "volatility-based position sizing, cutting losers and letting winners run
     are powerful drivers of results — worth building and validating alongside
     an entry signal." Kelly is the textbook version of the first half of that
-    sentence. Read this lesson as "how to size a real edge correctly," never
+    sentence.<!-- DESK:END --> Read this lesson as "how to size a real edge correctly," never
     as "how to make a mediocre signal look better."
   </p>
 
@@ -318,9 +319,9 @@
     volatility while holding the edge \(\mu\) fixed cuts the optimal size by
     a factor of four, not two. This is the same reason a vol-targeting
     position-sizing rule (scale position size inversely with recent realized
-    volatility, exactly the kind of thing this project's own working
+    volatility<!-- DESK:START -->, exactly the kind of thing this project's own working
     philosophy calls out as worth
-    building) is, in substance, a rolling approximation of Kelly sizing even
+    building<!-- DESK:END -->) is, in substance, a rolling approximation of Kelly sizing even
     when nobody explicitly names it that.
   </p>
   <p>
@@ -647,6 +648,120 @@
   </script>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: LTCM, 1998</h2>
+  <p>
+    The derivation above shows that past \(2f^*\) a real edge compounds toward zero. The best-known case of a
+    sophisticated firm finding that out is Long-Term Capital Management. Its partners understood this mathematics
+    as well as anyone alive.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Small edges, measured in calm years, levered until they broke</h3>
+    <p>
+      LTCM was founded in 1994 by John Meriwether. Its partners included Myron Scholes and Robert Merton, who
+      shared the 1997 Nobel prize in economics. Its core trades were <strong>convergence</strong> bets: buy a slightly
+      cheap bond, sell a near-identical slightly rich one, and wait for the small price gap between them to close.
+      Each gap was tiny, so each trade earned very little unlevered. It also looked very stable, because in the
+      calm years those spreads barely moved. The fund made roughly 40% a year after fees in 1995 and 1996.
+    </p>
+    <p>
+      A tiny edge with tiny measured variance is exactly the case where \(f^*=\mu/\sigma^2\) recommends enormous
+      leverage. In early 1998 LTCM held well over $100 billion of balance-sheet assets on under $5 billion of
+      capital, roughly 25 to 1, with far larger derivative exposures on top. It had handed capital back to outside
+      investors at the end of 1997, which put more leverage on the same positions.
+    </p>
+    <p>
+      On 17 August 1998 Russia devalued the rouble and defaulted on its domestic debt. Investors everywhere ran to
+      the safest, most liquid assets. Spreads that LTCM was betting would narrow widened instead, across markets and
+      countries that had looked unrelated, all at the same time. Its lenders and counterparties demanded more
+      collateral. Much of the market knew roughly what LTCM held, so selling into it was expensive.
+    </p>
+    <p style="margin-bottom:0">
+      By late September the fund had lost about $4.6 billion, most of its capital. On 23 September 1998 the New York
+      Fed brought together fourteen banks and brokers, who put in about $3.6 billion to take over the portfolio and
+      wind it down in an orderly way, rather than see it dumped on the market. Many of the convergence trades did
+      eventually converge, but after the fund could no longer hold them.
+    </p>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example (illustrative numbers, not LTCM's books)</div>
+    <h3>Same edge, two variance estimates, one leverage choice</h3>
+    <p>
+      Take a convergence trade with an unlevered drift of \(\mu = 1\%\) a year. Measured over calm years, its
+      volatility is \(\sigma = 1\%\). The continuous Kelly formula says:
+    </p>
+    <div class="tl-math">\[ f^* = \frac{\mu}{\sigma^2} = \frac{0.01}{0.0001} = 100\times \]</div>
+    <p>
+      On that estimate, 25&times; leverage looks conservative: about a quarter-Kelly. Its expected growth is
+      \(g(25) \approx 25(0.01) - 25^2(0.01)^2/2 = 0.25 - 0.031 = 21.9\%\) a year. Now suppose the true volatility,
+      including the crisis states the calm sample left out, is \(\sigma = 3\%\). Then \(f^* = 0.01/0.0009 \approx
+      11\times\), so \(2f^* \approx 22\times\), and the same 25&times; is past the zero-growth point:
+    </p>
+    <div class="tl-math">\[ g(25) \approx 25(0.01) - \frac{25^2 (0.03)^2}{2} = 0.25 - 0.281 = -3.1\% \]</div>
+    <p style="margin-bottom:0">
+      The edge did not change. Only the variance estimate did, and tripling \(\sigma\) cut \(f^*\) by a factor of
+      nine. That is the red callout in Section 02 happening to a real book, before counting the margin calls.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Calm years</b>Convergence spreads barely move, so measured variance is tiny</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson: f* = μ/σ²</b>LTCM sizes small edges against tiny σ²: about 25 to 1 on balance sheet</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Russia defaults</b>17 Aug 1998: investors flee to the safest, most liquid assets</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Spreads</b>Widen together across markets that had looked unrelated: correlations jump</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Lenders</b>Demand more collateral, forcing sales into a market that knows the positions</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>About $4.6bn lost; the NY Fed brokers a $3.6bn bank takeover</div>
+  </div>
+  <p>
+    The starred link is this lesson's formula, fed a variance estimate from the calm part of the sample. Every
+    later link is the true variance arriving.
+  </p>
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Where the textbook version breaks</div>
+    <h3>Known odds, independent bets, and the right to keep playing</h3>
+    <p style="margin-bottom:0">
+      Kelly's derivation assumes you know \(\mu\) and \(\sigma^2\), that the bets are independent repetitions, and
+      that you can keep betting after a loss: Kelly never bets the whole bankroll, so in theory it never hits zero.
+      LTCM broke all three. Its variance came from a calm sample. Its positions turned out to be one correlated bet
+      in a crisis, the book-level double-counting from the pitfalls above. And margin calls meant a large drawdown
+      forced it out before the "long run" ever arrived. In practice, ruin is a level above zero, set by your lenders.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Kelly sizing has not been tested on this desk.</strong> No strategy here has an out-of-sample edge
+    measured precisely enough to feed the formula. A fair test would estimate \(\mu\) and \(\sigma^2\) walk-forward
+    using only data before each period, size at several fractions \(c\cdot f^*\), and compare realised growth and
+    maximum drawdown, after costs, against fixed-fraction and volatility-targeted sizing on the same signal.</span>
+  </div>
+  <!-- DESK:END -->
+<!-- DESK:START -->
+  <p>
+    For a sense of how wide the error bars on an edge are here: the desk's carry-basket test
+    (<code>fx-factor-book-v2</code>, underpowered) reports that 5.7 years out of sample on 7 USD crosses gives a
+    Sharpe ratio standard error of 0.41. An edge known only to within a few tenths of a Sharpe point is exactly the
+    input that makes full Kelly dangerous.
+  </p>
+<!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>LTCM found lots of tiny, very safe-looking bets, like picking up coins that hardly ever rolled away. Because they looked so safe, the fund borrowed enormous amounts to pick up more of them. Then one day all the coins rolled the same way at once. The bets weren't bad, but the borrowed money had to be paid back right then, so the fund lost almost everything before the coins rolled back.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Kelly's original 1956 paper wasn't about gambling or investing at all —
@@ -691,8 +806,8 @@
       <strong>Plugging in a backtested win rate or Sharpe ratio as if it were
       the true, known \(p\) or \(\mu\).</strong> The Kelly formula assumes you
       know your edge exactly. A backtested edge is an <em>estimate</em>, with
-      its own sampling error, and — as this project's own OOS discipline
-      exists specifically to catch — a backtested in-sample number is
+      its own sampling error, and<!-- DESK:START --> — as this project's own OOS discipline
+      exists specifically to catch —<!-- DESK:END --> a backtested in-sample number is
       systematically optimistic relative to what a strategy will actually
       realize going forward. Kelly amplifies whatever number you feed it into
       a bet size; feeding it an inflated edge produces an inflated,
@@ -740,7 +855,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Maximize expected log growth, not raw expected value.</strong> Wealth compounds multiplicatively, so betting everything (which maximizes plain expected value) eventually meets a loss and wipes you out with probability 1 — log-growth is the objective whose maximization actually tracks long-run compounded wealth.</span></div>
@@ -750,9 +865,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Half-Kelly captures ~75% of full Kelly's growth at much lower drawdown.</strong> Because \(g(f)\) is flat near its peak, sizing down costs little growth but cuts variance (and typical drawdown) by roughly half or more — the standard practitioner default.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Kelly needs an honestly out-of-sample edge, not a backtested one.</strong> Plugging an in-sample win rate or Sharpe ratio into the formula produces a confidently oversized bet — the formula does exactly what it's told, and an inflated \(p\) or \(\mu\) is exactly the overbetting regime where growth turns negative.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Correlated book-level positions shouldn't each get standalone Kelly sizing.</strong> Sizing every position to its own independent \(f^*\) and holding them all at once ignores shared variance across the book — the combined portfolio ends up overbet relative to what any single position's Kelly calculation intended.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Kelly fed a calm-sample variance is a recipe for ruin.</strong> LTCM's ~25-to-1 leverage on small edges looked conservative until the 1998 crisis showed the real σ. Because \(f^*\) scales with \(1/\sigma^2\), tripling σ cuts it ninefold. Margin calls make ruin a level above zero.<!-- DESK:START --> Kelly sizing is untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why does betting exactly full Kelly, repeatedly, still produce large, painful drawdowns even though it's growth-optimal?</summary>
@@ -790,8 +906,8 @@
       The Kelly formula assumes \(p\) (or \(\mu\)) is known exactly; a
       backtested win rate is an estimate with sampling error, and in-sample
       backtest performance is systematically optimistic relative to true
-      forward performance — exactly the gap this repo's IS/OOS split exists
-      to expose. Feeding an inflated edge estimate into Kelly produces an
+      forward performance<!-- DESK:START --> — exactly the gap this repo's IS/OOS split exists
+      to expose<!-- DESK:END -->. Feeding an inflated edge estimate into Kelly produces an
       inflated, overconfident bet size, which is precisely the overbetting
       regime where growth rate can turn negative even though the smaller,
       true edge is still positive.
@@ -938,5 +1054,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

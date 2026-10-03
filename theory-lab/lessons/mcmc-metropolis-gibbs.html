@@ -17,7 +17,7 @@
   <h1 class="tl-title">MCMC: Metropolis-Hastings &amp; Gibbs Sampling</h1>
   <p class="tl-dek">When no conjugate prior exists, the posterior can't be written down in closed form — but you can still build a random walk that visits every point in proportion to how likely it is, and let the visit frequencies stand in for the distribution itself.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not a claim this repo has built or validated it</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not a claim this repo has built or validated it<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Conjugate Priors &amp; Bayesian Updating in Practice</span>
   </div>
@@ -36,6 +36,7 @@
       <li><strong>Gibbs sampling</strong> is the special case where you always propose a parameter directly from its true full conditional distribution — the acceptance probability algebraically collapses to exactly 1, so every proposal is accepted.</li>
       <li>Worked example: five explicit steps of a 1-D random-walk Metropolis chain sampling from a bimodal (double-well) target, computed by hand — two accepts, one reject, two automatic uphill accepts.</li>
       <li>A chain isn't trustworthy until it's diagnosed: trace plots, burn-in, effective sample size, and the Gelman-Rubin \(\hat{R}\) statistic are the standard checks, and the interactive chart below lets you watch mixing quality change with proposal step size.</li>
+      <li>How it reached trading: Jacquier, Polson &amp; Rossi (1994) used MCMC to fit stochastic-volatility models whose likelihood has no closed form, and it became the standard way to fit latent-volatility, regime and hierarchical models.</li>
     </ul>
   </div>
 
@@ -92,6 +93,25 @@
       the entire landscape's shape — even though you never once computed its
       exact height at any point, only ever compared two heights to each other.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Volatility you can never observe directly</h3>
+  <div class="tl-origin-who">MCMC · into statistics via Gelfand &amp; Smith, 1990; into finance via Jacquier, Polson &amp; Rossi, 1994</div>
+  <p>Stochastic-volatility models treat volatility as a hidden process with its own randomness — closer to how markets behave than a fixed σ. The catch is that the likelihood requires integrating over every possible hidden volatility path, which has no closed form. Through the 1980s, researchers fell back on approximations such as quasi-maximum likelihood, which can be poor in exactly the cases that matter.</p>
+  <p>Built for physics simulations in 1953 and brought into mainstream statistics by Gelfand and Smith in 1990, MCMC changed that. Jacquier, Polson and Rossi (1994) sampled the hidden volatilities and the parameters together with a Markov chain, giving full posteriors for stochastic-volatility models; Kim, Shephard and Chib (1998) made it faster. Gibbs samplers were likewise used to fit Markov regime-switching models with uncertain parameters (Albert &amp; Chib, 1993).</p>
+  <p>On a desk today MCMC is a research-stage tool: it fits latent-volatility, regime and hierarchical models whose posteriors have no formula, and it returns draws rather than a single number, so parameter uncertainty can be carried into forecasts and risk.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Fit models with hidden states or many parameters — latent volatility, regimes, pooled estimates — and return posterior draws that show how uncertain the fit really is.</dd>
+      <dt>Takes in</dt><dd>Priors and likelihoods (<a href="bayesian-inference.html">Bayesian Inference</a>, <a href="bayesian-conjugate-priors.html">Conjugate Priors</a>).</dd>
+      <dt>Hands on to</dt><dd>Models that need it (<a href="hierarchical-bayesian-models.html">Hierarchical Bayesian Models</a>, <a href="hidden-markov-models.html">Hidden Markov Models</a>) and its faster successor, <a href="hamiltonian-monte-carlo-nuts.html">HMC &amp; NUTS</a>.</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -412,9 +432,9 @@
       trusting the output as a genuine sample from the posterior over the
       three parameters jointly — including their correlations with each
       other, which a simpler method fitting each parameter separately would
-      have missed entirely. This describes the mechanics of the method, not
+      have missed entirely. This describes the mechanics of the method<!-- DESK:START -->, not
       a claim that such a model has been built, fit, or validated anywhere
-      in this repo.
+      in this repo<!-- DESK:END -->.
     </p>
   </div>
 
@@ -530,6 +550,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A chain that runs is not automatically a chain that converged.</strong> Trace plots, burn-in, ESS, and R̂ across multiple chains are the standard, non-optional checks before trusting any MCMC output.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Proposal step size is a real tuning problem.</strong> Too small or too large both produce poor mixing, just for opposite reasons — the interactive chart above makes this failure mode directly visible.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This lesson explains a computational method, not a trading signal.</strong> MCMC is a way to compute a posterior that has no closed form — whatever model it's applied to still has to earn its keep OOS, exactly like every other idea in this curriculum.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: fitting volatility you can't see.</strong> Jacquier, Polson &amp; Rossi (1994) used MCMC to estimate stochastic-volatility models with no tractable likelihood; regime-switching and hierarchical models followed.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

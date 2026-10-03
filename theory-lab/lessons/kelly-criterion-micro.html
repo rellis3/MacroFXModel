@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Kelly Criterion &amp; Position Sizing — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live calculator, and a 6-question self-test?<a href="kelly-criterion.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -176,6 +176,7 @@
       <p class="sl-p">Full Kelly says bet <strong>10% of your current bankroll</strong> — resized after every win and loss, which is exactly why it can never literally bankrupt you (f* &lt; 1 whenever there's a real chance of losing), even though a long losing streak still shrinks your stake precipitously in dollar terms.</p>
     </section>
 
+<!-- DESK:START -->
     <section class="sl-slide" data-slide="9">
       <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Kelly and this repo's own position sizing — a reality check</h2>
@@ -186,6 +187,7 @@
         <p>What is <em>not</em> built is Kelly itself: that sizer risks a fixed, hand-picked percentage of equity per trade, scaled by volatility — it never takes an edge estimate (p or μ) as an input, so it isn't optimizing anything the way f* = μ/σ² does. There is no <code>kellySizing.js</code>, no Kelly-fraction column on any backtest, nothing that turns a strategy's own out-of-sample Sharpe into a bet size. That gap is real: Kelly sizing needs an <strong>honestly out-of-sample</strong> edge as an input, and per this repo's own IS/OOS discipline, that comes only after a signal has already proven itself — sizing is the last step, not the first.</p>
       </div>
     </section>
+<!-- DESK:END -->
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
@@ -200,7 +202,46 @@
     </section>
 
     <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+      <div class="sl-kicker">Section 10 · It actually happened</div>
+      <h2 class="sl-h2">LTCM, 1998: small edges, levered until they broke</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Long-Term Capital Management, whose partners included Nobel laureates Myron Scholes and Robert Merton, made tiny-edge convergence bets that barely moved in calm years. It made roughly 40% a year after fees in 1995 and 1996. By early 1998 it held well over $100 billion of assets on under $5 billion of capital, about 25 to 1. Russia defaulted on 17 August 1998, spreads everywhere widened together, and lenders demanded collateral. By late September it had lost about $4.6 billion, and the New York Fed brought fourteen banks together to put in about $3.6 billion and wind it down.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link"><b>Calm years</b>Measured σ² is tiny</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson: f* = μ/σ²</b>Tiny σ² means huge size: ~25 to 1</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link shock"><b>Russia defaults</b>Flight to the safest assets</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Lenders</b>Demand collateral; forced selling</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>~$4.6bn lost; Fed-brokered rescue</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Same edge, wrong variance<!-- DESK:START -->, and what this desk has tested<!-- DESK:END --></h2>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Illustrative numbers, not LTCM's books</div>
+        <p class="sl-p">μ = 1% a year. With calm-sample σ = 1%, f* = 0.01/0.0001 = 100×, and 25× looks like quarter-Kelly, growth ≈ +21.9%. With true σ = 3%, f* ≈ 11×, 2f* ≈ 22×, and the same 25× gives growth ≈ 0.25 − 0.281 = <strong>−3.1%</strong>. Tripling σ cut f* ninefold.</p>
+      </div>
+      <!-- DESK:START -->
+      <div class="sl-stamp untested">
+        <span class="sl-stamp-tag">Not tested here</span>
+        <span><strong>Kelly sizing has not been tested on this desk.</strong> A fair test: estimate μ and σ² walk-forward, size at several fractions of f*, and compare growth and drawdown after costs against fixed-fraction and vol-targeted sizing.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Kelly assumes known odds, independent bets, and the right to keep betting after a loss. LTCM's variance came from a calm sample, its positions became one correlated bet, and margin calls forced it out before the long run arrived.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -250,8 +291,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Maximizing plain expected value pushes toward betting everything, which eventually meets a loss and wipes you out — wealth compounds multiplicatively, so a single ruinous bet is irreversible.</p></div>
@@ -259,7 +300,10 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>f* = 2p − 1 (even money) and f* = μ/σ² (continuous) are both "edge divided by variance" — bet proportional to your true edge, scaled down by how volatile it has to survive.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Growth rises to a peak at f*, hits zero at 2f*, and goes negative beyond it — overbetting a real edge doesn't just add risk, it makes the growth rate itself go negative.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Fractional Kelly (half-Kelly, c = 0.5) captures ~75% of full Kelly's growth while cutting typical drawdown by half or more — the practitioner default, precisely because real edges are estimated, not known.</p></div>
+<!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo already has a live volatility-based position sizer, but not a Kelly-edge sizer — Kelly needs an honestly out-of-sample edge as input, which only comes after a signal has already cleared the IS/OOS bar.</p></div>
+<!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, LTCM 1998: small edges sized against calm-sample variance at ~25 to 1. When the real σ arrived, margin calls forced the fund out before the long run came. f* scales with 1/σ², so tripling σ cuts it ninefold.<!-- DESK:START --> Kelly sizing is untested here.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -405,5 +449,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

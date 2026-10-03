@@ -17,7 +17,7 @@
   <h1 class="tl-title">Policy Gradients &amp; Actor-Critic Methods</h1>
   <p class="tl-dek">How to optimize a policy directly — including a continuous one, like a position size — by raising the probability of actions that turned out better than expected, and why this being a powerful optimizer says nothing about whether the thing being optimized is any good.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explained here, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Q-Learning &amp; Temporal-Difference Methods</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Actor-critic methods use a learned value function (the "critic") to build an advantage estimate \(A(s,a)=Q(s,a)-V(s)\), which replaces the raw, noisy return in the policy gradient — the actor is the policy being updated by that gradient; the critic is what makes the gradient estimate far less noisy.</li>
       <li>The TD error from the previous lesson, \(r+\gamma V(s')-V(s)\), <em>is</em> a one-step estimate of the advantage — the two lessons converge on the same quantity from different directions.</li>
       <li><strong>Mandatory honest framing:</strong> RL is a general-purpose optimizer, not a trading strategy. It will optimize whatever reward and environment you hand it — including a poorly specified reward or an unrealistic simulator — and "solve" it beautifully while still failing live. This lesson explains a method, not an edge.</li>
+      <li><strong>How it reached trading:</strong> Moody &amp; Saffell (1998–2001) trained trading rules by gradient ascent on a Sharpe-style reward, and Buehler et al.'s "Deep hedging" (2019) used the same direct approach to hedge with costs.</li>
     </ul>
   </div>
 
@@ -92,6 +93,44 @@
       best one at any given moment — the policy just needs to keep shifting,
       gradually and correctly, toward whatever has been working.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Choosing a position size, not picking from a menu</h3>
+    <div class="tl-origin-who">Policy gradients · Moody &amp; Saffell's direct reinforcement (1998–2001); deep hedging, Buehler et al. (2019)</div>
+    <p>
+    Value-based methods score a short list of actions. Real trading decisions are
+    continuous: how much to hold, what hedge ratio to run, how fast to trade. Instead of
+    valuing every possible size, a policy gradient parameterises the rule that outputs
+    the size and pushes its parameters uphill on the objective. The method came from
+    1980s and 1990s control and machine-learning research.
+    </p>
+    <p>
+    John Moody and Matthew Saffell brought this "direct reinforcement" to trading in
+    papers from 1998 to 2001. Their trader's position was a smooth function of recent
+    returns, and its parameters were trained by gradient ascent on a running Sharpe ratio
+    net of costs, which they found more robust than Q-learning. In 2019 Hans Buehler,
+    Lukas Gonon, Josef Teichmann and Ben Wood, from J.P. Morgan and ETH Zurich,
+    published "Deep hedging". A neural network chose the hedge at each step and was
+    trained on simulated paths to minimise a risk measure of hedged P&amp;L, with
+    transaction costs included. It showed how to hedge where Black–Scholes delta has no
+    answer, such as with costs or with no perfect hedge available.
+    </p>
+    <p>
+    On desks the ideas now appear in hedging exotic books under costs, in
+    execution-schedule research and in allocation experiments with actor-critic methods
+    such as PPO. In every case the reward has to carry the risk, because the optimiser will
+    exploit any gap in it.
+    </p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Map the current state straight to a continuous action, a position size or hedge ratio, and improve that mapping along the gradient of a risk-aware reward.</dd>
+        <dt>Takes in</dt><dd>A critic (value estimate) built the way <a href="q-learning-temporal-difference.html">TD learning</a> builds one, and a reward that penalises tail loss, using <a href="coherent-risk-measures.html">coherent risk measures</a>.</dd>
+        <dt>Hands on to</dt><dd>A sizing or hedging rule to be tested with <a href="walk-forward-purged-cv.html">walk-forward validation</a> and traded through <a href="execution-algorithms.html">execution algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -499,6 +538,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The TD error from the previous lesson is a one-step estimate of the advantage.</strong> Actor-critic methods are, in substance, TD learning's critic feeding a policy-gradient actor.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>None of this is a trading edge — it's an optimizer.</strong> RL will faithfully optimize a poorly specified reward or an unrealistic simulated environment and "solve" it beautifully while failing live. State this every time this machinery is proposed for a real strategy, not just once in a lesson.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Raw policy gradient estimates are noisy and updates can be unstable.</strong> Production methods (PPO, TRPO, GAE) exist specifically to constrain how far a single update is allowed to move the policy.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">•</span><span><strong>On a desk, this is the tool for continuous decisions.</strong> It was used for position sizing by Moody &amp; Saffell and for hedge ratios by Buehler et al.'s deep hedging (2019). It is only as good as the risk built into its reward.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

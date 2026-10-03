@@ -17,7 +17,7 @@
   <h1 class="tl-title">Theta Decay</h1>
   <p class="tl-dek">Theta isn't a separate fact about options — it falls straight out of the same Black-Scholes PDE that gives delta and gamma, and once you rearrange it, "theta pays for gamma" stops being a slogan and becomes an equation.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~19 min read</span>
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Theta accelerates near expiry the same way gamma does, through the same \(1/\sqrt{\tau}\) term — a worked comparison at 30, 7 and 1 day to expiry shows the daily decay roughly doubling, then accelerating again, matching the acceleration already shown for gamma in the previous lesson.</li>
       <li>Calendar spreads are built specifically to harvest that acceleration differential between a near and a far expiry; weekend theta is a related, non-universal practitioner convention worth knowing about, not treating as law.</li>
       <li><strong>New in this lesson:</strong> combining \(\Theta\approx-\tfrac{1}{2}\sigma^2S^2\Gamma\) with the previous lesson's "dealers are typically net short gamma" gives, term by term, "dealers are typically net long theta" — the same PDE, two different partial derivatives, not two separate facts.</li>
+      <li><strong>Real-world episode:</strong> in November 2018 a managed-account firm selling far out-of-the-money natural gas calls "for income" was wiped out when gas jumped by double digits in a session; hundreds of client accounts were liquidated, some into deficit.<!-- DESK:START --> Tested here (<code>iv-over-rv-wider</code>, validated): when implied vol looks richest against realised, markets run <em>wider</em> afterwards, not calmer. Whether selling that premium pays after the bills is untested.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -630,6 +631,87 @@
   </p>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: November 2018, selling calls "for income"</h2>
+  <p>
+    The trading scenario in Section 02 is the long-gamma side, paying theta and hoping realised beats implied. Here is
+    the other side of the same identity, run by people who were sold it as income.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>November 2018: the natural gas calls that were "never" supposed to pay</h3>
+    <p>
+      OptionSellers.com, a small Florida-based firm, ran managed accounts for individual investors on a simple pitch:
+      sell options far out of the money on commodity futures, collect the premium, and let time decay do the work. In
+      this lesson's terms every position was <strong>long theta</strong>, and by \(\Theta\approx-\tfrac12\sigma^2S^2\Gamma\)
+      every position was therefore <strong>short gamma</strong>. The rent came in daily. The bill for a large move was
+      being written at the same time, out of sight. Among the firm's positions going into the 2018–19 winter were short
+      call options on natural gas futures: in effect, a bet that gas would not rise sharply.
+    </p>
+    <p>
+      In mid-November natural gas rallied hard on early cold-weather forecasts and low storage, and on 14 November the
+      front-month futures contract <strong>jumped by double digits in percentage terms in a single session</strong>.
+      Calls that had looked close to worthless gained delta and value very quickly. The accounts could not meet the
+      margin calls, and the clearing broker liquidated them into the move.
+    </p>
+    <p style="margin-bottom:0">
+      The bill: hundreds of client accounts were wiped out, and some ended with <strong>negative balances</strong>.
+      Those clients lost everything they had deposited and then owed the broker money on top. Traders have a phrase for
+      this pattern: <em>picking up nickels in front of a steamroller</em>. Many small, steady theta gains, then one move
+      that takes them all back and more.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link concept"><b>★ Premium seller · this lesson</b>Long theta: sells far out-of-the-money gas calls and collects decay daily; short gamma by the same identity</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Cold forecasts</b>Natural gas jumps by double digits in one session on 14 November</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Short calls</b>Delta and value rise fast as the strikes come into view; realised vol blows past the implied vol that was sold</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Clearing broker</b>Calls for margin the accounts cannot meet; liquidates at stressed prices</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Accounts wiped out, some in deficit; steady premium given back in days</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: theta collected is gamma sold.</p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The gamma-theta identity compares theta collected with gamma paid on a <strong>running</strong> basis. That
+    assumes realised variance arrives smoothly, a little each day, and that the book is delta-hedged as it goes. Natural
+    gas delivered months of variance in one session: a jump, not a diffusion. And these positions were not
+    delta-hedged at all, so the full price move hit the account. Margin then turned a mark-to-market loss into a forced
+    sale before any reversal could help. The identity was never wrong. Its "small moves, re-hedged continuously"
+    premise was simply absent.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>iv-over-rv-wider: when implied vol sits far above realised, the market does not calm down.</strong>
+    The opposite. VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range
+    <strong>+0.38 ATR [+0.11, +0.62]</strong>, next-20 +0.56; SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong>
+    (next-5 +0.17, null). Realised catches up to implied.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Does selling rich premium pay after the bills?</strong> The result above measures the <em>range</em>
+    that follows, not option P&amp;L, so it does not say the premium was too cheap. It says the moments when theta looks
+    most generous are followed by bigger moves, so the gamma bill is larger exactly then. A fair test of the income claim
+    would need historical option prices with bid/ask, a fixed selling rule, realistic margin, and a sample that includes
+    2018 and 2020.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Selling options for income is like being paid a little every week to promise you'll replace your neighbour's window if it ever breaks. Most weeks you just keep the money. Then one storm breaks every window on the street on the same night, and you owe more than you ever collected.<!-- DESK:START --> The desk found that the weeks when the payments look biggest are the weeks before the bigger storms.<!-- DESK:END --></p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <div class="tl-icard-grid">
     <div class="tl-icard">
@@ -683,12 +765,12 @@
       or unusually wild day doesn't settle whether theta or gamma is
       "winning" — the comparison in the trading scenario above is only
       meaningful assessed over a large enough sample of the rebalancing
-      path, the same discipline this project applies to any strategy result
-      more generally: a single data point is not a track record.
+      path<!-- DESK:START -->, the same discipline this project applies to any strategy result
+      more generally<!-- DESK:END -->: a single data point is not a track record.
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Theta falls directly out of the Black-Scholes PDE.</strong> \(\Theta = rC - rS\Delta - \tfrac12\sigma^2S^2\Gamma\) — it is not an independent fact, it's an algebraic consequence of the same equation that gives delta and gamma.</span></div>
@@ -698,9 +780,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Short gamma and long theta are the same fact, not two facts.</strong> \(\text{ThetaExp}_k \approx -50\sigma^2\times\text{DealerGEX}_k\) — the sign always flips, so "dealers are typically net short gamma" (from the previous lesson) forces "dealers are typically net long theta" by the same PDE, viewed through a different partial derivative.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Theta is not linear — never assume today's decay rate holds for the rest of the month.</strong> The daily rate itself changes sharply as expiry approaches.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Weekend theta handling is a practitioner convention, not a universal rule.</strong> Different desks and platforms smooth it differently — check the specific source rather than assuming.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rich-looking premium is a warning, not a gift<!-- DESK:START --> (iv-over-rv-wider, validated)<!-- DESK:END -->.</strong><!-- DESK:START --> Top-decile implied-over-realised was followed by wider indices: NAS100 +0.38 ATR next week, SPX500 +0.67 next month.<!-- DESK:END --> November 2018's short natural gas calls show what a jump does to "income": theta is collected in small steps, gamma is paid all at once.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Starting from the Black-Scholes PDE, derive the expression for Θ, and explain in one sentence why this means theta isn't an "extra" assumption on top of delta and gamma.</summary>
@@ -998,5 +1081,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Breeden-Litzenberger &amp; Variance Swaps</h1>
   <p class="tl-dek">A continuum of European option prices secretly encodes two separate things at once: the market's entire risk-neutral probability distribution for the underlying, and a model-free fair price for realized variance itself — both pulled out of the same cross-section of quotes, without ever having to pick a volatility model first.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — grepped every <code>.js</code>/<code>.py</code> file in this repo (case-insensitive) for "Breeden", "Litzenberger", "risk-neutral density", "variance swap", and "VIX": zero hits for Breeden, Litzenberger, or risk-neutral density anywhere. "variance swap" appears three times, all in <code>js/fxVolCarryEngine.js</code>, and only as an explicit disclaimer that its own backtest is <em>not</em> a variance-swap backtest ("no FX options or variance swaps are tradable through this platform (spot only)"). "VIX" appears 352 times across roughly 40 files, but every hit is a fetched macro data feed — e.g. <code>RegimeV2/macro_overlay.py</code>'s <code>VIXFetcher</code> pulling the <code>^VIX</code> spot ticker from Yahoo Finance as a regime-conditioning input — never a computed or replicated variance-swap-style quantity. Nothing in this repo extracts a risk-neutral density or replicates variance-swap pricing from an options strip. The sibling <code>institutional-bates-model.html</code> and <code>institutional-dupire-local-vol.html</code> lessons (1 and 2 of this category) were being built in parallel and landed on disk during the writing of this lesson; both are now cross-linked, and Dupire's own lesson independently states the identical Breeden-Litzenberger fact this lesson derives in full.</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — grepped every <code>.js</code>/<code>.py</code> file in this repo (case-insensitive) for "Breeden", "Litzenberger", "risk-neutral density", "variance swap", and "VIX": zero hits for Breeden, Litzenberger, or risk-neutral density anywhere. "variance swap" appears three times, all in <code>js/fxVolCarryEngine.js</code>, and only as an explicit disclaimer that its own backtest is <em>not</em> a variance-swap backtest ("no FX options or variance swaps are tradable through this platform (spot only)"). "VIX" appears 352 times across roughly 40 files, but every hit is a fetched macro data feed — e.g. <code>RegimeV2/macro_overlay.py</code>'s <code>VIXFetcher</code> pulling the <code>^VIX</code> spot ticker from Yahoo Finance as a regime-conditioning input — never a computed or replicated variance-swap-style quantity. Nothing in this repo extracts a risk-neutral density or replicates variance-swap pricing from an options strip. The sibling <code>institutional-bates-model.html</code> and <code>institutional-dupire-local-vol.html</code> lessons (1 and 2 of this category) were being built in parallel and landed on disk during the writing of this lesson; both are now cross-linked, and Dupire's own lesson independently states the identical Breeden-Litzenberger fact this lesson derives in full.<!-- DESK:END --></span>
     <span>~21 min read</span>
     <span>Prereqs: <a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> (risk-neutral pricing, \(N(d_2)\) as a risk-neutral probability), <a href="vega-volatility-surface.html">Vega &amp; the Volatility Surface</a> (why a whole grid of strikes and expiries gets quoted at all)</span>
   </div>
@@ -37,6 +37,7 @@
       <li>The exact same quantity, \(\partial^2 C/\partial K^2\), sits in the denominator of the Dupire local-volatility formula (sibling lesson) — not a coincidence: it's the arbitrage-free risk-neutral density, and any formula that needs "how much probability mass sits near this strike" needs this object.</li>
       <li>Neither result survives contact with real markets without an honest caveat: both need a genuine continuum of strikes in theory, and both are computed in practice on a finite, truncated set of actual listed strikes — introducing interpolation risk (Breeden-Litzenberger) and truncation error (variance-swap replication) that this lesson quantifies with worked toy examples.</li>
       <li>This is the actual theoretical basis for how the real-world <strong>VIX index</strong> is computed — CBOE's published methodology is a discretized version of exactly the variance-swap replication formula derived here.</li>
+      <li><strong>How it reached trading:</strong> Breeden &amp; Litzenberger (1978) gave the density; variance swaps followed in the late 1990s, and CBOE rebuilt the VIX on the same model-free strip in 2003.</li>
     </ul>
   </div>
 
@@ -98,6 +99,23 @@
       risk-neutral probability density at that point. That limit, made
       precise, <em>is</em> Breeden-Litzenberger's second derivative.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Reading the market's whole distribution, then trading variance itself</h3>
+    <div class="tl-origin-who">Breeden–Litzenberger, 1978 · variance swaps late 1990s · VIX methodology, 2003</div>
+    <p>Implied volatility gives one number per strike; it does not say what probability the market puts on a 20% fall, and before variance swaps there was no clean way to bet on volatility itself without also carrying delta and path-dependent vega from an option position.</p>
+    <p>Douglas Breeden and Robert Litzenberger showed in 1978 (<em>Journal of Business</em>) that the second strike-derivative of call prices is the risk-neutral density. It became practical once liquid strike grids existed: Jackwerth &amp; Rubinstein (<em>Journal of Finance</em>, 1996) used it to show the S&amp;P 500's implied distribution turned sharply left-skewed after 1987, and central banks began publishing option-implied densities. The same strike-spanning logic, via Neuberger's log contract and Carr &amp; Madan, underpins variance swaps; Demeterfi, Derman, Kamal &amp; Zou's 1999 Goldman Sachs note set out the replication desks still use.</p>
+    <p>In September 2003 CBOE switched the VIX to this model-free variance-strip formula on S&amp;P 500 options. Today the same machinery prices variance swaps, VIX and its futures, and implied-density readings of event risk.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What full distribution, and what expected variance, is the option market pricing in, with no pricing model assumed?</dd>
+        <dt>Takes in</dt><dd>Arbitrage-free call and put prices across strikes, read through <a href="black-scholes.html">Black–Scholes</a> as an <a href="vega-volatility-surface.html">implied-volatility surface</a>.</dd>
+        <dt>Hands on to</dt><dd>The <a href="vix-uncertainty-not-fear.html">VIX</a> as a market-wide signal, <a href="tail-risk-hedging-convexity.html">tail-risk hedging</a>, and <a href="institutional-dupire-local-vol.html">Dupire local volatility</a>, which uses the same second derivative.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -773,6 +791,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Real markets only ever supply a finite, discrete set of strikes.</strong> Breeden-Litzenberger needs interpolation/smoothing across the gaps; variance-swap replication needs a truncation cutoff at the widest listed strikes — both introduce real, quantifiable approximation error, illustrated with this lesson's own worked examples.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A negative computed "density" from real quotes is a data-quality red flag, never a real negative probability.</strong> It signals noisy, stale, or arbitrageable input prices — the fix is to clean the inputs, not to report the negative number.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The log-contract replication assumes continuous price paths.</strong> Genuine jumps leave a residual jump-variance term the pure options-strip result does not fully capture — a published, known limitation, not a lesson-specific oversight.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the engine behind variance swaps and the VIX.</strong> Breeden &amp; Litzenberger (1978) turned option prices into a risk-neutral density; the same strike strip prices variance swaps and, since CBOE's 2003 methodology change, the VIX itself.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 10</span></div>

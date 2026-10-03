@@ -17,7 +17,7 @@
   <h1 class="tl-title">Triple-Barrier Labelling &amp; Meta-Labelling</h1>
   <p class="tl-dek">The obvious way to label training data for a trading model — "was the return over the next fixed N bars positive?" — describes a trade nobody actually places. A real position exits at a stop-loss, a take-profit, or a time limit, whichever comes first, and a label built on the wrong exit teaches a model the wrong payoff shape entirely.</p>
   <div class="tl-meta">
-    <span class="tl-status course">VERIFIED IN THIS REPO — <code>pylego/barrier_race.py</code>'s <code>_first_touch()</code> is a genuine upper/lower/vertical triple-barrier walker (a first-touch race between a TP price array, an SL price array, and a <code>max_bars_ahead</code> timeout), reused across <code>AnalogML/ml_walkforward.py</code>, the range-line and volatility-bot engines, and <code>Trade_Decision_Engine/backfill.js</code>; <code>bot/modules/ml_confidence.py</code> is a genuine two-stage primary → secondary meta-labelling architecture — direction is inherited from upstream signal modules while a separately-trained XGBoost + LightGBM ensemble predicts a win-probability that only ever scales position size, never blocks a trade outright</span>
+    <!-- DESK:START --><span class="tl-status course">VERIFIED IN THIS REPO — <code>pylego/barrier_race.py</code>'s <code>_first_touch()</code> is a genuine upper/lower/vertical triple-barrier walker (a first-touch race between a TP price array, an SL price array, and a <code>max_bars_ahead</code> timeout), reused across <code>AnalogML/ml_walkforward.py</code>, the range-line and volatility-bot engines, and <code>Trade_Decision_Engine/backfill.js</code>; <code>bot/modules/ml_confidence.py</code> is a genuine two-stage primary → secondary meta-labelling architecture — direction is inherited from upstream signal modules while a separately-trained XGBoost + LightGBM ensemble predicts a win-probability that only ever scales position size, never blocks a trade outright</span><!-- DESK:END -->
     <span>~18 min read</span>
     <span>Prereqs: <a href="institutional-reality-check-spa.html">White's Reality Check &amp; Hansen's SPA Test</a>, <a href="feature-engineering-leakage-reproducibility.html">Feature Engineering, Leakage &amp; Reproducibility</a></span>
   </div>
@@ -36,7 +36,8 @@
       <li>Barrier widths scale with a <strong>volatility estimate</strong> rather than a fixed pip or dollar distance, so the same barrier logic behaves sensibly whether the market is calm or violent — see <a href="garch-volatility.html">GARCH &amp; Volatility Clustering</a> and <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang Volatility Estimators</a>.</li>
       <li><strong>Meta-labelling</strong> is a second, distinct idea: keep a primary model or rule for direction only — it can be weak and noisy — and train a separate secondary ("meta") model whose only job is predicting the probability that a signal which already fired will actually win, using the same triple-barrier labels restricted to instances where the primary signal fired.</li>
       <li>Filtering (or sizing) trades by the meta-model's predicted probability raises realized precision on the trades actually taken, at the unavoidable cost of taking fewer of them — and meta-labelling can only filter an existing signal, never manufacture edge that was never there to begin with.</li>
-      <li>This repo's own <code>bot/modules/ml_confidence.py</code> is a genuine instance of this exact pattern, verified line-by-line below — not just a lesson that references the idea in the abstract.</li>
+      <!-- DESK:START --><li>This repo's own <code>bot/modules/ml_confidence.py</code> is a genuine instance of this exact pattern, verified line-by-line below — not just a lesson that references the idea in the abstract.</li><!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> López de Prado's 2018 book turned the desk's stop-loss, take-profit and time limit into the ML training target, and it is now a standard step in ML research pipelines for trading.</li>
     </ul>
   </div>
 
@@ -87,6 +88,23 @@
       statistical trick; it is simply asking the label to describe the trade that would actually have been
       taken, rather than an arbitrary snapshot of price at a fixed distance in the future.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Labels that trade like a real position</h3>
+    <div class="tl-origin-who">Triple-barrier labelling · López de Prado, <em>Advances in Financial Machine Learning</em>, 2018</div>
+    <p>When machine learning reached trading research, most models were trained to predict the sign of the return over a fixed horizon. No trader holds a position that way: a real trade is closed at a profit target, a stop-loss or a time limit, whichever comes first, so a fixed-horizon label teaches a model about trades nobody places.</p>
+    <p>Marcos López de Prado set out the fix in <em>Advances in Financial Machine Learning</em> (Wiley, 2018): label each event by which of three volatility-scaled barriers the price path touches first, and add meta-labelling, a second model that decides whether to act on, and how much to bet on, a primary signal. Stops and targets are old desk practice; the book turned them into the training target.</p>
+    <p>It is now a standard step in machine-learning research pipelines for trading, paired with the purged cross-validation the same book sets out, because overlapping barrier labels leak information between training and test folds.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What is the right training target for a model whose trades exit at a stop, a target or a time limit, and how much should each signal be trusted?</dd>
+        <dt>Takes in</dt><dd>A point-in-time volatility estimate for the barrier widths (<a href="institutional-garman-klass-yang-zhang.html">Garman–Klass / Yang–Zhang</a>) and leak-free features from <a href="feature-engineering-leakage-reproducibility.html">feature engineering</a>.</dd>
+        <dt>Hands on to</dt><dd>Classifiers such as <a href="gradient-boosting.html">gradient boosting</a>, validated with <a href="walk-forward-purged-cv.html">purged walk-forward CV</a> and the <a href="institutional-reality-check-spa.html">Reality Check / SPA</a> tests.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -453,6 +471,7 @@
     </p>
   </div>
 
+  <!-- DESK:START -->
   <div class="tl-box repo">
     <div class="tl-icon-badge green">✅</div>
     <div class="tl-box-label">Verified against this repo's actual code</div>
@@ -491,6 +510,7 @@
       not an oversight.
     </p>
   </div>
+  <!-- DESK:END -->
 
   <p>
     A last note, since this is the final lesson of this category. This lesson's labeling discipline and the
@@ -512,7 +532,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Barrier widths scale with a point-in-time volatility estimate,</strong> not a fixed pip/dollar distance, so the same barrier logic adapts sensibly across calm and violent regimes.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Meta-labelling separates "which direction" from "how confident,"</strong> letting a weak, noisy primary signal be filtered or sized by a secondary model trained only on the same triple-barrier labels, restricted to fired instances.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Filtering by meta-probability raises precision by taking fewer trades — it is a tradeoff, not a free lunch,</strong> and it can only rank an existing signal's instances, never manufacture edge from a signal with zero real information content.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo genuinely implements both ideas</strong> — <code>pylego/barrier_race.py</code>'s first-touch walker and <code>bot/modules/ml_confidence.py</code>'s primary→secondary architecture — worth reading directly, not taking on faith.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo genuinely implements both ideas</strong> — <code>pylego/barrier_race.py</code>'s first-touch walker and <code>bot/modules/ml_confidence.py</code>'s primary→secondary architecture — worth reading directly, not taking on faith.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it makes the label match how the trade is actually managed.</strong> López de Prado (2018) turned stops, targets and time limits into the training target, with meta-labelling for bet sizing; it pairs with purged cross-validation because the labels overlap.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

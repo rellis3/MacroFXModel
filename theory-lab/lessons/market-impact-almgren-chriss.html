@@ -27,7 +27,7 @@
   <h1 class="tl-title">Market Impact Models &amp; Almgren-Chriss</h1>
   <p class="tl-dek">Trade a large order fast and you pay for the impact of demanding immediacy; trade it slow and you pay in exposure to whatever the market does while you wait — Almgren-Chriss turns that trade-off into a single dial and a precise, closed-form execution schedule.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~18 min read</span>
     <span>Prereqs: <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a></span>
   </div>
@@ -47,6 +47,7 @@
       <li>Solving that trade-off (via the Euler-Lagrange equation, derived below) gives a closed form: the optimal remaining-inventory trajectory is \(x(t) = X\,\sinh(\kappa(T-t))/\sinh(\kappa T)\), with \(\kappa=\sqrt{\lambda\sigma^2/\eta}\) folding risk aversion \(\lambda\), volatility \(\sigma\), and the temporary-impact coefficient \(\eta\) into one shape parameter.</li>
       <li>At \(\kappa\to0\) (no risk aversion) the trajectory collapses to a straight line — constant-rate, TWAP-like trading. As \(\kappa\) grows, the trajectory becomes increasingly front-loaded: fast early, nearly flat later — a risk-averse trader accepts more impact cost to cut timing-risk exposure.</li>
       <li>Worked example: with \(\sigma^2=0.0004\), \(\eta=0.0012\), a risk-neutral trader (\(\lambda=0\)) trades in a straight line; a moderately risk-averse trader (\(\lambda=27\), giving \(\kappa=3\)) has only about 21% of the order left at the halfway point, versus 50% for the straight-line trader.</li>
+      <li><strong>Real-world episode:</strong> Archegos, March 2021. Several prime brokers had to sell the same concentrated stocks at once. Those who sold early and in size reported no material loss. The slowest lost most: Credit Suisse about $5.5 billion, Nomura about $2.9 billion. With rival sellers, timing risk is not random noise but other people's permanent impact, and the patient schedule is the worst one.<!-- DESK:START --> Whether slower execution lowers cost is <strong>untested</strong> on this desk, which never slices orders.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -578,6 +579,77 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: Archegos, March 2021</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Several banks, the same stocks, one exit</h3>
+    <p>
+      Archegos Capital Management was a family office that had built very large, concentrated positions in a
+      handful of stocks, among them ViacomCBS, Discovery and several US-listed Chinese companies. It held them mostly
+      through <strong>total return swaps</strong> with several prime brokers. Each bank held the actual shares as a hedge
+      against the swap it had written, and no single bank saw the whole position. In late March 2021 ViacomCBS sold new
+      shares to the public and its stock fell sharply. The value of Archegos's positions fell with it, and it could not
+      meet its margin calls.
+    </p>
+    <p>
+      That left each prime broker holding a large block of the same few stocks, with a client that could no longer
+      pay. On Thursday 25 March the banks discussed winding the positions down together, in an orderly way, and did
+      not agree. On Friday 26 March some of them, Goldman Sachs and Morgan Stanley among them, sold billions of dollars
+      of stock in large blocks, at steep discounts, before the market had absorbed what was happening. The banks that
+      moved first and hardest got the best prices. Goldman, Deutsche Bank and Wells Fargo later reported no material
+      loss. The slower banks sold into prices already pushed down by everyone else's blocks.
+      <strong>Credit Suisse lost about $5.5 billion</strong>, and <strong>Nomura about $2.9 billion</strong>.
+    </p>
+    <p style="margin-bottom:0">
+      Now hold that up against the scenario box above. There, a desk choosing a slow, low-\(\kappa\) schedule was making
+      a legitimate choice: it accepted more timing risk to pay less impact. At Archegos, the patient choice was a
+      disaster. The reason is not that the formula is wrong. It is that the "timing risk" the slow sellers were exposed
+      to was not random volatility. It was the other banks.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>ViacomCBS issues new shares; its stock falls sharply</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Archegos</b>Concentrated swap positions lose value; it cannot meet margin calls</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Prime brokers</b>Each holds the same stocks as hedges; talks on an orderly joint wind-down fail</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>Liquidation speed · this lesson</b>Each bank picks its \(\kappa\): sell slowly to cut its own impact, or front-load to beat everyone else's</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Fast block sellers report no material loss; slow sellers lose billions (Credit Suisse about $5.5bn, Nomura about $2.9bn)</div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>If you're the only one selling your lemonade, selling slowly gets you the best price. But if five kids on the same street all have to sell the same lemonade today, the one who sells first gets the good price, and whoever waits ends up selling to customers who already have plenty. Being patient only works when nobody else is selling.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    Almgren-Chriss assumes <strong>one liquidator</strong>. Its timing risk is \(\tfrac12\lambda\sigma^2x(t)^2\): zero-mean
+    random volatility on the inventory you still hold, and the only permanent impact is the impact of your own trades.
+    With several forced sellers in the same names, every block another bank sells is permanent impact on <em>your</em>
+    remaining \(x(t)\). That is a predictable drift against you, not noise, and the penalty for holding inventory is far
+    larger than \(\sigma^2\) suggests. In that game the patient, impact-minimizing schedule is the worst one, and a race
+    to the exit is the rational outcome. Brunnermeier and Pedersen's 2005 paper on predatory trading models a close cousin of this: when other traders know you must sell, they sell first.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Untested here: "trading slower lowers your total execution cost."</strong> This is the trade-off the whole
+    model rests on. This desk sends single small orders at a flat modeled cost and has never sliced an order or
+    measured impact, so it has no evidence either way. A fair test would need execution records for sliced parent
+    orders (arrival price, every child fill, market volume over the window). It would compare implementation
+    shortfall across schedule speeds while holding order size relative to volume and the volatility regime fixed, and
+    it would flag days when other large sellers were active in the same name. All of that would be set before looking
+    at results.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Almost no execution desk solves the Euler-Lagrange equation by hand for every
@@ -663,7 +735,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Temporary impact reverts; permanent impact doesn't.</strong> One is the price of demanding immediacy right now; the other is a lasting, information-driven repricing that your own trading itself causes.</span></div>
@@ -673,9 +745,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Permanent impact doesn't change the optimal shape, but it still costs real money.</strong> It's trajectory-independent (a sunk cost on the fixed total size), which is why it drops out of the optimization — not because it's negligible.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Higher risk aversion is not free — it's a deliberate trade of more expected cost for less variance.</strong> A front-loaded schedule pays more impact on average; it's only the right choice when that trade genuinely matches the trader's risk tolerance or situation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The closed-form trajectory assumes constant volatility and a constant linear impact coefficient.</strong> Real desks adapt the schedule as conditions change; treating the formula as a fixed, one-time plan ignores real intraday variation in both inputs.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The model assumes you are the only seller.</strong> At Archegos in March 2021, several banks had to sell the same stocks. The early block sellers reported no material loss; the slowest lost billions (Credit Suisse about $5.5bn). When rivals are liquidating too, timing risk is their permanent impact on your inventory, and the patient schedule loses.<!-- DESK:START --> Untested on this desk.<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What is the practical difference between temporary and permanent impact, and why does only one of them revert?</summary>
@@ -892,5 +965,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

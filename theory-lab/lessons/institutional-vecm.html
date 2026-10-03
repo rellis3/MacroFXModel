@@ -17,7 +17,7 @@
   <h1 class="tl-title">Vector Error Correction Models (VECM)</h1>
   <p class="tl-dek">Cointegration proves a spread has a home to come back to. It never says how fast either side actually walks back, or which side does the walking. A Vector Error Correction Model is the regression that answers exactly that — and the moment you compare the two answers side by side, you've taken the first real step toward asking which price is leading and which one is just catching up.</p>
   <div class="tl-meta">
-    <span class="tl-status course">VERIFIED IN THIS REPO (partially) — <code>js/arma.js</code>'s <code>fitVECM</code> is a genuine single-equation error-correction regression (&Delta;spread<sub>t</sub> = &mu; + &phi;&middot;&Delta;spread<sub>t-1</sub> + &gamma;&middot;ECT<sub>t-1</sub> + &theta;&middot;&epsilon;<sub>t-1</sub> + &epsilon;<sub>t</sub>), wired live into the dashboard through <code>computeARMAForecast</code> (imported by <code>js/render.js</code>, <code>js/main.js</code>, <code>js/signal.js</code>, <code>js/ai.js</code> and <code>DecisionEngine/decisionInputs.js</code>) — but it's one equation for one series against a price-implied fair value, not the two-equation &Delta;Y/&Delta;X system this lesson builds. The cointegration-gated pairs trading elsewhere in this repo (<code>js/hedgeSignalV2Engine.js</code>, <code>portfolioBacktest/portfolio_backtest.py</code>, <code>js/goldMinerArbEngine.js</code>) is a different, simpler application: a static z-scored spread, not a dynamic regression at all.</span>
+    <!-- DESK:START --><span class="tl-status course">VERIFIED IN THIS REPO (partially) — <code>js/arma.js</code>'s <code>fitVECM</code> is a genuine single-equation error-correction regression (&Delta;spread<sub>t</sub> = &mu; + &phi;&middot;&Delta;spread<sub>t-1</sub> + &gamma;&middot;ECT<sub>t-1</sub> + &theta;&middot;&epsilon;<sub>t-1</sub> + &epsilon;<sub>t</sub>), wired live into the dashboard through <code>computeARMAForecast</code> (imported by <code>js/render.js</code>, <code>js/main.js</code>, <code>js/signal.js</code>, <code>js/ai.js</code> and <code>DecisionEngine/decisionInputs.js</code>) — but it's one equation for one series against a price-implied fair value, not the two-equation &Delta;Y/&Delta;X system this lesson builds. The cointegration-gated pairs trading elsewhere in this repo (<code>js/hedgeSignalV2Engine.js</code>, <code>portfolioBacktest/portfolio_backtest.py</code>, <code>js/goldMinerArbEngine.js</code>) is a different, simpler application: a static z-scored spread, not a dynamic regression at all.</span><!-- DESK:END -->
     <span>~17 min read</span>
     <span>Prereqs: <a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>, <a href="arima-var.html">ARIMA &amp; Vector Autoregression (VAR)</a></span>
   </div>
@@ -38,7 +38,8 @@
       <li>The sizes of \(\alpha_Y\) and \(\alpha_X\) are the heart of the lesson: a large, negative \(\alpha_Y\) means \(Y\) does most of the correcting when the spread is too wide; a small \(\alpha_X\) near zero means \(X\) barely responds — closer to an "anchor" the other series adjusts toward. Comparing the two is exactly the question the sibling <a href="institutional-hasbrouck-information-share.html">Hasbrouck Information Share</a> lesson formalizes properly for many venues at once.</li>
       <li>The Granger Representation Theorem (Engle &amp; Granger, 1987) is the formal bridge: any genuinely cointegrated pair <em>must</em> admit an error-correction representation of this form, and conversely a valid error-correction model implies cointegration — cited here as a given result, not re-derived.</li>
       <li>A small worked example continues the Cointegration lesson's own AUD/USD-vs-NZD/USD numbers (\(\hat\beta \approx 1.10\)) forward one step: given \(Z_{t-1}=0.0050\) and fitted \(\alpha_Y=-0.35\), \(\alpha_X=0.15\), the model forecasts \(\Delta Y_t = -0.00175\), \(\Delta X_t = +0.00075\) — AUD/USD is forecast to do roughly 2.3× more of the correcting than NZD/USD.</li>
-      <li>This repo's dashboard already runs a genuine, single-equation version of exactly this regression (<code>js/arma.js</code>'s <code>fitVECM</code>) — the two-equation system built out fully here is new, but the underlying mechanism is not hypothetical; it's live code.</li>
+      <!-- DESK:START --><li>This repo's dashboard already runs a genuine, single-equation version of exactly this regression (<code>js/arma.js</code>'s <code>fitVECM</code>) — the two-equation system built out fully here is new, but the underlying mechanism is not hypothetical; it's live code.</li><!-- DESK:END -->
+      <li><strong>How it reached trading:</strong> Engle &amp; Granger (1987) and Johansen (1991) gave cointegrated markets their error-correction model, and Hasbrouck (1995) built price discovery on it.</li>
     </ul>
   </div>
 
@@ -112,6 +113,23 @@
       turns "these two things have an equilibrium" into "here is a genuine
       forecasting model of their next move."
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>When two prices drift apart, who closes the gap?</h3>
+    <div class="tl-origin-who">VECM · Engle &amp; Granger, 1987; Johansen, 1991 — cointegrated markets</div>
+    <p>Two prices tied together, such as futures and spot, an ETF and its basket, or two points on a curve, wander individually but cannot drift apart forever. Differencing them to make them stationary throws away exactly the long-run tie a relative-value trader cares about.</p>
+    <p>Robert Engle and Clive Granger's "Co-integration and Error Correction" (<em>Econometrica</em>, 1987) showed cointegrated series always have an error-correction form, and Søren Johansen's maximum-likelihood method (1988, 1991) extended it to systems of several prices. Engle and Granger shared the 2003 Nobel prize. In market microstructure, Joel Hasbrouck's 1995 information-share measure is built on a VECM of the same asset trading in several venues.</p>
+    <p>Today a VECM is how a desk models a cointegrated pair or basket: how fast the spread closes, and which leg does the moving. It sits behind spot–futures and cross-venue price-discovery studies and the spread forecasts used in relative-value trading.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>When two linked prices move apart, how fast does the gap close and which of them does the moving?</dd>
+        <dt>Takes in</dt><dd>A cointegrating spread from <a href="cointegration.html">cointegration</a>, short-run dynamics from <a href="arima-var.html">VAR</a>, and the lead-lag view of <a href="institutional-granger-causality.html">Granger causality</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="institutional-hasbrouck-information-share.html">Hasbrouck information share</a> for price discovery, and the spread entry and exit logic of <a href="ou-mean-reversion.html">OU mean reversion</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -445,7 +463,7 @@
     legs, or for deciding which leg to prioritize executing first if the two
     can't be filled simultaneously.
   </p>
-  <p>
+  <!-- DESK:START --><p>
     <strong>This repo's own dashboard already runs a real, single-equation
     version of this.</strong> <code>js/arma.js</code>'s <code>fitVECM</code>
     function fits precisely \(\Delta\text{spread}_t = \mu + \phi\,\Delta
@@ -466,7 +484,7 @@
     system this lesson builds: it models one series' change from an ECT tied
     to a price-implied fair value, not a jointly-estimated pair of \(\alpha_Y\)
     and \(\alpha_X\) coefficients across two genuinely traded series.
-  </p>
+  </p><!-- DESK:END -->
   <div class="tl-icard-grid">
     <div class="tl-icard">
       <div class="tl-icon-badge blue">🔀</div>
@@ -483,11 +501,11 @@
       <h4>Speed-of-adjustment / half-life</h4>
       <p>If one series absorbs nearly all correction alone, its own α behaves like an AR(1) coefficient on the spread — the same half-life logic from the Cointegration and Ornstein-Uhlenbeck lessons applies to that single equation.</p>
     </div>
-    <div class="tl-icard">
+    <!-- DESK:START --><div class="tl-icard">
       <div class="tl-icon-badge amber">🛠️</div>
       <h4>Production forecasting, verified</h4>
       <p><code>js/arma.js</code>'s <code>fitVECM</code> is a genuine, live example — single-equation, but real code, not a hypothetical.</p>
-    </div>
+    </div><!-- DESK:END -->
   </div>
 
   <div class="tl-box pitfall">
@@ -535,7 +553,7 @@
       <strong>Dropping the short-run lag terms in a live fit, not just a
       teaching example.</strong> This lesson's own calculator deliberately
       isolates \(\alpha_Y Z_{t-1}\) and \(\alpha_X Z_{t-1}\) for clarity — but
-      <code>js/arma.js</code>'s real <code>fitVECM</code> keeps its \(\phi\)
+      a real fit<!-- DESK:START --> (like <code>js/arma.js</code>'s <code>fitVECM</code>)<!-- DESK:END --> keeps its \(\phi\)
       and \(\theta\) terms precisely because omitting genuine short-run
       autocorrelation from a live fit biases the estimated \(\gamma\)
       (this lesson's \(\alpha\)) itself. What's a reasonable simplification
@@ -552,7 +570,8 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Comparing \(\alpha_Y\) and \(\alpha_X\) is the actual payoff.</strong> The larger-magnitude coefficient marks the "follower" doing most of the correcting; the smaller one marks the relative "anchor" — and this is a direct, informal preview of what the Hasbrouck Information Share lesson formalizes properly for many venues.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The Granger Representation Theorem is the formal bridge.</strong> Cointegration and a valid error-correction representation are equivalent — proven by Engle &amp; Granger (1987) — and at least one of \(\alpha_Y, \alpha_X\) must be nonzero for a genuinely cointegrated pair.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Short-run lag terms are just ARIMA/VAR, deliberately not re-derived here.</strong> They matter for a real fit (dropping them biases \(\alpha\)) even though this lesson's teaching tools isolate the error-correction term alone for clarity.</span></div>
-    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already runs a real, single-equation version.</strong> <code>js/arma.js</code>'s <code>fitVECM</code> is live in production dashboards — verified, not hypothetical — though the full two-equation \(\alpha_Y\)/\(\alpha_X\) system built here goes further than that code does.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This repo already runs a real, single-equation version.</strong> <code>js/arma.js</code>'s <code>fitVECM</code> is live in production dashboards — verified, not hypothetical — though the full two-equation \(\alpha_Y\)/\(\alpha_X\) system built here goes further than that code does.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it says which leg closes the spread.</strong> Engle &amp; Granger (1987) and Johansen (1991) made error correction the standard model for cointegrated prices; it drives relative-value spread forecasts and, via Hasbrouck (1995), price-discovery measures.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -622,7 +641,7 @@
       sign convention for \(Z\).
     </div>
   </details>
-  <details class="tl-quiz">
+  <!-- DESK:START --><details class="tl-quiz">
     <summary>Q6. Does this repo already implement a full two-variable VECM system anywhere, per an honest grep of the actual code — and if not, what does exist instead?</summary>
     <div class="tl-answer">
       No full two-equation, jointly-estimated \(\alpha_Y\)/\(\alpha_X\) system
@@ -640,7 +659,7 @@
       application entirely — a static z-scored spread with a cointegration
       gate, not a dynamic error-correction regression at all.
     </div>
-  </details>
+  </details><!-- DESK:END -->
 
   <details class="tl-section-collapse">
   <summary><h2>Further reading</h2></summary>

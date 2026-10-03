@@ -17,7 +17,7 @@
   <h1 class="tl-title">ARIMA &amp; Vector Autoregression (VAR)</h1>
   <p class="tl-dek">AR(1) told you one series pulls back toward one mean. Real data is rarely that clean — shocks echo forward after the level has already reverted, raw price levels need differencing before "mean reversion" even applies, and in FX and macro almost nothing moves in isolation. ARIMA and VAR are the two directions single-series mean reversion generalizes in.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet built in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet built in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Stationarity, ACF/PACF &amp; the AR(1) signature; Ornstein-Uhlenbeck &amp; Mean Reversion</span>
   </div>
@@ -37,7 +37,8 @@
       <li>The order (<i>p</i>,<i>d</i>,<i>q</i>) is read off the data via the Box-Jenkins loop — ACF/PACF cutoff patterns, a unit-root check for <i>d</i>, Ljung-Box residual diagnostics — not guessed or assumed to be (1,1,0).</li>
       <li>VAR is the orthogonal generalization: instead of one series on its own lags, it regresses a whole system of series (e.g. the DE–US yield spread and EUR/USD) each on lagged values of itself <em>and</em> every other series, so it can reveal bidirectional feedback a single "Y on lagged X" regression can never see.</li>
       <li>Granger causality tests whether one series's lags significantly improve forecasting another beyond its own history — it is explicitly a statistical/predictive claim, <strong>not</strong> true structural causation, since an unobserved common driver can produce the same result.</li>
-      <li>The lesson's running example — does the yield spread lead EUR/USD, or the reverse — is this repo's own prior lead-lag case study formalized as a testable VAR/Granger question; no such fit has actually been run in this repo yet.</li>
+      <!-- DESK:START --><li>The lesson's running example — does the yield spread lead EUR/USD, or the reverse — is this repo's own prior lead-lag case study formalized as a testable VAR/Granger question; no such fit has actually been run in this repo yet.</li><!-- DESK:END -->
+      <li>How it reached trading: Box–Jenkins (1970) and Sims' VARs (1980) became the forecasting workhorses of central banks and macro desks, while Meese &amp; Rogoff (1983) showed how hard it is to beat a random walk in FX.</li>
     </ul>
   </div>
 
@@ -53,7 +54,7 @@
     isolation — there is no second variable in the equation for anything to
     lead or lag.
   </p>
-  <p>
+  <!-- DESK:START --><p>
     Both limits show up directly in work already sitting in this repo. This
     codebase's own macro research notes (Lessons 2–3) build a detailed, dated,
     qualitative case that the DE–US
@@ -65,7 +66,7 @@
     "how much does the spread's <em>own</em> past explain FX beyond what FX's
     own history already explains, and does the reverse hold too?" AR(1)/OU
     literally cannot represent that question — it has no second series.
-  </p>
+  </p><!-- DESK:END -->
   <p>
     ARIMA is the generalization that stays inside the single-series world but
     relaxes the "only one lag, only remembers levels" restriction: more lags
@@ -77,7 +78,7 @@
     you model jointly, so each variable's forecast can depend on lagged values
     of every variable in the system — itself included. This lesson builds
     ARIMA first, since it slots directly on top of the AR(1)/OU lesson, then
-    VAR — the tool this repo's yield-spread/FX question actually needs.
+    VAR<!-- DESK:START --> — the tool this repo's yield-spread/FX question actually needs<!-- DESK:END -->.
   </p>
 
   <div class="tl-box intuition">
@@ -112,6 +113,25 @@
       alone cannot do — it can only ever look for the one arrow it was told to
       look for.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>Beating the random walk — or finding out you can't</h3>
+  <div class="tl-origin-who">Box &amp; Jenkins, 1970 · Sims, 1980 · Bayesian VARs at the Minneapolis Fed (Litterman, 1980s) · Meese &amp; Rogoff, 1983 for FX</div>
+  <p>Rates, FX and macro desks need forecasts of variables that feed into each other: a policy rate moves a yield spread, which moves a currency. Before the 1970s the main tools were large structural models — hard to estimate and frequently beaten by naive forecasts. Box and Jenkins' 1970 recipe, built for industrial forecasting and control, gave forecasters a disciplined single-series alternative.</p>
+  <p>Christopher Sims' 1980 VAR let a small set of variables explain each other without the "incredible" restrictions of big models, and its impulse responses showed how a shock spreads through the system. Robert Litterman's Bayesian VARs at the Federal Reserve Bank of Minneapolis became a working forecasting tool in the 1980s, and VARs are now standard at central banks. Meese and Rogoff (1983) set the bar for FX: out of sample, structural and time-series exchange-rate models — VARs included — did not beat a random walk.</p>
+  <p>On a desk today, ARIMA is the benchmark any forecast must beat, and VARs map how a rate differential, inflation surprise or risk shock feeds into a currency over the following weeks.</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Turn a series' own past — and the pasts of the variables it moves with — into a forecast and an impulse response showing how a shock spreads.</dd>
+      <dt>Takes in</dt><dd>Stationary series and a lag order (<a href="stationarity-acf-pacf.html">Stationarity, ACF &amp; PACF</a>, <a href="model-selection-aic-bic.html">AIC &amp; BIC</a>).</dd>
+      <dt>Hands on to</dt><dd>Lead-lag tests, long-run links and volatility (<a href="institutional-granger-causality.html">Granger Causality</a>, <a href="institutional-vecm.html">VECM</a>, <a href="garch-volatility.html">GARCH</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-chart">
@@ -296,8 +316,8 @@
     <strong>parsimony</strong>: a series that would need a high-order pure
     AR(10) or MA(10) to fit well is often described just as accurately by a
     low-order ARMA(1,1) — fewer parameters estimated from the same amount of
-    data, and fewer free parameters is directly less overfitting risk, the
-    exact concern this repo's minimal-DOF-first discipline is built around.
+    data, and fewer free parameters is directly less overfitting risk<!-- DESK:START -->, the
+    exact concern this repo's minimal-DOF-first discipline is built around<!-- DESK:END -->.
     Box and Jenkins allowing \(q>0\) at all, rather than restricting attention
     to ever-larger pure-AR models, is precisely this parsimony trade.
   </p>
@@ -445,7 +465,7 @@
   <h3>Vector Autoregression (VAR): the multivariate extension</h3>
   <p>
     Everything above still describes <em>one</em> series' own history. But
-    the question this repo's macro notes actually pose — does the yield
+    the question<!-- DESK:START --> this repo's macro notes actually pose<!-- DESK:END --> — does the yield
     spread lead EUR/USD, does EUR/USD lead the spread, or both — is
     inherently about <em>two</em> series and how each one's past predicts the
     other. VAR is the natural generalization: instead of regressing one series
@@ -486,9 +506,9 @@
   </div>
 
   <p>
-    This is exactly the right tool for the question this repo's Interest Rate
+    This is exactly the right tool for the question<!-- DESK:START --> this repo's Interest Rate
     Parity lesson and this project's own prior macro research notes'
-    Transatlantic Yield Spread lesson both raise but never formally test: does
+    Transatlantic Yield Spread lesson both raise but never formally test<!-- DESK:END -->: does
     the yield spread lead FX, does FX lead the spread, or does the influence
     run both ways? A VAR fit on the two series doesn't just answer "are they
     correlated" — it answers, coefficient by coefficient, which lags of which
@@ -524,7 +544,7 @@
   <p>
     ARIMA is the standard classical baseline for single-series forecasting in
     macro and finance — still the model quant desks fit first and compare
-    fancier approaches against. Per this repo's "name the benchmark before
+    fancier approaches against. Per the "name the benchmark before
     claiming improvement" discipline, if a more elaborate model (an ML
     forecaster, a regime-switching model) can't beat a properly Box-Jenkins-fit
     ARIMA at the same horizon, the elaborate model hasn't yet demonstrated it
@@ -542,11 +562,11 @@
     response functions, rather than assuming the structure up front. That
     paper is part of the body of work behind Sims's 2011 Nobel Memorial Prize.
     In trading and macro research specifically, two-or-more-variable VARs are
-    the standard tool for exactly the lead-lag questions this repo already
-    raises informally: a policy-rate differential against a currency pair, a
-    credit spread against an equity index (this repo's own
+    the standard tool for exactly the lead-lag questions<!-- DESK:START --> this repo already
+    raises informally<!-- DESK:END -->: a policy-rate differential against a currency pair, a
+    credit spread against an equity index<!-- DESK:START --> (this repo's own
     This project's own lead-lag tooling measures a lead-lag empirically without a
-    VAR/Granger structure underneath it yet), a term spread against a growth
+    VAR/Granger structure underneath it yet)<!-- DESK:END -->, a term spread against a growth
     proxy.
   </p>
 
@@ -554,7 +574,7 @@
     <div class="tl-icon-badge amber">🎯</div>
     <div class="tl-box-label">Real-world trading scenario</div>
     <h3>Does the yield spread lead EUR/USD, or is it the other way around?</h3>
-    <p>
+    <!-- DESK:START --><p>
       This is the exact question this project's own prior macro research notes'
       Transatlantic Yield Spread lesson poses and answers only qualitatively:
       its Lesson 3 case study walks through a dated example (17–18 Feb 2026)
@@ -563,7 +583,7 @@
       as "the spread led FX by about 24 hours." That's a real, useful
       observation, but it's a single narrated instance, not a tested
       relationship with a known lag and known direction.
-    </p>
+    </p><!-- DESK:END -->
     <p>
       A researcher wanting a genuine answer would fit a VAR(2) system on daily
       changes in the 2-year DE–US yield spread and EUR/USD log returns (both
@@ -587,8 +607,8 @@
     <p>
       To be clear about what this is: the 2-day, one-directional result above
       is an illustration of what a VAR + Granger causality test <em>could</em>
-      show, chosen to make the payoff concrete — not a result already produced
-      in this repo. No such fit has been run here yet.
+      show, chosen to make the payoff concrete<!-- DESK:START --> — not a result already produced
+      in this repo. No such fit has been run here yet<!-- DESK:END -->.
     </p>
   </div>
 
@@ -613,8 +633,8 @@
       VAR(4) across 5 series already needs on the order of 100 coefficients
       (\(5 \times 5 \times 4\)). On daily FX/macro data, where a few thousand
       usable observations is generous, that's a lot of parameters chasing not
-      much data — a direct overfitting risk this repo's minimal-DOF-first
-      discipline exists to catch. Adding more series to a VAR "just in case"
+      much data — a direct overfitting risk<!-- DESK:START --> this repo's minimal-DOF-first
+      discipline exists to catch<!-- DESK:END -->. Adding more series to a VAR "just in case"
       is not free; each one squares the parameter growth, not adds to it
       linearly.
     </p>
@@ -643,14 +663,14 @@
     </p>
     <p>
       <strong>Regime dependence / parameter instability.</strong> Exactly the
-      caution this project's own prior macro research itself gives (§2.7's
-      breakdown modes — risk-off flights to safety, central-bank intervention,
+      caution<!-- DESK:START --> this project's own prior macro research itself gives<!-- DESK:END --> (<!-- DESK:START -->§2.7's
+      breakdown modes — <!-- DESK:END -->risk-off flights to safety, central-bank intervention,
       extreme positioning, geopolitical shocks) applies directly to any
       VAR/Granger fit: a lead-lag relationship estimated over one regime is
       not guaranteed to hold in the next, and a single full-sample coefficient
       or Granger-test result can hide a regime-dependent reversal exactly the
-      way a pooled null can hide a subset effect elsewhere in this repo's
-      validation discipline.
+      way a pooled null can hide a subset effect<!-- DESK:START --> elsewhere in this repo's
+      validation discipline<!-- DESK:END -->.
     </p>
   </div>
 
@@ -663,7 +683,8 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A single-equation regression can only see one arrow.</strong> A VAR estimates both cross-effects (\(a_{12}\) and \(a_{21}\)) jointly, revealing bidirectional feedback a "Y on lagged X" regression never could.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Granger causality is a statistical claim, not a structural one.</strong> It means "X's lags improve forecasting Y" — not "X makes Y happen." An unobserved common driver can produce the same result with no real causal link.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>VAR parameter count grows as \(k^2 \times p\).</strong> Adding series to "see more of the system" is not free — it squares the parameter growth, a fast route to overfitting on the modest sample sizes daily FX/macro data provides.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this has actually been fitted in this repo yet.</strong> The yield-spread/EUR-USD lead-lag question is currently a narrated, qualitative case study — a real VAR/Granger fit with an honest OOS split is a research candidate, not a shipped result.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>None of this has actually been fitted in this repo yet.</strong> The yield-spread/EUR-USD lead-lag question is currently a narrated, qualitative case study — a real VAR/Granger fit with an honest OOS split is a research candidate, not a shipped result.</span></div><!-- DESK:END -->
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: the benchmark forecast and the shock map.</strong> Box–Jenkins and Sims' VARs became standard at central banks and macro desks; Meese &amp; Rogoff (1983) is the reminder that FX forecasts must beat a random walk out of sample.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

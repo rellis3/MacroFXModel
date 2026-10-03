@@ -17,7 +17,7 @@
   <h1 class="tl-title">Partial Derivatives &amp; Multivariable Calculus</h1>
   <p class="tl-dek">What happens to ordinary calculus once a function depends on more than one thing at once — and the exact vocabulary behind every option "Greek" you've ever seen quoted.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: Complex Numbers; Calculus for Finance (Deeper Foundations) for Taylor series</span>
   </div>
@@ -38,6 +38,7 @@
       <li>The <strong>Hessian</strong> stacks every <em>second</em> partial derivative into a matrix — the multivariable version of curvature, used to check whether a stationary point is a genuine minimum, a maximum, or a saddle.</li>
       <li>An option's Delta, Gamma, Theta, and Vega are not four separate special concepts — they are literally the partial derivatives of the option-value function \(V(S,t,\sigma,\dots)\) with respect to the underlying, time, and volatility, respectively.</li>
       <li>Worked example: for \(V(S,t) = S e^{-\delta t}\) (a dividend-paying asset's forward value), \(\partial V/\partial S = e^{-\delta t}\) and \(\partial V/\partial t = -\delta S e^{-\delta t}\) — two different partial derivatives of the exact same function, holding the other variable fixed each time.</li>
+      <li><strong>How it reached trading:</strong> the Black–Scholes–Merton model (1973) is a partial differential equation whose hedge is a partial derivative, and options books have been run by these partials, the Greeks, ever since.</li>
     </ul>
   </div>
 
@@ -115,6 +116,25 @@
       temperature rise the fastest?" — it turns out that question has one
       clean answer, built directly from the partial derivatives.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>One price, many risks</h3>
+    <div class="tl-origin-who">Partial derivatives as the Greeks · Black, Scholes &amp; Merton, 1973</div>
+    <p>An option's value depends on the underlying price, time, volatility and rates all at once. Before 1973 traders had no consistent way to say how much of a position's risk came from each source, or how to hedge one without disturbing the others.</p>
+    <p>The Black–Scholes–Merton model of 1973 is a partial differential equation, and its hedging argument holds the partial derivative with respect to the stock price, the delta, in shares against each option. As listed options grew from the Chicago Board Options Exchange's opening that year, options books came to be hedged and reported by these partials: delta, gamma, theta and vega, the "Greeks".</p>
+    <p>Today a risk report is a vector of partial derivatives (Greeks, DV01s by tenor, factor betas), and P&amp;L is explained by adding up their contributions. Model calibration and machine-learning training use the same object, the gradient, stepping parameters downhill on the error, a method first described by Cauchy in 1847.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Splitting a value that depends on many inputs into one sensitivity per input, so each risk can be measured, hedged and explained separately.</dd>
+        <dt>Takes in</dt><dd>Single-variable derivatives and Taylor expansions (<a href="calculus-for-finance.html">Calculus for Finance</a>).</dd>
+        <dt>Hands on to</dt><dd>Option Greeks and optimisation (<a href="black-scholes.html">Black-Scholes-Merton</a>, <a href="second-order-greeks.html">Second-Order Greeks</a>, <a href="foundation-optimization-basics.html">Optimization Basics</a>, <a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; Gradient Descent</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -609,6 +629,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The option Greeks are literally partial derivatives.</strong> Delta, Theta, and Vega are first partial derivatives of the option value with respect to spot, time, and volatility; Gamma is a second partial derivative — not four separate special ideas.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked forward-value example shows two different partials of one function.</strong> \(\partial V/\partial S \approx 0.9418\) and \(\partial V/\partial t \approx -2.825\) for the same \(V(S,t)=Se^{-\delta t}\) — the mechanics only ever differ in which variable is frozen.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A stationary gradient alone doesn't certify a minimum.</strong> \(\nabla f = 0\) is consistent with a minimum, a maximum, or a saddle point — the Hessian is what tells them apart.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The Greeks are partial derivatives.</strong> Since Black–Scholes–Merton (1973), options books are hedged and reported by delta, gamma, theta and vega: one sensitivity per input, from one value function.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

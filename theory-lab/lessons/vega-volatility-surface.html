@@ -17,7 +17,7 @@
   <h1 class="tl-title">Vega &amp; the Volatility Surface</h1>
   <p class="tl-dek">Every option carries a bet on volatility itself, not just on direction — and the market's refusal to price that bet with one flat number, strike after strike and expiry after expiry, is what the "volatility surface" actually is.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~20 min read</span>
     <span>Prereqs: Black-Scholes-Merton Option Pricing, Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
@@ -36,6 +36,7 @@
       <li>Real markets don't quote one \(\sigma\); they quote a different implied \(\sigma\) for every (strike, expiry) pair — the <strong>volatility surface</strong>. Its two axes are the strike-wise <strong>skew/smile</strong> (an empirical, post-1987 market fact Black-Scholes itself cannot produce) and the expiry-wise <strong>term structure</strong> (near-dated vol spikes around event risk; longer-dated vol is smoother, an averaging effect).</li>
       <li>Vega is fundamentally different from delta in one crucial way: <strong>the underlying itself has zero vega</strong>, so a vega-exposed book can only be hedged by trading <em>other options</em>, never by trading more or less of the underlying. Delta is an underlying-hedging problem; vega is an options-against-options problem.</li>
       <li>The genuine new-value piece here: an analogue of dealer gamma exposure, dollar <strong>vega</strong> exposure at a strike, \(\text{VegaExposure}_k = \nu_k\times\text{OI}_k\times100\) — heavy open interest concentrates a dealer's vega risk exactly the way it concentrates gamma risk, but the fix looks completely different (buy/sell other options, not the underlying).</li>
+      <li><strong>Real-world episode:</strong> on 19 October 1987 "portfolio insurance", puts replicated by selling futures (a hedge with no vega), failed in a 20%+ one-day crash, and the index skew has existed ever since. In March 2020 the other axis bent: the VIX closed at a record 82.69 and the term structure inverted for weeks.<!-- DESK:START --> Tested here: an inverted VIX curve is followed by wider ranges (<code>vix-inversion</code>, <code>mv-vixterm-range</code>, validated), range only, never direction.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -659,6 +660,106 @@
   </p>
 
   <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>It actually happened: October 1987, the day the surface got its shape</h2>
+  <p>
+    Section 02b says the skew is a post-1987 fact and leaves the crash itself offstage. Here is the crash, told through
+    the one idea this lesson keeps coming back to: <strong>the underlying has zero vega</strong>.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>19 October 1987: insurance that had no vega</h3>
+    <p>
+      In the mid-1980s a strategy called <strong>portfolio insurance</strong> was sold to pension funds and other large
+      investors. Instead of buying put options, the insurer <em>replicated</em> a put by trading the underlying: selling
+      stock-index futures as the market fell and buying them back as it rose, tracking the delta of the put it was
+      copying. By October 1987 tens of billions of dollars of equity were covered this way.
+    </p>
+    <p>
+      On Monday 19 October 1987 the Dow fell 22.6% and the S&amp;P 500 about 20% in a single session, still the largest
+      one-day percentage falls in their history. Index futures traded at a deep discount to the stocks underneath them.
+      The presidential task force that studied the crash (the Brady Commission) found that portfolio insurers' futures
+      selling was a large part of the selling pressure that week; how much it <em>caused</em> the fall, rather than
+      accompanied it, is still debated.
+    </p>
+    <p>
+      Here is the part this lesson explains. A replicated put is a <strong>delta hedge only</strong>. It has no vega,
+      and it assumes the market moves smoothly enough to re-hedge along the way. When the market gapped, the replication
+      fell behind, and the insurance failed exactly when it was needed. Holders of <em>actual</em> puts held vega as well
+      as delta: their puts gained from the fall and again from the jump in implied volatility.
+    </p>
+    <p style="margin-bottom:0">
+      The lasting change was in the price of that protection. Before the crash, index options traded close to a flat
+      smile. Afterwards, out-of-the-money puts have carried a persistent implied-vol premium (Rubinstein's 1994 study,
+      cited in Section 02b). The surface's strike axis is, in effect, the market charging ever since for the vega that
+      portfolio insurance did not have.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2020: the other axis turns upside down</h3>
+    <p style="margin-bottom:0">
+      The expiry axis had its own extreme in March 2020. As the pandemic shut economies down, the S&amp;P 500 fell about
+      34% from its February high to its 23 March low, and on 16 March the VIX closed at <strong>82.69, its highest close
+      on record</strong>. Near-dated implied vol rose far above longer-dated implied vol, and the term structure stayed
+      inverted for weeks. In Section 02b's averaging terms, the market priced the next few weeks as the "event" and
+      treated the far months as the dilution.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>Stocks fall sharply in the week before 19 October 1987</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Portfolio insurers</b>Replicating puts by delta alone, they must sell index futures as prices fall</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Futures and stocks</b>Futures trade at a deep discount; the selling passes into stocks and prices gap instead of sliding</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ Option market makers · this lesson</b>Short puts lose on price and on implied vol; they mark out-of-the-money put vol far higher, and never fully mark it back</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A permanent skew: crash protection has cost more per unit of vega ever since</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept: vega, and the surface's strike axis.</p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    Black-Scholes assumes <strong>one constant σ for every strike and a continuous path</strong>. Those two assumptions
+    are exactly what made a futures-replicated put look equivalent to a real one. October 1987 broke both: the path
+    gapped, and σ turned out to depend on strike. It also breaks the habit of reading vega as one number per option.
+    Vega measures a parallel shift in σ, but in a crash the put wing moves far more than the at-the-money point. A
+    book that is vega-flat in total can still be badly exposed to the <em>shape</em> of the surface.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="vix-inversion" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>vix-inversion: an inverted VIX curve is followed by a wider week.</strong> VIX above VIX3M, first day
+    of inversion → next-5-session range vs matched controls: <strong>SPX500 +0.76 ATR, NAS100 +0.82</strong>, USD/JPY
+    +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Inversions are brief (median 1 session).</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="mv-vixterm-range" data-evidence-date="2026-09-23">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>mv-vixterm-range: and the next month runs wider too.</strong> Pre-registered, from a different
+    harness: next-20-session range ratio <strong>+0.52 [0.38, 0.88] on SPX500</strong> and +0.44 [0.26, 0.78] on NQ on
+    14 de-clustered firings, holding in both halves (+0.70 early, +0.35 late). <strong>Direction is null</strong>: 57%
+    up against an 80%+ control.</span>
+  </div>
+  <!-- DESK:END -->
+<!-- DESK:START -->  <p>
+    So the term-structure axis carries real information here, about <em>size</em>. It says nothing about which way.
+    The strike axis, the skew that 1987 left behind, has not been tested as a forward signal on this desk: whether a
+    steeper skew predicts anything is still an open question here, not a finding.
+  </p><!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>In 1987 lots of big investors thought they had insurance, but really they had a plan: "if prices fall, sell quickly." When prices fell so fast there was no time to sell, the plan didn't work. People who had bought real insurance were fine, and ever since, crash insurance has cost extra. In 2020 the price of insurance for the next few weeks went far above the price for next year<!-- DESK:START -->, and the desk found that when that happens, the coming weeks really are bumpier<!-- DESK:END -->.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Vega and the surface show up constantly in how options desks actually
@@ -728,7 +829,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Vega is \(\nu=S\varphi(d_1)\sqrt{T}\) — identical for a call and put.</strong> Put-call parity's right side has no \(\sigma\) term, so \(\partial C/\partial\sigma-\partial P/\partial\sigma=0\) exactly, not approximately.</span></div>
@@ -737,9 +838,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Vega cannot be hedged with the underlying — ever.</strong> The underlying has exactly zero vega; only other options can offset a vega-exposed book, structurally unlike delta.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Dollar vega exposure at a strike, \(\nu_k\times\text{OI}_k\times100\), concentrates the same way GEX does.</strong> Heavy open interest near the money dominates a book's vega risk, but the fix is other options, not the underlying.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Implied vol is a price, not a forecast guarantee — and the dealer's assumed sign is still an assumption.</strong> A rich event-vol premium can be over- or under-priced either way, and every GEX-style figure here inherits the same unverifiable long/short assumption flagged in the Gamma Exposure lesson.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>An inverted term structure is a validated range signal here, never a direction (vix-inversion, mv-vixterm-range).</strong> First day of inversion: SPX500 +0.76 ATR over the next week; +0.52 over the next month, direction null. October 1987 shows why the strike axis exists at all: a put replicated with futures has no vega, and it failed on a gap.</span></div><!-- DESK:END -->
   </div>
 
-  <div class="tl-section-mark"><span>Section 06</span></div>
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is vega exactly the same value for a call and a put at the same strike and expiry, and how does that argument differ from the one showing gamma is the same for both?</summary>
@@ -943,5 +1045,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

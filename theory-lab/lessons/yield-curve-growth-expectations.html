@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yield Curve and Growth — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: a chain link where the evidence breaks. */
+  .yc-broken{border-style:dashed !important;border-color:var(--red-bd) !important;background:var(--s1) !important}
+  .yc-broken b{color:var(--red) !important}
+  .yc-presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / What the Yield Curve Says About Growth</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 4 of 5</div>
+  <h1 class="tl-title">What the Yield Curve Says About Growth</h1>
+  <p class="tl-dek">The yield curve is the bond market's best guess at where interest rates are going, plus a fee for waiting. That makes it a genuine reading of what the market <em>expects</em> — and a much shakier forecast of what will <em>happen</em>. This lesson teaches you to read the shape, and then shows exactly where the famous "inversion means recession" chain breaks in the data.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~17 min read</span>
+    <span>Prereqs: Bond Pricing &amp; YTM, Central Bank Policy</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="yield-curve-growth-expectations-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>A long yield ≈ the average policy rate the market expects over its life + a term premium.</strong> So the curve's shape is, mostly, a picture of the expected path of rates.</li>
+      <li><strong>Upward-sloping</strong> = rates expected to rise or stay put, with growth and inflation holding up. <strong>Flat or inverted</strong> = cuts expected — usually because the market thinks the economy will slow.</li>
+      <li><strong>Inversions are usually made at the front end</strong>: the central bank hikes, the 2-year rises above the 10-year. <strong>Bull/bear steepening/flattening</strong> tells you which end moved and in which direction.</li>
+      <li><strong>Recessions are dated by the NBER, in hindsight</strong> — not by "two negative quarters".</li>
+      <!-- DESK:START --><li><strong>The desk's verdict on the trade: NULL.</strong> Ten inversion episodes since 1976; a recession followed within 24 months in 6 of 10 (60%, CI [31%, 83%]); forward Nasdaq did not separate from a matched control; and steepenings were followed by <em>worse</em> returns. The curve measures expectations. It is not a timing signal.</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    "The yield curve has inverted" is one of the most quoted lines in markets,
+    and usually arrives attached to "...so a recession is coming". This
+    sequence has been about how markets talk to each other: the
+    <a href="domino-chain-cross-asset.html">domino chain</a> across assets,
+    <a href="investor-mood-forced-selling.html">investor mood and forced
+    selling</a>, and <a href="vix-uncertainty-not-fear.html">the VIX as
+    uncertainty, not fear</a>. The Treasury curve is the market that speaks
+    most directly about the <em>economy</em>: it prices where the Fed will
+    take rates, and the Fed takes rates where it thinks growth and inflation
+    are going.
+  </p>
+  <p>
+    The difference between those two sentences — "the curve shows what is
+    expected" and "the curve predicts what will happen" — is the whole lesson.
+    The first is true almost by construction.<!-- DESK:START --> The second is a claim this desk
+    has tested, and the result is in Section 05.<!-- DESK:END -->
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Lend for two years, or lend for ten?</h3>
+    <p>
+      If you lend to the US government for ten years, you could instead have
+      lent for two years and then re-lent at whatever rate exists in two years'
+      time. Investors compare the two, so the 10-year yield ends up close to
+      the average of the short rates people expect over the next ten years —
+      plus a little extra for locking money away and bearing the risk that
+      rates jump.
+    </p>
+    <p style="margin-bottom:0">
+      So when the 10-year yields <em>less</em> than the 2-year, the market is
+      saying: "short rates are high now, and I expect them to be lower later."
+      Rates are usually cut when the economy weakens. That is why an inverted
+      curve is read as an expected slowdown. Notice the word: <em>expected</em>.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The yield curve is a line of prices for borrowing money for a short time, a medium time and a long time. Normally borrowing for longer costs more, so the line slopes up, like a slide. When the long end costs less than the short end, the line tips over. That means people think rates will come down later — usually because they think the economy will get weaker. It's a guess by lots of people at once, not a crystal ball.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>Reading the curve, step by step</h2>
+
+  <h3>1. A long yield is an expected path plus a premium</h3>
+  <div class="tl-math">
+    \[ y_n \;\approx\; \frac{1}{n}\sum_{i=0}^{n-1} \mathbb{E}_t\!\left[r_{t+i}\right] \;+\; TP_n \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue">
+      <div class="tl-fp-term">y<sub>n</sub></div>
+      <div class="tl-fp-name">The n-year yield</div>
+      <div class="tl-fp-desc">A point on the curve — the 2-year, the 10-year</div>
+    </div>
+    <div class="tl-fp green">
+      <div class="tl-fp-term">(1/n)ΣE[r]</div>
+      <div class="tl-fp-name">Expected path</div>
+      <div class="tl-fp-desc">The average policy rate the market expects over n years</div>
+    </div>
+    <div class="tl-fp amber">
+      <div class="tl-fp-term">TP<sub>n</sub></div>
+      <div class="tl-fp-name">Term premium</div>
+      <div class="tl-fp-desc">Extra yield for duration risk. Not observed; model-estimated; can be negative</div>
+    </div>
+  </div>
+  <p>
+    The 2-year yield is dominated by the next few Fed meetings, which is why
+    it is often called the market's vote on policy. The 10-year mixes a long
+    expected path with a term premium that QE, inflation uncertainty and
+    government bond supply all push around (see
+    <a href="qe-qt-balance-sheet.html">QE and QT</a>). That second piece is
+    the main reason the curve can mislead: a flat curve can mean "cuts
+    expected" or simply "term premium squeezed".
+  </p>
+
+  <h3>2. Pulling the expected path out: forward rates</h3>
+  <p>
+    Two yields give you the rate the market is implicitly locking in
+    <em>between</em> their maturities. Using simple annual compounding as an
+    approximation:
+  </p>
+  <div class="tl-math">
+    \[ f_{m\to n} \;\approx\; \frac{n\,y_n - m\,y_m}{n-m} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>f(m→n)</code><span>the average rate implied for the years between m and n</span></div>
+    <div class="tl-eq-chip c2"><code>n·yₙ</code><span>total return locked in by lending for n years</span></div>
+    <div class="tl-eq-chip c3"><code>m·yₘ</code><span>the part already earned over the first m years</span></div>
+  </div>
+  <p>
+    If the 5-year yields less than the 2-year, the forward rate for years 2–5
+    is <em>below</em> today's 2-year: the market is pricing cuts (before
+    allowing for any term premium inside the forward).
+  </p>
+
+  <h3>3. Slope measures: 2s10s and 3m10y</h3>
+  <div class="tl-math">
+    \[ \text{2s10s} = y_{10} - y_{2}, \qquad \text{3m10y} = y_{10} - y_{0.25} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>2s10s</code><span>the most quoted slope; negative = inverted</span></div>
+    <div class="tl-eq-chip c4"><code>3m10y</code><span>the slope favoured in much of the academic recession work</span></div>
+  </div>
+  <div class="tl-symbols"><table>
+    <tr><td>\(y_n\)</td><td>Yield on an \(n\)-year Treasury (\(y_{0.25}\) = 3-month bill).</td></tr>
+    <tr><td>\(r_{t+i}\)</td><td>The short-term policy rate in year \(t+i\).</td></tr>
+    <tr><td>\(\mathbb{E}_t[\cdot]\)</td><td>What the market expects today.</td></tr>
+    <tr><td>\(TP_n\)</td><td>Term premium on an \(n\)-year bond — estimated by models, not observed.</td></tr>
+    <tr><td>\(f_{m\to n}\)</td><td>Forward rate: the average rate implied for the period from year \(m\) to year \(n\).</td></tr>
+    <tr><td>bp</td><td>Basis point — 0.01 percentage point.</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Shape the curve — five tenors, live slope, forward and shape label</div>
+    <svg viewBox="0 0 640 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A yield curve drawn through five points — 3-month, 2-year, 5-year, 10-year and 30-year — whose heights follow five sliders, with a dashed earlier curve for comparison and a live label of the curve's shape">
+      <line x1="60" y1="250" x2="610" y2="250" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="250" x2="60" y2="20" style="stroke:var(--text3);stroke-width:1"/>
+      <g id="yc-grid"></g>
+      <text x="335" y="284" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)">Maturity (square-root scale) →</text>
+      <text x="20" y="135" text-anchor="middle" font-size="11" font-family="'DM Sans',sans-serif" fill="var(--text3)" transform="rotate(-90 20 135)">Yield (%)</text>
+      <polyline id="yc-before" points="" style="fill:none;stroke:var(--text3);stroke-width:1.5;stroke-dasharray:5,4"/>
+      <polyline id="yc-now" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5;stroke-linejoin:round"/>
+      <g id="yc-dots"></g>
+      <text id="yc-shape" x="600" y="38" text-anchor="end" font-size="14" font-weight="600" font-family="'DM Sans',sans-serif" fill="var(--text)">—</text>
+      <text x="600" y="56" text-anchor="end" font-size="10" font-family="'DM Sans',sans-serif" fill="var(--text3)">dashed = "before" curve</text>
+    </svg>
+    <div class="yc-presets">
+      <button type="button" class="tl-btn" data-preset="normal">Normal</button>
+      <button type="button" class="tl-btn" data-preset="flat">Flat</button>
+      <button type="button" class="tl-btn" data-preset="inverted">Inverted</button>
+      <button type="button" class="tl-btn" data-preset="humped">Humped</button>
+      <button type="button" class="tl-btn" id="yc-mark">Mark current as "before"</button>
+    </div>
+    <div class="tl-controls" id="yc-controls"></div>
+    <div class="tl-readout">2s10s <b id="yc-2s10s">—</b> · 3m10y <b id="yc-3m10y">—</b> · implied 2y→5y forward <b id="yc-fwd">—</b></div>
+    <div class="tl-readout">Change vs "before": Δ2y <b id="yc-d2">—</b> · Δ10y <b id="yc-d10">—</b> → <b id="yc-move">—</b></div>
+    <div class="tl-chart-caption">The presets are illustrative shapes, not historical curves. The slope, forward rate (\(f_{2\to5}\approx(5y_5-2y_2)/3\)) and move label are computed live from the sliders. The forward is the market's implied path <em>plus</em> any term premium — read a falling forward as "cuts priced", not as a promise.</div>
+  </div>
+
+  <h3>4. Four ways the curve can change</h3>
+  <p>
+    "Bull" means yields falling (bond prices rising); "bear" means yields
+    rising. "Steepening" means the 10-year minus the 2-year gets bigger;
+    "flattening" means it shrinks. Which end does most of the moving tells you
+    what is being repriced:
+  </p>
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Bull steepening</h4>
+      <p>Front end falls faster than the long end. The market is pricing rate cuts — often as the Fed starts easing, or as a slowdown is feared. Typical of the end of an inversion.</p>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Bear steepening</h4>
+      <p>Long end rises faster. Stronger growth or inflation expectations, a rising term premium, or worries about bond supply and credibility — the front end is anchored by the Fed.</p>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Bear flattening</h4>
+      <p>Front end rises faster. Hikes being priced. This is how most inversions are made: the Fed lifts the 2-year above the 10-year.</p>
+    </div>
+    <div class="tl-compare-card blue">
+      <h4>Bull flattening</h4>
+      <p>Long end falls faster. Long-run growth or inflation expectations fading, or a rush into duration for safety, while the front end stays pinned.</p>
+    </div>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Think of the curve as a see-saw. If the short end goes up (the Fed raising rates), the see-saw tips flatter — and can tip all the way over. If the short end drops (the Fed cutting), it tips back steep. Watching which end moved tells you whether people are thinking about the Fed's next steps or about the far future.</p>
+  </div>
+
+  <h3>5. Who actually calls a recession</h3>
+  <p>
+    In the US, recessions are dated by the <strong>National Bureau of Economic
+    Research's Business Cycle Dating Committee</strong>. It picks the month of
+    the peak and the month of the trough, judging the fall in activity on its
+    depth, how widely it spreads across the economy, and how long it lasts —
+    and it announces those dates in hindsight, typically many months after the
+    turning point. "Two consecutive quarters of falling GDP" is a newspaper
+    shorthand, not the definition. In 2022, the first estimates of GDP showed
+    two negative quarters in a row, and no recession was declared.
+  </p>
+  <p>
+    This matters for anyone trying to trade the curve: the thing it is said
+    to predict is only labelled after the fact. You cannot know, at the time,
+    whether you are in one.
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>What an inverted front end is pricing</h3>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The curve</h4>
+          <p>3-month 5.30%, 2-year 4.50%, 5-year 4.00%, 10-year 4.10% (illustrative).</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Slopes</h4>
+          <p>2s10s = 4.10 − 4.50 = <strong>−40bp</strong>. 3m10y = 4.10 − 5.30 = <strong>−120bp</strong>. Both inverted.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>The forward for years 2–5</h4>
+          <div class="tl-math">\[ f_{2\to5} \approx \frac{5(4.00) - 2(4.50)}{3} = \frac{20 - 9}{3} \approx 3.67\% \]</div>
+          <p>The market is implicitly locking in an average of about 3.67% for years 2 to 5, well under today's 5.30% bill rate.</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Take out a premium</h4>
+          <p style="margin-bottom:0">If the term premium in that forward is, say, +0.30%, the expected rate is nearer 3.37% — roughly two percentage points of cuts priced from the bill rate. If the premium is negative, as some model estimates were after years of QE, fewer cuts are priced than the raw forward suggests. Either way the curve is telling you what is <em>expected</em>; it says nothing about whether that expectation is right.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2006–07: the textbook case, with a long fuse</h3>
+    <p>The Fed raised its target rate to 5.25% in June 2006 and held it there for over a year. Through much of 2006 and into 2007 the 2s10s curve sat flat or inverted. The curve had turned positive again by the middle of 2007, the Fed began cutting in September 2007, the stock market peaked in October 2007, and the NBER later dated the start of the recession to December 2007 — an announcement it made in December 2008, a full year after the fact. The curve was "right". But anyone who sold equities on the inversion gave up more than a year of rising prices first.</p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2022–24: the longest inversion — and no recession (as of writing)</h3>
+    <p>The Fed began hiking in March 2022 and raised rates faster than at any time in four decades. The 2s10s curve inverted in July 2022 and stayed inverted until around September 2024, when the Fed began cutting — the longest continuous 2s10s inversion in the series, and at its deepest, in 2023, around a full percentage point below zero, the deepest since the early 1980s. Recession forecasts were everywhere. The first GDP estimates for the first half of 2022 even showed two negative quarters. Yet the NBER declared no recession, unemployment stayed low, and, as of this writing, none has been dated to follow that inversion. It un-inverted through a <strong>bull steepening</strong>: the 2-year fell faster than the 10-year as cuts were priced.</p>
+  </div>
+
+  <div class="tl-story" id="story-3">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>August 2019: right for the wrong reason</h3>
+    <p>The curve inverted briefly in August 2019. A recession did follow — beginning in February 2020, caused by a pandemic no bond market priced in 2019.<!-- DESK:START --> On the desk's own count, the Nasdaq rose 48.5% over the year after that inversion.<!-- DESK:END --> "The curve called it" and "you could have traded it" are different sentences.</p>
+  </div>
+
+  <p>The chain everyone tells<!-- DESK:START -->, and where the data says it breaks<!-- DESK:END -->:</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Fed</b>Hikes to fight inflation; the 2-year is dragged up</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Bond market</b>Long end rises less → 2y above 10y: inverted</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Market expects</b>Cuts later (holds by construction — that is what an inverted forward means)</div>
+<!-- DESK:START -->    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Recession?</b>6 of 10 within 24 months — CI [31%, 83%], contains a coin flip</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link yc-broken"><b>✗ Breaks here: equities weaker?</b>Forward Nasdaq does not separate from a matched control; steepenings did worse</div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>A morning note says "the curve just inverted — de-risk"</h3>
+    <p>
+      Read it in three steps. <strong>Which end moved?</strong> If the 2-year
+      rose on a hawkish surprise (bear flattening), the curve is telling you
+      about the Fed's next meetings; if the 10-year fell on weak data (bull
+      flattening), it is telling you about long-run growth. <strong>What is
+      priced?</strong> Back out the 2→5 forward: how many cuts does it imply,
+      and how much of that could be a squeezed term premium?
+      <strong>What is it worth?</strong> As an equity timing signal, nothing<!-- DESK:START --> on this desk's own
+      test — ten episodes, no separation from a control<!-- DESK:END -->.
+    </p>
+    <p style="margin-bottom:0">
+      The honest note: "The curve is pricing cuts — the market expects a
+      slowdown. Historically that expectation has been wrong about four times
+      in ten, and the equity follow-through has not been distinguishable from
+      ordinary months." That is a description of expectations, not a trade.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🏠</div>
+      <h4>Rates people actually pay</h4>
+      <p>Very roughly: bill rates feed savings accounts and money funds; the 2- to 10-year area feeds car loans and business borrowing; the 10-year is the benchmark US mortgage rates trade at a spread to. The curve's shape is the shape of the economy's borrowing costs.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">🗳️</div>
+      <h4>The 2-year as a policy vote</h4>
+      <p>Traders read the 2-year (and futures on the policy rate) as the market's view of the next several meetings. A move in the 2-year after data is a repricing of the Fed.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">📐</div>
+      <h4>Level, slope, curvature</h4>
+      <p>Most yield-curve moves decompose into three factors — everything up or down together, the slope changing, the middle bending. Curve trades (steepeners, flatteners, butterflies) bet on slope or curvature, not on direction.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">🏦</div>
+      <h4>Bank margins</h4>
+      <p>Banks borrow short and lend long, so a steeper curve tends to help their net interest margin and an inverted one squeezes it — one of the more mechanical routes from the curve to an equity sector.</p>
+    </div>
+  </div>
+
+<!-- DESK:START -->  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>What the desk found</h2>
+  <p>
+    The central folk claim — <em>"an inverted curve means a recession is
+    coming and risk assets will fall"</em> — has been pre-registered and
+    tested here.
+  </p><!-- DESK:END -->
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>curve-inversion — NULL for the tradeable half.</strong> 12,581 daily 10y–2y observations, 1976-06 to 2026-10, collapse to <strong>ten</strong> inversion episodes (the unit is the episode — one inversion contributes hundreds of days). Recession within 24 months followed <strong>6 of 10 — 60%, 95% CI [31%, 83%]</strong>, an interval that contains a coin flip; within 12 months only 3 of 10. Forward Nasdaq against a month-matched control: +3m −1.6% vs +2.2%, +6m −1.7% vs +5.7% (p=0.057), +12m +10.5% vs +13.0% (p=0.33). Leave-one-out passed (2008 is not carrying it). <strong>The mirror killed it: steepening episodes returned −1.1% at +12m on n=6 — worse than inversions</strong>, so curve shape is not what separates the periods.</span>
+  </div>
+  <!-- DESK:END -->
+<!-- DESK:START -->  <p>
+    Three things to keep from that entry. First, the conditional is easy to
+    flip: nearly every recession was preceded by an inversion, but only 60% of
+    inversions were followed by a recession within two years, and four of ten
+    by none at all. Second, even the half that is real cannot be traded,
+    because the NBER dates recessions in arrears. Third, the one nominally
+    significant horizon moved from p=0.029 to p=0.057 on a cosmetic change to
+    how an episode end was labelled — fragility, not signal.
+  </p>
+  <p>
+    Two neighbouring results point the same way: a 2-year shock of ±14bp in a
+    week was <strong>not</strong> followed by a more volatile FX week
+    (<code>front-end-shock</code>, null), and conditioning on what yields did
+    into a data release made a predictor <em>worse</em> than a shuffled
+    placebo (<code>priced-in-direction</code>, null).
+  </p><!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The curve is drawn; the inversion trade is banked as null</h3>
+    <p style="margin-bottom:0">
+      The verdict is the <code>curve-inversion</code> entry in
+      <code>js/deskEvidence.js</code> (write-up in
+      <code>MD files/CURVE_INVERSION_PREREG.md</code>), built on FRED's
+      <code>T10Y2Y</code> and <code>USREC</code>. The dashboard's rates chapter
+      already shows eleven tenors with a level/slope/curvature split. The
+      mortgage link above is untestable here for now — the 30-year mortgage
+      rate series is not yet pulled.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the curve gets misread</h3>
+    <p><strong>Flipping the conditional.</strong> "Every recession was preceded by an inversion" (high P(inversion | recession)) is not "every inversion leads to a recession"<!-- DESK:START --> — on this desk's count, P(recession within 24m | inversion) is 60%, with an interval from 31% to 83%<!-- DESK:END -->.</p>
+    <p><strong>Ignoring the lag.</strong> In 2006–07, inversion came more than a year before the recession, and equities rose in between. In 2001, 2007 and 2020 the curve had already re-steepened by the time the recession began.</p>
+    <p><strong>Forgetting the term premium.</strong> QE compressed long-end term premia. A flat curve built on a squeezed premium says less about expected cuts than the same shape would have in the 1990s.</p>
+    <p style="margin-bottom:0"><strong>Treating "two negative quarters" as the definition.</strong> It is not; the NBER is. 2022 is the counter-example.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A yield ≈ expected policy path + term premium.</strong> The curve's shape is mostly the market's expected path of rates — a measurement of expectations.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Inversions are usually built at the front end.</strong> The Fed hikes, the 2-year rises above the 10-year, and forwards price cuts later.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bull/bear × steepening/flattening tells you which end moved and why.</strong> The end of an inversion is usually a bull steepening as cuts arrive.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Recessions are NBER-dated in hindsight.</strong> "Two negative quarters" is shorthand, and what the curve "predicts" is labelled only after the fact.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>curve-inversion is NULL as a trade.</strong> 10 episodes; recession within 24 months 6 of 10 (60%, CI [31%, 83%]); forward Nasdaq does not separate from a matched control; steepenings were followed by WORSE returns (−1.1% at +12m, n=6). Never write that an inversion means equities fall.</span></div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. The 2-year is at 4.8% and the 5-year at 4.2%. What average rate is priced for years 2–5, and what does it suggest?</summary>
+    <div class="tl-answer">\(f_{2\to5}\approx(5\times4.2-2\times4.8)/3=(21-9.6)/3=3.8\%\). Lower than today's 2-year, so the market is pricing rate cuts over that window — before allowing for any term premium inside the forward.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. The 2-year falls 30bp and the 10-year falls 10bp. Name the move and what it usually signals.</summary>
+    <div class="tl-answer">2s10s rises by 20bp with yields falling: a bull steepening. The front end is pricing cuts faster than the long end moves — typically the Fed starting, or being expected to start, easing.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why is "the curve tells you a slowdown is expected" a safer statement than "the curve predicts a recession"?</summary>
+    <div class="tl-answer">The first is close to true by construction: an inverted forward curve is the market pricing lower rates later, which usually means it expects weaker growth. The second is a forecast claim, and the expectation has been wrong often<!-- DESK:START --> — on the desk's count, four of ten inversions since 1976 were followed by no recession within two years<!-- DESK:END -->.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. Who dates US recessions, and why does that matter for trading the curve?</summary>
+    <div class="tl-answer">The NBER's Business Cycle Dating Committee, judging depth, breadth and duration and announcing peaks and troughs in hindsight — often many months later (the December 2007 peak was announced in December 2008). So the outcome the curve is said to predict cannot be known in time to trade on it.</div>
+  </details>
+<!-- DESK:START -->  <details class="tl-quiz">
+    <summary>Q5. What killed the curve-inversion test on this desk?</summary>
+    <div class="tl-answer">The mirror. If inversions specifically warn of weaker equities, steepenings should look different. Instead, steepening episodes returned −1.1% at +12 months on n=6 — worse than inversions — and the inversion returns never separated from a month-matched control. Curve shape is not what separates the periods.</div>
+  </details><!-- DESK:END -->
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>Arturo Estrella and Gikas Hardouvelis (1991), "The Term Structure as a Predictor of Real Economic Activity", <em>Journal of Finance</em> — the early statement of the slope–growth link.</li>
+    <li>Arturo Estrella and Frederic Mishkin (1998), "Predicting U.S. Recessions: Financial Variables as Leading Indicators", <em>Review of Economics and Statistics</em> — the 3-month/10-year spread as a recession-probability model.</li>
+    <li>Tobias Adrian, Richard Crump and Emanuel Moench (2013), "Pricing the Term Structure with Linear Regressions", <em>Journal of Financial Economics</em> — the term-premium model behind the New York Fed's published series.</li>
+    <li>National Bureau of Economic Research, Business Cycle Dating Committee — its published procedure and the list of US peaks and troughs.</li>
+    <li><a href="yield-curve-construction.html">Yield Curve Construction</a> — how the curve itself is built from bond prices.</li>
+    <li><a href="bond-pricing-ytm.html">Bond Pricing &amp; YTM</a> — price, yield and why they move inversely.</li>
+    <li><a href="qe-qt-balance-sheet.html">QE and QT</a> — how the Fed's balance sheet pushes on the term premium.</li>
+    <li><a href="central-bank-policy.html">Central Bank Policy</a> — the rate decisions that move the front end.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="vix-uncertainty-not-fear.html">← The VIX Is an Uncertainty Index, Not a Fear Gauge</a>
+    <a href="../hub.html">Theory Lab hub</a>
+    <a href="four-markets-four-questions.html">Four Markets, Four Questions →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Curve morpher. x on a square-root-of-maturity scale so the short end is
+  // readable; y linear in percent. All readouts are computed from the sliders.
+  var TENORS = [
+    { key: 'm3',  label: '3m',  m: 0.25 },
+    { key: 'y2',  label: '2y',  m: 2 },
+    { key: 'y5',  label: '5y',  m: 5 },
+    { key: 'y10', label: '10y', m: 10 },
+    { key: 'y30', label: '30y', m: 30 }
+  ];
+  var PRESETS = {
+    normal:   [2.0, 2.6, 3.2, 3.7, 4.1],
+    flat:     [4.0, 4.05, 4.0, 4.05, 4.1],
+    inverted: [5.3, 4.8, 4.3, 4.1, 4.2],
+    humped:   [3.0, 3.8, 4.1, 3.9, 3.8]
+  };
+  var X0 = 60, X1 = 600, Y0 = 250, Y1 = 30, YMAX = 8;
+  var SQ = Math.sqrt(30);
+  function xOf(m){ return X0 + Math.sqrt(m) / SQ * (X1 - X0); }
+  function yOf(v){ return Y0 - v / YMAX * (Y0 - Y1); }
+
+  var controls = document.getElementById('yc-controls');
+  if (!controls) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var sliders = [], lives = [];
+  var before = PRESETS.normal.slice();
+
+  // Grid + tenor labels.
+  var grid = document.getElementById('yc-grid');
+  for (var v = 0; v <= 8; v += 2) {
+    var ln = document.createElementNS(NS, 'line');
+    ln.setAttribute('x1', X0); ln.setAttribute('x2', 610);
+    ln.setAttribute('y1', yOf(v)); ln.setAttribute('y2', yOf(v));
+    ln.setAttribute('style', 'stroke:var(--border);stroke-width:1');
+    grid.appendChild(ln);
+    var tx = document.createElementNS(NS, 'text');
+    tx.setAttribute('x', 52); tx.setAttribute('y', yOf(v) + 4);
+    tx.setAttribute('text-anchor', 'end'); tx.setAttribute('font-size', '9.5');
+    tx.setAttribute('font-family', "'DM Mono',monospace"); tx.setAttribute('fill', 'var(--text3)');
+    tx.textContent = v + '%';
+    grid.appendChild(tx);
+  }
+  TENORS.forEach(function(t){
+    var tx = document.createElementNS(NS, 'text');
+    tx.setAttribute('x', xOf(t.m)); tx.setAttribute('y', 265);
+    tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', '10');
+    tx.setAttribute('font-family', "'DM Mono',monospace"); tx.setAttribute('fill', 'var(--text3)');
+    tx.textContent = t.label;
+    grid.appendChild(tx);
+  });
+
+  // Sliders.
+  TENORS.forEach(function(t, i){
+    var wrap = document.createElement('div');
+    wrap.className = 'tl-control';
+    var head = document.createElement('div');
+    head.className = 'tl-control-head';
+    var name = document.createElement('span'); name.textContent = t.label + ' yield';
+    var live = document.createElement('span'); live.className = 'tl-live';
+    head.appendChild(name); head.appendChild(live);
+    var input = document.createElement('input');
+    input.type = 'range'; input.min = '0'; input.max = '8'; input.step = '0.05';
+    input.value = String(PRESETS.normal[i]);
+    input.setAttribute('aria-label', t.label + ' yield');
+    input.addEventListener('input', render);
+    wrap.appendChild(head); wrap.appendChild(input);
+    controls.appendChild(wrap);
+    sliders.push(input); lives.push(live);
+  });
+
+  function vals(){ return sliders.map(function(s){ return parseFloat(s.value); }); }
+  function pts(arr){ return arr.map(function(v, i){ return xOf(TENORS[i].m).toFixed(1) + ',' + yOf(v).toFixed(1); }).join(' '); }
+  function bp(x){ var n = Math.round(x * 100); return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n) + 'bp'; }
+
+  function shape(y){
+    var s = y[3] - y[1];
+    if (y[2] - Math.max(y[0], y[4]) > 0.15 && y[2] >= y[1] && y[2] >= y[3]) return { t: 'Humped', c: 'var(--purple)' };
+    if (s < -0.10) return { t: 'Inverted', c: 'var(--red)' };
+    if (Math.abs(s) <= 0.25) return { t: 'Flat', c: 'var(--amber)' };
+    if (s > 1.5) return { t: 'Steep', c: 'var(--green)' };
+    return { t: 'Normal (upward)', c: 'var(--green)' };
+  }
+
+  function move(y, b){
+    var d2 = y[1] - b[1], d10 = y[3] - b[3];
+    var dSlope = d10 - d2, dLevel = (d2 + d10) / 2;
+    if (Math.abs(dSlope) < 0.05) {
+      if (Math.abs(dLevel) < 0.05) return 'no meaningful change';
+      return dLevel > 0 ? 'roughly parallel shift up' : 'roughly parallel shift down';
+    }
+    if (dSlope > 0) return dLevel < 0 ? 'bull steepening — front end falling faster: cuts being priced'
+                                      : 'bear steepening — long end rising faster: growth/inflation, term premium or supply';
+    return dLevel > 0 ? 'bear flattening — front end rising faster: hikes being priced'
+                      : 'bull flattening — long end falling faster: long-run growth/inflation fading, or a rush into duration';
+  }
+
+  function render(){
+    var y = vals();
+    y.forEach(function(v, i){ lives[i].textContent = v.toFixed(2) + '%'; });
+    document.getElementById('yc-now').setAttribute('points', pts(y));
+    document.getElementById('yc-before').setAttribute('points', pts(before));
+    var dots = document.getElementById('yc-dots');
+    while (dots.firstChild) dots.removeChild(dots.firstChild);
+    y.forEach(function(v, i){
+      var c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', xOf(TENORS[i].m)); c.setAttribute('cy', yOf(v)); c.setAttribute('r', 4.5);
+      c.setAttribute('style', 'fill:var(--blue);stroke:var(--s1);stroke-width:1.5');
+      dots.appendChild(c);
+    });
+    var sh = shape(y);
+    var shapeEl = document.getElementById('yc-shape');
+    shapeEl.textContent = sh.t; shapeEl.setAttribute('fill', sh.c);
+    document.getElementById('yc-2s10s').textContent = bp(y[3] - y[1]);
+    document.getElementById('yc-3m10y').textContent = bp(y[3] - y[0]);
+    document.getElementById('yc-fwd').textContent = ((5 * y[2] - 2 * y[1]) / 3).toFixed(2) + '%';
+    document.getElementById('yc-d2').textContent = bp(y[1] - before[1]);
+    document.getElementById('yc-d10').textContent = bp(y[3] - before[3]);
+    document.getElementById('yc-move').textContent = move(y, before);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-preset]'), function(btn){
+    btn.addEventListener('click', function(){
+      var p = PRESETS[btn.getAttribute('data-preset')];
+      sliders.forEach(function(s, i){ s.value = String(p[i]); });
+      render();
+    });
+  });
+  document.getElementById('yc-mark').addEventListener('click', function(){ before = vals(); render(); });
+  render();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

@@ -17,7 +17,7 @@
   <h1 class="tl-title">Alpha vs. Beta Separation</h1>
   <p class="tl-dek">Every return stream is secretly two things added together — a bet on the market (beta) and everything left over after that bet is removed (alpha). Telling them apart is what lets you size, hedge, and judge a strategy honestly.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not yet computed for any strategy in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not yet computed for any strategy in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Correlation &amp; Linear Regression primer, Markowitz &amp; Black-Litterman</span>
   </div>
@@ -36,6 +36,7 @@
       <li>"Alpha-beta separation" (portable alpha) means hedging OUT the beta — shorting an index/futures position sized to the estimated \(\beta\) — so what's left is a purer alpha stream that can be transported onto any other beta exposure you actually want.</li>
       <li>Worked example: a strategy regressed against the S&amp;P shows \(\beta=1.2\), \(\alpha\approx2\%\)/yr. Hedging away the 1.2 beta leaves roughly that 2%/yr, before hedging costs — not more, not a new source of return.</li>
       <li>This is a repackaging technique, not a source of edge — it only works once a genuine, statistically real alpha already exists (the same dependency the Kelly Criterion lesson has on an already-proven edge).</li>
+      <li><strong>Real-world episode:</strong> in 2008, portable alpha programmes lost on the futures beta leg and on the hedge-fund and credit "alpha" leg at the same time, while daily margin calls had to be paid from money that could not be redeemed quickly. The residual had hidden betas to credit and liquidity.</li>
     </ul>
   </div>
 
@@ -297,6 +298,89 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: portable alpha in 2008</h2>
+  <p>
+    Portable alpha is the cleanest real-world use of this lesson's regression: buy the beta cheaply with futures or
+    swaps, put the cash to work in something that is supposed to be pure \(\alpha\), and add the two together. In 2008
+    the institutions running it found out what happens when the "\(\varepsilon\) is independent of the market"
+    assumption and the "hedging is frictionless" assumption fail in the same month.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>Two legs that were supposed to be separate, losing together</h3>
+    <p>
+      Through the mid-2000s, portable alpha became a popular structure for US pension plans and other long-term
+      institutions. The typical version held the plan's equity <em>beta</em> synthetically, through equity index futures
+      or total-return swaps, which needs only a slice of the money as margin. The rest of the cash was put into an
+      <em>alpha</em> source: hedge funds, funds of hedge funds, or "enhanced cash" and fixed-income strategies that aimed
+      to earn a little more than the financing cost of the futures. On paper this is exactly the lesson's equation run
+      in reverse: pick the \(\beta\) you want, attach an \(\alpha\) found somewhere else.
+    </p>
+    <p>
+      In 2008 the S&amp;P 500 fell by more than a third. The beta leg did what beta does and lost roughly what the index
+      lost. That part was expected. Two things were not. First, futures and swaps settle in cash as they go, so the
+      falling market produced <strong>margin calls that had to be paid immediately</strong>, while the money that was
+      supposed to cover them sat in hedge funds with monthly or quarterly redemption terms, some of which imposed gates,
+      or in credit and mortgage-linked securities that could only be sold at depressed prices. Second, the alpha leg was
+      <strong>not independent of the market</strong>. Hedge fund indices had one of their worst years on record, and
+      enhanced-cash portfolios holding structured credit lost money too. So plans lost on the beta leg <em>and</em> on
+      the alpha leg at the same time, and some had to sell other assets at bad prices to meet the collateral calls.
+    </p>
+    <p style="margin-bottom:0">
+      After 2008 many institutions scaled back or wound down these programmes. The structure was not wrong in
+      principle. It had been built on an \(\hat\alpha\) and an \(\varepsilon\) estimated in calm years, and the
+      "alpha" turned out to carry hidden betas to credit and to liquidity that the single-index regression never
+      measured.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock · 2008</b>Equities fall by more than a third; credit and liquidity dry up</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Beta leg (futures/swaps)</b>Marks to market daily, so the plan is forced to post cash for margin now</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · alpha vs beta</b>The "alpha" leg had hidden beta to credit and liquidity: it lost in the same crisis and could not be redeemed quickly</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Pension plans</b>Forced to raise collateral by selling other assets into a falling market</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Losses on both legs; many programmes scaled back after 2008</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. Separating alpha from beta only works if what is left after hedging the
+    market is genuinely unrelated to the market. Here the residual of a one-factor regression still contained a second
+    and third factor, credit and liquidity, which all moved against the plan at once.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You rented a car (the beta) and paid a small deposit, then lent the rest of your money to a friend who promised to pay you a bit extra (the alpha). Then the car got dented and the rental shop wanted cash right now. But your friend had lost money in the same storm and couldn't pay you back yet. The two deals were supposed to be separate, and in the storm they weren't.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The market model treats \(\varepsilon\) as noise unrelated to \(r_m\), and treats the hedge or overlay as
+    frictionless. 2008 broke both. The residual was correlated with the market in the tail, through credit and liquidity
+    exposures that a single market factor cannot see, and the two legs had different liquidity: the beta leg settled in
+    cash daily, while the alpha leg could take months to turn into cash. A regression estimated on calm data reports a
+    clean \(\beta\) and a clean \(\alpha\) and says nothing about either problem.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="spread-sleeve-factor-audit" data-evidence-date="2026-09-22">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>spread-sleeve-factor-audit: hedging out the shared currency factors raised the spread sleeves' Sharpe,
+    with a correction pending.</strong> The desk regressed its 2Y/10Y yield-spread FX sleeves on the common factors all
+    six USD pairs share and hedged them out. Neutralising <strong>raised</strong> OOS Sharpe: 2Y 1.02→1.33, 10Y
+    0.58→1.01, combined 0.98→1.36, while cutting OOS vol ~60-65% (2Y 14.1%→5.1%). <strong>~55% of the raw book's risk was
+    factor risk that did not pay.</strong> The caveats are part of the verdict: in-sample is weak for every version, the
+    OOS strength sits in the 2022-24 rate-divergence cycle, and a later correction found the factor-only hedge can leave
+    net USD in the book, so the "relative value, not a dollar bet" reading is treated as unconfirmed until a hedge that
+    also zeroes net USD is run.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Institutional allocators run exactly this regression on every manager in
@@ -340,7 +424,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Every return stream is beta plus alpha.</strong> \(r_i - r_f = \alpha_i + \beta_i(r_m - r_f) + \varepsilon\) — regress excess returns on the market's excess returns to split the two apart.</span></div>
@@ -348,10 +432,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Beta is hedgeable.</strong> Short the market/factor sized to the estimated β and the β terms cancel, leaving (in expectation) just α plus noise — a market-neutral version of the same strategy.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>"Portable alpha" means alpha severed from any one beta.</strong> Once hedged market-neutral, the isolated alpha stream can sit on top of any beta exposure you actually want — or none at all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This is a repackaging technique, not a source of edge.</strong> It only works once a genuine, statistically real alpha already exists — check the intercept's standard error before trusting it.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The residual can hide betas the regression never saw (2008).</strong> Portable alpha programmes lost on the futures beta leg and on the "alpha" leg at once, because the alpha carried credit and liquidity risk and could not be cashed while margin calls came daily.<!-- DESK:START --> On this desk, hedging out shared currency factors raised the spread sleeves' OOS Sharpe (combined 0.98→1.36), but a pending correction keeps "relative value, not a dollar bet" unconfirmed.<!-- DESK:END --></span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Hedging isn't free.</strong> Shorting the beta leg carries real financing/borrow costs and slippage, and a hedge sized to a stale, drifted β under- or over-hedges the true current exposure.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz"><summary>Q1. Why is beta described as "cheap" and alpha as "the part worth paying for"?</summary><div class="tl-answer">Beta is exposure to something you could buy directly yourself, at low cost, with an index future or ETF — no manager skill required to obtain it. Alpha is the residual return left over after that easily-purchased exposure has been subtracted out; if it's real, it represents something a passive position couldn't have given you, which is what a fee is actually paying for.</div></details>
   <details class="tl-quiz"><summary>Q2. In the market-model regression, what does the slope represent and what does the intercept represent?</summary><div class="tl-answer">The slope (β) represents systematic/market exposure — how many units of the market's risk one unit of the strategy carries. The intercept (α) represents the average return left over after that market exposure's contribution has been subtracted out period by period — the "Jensen's alpha."</div></details>
@@ -484,5 +569,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

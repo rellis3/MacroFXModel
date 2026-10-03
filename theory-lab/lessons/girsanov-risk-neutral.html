@@ -36,6 +36,7 @@
       <li>\(\theta=(\mu-r)/\sigma\) is the unique shift that makes the <em>discounted</em> price \(\tilde S_t=e^{-rt}S_t\) a martingale under \(\mathbb{Q}\) — that martingale property, not convenience, is why pricing "ignores" \(\mu\).</li>
       <li>That discounted-price martingale under \(\mathbb{Q}\) is the exact same object as the EMH lesson's "fair game" martingale under \(\mathbb{P}\) — here it holds by construction rather than as an empirical, testable claim.</li>
       <li>\(N(d_2)\) is a real, well-defined probability (\(\mathbb{Q}(S_T>K)\)) — it's the <em>measure</em> it's computed under that's a deliberate pricing device, not a real-world forecast, which is why a bullish real-world view is a separate bet, not a reason to reprice the option.</li>
+      <li>How it reached trading: Harrison, Kreps and Pliska (1979–81) showed that no-arbitrage pricing means averaging under a risk-neutral measure, and Girsanov's theorem is how that measure is built, which is why every Monte Carlo pricer simulates with drift r.</li>
     </ul>
   </div>
 
@@ -109,6 +110,23 @@
       why that particular device, and no other, is the one a no-arbitrage
       price needs.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>One pricing rule for every derivative</h3>
+    <div class="tl-origin-who">Change of measure · Harrison &amp; Kreps, 1979; Harrison &amp; Pliska, 1981</div>
+    <p>Black-Scholes priced one product by building one hedge and solving one PDE. Every new payoff needed a new argument, and the answer looked as if it ought to depend on investors' expected returns even though it did not. Cox and Ross (1976) noticed that options could be priced "as if" investors were risk-neutral, but not why that always works.</p>
+    <p>Harrison and Kreps (1979) and Harrison and Pliska (1981) gave the reason: no arbitrage means there is a probability measure under which discounted prices are martingales, and any derivative's price is its discounted expectation under that measure. In a Brownian model, Girsanov's theorem (a 1960 probability result) is the tool that builds the measure, by swapping the drift \(\mu\) for the risk-free rate.</p>
+    <p>That turned pricing into simulation: a desk can price any payoff by simulating under \(\mathbb{Q}\) and averaging. Change of numeraire (Geman, El Karoui &amp; Rochet, 1995) carried it into rates and FX, where forward-measure and quanto adjustments are Girsanov drift changes. The lesson every desk learns with it: a risk-neutral distribution prices, it does not forecast.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which probabilities do you average a payoff under so that the price is arbitrage-free?</dd>
+        <dt>Takes in</dt><dd>Dynamics from <a href="ito-lemma.html">Itô's Lemma</a>; <a href="black-scholes.html">Black-Scholes</a> as the first worked case.</dd>
+        <dt>Hands on to</dt><dd>Risk-neutral Monte Carlo in <a href="sde-numerical-schemes.html">SDE numerical schemes</a>; <a href="heston-model.html">the Heston model</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -526,6 +544,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The same martingale property reappears under \(\mathbb{Q}\)</strong> that the EMH lesson treats as an empirical, testable claim under \(\mathbb{P}\) — here it holds by construction, not by observation.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Risk-neutral" describes the measure, not investor psychology.</strong> Real investors are risk-averse — that's exactly why \(\mu>r\) under \(\mathbb{P}\) and a nontrivial shift is needed at all.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A real-world view is a separate bet, never a pricing input.</strong> Substituting a personal \(\mu\) into a pricing/hedging calculation produces a systematically mispriced option and a wrong hedge ratio.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>It made "price = discounted expectation" a desk rule.</strong> Harrison, Kreps &amp; Pliska (1979–81) tied no-arbitrage to a martingale measure and Girsanov's theorem builds it. Risk-neutral Monte Carlo, forward-measure and quanto adjustments rest on it, and none of it is a forecast.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
@@ -635,8 +654,8 @@
     <li>Steven Shreve, <em>Stochastic Calculus for Finance II: Continuous-Time Models</em>, Springer — the standard, rigorous treatment (Chapter 5 covers Girsanov's theorem and risk-neutral pricing directly); the same reference this Theory Lab's Itô's Lemma lesson points to.</li>
     <li>J. Michael Harrison &amp; David M. Kreps, "Martingales and Arbitrage in Multiperiod Securities Markets," <em>Journal of Economic Theory</em>, 1979 — the fundamental theorem of asset pricing connecting no-arbitrage to the existence of an equivalent martingale measure, referenced above.</li>
     <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the "Risk-Neutral Valuation" chapter gives the standard practitioner-level treatment, less formal than Shreve but the reference most trading desks point newcomers to first.</li>
-    <li><code>theory-lab/lessons/emh.html</code> in this repo — the martingale definition this lesson shows re-appearing, by construction, under the risk-neutral measure.</li>
-    <li><code>theory-lab/lessons/black-scholes.html</code> in this repo — the lesson whose "risk-neutral probability" claim about \(N(d_2)\) this lesson exists to justify.</li>
+    <li><code>theory-lab/lessons/emh.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the martingale definition this lesson shows re-appearing, by construction, under the risk-neutral measure.</li>
+    <li><code>theory-lab/lessons/black-scholes.html</code><!-- DESK:START --> in this repo<!-- DESK:END --> — the lesson whose "risk-neutral probability" claim about \(N(d_2)\) this lesson exists to justify.</li>
   </ul>
   </details>
 

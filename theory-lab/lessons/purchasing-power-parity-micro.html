@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Purchasing Power Parity — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, the real-exchange-rate chart, and a 6-question self-test?<a href="purchasing-power-parity.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -220,14 +220,58 @@
         </div>
       </div>
       <p class="sl-p">The lesson isn't "PPP is useless" — it's that <strong>PPP's usefulness is horizon-conditional</strong>. Confusing a multi-year anchor for a trading signal is a well-known way to lose money while being directionally correct.</p>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Where this stands in MacroFXModel today</div>
         <p>This repo has no PPP-based fair-value signal, no real-exchange-rate computation, and no CPI/price-level data pipeline built anywhere — checked directly against the codebase, not just asserted. The only "CPI" reference found is an event-risk multiplier tag in a volatility forecaster (weighting expected vol around CPI print days), which is unrelated to actually computing PPP or a real exchange rate. This is a stated gap, not a built brick.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">2022–24: the cheapest yen in half a century</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>US inflation peaked at 9.1% in June 2022, well above Japan's. Relative PPP said the yen should hold up or gain. Instead USD/JPY went from around 115 to near 152 in 2022 and passed 160 in 2024, the weakest yen since the mid-1980s. The Fed hiked to 5.25–5.50% while the Bank of Japan kept rates negative until March 2024, and capital followed the yield. The yen's real effective rate fell to levels widely reported as the weakest in over fifty years. Japan's Ministry of Finance bought yen in 2022 and 2024 and only slowed the fall. The bounce in mid-2024 came from a BoJ hike and a carry unwind, not from PPP.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>US inflation</b>CPI peaks at 9.1%, June 2022</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Fed vs BoJ</b>Fed hikes fast; BoJ stays negative to March 2024</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Investors</b>Paid to sell yen and hold dollars</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ This lesson: real FX</b>Real yen sinks to a multi-decade low</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Ministry of Finance</b>Intervenes; slows the fall, can't reverse it</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <h2 class="sl-h2">Where the textbook breaks<!-- DESK:START -->, and what this desk found<!-- DESK:END --></h2>
+      <p class="sl-sub">The tempting claim: far from fair value means it will revert, so trade the gap.<!-- DESK:START --> No PPP model exists here; the same claim has been tested with other fair values.<!-- DESK:END --></p>
+      <!-- DESK:START -->
+      <div class="sl-stamp null" data-evidence="residual-reversion-fx" data-evidence-date="2026-09-20">
+        <span class="sl-stamp-tag">Desk test: nothing found</span>
+        <span><strong>residual-reversion-fx:</strong> price minus an OLS macro fair value. Only <strong>1/6</strong> instruments cleared both bars; mean icEdge <strong>−0.030</strong>, mean hit rate <strong>0.485</strong>. Chance level.</span>
+      </div>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp underpowered" data-evidence="ou-bands-fx-crosses" data-evidence-date="2026-09-27">
+        <span class="sl-stamp-tag">Desk test: too small to tell</span>
+        <span><strong>ou-bands-fx-crosses:</strong> of 68 closed reversion trades, <strong>46 (68%)</strong> hit the time stop and only <strong>4 (6%)</strong> reached the target.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>PPP assumes trade in goods pins the currency. Over two or three years, capital chasing a rate gap was far bigger and faster. Much of what made Japan cheap was services, which only arbitrage when tourists fly in to buy them.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -277,8 +321,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>PPP is the Law of One Price, scaled up — an identical basket should cost the same in every currency, or the exchange rate should move until it does.</p></div>
@@ -287,6 +331,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The real exchange rate is the practical "cheap or expensive" gauge — constant if PPP held exactly, but in practice it wanders for years above or below its own average.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>PPP closes glacially — Rogoff's "PPP puzzle" finds half-lives of three to five years, and a deviation can widen before it narrows.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>PPP's usefulness is horizon-conditional — nearly useless for a trading-horizon decision, a genuinely relevant input for a multi-year hedge or strategic-allocation decision.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>It actually happened, 2022–24: the yen got cheaper on PPP for two years because the Fed–BoJ rate gap beat the price gap.<!-- DESK:START --> The desk's fair-value reversion test is NULL (1/6 instruments, mean hit rate 0.485).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -349,5 +394,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

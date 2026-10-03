@@ -37,6 +37,7 @@
       <li><strong>Feature-computation-stage contamination</strong>: z-scoring or normalizing using full-sample statistics instead of only-past statistics — a narrower, easier-to-miss cousin of the split-boundary leaks covered in <a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged Cross-Validation</a>.</li>
       <li><strong>Survivorship bias</strong> in the instrument universe: testing only on assets that still exist today silently removes exactly the failure cases a strategy most needs to be tested against.</li>
       <li>Reproducibility is a practical, non-mathematical discipline: version data, code, and parameters together, and keep point-in-time data snapshots — a feature computed "as of December" must be reproducible from exactly what was known then, not a since-revised data vintage.</li>
+      <li><strong>Real-world episode:</strong> Reinhart and Rogoff's 2010 finding of −0.1% average growth above 90% debt became about 2.2% when a graduate student rebuilt it from their spreadsheet in 2013 (five countries left out of an average, plus exclusion and weighting choices).<!-- DESK:START --> On this desk, a volatility tool's "wins" were 95% scored before entry (<code>backtest-artifacts</code>, context).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -408,6 +409,77 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>It actually happened: the spreadsheet behind the 90% debt threshold</h2>
+  <p>
+    The section above says a result is only reproducible if data, code and parameters are pinned down together. The
+    best-known case of what happens when they are not came from economics rather than trading, and it is useful
+    precisely because nobody involved was careless in any obvious way.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2010–2013: Reinhart, Rogoff and a five-row omission</h3>
+    <p>
+      In 2010 Carmen Reinhart and Kenneth Rogoff, two of the most respected economists in the field, published
+      "Growth in a Time of Debt" in the <em>American Economic Review: Papers &amp; Proceedings</em>. Its headline
+      finding: advanced economies with public debt above <strong>90% of GDP</strong> grew markedly more slowly, and in
+      their data their <em>average</em> growth was slightly negative, about <strong>−0.1%</strong> a year. As
+      governments argued over austerity after 2008, the 90% figure was cited widely as a threshold.
+    </p>
+    <p>
+      In 2013 Thomas Herndon, a graduate student at the University of Massachusetts Amherst, tried to reproduce the
+      result for a class assignment and could not. Reinhart and Rogoff sent him their working spreadsheet. With his
+      professors Michael Ash and Robert Pollin, he found three things. An averaging formula left out the first five
+      countries in the list (Australia, Austria, Belgium, Canada and Denmark). Some available years for some countries
+      had been excluded. And each country's high-debt episode counted equally regardless of length, so New Zealand's
+      single year at −7.6% weighed as much as the United Kingdom's nineteen years. Corrected, average growth above 90%
+      came out at about <strong>2.2%</strong>, slower than at lower debt but no cliff.
+    </p>
+    <p style="margin-bottom:0">
+      Reinhart and Rogoff acknowledged the spreadsheet error, defended their other choices, and maintained that high
+      debt is associated with slower growth. The cost was not a trading loss but three years in which a headline number
+      that could not be independently re-run carried weight in a policy debate.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>The authors</b>Build the result in a working spreadsheet: data, formulas and exclusions in one file</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The spreadsheet</b>An average skips five rows; some years are left out; episodes are weighted equally</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · reproducibility</b>Data, code and choices are not published as one re-runnable unit, so nobody outside can rerun the number</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Policy debate</b>Cites −0.1% above 90% debt as a threshold for three years</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>A student's replication with the file gets 2.2%; the threshold reading collapses</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. Two of the three problems were not errors at all but choices: which
+    rows to include and how to weight them. Those are the same kind of decision as "which instruments are in the
+    universe" in the carry-basket scenario above, and they can only be argued about once someone else can see them.
+  </p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The practical advice above, version data, code and parameters together, assumes that the person rerunning a result
+    will notice when it is wrong. Reinhart and Rogoff could rerun their spreadsheet and get the same −0.1% every
+    time; it was perfectly reproducible and still wrong. Reproducing your own result catches drift; only an
+    independent rebuild from the raw data catches a mistake that is baked into the procedure. The unit that matters is
+    not the result but the full pipeline, published or handed over, so a second person can disagree with it.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict context" data-evidence="backtest-artifacts" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Desk data: base rate</span>
+    <span><strong>backtest-artifacts: a backtest that looks too good has a bug, and the bug is usually in what it was
+    allowed to see.</strong> A volatility tool: 95% of "wins" scored before entry. A voting system: a survivorship fix
+    sat on a deeper look-ahead; honest edge 0.23× cost. One mean-reversion system's entire edge: stops were not live for
+    the first hour after entry. Faults like these surface only when someone re-runs the engine against what it could
+    actually see at the time, the same move that found the five missing rows.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
   Serious quantitative research groups build point-in-time data infrastructure specifically because
@@ -485,7 +557,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 07</span></div>
+  <div class="tl-section-mark"><span>Section 08</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Point-in-time computability is the foundational requirement.</strong> Every input a feature uses must have genuinely existed and been knowable at or before the moment it's dated — no exceptions for "it's just the closing price."</span></div>
@@ -495,9 +567,10 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Survivorship bias leaks through the universe, not the time series.</strong> Testing only on instruments that still exist today silently excludes the worst historical cases — a leak in which rows are present, not in what any one row contains.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"The data hasn't changed" is usually false for macro/fundamental series.</strong> Silent revisions are the norm — reproducibility requires point-in-time snapshots, not just the current data vintage.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Version data, code, and parameters as one unit.</strong> A result is only truly reproducible if all three are pinned together, not tracked separately and assumed to still match.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Reproducible is not the same as right.</strong> Reinhart and Rogoff's −0.1% re-ran perfectly and became about 2.2% only when an outsider rebuilt it.<!-- DESK:START --> On this desk a volatility tool scored 95% of its "wins" before entry, and a survivorship fix sat on a deeper look-ahead (backtest-artifacts).<!-- DESK:END --> Hand the whole pipeline to someone who can disagree with it.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 08</span></div>
+  <div class="tl-section-mark"><span>Section 09</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What makes a feature "point-in-time computable," and what's the most common real-world way this gets violated by accident?</summary>
@@ -617,5 +690,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

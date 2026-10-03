@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Gamma Exposure &amp; Dealer Hedging — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivations, the put-call-parity proof, and a 6-question self-test?<a href="gamma-exposure-dealer-hedging.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -71,10 +71,12 @@
         <div class="sl-callout-label">State this plainly</div>
         <p>Open interest tells you how many contracts are outstanding at a strike. It does <strong>not</strong> tell you who holds the long side and who holds the short side. "Dealers are net short this strike" is a standard, usually-reasonable, but genuinely unverifiable assumption layered on top of the raw OI number — not a fact read directly off the data. Different providers assuming differently will disagree on a strike's sign even while agreeing on its raw OI.</p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout amber">
         <div class="sl-callout-label">Fact-check against this repo's own code</div>
         <p>The full lesson's meta badge reads <strong>"CONCEPT — not built or tested in this repo."</strong> That's now stale. This codebase has real, tested gamma/dealer-positioning modules: <code>js/gammaGreeks.js</code> (Black-Scholes gamma, vanna, charm, and a rigorous root-found gamma-flip), <code>js/gammaFlow.js</code> (flip distance and drift), <code>js/fullBookGex.js</code> (multi-expiry aggregate GEX with a PIN/BREAKOUT regime call), and <code>js/oi.js</code> (~2,950 lines wiring all of it into the live options-chain pipeline) — each backed by a passing offline test suite (<code>gammaGreeks.test.mjs</code>, <code>gammaFlow.test.mjs</code>, <code>fullBookGex.test.mjs</code>). One nuance worth carrying forward too: the live code's actual sign convention is <code>(callOI − putOI) × Γ × mult × spot</code> — dealers modeled as effectively long the calls and short the puts at a strike — which is subtly different from the "dealer short both sides everywhere" simplification this lesson's own worked examples use for hand arithmetic.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
     <section class="sl-slide" data-slide="5">
@@ -107,7 +109,7 @@
     <section class="sl-slide" data-slide="6">
       <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Aggregate it, and a flip level appears</h2>
-      <p class="sl-sub">Sum signed GEX across every strike in the chain and the result is a genuine function of price — not a fixed number. Below is an illustrative strike ladder, S = 100, using the repo's own (callOI − putOI) × Γ sign convention.</p>
+      <p class="sl-sub">Sum signed GEX across every strike in the chain and the result is a genuine function of price — not a fixed number. Below is an illustrative strike ladder, S = 100, using the<!-- DESK:START --> repo's own<!-- DESK:END --> (callOI − putOI) × Γ sign convention.</p>
       <div class="sl-svgwrap">
         <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of net dealer GEX by strike from 90 to 110, negative red bars below strike 100 growing toward the flip, positive green bars above strike 100, with a dashed amber line marking the gamma-flip level at strike 100">
           <line x1="30" y1="150" x2="610" y2="150" style="stroke:var(--border2);stroke-width:1"/>
@@ -273,7 +275,45 @@
     </section>
 
     <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+      <div class="sl-kicker">Section 11 · It actually happened</div>
+      <h2 class="sl-h2">5 February 2018: short gamma written into a rulebook</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>Inverse-VIX products such as Credit Suisse's XIV promised −1× the day's move in VIX futures. After a rise of r, a −1× fund must <strong>buy back 2r</strong> of futures per unit of NAV: the same sign as the move, bigger the bigger it is. That is a short-gamma hedge in a prospectus. On 5 February the S&amp;P 500 fell 4.1% and the VIX closed at <strong>37.32, from 17.31</strong>, up about 115%. The rebalancing buying landed in the short window after the stock close. XIV's indicative value fell more than 90% and Credit Suisse terminated it.</p>
+      </div>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Wage data</b>Yields up; stocks −2%, then −4.1%</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Protection buyers</b>VIX futures jump</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Inverse-VIX funds</b>Must buy ~2r into the close: same sign as the move</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Long-VIX funds</b>Must also buy, same window</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Futures higher still; XIV −90%+, terminated</div>
+      </div>
+      <p class="sl-p">★ is this lesson's concept. How much of the <em>stock</em> selling that day came from options dealers' own short gamma, rather than these products and de-risking, has never been cleanly measured in public.</p>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
+      <!-- DESK:START --><h2 class="sl-h2">What this desk found, and where the textbook breaks</h2><!-- DESK:END -->
+      <p class="sl-sub">The folk claim: short dealer gamma makes markets wild, long gamma makes them calm, and walls pull price toward them.</p>
+      <!-- DESK:START -->
+      <div class="sl-stamp validated" data-evidence="gex-range" data-evidence-date="2026-09-24">
+        <span class="sl-stamp-tag">Desk test: held up</span>
+        <span><strong>gex-range, range only, Nasdaq only:</strong> 793 days of NQ. Next-day range vs a Brownian baseline is <strong>+0.176 higher on short-gamma days (p 0.0008)</strong>, +0.315 matched on trailing vol. But short-gamma days sit at DR ~1.02 (ordinary) and <strong>long-gamma days at ~0.85 (quiet)</strong>.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>The amplify-or-dampen rule pictures small, continuous hedges into a deep market. In February 2018 the hedging was <strong>batched into one window, fixed by formula and visible in advance</strong>. The same-sign logic held; the "absorbable" part didn't.</p>
+      </div>
+      <!-- DESK:START --><div class="sl-quote">No direction, and nothing on FX: the "walls are magnets" test was falsified at <strong>48.8%</strong> out-of-sample against a 49.9% placebo. Say "quieter than baseline" on long gamma, "ordinary" on short gamma.</div><!-- DESK:END -->
+    </section>
+
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -323,8 +363,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Any option that's bought carries positive gamma; any option that's written carries negative gamma — dealers absorbing customer buying end up net short gamma across most of the book, an assumption about who's on which side, not a directly observable fact.</p></div>
@@ -333,6 +373,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Short dealer gamma pushes hedging flow the same direction as price, amplifying moves; long dealer gamma pushes it the opposite direction, dampening them — buy the dip vs. sell the rip, mechanically, not by choice.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The gamma-flip level is where aggregate signed dealer GEX crosses zero — an estimate that shifts with every OI change and every expiry roll, not a fixed line on a chart.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Gamma isn't linear in time to expiry — it scales as 1/√T, so the last few days before expiry carry disproportionately more hedging intensity than the weeks before them.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>February 2018: inverse-VIX funds were short gamma by rule and had to buy into the spike.<!-- DESK:START --> Desk verdict (gex-range, Nasdaq only): long gamma is quiet (~0.85× Brownian), short gamma is ordinary (~1.02×). Range, never direction, nothing on FX.<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>
@@ -470,5 +511,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

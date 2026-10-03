@@ -17,7 +17,7 @@
   <h1 class="tl-title">Newton-Raphson &amp; Gradient Descent</h1>
   <p class="tl-dek">Two ways to let a computer search for the number you can't solve for by hand — one climbs down a slope one step at a time, the other uses the slope's own curvature to leap straight at the answer.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~17 min read</span>
     <span>Prereqs: Optimization Basics, Calculus for Finance</span>
   </div>
@@ -37,6 +37,7 @@
       <li><strong>Gradient descent</strong> solves a different but related problem: not "where does \(f\) cross zero" but "where is \(f\) smallest." It repeatedly steps a fixed fraction \(\alpha\) (the <em>learning rate</em>) down the negative gradient: \(x_{n+1} = x_n - \alpha\nabla f(x_n)\).</li>
       <li>Too large a learning rate overshoots the minimum and can oscillate or diverge; too small a rate converges reliably but slowly. There is no free lunch — the rate has to be tuned to the problem.</li>
       <li><strong>Newton's method for optimization</strong>, \(x_{n+1} = x_n - H^{-1}\nabla f(x_n)\), is the bridge between the two ideas: it uses the Hessian \(H\) (curvature, a second derivative) to pick both the step's direction and its size automatically — faster convergence than gradient descent, at the cost of computing and inverting \(H\).</li>
+      <li>How it reached trading: by the early 1980s Newton-Raphson was the standard way to back implied volatility out of option prices (Manaster &amp; Koehler, 1982) and yields out of bond prices; gradient methods do the same job for model calibration and training.</li>
     </ul>
   </div>
 
@@ -111,6 +112,23 @@
       what "Newton's method for optimization," covered below, adds to plain
       gradient descent.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Backing a volatility out of a price</h3>
+    <div class="tl-origin-who">Root-finding · standard in implied-vol solvers by the early 1980s (Manaster &amp; Koehler, 1982)</div>
+    <p>Options trade as prices but are compared as implied volatilities; bonds trade as prices but are compared as yields. Neither inversion has a closed form: you must find the \(\sigma\), or the yield, that makes the model price equal the market price.</p>
+    <p>Once Black-Scholes was in use, implied volatilities were backed out by iteration, and Manaster and Koehler (1982) gave a starting value that guarantees Newton-Raphson converges for Black-Scholes. Each step divides the pricing error by vega, which is why the method is fast near the money and needs care in the wings, where vega is tiny; Jäckel's "Let's Be Rational" (2015) is a modern refinement. Yield-to-maturity solvers take the same step with the bond's price sensitivity in place of vega.</p>
+    <p>Gradient methods are the many-parameter version of the same job: calibrating Heston or SABR to a surface, fitting a curve, or training a machine-learning model all step downhill on an error (often with Levenberg–Marquardt, which blends the two).</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Find the input (an implied vol, a yield, a set of model parameters) that makes a model match a market price.</dd>
+        <dt>Takes in</dt><dd>Pricing formulas from <a href="black-scholes.html">Black-Scholes</a> and <a href="bond-pricing-ytm.html">Bond pricing &amp; YTM</a>.</dd>
+        <dt>Hands on to</dt><dd>Implied vols for <a href="vega-volatility-surface.html">the volatility surface</a>; constrained problems in <a href="convex-optimization.html">Convex optimisation</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -643,6 +661,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gradient descent steps a fixed distance downhill.</strong> \(x_{n+1}=x_n-\alpha\nabla f(x_n)\) — cheap per step, needing only first-derivative information, but the learning rate α must be tuned.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The learning rate is a genuine tradeoff, not a free parameter.</strong> Too small converges reliably but slowly; too large overshoots, oscillates, or diverges entirely — there's no universally "safe" default.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Newton's method for optimization bridges both ideas.</strong> \(x_{n+1}=x_n-H^{-1}\nabla f(x_n)\) uses curvature (the Hessian) to pick the step size automatically — faster convergence, at the cost of computing and inverting \(H\).</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Every quoted implied vol and yield is a root-finder's output.</strong> Newton-Raphson inverts Black-Scholes (Manaster &amp; Koehler, 1982) and bond-price formulas; gradient methods calibrate Heston or SABR and train ML models.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

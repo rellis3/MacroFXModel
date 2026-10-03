@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">The SABR Model — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full Hagan-formula derivation context, the worked calibration example, and a 6-question self-test?<a href="sabr-model.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Practitioners whose hedges kept misbehaving</h2>
+      <p class="sl-sub">Hagan, Kumar, Lesniewski &amp; Woodward · 2002 · Wilmott</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Local volatility (1994) fits any smile, but its smile shifts the opposite way to the market's when spot moves, so its hedges could be worse than plain Black-Scholes.</p>
+        <p>SABR is the simplest stochastic-vol model with a written-down smile. It became the convention for swaption and cap smiles, is widely used in FX, and went "shifted" when euro rates turned negative.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> fit a smile with four parameters and give hedges that move the right way.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The problem SABR was built to solve</h2>
       <p class="sl-sub">Heston prices an option honestly. It just isn't fast enough to recalibrate all session long.</p>
       <div class="sl-icard-grid">
@@ -37,8 +50,8 @@
       <div class="sl-quote">A trader can type four numbers into a formula and read off an entire smile in the time it takes to hit enter. That speed, not superior realism, is SABR's whole reason for existing in daily practice.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two coupled equations — the "S", "A", "B", "R"</h2>
       <p class="sl-sub">A forward price and its own volatility, wiggling together.</p>
       <div class="sl-card">
@@ -57,8 +70,8 @@
       <p class="sl-p">"SABR" names three of these four objects directly: <strong>S</strong>tochastic <strong>A</strong>lpha (the random vol level αₜ), <strong>B</strong>eta (the backbone exponent), <strong>R</strong>ho (the correlation). Vol-of-vol ν is the fourth parameter — present in the dynamics, just not in the acronym's letters.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Four parameters, four separate jobs</h2>
       <p class="sl-sub">Not four interchangeable dials on the same knob — each governs a geometrically distinct feature of the smile.</p>
       <div class="sl-icard-grid">
@@ -70,8 +83,8 @@
       <p class="sl-p">The next two slides isolate exactly two of these effects: drag through what β alone does to the <em>backbone</em>, then drag ρ and ν together and watch the <em>smile itself</em> tilt and curve live.</p>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">β — percentage moves, or absolute moves?</h2>
       <p class="sl-sub">Hold α fixed at 10% and ask: as the forward itself moves to a different level, how does ATM vol move with it? That curve is the "backbone."</p>
       <div class="sl-card">
@@ -118,8 +131,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">ρ and ν — drag them and watch the smile move</h2>
       <p class="sl-sub">β is fixed at 1 (the common FX convention) and α is re-solved after every move so the at-the-money point always reads 10% — isolating exactly what ρ and ν do to the wings.</p>
       <div class="sl-card">
@@ -144,8 +157,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The Hagan formula: pure algebra, not a Fourier integral</h2>
       <p class="sl-sub">Dense-looking, but every piece is an exponent, a logarithm, or one square root.</p>
       <div class="sl-card">
@@ -168,8 +181,8 @@
       <p class="sl-p">Set K = F and the general formula collapses to an at-the-money case: <strong>σ<sub>ATM</sub> ≈ (α ÷ F^(1−β)) × [1 + (…) T]</strong>. With β fixed by convention, that leaves exactly three unknowns — α, ρ, ν — matched against the three quotes an FX desk already watches: the ATM vol, the 25-delta risk reversal (skew), and the 25-delta butterfly (curvature). Three unknowns, three constraints, one fast, well-posed fit.</p>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Try it — solve for the smile, live</h2>
       <p class="sl-sub">Starts on the full lesson's worked EUR/USD example. Change any input and every output recomputes from the exact Hagan formula above.</p>
       <div class="sl-card">
@@ -200,8 +213,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">SABR vs. Heston — different questions, not a rematch</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
@@ -226,8 +239,8 @@
       <div class="sl-quote">Neither wins in the abstract. Heston gets the risk-neutral dynamics right at the cost of a slow, numerical calibration. SABR trades away some of that dynamical rigor for a formula fast enough to refit continuously against a live, moving market.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">How a desk actually uses this, every session</h2>
       <p class="sl-sub">Quoting a full USD/JPY smile from three streaming numbers.</p>
       <div class="sl-card">
@@ -244,8 +257,8 @@
       <p class="sl-p">FX and rates options markets don't trade a continuous strike ladder — only a handful of standard, liquid points (the at-the-money straddle, the 25-delta risk reversal, the 25-delta butterfly). Everything else a client asks for has to be interpolated or extrapolated in a way that doesn't introduce arbitrage. SABR, fit to those liquid points, is the industry's default tool for producing that full curve — precisely because refitting it is cheap enough to run continuously rather than once a day.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Where the formula — and the model — can mislead you</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">The formula is an approximation, not exact</div>
@@ -257,8 +270,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -299,8 +312,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>SABR trades away some of Heston's dynamical rigor for a closed-form implied-vol formula fast enough to refit continuously against a live market — speed, not superior realism, is the whole point.</p></div>
@@ -308,7 +321,10 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>β is almost always fixed by convention (near 1 for FX, often 0 for rates) because it's close to redundant with ρ on skew — fixing it leaves a small, well-identified three-parameter fit against three standard market quotes.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The worked example: α≈9.98% reproduces a 10% ATM quote, then one algebraic evaluation each reads off ~9.92% and ~10.09% at strikes 1.667% either side of the forward — no repricing loop.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The Hagan formula is an asymptotic approximation, not exact — it can misbehave, even implying arbitrage, at extreme strikes/maturities or high ν, which "Arbitrage-Free SABR" (2014) patches numerically.</p></div>
+        <!-- DESK:START -->
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo carries SABR (and Heston) as theory only — no SABR fit, no Heston fit, and no options-pricing engine is wired into a live strategy here today. Verified against the current codebase while building this deck, not carried over unchecked.</p></div>
+        <!-- DESK:END -->
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: practitioners fixing local vol's wrong-way smile dynamics (Wilmott, 2002); it became the swaption and cap smile standard, widely used in FX.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -515,5 +531,7 @@
   })();
 })();
 </script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

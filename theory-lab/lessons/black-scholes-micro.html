@@ -12,9 +12,9 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Black-Scholes — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">19</span></div>
   </div>
-  <div class="sl-fullnote">Prefer the full derivation, the PDE, and a 6-question self-test?<a href="black-scholes.html">Read the complete lesson →</a></div>
+  <div class="sl-fullnote">Prefer the full derivation, the PDE, and a 7-question self-test?<a href="black-scholes.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
 
   <div class="sl-viewport" id="sl-viewport">
@@ -246,6 +246,32 @@
 
     <section class="sl-slide" data-slide="10">
       <div class="sl-kicker">Section 9</div>
+      <h2 class="sl-h2">Premium = intrinsic + extrinsic (time value)</h2>
+      <p class="sl-sub">The gap between the grey hockey stick and the blue curve on the last slide has a name.</p>
+      <div class="sl-row"><div class="sl-box">Premium</div><div class="sl-arrow">=</div><div class="sl-box green">Intrinsic</div><div class="sl-arrow">+</div><div class="sl-box amber">Extrinsic (time value)</div></div>
+      <div class="sl-compare">
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag green">Intrinsic</span>
+          <p>What exercising <em>right now</em> is worth: max(S − K, 0) for a call, max(K − S, 0) for a put. Never negative. Mechanical — no σ, no T.</p>
+        </div>
+        <div class="sl-ccard neutral">
+          <span class="sl-ctag blue">Extrinsic</span>
+          <p>Everything else — the price of the chance things improve before expiry. Set by σ and T, eaten by theta, largest at the money, exactly zero on expiry day.</p>
+        </div>
+      </div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Three premiums, split (r = 2%, σ = 20%)</div>
+        <div class="sl-calc-steps">
+          <div>ATM call, S = K = 100, T = 1y: <b>$8.92</b> = $0.00 intrinsic + <b>$8.92</b> extrinsic</div>
+          <div>ITM call, S = 110, K = 100, T = 0.25y: <b>$11.36</b> = <b>$10.00</b> intrinsic + $1.36 extrinsic</div>
+          <div>Put, S = 110, K = 100, T = 0.25y: <b>$0.87</b> = $0.00 intrinsic + <b>$0.87</b> extrinsic</div>
+        </div>
+        <div class="sl-note">Most of what you pay for an in-the-money option is money it is already worth. An at- or out-of-the-money option is all time value — and loses it to theta unless the underlying moves.</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">The Greeks are just this formula's sensitivities</h2>
       <p class="sl-sub">A "Greek" is a partial derivative of the price with respect to one input — how much the price moves, everything else held fixed.</p>
       <div class="sl-icard-grid">
@@ -258,8 +284,29 @@
       <div class="sl-quote">A dealer isn't exposed to "the option price" in the abstract — they're exposed to how it moves as the world moves. The Greeks are the precise, formula-derived answer to that.</div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
+      <h2 class="sl-h2">Delta is not the probability of finishing in the money</h2>
+      <p class="sl-sub">"A 0.30-delta call has a 30% chance of paying off" is a rule of thumb, not an identity. The formula holds both numbers, and they differ.</p>
+      <div class="sl-row"><div class="sl-box green">Δ = N(d₁)</div><div class="sl-arrow">&gt;</div><div class="sl-box amber">P(ITM) = N(d₂)</div><div class="sl-arrow">because</div><div class="sl-box">d₁ = d₂ + σ√T</div></div>
+      <div class="sl-card">
+        <div class="sl-card-label"><i></i>Delta vs. risk-neutral P(ITM), S = 100, r = 2%</div>
+        <div class="sl-calc-steps">
+          <div>K = 100, σ = 20%, T = 1y: Δ = <b>0.579</b> vs P(ITM) = <b>0.500</b></div>
+          <div>K = 100, σ = 40%, T = 1y: Δ = <b>0.599</b> vs P(ITM) = <b>0.440</b> — delta above 50%, probability below it</div>
+          <div>K = 100, σ = 60%, T = 2y: Δ = <b>0.681</b> vs P(ITM) = <b>0.353</b> — nearly double</div>
+        </div>
+        <div class="sl-note">The gap is σ√T wide in d-space: tiny for a one-week, low-vol option, large for long-dated or high-vol ones.</div>
+      </div>
+      <div class="sl-quote">Delta answers "how many shares hedge this?" — and that hedge must cover <strong>how much</strong> the call pays in the good states, not just <strong>whether</strong> it pays. The big-payoff states pull the hedge ratio above the bare odds.</div>
+      <div class="sl-callout purple">
+        <div class="sl-callout-label">Two approximations stacked</div>
+        <p>"Delta ≈ chance of expiring in the money" assumes N(d₁) ≈ N(d₂) <em>and</em> risk-neutral ≈ real-world. Both are only safe as quick gauges when σ√T is small.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Implied volatility: the formula, run backwards</h2>
       <p class="sl-p">Every input to Black-Scholes is observable except one: σ. Nobody can look up "the volatility" the way they look up spot, strike, or rate — so the market does the opposite of pricing. It takes an option's actual traded price and asks: what σ, fed into this formula, would have produced that price?</p>
       <div class="sl-row">
@@ -273,8 +320,8 @@
       <p class="sl-p">Because the model assumes one flat σ but the market quotes a different implied σ for every strike and expiry — the <strong>volatility smile/skew</strong> — that pattern is itself visible evidence that the constant-volatility assumption from Section 3 is wrong. The market isn't pretending the assumption holds; it's quietly patching around it, one strike at a time.</p>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Where the model breaks</h2>
       <p class="sl-sub">The assumptions from Section 3, checked against what markets actually do.</p>
       <div class="sl-compare">
@@ -304,19 +351,58 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">How this actually gets used on a desk</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">🏷️</div><div><h4>Quoting convention</h4><p>Market makers quote and think in implied volatility, not dollar premiums, because it's comparable across strikes, expiries, and underlyings.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">⚙️</div><div><h4>Hedging engine</h4><p>The Greeks tell a market maker exactly how much underlying to buy or sell to stay delta-neutral, and how fast that hedge will need revisiting.</p></div></div>
         <div class="sl-icard"><div class="sl-icard-badge">📚</div><div><h4>Common language</h4><p>Every more sophisticated model is built as a correction to Black-Scholes' logic, which is why its vocabulary — delta, gamma, vega — never goes away.</p></div></div>
       </div>
-      <p class="sl-p">This repo's own theory-lab lessons on <strong>open-interest walls &amp; max pain</strong> and <strong>gamma exposure &amp; dealer hedging</strong> build directly on the delta and gamma introduced here — they aren't independent trading folklore, they're literally this formula's first and second derivatives with respect to price. And the stress-testing tooling elsewhere in this repo asks whether a portfolio's claimed diversification survives a liquidity contraction — a question that, for any book holding options, is inseparable from how those options' hedge ratios shift as markets move.</p>
+      <p class="sl-p">The lessons on <strong>open-interest walls &amp; max pain</strong> and <strong>gamma exposure &amp; dealer hedging</strong> build directly on the delta and gamma introduced here — they aren't independent trading folklore, they're literally this formula's first and second derivatives with respect to price.<!-- DESK:START --> And the stress-testing tooling elsewhere in this repo asks whether a portfolio's claimed diversification survives a liquidity contraction — a question that, for any book holding options, is inseparable from how those options' hedge ratios shift as markets move.<!-- DESK:END --></p>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="16">
+      <div class="sl-kicker">Section 15 · It actually happened</div>
+      <h2 class="sl-h2">19 October 1987: replication meets a gap</h2>
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">It actually happened</div>
+        <p>In the mid-1980s US pension funds bought <strong>portfolio insurance</strong>: a put manufactured by replication, adjusting stock-and-cash exposure with the put's delta, in practice by selling S&amp;P 500 futures as the market fell. On Monday 19 October 1987 the Dow fell <strong>22.6%</strong>, its largest one-day percentage fall of the modern era; the S&amp;P 500 fell about 20%. The Brady Commission found the insurers' futures selling was a significant source of the pressure. Futures traded far below the stocks, and many stocks opened late.</p>
+      </div>
+      <p class="sl-p">The starred link is this lesson's concept: to clone a long put you must trade like a short-gamma hedger, selling into the decline.</p>
+      <div class="sl-chain">
+        <div class="sl-chain-link shock"><b>Shock</b>Market already sliding; Dow about −4.6% on Friday 16th</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link concept"><b>★ Insurers · replication</b>Deltas say sell more futures as prices fall</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Futures</b>Trade far below the stocks they track</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link"><b>Exchange</b>Pressure passes to stocks; order handling overwhelmed</div>
+        <div class="sl-chain-arrow">→</div>
+        <div class="sl-chain-link end"><b>Outcome</b>Dow −22.6%; index options carry a skew ever after</div>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="17">
+      <div class="sl-kicker">Section 16</div>
+      <!-- DESK:START -->
+      <h2 class="sl-h2">What the desk found, and where the textbook breaks</h2>
+      <p class="sl-sub">The tempting claim: implied σ far above realised means the market is over-insured and will calm down.</p>
+      <!-- DESK:END -->
+      <!-- DESK:START -->
+      <div class="sl-stamp validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+        <span class="sl-stamp-tag">Desk test: held up</span>
+        <span><strong>iv-over-rv-wider: the opposite.</strong> VIX ÷ 20-session realised SPX vol in the top decile (88 first days, 2010→): NAS100 next-5 range <strong>+0.38 ATR [+0.11, +0.62]</strong>, SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong>. Realised catches up to implied. Range, not direction.</span>
+      </div>
+      <!-- DESK:END -->
+      <div class="sl-callout amber">
+        <div class="sl-callout-label">Where the textbook version breaks</div>
+        <p>Replication assumes continuous prices and a hedger who can trade at the model price without moving it. In 1987 prices gapped and the hedgers were big enough that their hedging <em>was</em> the price move. Constant σ failed too: the skew on index options since then is the market pricing the crash the model ruled out.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="18">
+      <div class="sl-kicker">Section 17</div>
       <h2 class="sl-h2">Quick check</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -366,8 +452,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="15">
-      <div class="sl-kicker">Section 14</div>
+    <section class="sl-slide" data-slide="19">
+      <div class="sl-kicker">Section 18</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Replication, not forecasting — a continuously rebalanced stock-and-bond portfolio that clones the option's payoff pins down its price using no-arbitrage logic alone.</p></div>
@@ -375,6 +461,9 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>The Greeks are this formula's own partial derivatives — delta is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to σ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>N(d₂) is a risk-neutral probability, not a real-world one — don't read a Black-Scholes price as a directional forecast.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Constant volatility is the model's biggest simplification — the smile/skew is the market visibly correcting for it, and it's exactly what the next lesson's jump-diffusion extension formalizes.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Delta N(d₁) is a hedge ratio, not the probability of finishing in the money — that's N(d₂), always smaller, by a gap that grows with σ√T.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Premium = intrinsic (what exercising now is worth) + extrinsic (time value — set by σ and T, eaten by theta, zero at expiry).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">08</div><p>1987: portfolio insurers replicating puts were forced to sell into the fall; prices gapped and the hedge failed at model prices.<!-- DESK:START --> Desk test: implied far above realised was followed by wider ranges, not calm (iv-over-rv-wider, VALIDATED).<!-- DESK:END --></p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
@@ -518,5 +607,8 @@
   })();
 })();
 </script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

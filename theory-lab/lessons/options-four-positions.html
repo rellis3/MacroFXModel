@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Four Option Positions — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: the 2x2 reference card's inner rows, and the clickable SVG quadrant picker. */
+  .ofg-card-rows{margin:0;padding:0;list-style:none;font-size:13px;color:var(--text2)}
+  .ofg-card-rows li{padding:4px 0;border-bottom:1px dashed var(--border)}
+  .ofg-card-rows li:last-child{border-bottom:none}
+  .ofg-card-rows b{color:var(--text)}
+  .ofg-signs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .ofg-pick rect.ofg-cell{cursor:pointer;transition:stroke .15s}
+  .ofg-pick rect.ofg-cell:hover{stroke:var(--blue)}
+  .ofg-pick rect.ofg-cell:focus{outline:none;stroke:var(--amber)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / Options from the Ground Up / The Four Option Positions</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">Options from the Ground Up · Lesson 1 of 3</div>
+  <h1 class="tl-title">The Four Option Positions</h1>
+  <p class="tl-dek">Two yes/no choices — did you buy or sell, is it a call or a put — give four positions, and from those two choices alone you can read off who holds the right, who carries the obligation, the worst case, and the sign of every Greek.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~17 min read</span>
+    <span>Prereqs: none — this is the first page. Goes deeper in <a href="black-scholes.html">Black-Scholes</a></span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="options-four-positions-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Long = you bought it, short = you sold it. Call = the right to buy, put = the right to sell.</strong> Every option position is one of four cells: long call, short call, long put, short put.</li>
+      <li><strong>The buyer holds a right and pays the premium; the seller collects the premium and carries an obligation.</strong> A right can be walked away from; an obligation cannot.</li>
+      <li>Max loss of any long option is the premium paid. Max gain of any short option is the premium collected. The other end is <em>strike − premium</em> for puts and <strong>unlimited</strong> for calls.</li>
+      <li>The Greek signs follow from the cell: <strong>long options are long gamma, short theta, long vega; short options are the mirror.</strong> Delta's sign is the only one that depends on call vs put.</li>
+      <li><strong>Delta is N(d₁), not the probability of finishing in the money.</strong> That probability (under the pricing model's risk-neutral measure) is N(d₂). At-the-money and short-dated they nearly match (0.52 vs 0.50); one year at 60% vol they are 0.63 vs 0.39.</li>
+      <li>Premium = intrinsic value (what exercising right now is worth) + extrinsic value (everything else — time and volatility). Only extrinsic value decays.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    The <a href="black-scholes.html">Black-Scholes</a>, <a href="theta-decay.html">Theta Decay</a>,
+    <a href="gamma-exposure-dealer-hedging.html">Gamma Exposure</a> and
+    <a href="second-order-greeks.html">Second-Order Greeks</a> lessons all assume you already
+    know what a call and a put are, and which side of the trade you are on. This page is the
+    missing first page underneath them. It is also the vocabulary every options number on a
+    trading screen is written in: a put wall, a call wall, a put/call ratio and a dealer gamma
+    number are all statements about <em>who bought</em> and <em>who sold</em> which of these
+    four positions.
+  </p>
+  <p>
+    The single most useful habit this lesson builds: whenever someone says "puts" or "calls",
+    ask <strong>"bought or sold?"</strong> The same contract means the opposite thing depending
+    on which side you hold. A put is bearish for the person who bought it and bullish for the
+    person who sold it — and both of them are holding the identical piece of paper.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>An option is an insurance policy — and someone has to be the insurer</h3>
+    <p>
+      Think of a put as house insurance on a stock. The buyer pays a small premium up front and
+      gets the <em>right</em> to sell at the strike price if things go badly. If nothing goes
+      wrong, they lose the premium and walk away — that's the whole downside. The seller is the
+      insurance company. They pocket the premium on day one, and in exchange they carry the
+      <em>obligation</em> to pay out if the bad thing happens — however bad it turns out to be.
+    </p>
+    <p style="margin-bottom:0">
+      A call is the same deal pointed the other way: the right to <em>buy</em> at the strike,
+      useful if the price rockets. The buyer's worst case is the premium. The seller's worst case
+      is whatever the rocket does. Most of what follows is just being precise about that
+      asymmetry: <strong>buyers rent upside, sellers rent out their balance sheet.</strong>
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You pay your friend £1 for a ticket that says "you must sell me your bike for £50 any time this month if I ask." If bikes get pricey, you use the ticket. If not, you throw it away and you've lost £1. Your friend got the £1 for sure — but if bikes become worth £500, they still have to hand theirs over for £50. You had a <em>choice</em>. They had a <em>promise</em>.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The 2×2 reference card</h2>
+  <p>
+    Two binary choices — bought or sold, call or put — and nothing else. Read across a row and
+    the side (buyer/seller) stays fixed while the contract flips. Read down a column and the
+    contract stays fixed while the side flips. Laid out as below — calls on the left, puts on the
+    right, bullish positions on top, bearish below — the pattern becomes visible at a glance.
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>Long call — bought the right to buy</h4>
+      <ul class="ofg-card-rows">
+        <li><b>Right or obligation:</b> right — exercise only if worth it</li>
+        <li><b>Premium:</b> you pay it</li>
+        <li><b>View:</b> bullish, wants a big move up</li>
+        <li><b>Max loss:</b> the premium</li>
+        <li><b>Max gain:</b> unlimited</li>
+      </ul>
+      <div class="ofg-signs"><span class="tl-pill green">Δ +</span><span class="tl-pill green">Γ +</span><span class="tl-pill red">Θ −</span><span class="tl-pill green">ν +</span></div>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>Short put — sold the right to sell</h4>
+      <ul class="ofg-card-rows">
+        <li><b>Right or obligation:</b> obligation — must buy at the strike if assigned</li>
+        <li><b>Premium:</b> you collect it</li>
+        <li><b>View:</b> bullish-to-neutral, wants calm or a slight rise</li>
+        <li><b>Max gain:</b> the premium</li>
+        <li><b>Max loss:</b> strike − premium (price can only fall to zero)</li>
+      </ul>
+      <div class="ofg-signs"><span class="tl-pill green">Δ +</span><span class="tl-pill red">Γ −</span><span class="tl-pill green">Θ +</span><span class="tl-pill red">ν −</span></div>
+    </div>
+  </div>
+  <div class="tl-compare">
+    <div class="tl-compare-card red">
+      <h4>Short call — sold the right to buy</h4>
+      <ul class="ofg-card-rows">
+        <li><b>Right or obligation:</b> obligation — must sell at the strike if assigned</li>
+        <li><b>Premium:</b> you collect it</li>
+        <li><b>View:</b> bearish-to-neutral, wants calm or a slight fall</li>
+        <li><b>Max gain:</b> the premium</li>
+        <li><b>Max loss:</b> <strong>unlimited</strong> — there is no ceiling on price</li>
+      </ul>
+      <div class="ofg-signs"><span class="tl-pill red">Δ −</span><span class="tl-pill red">Γ −</span><span class="tl-pill green">Θ +</span><span class="tl-pill red">ν −</span></div>
+    </div>
+    <div class="tl-compare-card purple">
+      <h4>Long put — bought the right to sell</h4>
+      <ul class="ofg-card-rows">
+        <li><b>Right or obligation:</b> right — exercise only if worth it</li>
+        <li><b>Premium:</b> you pay it</li>
+        <li><b>View:</b> bearish, wants a big move down (or wants insurance)</li>
+        <li><b>Max loss:</b> the premium</li>
+        <li><b>Max gain:</b> strike − premium</li>
+      </ul>
+      <div class="ofg-signs"><span class="tl-pill red">Δ −</span><span class="tl-pill green">Γ +</span><span class="tl-pill red">Θ −</span><span class="tl-pill green">ν +</span></div>
+    </div>
+  </div>
+  <p>
+    Arranged this way, the <strong>diagonals</strong> carry the pattern. Long call and long put
+    (one diagonal) are both buyers: long gamma, short theta, long vega, max loss = premium. Short
+    put and short call (the other diagonal) are both sellers: short gamma, long theta, short
+    vega, max gain = premium. Only <strong>delta</strong> — direction — is set by the row: the top
+    row (long call, short put) gains when price rises; the bottom row (short call, long put)
+    gains when it falls.
+  </p>
+
+  <div class="tl-solid red">
+    <strong>The trap:</strong> "put = bearish" is only true for the person who <em>bought</em> the
+    put. A put that someone <em>sold</em> is a bullish position. Every option contract in existence
+    has one buyer and one seller, so "there are a lot of puts out there" on its own says nothing
+    about which way anyone is leaning.
+  </div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Pick a quadrant — payoff at expiry and its Greek signs</div>
+    <svg class="ofg-pick" viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Two by two grid of the four option positions: long call, long put, short call, short put. Click a cell to plot it below.">
+      <text x="225" y="18" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">CALL — right to buy</text>
+      <text x="485" y="18" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">PUT — right to sell</text>
+      <text x="45" y="62" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">LONG</text>
+      <text x="45" y="76" text-anchor="middle" font-size="9.5" fill="var(--text3)">bought · pays</text>
+      <text x="45" y="122" text-anchor="middle" font-size="11" font-family="'DM Mono',monospace" fill="var(--text3)">SHORT</text>
+      <text x="45" y="136" text-anchor="middle" font-size="9.5" fill="var(--text3)">sold · collects</text>
+      <rect class="ofg-cell" data-q="lc" tabindex="0" role="button" aria-label="Long call" x="100" y="30" width="250" height="54" rx="8" style="fill:var(--s2);stroke:var(--border2);stroke-width:2"/>
+      <text x="225" y="54" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Long call</text>
+      <text x="225" y="72" text-anchor="middle" font-size="10.5" fill="var(--text2)" pointer-events="none">bullish · loss capped at premium</text>
+      <rect class="ofg-cell" data-q="lp" tabindex="0" role="button" aria-label="Long put" x="360" y="30" width="250" height="54" rx="8" style="fill:var(--s2);stroke:var(--border2);stroke-width:2"/>
+      <text x="485" y="54" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Long put</text>
+      <text x="485" y="72" text-anchor="middle" font-size="10.5" fill="var(--text2)" pointer-events="none">bearish · loss capped at premium</text>
+      <rect class="ofg-cell" data-q="sc" tabindex="0" role="button" aria-label="Short call" x="100" y="90" width="250" height="54" rx="8" style="fill:var(--s2);stroke:var(--border2);stroke-width:2"/>
+      <text x="225" y="114" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Short call</text>
+      <text x="225" y="132" text-anchor="middle" font-size="10.5" fill="var(--text2)" pointer-events="none">bearish · loss UNLIMITED</text>
+      <rect class="ofg-cell" data-q="sp" tabindex="0" role="button" aria-label="Short put" x="360" y="90" width="250" height="54" rx="8" style="fill:var(--s2);stroke:var(--border2);stroke-width:2"/>
+      <text x="485" y="114" text-anchor="middle" font-size="13" font-weight="600" fill="var(--text)" pointer-events="none">Short put</text>
+      <text x="485" y="132" text-anchor="middle" font-size="10.5" fill="var(--text2)" pointer-events="none">bullish · loss = strike − premium</text>
+    </svg>
+    <svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Profit and loss at expiry against the underlying price at expiry for the selected option position, strike 100, with a dashed curve showing the same position's value today with three months left, and a marker at the chosen spot price">
+      <defs><clipPath id="ofg-clip"><rect x="60" y="20" width="550" height="240"/></clipPath></defs>
+      <line x1="60" y1="140" x2="610" y2="140" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="20" x2="60" y2="260" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="335" y1="20" x2="335" y2="260" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="335" y="288" text-anchor="middle" font-size="11" fill="var(--text3)">Underlying price →</text>
+      <text x="20" y="140" text-anchor="middle" font-size="11" fill="var(--text3)" transform="rotate(-90 20 140)">P&amp;L per unit</text>
+      <text x="60" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">50</text>
+      <text x="197.5" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">75</text>
+      <text x="335" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">K=100</text>
+      <text x="472.5" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">125</text>
+      <text x="610" y="275" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">150</text>
+      <text x="52" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">+60</text>
+      <text x="52" y="144" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="52" y="264" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">−60</text>
+      <g clip-path="url(#ofg-clip)">
+        <polyline id="ofg-today" points="" style="fill:none;stroke:var(--text2);stroke-width:1.5;stroke-dasharray:5,4"/>
+        <polyline id="ofg-expiry" points="" style="fill:none;stroke:var(--green);stroke-width:3"/>
+      </g>
+      <line id="ofg-mark" x1="335" y1="20" x2="335" y2="260" style="stroke:var(--amber);stroke-width:1.5;stroke-dasharray:2,2"/>
+      <circle id="ofg-dot" cx="335" cy="140" r="5" style="fill:var(--amber);stroke:var(--s1);stroke-width:1.5"/>
+      <text id="ofg-label" x="600" y="38" text-anchor="end" font-size="13" font-weight="600" fill="var(--text)">Long call</text>
+    </svg>
+    <div class="tl-legend"><span><i style="background:var(--green)"></i>P&amp;L at expiry</span><span><i style="background:var(--text2)"></i>P&amp;L today, 3 months left (dashed)</span><span><i style="background:var(--amber)"></i>spot marker</span></div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Spot price today</span><span class="tl-live" id="ofg-s-val">S = 100</span></div>
+        <input type="range" id="ofg-s" min="55" max="145" step="1" value="100">
+        <div class="tl-hint">K = 100, σ = 20%, r = 2%, 3 months to expiry. Premium: call 4.23, put 3.73 (Black-Scholes). Greeks below are live for the selected position at this spot — signs show the textbook pattern, numbers show what the model actually says here.</div>
+      </div>
+    </div>
+    <div class="tl-readout" id="ofg-readout">—</div>
+    <div class="tl-readout" id="ofg-signs">—</div>
+    <div class="tl-chart-caption">
+      The solid line is the hockey stick at expiry; the dashed line is the same position valued today with three months left, which is smooth because there is still time for anything to happen. Click across the diagonal (long call ↔ short put, or long put ↔ short call) and notice the delta sign stays the same while gamma, theta and vega all flip. Drag a <em>long put</em> deep into the money (spot around 70) and theta turns slightly positive — a real edge case of European puts, covered in the pitfalls.
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The math, step by step</h2>
+
+  <h3>1. Payoff at expiry — the hockey sticks</h3>
+  <p>
+    At expiry an option has no time left, so its value is just what exercising it is worth. With
+    \(S_T\) the underlying price at expiry and \(K\) the strike:
+  </p>
+  <div class="tl-math">
+    \[ \text{Call payoff} = \max(S_T - K,\,0) \qquad \text{Put payoff} = \max(K - S_T,\,0) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>S_T − K</code><span>what a call is worth to exercise: buy at K, sell at the market</span></div>
+    <div class="tl-eq-chip c2"><code>K − S_T</code><span>what a put is worth to exercise: buy at the market, sell at K</span></div>
+    <div class="tl-eq-chip c3"><code>max(·, 0)</code><span>the right part — the holder never exercises at a loss</span></div>
+  </div>
+  <p>
+    The P&amp;L of each of the four positions is that payoff, minus or plus the premium \(p\),
+    multiplied by the side \(s\) (\(+1\) if you bought, \(-1\) if you sold):
+  </p>
+  <div class="tl-math">
+    \[ \text{P\&L}_{\text{expiry}} = s\,\big(\text{payoff}(S_T) - p\big), \qquad s\in\{+1,-1\} \]
+  </div>
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">s</div><div class="tl-fp-name">The side</div><div class="tl-fp-desc">+1 bought (a right), −1 sold (an obligation). Flipping it mirrors the whole picture about zero</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">payoff(S<sub>T</sub>)</div><div class="tl-fp-name">The contract</div><div class="tl-fp-desc">Call or put — which way the hockey stick points</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">p</div><div class="tl-fp-name">The premium</div><div class="tl-fp-desc">Paid by the buyer, collected by the seller, on day one</div></div>
+  </div>
+  <p>
+    Because the payoff is never below zero, the buyer's worst case is \(-p\). Because the
+    seller's P&amp;L is the exact negative of the buyer's, the seller's best case is \(+p\) and
+    the seller's worst case is minus the buyer's best case: \(-(K-p)\) for a put (the price can
+    fall only to zero) and \(-\infty\) for a call (it can rise without limit). Options are a
+    zero-sum transfer between the two sides before costs: every pound one side makes, the other
+    side loses.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Whatever the buyer wins, the seller loses, and the other way round — like two people on a see-saw. The buyer can only ever lose the ticket price. So the seller can only ever win the ticket price. All the big numbers live on the buyer's winning side and the seller's losing side.</p>
+  </div>
+
+  <h3>2. Premium = intrinsic + extrinsic</h3>
+  <p>
+    Before expiry, an option is worth more than its exercise value, because there is still time
+    for the price to move in the holder's favour. Split the premium into two pieces:
+  </p>
+  <div class="tl-math">
+    \[ p = \underbrace{\max(S-K,0)}_{\text{intrinsic (call)}} + \underbrace{\big(p - \max(S-K,0)\big)}_{\text{extrinsic}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>intrinsic</code><span>what you would get by exercising right now — zero unless in the money</span></div>
+    <div class="tl-eq-chip c4"><code>extrinsic</code><span>time value — the price of the chance that things improve before expiry</span></div>
+  </div>
+  <p>
+    An option whose strike is better than the current price is <strong>in the money</strong>
+    (ITM) and has intrinsic value. One at the current price is <strong>at the money</strong>
+    (ATM); one that would be pointless to exercise today is <strong>out of the money</strong>
+    (OTM) and is <em>pure</em> extrinsic value. Only the extrinsic part decays with time — that
+    decay is theta, the subject of <a href="theta-decay.html">Theta Decay</a>. At expiry
+    extrinsic value is zero and the premium is all intrinsic.
+  </p>
+
+  <h3>3. Delta — and why it is not a probability</h3>
+  <p>
+    Delta is how much the option's price moves for a one-unit move in the underlying. In the
+    <a href="black-scholes.html">Black-Scholes</a> model, for a European option on a
+    non-dividend-paying underlying:
+  </p>
+  <div class="tl-math">
+    \[ \Delta_{\text{call}} = N(d_1), \qquad \Delta_{\text{put}} = N(d_1) - 1, \qquad d_1 = \frac{\ln(S/K) + (r + \tfrac12\sigma^2)\tau}{\sigma\sqrt{\tau}} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N(d₁)</code><span>between 0 and 1 for a call; the put's delta sits between −1 and 0</span></div>
+    <div class="tl-eq-chip c2"><code>ln(S/K)</code><span>moneyness — how far spot is from the strike, in log terms</span></div>
+    <div class="tl-eq-chip c3"><code>σ√τ</code><span>how far price can plausibly travel before expiry</span></div>
+  </div>
+  <p>
+    A widely repeated shortcut says "a 0.50 delta means a 50% chance of finishing in the money."
+    That is an approximation, not an identity. Under the same model's risk-neutral measure, the
+    probability that a call finishes in the money is a different number:
+  </p>
+  <div class="tl-math">
+    \[ \mathbb{Q}(S_T > K) = N(d_2), \qquad d_2 = d_1 - \sigma\sqrt{\tau} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c4"><code>N(d₂)</code><span>risk-neutral probability of expiring in the money</span></div>
+    <div class="tl-eq-chip c3"><code>d₁ − d₂ = σ√τ</code><span>the gap between them grows with volatility and with time</span></div>
+  </div>
+  <p>
+    Since \(d_1\) always exceeds \(d_2\) by \(\sigma\sqrt{\tau}\), delta is always <em>larger</em>
+    than the in-the-money probability. When \(\sigma\sqrt{\tau}\) is small — a short-dated,
+    low-vol option — the two are close and the shortcut is harmless. When it is large, they come
+    apart badly. And even N(d₂) is a probability under the <em>pricing</em> measure, which builds
+    in the risk-free drift rather than anyone's real-world forecast — so neither number is "the
+    chance this trade works".
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Delta tells you how much the option's price wiggles when the stock wiggles. People like to pretend it's also "the chance of winning", and for short, calm options it nearly is. But for long, jumpy options, the "wiggle number" and the "winning chance" drift apart — like a car's speedometer and its fuel gauge both pointing at the middle on a short trip, but not on a long one.</p>
+  </div>
+
+  <h3>4. Why the other three signs follow from the side alone</h3>
+  <p>
+    Put-call parity says a call minus a put at the same strike and expiry is a forward contract:
+  </p>
+  <div class="tl-math">
+    \[ C - P = S - Ke^{-r\tau} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>C − P</code><span>long call plus short put, same strike</span></div>
+    <div class="tl-eq-chip c2"><code>S − Ke⁻ʳᵗ</code><span>a forward: straight line in S, no curvature, no volatility exposure</span></div>
+  </div>
+  <p>
+    The right-hand side is a straight line in \(S\) with no \(\sigma\) in it. Differentiate
+    twice with respect to \(S\), or once with respect to \(\sigma\), and it vanishes. So a call and
+    a put at the same strike have <strong>identical gamma and identical vega</strong> — both
+    positive for the holder. Their deltas differ by exactly 1, and their thetas differ only by
+    the small financing term \(rKe^{-r\tau}\). That is why the buyer side of either contract is
+    long gamma, long vega and (almost always) short theta, and the seller side is the exact
+    mirror. Direction is the only Greek that cares whether it is a call or a put.
+  </p>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(S,\ S_T\)</td><td>The underlying price now, and at expiry.</td></tr>
+    <tr><td>\(K\)</td><td>The strike — the price at which the option lets its holder buy (call) or sell (put).</td></tr>
+    <tr><td>\(p,\ C,\ P\)</td><td>The premium; specifically a call's price \(C\) and a put's price \(P\).</td></tr>
+    <tr><td>\(s\)</td><td>The side: \(+1\) bought (long), \(-1\) sold (short).</td></tr>
+    <tr><td>\(\tau\)</td><td>Time remaining to expiry, in years.</td></tr>
+    <tr><td>\(r,\ \sigma\)</td><td>The risk-free rate and the volatility used to price the option.</td></tr>
+    <tr><td>\(N(\cdot)\)</td><td>The standard normal cumulative distribution — area under the bell curve to the left of a point.</td></tr>
+    <tr><td>\(d_1,\ d_2\)</td><td>The two Black-Scholes intermediate quantities; \(d_2 = d_1 - \sigma\sqrt{\tau}\).</td></tr>
+    <tr><td>\(\mathbb{Q}\)</td><td>The risk-neutral (pricing) probability measure — not a real-world forecast.</td></tr>
+    <tr><td>\(\Delta,\ \Gamma,\ \Theta,\ \nu\)</td><td>Delta (price sensitivity), gamma (how fast delta changes), theta (time decay), vega (volatility sensitivity).</td></tr>
+  </table></div>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Delta N(d₁) vs. in-the-money probability N(d₂) for a call, K = 100</div>
+    <svg viewBox="0 0 640 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two S-shaped curves against spot price: the call delta N(d1) and the risk-neutral probability of finishing in the money N(d2). They nearly overlap for short-dated low-vol options and separate as volatility and time grow.">
+      <line x1="60" y1="240" x2="610" y2="240" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="60" y1="20" x2="60" y2="240" style="stroke:var(--text3);stroke-width:1"/>
+      <line x1="335" y1="20" x2="335" y2="240" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <line x1="60" y1="130" x2="610" y2="130" style="stroke:var(--border2);stroke-width:1;stroke-dasharray:3,3"/>
+      <text x="335" y="270" text-anchor="middle" font-size="11" fill="var(--text3)">Spot price (strike = 100) →</text>
+      <text x="60" y="255" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">50</text>
+      <text x="335" y="255" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">100</text>
+      <text x="610" y="255" text-anchor="middle" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">150</text>
+      <text x="52" y="244" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0</text>
+      <text x="52" y="134" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">0.5</text>
+      <text x="52" y="24" text-anchor="end" font-size="9.5" font-family="'DM Mono',monospace" fill="var(--text3)">1</text>
+      <polyline id="dp-d1" points="" style="fill:none;stroke:var(--blue);stroke-width:2.5"/>
+      <polyline id="dp-d2" points="" style="fill:none;stroke:var(--amber);stroke-width:2.5;stroke-dasharray:6,4"/>
+      <circle id="dp-dot1" cx="335" cy="130" r="5" style="fill:var(--blue)"/>
+      <circle id="dp-dot2" cx="335" cy="130" r="5" style="fill:var(--amber)"/>
+    </svg>
+    <div class="tl-legend"><span><i style="background:var(--blue)"></i>Delta = N(d₁)</span><span><i style="background:var(--amber)"></i>ITM probability = N(d₂) (dashed)</span></div>
+    <div class="tl-controls">
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Volatility σ</span><span class="tl-live" id="dp-sig-val">σ = 20%</span></div>
+        <input type="range" id="dp-sig" min="5" max="100" step="1" value="20">
+      </div>
+      <div class="tl-control">
+        <div class="tl-control-head"><span>Days to expiry</span><span class="tl-live" id="dp-dte-val">30 days</span></div>
+        <input type="range" id="dp-dte" min="7" max="730" step="1" value="30">
+        <div class="tl-hint">r = 2%. Dots mark spot = 100 (at the money). Push σ and days up together to watch the two curves separate.</div>
+      </div>
+    </div>
+    <div class="tl-readout">At S = K = 100: Δ = N(d₁) = <b id="dp-n1">0.5229</b> · N(d₂) = <b id="dp-n2">0.5000</b> · gap = <b id="dp-gap">0.0229</b> · σ√τ = <b id="dp-sst">0.0573</b></div>
+    <div class="tl-chart-caption">Both curves computed live from the closed forms. At the default (30 days, 20% vol) they nearly coincide — the shortcut works. Set one year and 60% and the at-the-money call has a delta of 0.63 but only a 0.39 risk-neutral chance of finishing in the money.</div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>One strike, four positions, three moneyness levels</h3>
+    <p>Inputs: spot \(S = 100\), \(r = 2\%\), \(\sigma = 20\%\), three months to expiry (\(\tau = 0.25\)). All prices from the Black-Scholes closed form.</p>
+    <div class="tl-steps">
+      <div class="tl-step">
+        <div class="tl-step-num">1</div>
+        <div class="tl-step-body">
+          <h4>The at-the-money premiums (K = 100)</h4>
+          <p>Call \(C = 4.23\), put \(P = 3.73\). Check parity: \(C - P = 0.50\) and \(S - Ke^{-r\tau} = 100 - 99.50 = 0.50\). ✓</p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">2</div>
+        <div class="tl-step-body">
+          <h4>Max gain, max loss, breakeven for each cell</h4>
+          <p>
+            <strong>Long call:</strong> lose at most 4.23; breakeven 104.23; gain unlimited.<br>
+            <strong>Short call:</strong> gain at most 4.23; breakeven 104.23; loss unlimited.<br>
+            <strong>Long put:</strong> lose at most 3.73; breakeven 96.27; gain at most \(100 - 3.73 = 96.27\).<br>
+            <strong>Short put:</strong> gain at most 3.73; breakeven 96.27; loss at most 96.27.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">3</div>
+        <div class="tl-step-body">
+          <h4>Intrinsic vs extrinsic across strikes (calls)</h4>
+          <p>
+            K = 90 (ITM): premium 11.09 = intrinsic 10.00 + extrinsic 1.09.<br>
+            K = 100 (ATM): premium 4.23 = intrinsic 0 + extrinsic 4.23 — all time value, the most of the three.<br>
+            K = 110 (OTM): premium 1.04 = intrinsic 0 + extrinsic 1.04.<br>
+            Extrinsic value peaks at the money: that's where the outcome is most uncertain.
+          </p>
+        </div>
+      </div>
+      <div class="tl-step">
+        <div class="tl-step-num">4</div>
+        <div class="tl-step-body">
+          <h4>Delta vs in-the-money probability, two cases</h4>
+          <p>
+            30 days, σ = 20%, ATM: \(d_1 = 0.0573\), \(d_2 = 0.0000\) → Δ = 0.5229, N(d₂) = 0.5000. Close enough that nobody gets hurt.<br>
+            1 year, σ = 60%, ATM: \(d_1 = 0.3333\), \(d_2 = -0.2667\) → Δ = <strong>0.6306</strong>, N(d₂) = <strong>0.3949</strong>. Reading this delta as "63% chance" overstates the model's own in-the-money probability by 24 percentage points.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>When the obligation came due</h2>
+  <p>
+    On paper, the seller's position is "collect premium, usually keep it." The column the
+    seller signs is the one that says what happens when "usually" fails. Here is the chain a
+    short option runs through when the price gaps against it:
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link"><b>Option seller</b>Sells a put (or call) far from spot, collects a small premium — the "can't happen" strike</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link shock"><b>Shock</b>Price gaps through the strike with no trading in between</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Broker / clearing house</b>Marks the short option at its new, much higher value and calls for margin — immediately</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Seller</b>Cannot meet the call, is forced to buy back or is closed out at whatever price exists</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Loss many times the premium; any shortfall beyond the account lands on the broker</div>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>15 January 2015: the Swiss franc floor goes</h3>
+    <p>
+      In September 2011 the Swiss National Bank set a minimum exchange rate of 1.20 francs per
+      euro and said it would buy foreign currency in unlimited quantities to defend it. For more
+      than three years EUR/CHF sat just above that line. The floor made a sharp franc rally look
+      close to impossible, and the market priced it that way: selling options that paid out on
+      a big franc rise looked like collecting premium for an event the central bank had promised
+      would not happen.
+    </p>
+    <p>
+      On the morning of 15 January 2015 the SNB abandoned the floor without warning and cut its
+      deposit rate to −0.75%. Within minutes the franc surged; EUR/CHF traded well below parity at
+      the extreme before settling near it — a move of the kind almost never seen in a major
+      currency pair. Prices did not trade smoothly through the levels in between, so stop-loss
+      orders could not be filled where they were set.
+    </p>
+    <p>
+      Anyone short the franc's upside held the obligation side of the trade at that moment. The
+      damage was visible at retail FX brokers whose clients had leveraged positions: client
+      losses exceeded account balances, the brokers were left holding the shortfall, Alpari's UK
+      arm entered insolvency, and FXCM needed a rescue loan of about $300 million from Leucadia to
+      stay within its capital requirements. A right lets you walk away. An obligation, it turned
+      out, does not even let you leave at the price you planned.
+    </p>
+    <p style="margin-bottom:0">
+      The same lesson arrived in equity volatility three years later. On 5 February 2018 the VIX
+      had one of the largest one-day jumps in its history, and exchange-traded notes built to be
+      <em>short</em> volatility — the insurance-seller position in packaged form — lost most of
+      their value in a single session; Credit Suisse terminated its XIV note shortly afterwards.
+    </p>
+  </div>
+
+  <div class="tl-box scenario">
+    <div class="tl-icon-badge amber">🎯</div>
+    <div class="tl-box-label">Real-world trading scenario</div>
+    <h3>Reading "put open interest is rising" correctly</h3>
+    <p>
+      A screen shows put open interest in an index climbing fast into a data release. The naive
+      read is "traders are bearish." The 2×2 says: every one of those new contracts has a buyer
+      (long put — bearish or hedging) and a seller (short put — bullish or income-seeking). Open
+      interest counts the contracts, not the side that initiated them. If the buyers are pension
+      funds hedging equity they already own, the "bearish" flow is really a long-equity investor
+      paying for insurance. If the sellers are dealers, the dealers are now short gamma — which
+      matters for how they hedge (the subject of the <a href="gamma-exposure-dealer-hedging.html">Gamma
+      Exposure</a> lesson), not for which way the index goes next.
+    </p>
+    <p style="margin-bottom:0">
+      The honest translation of "put OI is rising" is: <em>more insurance has changed hands</em>.
+      Who bought it, who sold it, and why, are separate questions the open-interest number cannot
+      answer by itself.
+    </p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🧭</div>
+      <h4>"Bought or sold?" first</h4>
+      <p>Before interpreting any options flow, desks ask which side initiated. Exchange data that flags buyer- vs seller-initiated trades exists precisely because raw volume and open interest cannot answer this.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>Sizing by worst case, not by premium</h4>
+      <p>A buyer sizes by premium at risk — it is the worst case. A seller sizes by the loss at a stress price (strike minus premium for a put; a chosen shock for a call), never by the premium collected.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">∑</div>
+      <h4>Net delta across a book</h4>
+      <p>Signed deltas add: long 100 shares (Δ = 1 each) plus a short call of delta 0.2 nets to 0.8 per share. Book-level delta is the directional exposure a desk hedges; it says nothing about how big the tails are.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">⏳</div>
+      <h4>Delta as a rough odds gauge — with a footnote</h4>
+      <p>Traders use "the 25-delta strike" as shorthand for "roughly a one-in-four outcome." That is fine for short-dated options; for long-dated or high-vol ones, check N(d₂) instead.</p>
+    </div>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Folk claim: a put-heavy market (high put/call ratio) is a bearish market.</strong> The desk's evidence ledger holds no entry scoring the put/call ratio, and the thresholds the desk uses to label it bullish or bearish have no recorded provenance. This lesson's 2×2 is the reason to doubt the claim on its face: open interest cannot tell a bought put from a sold one. Treat the ratio as a description of how much insurance exists, not a forecast.</span>
+  </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>Adjacent claim, tested here: "price pins to options max pain into expiry."</strong> Tested properly on 2026-09-10 and null — with the open-interest publish-lag timing, DTE, gamma, sign convention and spot basis all verified. Max pain is a level to know about, not a magnet.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <h3>The board prints option numbers; this is the page that defines them</h3>
+    <p style="margin-bottom:0">
+      The OI dashboard and the AI prompt (<code>js/ai.js</code>) carry max pain, call and put
+      walls, the put/call ratio, GEX and DEX. The prompt's <code>pcBias</code> label turns the
+      put/call ratio into "BEARISH"/"BULLISH" text; per this lesson that label is an untested
+      reading of a number that cannot see side. Nothing on the desk sells options, so the
+      worst-case rows here are teaching, not risk management.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <h3>Where the 2×2 gets misread</h3>
+    <p><strong>"Puts are bearish."</strong> Only for the buyer. A short put is a bullish position, and a book of sold puts is long the market.</p>
+    <p><strong>"Delta is the probability of finishing in the money."</strong> Delta is N(d₁); the model's risk-neutral ITM probability is N(d₂), always smaller for a call, and the gap is σ√τ inside the normal function. Fine as a shortcut for short-dated options, wrong for long-dated or volatile ones — and neither is a real-world forecast.</p>
+    <p><strong>"Short options always have positive theta."</strong> Almost always. A deep in-the-money European put can have slightly positive theta for its <em>holder</em> (the interactive above shows it near spot 70), because waiting delays receiving the strike. The textbook signs on the card are the rule, not a law.</p>
+    <p><strong>"The seller's risk is small because the premium is small."</strong> The premium is the seller's <em>best</em> case. The premium being small usually means the market thinks the bad case is unlikely — not that it is small.</p>
+    <p style="margin-bottom:0"><strong>"Same row, same risk."</strong> Short put and short call share three of four Greek signs but not their worst case: one is bounded, one is not. That is the whole of the next lesson.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two choices, four positions.</strong> Long/short (bought or sold) × call/put (right to buy or sell). Buyers hold rights and pay premium; sellers collect premium and carry obligations.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Buyers' worst case is the premium; sellers' best case is the premium.</strong> The other end is strike − premium for puts and unlimited for calls.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gamma, theta and vega signs come from the side; delta's sign comes from the row.</strong> Put-call parity makes a call and put at one strike share gamma and vega exactly.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Premium = intrinsic + extrinsic.</strong> Only the extrinsic part decays, and it peaks at the money.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Delta is N(d₁), not the ITM probability N(d₂).</strong> 0.52 vs 0.50 at 30 days and 20% vol; 0.63 vs 0.39 at one year and 60%.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Untested here: put/call ratio as a direction signal.</strong> No ledger entry; open interest cannot tell bought from sold.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Tested null: max pain as a magnet.</strong> Price does not pin to max pain into expiry on this desk's data.</span></div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Which two of the four positions are bullish, and why is one of them a put?</summary>
+    <div class="tl-answer">Long call and short put. A short put means you sold someone the right to sell to you at the strike; you keep the premium if the price stays above the strike, so you want the price to hold or rise. The contract is a put, but the <em>side</em> makes the position bullish.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. K = 100, put premium 3.73. What are the short put's max gain, max loss and breakeven?</summary>
+    <div class="tl-answer">Max gain 3.73 (keep the premium if the put expires worthless). Max loss \(100 - 3.73 = 96.27\), reached if the underlying goes to zero. Breakeven at expiry 96.27.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Why do a call and a put at the same strike and expiry have the same gamma and vega?</summary>
+    <div class="tl-answer">Put-call parity: \(C - P = S - Ke^{-r\tau}\). The right side is linear in \(S\) and contains no \(\sigma\), so its second derivative in \(S\) and its derivative in \(\sigma\) are both zero. Therefore \(\Gamma_C = \Gamma_P\) and \(\nu_C = \nu_P\).</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q4. A one-year at-the-money call at 60% vol has delta 0.63. Is there a 63% chance it finishes in the money?</summary>
+    <div class="tl-answer">No. Delta is N(d₁) = 0.6306. The model's risk-neutral probability of finishing in the money is N(d₂) = N(0.3333 − 0.6) = N(−0.2667) = 0.3949. The gap is driven by σ√τ = 0.6, which is large here. And N(d₂) is itself a pricing-measure probability, not a real-world forecast.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q5. A 90-strike call trades at 11.09 with spot at 100. Split it into intrinsic and extrinsic value. Which part will be gone at expiry?</summary>
+    <div class="tl-answer">Intrinsic = 100 − 90 = 10.00; extrinsic = 1.09. The extrinsic 1.09 decays to zero by expiry (that decay is theta). The intrinsic part changes only if spot moves.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q6. Put open interest doubles. What can you conclude about market direction from that alone?</summary>
+    <div class="tl-answer">Nothing directional. Each new contract has a buyer (long put — bearish or hedging) and a seller (short put — bullish). Open interest records that more insurance exists, not which side initiated.<!-- DESK:START --> The desk has no tested result supporting the put/call ratio as a direction signal.<!-- DESK:END --></div>
+  </details>
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>John C. Hull, <em>Options, Futures, and Other Derivatives</em>, Pearson — the standard treatment of the four basic positions, put-call parity, and the Greeks.</li>
+    <li>Sheldon Natenberg, <em>Option Volatility and Pricing</em>, McGraw-Hill — practitioner-oriented coverage of intrinsic vs extrinsic value and delta interpretation.</li>
+    <li>Swiss National Bank, press release of 15 January 2015 discontinuing the minimum exchange rate — the primary source for the story above.</li>
+    <li><a href="black-scholes.html">Black-Scholes-Merton Option Pricing</a> — where d₁, d₂ and the closed-form Greeks come from.</li>
+    <li><a href="theta-decay.html">Theta Decay</a> and <a href="second-order-greeks.html">Second-Order Greeks</a> — the next layer of the sign table.</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="../hub.html">← Theory Lab hub</a>
+    <a href="payoff-shape-vs-greek-signs.html">Same Greeks, Different Risk →</a>
+  </div>
+</div>
+<script>
+(function(){
+  function erf(x){
+    var sign = x < 0 ? -1 : 1; x = Math.abs(x);
+    var a1=0.254829592, a2=-0.284496736, a3=1.421413741, a4=-1.453152027, a5=1.061405429, p=0.3275911;
+    var t = 1/(1+p*x);
+    return sign*(1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x));
+  }
+  function N(x){ return 0.5*(1+erf(x/Math.SQRT2)); }
+  function n(x){ return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI); }
+  // Black-Scholes European call/put on a non-dividend underlying: price and Greeks.
+  // theta per calendar day, vega per 1 vol point.
+  function bs(type, S, K, r, sig, T){
+    var sq = Math.sqrt(T), d1 = (Math.log(S/K) + (r + sig*sig/2)*T)/(sig*sq), d2 = d1 - sig*sq;
+    var disc = K*Math.exp(-r*T), g = n(d1)/(S*sig*sq), v = S*n(d1)*sq/100, decay = -S*n(d1)*sig/(2*sq);
+    if (type === 'call') return { price: S*N(d1) - disc*N(d2), delta: N(d1), gamma: g, theta: (decay - r*disc*N(d2))/365, vega: v };
+    return { price: disc*N(-d2) - S*N(-d1), delta: N(d1) - 1, gamma: g, theta: (decay + r*disc*N(-d2))/365, vega: v };
+  }
+
+  // ---- Quadrant picker + payoff chart ----
+  var K = 100, R = 0.02, SIG = 0.20, T0 = 0.25;
+  var POS = {
+    lc: { type:'call', side: 1, name:'Long call',  col:'var(--green)',  signs:['+','+','−','+'] },
+    sc: { type:'call', side:-1, name:'Short call', col:'var(--red)',    signs:['−','−','+','−'] },
+    lp: { type:'put',  side: 1, name:'Long put',   col:'var(--purple)', signs:['−','+','−','+'] },
+    sp: { type:'put',  side:-1, name:'Short put',  col:'var(--amber)',  signs:['+','−','+','−'] }
+  };
+  var cur = 'lc';
+  var slider = document.getElementById('ofg-s');
+  if (!slider) return;
+  var cells = document.querySelectorAll('.ofg-cell');
+  var X0=60, X1=610, Y0=20, Y1=260, SMIN=50, SMAX=150, PMAX=60;
+  function sx(s){ return X0 + (s-SMIN)/(SMAX-SMIN)*(X1-X0); }
+  function py(p){ return 140 - p*(120/PMAX); }
+  function premium(type){ return bs(type, 100, K, R, SIG, T0).price; }
+
+  function draw(){
+    var P = POS[cur], prem = premium(P.type), ex = [], td = [];
+    for (var i=0;i<=200;i++){
+      var s = SMIN + i*(SMAX-SMIN)/200;
+      var pay = P.type==='call' ? Math.max(s-K,0) : Math.max(K-s,0);
+      ex.push(sx(s).toFixed(1)+','+py(P.side*(pay-prem)).toFixed(1));
+      td.push(sx(s).toFixed(1)+','+py(P.side*(bs(P.type,s,K,R,SIG,T0).price-prem)).toFixed(1));
+    }
+    var exLine = document.getElementById('ofg-expiry');
+    exLine.setAttribute('points', ex.join(' '));
+    exLine.style.stroke = P.col;
+    document.getElementById('ofg-today').setAttribute('points', td.join(' '));
+    document.getElementById('ofg-label').textContent = P.name;
+    for (var j=0;j<cells.length;j++){
+      var on = cells[j].getAttribute('data-q') === cur;
+      cells[j].style.stroke = on ? P.col : 'var(--border2)';
+      cells[j].style.strokeWidth = on ? 3 : 2;
+      cells[j].setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    update();
+  }
+  function fmt(x, d){ return (x>=0?'+':'') + x.toFixed(d); }
+  function update(){
+    var P = POS[cur], s = parseFloat(slider.value), prem = premium(P.type);
+    var g = bs(P.type, s, K, R, SIG, T0);
+    var pnl = P.side*(g.price - prem);
+    document.getElementById('ofg-s-val').textContent = 'S = ' + s;
+    var x = sx(s);
+    var m = document.getElementById('ofg-mark'); m.setAttribute('x1', x); m.setAttribute('x2', x);
+    var dot = document.getElementById('ofg-dot'); dot.setAttribute('cx', x); dot.setAttribute('cy', Math.max(Y0, Math.min(Y1, py(pnl))));
+    var be = P.type==='call' ? K+prem : K-prem;
+    var maxG = P.side>0 ? (P.type==='call' ? 'unlimited' : (K-prem).toFixed(2)) : prem.toFixed(2);
+    var maxL = P.side>0 ? prem.toFixed(2) : (P.type==='call' ? 'UNLIMITED' : (K-prem).toFixed(2));
+    document.getElementById('ofg-readout').innerHTML =
+      P.name + ' · ' + (P.side>0 ? 'pays' : 'collects') + ' premium <b>' + prem.toFixed(2) + '</b> · breakeven <b>' + be.toFixed(2) +
+      '</b> · max gain <b>' + maxG + '</b> · max loss <b>' + maxL + '</b> · P&amp;L today at S=' + s + ': <b>' + fmt(pnl,2) + '</b>';
+    var live = [P.side*g.delta, P.side*g.gamma, P.side*g.theta, P.side*g.vega];
+    var names = ['Δ','Γ','Θ/day','ν/vol pt'], out = [];
+    for (var k=0;k<4;k++){
+      var liveSign = live[k] >= 0 ? '+' : '−';
+      var flag = (liveSign !== P.signs[k] && Math.abs(live[k]) > 1e-6) ? ' ← edge case' : '';
+      out.push(names[k] + ' <b>' + P.signs[k] + '</b> (live ' + fmt(live[k], k===1?4:3) + ')' + flag);
+    }
+    document.getElementById('ofg-signs').innerHTML = 'Textbook signs → ' + out.join(' · ');
+  }
+  for (var c=0;c<cells.length;c++){
+    cells[c].addEventListener('click', function(){ cur = this.getAttribute('data-q'); draw(); });
+    cells[c].addEventListener('keydown', function(e){ if (e.key==='Enter' || e.key===' '){ e.preventDefault(); cur = this.getAttribute('data-q'); draw(); } });
+  }
+  slider.addEventListener('input', update);
+  draw();
+
+  // ---- Delta vs N(d2) chart ----
+  var sigS = document.getElementById('dp-sig'), dteS = document.getElementById('dp-dte');
+  if (!sigS) return;
+  function dpy(v){ return 240 - v*220; }
+  function dpUpdate(){
+    var sig = parseFloat(sigS.value)/100, T = parseFloat(dteS.value)/365, sq = Math.sqrt(T);
+    var a = [], b = [];
+    for (var i=0;i<=150;i++){
+      var s = 50 + i*100/150;
+      var d1 = (Math.log(s/100) + (R + sig*sig/2)*T)/(sig*sq), d2 = d1 - sig*sq;
+      var x = (60 + (s-50)/100*550).toFixed(1);
+      a.push(x+','+dpy(N(d1)).toFixed(1)); b.push(x+','+dpy(N(d2)).toFixed(1));
+    }
+    document.getElementById('dp-d1').setAttribute('points', a.join(' '));
+    document.getElementById('dp-d2').setAttribute('points', b.join(' '));
+    var D1 = ((R + sig*sig/2)*T)/(sig*sq), D2 = D1 - sig*sq;
+    document.getElementById('dp-dot1').setAttribute('cy', dpy(N(D1)));
+    document.getElementById('dp-dot2').setAttribute('cy', dpy(N(D2)));
+    document.getElementById('dp-sig-val').textContent = 'σ = ' + sigS.value + '%';
+    document.getElementById('dp-dte-val').textContent = dteS.value + ' days';
+    document.getElementById('dp-n1').textContent = N(D1).toFixed(4);
+    document.getElementById('dp-n2').textContent = N(D2).toFixed(4);
+    document.getElementById('dp-gap').textContent = (N(D1)-N(D2)).toFixed(4);
+    document.getElementById('dp-sst').textContent = (sig*sq).toFixed(4);
+  }
+  sigS.addEventListener('input', dpUpdate); dteS.addEventListener('input', dpUpdate);
+  dpUpdate();
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+</body>
+</html>

@@ -37,12 +37,15 @@
     <li>The closed-form result is \(C = S_0N(d_1) - Ke^{-rT}N(d_2)\), with \(d_1 = [\ln(S_0/K) + (r+\sigma^2/2)T]/(\sigma\sqrt{T})\) and \(d_2 = d_1 - \sigma\sqrt{T}\).</li>
     <li>The Greeks are just this formula's partial derivatives: delta \(=N(d_1)\) is the hedge ratio, gamma is how fast that hedge goes stale, theta is time decay, vega is sensitivity to \(\sigma\), and rho is sensitivity to \(r\).</li>
     <li>The worked example (\(S_0=K=100\), \(r=2\%\), \(\sigma=20\%\), \(T=1\) year) prices the at-the-money call at roughly <strong>$8.92</strong>, all of it time value since intrinsic value is zero.</li>
+    <li>Two distinctions people blur: delta \(N(d_1)\) is a hedge ratio, not the probability of finishing in the money (that is \(N(d_2)\), and always smaller); and every premium splits into intrinsic value plus extrinsic (time) value.</li>
     <li>The page's interactive chart loads with sliders at \(\sigma=20\%\) and \(T=1.00\)y by default — the same inputs as the worked example — so it starts by reproducing that same $8.92 price before you drag either slider.</li>
+    <li><strong>Real-world episode:</strong> on 19 October 1987 "portfolio insurers", running this lesson's replication argument to manufacture puts, were forced by their own deltas to sell index futures into a falling market. Prices gapped, the hedge could not be done at the model's prices, and index options have carried a skew ever since.<!-- DESK:START --> The desk's test of "implied far above realised means calm ahead" found the opposite: realised caught up (<code>iv-over-rv-wider</code>, VALIDATED).<!-- DESK:END --></li>
   </ul>
 </div>
 
   <div class="tl-section-mark"><span>Section 01</span></div>
   <h2>Why this matters</h2>
+  <!-- DESK:START -->
   <p>
     Two things in this repo already talk about options without deriving where
     their behavior comes from. This project's own prior research notes
@@ -56,8 +59,9 @@
     hedge ratio changes with price at all, or what "gamma" formally is beyond a
     word for "the hedge needs constant adjusting."
   </p>
+  <!-- DESK:END -->
   <p>
-    Black-Scholes-Merton is where that word comes from. It is a 1973 pricing
+    Black-Scholes-Merton is where the word “gamma” comes from. It is a 1973 pricing
     model built on a genuinely elegant argument: you don't need to know which
     way a stock is going to price an option on it, because you can build a
     portfolio of the stock and a bond that behaves <em>exactly</em> like the
@@ -140,7 +144,7 @@
     <tr><td>\(S_t\)</td><td>The underlying's price at time \(t\) — the spot FX rate, the stock price, the index level. This is the quantity the whole model is built around.</td></tr>
     <tr><td>\(dS_t\)</td><td>The infinitesimal change in \(S_t\) over the next tiny instant of time — "how much the price moves in the next tick."</td></tr>
     <tr><td>\(\mu\)</td><td>(mu) The underlying's expected (real-world) rate of return per unit time — e.g. "8% per year." This is exactly the quantity everyone argues about when they forecast a market. Keep an eye on it: it appears here, in the assumed model of the world, but — remarkably — it is about to disappear from the pricing formula entirely.</td></tr>
-    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). This is the same conceptual quantity as the \(\sigma\) used throughout this repo's own volatility research, just expressed in continuous-time SDE units. GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the next lesson's jump-diffusion extension exists specifically to relax it.</td></tr>
+    <tr><td>\(\sigma\)</td><td>(sigma) The underlying's volatility — the standard deviation of its returns per unit time (annualized, e.g. "20% per year"). <!-- DESK:START -->This is the same conceptual quantity as the \(\sigma\) used throughout this repo's own volatility research, just expressed in continuous-time SDE units. <!-- DESK:END -->GBM assumes \(\sigma\) is <strong>constant</strong> — flat across time and across strike. That is the model's single biggest simplifying assumption, and it is false in every real options market (implied volatility famously varies by strike — the "volatility smile/skew" — and by time). It's flagged here because the next lesson's jump-diffusion extension exists specifically to relax it.</td></tr>
     <tr><td>\(dW_t\)</td><td>The infinitesimal increment of a Wiener process (standard Brownian motion) — pure random-walk noise: mean zero, variance \(dt\), no memory of the past, normally distributed. Same object introduced in the Ornstein-Uhlenbeck lesson.</td></tr>
     <tr><td>\(\mu S_t\,dt\)</td><td>The <strong>drift term</strong>: the predictable part of the next instant's price change — the expected return rate times the current price times the length of the instant. Proportional to \(S_t\) itself, which is what makes this "geometric" rather than "arithmetic" Brownian motion — a $1 move means something different at $10 than at $1000, exactly like compounding percentage returns.</td></tr>
     <tr><td>\(\sigma S_t\,dW_t\)</td><td>The <strong>diffusion term</strong>: the random shock, also scaled by the current price, so volatility is expressed as a <em>percentage</em> of price rather than a fixed dollar amount.</td></tr>
@@ -381,7 +385,7 @@
     bet on volatility itself rising or falling, independent of which
     direction the underlying moves — this is the sense in which options let
     you trade "volatility as an asset," which is exactly the connective
-    tissue back to this repo's GARCH/vol-forecasting material: a good
+    tissue back to <!-- DESK:START -->this repo's <!-- DESK:END -->GARCH/vol-forecasting material: a good
     \(\sigma\) forecast is directly a view on vega-exposed positions'
     expected value.
   </p>
@@ -399,6 +403,74 @@
   <div class="tl-eli5">
     <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
     <p>The Greeks are just answers to "how much does the option's price wiggle if one thing changes a little?" Delta: how much it moves if the stock moves a dollar. Gamma: how fast delta itself needs updating. Theta: how much value quietly leaks away just from a day passing, like an ice cube melting. Vega: how much it moves if the market's fear level (volatility) changes. Rho: how much it moves if interest rates change. Each one isolates a single knob and asks "how sensitive is the price to just this?"</p>
+  </div>
+
+  <h3>Delta is not the probability of finishing in the money</h3>
+  <p>
+    A widely repeated shortcut says "a 0.30-delta call has about a 30% chance
+    of finishing in the money." It is a handy rule of thumb for short-dated,
+    low-volatility options, and it is <strong>not an identity</strong>. The
+    formula above already contains both numbers, and they are different
+    lookups into the same bell curve:
+  </p>
+  <div class="tl-math">
+    \[ \Delta_{\text{call}} = N(d_1), \qquad \Pr\nolimits^{\mathbb{Q}}(S_T > K) = N(d_2), \qquad d_1 = d_2 + \sigma\sqrt{T} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>N(d₁)</code><span>delta — the hedge ratio, shares per option</span></div>
+    <div class="tl-eq-chip c2"><code>N(d₂)</code><span>risk-neutral probability the call finishes in the money</span></div>
+    <div class="tl-eq-chip c4"><code>σ√T</code><span>the gap between them — grows with volatility and time</span></div>
+  </div>
+  <p>
+    Because \(d_1\) always sits exactly \(\sigma\sqrt{T}\) above \(d_2\), a
+    call's delta is <strong>always larger</strong> than its risk-neutral
+    probability of finishing in the money (for any \(\sigma, T &gt; 0\)). The
+    gap is small when \(\sigma\sqrt{T}\) is small — a one-week option at 15%
+    vol — and large when it isn't. Delta answers a different question: "how
+    many shares do I hold to hedge this?" That hedge has to account not only
+    for <em>whether</em> the call pays off but for <em>how much</em> it pays
+    in the states where it does, and the big-payoff states (far above the
+    strike) pull the hedge ratio up beyond the bare odds. (Formally,
+    \(N(d_1)\) is also a probability of finishing in the money, but under a
+    different measure — one that uses the stock itself as the unit of
+    account — which is a precise way of saying "weighted by how big the
+    payoff is.")
+  </p>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Three calls where "delta = probability" goes wrong by more each time</h3>
+    <p>All with \(S_0 = 100\) and \(r = 2\%\):</p>
+    <div class="tl-stat-row">
+      <div class="tl-stat blue"><div class="tl-stat-num">0.579 vs 0.500</div><div class="tl-stat-label">K=100, σ=20%, T=1y</div><div class="tl-stat-sub">the worked example above: d₁=0.20, d₂=0.00</div></div>
+      <div class="tl-stat amber"><div class="tl-stat-num">0.599 vs 0.440</div><div class="tl-stat-label">K=100, σ=40%, T=1y</div><div class="tl-stat-sub">d₁=0.25, d₂=−0.15</div></div>
+      <div class="tl-stat purple"><div class="tl-stat-num">0.681 vs 0.353</div><div class="tl-stat-label">K=100, σ=60%, T=2y</div><div class="tl-stat-sub">d₁≈0.471, d₂≈−0.377</div></div>
+    </div>
+    <p>
+      Each tile reads <em>delta vs. risk-neutral P(ITM)</em>. Take the middle
+      one, step by step: \(d_1 = [0 + (0.02 + 0.40^2/2)(1)]/0.40 = 0.10/0.40 =
+      0.25\), so \(\Delta = N(0.25) \approx 0.599\). Then \(d_2 = 0.25 - 0.40 =
+      -0.15\), so \(N(d_2) = N(-0.15) \approx 0.440\). Delta says "about 60";
+      the pricing model's own probability of finishing in the money is
+      <strong>below a coin flip</strong>, about 44%. Read the delta as a
+      probability and you would be off by 16 percentage points — and on the
+      wrong side of 50%. In the long-dated, high-vol third case the delta
+      (0.68) is nearly double the probability (0.35).
+    </p>
+    <p style="margin-bottom:0">
+      And remember both numbers here are <em>risk-neutral</em>: the
+      real-world probability differs again by the risk premium (see the
+      pitfall below). So "delta ≈ chance of expiring in the money" stacks two
+      approximations — \(N(d_1) \approx N(d_2)\), then risk-neutral ≈ real
+      world — and is only safe as a quick gauge when \(\sigma\sqrt{T}\) is
+      small.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Delta is "how many shares do I need to hold to copy this option," not "how likely is it to pay." Imagine a raffle where you win either $1 or $1,000 depending on how high the stock goes. The chance of winning anything might be under half, but because some wins are huge, you still need a lot of shares to copy it. That is why delta comes out bigger than the odds — and the more the stock can swing, the bigger the gap.</p>
   </div>
 
   <div class="tl-box example">
@@ -566,7 +638,136 @@
     </div>
   </div>
 
+  <h3>Premium = intrinsic value + extrinsic value (time value)</h3>
+  <p>
+    The gap between the grey hockey stick and the blue curve has a name, and
+    it splits every option premium into two pieces that behave very
+    differently:
+  </p>
+  <div class="tl-math">
+    \[ \text{Premium} = \underbrace{\max(S - K,\,0)}_{\text{intrinsic (call)}} + \underbrace{\text{extrinsic}}_{\text{time value}}, \qquad \text{put intrinsic} = \max(K - S,\,0) \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>intrinsic</code><span>what exercising right now would be worth — never negative</span></div>
+    <div class="tl-eq-chip c3"><code>extrinsic</code><span>everything else: the price of the chance things improve before expiry</span></div>
+  </div>
+  <p>
+    <strong>Intrinsic value</strong> is mechanical: how far in the money the
+    option is today, and zero if it is out of the money. <strong>Extrinsic
+    value</strong> (time value) is the rest of the premium — the part that
+    depends on \(\sigma\) and \(T\), the part theta eats away day by day, and
+    the part that is zero on the expiry date itself, when the blue curve
+    collapses onto the hockey stick. It is largest at the money, where the
+    outcome is least certain, and shrinks toward zero deep in or deep out of
+    the money.
+  </p>
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Splitting three premiums</h3>
+    <div class="tl-compare">
+      <div class="tl-compare-card blue">
+        <h4>ATM call — the worked example above</h4>
+        <p>\(S=K=100\), \(\sigma=20\%\), \(T=1\)y, \(r=2\%\): premium \(\approx \$8.92\). Intrinsic \(=\max(100-100,0)=0\), so <strong>all $8.92 is extrinsic</strong>.</p>
+      </div>
+      <div class="tl-compare-card purple">
+        <h4>In-the-money call, three months</h4>
+        <p>\(S=110\), \(K=100\), \(\sigma=20\%\), \(T=0.25\)y, \(r=2\%\): premium \(\approx \$11.36\). Intrinsic \(=110-100=\$10.00\); extrinsic \(\approx \$1.36\).</p>
+      </div>
+    </div>
+    <p style="margin-bottom:0">
+      The <strong>put</strong> on that same \(K=100\) strike with \(S=110\) is
+      worth about \(\$0.87\) — intrinsic \(\max(100-110,0)=0\), so all
+      extrinsic. Notice the in-the-money call carries more total premium than
+      the at-the-money one would at the same three-month horizon, yet only a
+      small slice of it is time value: most of what you pay for an in-the-money
+      option is simply the money it is already worth. When a trader says an
+      option is "mostly time value," they mean it is at or out of the money and
+      will lose that value to theta unless the underlying moves.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>An option's price is two things glued together. One part is "what's it worth if I cash it in this second?" — that's intrinsic, and it can't go below zero. The other part is "what's the chance it gets better before time runs out?" — that's extrinsic, or time value. On the very last day there's no time left, so the second part melts to nothing and only the first part is left.</p>
+  </div>
+
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 19 October 1987 and portfolio insurance</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The replicating portfolio, run in size, on the worst day on record</h3>
+    <p>
+      In the mid-1980s a product called <strong>portfolio insurance</strong> became popular with US pension
+      funds and other large institutions. It was the replication argument from this lesson put to work. Instead
+      of buying a put on the index, the insurer <em>manufactured</em> one: hold stocks and cash, and keep
+      adjusting the mix to match the put's delta. In practice the adjusting was done by selling S&amp;P 500
+      index futures as the market fell and buying them back as it rose. To clone a <em>long</em> put, you have
+      to trade exactly like a hedger who is <em>short</em> gamma: sell into declines, buy into rallies.
+    </p>
+    <p>
+      The market was already sliding in the week before; on Friday 16 October the Dow Jones Industrial Average
+      fell about 4.6%. On Monday 19 October the Dow fell <strong>22.6%</strong>, still its largest one-day
+      percentage fall of the modern era, and the S&amp;P 500 fell about 20%. The presidential task force that studied the crash
+      (the Brady Commission) found that portfolio insurers' futures selling, together with other mechanical
+      selling, was a significant source of the day's pressure. Futures traded far below the stocks they were
+      supposed to track, and the stock exchange's order handling was overwhelmed, with many stocks opening late.
+    </p>
+    <p>
+      The model said the hedge could be adjusted a little at a time, at prices close to the last one. On the
+      day, the deltas told the insurers to sell more as prices fell, the selling pushed prices further, and the
+      fills came in far below the prices the model had assumed. The puts they had manufactured cost much more to
+      deliver than the formula said they would, and clients got less protection than they had been promised.
+    </p>
+    <p style="margin-bottom:0">
+      The aftermath is the smile flagged in the pitfalls below. Before 1987, implied volatility on US index options
+      was close to flat across strikes. Since then, out-of-the-money index puts have traded at persistently higher
+      implied volatility than at-the-money options, a pattern documented in the academic literature that followed
+      (Rubinstein's 1994 work on implied trees is the standard reference). The market started charging for a crash
+      that a constant-\(\sigma\), continuous-path model says can essentially never happen.
+    </p>
+  </div>
+
+  <p>The causal chain, link by link. The starred link is this lesson's concept.</p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>The market is already falling: Dow down about 4.6% on Friday 16 October</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ Portfolio insurers · replication</b>Synthetic-put deltas rise as prices fall, so their rules force them to sell more futures</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Futures market</b>Absorbs the selling; futures trade far below the stocks they track</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Stock exchange</b>Arbitrage and other sellers carry the pressure across; order handling is overwhelmed, many stocks open late</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Dow −22.6% in one session; index options carry a skew ever after</div>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The replication argument assumes prices move continuously and that the hedger is a price-taker, able to
+    trade at the model price without moving it. In October 1987 prices gapped, and the hedgers were big enough
+    that their hedging <em>was</em> the price move: a feedback loop the formula has no term for. The constant-\(\sigma\)
+    assumption failed too, visibly and permanently, in the skew that has been on index options ever since.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="iv-over-rv-wider" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>iv-over-rv-wider: implied far above realised was followed by wider markets, not calm ones.</strong>
+    The tempting claim, once you know implied \(\sigma\) is just an input someone chose, is that when it sits far above
+    realised the market is over-insured and will calm down. Tested here, the opposite: VIX ÷ 20-session realised SPX vol
+    in the top decile (88 first days, 2010→) was followed by NAS100 next-5 range <strong>+0.38 ATR [+0.11, +0.62]</strong>,
+    next-20 +0.56, and SPX500 next-20 <strong>+0.67 [+0.13, +1.21]</strong> (next-5 +0.17, null). Realised catches up to
+    implied. A range result, not a direction, and not a test of whether the options themselves were mispriced.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Some big investors bought a "safety plan" that said: every time prices drop a little, sell a little. That works if prices drop slowly. In 1987 everyone with the plan started selling at once, which made prices drop faster, which made the plan say "sell more." The safety plan turned into a push down the hill. Ever since, people pay extra for crash protection, because they learned the hill can be steeper than the maths said.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Almost nobody at a real options desk uses the raw Black-Scholes formula
@@ -666,7 +867,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A replication argument prices the option, no forecast needed.</strong> A continuously rebalanced stock/bond portfolio that clones the option's payoff pins down its price using no-arbitrage logic alone.</span></div>
@@ -675,10 +876,13 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Gamma is why dealer hedging creates market structure.</strong> Rebalancing a short-gamma book means buying into rallies and selling into declines — a mechanical, price-agnostic flow, not a directional bet.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Constant volatility is the model's biggest simplification — and it's false in every real market.</strong> The volatility smile/skew is direct evidence, which is exactly why the next lesson's jump-diffusion extension exists.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>N(d₂) is a risk-neutral probability, not a real-world one.</strong> It's computed as if every asset drifted at the risk-free rate — conflating the two is a classic source of "mispriced option" claims that are really just this confusion.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Premium = intrinsic + extrinsic.</strong> Intrinsic is what exercising now is worth (never negative); extrinsic is time value — the part σ and T set, theta eats, and expiry erases.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Delta is not the probability of finishing in the money.</strong> Δ = N(d₁) always exceeds the risk-neutral P(ITM) = N(d₂), by a gap that grows with σ√T — at σ=40%, T=1y, ATM: delta 0.60 vs. probability 0.44.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Continuous, frictionless rebalancing is an idealization.</strong> Real dealers rehedge in discrete steps and pay costs — the gap between the model and real rehedging is itself a source of the walls and squeezes the OI course studies.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Replication fails when the hedgers are the market.</strong> In October 1987 portfolio insurers' delta-driven futures selling fed the fall it was hedging; prices gapped and the hedge could not be done at model prices. The index skew has been there ever since.<!-- DESK:START --> On this desk's data, implied far above realised was followed by wider ranges, not calm (<code>iv-over-rv-wider</code>, VALIDATED).<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why doesn't the underlying's real-world expected return \(\mu\) appear anywhere in the Black-Scholes formula, even though it's part of the assumed GBM model of the underlying?</summary>
@@ -793,6 +997,19 @@
       first-order approximation and a common quoting language, but a trader
       relying on it without adjustment will systematically misprice
       far-out-of-the-money options and underestimate tail risk.
+    </div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q7. A one-year at-the-money call on a 40%-vol stock has a delta of about 0.60. A colleague says "so it has a 60% chance of paying off." What's wrong, and roughly what is the model's own probability?</summary>
+    <div class="tl-answer">
+      Delta is \(N(d_1)\), the hedge ratio; the risk-neutral probability of
+      finishing in the money is \(N(d_2)\), and \(d_2 = d_1 - \sigma\sqrt{T}\).
+      With \(S=K=100\), \(r=2\%\), \(\sigma=40\%\), \(T=1\): \(d_1 = 0.25\),
+      \(d_2 = -0.15\), so the probability is \(N(-0.15)\approx 0.44\) — below
+      a coin flip, not 60%. Delta is larger because it weights the
+      in-the-money states by how big their payoff is. And 0.44 is still a
+      risk-neutral number; the real-world probability differs again by the
+      risk premium.
     </div>
   </details>
 
@@ -972,5 +1189,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

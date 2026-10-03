@@ -17,7 +17,7 @@
   <h1 class="tl-title">Trigonometry, Logarithms &amp; Exponentials</h1>
   <p class="tl-dek">Sine, cosine, \(e^x\) and \(\ln x\) — the three functions behind cycles, continuous growth, and why log-returns are the honest way to add up performance over time.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Algebra &amp; Functions Refresher</span>
   </div>
@@ -39,6 +39,7 @@
       <li><strong>Continuous compounding</strong>, \(e^{rt}\), is the limit of compounding more and more frequently (yearly → monthly → daily → every instant) — derived directly from the definition of \(e\) as that limit.</li>
       <li><strong>Log-returns are additive across time</strong> — sum daily log-returns and you get the total log-return over the whole period, exactly, with no compounding correction needed. Simple (percentage) returns don't have this property; they compound multiplicatively instead.</li>
       <li>The worked example converts a 5% annual simple rate to its continuously-compounded equivalent (≈4.879%), and sums four daily log-returns to confirm they equal the 4-day total log-return exactly.</li>
+      <li><strong>How it reached trading:</strong> Osborne (1959) argued that log prices, not prices, follow a random walk, and from Black–Scholes–Merton (1973) on, log returns and continuous compounding \(e^{-rT}\) became the desk standard.</li>
     </ul>
   </div>
 
@@ -111,6 +112,25 @@
       continuous growth rate, over what time, would it take to reach \(x\)
       starting from 1?"
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Returns that don't add up</h3>
+    <div class="tl-origin-who">Log prices and continuous compounding · Osborne, 1959 — Samuelson, 1965 — Black, Scholes &amp; Merton, 1973</div>
+    <p>A position that gains 50% and then loses 50% is not flat; it is down 25%. Simple percentage returns do not add across days, averaging them overstates growth, and a rate quoted annually, semi-annually or daily gives a different number for the same deal. All of that makes performance and carry hard to compare and aggregate.</p>
+    <p>In 1959 the physicist M. F. M. Osborne argued that the logarithm of a stock price, not the price, behaves like a random walk, which makes log returns the natural unit. Paul Samuelson's 1965 warrant-pricing work used the same exponential ("geometric") form, and the Black–Scholes–Merton model of 1973 built option pricing on it, with continuous compounding \(e^{-rT}\) as the discount factor. The number \(e\) itself came from a money question: Jacob Bernoulli's 1683 puzzle about crediting interest ever more often.</p>
+    <p>On a desk today, return series are stored as log returns because they add across time and volatility scales with \(\sqrt{t}\); derivatives models discount with \(e^{-rT}\); and sine and cosine come back in the Fourier methods used to price options and to look for cycles.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages">
+        <span class="tl-role-stage on">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+      </div>
+      <dl>
+        <dt>Its job</dt><dd>Putting returns in a form that adds across time (log returns) and every rate on one compounding basis (\(e^{rt}\)), so prices, returns and discount factors combine without bias.</dd>
+        <dt>Takes in</dt><dd>Rearranging and reading formulas as functions (<a href="foundation-algebra-functions.html">Algebra &amp; Functions</a>).</dd>
+        <dt>Hands on to</dt><dd>Return series, option pricing and Fourier methods (<a href="primer-returns-compounding.html">Returns, Log-Returns &amp; Compounding</a>, <a href="black-scholes.html">Black-Scholes-Merton</a>, <a href="foundation-complex-numbers.html">Complex Numbers</a>).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -559,6 +579,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>\(e^{rt}\) is the limit of compounding infinitely often.</strong> It falls straight out of the definition of \(e\) itself — not a separate formula to memorize.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Log-returns are additive across time; simple returns are not.</strong> Sum log-returns for an exact multi-period total; summing simple returns is only a rough approximation, worse the more volatile the series.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A continuously-compounded rate is always a bit smaller than the equivalent simple rate.</strong> 5% simple ≈ 4.879% continuous over one year — the two conventions are not interchangeable numbers.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Logs are how desks make returns add up.</strong> Since Osborne (1959) and Black–Scholes–Merton (1973), models work in log prices and discount with \(e^{-rT}\), because log returns add across time and simple returns do not.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

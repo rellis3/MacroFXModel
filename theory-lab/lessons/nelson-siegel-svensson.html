@@ -17,7 +17,7 @@
   <h1 class="tl-title">Curve Fitting: Nelson-Siegel &amp; Svensson</h1>
   <p class="tl-dek">Bootstrapping gives you a curve that fits your bonds exactly and kinks unpredictably in between them. Nelson-Siegel and Svensson trade a sliver of that exact fit for a lot of stability — four (or six) numbers that describe an entire yield curve's level, slope and hump at once, and that central banks publish every single trading day.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Bootstrapping the Yield Curve</span>
   </div>
@@ -37,6 +37,7 @@
       <li>Svensson (1994) adds a second curvature term with its own decay parameter \(\lambda_2\), giving the curve two independent humps — the extra flexibility central banks like the ECB and the Fed actually use in their own published curves.</li>
       <li>Fitting either model to observed bond yields is a nonlinear least-squares problem with no closed-form solution — solved iteratively, and prone to different local optima depending on the starting guess, especially for \(\lambda\).</li>
       <li>The worked example plugs \(\beta_0=4.5\%,\ \beta_1=-2.0\%,\ \beta_2=1.0\%,\ \lambda=2.0\) into the formula by hand at 1Y, 2Y, 5Y and 10Y, producing 3.11%, 3.50%, 4.05% and 4.29% — a smooth, upward-sloping, gently humped curve generated entirely from four numbers.</li>
+      <li><strong>Real-world episode:</strong> 2022. As the Fed hiked, the level factor rose and the slope factor \(\beta_1\) flipped from negative to positive (the curve inverted), and a hike-then-cut shape put Svensson's second hump to work.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is <em>untested</em> here; reading the flip as a recession signal tested <strong>NULL</strong> (<code>curve-inversion</code>).<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -573,6 +574,90 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 2022, the year the factors moved</h2>
+  <p>
+    Level, slope and curvature are usually described as slow-moving. In 2022 they moved fast enough to watch,
+    and the slope factor changed sign.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>2022–2023: level up, slope flipped, and a second hump</h3>
+    <p>
+      Through 2021 the US Treasury curve had the textbook Nelson-Siegel shape: a short end held near zero by
+      the Fed and a 10-year yield around 1.5%. In this lesson's notation, a low \(\beta_0\) and a negative
+      \(\beta_1\). Inflation had been building through 2021, and in March 2022 the Fed began raising rates. It
+      then moved faster than at any time since the early 1980s, including four 75bp increases in a row from
+      June to November. By December 2022 the target range was 4.25–4.50%.
+    </p>
+    <p>
+      The front of the curve repriced most. The 2-year Treasury yield went from roughly 0.7% at the start of
+      2022 to about 4.4% at the end; the 10-year went from about 1.5% to under 4%. Both rose, but the short end
+      rose more, and from July 2022 the 2-year stayed above the 10-year. In Nelson-Siegel terms, \(\beta_1\)
+      went from negative to positive: \(y(0)=\beta_0+\beta_1\) now sat above \(y(\infty)=\beta_0\). By 2023 the
+      10-year yield was roughly a full percentage point below the 2-year.
+    </p>
+    <p style="margin-bottom:0">
+      The shape that followed is the one this lesson's red box warns about. Treasury bills, priced off the
+      last few hikes, yielded more than 2-year notes, which were priced for cuts to come, which yielded more
+      than 10-year bonds. A curve that rises for a few months and then falls for years is a hike-then-cut path.
+      That is the case Svensson's second term, with its own \(\lambda_2\), was built for. For holders of long
+      bonds, 2022 was one of the worst calendar years on record for US Treasury returns.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Inflation, 2021–22</b>Price rises run far above the Fed's target</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The Fed</b>Forced to catch up: hikes from near zero, including four 75bp moves in a row (Jun–Nov 2022)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Front end</b>2-year yield from about 0.7% to about 4.4% in 2022; the 10-year from about 1.5% to under 4%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the factors</b>\(\beta_0\) (level) rises and \(\beta_1\) (slope) flips from negative to positive: \(y(0)=\beta_0+\beta_1\) now sits above \(\beta_0\)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>The market</b>Prices hikes, then cuts: bills above 2-years above 10-years, a two-regime shape one hump struggles with</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>One of the worst years on record for Treasury holders, and a curve shape the 2010s data never showed</div>
+  </div>
+
+  <p>
+    <strong>Where the textbook version breaks.</strong> Nelson-Siegel describes any single day's curve well.
+    Diebold and Li's step, forecasting the fitted betas with simple time-series models, also assumes the
+    factors' behaviour is stable: that the mean and persistence of \(\beta_0,\beta_1,\beta_2\) estimated on past
+    data still apply. A model fitted on the 2010s, when the short end sat near zero for years, learned a
+    \(\beta_1\) that was almost always negative. 2022 was a regime change in exactly that factor.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Untested here: "the fitted factors can be forecast well enough to trade the curve."</strong>
+    This is the Diebold-Li claim, and the one this lesson makes most tempting. No entry in this desk's ledger
+    tests it. A fair test would refit Nelson-Siegel (fixed \(\lambda\)) to daily Treasury yields, forecast each
+    \(\beta\) one and twelve months ahead with the simple models Diebold and Li used, and score the out-of-sample
+    yield errors against a no-change forecast, with 2022 inside the test window and the cost of the curve
+    trade included.</span>
+  </div>
+  <!-- DESK:END -->
+
+<!-- DESK:START -->
+  <p>
+    The slope flip's most famous reading, inversion as a recession call, has been tested here in its spread
+    form (10-year minus 2-year), not as the fitted \(\beta_1\):
+  </p>
+<!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>curve-inversion: reading the flip as a sell signal fails.</strong> Ten inversion episodes since
+    1976-06. A recession followed within 24 months after <strong>6 of 10 (60%, 95% CI [31%, 83%])</strong>.
+    Forward Nasdaq at +12 months: <strong>+10.5% vs +13.0%</strong> for a month-matched control (p=0.33), and
+    steepening episodes did worse (−1.1% at +12m, n=6). The fitted \(\beta_1\) itself has not been tested.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     <strong>Daily curve publication.</strong> Central banks and Treasury
@@ -664,7 +749,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Parametric fitting trades a little exact-fit for a lot of stability.</strong> Four numbers replace a piecewise construction that can kink between sparse or noisy inputs.</span></div>
@@ -673,9 +758,10 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Fitting is nonlinear least squares, not a closed-form solve.</strong> \(\lambda\) sits inside the exponential, so it's estimated jointly with the betas by iterative optimization.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>\(\lambda\) (and \(\lambda_2\)) are the hard part.</strong> The optimization surface is prone to local minima and near-collinearity between the two decay parameters in Svensson — a single optimizer run from one starting guess isn't enough to trust.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The fitted curve is a smoothed approximation, not an exact reprice.</strong> Small residuals against the input bonds are normal — don't mistake fitting noise for a trading edge.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The factors are stable until the regime changes.</strong> In 2022 the slope factor \(\beta_1\) flipped from negative to positive as the Fed hiked, and a hike-then-cut curve needed Svensson's second hump.<!-- DESK:START --> Forecasting the betas (Diebold-Li) is untested on this desk; reading the inversion as a sell signal is null (curve-inversion).<!-- DESK:END --></span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can a pure bootstrap produce a visibly kinked curve, and how does Nelson-Siegel avoid that by construction?</summary>
@@ -971,5 +1057,8 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

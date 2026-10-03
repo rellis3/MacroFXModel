@@ -17,7 +17,7 @@
   <h1 class="tl-title">Minimum Description Length &amp; Information Criteria</h1>
   <p class="tl-dek">Occam's razor, made countable: the best model is the one that lets you write down the shortest total message — model plus data — in bits. This lesson builds that idea from Shannon's coding theory, then shows it lands on exactly the same number as BIC, derived from a completely different, Bayesian starting point.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — background math, not built or tested anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — background math, not built or tested anywhere in this repo<!-- DESK:END --></span>
     <span>~14 min read</span>
     <span>Prereqs: Entropy, KL Divergence &amp; Mutual Information; Model Selection: AIC &amp; BIC</span>
   </div>
@@ -36,6 +36,7 @@
     <li>Rissanen's classical result: encoding each of \(k\) real-valued parameters to the precision the data can support costs about \(\tfrac12\log_2(n)\) bits — which, after matching units, is <em>exactly</em> BIC's \(k\ln(n)\) penalty (from the <a href="model-selection-aic-bic.html">AIC &amp; BIC</a> lesson) up to a constant scale factor.</li>
     <li>The worked example reuses that lesson's exact numbers (\(n=100\), Model A: \(k=2\), Model B: \(k=5\)) and shows the two-part code length for each model is <em>literally proportional</em> to its BIC value — \(BIC = 2\ln(2)\cdot DL\) — so minimizing one always picks the same model as minimizing the other.</li>
     <li>Schwarz derived BIC from Bayesian asymptotics in 1978; Rissanen derived (essentially) the same penalty from pure coding theory the same year, independently. Two different starting points, the same practical rule — the "aha" this lesson is built around.</li>
+    <li>How it reached trading: Rissanen's 1978 MDL criterion matches BIC, and mainly reached markets through BIC-style lag, factor and regime choices — plus the habit of asking whether a backtest compresses the data or memorises it.</li>
   </ul>
   </div>
 
@@ -56,7 +57,7 @@
   immediately convey: a complex model that doesn't actually describe the data any better than a
   simple one is, quite concretely, a <em>longer message</em> — you'd need more bits to write it down
   and transmit it to someone else, model and all. That framing is Occam's razor with a ruler attached
-  to it, and it's exactly the argument this repo's own overfitting concerns are built around: a model
+  to it, and it's exactly the core overfitting argument<!-- DESK:START --> this repo's own concerns are built around<!-- DESK:END -->: a model
   with parameters that don't earn their keep isn't just "risky" in some vague sense, it is
   demonstrably a less efficient description of the same data.
   </p>
@@ -78,6 +79,25 @@
     expensive message you could possibly send, because you had to describe every last idiosyncrasy
     of this one sample instead of the underlying pattern.
     </p>
+  </div>
+
+  <div class="tl-origin">
+  <div class="tl-origin-label">How it reached trading</div>
+  <h3>A backtest that memorised history</h3>
+  <div class="tl-origin-who">Minimum description length · Rissanen, 1978 · in markets mostly via its BIC-equivalent penalty — a research tool rather than a market standard</div>
+  <p>A strategy with enough rules and parameters can fit any history. Traders have long had the instinct that such a strategy has memorised the past rather than learned from it, but needed a way to charge a model for its own complexity on the same scale as its fit.</p>
+  <p>Jorma Rissanen, a compression engineer at IBM, gave that charge a precise form in 1978: the best model minimises the bits needed to describe the model plus the data encoded with it. His penalty matches Schwarz's BIC, and that is mainly how it reached finance — through BIC-style choices of lag length, factor count and number of regimes. MDL itself has stayed a research-desk tool rather than a market standard, used in places such as segmenting a series into regimes or change points.</p>
+  <p>On a desk today, its lasting use is as a question to ask of any backtest: does this model compress the data — capture real structure in fewer bits — or does it only reproduce the history it was fitted to?</p>
+  <div class="tl-role">
+    <div class="tl-role-stages">
+      <span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span>
+    </div>
+    <dl>
+      <dt>Its job</dt><dd>Ask whether a model genuinely compresses the data or just memorises it, charging every rule and parameter for its keep.</dd>
+      <dt>Takes in</dt><dd>Likelihood-based model comparison and information measures (<a href="model-selection-aic-bic.html">AIC &amp; BIC</a>, <a href="entropy-kl-mutual-information.html">Entropy, KL &amp; Mutual Information</a>).</dd>
+      <dt>Hands on to</dt><dd>Out-of-sample validation and overfitting checks (<a href="walk-forward-purged-cv.html">Walk-Forward &amp; Purged CV</a>, <a href="sharpe-family-deflated.html">Deflated Sharpe</a>).</dd>
+    </dl>
+  </div>
   </div>
 
   <div class="tl-eli5">
@@ -443,6 +463,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two unrelated derivations, one answer.</strong> Schwarz's 1978 Bayesian asymptotic argument and Rissanen's 1978 coding-theory argument — independently, the same year — land on the same practical penalty.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The bridge is specific to BIC, not AIC.</strong> AIC targets a different (out-of-sample, KL-divergence) quantity — don't extend the exact BIC-MDL equivalence into a claim about AIC too.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A shorter code is a relative, not absolute, verdict.</strong> Same caveat as BIC itself: the winning model compressed this dataset best among the candidates tried — that's not the same claim as "this model is true," or that it produces trading edge.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>How it reached trading: does the strategy compress, or memorise?</strong> MDL reached markets mostly through its BIC-equivalent penalty for lags, factors and regimes; its lasting use is as an overfitting test for parameter-heavy backtests.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

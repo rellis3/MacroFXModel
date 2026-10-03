@@ -17,7 +17,7 @@
   <h1 class="tl-title">Open Interest Walls, Max Pain &amp; Squeeze Trading</h1>
   <p class="tl-dek">The dealer-hedging mechanism from the previous lesson, applied to a real open-interest ladder — call walls, put walls, max pain, and the genuine (and honestly incomplete) economic logic behind why price is said to gravitate toward it.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — not built or tested in this repo</span>
+    <span class="tl-status concept">CONCEPT<!-- DESK:START --> — not built or tested in this repo<!-- DESK:END --></span>
     <span>~16 min read</span>
     <span>Prereqs: Gamma Exposure &amp; Dealer Hedging Flows</span>
   </div>
@@ -37,6 +37,7 @@
       <li>The worked example computes total pain by hand at four candidate strikes on a small seven-strike chain and finds the minimum away from both the call wall and the put wall — the max-pain strike is rarely one of the outlier walls themselves.</li>
       <li>The put/call open-interest ratio and OI skew are simple aggregate summaries of the same chain — cheap, useful context, and no more predictive than any other positioning snapshot on their own.</li>
       <li>A wall is a snapshot, not a fixed target: open interest opens and closes continuously, so a wall that held yesterday can be materially weaker — or already gone — by the next test.</li>
+      <li><strong>Real-world episode:</strong> in January 2021 GameStop's call chain was overrun and rebuilt higher within days, and the stock went from under $20 to an intraday $483. Whether dealer hedging of those calls (a "gamma squeeze") drove it is contested.<!-- DESK:START --> Tested here: price does <strong>not</strong> pin to max pain (<code>oi-max-pain</code>, NULL), and walls as range fences are still untested.<!-- DESK:END --></li>
     </ul>
   </div>
 
@@ -457,6 +458,101 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: GameStop, January 2021</h2>
+  <p>
+    The scenario above has a wall that thins out and breaks over three quiet days. In January 2021 a single stock's call
+    chain was overrun, rebuilt higher and overrun again within days, in front of the whole market.
+  </p>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>January 2021: a call ladder, a short squeeze, and a contested "gamma squeeze"</h3>
+    <p>
+      Going into 2021, GameStop, a struggling video-game retailer, was one of the most heavily shorted stocks in the US,
+      with reported short interest above 100% of its free float. A wave of retail buying, organised partly on online
+      forums, went into the shares and especially into <strong>short-dated, out-of-the-money call options</strong>.
+    </p>
+    <p>
+      Read through this lesson, the chain became a stack of call walls above the price. By the previous lesson's
+      mechanism, each one is fuel on the way up for whoever wrote those calls and delta-hedges them: as price climbs
+      toward a big call strike, delta rises and the hedge means buying shares. As each strike was overrun, buyers moved
+      up to higher strikes, so a fresh wall above became fresh fuel. That is the "wall-break momentum read" in the next
+      section, run on repeat.
+    </p>
+    <p>
+      The share price went from under $20 at the start of January to an <strong>intraday high of $483 on 28
+      January</strong>. Melvin Capital, a hedge fund that was short the stock, needed an emergency capital infusion of
+      about $2.75 billion from Citadel and Point72. On 28 January Robinhood and several other brokers restricted
+      customers to selling the stock, not buying it; Robinhood said its clearing-house deposit requirement had jumped.
+      The price fell sharply from its high that day.
+    </p>
+    <p style="margin-bottom:0">
+      What drove it is <strong>genuinely contested</strong>. The SEC staff report on the episode (October 2021)
+      attributed the rise mainly to a broad wave of buying, and found that short sellers buying to cover were only a
+      small part of it. How much of that buying was dealers hedging the calls they had written, the "gamma squeeze" of
+      the popular account, has never been measured in public with any precision. The call walls are a plausible
+      accelerant. They are not a proven engine. And whatever the max-pain strike was on each of those expiries, it
+      described who would lose least, nothing more: nobody was enforcing it.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Retail wave</b>Buys shares and short-dated out-of-the-money calls in a heavily shorted stock</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ Call writers · this lesson</b>The call wall as fuel: delta climbs as price nears each big strike, so a hedger must buy shares (size contested)</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Call buyers</b>Roll up to higher strikes as each is overrun; a new wall above becomes new fuel</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Short sellers</b>Losses and margin calls grow; some must buy to close</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Brokers</b>Clearing deposits jump; on 28 January several restrict buying</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Intraday high of $483, then a sharp fall; Melvin needs about $2.75bn</div>
+  </div>
+  <p style="font-size:13px;color:var(--text3);margin-top:-6px">★ marks this lesson's concept. How big that link was in this episode is the contested part.</p>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The wall-and-max-pain picture treats the chain as a <strong>snapshot</strong>: a fixed stock of open interest, held by
+    dealers who hedge continuously, on a stock anyone can borrow and trade. In January 2021 the open interest was rebuilt
+    higher every day, the short interest was larger than the float, and on 28 January buying was partly switched off at
+    some brokers. A wall or max-pain level computed from one morning's chain described a market that no longer existed by
+    the afternoon. That is the "live snapshot" pitfall below, at its most extreme.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="oi-max-pain" data-evidence-date="2026-09-10">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>oi-max-pain: price does not pin to max pain into expiry.</strong> Tested properly for the first time
+    2026-09-10: <strong>null</strong>. The OI publish-lag timing risk was tested directly and survives; DTE, gamma, sign
+    convention and spot basis were all verified. Max pain is a level to know about, not a magnet.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Walls as range fences: not yet tested here (queued).</strong> The tempting read is that price stays
+    between the put wall and the call wall while both stand. A fair test would compute the walls point-in-time from that
+    morning's open interest, count how often the session stays inside them, and compare that with randomly placed bands
+    of the same width under matched volatility, with the rule fixed before looking.</span>
+  </div>
+  <!-- DESK:END -->
+  <!-- DESK:START -->
+  <p>
+    One neighbouring result already constrains the wall story. The desk's dealer-gamma study (<code>gex-range</code>)
+    tested whether walls pull price toward them, and that directional layer was <strong>falsified at 48.8%
+    out-of-sample against a 49.9% placebo</strong>. Walls and max pain describe where positions sit. On this desk's
+    data, neither has shown that it moves price.
+  </p>
+  <!-- DESK:END -->
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Max pain is like knowing which score would make the fewest people lose their bets on a football match. It's interesting, but the players don't care, and the match doesn't drift toward that score. With GameStop, so many people kept placing new bets higher up that the "walls" kept getting knocked down and rebuilt, and nobody can say for sure how much of the push came from the people who had sold those bets.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Two genuinely distinct ways of trading the same underlying structure
@@ -520,7 +616,7 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <p>A wall is like a crowd standing near a doorway — it only actually blocks the door if those people are the type who'll rush to hold it shut. Some of the "crowd" counted in the open-interest number is really just people standing nearby for unrelated reasons (a static bet, a hedge on something else entirely) and won't lift a finger to defend the level. The headline number counts everyone; only some of them actually do the pushing.</p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Max pain minimizes an aggregate, whole-chain payout — not a single strike's own OI.</strong> Evaluate total pain across every strike for each candidate settlement price, then take the minimum.</span></div>
@@ -529,9 +625,10 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Walls and max pain sketch a range, not a certainty.</strong> The worked example's 240–260 range with a mild pull toward 250 is a read of one snapshot, not a forecast.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A wall is a live snapshot, not a fixed structural level.</strong> It weakens or vanishes as positions close — re-check it every session, never assume it persists.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Headline OI overstates true mechanical strength whenever non-hedging participants hold a meaningful share of it</strong> — and that share is never directly observable.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><!-- DESK:START --><strong>Price does not pin to max pain on this desk's data (oi-max-pain, NULL),</strong> and the wall-magnet direction was falsified at 48.8% against a 49.9% placebo. <!-- DESK:END -->Walls can also fail the other way: GameStop in January 2021 saw them overrun and rebuilt higher within days. Whether dealer hedging of them drove the squeeze is contested, not settled.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why is max pain computed by summing pain across every strike in the chain for each candidate settlement price, rather than just comparing one strike's own call and put OI to the current price?</summary>
@@ -726,5 +823,8 @@ TotalPain      204,000  127,500  89,500   74,500   83,000   113,500  191,000
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Recurrent Networks: LSTM &amp; GRU — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a hand-worked scalar LSTM example, and a 5-question self-test?<a href="recurrent-networks-lstm-gru.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Forecasting from the whole path, not a fixed window</h2>
+      <p class="sl-sub">LSTM · into return and order-book prediction in the late 2010s (Fischer &amp; Krauss, 2018; Sirignano &amp; Cont, 2019)</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>ARIMA and GARCH use fixed lags and a near-linear rule; the shape of a path has to be hand-crafted as a feature. An LSTM carries learned memory along the series instead.</p>
+        <p>Fischer &amp; Krauss (2018) used LSTMs to rank S&amp;P 500 stocks for next-day returns (1992–2015). They beat a random forest, but the returns faded after about 2010. Sirignano &amp; Cont (2019) trained one LSTM on order-book data across hundreds of stocks and beat stock-by-stock models.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> turn a sequence of bars or order-book updates into a forecast, keeping the memory of the path that helps.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">A hidden state carries the past forward</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">→</div><div><h4>One step at a time</h4><p>A recurrent network reads a sequence in order — day 1, then day 2, then day 3 — rather than seeing a whole window as one flat, order-blind snapshot the way a feedforward network or a gradient-boosted tree does.</p></div></div>
@@ -37,8 +50,8 @@
       <div class="sl-quote">Every tree-based or classical-statistics lesson elsewhere in this curriculum treats a row of features as a single, order-independent snapshot — shuffle the rows and a random forest doesn't notice or care. A time series is the opposite kind of object: the order of the observations <em>is</em> the information, and a recurrent network is the first architecture in this category built specifically around that fact.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The recurrence, unrolled one step at a time</h2>
       <p class="sl-sub">At every step: take the previous note, blend in the new input, squash, done. Step through it.</p>
       <div class="sl-card">
@@ -64,8 +77,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Backpropagation through time: the same weight, multiplied again and again</h2>
       <p class="sl-sub">Training unrolls the recurrence across every step and backprops the loss all the way to step 1.</p>
       <div class="sl-row"><div class="sl-box">∂h_T ⁄ ∂h₁</div><div class="sl-arrow">=</div><div class="sl-box amber">W_h · W_h · W_h · … (T−1 copies)</div></div>
@@ -77,8 +90,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Three architectures, side by side</h2>
       <p class="sl-sub">Same job — carry information through time. Very different answers to "how does a gradient survive the trip back?"</p>
       <div class="sl-card">
@@ -151,8 +164,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The gap, plotted</h2>
       <p class="sl-sub">Gradient magnitude carried backward through 15 time steps — plain RNN versus LSTM cell state.</p>
       <div class="sl-card">
@@ -174,8 +187,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Inside the LSTM: three gates, one conveyor belt</h2>
       <p class="sl-sub">Each gate is itself a small learned network — a sigmoid output between 0 and 1, read as "how much."</p>
       <div class="sl-icard-grid">
@@ -191,8 +204,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">GRU: the same additive idea, fewer moving parts</h2>
       <p class="sl-sub">Two gates instead of three, one merged state instead of two.</p>
       <div class="sl-compare">
@@ -209,8 +222,8 @@
       <div class="sl-quote">If the LSTM is a note-taker with a separate long-term notebook (the cell state) and a short summary card they hand off (the hidden state), the GRU is a note-taker who keeps just one notebook and decides, page by page, how much of the old page to keep versus overwrite. Simpler machinery, usually just as good, occasionally not — and cheaper to run either way.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Longer sequences make the gap worse</h2>
       <p class="sl-sub">Drag the slider to change how far back the gradient has to travel. Watch both curves — and the two readouts below them.</p>
       <div class="sl-card">
@@ -237,8 +250,8 @@
       <p class="sl-p">Drag the slider longer and the gap widens: the plain RNN's curve doesn't just start lower, it collapses toward zero almost immediately, while the LSTM's stays meaningfully above zero even at 50 steps back. That gap — not the exact numbers, which are illustrative fixed decay rates, not measurements from a trained model — is the entire practical argument for gating.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Put a number on the vanishing</h2>
       <p class="sl-sub">A plain RNN's backprop gradient shrinks by roughly the same decay factor at every step back through time.</p>
       <div class="sl-card">
@@ -262,22 +275,24 @@
       <p class="sl-p">This is the same mechanism as the chart two slides back, made numeric: γ is the per-step decay a plain RNN's backprop gradient effectively applies, and γⁿ is what's left of the original gradient magnitude after n steps of repeated multiplication. There is no equivalent single-number decay for an LSTM's cell-state gradient — it's governed by a learned, per-unit forget gate rather than one fixed constant, which is precisely the point.</p>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Not obsolete — a real, current tradeoff</h2>
       <p class="sl-p">RNNs and LSTMs were the dominant sequence architecture before 2017 — the next lesson explains why that changed for long sequences. Attention lets every output position look directly at every input position, instead of relaying information step by step through a chain that still degrades gradually even with gating.</p>
       <div class="sl-callout amber">
         <div class="sl-callout-label">A real tradeoff, not an obsolete method</div>
         <p>That's a genuine, current tradeoff — not a claim that LSTMs are obsolete. For shorter sequences, streaming or online settings that must process one step at a time as it arrives, and lower-compute environments where a transformer's data and compute appetite isn't affordable, a well-tuned LSTM or GRU remains a genuinely reasonable, still-current choice. A rolling 20-bar EUR/USD return window feeding a small LSTM forecaster, for instance, processes returns in order and can in principle learn to hold onto a large early move rather than treating it as one interchangeable column among twenty — whether that structural edge beats a well-tuned feedforward or gradient-boosted model on the same lagged features is a separate, empirical question.</p>
       </div>
+      <!-- DESK:START -->
       <div class="sl-callout purple">
         <div class="sl-callout-label">Where this needs qualifying — checked against this repo's actual code</div>
         <p>The full lesson labels this topic "CONCEPT — explained here, not built or tested anywhere in this repo." That claim was checked directly against the current codebase for this visual guide: across all ~435 Python files, every JS trading bot, and every dependency manifest, there is no PyTorch, TensorFlow, or Keras usage and no real LSTM/GRU/RNN implementation anywhere. The handful of surface matches on a raw text search turn out to be false positives — variable names like <code>rnOnPips</code> and <code>_pendingRun</code>, or citations to external LSTM research in a planning document — not actual recurrent-network code. The claim still holds: this remains a concept lesson, not a description of anything running in production here.</p>
       </div>
+      <!-- DESK:END -->
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -327,8 +342,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>A plain RNN carries a hidden state forward step by step, reusing the same weights at every step — in principle giving it access to arbitrarily long history.</p></div>
@@ -337,6 +352,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The LSTM adds a separate cell state, updated additively and protected by forget, input, and output gates — an "error highway" that lets gradients survive far longer.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The GRU merges the cell and hidden state into one and uses just two gates instead of three — fewer parameters, often comparable performance, genuinely dataset-dependent.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Gating mitigates vanishing gradients — it doesn't eliminate them for very long sequences. That remaining gap is exactly what motivates attention, next.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Fischer &amp; Krauss (2018) on S&amp;P 500 stocks, where the edge faded after 2010, and Sirignano &amp; Cont (2019) on order books. Simpler models remain the benchmark.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

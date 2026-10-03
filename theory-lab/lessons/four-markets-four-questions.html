@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Four Markets, Four Questions — Theory Lab — MacroFX</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/theory.css">
+<script>window.MathJax = { tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] } };</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  /* Local: the "four questions" reference table and the scenario disagreement line. */
+  .fm-table{width:100%;border-collapse:collapse;font-size:13px;margin:16px 0}
+  .fm-table th{text-align:left;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border2);padding:8px 10px}
+  .fm-table td{border-bottom:1px solid var(--border);padding:9px 10px;color:var(--text2);vertical-align:top}
+  .fm-table td:first-child{color:var(--text);font-weight:600;white-space:nowrap}
+  .fm-wrap{overflow-x:auto}
+  .fm-disagree{margin-top:10px;padding:10px 12px;border-radius:6px;border:1px solid var(--amber-bd);background:var(--amber-bg);font-size:13px;color:var(--text2)}
+  .fm-disagree b{color:var(--amber)}
+</style>
+</head>
+<body>
+<div id="page">
+  <div class="tl-crumb"><a href="../hub.html">Theory Lab</a> / How Markets Talk to Each Other / Four Markets, Four Questions</div>
+  <div class="tl-glosslink">🔎 <a href="../glossary.html">Notation Glossary</a> — what σ, Δ, θ and the rest actually mean</div>
+  <div class="tl-kicker">How Markets Talk to Each Other · Lesson 5 of 5</div>
+  <h1 class="tl-title">Four Markets, Four Questions</h1>
+  <p class="tl-dek">Stocks, Treasuries, options and currencies aren't four opinions on the same question — each answers a different one. Ask each market its own question, read the answers side by side, and the interesting days are the ones where they disagree.</p>
+  <div class="tl-meta">
+    <span class="tl-status concept">CONCEPT — explained here<!-- DESK:START -->; desk verdicts quoted where tested<!-- DESK:END --></span>
+    <span>~18 min read</span>
+    <span>Prereqs: lessons 1–4 of this sequence</span>
+  </div>
+
+  <button type="button" id="eli5-toggle" class="tl-eli5-toggle">🧒 Explain Like I'm 5</button>
+  <button type="button" id="tts-toggle" class="tl-tts-toggle">🔊 Listen to this lesson</button>
+  <div class="tl-callout">
+    <strong>Prefer pictures to prose?</strong> Try the <a href="four-markets-four-questions-micro.html">Visual Guide</a> — the same ground covered here, broken into short interactive slides.
+  </div>
+  <div class="tl-tldr">
+    <div class="tl-tldr-label">TL;DR</div>
+    <ul>
+      <li><strong>Equities</strong> answer "how do investors feel about growth and earnings?" — mood. <strong>Treasuries</strong> answer "how much do people want safety, and what rate path is expected?" <strong>Options (the VIX)</strong> answer "how uncertain is everyone?" — size, not sign. <strong>FX</strong> answers "whose money do people want?" — relative rates and flows.</li>
+      <li>A yield rise is ambiguous until you split it: <strong>nominal = real + breakeven inflation</strong>. Which leg moved tells you whether it's a growth/policy story or an inflation story.</li>
+      <li>On most days the four answers agree. The days worth studying are the disagreements — stocks and bonds falling together, or the "safe" Treasury being sold in a crash.</li>
+      <li><strong>Read them in the same moment, not in sequence.</strong><!-- DESK:START --> This desk tested the "one market leads the other" claims and they came back null: <code>rates-pivot-lead</code>, <code>front-end-shock</code>, <code>curve-inversion</code>.<!-- DESK:END --></li>
+      <!-- DESK:START --><li>What did survive testing is <em>range</em>, read inside a market: <code>vix-inversion</code> and <code>breadth-all-down</code> are validated, and neither says which way.</li><!-- DESK:END -->
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 01</span></div>
+  <h2>Why this matters</h2>
+  <p>
+    This is the capstone of <strong>How Markets Talk to Each Other</strong>.
+    Lesson 1 followed <a href="domino-chain-cross-asset.html">one shock as it
+    dominoes across the board</a>; lesson 2 looked at
+    <a href="investor-mood-forced-selling.html">mood and forced selling</a> in
+    equities; lesson 3 showed that <a href="vix-uncertainty-not-fear.html">the
+    VIX measures uncertainty, not fear</a>; lesson 4 read
+    <a href="yield-curve-growth-expectations.html">the yield curve as a growth
+    forecast</a>. Each lesson took one market and asked what it was really
+    saying. This one puts them on one board.
+  </p>
+  <p>
+    The trap on a busy screen is to treat every number as a vote on the same
+    question — "is today good or bad?" — and then get confused when the votes
+    don't line up. They aren't supposed to line up, because they aren't
+    answering the same question. A stock index prices future earnings; a
+    Treasury yield prices the path of interest rates and the demand for a safe
+    asset; an option prices the size of future moves; an exchange rate prices
+    one country's money against another's. Once you know which question each
+    one answers, disagreement stops being noise and becomes information.
+  </p>
+
+  <div class="tl-box intuition">
+    <div class="tl-icon-badge blue">💡</div>
+    <div class="tl-box-label">Plain-English intuition</div>
+    <h3>Four witnesses, each an expert on one thing</h3>
+    <p>
+      Picture four witnesses to the same event. One is a mood reader, one a
+      banker who knows where interest rates are heading, one an insurer who
+      prices risk, and one a money-changer who sees which currencies people
+      are queuing for. Ask the insurer "is it going up or down?" and you'll
+      get a useless answer — that isn't their expertise. Ask them "how big a
+      move should I insure against?" and they're the best witness you have.
+    </p>
+    <p style="margin-bottom:0">
+      Most of the time the four tell compatible stories. When one contradicts
+      the rest — the banker selling the safest asset in the room while the
+      mood reader panics — that's the witness to listen to most closely,
+      because something unusual is forcing their hand.
+    </p>
+  </div>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>Four friends watch the same football match. One tells you how excited the crowd is, one tells you how much people want to stay safe inside, one tells you how wild the game might get, and one tells you which team's scarves everyone's buying. They're all watching the same match — but each one only answers their own question. Listen to each for what they know.</p>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 02</span></div>
+  <h2>The four questions</h2>
+  <div class="fm-wrap">
+  <table class="fm-table">
+    <tr><th>Market</th><th>The question it answers</th><th>Read it from</th><th>What it can't tell you</th></tr>
+    <tr><td>📈 Equities</td><td>How do investors feel about growth and future earnings? (mood)</td><td>Index level and breadth — is it a few names or everything?</td><td>Why. A fall can be growth fear, rate fear or forced selling.</td></tr>
+    <tr><td>🏛️ Treasuries</td><td>How much do people want safety, and what rate path is expected?</td><td>2-year (policy path), 10-year, the 10s2s curve, and the 10-year split into real + breakeven</td><td>Growth vs inflation — <em>unless</em> you split the yield.</td></tr>
+    <tr><td>🎲 Options / VIX</td><td>How uncertain is everyone? (the size of coming moves)</td><td>VIX level, VIX vs VIX3M, implied vs realised</td><td>Direction. Vol is size, never sign.</td></tr>
+    <tr><td>💱 FX</td><td>Whose money do people want? (relative rates and flows)</td><td>The dollar against everything; havens (JPY, CHF) vs growth-linked currencies (AUD)</td><td>On its own, whether a move is a rates story or a risk story.</td></tr>
+  </table>
+  </div>
+  <p>
+    Two more witnesses are worth knowing. <strong>Gold</strong> answers more
+    than one question at once, which is exactly why it's hard to read<!-- DESK:START --> — this
+    desk's own breakdown found gold is driven by real rates in some periods,
+    the dollar in others, and by neither almost half the time (see Section
+    06)<!-- DESK:END -->. <strong>Credit spreads</strong> — what companies pay over Treasuries
+    — answer "how worried are lenders about getting paid back?"<!-- DESK:START -->; this desk
+    has a first, marginal reading on them but nothing to act on yet<!-- DESK:END -->. And
+    there's a fifth kind of market people sometimes add: <strong>prediction
+    markets</strong>, which quote explicit probabilities. The idea is
+    appealing, but the macro contracts there are thin — a "probability" from
+    a handful of trades isn't a consensus — so they're not on this board.
+  </p>
+
+  <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>The math, step by step</h2>
+  <p>
+    Very little arithmetic is needed to read the four answers properly, but
+    three pieces do real work.
+  </p>
+
+  <h3>1. Splitting a yield move: real vs inflation</h3>
+  <p>
+    The classic ambiguity: "yields are up — is that because growth is
+    strong, or because inflation is coming?" You can't tell from the nominal
+    yield alone. But the US also issues inflation-protected Treasuries
+    (TIPS), whose yield is a <em>real</em> yield. The gap between the two is
+    the market's <em>breakeven</em> inflation rate:
+  </p>
+  <div class="tl-math">
+    \[ y^{\text{nom}}_{10} \;\approx\; y^{\text{real}}_{10} \;+\; \text{BEI}_{10} \qquad\Rightarrow\qquad \Delta y^{\text{nom}} \approx \Delta y^{\text{real}} + \Delta\text{BEI} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>yⁿᵒᵐ₁₀</code><span>the ordinary 10-year Treasury yield</span></div>
+    <div class="tl-eq-chip c2"><code>yʳᵉᵃˡ₁₀</code><span>the 10-year TIPS yield — compensation after inflation; moves with growth and the expected policy path</span></div>
+    <div class="tl-eq-chip c4"><code>BEI₁₀</code><span>breakeven inflation — the inflation rate at which the two bonds would pay the same</span></div>
+  </div>
+  <p>
+    The split turns a guess into arithmetic: whichever leg moved more is the
+    driver. If the real yield did most of the moving, it's a growth or
+    policy-path story; if breakevens did, it's an inflation-expectations
+    story. (Strictly, the breakeven also carries an inflation risk premium
+    and a liquidity difference between the two bonds — it's market-implied
+    expectations plus noise, not a survey.)
+  </p>
+
+  <div class="tl-formula-parts">
+    <div class="tl-fp blue"><div class="tl-fp-term">|Δreal| ≥ |ΔBEI|</div><div class="tl-fp-name">Real-rate driven</div><div class="tl-fp-desc">Growth or the expected policy path is moving the yield</div></div>
+    <div class="tl-fp amber"><div class="tl-fp-term">|ΔBEI| &gt; |Δreal|</div><div class="tl-fp-name">Inflation driven</div><div class="tl-fp-desc">Expected inflation is moving the yield</div></div>
+    <div class="tl-fp purple"><div class="tl-fp-term">same day?</div><div class="tl-fp-name">Check the dates</div><div class="tl-fp-desc">Only compare legs that printed on the same day</div></div>
+  </div>
+
+  <h3>2. The curve: what the front end and the long end each answer</h3>
+  <div class="tl-math">
+    \[ \text{10s2s} = y_{10} - y_{2} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>y₂</code><span>the 2-year yield — mostly the expected policy rate over the next two years</span></div>
+    <div class="tl-eq-chip c3"><code>y₁₀</code><span>the 10-year yield — the longer path plus a term premium</span></div>
+    <div class="tl-eq-chip c2"><code>10s2s &lt; 0</code><span>an inverted curve — the market expects rates to be lower later than now</span></div>
+  </div>
+  <p>
+    The Treasury market's two questions live at different ends. The front end
+    answers "what will the central bank do?"; the long end mixes that with
+    growth, inflation and the demand for safety. Lesson 4 covers the curve
+    in depth<!-- DESK:START --> — including the desk's verdict that the inversion's famous
+    equity signal doesn't survive a control<!-- DESK:END -->.
+  </p>
+
+  <h3>3. Options: turning uncertainty into a size</h3>
+  <div class="tl-math">
+    \[ \sigma_{\text{1m}} \approx \frac{\text{VIX}}{\sqrt{12}} \qquad \sigma_{\text{1d}} \approx \frac{\text{VIX}}{16} \]
+  </div>
+  <div class="tl-eq-break">
+    <div class="tl-eq-chip c1"><code>σ₁ₘ</code><span>the one-month, one-standard-deviation S&amp;P move in %</span></div>
+    <div class="tl-eq-chip c4"><code>÷16</code><span>√252 trading days — the "rule of 16" for a one-day move</span></div>
+  </div>
+  <p>
+    The options witness answers in percent, not in up or down. See
+    <a href="vix-uncertainty-not-fear.html">lesson 3</a> for the full
+    derivation and a calculator.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>When the price of borrowing money for ten years goes up, it could be because people think things will cost more later (inflation), or because the economy is zooming and the bank will keep rates high (growth). There's a special bond that strips out the "things cost more" part. Compare the two, and you can see which one moved — like checking whether a cake got bigger because of more flour or more icing.</p>
+  </div>
+
+  <div class="tl-symbols"><table>
+    <tr><td>\(y^{\text{nom}}_{10}\)</td><td>Nominal 10-year Treasury yield.</td></tr>
+    <tr><td>\(y^{\text{real}}_{10}\)</td><td>10-year TIPS (real) yield.</td></tr>
+    <tr><td>BEI</td><td>Breakeven inflation: nominal minus real yield at the same maturity.</td></tr>
+    <tr><td>\(y_2,\ y_{10}\)</td><td>2-year and 10-year Treasury yields.</td></tr>
+    <tr><td>10s2s</td><td>The curve slope, 10-year minus 2-year yield.</td></tr>
+    <tr><td>\(\Delta\)</td><td>Change over the period (a day, a week).</td></tr>
+    <tr><td>bp</td><td>Basis point: 0.01 percentage point.</td></tr>
+    <tr><td>VIX, VIX3M</td><td>30-day and 3-month implied volatility of the S&amp;P 500.</td></tr>
+    <tr><td>\(\sigma_{\text{1m}},\ \sigma_{\text{1d}}\)</td><td>One-month and one-day one-standard-deviation move.</td></tr>
+    <tr><td>ATR</td><td>Average True Range — a common yardstick for range.</td></tr>
+  </table></div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
+  <h2>The board: what each market should say</h2>
+  <p>
+    Pick a scenario. Each panel lights up with the answer that market
+    <em>typically</em> gives — a stylised textbook pattern, not a forecast —
+    and the strip underneath names where the markets disagree, which is
+    usually where the information is.
+  </p>
+
+  <div class="tl-chart interactive">
+    <div class="tl-chart-label">Four markets, four questions — pick a scenario</div>
+    <svg id="fm-svg" viewBox="0 0 640 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="A two-by-two board of four panels — equities, Treasuries, options and FX — each showing the question that market answers and the typical answer it gives in the selected scenario, with an up, down or mixed marker coloured by whether the answer is risk-on, risk-off or mixed.">
+      <g id="fm-panels"></g>
+    </svg>
+    <div class="tl-btnrow" style="margin-top:12px">
+      <button type="button" class="tl-btn active" data-sc="calm">Calm / risk-on</button>
+      <button type="button" class="tl-btn" data-sc="riskoff">Risk-off</button>
+      <button type="button" class="tl-btn" data-sc="inflation">Inflation scare</button>
+      <button type="button" class="tl-btn" data-sc="growth">Growth scare</button>
+      <button type="button" class="tl-btn" data-sc="liquidity">Liquidity squeeze</button>
+    </div>
+    <div class="fm-disagree" id="fm-disagree">—</div>
+    <div class="tl-legend">
+      <span><i style="background:var(--green)"></i>risk-on answer</span>
+      <span><i style="background:var(--red)"></i>risk-off answer</span>
+      <span><i style="background:var(--amber)"></i>breaks the usual pattern</span>
+      <span><i style="background:var(--blue)"></i>neutral / mixed</span>
+    </div>
+    <div class="tl-chart-caption">
+      These are the conventional textbook answers, used here to teach what each question sounds like. They are <strong>same-moment descriptions</strong>, not predictions<!-- DESK:START -->: this desk tested several "one market leads the next" links and found them null (Section 06)<!-- DESK:END -->. Real days are messier, and the markets don't always pick a scenario cleanly.
+    </div>
+  </div>
+
+  <div class="tl-box example">
+    <div class="tl-icon-badge purple">🧮</div>
+    <div class="tl-box-label">Worked example</div>
+    <h3>Reading one (hypothetical) day, question by question</h3>
+    <p>
+      An illustrative day, made up for practice: S&amp;P 500 −1.8%; 10-year
+      yield +12bp, of which the real yield +10bp and breakeven +2bp; 2-year
+      +14bp; VIX 16 → 21 with VIX3M at 22; the dollar up against most
+      currencies; the yen flat.
+    </p>
+    <div class="tl-steps">
+      <div class="tl-step"><div class="tl-step-num">1</div><div class="tl-step-body">
+        <h4>Equities — mood?</h4>
+        <p>Down 1.8%: mood soured. On its own that's all it tells you.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">2</div><div class="tl-step-body">
+        <h4>Treasuries — safety and the rate path?</h4>
+        <p>Yields <em>up</em> on a down day for stocks: no flight to safety. Split it: |Δreal| = 10 ≥ |ΔBEI| = 2 → <strong>real-rate driven</strong>. The 2-year rose most (+14bp) → the market priced a more hawkish policy path. This is a rates repricing, not an inflation scare.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">3</div><div class="tl-step-body">
+        <h4>Options — how uncertain?</h4>
+        <p>VIX 21 → one-month 1σ ≈ 21/√12 ≈ 6.1%. But 21 &lt; 22: still contango, so the validated inversion flag hasn't fired. More uncertainty, not a "something is happening now" signal.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">4</div><div class="tl-step-body">
+        <h4>FX — whose money?</h4>
+        <p>The dollar up broadly while the yen is flat: consistent with relative rates (US yields rising) rather than a haven scramble, where the yen would usually be bid too.</p>
+      </div></div>
+      <div class="tl-step"><div class="tl-step-num">5</div><div class="tl-step-body">
+        <h4>Put it together — and stop there</h4>
+        <p>Four answers, one story: a hawkish rates shock, not a panic. What you should <em>not</em> do is forecast from it<!-- DESK:START -->: this desk found a 2-year shock is not followed by a volatile FX week (if anything, calmer), and yield moves don't predict the next move in FX or indices<!-- DESK:END -->.</p>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 05</span></div>
+  <h2>When the markets disagree</h2>
+  <p>
+    The most informative disagreement is the Treasury market refusing to act
+    as a haven. In an ordinary risk-off move, investors sell stocks and buy
+    Treasuries, so yields fall. When stocks and Treasuries are sold
+    <em>together</em>, someone is being forced to raise cash from everything
+    they own — and the safest, most liquid asset is the easiest to sell.
+  </p>
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Shock</b>A sudden, global need for cash</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Funds &amp; foreign holders</b>Must meet redemptions and margin calls: sell what's liquid — including Treasuries</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dealers</b>Balance sheets fill up; can't absorb the selling, so they widen prices</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Treasuries</b>Yields rise while stocks fall — the haven isn't acting like one</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Dollar borrowers</b>Must buy dollars to repay: the dollar rises against almost everything</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Central bank</b>Forced to step in as buyer and lender of last resort</div>
+  </div>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>March 2020: the bond market told the truth</h3>
+    <p>
+      As the pandemic hit, stocks fell hard and the VIX closed at a record
+      82.69 on 16 March 2020. The options market's answer was clear: extreme
+      uncertainty. The equity market's answer was clear: terrible mood. But for
+      several days in mid-March the Treasury market gave the "wrong" answer —
+      the 10-year yield <em>rose</em> while stocks fell, and the dollar surged
+      against almost every currency.
+    </p>
+    <p>
+      That disagreement was the most important reading on the board. It said
+      this wasn't an ordinary flight to safety; it was a scramble for cash and
+      for dollars, so severe that even Treasuries were being sold to raise it.
+      The policy response targeted exactly that: on 15 March the Federal
+      Reserve cut rates to near zero and announced large purchases of
+      Treasuries and mortgage securities, and enhanced its dollar swap lines
+      with other central banks; within days the swap lines were extended to
+      more central banks, and on 23 March the purchases were made open-ended.
+      The S&amp;P 500's closing low of that crash came on 23 March.
+    </p>
+    <p style="margin-bottom:0">
+      The lesson isn't that bonds predicted the bottom. It's that the Treasury
+      market answered its own question — "how much do people want safety, and
+      can they get it?" — and its odd answer correctly identified a
+      <em>liquidity</em> problem, which needed a liquidity fix.
+    </p>
+  </div>
+
+  <div class="tl-story" id="story-2">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>August 2019: bonds and stocks answered different questions</h3>
+    <p style="margin-bottom:0">
+      In mid-August 2019 the 10-year yield dipped below the 2-year for the
+      first time since 2007, and US stocks fell sharply that day. The bond
+      market was answering <em>its</em> question — "where is the policy rate
+      heading?" — with "lower". It was right that a recession followed: the
+      NBER later dated a peak to February 2020, though the cause was a
+      pandemic no yield curve could have forecast. The equity market was
+      answering a different question — "what are future earnings worth?"<!-- DESK:START --> —
+      and on this desk's own count the Nasdaq rose 48.5% over the following
+      year<!-- DESK:END -->. Both markets were right about their own question. Anyone who
+      treated the curve's answer as an answer to the stock market's question
+      was badly wrong.
+    </p>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-section-mark"><span>Section 06</span></div>
+  <h2>What this desk found when it tested the links</h2>
+  <p>
+    Five verdicts used across this sequence bear directly on how the four
+    markets relate. Read them together and a pattern jumps out.
+  </p>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="curve-inversion" data-evidence-date="2026-10-01">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>Treasuries → equities: the inverted curve</strong> (<code>curve-inversion</code>). 12,581 daily observations 1976–2026 collapse to TEN inversion episodes. Recession within 24 months followed 6 of 10 — 60%, 95% CI [31%, 83%], an interval that contains a coin flip; within 12 months only 3 of 10. Forward Nasdaq against a month-matched control: +12m +10.5% vs +13.0% (p=0.33). The mirror killed it: steepening episodes returned −1.1% at +12m on n=6, worse than inversions. 2019-08: right about the recession, and +48.5% on the Nasdaq over the following year.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null" data-evidence="front-end-shock" data-evidence-date="2026-09-17">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>Treasuries → equities, intraday: "confirm the rates pivot, then pre-position"</strong> (<code>rates-pivot-lead</code>). 2,430 confirmed 2-year pivots, 2,010 de-clustered events at 1h: signed Nasdaq return −0.005% vs control [−0.021, +0.012]. Null at 1h, 2h and 4h, in both directions and both halves, and well powered. A confirmed rates low is followed by an up-move 54.1% of the time — and the base rate is 54.1%. Rates and equities move in the same bar, not in sequence.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict null">
+    <span class="tl-verdict-tag">Desk test: nothing found</span>
+    <span><strong>Treasuries → FX: "a front-end shock means a volatile FX week"</strong> (<code>front-end-shock</code>). Null on EUR/USD, USD/JPY and GBP/USD (~211 shocks each). After a 2Y UP shock EUR/USD and GBP/USD ran <em>calmer</em> (−0.34 and −0.28 ATR, CIs clear of zero); after a 2Y DOWN shock USD/JPY was marginally wider (+0.33).</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated" data-evidence="breadth-all-down" data-evidence-date="2026-09-18">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>Options, read inside its own market: VIX above VIX3M → a wider week</strong> (<code>vix-inversion</code>). First day of inversion → next-5-session range vs matched controls: SPX500 +0.76 ATR, NAS100 +0.82, USD/JPY +0.44, XAU/USD +0.43 (86 entries since 2008, all CIs clear of zero). Range, not direction.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <div class="tl-verdict validated">
+    <span class="tl-verdict-tag">Desk test: held up</span>
+    <span><strong>Equities, read inside its own market: every index down → a wider week</strong> (<code>breadth-all-down</code>). All six indices down on one session (n=1,002 since 2008): next-5 range SPX500 +0.31 ATR [+0.17, +0.45], NAS100 +0.26 [+0.15, +0.38]. Two in a row (n=243): +0.55 and +0.35. Direction five sessions later 58–61% up, the ordinary drift. A range fact, not a bounce call.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <!-- DESK:START -->
+  <p>
+    Two more entries round out the picture: stocks and bonds falling together
+    is recorded only as <strong>context</strong> (<code>stock-bond-flip</code>:
+    71 episodes since 2008, median 5 sessions, only 36 clean flips — too few
+    to test what follows), and gold is <strong>context</strong> too
+    (<code>which-gold</code>: across 689 rolling windows, rates gold 19%,
+    dollar gold 18%, both 16%, neither 45%). "Fear buys gold" was tested
+    directly and is <strong>null</strong> (<code>fear-gold</code>, see
+    lesson 3).
+  </p>
+
+  <div class="tl-compare">
+    <div class="tl-compare-card green">
+      <h4>What the desk learned: validated</h4>
+      <p><strong>Range, read inside one market.</strong></p>
+      <ul>
+        <li><code>vix-inversion</code> — VIX above VIX3M → a wider week (SPX500 +0.76 ATR, 86 entries)</li>
+        <li><code>mv-vixterm-range</code> — reproduced over a month (+0.52 [0.38, 0.88] SPX500)</li>
+        <li><code>iv-over-rv-wider</code> — implied far above realised → wider, not calmer</li>
+        <li><code>breadth-all-down</code> — every index down → a wider week (+0.31 [+0.17, +0.45])</li>
+      </ul>
+    </div>
+    <div class="tl-compare-card amber">
+      <h4>What the desk learned: null</h4>
+      <p><strong>One market forecasting another, or forecasting direction.</strong></p>
+      <ul>
+        <li><code>curve-inversion</code> — no forward equity edge; 6 of 10, CI [31%, 83%]</li>
+        <li><code>rates-pivot-lead</code> — 54.1% hit rate, 54.1% base rate</li>
+        <li><code>front-end-shock</code> — FX calmer, not wilder, after a hawkish 2Y shock</li>
+        <li><code>yields-to-fx-direction</code> — forward coupling null; real only in the same bar</li>
+        <li><code>fear-gold</code> — no fear bid in gold on average</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tl-solid blue">
+    <strong>The capstone finding:</strong> markets talk to each other <em>at the same moment</em>, not in a queue. Read all four answers together to understand today. Don't use one market's answer to forecast another's next move — every time this desk tested that, it came back null. What does carry forward is <em>range</em>, read inside a market, and it never says which way.
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 07</span></div>
+  <h2>How practitioners actually use this</h2>
+  <div class="tl-icard-grid">
+    <div class="tl-icard">
+      <div class="tl-icon-badge blue">🗂️</div>
+      <h4>Label the question, not just the number</h4>
+      <p>Next to each market on a dashboard, write the question it answers. It stops "VIX up" being read as "stocks down", and "yields up" being read as "good news" or "bad news" without the split.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge amber">🔍</div>
+      <h4>Hunt for the disagreement</h4>
+      <p>Agreement is the boring case. The first question each morning: which market is telling a different story from the others, and what would force it to?</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge purple">✂️</div>
+      <h4>Always split the yield</h4>
+      <p>A 10-year move without its real/breakeven split is half a reading. Growth story and inflation story call for very different conclusions about everything else.</p>
+    </div>
+    <div class="tl-icard">
+      <div class="tl-icon-badge green">📏</div>
+      <h4>Use range, not direction</h4>
+      <p><!-- DESK:START -->The tested, carry-forward signals here are range signals — a first-day VIX inversion, a breadth wipe-out. <!-- DESK:END -->Size positions for a wider week; don't turn them into a call on which way.</p>
+    </div>
+  </div>
+
+  <!-- DESK:START -->
+  <div class="tl-box repo">
+    <div class="tl-icon-badge green">🧩</div>
+    <div class="tl-box-label">Where this connects to MacroFXModel</div>
+    <p style="margin-bottom:0">
+      Every verdict quoted here is an entry in <code>js/deskEvidence.js</code>. The real/breakeven split is already computed on the rates page, which names the dominant leg and refuses to compare legs that printed on different days. Labelling each market on the board with the question it answers is an open presentation idea, not yet built. Prediction markets are not wired in at all.
+    </p>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-box pitfall">
+    <div class="tl-icon-badge red">⚠️</div>
+    <div class="tl-box-label">Common pitfalls</div>
+    <ul>
+      <li><strong>Asking a market the wrong question.</strong> The VIX can't tell you direction; the curve can't tell you what stocks will do next year.</li>
+      <li><strong>Reading a yield move without the split.</strong> "Yields up" is a growth story or an inflation story, and they mean different things for every other market.</li>
+      <li><strong>Treating one market as a leading indicator of another.</strong><!-- DESK:START --> Tested here three ways for rates → equities and rates → FX; null each time.<!-- DESK:END --> They move together in the same bar.</li>
+      <li><strong>Assuming Treasuries always rally in a crash.</strong> In a scramble for cash, the safest asset is sold too — March 2020.</li>
+      <li><strong>Quoting a thin market's "probability".</strong> A price from a handful of trades isn't a consensus.</li>
+    </ul>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 08</span></div>
+  <h2>Key Takeaways</h2>
+  <div class="tl-takeaways">
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Each market answers its own question.</strong> Equities: mood. Treasuries: safety demand and the rate path. Options: uncertainty (size). FX: whose money people want.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Split the yield: nominal ≈ real + breakeven.</strong> Whichever leg moved more is the driver.</span></div>
+    <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Disagreement is the signal.</strong> Treasuries sold in a crash means a scramble for cash, not ordinary risk-off.</span></div>
+    <!-- DESK:START --><div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Range read inside a market is validated.</strong> First-day VIX inversion: SPX500 +0.76 ATR next week. Every index down: +0.31 [+0.17, +0.45]. Neither says which way.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The inverted curve's equity signal is null.</strong> 6 of 10 inversions followed by recession within 24 months, CI [31%, 83%]; forward Nasdaq no different from a matched control.</span></div><!-- DESK:END -->
+    <!-- DESK:START --><div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Rates don't lead equities or FX.</strong> rates-pivot-lead: 54.1% hit rate against a 54.1% base rate. front-end-shock: FX was calmer, not wilder, after a hawkish 2Y shock.</span></div><!-- DESK:END -->
+  </div>
+
+  <div class="tl-section-mark"><span>Section 09</span></div>
+  <h2>Self-test</h2>
+  <details class="tl-quiz">
+    <summary>Q1. Match each market to its question: equities, Treasuries, options, FX.</summary>
+    <div class="tl-answer">Equities: how investors feel about growth and earnings (mood). Treasuries: how much safety is wanted and what rate path is expected. Options/VIX: how uncertain everyone is — the size of coming moves. FX: whose money people want — relative rates and flows.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q2. The 10-year yield rose 15bp. The real yield rose 3bp. What drove it?</summary>
+    <div class="tl-answer">Breakevens rose about 12bp (15 − 3), so |ΔBEI| &gt; |Δreal|: an inflation-expectations story, not a growth or policy-path story.</div>
+  </details>
+  <details class="tl-quiz">
+    <summary>Q3. Stocks are down 4% and the 10-year yield is up. Why is that unusual, and what might it mean?</summary>
+    <div class="tl-answer">In ordinary risk-off, Treasuries are bought as a haven and yields fall. Yields rising in a crash means Treasuries are being sold too — either an inflation/rates scare (check the split) or, in an extreme, a scramble for cash where even the safest asset is sold, as in March 2020.</div>
+  </details>
+  <!-- DESK:START -->
+  <details class="tl-quiz">
+    <summary>Q4. A trader says: "The 2-year just put in a confirmed low — Nasdaq will rally next, get in now." What did this desk find?</summary>
+    <div class="tl-answer">Null. Across 2,010 de-clustered events the signed Nasdaq return at 1h was −0.005% vs control [−0.021, +0.012]; a confirmed rates low was followed by an up-move 54.1% of the time, exactly the 54.1% base rate. Rates and equities move in the same bar, not in sequence.</div>
+  </details>
+  <!-- DESK:END -->
+  <details class="tl-quiz">
+    <summary>Q5. In August 2019 the curve inverted and the Nasdaq then rose 48.5% over the year. Was the bond market "wrong"?</summary>
+    <div class="tl-answer">No — it answered a different question. The curve priced a lower future policy rate, and a recession did follow (driven by the pandemic). It never answered "what will stocks do?".<!-- DESK:START --> Over fifty years the desk found inversions' forward equity returns don't separate from a matched control.<!-- DESK:END --></div>
+  </details>
+  <!-- DESK:START -->
+  <details class="tl-quiz">
+    <summary>Q6. Which of this desk's cross-market findings survived testing, and what do they have in common?</summary>
+    <div class="tl-answer">The validated ones — vix-inversion, mv-vixterm-range, iv-over-rv-wider, breadth-all-down — are all <em>range</em> findings read inside a market, and none says which way. The nulls — curve-inversion, rates-pivot-lead, front-end-shock, yields-to-fx-direction, fear-gold — are all one market forecasting another's direction or behaviour.</div>
+  </details>
+  <!-- DESK:END -->
+
+  <details class="tl-section-collapse">
+  <summary><h2>Further reading</h2></summary>
+  <ul class="tl-refs">
+    <li>The sequence: <a href="domino-chain-cross-asset.html">The Domino Effect</a> · <a href="investor-mood-forced-selling.html">Mood, the Quote and Forced Selling</a> · <a href="vix-uncertainty-not-fear.html">The VIX Is an Uncertainty Index</a> · <a href="yield-curve-growth-expectations.html">What the Yield Curve Says About Growth</a>.</li>
+    <li>Related lessons: <a href="central-bank-policy.html">Central Bank Policy</a> · <a href="bond-pricing-ytm.html">Bond Pricing &amp; YTM</a> · <a href="collateral-margin-repo-markets.html">Collateral, Margin &amp; Repo Markets</a>.</li>
+    <li>Board of Governors of the Federal Reserve System, press releases of 15, 19 and 23 March 2020 — the rate cut, asset purchases and dollar swap-line actions described in the March 2020 story.</li>
+    <li>Bank for International Settlements, <em>Annual Economic Report</em>, 2020 — an account of the March 2020 dash for cash and the strains in the Treasury market.</li>
+    <li>Arturo Estrella &amp; Frederic S. Mishkin, "The Yield Curve as a Predictor of U.S. Recessions", <em>Current Issues in Economics and Finance</em>, Federal Reserve Bank of New York, 1996 — the classic case for the curve as a recession signal (contrast with the desk's equity null).</li>
+  </ul>
+  </details>
+
+  <div class="tl-footer-nav">
+    <a href="yield-curve-growth-expectations.html">← What the Yield Curve Says About Growth</a>
+    <a href="../hub.html">Theory Lab hub →</a>
+  </div>
+</div>
+<script>
+(function(){
+  // Four-market board. Each scenario gives every panel: tone (on/off/odd/mix),
+  // a glyph, a headline answer and a two-line detail. Stylised textbook answers.
+  var svg = document.getElementById('fm-svg');
+  var g = document.getElementById('fm-panels');
+  if (!svg || !g) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var MK = [
+    { key:'eq',  name:'EQUITIES',      q:'How do investors feel about growth?' },
+    { key:'ust', name:'TREASURIES',    q:'How much safety? What rate path?' },
+    { key:'vix', name:'OPTIONS / VIX', q:'How uncertain is everyone?' },
+    { key:'fx',  name:'FX',            q:'Whose money do people want?' }
+  ];
+  var TONE = { on:'var(--green)', off:'var(--red)', odd:'var(--amber)', mix:'var(--blue)' };
+  var SC = {
+    calm: {
+      eq:  ['on','▲','Mood: confident','Indices up, broad participation',''],
+      ust: ['mix','◆','Little demand for safety','Yields steady to a little higher','No haven bid'],
+      vix: ['on','▼','Uncertainty: low','VIX drifts lower','Curve in contango (VIX < VIX3M)'],
+      fx:  ['on','▲','Risk appetite','Havens (JPY, CHF) soften','Growth-linked AUD firmer'],
+      note:'<b>No disagreement.</b> Every market tells the same story — the boring case. Agreement carries little information.'
+    },
+    riskoff: {
+      eq:  ['off','▼','Mood: fearful','Broad selling','Watch for every index closing down'],
+      ust: ['off','▼','Safety demand: high','Treasuries bought, yields fall','The haven is acting like a haven'],
+      vix: ['off','▲','Uncertainty: rising','VIX up','Watch for VIX above VIX3M'],
+      fx:  ['off','▲','Havens wanted','USD, JPY, CHF up','AUD down'],
+      note:'<b>Usually none.</b> If gold is up too, don’t assume fear is the reason — look for the rates or dollar leg first.'
+    },
+    inflation: {
+      eq:  ['off','▼','Mood: worried','Higher rates hit valuations',''],
+      ust: ['odd','▲','Bonds ARE the problem','Yields up, breakevens lead','|ΔBEI| > |Δreal|'],
+      vix: ['off','▲','Uncertainty: up','VIX higher',''],
+      fx:  ['mix','◆','Relative rates','USD tends to firm if the Fed','is expected to stay hawkish'],
+      note:'<b>Stocks and bonds fall together</b> — the usual hedge fails.'
+    },
+    growth: {
+      eq:  ['off','▼','Mood: earnings fear','Cyclicals lead lower',''],
+      ust: ['off','▼','Rate path: cuts priced','2Y falls faster than 10Y','Real yields and breakevens both lower'],
+      vix: ['off','▲','Uncertainty: up','VIX higher, often less violently',''],
+      fx:  ['off','▼','Growth currencies sold','AUD and commodity FX down','JPY firmer'],
+      note:'<b>Bonds rally for a different reason than in risk-off:</b> the rate path, not panic. The split shows it — the real yield falls, and the front end leads.'
+    },
+    liquidity: {
+      eq:  ['off','▼','Mood: panic','Everything sold',''],
+      ust: ['odd','▲','Even the haven is sold','Yields UP in a crash','Dealers can’t absorb the selling'],
+      vix: ['off','▲','Uncertainty: extreme','VIX spikes','VIX far above VIX3M'],
+      fx:  ['odd','▲','Everyone needs dollars','USD up against everything','Even the yen can lag the dollar'],
+      note:'<b>Treasuries break the pattern:</b> yields rise while stocks crash. The haven not acting like one is the tell that this is about cash, not risk — March 2020.'
+    }
+  };
+  var POS = [[12,12],[328,12],[12,196],[328,196]];
+  var W = 300, Hh = 172;
+
+  function el(tag, attrs, text){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  var refs = {};
+  MK.forEach(function(m, i){
+    var x = POS[i][0], y = POS[i][1];
+    var grp = el('g', {});
+    var rect = el('rect', {x:x, y:y, width:W, height:Hh, rx:10, style:'fill:var(--s2);stroke:var(--border2);stroke-width:1.5'});
+    grp.appendChild(rect);
+    grp.appendChild(el('text', {x:x+14, y:y+24, 'font-size':11, 'font-weight':700, 'letter-spacing':'.08em', 'font-family':"'DM Mono',monospace", fill:'var(--text)'}, m.name));
+    grp.appendChild(el('text', {x:x+14, y:y+42, 'font-size':11, 'font-style':'italic', 'font-family':"'DM Sans',sans-serif", fill:'var(--text3)'}, m.q));
+    var circ = el('circle', {cx:x+W-38, cy:y+30, r:20, style:'fill:var(--s1);stroke-width:2'});
+    var glyph = el('text', {x:x+W-38, y:y+37, 'text-anchor':'middle', 'font-size':20, 'font-weight':700, 'font-family':"'DM Sans',sans-serif"}, '');
+    var head = el('text', {x:x+14, y:y+86, 'font-size':16, 'font-weight':700, 'font-family':"'DM Sans',sans-serif", fill:'var(--text)'}, '');
+    var l1 = el('text', {x:x+14, y:y+116, 'font-size':12.5, 'font-family':"'DM Sans',sans-serif", fill:'var(--text2)'}, '');
+    var l2 = el('text', {x:x+14, y:y+138, 'font-size':12.5, 'font-family':"'DM Sans',sans-serif", fill:'var(--text2)'}, '');
+    var bar = el('rect', {x:x, y:y+Hh-6, width:W, height:6, rx:3});
+    [circ, glyph, head, l1, l2, bar].forEach(function(n){ grp.appendChild(n); });
+    g.appendChild(grp);
+    refs[m.key] = {rect:rect, circ:circ, glyph:glyph, head:head, l1:l1, l2:l2, bar:bar};
+  });
+
+  var noteEl = document.getElementById('fm-disagree');
+  function show(name){
+    var s = SC[name];
+    MK.forEach(function(m){
+      var d = s[m.key], r = refs[m.key], c = TONE[d[0]];
+      r.circ.setAttribute('style', 'fill:var(--s1);stroke:' + c + ';stroke-width:2');
+      r.glyph.setAttribute('fill', c); r.glyph.textContent = d[1];
+      r.head.textContent = d[2]; r.l1.textContent = d[3]; r.l2.textContent = d[4];
+      r.bar.setAttribute('style', 'fill:' + c + ';opacity:.85');
+      r.rect.setAttribute('style', 'fill:var(--s2);stroke:' + (d[0] === 'odd' ? 'var(--amber)' : 'var(--border2)') + ';stroke-width:' + (d[0] === 'odd' ? 2.5 : 1.5));
+    });
+    noteEl.innerHTML = s.note;
+  }
+  document.querySelectorAll('[data-sc]').forEach(function(b){
+    b.addEventListener('click', function(){
+      document.querySelectorAll('[data-sc]').forEach(function(o){ o.classList.remove('active'); });
+      b.classList.add('active'); show(b.getAttribute('data-sc'));
+    });
+  });
+  show('calm');
+})();
+</script>
+<script>
+(function(){
+  var btn = document.getElementById('eli5-toggle');
+  if (!btn) return;
+  var KEY = 'theoryLabELI5';
+
+  function apply(on){
+    document.body.classList.toggle('eli5-on', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? '✓ Simple mode on' : "🧒 Explain Like I'm 5";
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem(KEY); } catch(e) {}
+  apply(saved === '1');
+
+  btn.addEventListener('click', function(){
+    var on = !document.body.classList.contains('eli5-on');
+    apply(on);
+    try { localStorage.setItem(KEY, on ? '1' : '0'); } catch(e) {}
+  });
+})();
+</script>
+<script src="../assets/progress.js?v=1" defer></script>
+<script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
+</body>
+</html>

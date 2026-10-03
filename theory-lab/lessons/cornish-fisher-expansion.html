@@ -17,7 +17,7 @@
   <h1 class="tl-title">Cornish-Fisher Expansion</h1>
   <p class="tl-dek">The textbook Gaussian VaR formula quietly assumes returns are symmetric and normally-tailed — the Cornish-Fisher expansion adjusts the quantile itself for skew and fat tails, without ever refitting the whole distribution.</p>
   <div class="tl-meta">
-    <span class="tl-status concept">CONCEPT — explains a quantile-adjustment technique; not built or used anywhere in this repo</span>
+    <span class="tl-status concept">CONCEPT — explains a quantile-adjustment technique<!-- DESK:START -->; not built or used anywhere in this repo<!-- DESK:END --></span>
     <span>~13 min read</span>
     <span>Prereqs: <a href="coherent-risk-measures.html">Coherent Risk Measures: VaR, CVaR &amp; the Artzner Axioms</a> (this lesson builds directly on its VaR definition)</span>
   </div>
@@ -36,6 +36,7 @@
       <li>For a realistic negative-skew, fat-tailed return series (\(S=-0.5\), \(K=3\)), the worked example below shows the CF-adjusted 95% VaR coming out about 4.7% larger than the plain Gaussian VaR — a meaningfully more conservative number, computed from the exact same \(\mu\) and \(\sigma\).</li>
       <li>The adjustment only touches the quantile \(z_\alpha \to z_{CF}\); it never requires refitting a whole new distribution to the data, which is why it's cheap to bolt onto an existing Gaussian VaR pipeline.</li>
       <li><strong>Honest limitation:</strong> for sufficiently extreme skew/kurtosis combinations, the Cornish-Fisher transform stops producing a valid, monotonically increasing quantile function — it is a useful correction within a bounded range of inputs, not a universal fix for non-normality.</li>
+      <li><strong>Real-world episode:</strong> in March 2020 (S&amp;P 500 −12% on March 16) bank VaR models calibrated on a calm year recorded exceptions far more often than 1 in 100, and the ECB temporarily cut the capital multiplier those exceptions would have raised. Cornish-Fisher can only correct for the skew and kurtosis your sample has seen.</li>
     </ul>
   </div>
 
@@ -310,7 +311,7 @@
     fat-tailed profile, since the strategy's own construction caps the upside per period while leaving the
     downside comparatively open). Reporting VaR the plain Gaussian way is, in effect, pretending the desk's
     returns look like a coin flip around a fair average — the exact opposite of the strategy's actual return
-    shape. A risk manager who recomputes the same VaR limit using the desk's own historical skewness and
+    shape. A risk manager who recomputes the same VaR limit using that desk's own historical skewness and
     kurtosis in the Cornish-Fisher adjustment gets a materially larger, more honest number for how bad a
     genuinely bad day could be — without needing to build or fit an entirely new distributional model, just
     by feeding two already-computable sample statistics into the adjusted quantile formula above.
@@ -318,6 +319,81 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: March 2020, when VaR models met the tail</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A calm year in the window, a crash on the screen</h3>
+    <p>
+      Going into 2020, the year of returns sitting in most risk models' look-back windows was a quiet one. A
+      daily VaR estimated on that year, whatever the method, had seen small \(\sigma\) and few extreme days, so
+      its sample \(S\) and \(K\) described a mild distribution.
+    </p>
+    <p>
+      Then the pandemic reached Western markets. On <strong>March 16, 2020</strong> the S&amp;P 500 fell about
+      <strong>12%</strong> in one session, its worst day since October 1987, and the VIX closed above 82, a
+      record. Days of 5% and more, up and down, came one after another. Bank trading desks that report a 99%
+      daily VaR expect to see a loss bigger than it on about 1 day in 100. In March 2020 many of them recorded
+      exceptions far more often than that, clustered in a few weeks.
+    </p>
+    <p>
+      Under the Basel rules, too many exceptions in a year raise the multiplier a bank applies to its VaR when
+      it sets market-risk capital. So the models' miss was about to raise capital requirements in the middle of
+      the crisis, exactly when banks were being asked to keep markets running. In April 2020 the
+      <strong>European Central Bank</strong> temporarily reduced that multiplier for the banks it supervises,
+      citing the extraordinary market volatility, so that the exceptions would not push capital up mid-crisis.
+    </p>
+    <p style="margin-bottom:0">
+      Most banks' regulatory VaR is historical simulation, not a Gaussian formula with a Cornish-Fisher
+      adjustment. But the problem is the same one this lesson's pitfalls warn about. The Cornish-Fisher
+      quantile in Section 02 is built from the \(S\) and \(K\) of the sample you feed it. Feed it a calm year
+      and \(z_{CF}\) sits close to \(z_\alpha\): the correction can only fix the tail shape the window has seen.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Calm look-back window</b>A quiet year of returns: small σ, mild skew, few extreme days</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · the moments fed in</b>Sample S and K describe a mild tail, so the adjusted quantile barely moves from the Gaussian one</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Pandemic shock</b>March 2020: S&amp;P 500 −12% on March 16, VIX closes above 82</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Bank risk desks</b>Must count and report VaR exceptions, which pile up far beyond 1 in 100</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>Capital multipliers set to rise mid-crisis; the ECB temporarily cuts them in April 2020</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept. Cornish-Fisher corrects the quantile for skew and kurtosis, but
+    only for the skew and kurtosis that are in the sample.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You decide how big an umbrella to carry by looking at last year's weather. Last year was dry, so even after you "allow for storms" the umbrella you pick is small. Then the biggest storm in thirty years arrives. Your rule for allowing for storms was fine; it just had no storms to learn from.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The expansion assumes the distribution is fixed and that its sample skewness and kurtosis are good estimates
+    of the true ones. March 2020 broke both. The distribution changed under the model in a matter of days, and the
+    higher moments that matter most are the ones a calm window estimates worst, because they are driven by the
+    few extreme days it doesn't contain. A bigger \(K\) fed in after the fact would also have pushed many inputs
+    toward the non-monotonic region the pitfalls below describe.
+  </p>
+
+  <!-- DESK:START -->
+  <div class="tl-verdict untested">
+    <span class="tl-verdict-tag">Not tested here</span>
+    <span><strong>Not tested here: "adjust VaR for skew and kurtosis and the tail number becomes honest."</strong>
+    This desk does not compute a Cornish-Fisher VaR, so there is no record to grade. A fair test would forecast a
+    daily 99% VaR both ways (Gaussian and Cornish-Fisher, same rolling window) on the desk's instruments, out of
+    sample, and count exceptions against the expected 1% with a Kupiec-style test. It would report crisis windows
+    such as March 2020 separately from calm ones, and count how often the fitted \((S, K)\) fell outside the range
+    where the expansion stays monotonic.</span>
+  </div>
+  <!-- DESK:END -->
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <ul>
     <li>
@@ -390,7 +466,7 @@
     </ul>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Cornish-Fisher adjusts the quantile, not the formula.</strong> \(z_\alpha \to z_{CF}\) is the entire change — the VaR formula \(-\mu-z\sigma\) stays exactly the same.</span></div>
@@ -398,10 +474,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example is concrete: 2.066% vs. 1.974%.</strong> A realistic S=−0.5, K=3 return series produces a CF-adjusted 95% VaR about 4.7% larger than the plain Gaussian number, from identical μ and σ.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The expansion can become non-monotonic for extreme skew/kurtosis.</strong> Outside a bounded range of (S,K), the "adjusted quantile" it produces is not a valid quantile function at all — a documented limitation, not a universal fix.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It's only as good as the sample S and K feeding it.</strong> Higher-order moments are noisy in short samples — a badly estimated skew or kurtosis can push the adjustment the wrong way.</span></div>
-    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique precisely; it is not a claim that Cornish-Fisher-adjusted VaR is computed or used anywhere in this project.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A calm window gives a calm correction (March 2020).</strong> Sample S and K from a quiet year leave \(z_{CF}\) close to \(z_\alpha\); when the tail arrived, VaR exceptions piled up far beyond 1 in 100.<!-- DESK:START --> Whether CF-VaR beats Gaussian VaR out of sample is untested here.<!-- DESK:END --></span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This lesson is conceptual.</strong> It explains the technique precisely<!-- DESK:START -->; it is not a claim that Cornish-Fisher-adjusted VaR is computed or used anywhere in this project<!-- DESK:END -->.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What single quantity does the Cornish-Fisher expansion adjust, and what stays exactly the same as the plain Gaussian VaR formula?</summary>
@@ -579,5 +656,7 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/paths-data.js" defer></script>
+<script src="../assets/paths.js" defer></script>
 </body>
 </html>

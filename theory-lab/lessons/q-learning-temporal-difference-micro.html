@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Q-Learning &amp; Temporal-Difference — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">12</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, a live scratchpad, and a 5-question self-test?<a href="q-learning-temporal-difference.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Learning a trading rule without a model of the market</h2>
+      <p class="sl-sub">Q-learning · tested on trading in the late 1990s (Moody &amp; Saffell); on execution by Nevmyvaka, Feng &amp; Kearns (2006)</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Dynamic programming needs the market's transition probabilities, which nobody has. Q-learning learns action values straight from (state, action, reward, next state) records, which is what a fills log or order-book history contains. Moody &amp; Saffell tested it on stock-index allocation in the late 1990s and found a direct policy method did better.</p>
+        <p>The clean win was execution. Nevmyvaka, Feng &amp; Kearns (2006) learned where to place limit orders from order-book data for NASDAQ stocks and beat simple submit-and-leave strategies on cost.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage on">Execute</span></div>
+        <p><strong>Its job:</strong> learn which action pays off in each state from logged experience, with no model of the market.</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">The previous lesson's hidden assumption</h2>
       <p class="sl-sub">Value iteration and policy iteration solved the Bellman equation exactly — but only because of what they were handed first.</p>
       <div class="sl-compare">
@@ -56,8 +69,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Q-learning: model-free, action by action</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">Q</div><div><h4>Q(s,a) is an action-value</h4><p>Not "how good is this state" but "how good is taking this specific action a, in this specific state s, and acting well from then on." One number per (state, action) pair.</p></div></div>
@@ -68,8 +81,8 @@
       <div class="sl-quote">The previous lesson solved for Q*(Long, Hold) = 10 by hand, using a fully known model. This lesson reaches that same number a different way — <strong>by sampling</strong>, never once looking at P or R directly.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The temporal-difference update</h2>
       <p class="sl-sub">After one real step, nudge the old estimate toward a target built from that one reward plus a discounted guess about what comes next.</p>
       <div class="sl-card">
@@ -109,8 +122,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Updating a Q-table, one step at a time</h2>
       <p class="sl-sub">The same 3-state Flat / Long / Short world from the previous lesson (γ = 0.9), but Q(s,a) now starts at 0 everywhere and is learned purely from sampled experience — a deliberately large α = 0.5 keeps the arithmetic readable.</p>
       <div class="sl-card">
@@ -136,8 +149,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">The Q-table, after three samples</h2>
       <p class="sl-sub">States down the side, actions across the top, shaded by value. Two cells have been touched; four are still exactly where they were initialized.</p>
       <div class="sl-card">
@@ -176,8 +189,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Getting close, never quite arriving</h2>
       <p class="sl-sub">Keep sampling the same (Long, Hold, +1, Long) transition and Q(Long, Hold) climbs toward Q* = 10 — but with a fixed learning rate, never exactly onto it.</p>
       <div class="sl-card">
@@ -204,8 +217,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Exploration vs. exploitation</h2>
       <p class="sl-sub">Every one of those "not yet sampled" cells is a decision an agent has to make, over and over: try something new, or stick with what already looks best?</p>
       <div class="sl-icard-grid">
@@ -217,8 +230,8 @@
       <div class="sl-quote">A trading system that only ever takes the setup it currently rates highest can end up structurally blind to whether a different setup is actually better — it will never generate the data needed to find out. Exploration is the cost of keeping that door open.</div>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">ε, made concrete</h2>
       <p class="sl-sub">Drag the slider. Each dot below is one simulated action; amber dots are the exploratory ones ε sends off-script.</p>
       <div class="sl-card">
@@ -235,8 +248,8 @@
       <p class="sl-p">Push ε toward 0 and the agent almost never leaves its current best guess — fast to exploit what it already believes, but slow (or unable) to discover it might be wrong. Push ε toward 1 and it's exploring almost constantly — plenty of information, very little of it acted on. Most practical setups pick something small (often 0.05–0.2) and sometimes shrink it further as learning progresses.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Q-learning's off-policy sibling: SARSA</h2>
       <p class="sl-sub">Change exactly one term in the update, and the entire character of what's being learned changes with it.</p>
       <div class="sl-compare">
@@ -256,8 +269,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -307,8 +320,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Value/policy iteration need P and R known up front. Q-learning learns Q(s,a) directly from sampled (s,a,r,s′) experience — no model required.</p></div>
@@ -317,6 +330,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Repeated sampling of one transition follows a clean geometric recursion toward Q* — but with a constant learning rate, it gets arbitrarily close without ever exactly arriving.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Exploration isn't optional — every (state, action) pair needs enough visits for its Q-value to be learned correctly. ε-greedy is the simplest practical mechanism.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>SARSA changes one term — max becomes the action actually taken — to become on-policy, learning the value of the policy actually being followed, exploration included.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Moody &amp; Saffell tested Q-learning on trading in the late 1990s, and Nevmyvaka, Feng &amp; Kearns (2006) showed it could cut execution costs on real order-book data.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
