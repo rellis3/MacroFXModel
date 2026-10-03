@@ -47,6 +47,7 @@
       <li>Depth imbalance is a <strong>resting-liquidity</strong> signal built from one snapshot of what's sitting on the book. Order Flow Imbalance (the sibling lesson) is a <strong>trade-flow</strong> signal built from a sequence of book <em>changes</em> over time. They frequently agree, but they are answering genuinely different questions from genuinely different data, and this lesson keeps that distinction explicit throughout.</li>
       <li>Order-book slope is also easy to confuse with Kyle's λ (covered in the sibling <a href="institutional-kyle-obizhaeva-invariance.html">Kyle-Obizhaeva Invariance</a> lesson) — both describe "how much does size move price," but λ is a reduced-form statistic estimated from a history of trades, while slope is a purely geometric property of a single book snapshot that needs no trade history at all.</li>
       <li>A worked toy order book below computes cumulative depth, slope under both conventions, and depth imbalance by hand — verified to match the live calculator's own output exactly.</li>
+      <li><strong>How it reached trading:</strong> Electronic order books made depth visible, researchers such as Næs &amp; Skjeltorp (2006) measured its slope, and desks and regulators now read it as a live liquidity gauge before sizing orders.</li>
     </ul>
   </div>
 
@@ -124,6 +125,23 @@
       through right now — exactly the intuition behind reading a bid-heavy
       or ask-heavy book as short-horizon pressure.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>How much size can the book take right now?</h3>
+    <div class="tl-origin-who">Order-book depth and slope · electronic limit-order books from the 1980s–90s; Næs &amp; Skjeltorp, 2006</div>
+    <p>On a trading floor or in a dealer market, depth beyond the best quote was invisible: you found it by trading. Electronic limit-order books (Toronto's CATS from 1977, the Paris Bourse's CAC system from 1986, London's SETS from 1997) published the whole queue, and with it a measurable shape.</p>
+    <p>Researchers read that shape directly: Biais, Hillion &amp; Spatt (1995) on the Paris Bourse book, and Næs &amp; Skjeltorp (2006) on the Oslo Stock Exchange, who tied order-book slope to the volume–volatility relation. Regulators then used depth as a stress gauge: the US agencies' joint staff report on the 15 October 2014 Treasury "flash rally" documented how order-book depth thinned around the event.</p>
+    <p>Today desks read depth before sizing child orders, and risk managers watch top-of-book depth in benchmark futures such as the E-mini and Treasury futures as a live liquidity gauge.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much size is resting near the touch, and which side is heavier?</dd>
+        <dt>Takes in</dt><dd>Book snapshots from <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>.</dd>
+        <dt>Hands on to</dt><dd>The imbalance signals of <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a>, the resilience in <a href="institutional-obizhaeva-wang-impact.html">Obizhaeva-Wang</a>, and child-order sizing in <a href="execution-algorithms.html">Execution Algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -576,6 +594,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Depth imbalance (a resting snapshot) and Order Flow Imbalance (a sequence of changes) are genuinely different signals</strong> that can disagree at the same instant — one is not a substitute for the other.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Slope is a static book-shape statistic; Kyle's λ is a statistically-estimated, trade-based price-impact coefficient.</strong> They're related in spirit but built from entirely different data and computed in entirely different ways.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Displayed depth can be hidden (icebergs) or fabricated (spoofing), and FX has no single consolidated book to read it from anyway.</strong> Neither formula in this lesson can detect either distortion on its own.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk depth is the live liquidity gauge.</strong> Execution desks check it before sizing child orders, and regulators used thinning depth to explain the October 2014 Treasury flash rally.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

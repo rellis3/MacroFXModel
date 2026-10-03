@@ -38,6 +38,7 @@
       <li>Hasbrouck's actual trick: the two venues' shocks are correlated, so their contribution to the common factor's variance can't just be split additively. Cholesky-decompose the residual covariance matrix \(\Omega\) to manufacture orthogonal shocks, then attribute variance venue by venue. The venue ordered <strong>first</strong> in the Cholesky decomposition claims the entire shared, correlated portion of the variance for itself; the venue ordered <strong>second</strong> only gets what's left over.</li>
       <li>That ordering is arbitrary — nothing in the economics says which venue goes first — and the split can swing dramatically depending on it. This lesson's own worked numeric example: the same fitted system gives venue Y a 57.1% information share when Y is ordered first, and only 10.7% when X is ordered first instead. This is <em>the</em> standard critique of Hasbrouck IS.</li>
       <li>Two standard responses exist: Hasbrouck's own suggested fix — compute IS both ways and report the midpoint or the range — and alternative measures, Gonzalo &amp; Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share, that don't hinge on an arbitrary ordering the same way. All three are covered below, with a live calculator that computes both Cholesky orderings from any inputs you enter.</li>
+      <li><strong>How it reached trading:</strong> Hasbrouck (1995) gave a way to measure where price discovery happens, and it became the standard tool for asking whether futures lead cash, CDS lead bonds, or one venue leads another.</li>
     </ul>
   </div>
 
@@ -99,6 +100,23 @@
       clock everyone else is chasing, whether or not it's the one doing more
       of the eventual self-correcting.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Which market moves first?</h3>
+    <div class="tl-origin-who">Information share · Hasbrouck, 1995 → futures vs cash, venue vs venue</div>
+    <p>Once the same asset traded in several places (the NYSE and regional exchanges, the cash index and its futures, bonds and credit default swaps) traders and regulators wanted to know where prices are actually formed. Correlations and simple lead-lag regressions could not answer that cleanly when the prices are cointegrated and react within seconds of each other.</p>
+    <p>Joel Hasbrouck's 1995 Journal of Finance paper, <em>One Security, Many Markets: Determining the Contributions to Price Discovery</em>, split the variance of the common efficient price by venue and found the NYSE dominated price discovery for the Dow stocks it studied. His 2003 study of US index markets found the E-mini futures led the S&amp;P 500, and Blanco, Brennan &amp; Marsh (2005) used it to show credit default swaps tend to lead corporate bonds.</p>
+    <p>Today it is the standard tool in price-discovery studies of fragmented markets, from equity venues to FX and crypto exchanges, and it guides which market a desk watches as the leading signal and where it chooses to trade.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which venue's price absorbs new information first, and so which one should I watch?</dd>
+        <dt>Takes in</dt><dd>A cointegrated pair fitted as a <a href="institutional-vecm.html">Vector Error Correction Model</a>, with lead-lag context from <a href="institutional-granger-causality.html">Granger Causality &amp; Lead-Lag Analysis</a>.</dd>
+        <dt>Hands on to</dt><dd>Lead-lag and relative-value trades that read the leading market for the lagging one (<a href="cointegration.html">Cointegration &amp; Statistical Arbitrage</a>), and venue choice in <a href="execution-algorithms.html">Execution Algorithms</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -593,6 +611,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Two standard responses exist.</strong> Hasbrouck's own fix — report both orderings or their midpoint — and alternative measures, Gonzalo &amp; Granger's (1995) Component Share and Putniņš' (2013) Information Leadership Share, that avoid the same ordering dependence.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Requires genuine cointegration and matters at what frequency you measure it.</strong> The whole framework is invalid for non-cointegrated series, and conclusions about which venue leads can flip between tick-level and lower-frequency data.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A high Information Share is not the same claim as "more liquid."</strong> It answers where variance is attributed, not where it's cheaper or easier to trade — a related but distinct question, covered by this repo's existing Glosten-Milgrom, PIN, and Roll's Spread Estimator lessons instead.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it says which market to watch.</strong> Information share studies found E-mini futures leading the S&amp;P 500 (Hasbrouck, 2003) and CDS leading bonds (Blanco, Brennan &amp; Marsh, 2005); the leading market is the signal, the lagging one is where the trade happens.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

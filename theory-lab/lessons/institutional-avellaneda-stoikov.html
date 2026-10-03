@@ -47,6 +47,7 @@
       <li>The total optimal spread, \(\delta_b+\delta_a = \gamma\sigma^2(T-t) + \frac{2}{\gamma}\ln\!\left(1+\frac{\gamma}{k}\right)\), splits into two genuinely different components: a pure <strong>inventory-risk</strong> term that grows with risk aversion, variance, and time left to hold a position, and a pure <strong>market-making profit</strong> term set by how fast order-arrival intensity decays with quoted distance from the mid (the parameter \(k\)).</li>
       <li>This is a stylized, finite-horizon, inventory-only model. It does <strong>not</strong> price in adverse selection — the risk that a fill itself is informative that the market is about to move against the market maker — which is exactly the mechanism the sibling <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a> and <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a> lessons cover instead. A real desk's spread has to compensate for both risks at once; this lesson is honest about covering only one of them.</li>
       <li>A full worked numeric example and a live six-input calculator below let you compute \(r\), the spread, and the resulting bid/ask for any inputs, and watch the reservation price and both quotes skew as inventory sweeps from short to long.</li>
+      <li><strong>How it reached trading:</strong> Avellaneda &amp; Stoikov (2008) turned the dealer's old habit of shading quotes against inventory into a closed-form rule a machine can run, and it became the starting template for electronic market making.</li>
     </ul>
   </div>
 
@@ -106,6 +107,23 @@
       volatile the security is, and how much time is left before the trading
       session's clock runs out.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Quoting both sides without getting stuck with the position</h3>
+    <div class="tl-origin-who">Avellaneda–Stoikov model · Avellaneda &amp; Stoikov, 2008 → electronic market-making desks</div>
+    <p>Dealers had always shaded their quotes when they were long or short, and Ho &amp; Stoll's 1981 dealer model explained why. What an electronic market maker lacked was a rule a machine could run every few milliseconds: given my inventory, the volatility and how quickly fills dry up away from the mid, exactly where should my bid and ask sit?</p>
+    <p>Marco Avellaneda and Sasha Stoikov's 2008 paper <em>High-frequency trading in a limit order book</em> (Quantitative Finance) gave that answer in closed form, just as equity and FX trading was moving onto fully electronic order books. Guéant, Lehalle &amp; Fernandez-Tapia (2013) added hard inventory limits, and Cartea, Jaimungal &amp; Penalva's 2015 textbook <em>Algorithmic and High-Frequency Trading</em> made the framework the standard teaching model.</p>
+    <p>Today it is the template electronic market-making strategies start from: a reservation price plus inventory skew. Open-source crypto market-making bots ship a version of it as a built-in strategy, and professional desks add an adverse-selection term on top.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage on">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Given what I already hold, where should my bid and ask sit so I earn the spread without building a runaway position?</dd>
+        <dt>Takes in</dt><dd>A volatility estimate (for example from <a href="institutional-garman-klass-yang-zhang.html">Garman-Klass &amp; Yang-Zhang</a>) and how fill rates decay with distance from the mid, from <a href="limit-order-books.html">Limit Order Books &amp; Queue Dynamics</a>.</dd>
+        <dt>Hands on to</dt><dd>Live two-sided quoting, with the adverse-selection widening that <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a> prices, and a better quote centre from the microprice in <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -718,6 +736,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>As (T−t)→0, r converges to s but the spread does not converge to zero</strong> — it converges to the pure profit term, since only the inventory-driven half of the spread vanishes at the horizon.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>This model prices inventory risk only — it has no adverse-selection mechanism at all.</strong> Glosten-Milgrom and PIN cover the informed-trading risk this model is silent on; a real desk needs both, not either.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Free continuous re-quoting, constant known σ, and a specific exponential fill-intensity shape are all simplifying assumptions</strong> — each one is a real place the closed-form answer can quietly stop matching the venue it's actually being used on.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the starting template for electronic market making.</strong> Quotes centre on the inventory-adjusted reservation price, not the mid; production versions add inventory limits (Guéant, Lehalle &amp; Fernandez-Tapia, 2013) and an adverse-selection term.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

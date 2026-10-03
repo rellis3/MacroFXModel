@@ -37,6 +37,7 @@
       <li>\(\delta\) — which direction the news points — never appears in that formula. PIN measures how much of order flow is information-driven at all, not which way it's likely to push price.</li>
       <li>VPIN exists precisely because this MLE approach is too slow and data-hungry to run live; it trades PIN's theoretical rigor for a continuously-updating volume-bucket approximation of the same underlying idea.</li>
       <li>PIN is a widely-cited but genuinely contested measure — Duarte &amp; Young (2009) argue a real part of what it measures is ordinary illiquidity-driven imbalance, not private information, and this lesson treats that critique as seriously as the original model.</li>
+      <li><strong>How it reached trading:</strong> Easley, Kiefer, O'Hara &amp; Paperman (1996) turned adverse selection into a number estimated from buy/sell counts; it became an information-risk measure in research and the parent of the real-time VPIN toxicity monitor.</li>
     </ul>
   </div>
 
@@ -132,6 +133,23 @@
       this stock, over this period, that is expected to come from someone who
       knew something the rest of the market didn't.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Putting a number on how informed the flow is</h3>
+    <div class="tl-origin-who">PIN · Easley, Kiefer, O'Hara &amp; Paperman, 1996 → information-risk measure, then VPIN</div>
+    <p>Glosten-Milgrom says informed traders widen the spread, but nobody can see who is informed. Before PIN there was no standard way to say that one stock's order flow carries more private information than another's.</p>
+    <p>Easley, Kiefer, O'Hara &amp; Paperman's 1996 Journal of Finance paper estimated it from nothing more than daily buy and sell counts, and found informed trading made up a larger share of flow in infrequently traded stocks, one reason their spreads are wider. Easley, Hvidkjaer &amp; O'Hara (2002) then argued that high-PIN stocks earn higher returns, turning PIN into an "information risk" measure; Duarte &amp; Young (2009) challenged that reading.</p>
+    <p>Because the full likelihood fit is slow, Easley, López de Prado &amp; O'Hara built VPIN (2012) as a real-time version for flow-toxicity monitoring; its claimed early warning before the 2010 Flash Crash is itself disputed. PIN today is mainly a research and cross-sectional liquidity measure; its live descendant is the toxicity monitor.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What fraction of trading in this name comes from informed traders?</dd>
+        <dt>Takes in</dt><dd>Daily buyer- and seller-initiated counts signed by <a href="institutional-trade-classification.html">Trade Classification</a>, and the informed-versus-noise structure of <a href="institutional-glosten-milgrom.html">Glosten-Milgrom</a>.</dd>
+        <dt>Hands on to</dt><dd>The real-time toxicity measure in <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> and the tick-level signals of <a href="institutional-order-flow-imbalance.html">Order Flow Imbalance</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -611,6 +629,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>δ does not appear in the PIN formula.</strong> It governs the direction of an information event, not how often trading is information-driven overall — a distinction the formula itself makes precisely.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>VPIN exists because PIN's MLE approach can't run in real time.</strong> VPIN trades PIN's theoretical rigor for a continuously-updating, volume-bucketed approximation of the same underlying question.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>PIN is not a settled, uncontroversial measure.</strong> Duarte &amp; Young (2009) argue a real share of what it estimates is ordinary illiquidity-driven imbalance, not genuine private information — an active, unresolved methodological dispute, not a footnote.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>PIN's live descendant is the toxicity monitor.</strong> PIN itself is mostly a research and cross-sectional measure of information risk; desks that want a real-time read use VPIN, its 2012 approximation, with the same caveats about what it really measures.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

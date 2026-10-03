@@ -37,6 +37,7 @@
       <li>The <strong>Lee-Ready algorithm</strong> (1991) uses the quote rule as its primary classifier, applied against the quote in effect some short lag before the trade print, and falls back to the tick rule specifically to break exact-midpoint ties. It is the long-standing academic standard on historical exchange data — and its accuracy has been shown, in published work, to degrade on modern electronic and high-frequency markets.</li>
       <li><strong>Bulk Volume Classification (BVC)</strong> (Easley, López de Prado &amp; O'Hara, 2012) classifies volume in bulk over a bar rather than trade by trade: buy-fraction \(=\Phi(\Delta P/\sigma_{\Delta P})\), the bar's standardized price change passed through the standard normal CDF. This is exactly the classification step this project's own <a href="vpin-order-flow-toxicity.html">Order Flow Toxicity &amp; VPIN</a> lesson already covers as VPIN's basis — this lesson names it explicitly and extends it, rather than re-deriving it from scratch.</li>
       <li>A repo-wide search turns up zero implementations of Lee-Ready, the tick rule, or the quote rule anywhere in this codebase — unsurprising, since Lee-Ready needs historical quote-timestamp data of a kind FX/OTC trading typically doesn't produce in the same form exchange-listed TAQ data does.</li>
+      <li><strong>How it reached trading:</strong> Lee &amp; Ready (1991) became the default way to sign trades on TAQ data, the data-preparation step underneath order-flow signals, toxicity metrics and transaction-cost analysis.</li>
     </ul>
   </div>
 
@@ -123,6 +124,23 @@
       all — and lets that single aggregate movement decide what fraction of
       the window's entire volume gets called "buy."
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Who was the aggressor on this print?</h3>
+    <div class="tl-origin-who">Lee–Ready algorithm · Lee &amp; Ready, 1991 → the default trade-signing rule on TAQ data</div>
+    <p>The consolidated tape reports price, size and time, not who initiated the trade. Every measure built on signed order flow (Kyle's lambda, effective spreads, buy-sell imbalance, later PIN) needs that sign, and there was no agreed way to infer it or to handle trades reported late relative to quotes.</p>
+    <p>Charles Lee and Mark Ready's 1991 Journal of Finance paper, <em>Inferring Trade Direction from Intraday Data</em>, combined the quote rule with the tick rule for midpoint trades, and compared each trade with the quote from five seconds earlier to allow for reporting delays. Once NYSE TAQ data became available from 1993 it became the default way to sign trades in microstructure research and transaction-cost analysis. Ellis, Michaely &amp; O'Hara (2000) and Chakrabarty and co-authors (2007) tuned it for Nasdaq, and Easley, López de Prado &amp; O'Hara (2012) proposed bulk volume classification for high-frequency data.</p>
+    <p>Today it is a data-preparation step inside order-flow signals, toxicity metrics and TCA. Where a venue's feed carries an aggressor-side flag, as CME futures data does, no guess is needed.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage on">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Was this trade a buy or a sell, so that order flow can be signed at all?</dd>
+        <dt>Takes in</dt><dd>Time-aligned trades and quotes, cleaned as in <a href="data-cleaning-outliers-missing-data.html">Data Cleaning: Outliers, Bad Ticks &amp; Missing Data</a>.</dd>
+        <dt>Hands on to</dt><dd><a href="institutional-pin.html">PIN</a>, <a href="vpin-order-flow-toxicity.html">VPIN</a>, and the signed-flow regressions behind <a href="market-microstructure.html">Kyle's Lambda</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -636,6 +654,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Bulk Volume Classification splits a whole bar's volume by \(\Phi(\Delta P/\sigma_{\Delta P})\)</strong> — this is the exact method this project's own VPIN lesson already uses as its classification step, made explicit and given its own treatment here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>BVC classifies a bar, not a trade</strong> — it cannot distinguish many small informed trades from one large trade producing the identical aggregate price move.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Neither method is implemented anywhere in this codebase.</strong> A repo-wide search confirms zero Lee-Ready/tick-rule/quote-rule code exists — consistent with FX/OTC trading typically lacking the consolidated, correctly time-stamped quote history Lee-Ready specifically requires.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is plumbing for every signed-flow signal.</strong> Lee-Ready (1991) has been the default trade-signing rule on TAQ equity data since the 1990s; feeds with an exchange aggressor flag, such as CME futures, make the guess unnecessary.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

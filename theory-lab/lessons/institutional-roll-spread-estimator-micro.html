@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Roll's Implicit Spread Estimator — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">15</span></div>
   </div>
   <div class="sl-fullnote">Prefer the full derivation, a live 14-print worked example, and a 6-question self-test?<a href="institutional-roll-spread-estimator.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">A spread from a tape with no quotes</h2>
+      <p class="sl-sub">Roll measure · Roll, 1984 → cost estimates for long histories and quote-less markets</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Decades of trade prices exist, but US intraday quote data starts only in 1993 and many OTC markets never quoted publicly. Roll (1984) backed the spread out of price changes alone.</p>
+        <p>Hasbrouck (2009) made it robust on daily data, Bao, Pan &amp; Wang (2011) applied it to corporate bonds, and it remains a first-pass cost estimate for long backtests.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> what did crossing the spread cost, when all I have is trade prices?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">All you're handed is a list of trade prices</h2>
       <p class="sl-sub">No bid. No ask. No depth. Just price, timestamp, price, timestamp.</p>
       <div class="sl-icard-grid">
@@ -38,8 +51,8 @@
       <div class="sl-quote">Market Microstructure Extensions Lesson 2 of 5 — this deck assumes you already know what a bid-ask spread is and why it exists. What it adds: how to measure one when nobody handed you the quotes.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">The true price never bounces. What you actually see does.</h2>
       <p class="sl-sub">Same underlying security, two ways of looking at it.</p>
       <div class="sl-card">
@@ -65,8 +78,8 @@
       <p class="sl-p">Nobody trading against this security sees the dashed line — only the solid, bouncing one. Roll's whole method is about reading that bounce backwards to recover how far apart the bid and ask must have been.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">Roll's model, in one line</h2>
       <p class="sl-sub">Every observed trade price is the true price, plus or minus a half-spread.</p>
       <div class="sl-card">
@@ -88,8 +101,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Why negative, and why divided by 4</h2>
       <p class="sl-sub">The derivation lands on Cov(ΔP_t, ΔP_t−1) = −s²/4. Both pieces of that result have a plain-English reason.</p>
       <div class="sl-compare">
@@ -105,8 +118,8 @@
       <div class="sl-quote">One more structural fact worth carrying: because q_t has no memory beyond one trade, the model predicts Cov(ΔP_t, ΔP_t−k) = 0 for every k ≥ 2. The bounce is strictly a one-period phenomenon — only the very next price change is mechanically related to this one.</div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Drawn: the bounce, riding on top of a real drift</h2>
       <p class="sl-sub">14 toy trade prints, true spread s = 0.10, true price drifting slowly upward.</p>
       <div class="sl-card">
@@ -129,8 +142,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Turn the result around, solve for s</h2>
       <p class="sl-sub">One algebraic step: multiply by −4, take a square root.</p>
       <div class="sl-card">
@@ -150,8 +163,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Drag the true spread, watch the recovery</h2>
       <p class="sl-sub">Same 14-print bounce pattern and drift every time — only the spread changes. Watch the estimate track it.</p>
       <div class="sl-card">
@@ -172,8 +185,8 @@
       <p class="sl-p">This specific bounce pattern is constructed so the sample covariance lands exactly on Roll's theoretical −s²/4 relationship, for any spread you drag to — real trade data is never this clean, which is exactly what the next few slides are about.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">The catch that matters more than the formula itself</h2>
       <p class="sl-sub">The square root only exists if the covariance actually comes out negative.</p>
       <div class="sl-callout amber">
@@ -183,8 +196,8 @@
       <div class="sl-quote">A rolling application of Roll's estimator to real data produces a series with genuine holes in it — windows with no estimate at all. Any honest use of this method needs a plan for what "no answer" means, because a meaningful share of windows will return exactly that.</div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Compute it yourself — including the undefined case</h2>
       <p class="sl-sub">Enter a serial covariance value. The formula does the rest, and refuses to answer when it should.</p>
       <div class="sl-card">
@@ -205,8 +218,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Roll isn't the last word — just the first one</h2>
       <p class="sl-sub">A newer estimator sidesteps Roll's exact failure mode entirely.</p>
       <div class="sl-compare">
@@ -230,8 +243,8 @@
       <div class="sl-quote">Not derived in full here — this deck's depth budget goes to Roll, as the historically foundational, conceptually clearest result. Corwin-Schultz is worth recognizing by name as the modern, more robust successor built for exactly the situations where Roll goes quiet.</div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">One phrase, two very different jobs</h2>
       <div class="sl-callout purple">
         <div class="sl-callout-label">Don't conflate these</div>
@@ -243,8 +256,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -294,8 +307,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="14">
-      <div class="sl-kicker">Section 13</div>
+    <section class="sl-slide" data-slide="15">
+      <div class="sl-kicker">Section 14</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>Roll's estimator recovers an effective spread from transaction prices alone — no quotes needed — by exploiting the bid-ask bounce.</p></div>
@@ -303,6 +316,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">03</div><p>s = 2√(−Cov(ΔP_t, ΔP_t−1)) — but only when that covariance is actually negative, as the theory predicts.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>A non-negative empirical covariance makes the estimator undefined, full stop — a routine, expected outcome in short or trending samples, not a rare failure.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Corwin &amp; Schultz (2012) is the more robust modern successor, built from daily high-low ranges instead — worth knowing by name, even without deriving it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>How it reached trading: Roll (1984) and its successors put a cost on long histories and quote-less markets, so a backtest can charge a realistic spread.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
