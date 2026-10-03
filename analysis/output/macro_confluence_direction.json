@@ -1,0 +1,150 @@
+{
+ "id": "macro-confluence-direction",
+ "ranAt": "2026-10-03T13:12:53.347Z",
+ "minEvents": 30,
+ "domainSpan": {
+  "from": "2023-11-01",
+  "to": "2026-10-02"
+ },
+ "episodeCounts": {
+  "pos": 12,
+  "neg": 5
+ },
+ "cells": {
+  "EURUSD|sign1|H5": {
+   "untestable": true,
+   "nA": 12,
+   "nB": 266,
+   "halves": [
+    -0.5825,
+    0.395
+   ]
+  },
+  "EURUSD|sign1|H20": {
+   "untestable": true,
+   "nA": 12,
+   "nB": 266,
+   "halves": [
+    -0.3246,
+    0.0915
+   ]
+  },
+  "EURUSD|sign-1|H5": {
+   "untestable": true,
+   "nA": 5,
+   "nB": 266,
+   "halves": [
+    -0.2306,
+    -0.9309
+   ]
+  },
+  "EURUSD|sign-1|H20": {
+   "untestable": true,
+   "nA": 4,
+   "nB": 266,
+   "halves": [
+    0.296,
+    -0.7891
+   ]
+  },
+  "SPX500|sign1|H5": {
+   "untestable": true,
+   "nA": 12,
+   "nB": 266,
+   "halves": [
+    0.8181,
+    -0.0476
+   ]
+  },
+  "SPX500|sign1|H20": {
+   "untestable": true,
+   "nA": 12,
+   "nB": 266,
+   "halves": [
+    2.5066,
+    2.3606
+   ]
+  },
+  "SPX500|sign-1|H5": {
+   "untestable": true,
+   "nA": 5,
+   "nB": 266,
+   "halves": [
+    0.7517,
+    0.06
+   ]
+  },
+  "SPX500|sign-1|H20": {
+   "untestable": true,
+   "nA": 4,
+   "nB": 266,
+   "halves": [
+    4.6238,
+    -2.816
+   ]
+  },
+  "GOLD|sign1|H5": {
+   "untestable": true,
+   "nA": 12,
+   "nB": 266,
+   "halves": [
+    -0.1838,
+    1.1681
+   ]
+  },
+  "GOLD|sign1|H20": {
+   "untestable": true,
+   "nA": 12,
+   "nB": 266,
+   "halves": [
+    1.8492,
+    1.5707
+   ]
+  },
+  "GOLD|sign-1|H5": {
+   "untestable": true,
+   "nA": 5,
+   "nB": 266,
+   "halves": [
+    -0.581,
+    -3.0972
+   ]
+  },
+  "GOLD|sign-1|H20": {
+   "untestable": true,
+   "nA": 4,
+   "nB": 266,
+   "halves": [
+    -0.8579,
+    -5.3054
+   ]
+  }
+ },
+ "gate": {
+  "EURUSD|H5": {
+   "pass": false,
+   "reason": "untestable"
+  },
+  "EURUSD|H20": {
+   "pass": false,
+   "reason": "untestable"
+  },
+  "SPX500|H5": {
+   "pass": false,
+   "reason": "untestable"
+  },
+  "SPX500|H20": {
+   "pass": false,
+   "reason": "untestable"
+  },
+  "GOLD|H5": {
+   "pass": false,
+   "reason": "untestable"
+  },
+  "GOLD|H20": {
+   "pass": false,
+   "reason": "untestable"
+  }
+ },
+ "verdict": "UNTESTABLE"
+}
