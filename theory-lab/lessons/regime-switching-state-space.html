@@ -50,6 +50,7 @@
       <li>This lesson builds nothing new: every idea here is the Hidden Markov Model lesson's discrete
         regime and the Kalman filter lesson's continuous state, fused — read those two lessons first, not
         as a suggestion but as the actual prerequisite content this one assumes.</li>
+      <li><strong>Real-world episode:</strong> a dynamic-factor Markov-switching model of four monthly US indicators (Chauvet; Chauvet &amp; Piger) called the 2008 recession months before the NBER's December 2008 announcement, and 2020's within weeks. But the neat historical chart is smoothed on revised data, and 2020's collapse was far outside either fitted regime.</li>
     </ul>
   </div>
 
@@ -372,6 +373,84 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: calling the 2008 and 2020 recessions before the official date</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>A hidden regime, a committee that waits, and a chart that looks too good</h3>
+    <p>
+      In the US, recessions are dated by a committee of the National Bureau of Economic Research (NBER), and it
+      deliberately waits for revised data. The recession that began in <strong>December 2007</strong> was only
+      announced on <strong>December 1, 2008</strong>, after Lehman Brothers had failed and nearly a year into
+      the downturn. Its end, in June 2009, was announced in September 2010.
+    </p>
+    <p>
+      James Hamilton's 1989 paper, the root of this lesson, showed that a two-regime Markov-switching model of
+      US output growth could recover recession dates close to the NBER's from the data alone. Marcelle Chauvet
+      then built the fusion this lesson describes: a <strong>dynamic-factor Markov-switching model</strong>. A
+      continuous hidden state (the common "business cycle" factor) drives four monthly coincident indicators,
+      namely payroll employment, industrial production, real income excluding transfers, and real manufacturing
+      and trade sales. The factor's dynamics switch between an expansion regime and a recession regime. With
+      Jeremy Piger she tested it in real time ("A Comparison of the Real-Time Performance of Business Cycle
+      Dating Methods", 2008) and found it dated turning points accurately and, on average, well ahead of the NBER's
+      announcements. Their recession probabilities are published monthly on the St. Louis Fed's FRED database.
+    </p>
+    <p>
+      2020 was the extreme test. Payrolls fell by more than 20 million in April 2020 alone, far outside anything
+      either regime had been fitted on. Every coincident series fell at once, so the recession regime's
+      probability went to near certainty as soon as the spring data arrived. The NBER, moving unusually fast,
+      announced on <strong>June 8, 2020</strong> that the peak had come in February.
+    </p>
+    <p style="margin-bottom:0">
+      Two honest caveats belong with the story. The probabilities usually shown on FRED are <em>smoothed</em>
+      and computed on revised data, which is the lookahead trap from this lesson's pitfalls: the historical
+      chart lines up with the shaded recessions more neatly than any real-time reading did. And a two-regime
+      model assumes the next recession looks like past ones. 2020's collapse, far larger than its
+      predecessors, shows how far that can fail even when the regime call is right.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Credit and housing crisis</b>2007–08: losses spread from mortgages to banks and to credit for everyone</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Firms</b>Facing falling demand and tighter credit, must cut output and jobs</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Coincident data</b>Employment, production, income and sales fall together, one monthly release at a time</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · hidden regime with switching dynamics</b>Each release fits the recession regime's factor dynamics better, so its filtered probability climbs</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The model's call comes months before the NBER's December 2008 announcement; the clean historical chart is smoothed</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: a continuous state (the business-cycle factor) whose dynamics are
+    chosen by a hidden discrete regime \(S_t\), filtered forward one observation at a time.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>The referee only decides a goal counted after watching the replay three times. A good fan in the stand can tell from how the players move that it's very likely a goal, much sooner. But if you only ever watch the highlights afterwards, you'll think the fan's guesses were perfect, because the highlights already know how it ended.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The model assumes a small fixed number of regimes, each with stable Gaussian dynamics, and a Markov chain with
+    constant transition probabilities \(A\). 2020 broke the second assumption: the recession regime's fitted
+    variance had never seen a 20-million-job month. And the beautiful historical fit leans on smoothing and data
+    revisions that a filter running in real time does not have, so judge the model only on its filtered,
+    first-release readings.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="regime-divergence-fx" data-evidence-date="2026-09-20">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>regime-divergence-fx: knowing the regime did not move the currency.</strong> The tempting trading
+    use of a regime model is that when two economies sit in different growth/inflation regimes, their currency pair
+    runs wider or tilts. This desk labelled the regimes per currency (USD, GBP, EUR, CAD), 2008–2026. Diverging vs
+    aligned months: EUR/USD range +0.03pp [−0.48, +0.52], GBP/USD −0.33pp [−0.86, +0.23], USD/CAD −0.09pp, EUR/GBP
+    −0.11pp; return differences all through zero. The labels are not a Markov-switching filter, but the lesson is
+    the same: a regime call describes the backdrop; it is not a trade.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Regime-switching state-space models are a standard tool in macro-econometrics, most thoroughly
@@ -439,7 +518,7 @@
     fewer moving parts.
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A Markov-switching state-space model fuses the HMM's discrete regime with the Kalman filter's continuous state</strong> — the continuous dynamics' own parameters (\(Q\), \(R\), even \(A\)/\(H\)) depend on which hidden regime is currently active.</span></div>
@@ -447,10 +526,11 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Kim's filter (1994) collapses \(N^2\) branches back to \(N\) every step</strong> via moment matching — a weighted mean plus a law-of-total-variance-style weighted variance-of-means term — keeping the computation linear in \(T\) instead of exponential.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked example's collapsed variance (0.0130) exceeded both input branches' own variances</strong> (0.004, 0.010) — the concrete, quantifiable cost of forcing two disagreeing Gaussians into one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Kim's filter is an approximation, not an exact answer.</strong> It loses real information whenever regime-conditional branches genuinely disagree — the worse the disagreement, the more it costs.</span></div>
+    <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>A regime call describes the backdrop; it is not a trade.</strong> Markov-switching models dated the 2008 and 2020 recessions ahead of the NBER, but only filtered, first-release readings count. On this desk's data, diverging growth/inflation regimes did not widen or tilt the pair (regime-divergence-fx, NULL: EUR/USD +0.03pp [−0.48, +0.52]).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Concept lesson only, and the most parameter-heavy of the three in this category.</strong> Nothing here is built, tested, or validated in this repo. Explaining the fusion is not a claim it produces edge — and its parameter count compounds the overfitting risk already flagged separately in the Hidden Markov Model and Kalman filter lessons.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. What, specifically, is allowed to depend on the hidden regime \(S_t\) in a Markov-switching state-space model?</summary>
@@ -607,5 +687,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>

@@ -38,6 +38,7 @@
       <li>The worked example prices a 5-year, 4% annual-coupon, $1,000 face bond at a 5% YTM and gets \(P \approx \$956.71\) — a discount bond, because the 4% coupon sits below the 5% YTM — then sets up a Newton-Raphson-style iterative search for the YTM implied by an observed market price.</li>
       <li>The interactive chart drags a YTM slider along the price-yield curve for that same bond — the curve visibly bends rather than running straight, the convexity this lesson's follow-up (Duration &amp; Convexity) builds on directly.</li>
       <li><strong>Current yield ≠ YTM.</strong> Current yield is coupon ÷ price; YTM also counts the pull to par. A $50 coupon on a $1,100, 10-year bond is a 4.55% current yield but about a 3.78% YTM. The published 10-year constant-maturity yield (DGS10) is a YTM-type yield, so coupon ÷ price won't reproduce it.</li>
+      <li><strong>Real-world episode:</strong> in 2022 the Fed hiked from near zero and the 10-year yield went from about 1.5% to above 4%. No promised cash flow changed, yet the broad US bond index lost about 13%, its worst year on record. The 0.625% 10-year note from August 2020 goes from about $93.43 to $77.09 per $100 on this lesson's formula. Banks that had to sell, like SVB in March 2023, turned those marks into real losses.</li>
     </ul>
   </div>
 
@@ -569,6 +570,82 @@
   </div>
 
   <div class="tl-section-mark"><span>Section 03</span></div>
+  <h2>It actually happened: 2022, the worst year on record for bonds</h2>
+
+  <div class="tl-story" id="story-1">
+    <div class="tl-story-label">It actually happened</div>
+    <h3>The cash flows didn't change. The discount rate did.</h3>
+    <p>
+      In 2020 and 2021, with policy rates near zero, governments and companies issued huge amounts of debt with
+      very low coupons, and investors, banks and pension funds bought it. Then inflation took off. US consumer
+      prices rose 9.1% in the year to June 2022, the fastest in four decades. The Federal Reserve had to tighten:
+      it began raising rates in March 2022 and raised them by 0.75 percentage points at four meetings in a row,
+      ending the year at 4.25–4.50%.
+    </p>
+    <p>
+      The 10-year Treasury yield, about 1.5% at the start of the year, went above 4% by October. Nothing about
+      any bond's promised payments changed. Every coupon \(C\) and every face value \(F\) stayed exactly as
+      written. Only \(y\) in Section 02's formula moved, and every term in the sum shrank. The broad US
+      investment-grade bond index lost about <strong>13%</strong> in 2022, its worst year on record. Funds holding
+      long-dated Treasuries lost around 30%. Austria's 100-year bond sold in 2020, with a coupon under 1%, lost more
+      than half its market value from its peak.
+    </p>
+    <p>
+      Run one real bond through the formula. The 10-year Treasury note sold in August 2020 carries a
+      <strong>0.625%</strong> coupon. With about eight years left (16 semi-annual payments of $0.3125 per $100), a
+      1.5% yield prices it near <strong>$93.43</strong>; a 4% yield prices it near <strong>$77.09</strong>. That is
+      a deep discount bond, for exactly the reason Section 02 gives: its coupon sits far below its YTM.
+    </p>
+    <p style="margin-bottom:0">
+      The losses did not stay on fund statements. Banks that had parked deposits in low-coupon bonds held large
+      unrealised losses. In March 2023 one of them, Silicon Valley Bank, sold about $21 billion of bonds at a loss of
+      about $1.8 billion to raise cash as deposits drained. Paper losses became real ones, depositors ran, and it
+      failed within days. For a holder who can wait, a high-quality bond
+      still pulls to par at maturity. The 2022 losses hurt whoever had to sell, or mark, before then.
+    </p>
+  </div>
+
+  <div class="tl-chain">
+    <div class="tl-chain-link shock"><b>Inflation surges</b>US CPI up 9.1% in the year to June 2022</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Federal Reserve</b>Must tighten: hikes from near zero, including four 0.75-point moves in a row</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link"><b>Market yields</b>Reprice to the new path: the 10-year goes from about 1.5% to above 4%</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link concept"><b>★ This lesson · price = PV of fixed cash flows</b>Same coupons, higher y: every term shrinks; low-coupon, long bonds fall most</div>
+    <div class="tl-chain-arrow">→</div>
+    <div class="tl-chain-link end"><b>Outcome</b>The bond index loses about 13%, its worst year; banks sit on unrealised losses, and SVB fails in March 2023</div>
+  </div>
+  <p>
+    The link marked ★ is this lesson's concept: the inverse price-yield relationship, with nothing but the discount
+    rate changing.
+  </p>
+
+  <div class="tl-eli5">
+    <div class="tl-eli5-label">🧒 Explain like I'm 5</div>
+    <p>You bought a ticket that pays you $1 a year. Then the bank starts paying everyone $4 a year for the same money. Your ticket still pays its $1, exactly as promised, but nobody will give you what you paid for it anymore. Unless you can keep it until the end, you have to sell it cheap.</p>
+  </div>
+
+  <h3>Where the textbook version breaks</h3>
+  <p>
+    The pricing formula is exact; the trap is the reading of it. YTM assumes the bond is held to maturity, so the
+    textbook can say a price fall is "only" a mark. That holds for a holder with stable funding. A bank whose
+    depositors could leave in a day, or a fund facing redemptions, may have to sell before maturity, and then the
+    discount is a realised loss. The formula prices the cash flows; it says nothing about whether you will still own
+    them when they arrive.
+  </p>
+
+  <div class="tl-verdict null" data-evidence="yield-move-fx-range" data-evidence-date="2026-09-27">
+    <span class="tl-verdict-tag">Null</span>
+    <span><strong>yield-move-fx-range: a big day in the 10-year did not reliably mean a wild FX session.</strong>
+    The tempting trade after a lesson on yields is "the 10-year just jumped, so currencies will run". Tested here with
+    a positive prior: 1,915 top-decile DGS10 days, de-clustered to 260 setups per pair, 2010–2026. EUR/USD clears alone
+    (+0.101 [0.013, 0.196] next session), USD/JPY and GBP/USD do not, and no half-split clears anywhere. At five
+    sessions a yield <em>fall</em> widened range on 3 of 3 pairs (+0.109, +0.208, +0.090) while a yield
+    <em>rise</em>, the 2022 kind, did so on 0 of 3.</span>
+  </div>
+
+  <div class="tl-section-mark"><span>Section 04</span></div>
   <h2>How practitioners actually use this</h2>
   <p>
     Rates desks and macro funds live inside this formula every day, mostly
@@ -651,7 +728,7 @@
     </p>
   </div>
 
-  <div class="tl-section-mark"><span>Section 04</span></div>
+  <div class="tl-section-mark"><span>Section 05</span></div>
   <h2>Key Takeaways</h2>
   <div class="tl-takeaways">
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>A bond's price is just present value.</strong> \(P = \sum \frac{C}{(1+y)^t} + \frac{F}{(1+y)^n}\) — discount every coupon from the period it lands in, discount the face value from maturity, and add.</span></div>
@@ -660,11 +737,12 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Coupon rate vs. YTM tells you par/premium/discount.</strong> Coupon = YTM → par; coupon &gt; YTM → premium; coupon &lt; YTM → discount.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The price-yield relationship is curved, not straight.</strong> That curvature (convexity) is why a duration-only estimate of a price move is an approximation, not exact — the subject of the very next lesson.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Current yield is not YTM.</strong> Coupon ÷ price leaves out the pull to par: $50 on $1,100 is 4.55% current yield but about 3.78% YTM over ten years. DGS10 is a YTM-type yield, so it can't be rebuilt from coupon ÷ price.</span></div>
+    <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The formula prices the cash flows, not your ability to hold them (2022).</strong> Only \(y\) moved, and the broad US bond index lost about 13%. A holder who can wait still gets par; one forced to sell, like SVB in 2023, realises the discount. And a big 10-year move did not reliably widen FX (yield-move-fx-range, NULL).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>YTM assumes coupons are reinvested at YTM itself.</strong> Real reinvestment happens at whatever rate prevails later — the realized return on a held bond can differ from its quoted YTM.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Clean price ≠ dirty price between coupon dates.</strong> The formula here assumes valuation exactly on a coupon date; real settlement amounts include accrued interest.</span></div>
   </div>
 
-  <div class="tl-section-mark"><span>Section 05</span></div>
+  <div class="tl-section-mark"><span>Section 06</span></div>
   <h2>Self-test</h2>
   <details class="tl-quiz">
     <summary>Q1. Why can't you generally solve the bond pricing formula for \(y\) algebraically once there are more than a couple of coupon periods?</summary>
@@ -900,5 +978,6 @@
 </script>
 <script src="../assets/progress.js?v=1" defer></script>
 <script src="../assets/tts.js?v=5" defer></script>
+<script src="../assets/verdicts.js" defer></script>
 </body>
 </html>
