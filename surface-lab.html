@@ -186,14 +186,16 @@ function fPersistence() {
   card(1, `1) the main markets on ${d0}`, 'Across horizons, the picked instrument in amber, with the main FX, gold and index markets. Nearly everything sits below 1 and falls with horizon: intraday moves partly give back.');
   const l2 = base2(); l2.shapes = [{ type:'line', xref:'paper', x0:0, x1:1, y0:1, y1:1, line:{ color:C.muted, dash:'dot', width:1 } }, { type:'line', x0:d0, x1:d0, yref:'paper', y0:0, y1:1, line:{ color:C.pick, width:1 } }];
   Plotly.react('c2', [{ x:X.dates, y:z[k], mode:'lines', line:{ color:C.text, width:2 }, hovertemplate:'%{x}: %{y:.2f}<extra></extra>' }], l2, cfg);
-  card(2, `2) ${S.inst} at ${hz[k]} through the year`, 'The regime is where this line sits against its own past. The bottom third is "reverting", the top third "trending".');
-  const regimes = Object.entries(P.byInst).filter(([s]) => coreOr(S.inst, Object.keys(P.byInst)).includes(s)).map(([s, Y]) => `${esc(s)} <b>${esc(Y.now.regime)}</b> (${Y.now.vr4h})`).join(' · ');
+  card(2, `2) ${S.inst} at ${hz[k]} through the year`, 'The regime is where this line sits against its own past. The bottom third is "giving back", the top third "extending".');
+  const WORD = { reverting:'giving back', trending:'extending', middle:'middle' };
+  const regimes = Object.entries(P.byInst).filter(([s]) => coreOr(S.inst, Object.keys(P.byInst)).includes(s)).map(([s, Y]) => `${esc(s)} <b>${esc(WORD[Y.now.regime] ?? Y.now.regime)}</b> (${Y.now.vr4h})`).join(' · ');
+  const hzRead = X.now.byHorizon ? Object.entries(X.now.byHorizon).map(([h, o]) => `${h} <b>${esc(o.state)}</b>`).join(' · ') : '';
   box('concept', `<p>The <b>variance ratio</b> (Lo & MacKinlay, 1988) compares how far price travels over a long block with how far it would travel if each short step were independent. VR = 1 is a random walk. Above 1, moves have been extending (trend). Below 1, they have been giving back (mean reversion).</p><p>Measuring it at 30 minutes, 1, 2, 4 and 8 hours at once shows the market's memory horizon by horizon. It asks the fade-or-continue question of the market itself, not of one line.</p>`);
-  box('systems', `<div class="now">4h regime vs each market's own last year (main markets + ${esc(S.inst)}): ${regimes}</div>
-    <ul><li><b>Fade/Continue Book and Daily Read:</b> after a <b>reverting</b> 20 days, p75 touches continued 2–4 points more often in both halves of 10 years. After <b>trending</b> stretches they faded more. This matches the book's "counter-trend touches continue more" result, so read it as context next to the IV ÷ σ tag.</li>
-    <li><b>Fade systems</b> (VuManChu fade, Forward-Track, Forecast-Style Fade): fades have the better backdrop when this instrument reads <b>trending</b>, the worst when it reads reverting.</li>
-    <li><b>Rich-Vol Break Record:</b> a CONTINUE tag on a <b>reverting</b> instrument is the stronger break setup. Both point the same way.</li></ul>`);
-  box('test', `<p>11,083 p75 touches, 8 instruments, 2016–2026 (analysis/surfaces/PERSISTENCE_CHECK.md, descriptive, not pre-registered). Median VR 0.97 / 0.93 / 0.91 at 15m / 1h / 4h: intraday markets mean-revert, more so at longer horizons.</p><p>Reverting regime → continue 37–39% vs 33–35% when trending. That's real and the same in both halves, but it's about the size the line spacing already prices, so it's context, not a trade on its own.</p>`);
+  box('systems', `<div class="now">${hzRead ? esc(S.inst) + ' by horizon: ' + hzRead + '<br>' : ''}4h state vs each market's own last year (main markets + ${esc(S.inst)}): ${regimes}</div>
+    <ul><li><b>Fade/Continue Book and Daily Read:</b> after a <b>giving-back</b> 20 days, p75 touches continued 2–4 points more often in both halves of 10 years. After <b>extending</b> stretches they faded more. This matches the book's "counter-trend touches continue more" result, so read it as context next to the IV ÷ σ tag.</li>
+    <li><b>Fade systems</b> (VuManChu fade, Forward-Track, Forecast-Style Fade): fades have the better backdrop when this instrument reads <b>extending</b>, the worst when it reads giving back.</li>
+    <li><b>Rich-Vol Break Record:</b> a CONTINUE tag on an instrument that is <b>giving back</b> is the stronger break setup. Both point the same way.</li></ul>`);
+  box('test', `<p>11,083 p75 touches, 8 instruments, 2016–2026 (analysis/surfaces/PERSISTENCE_CHECK.md, descriptive, not pre-registered). Median VR 0.97 / 0.93 / 0.91 at 15m / 1h / 4h: intraday markets mean-revert, more so at longer horizons.</p><p>Giving-back regime → continue 37–39% vs 33–35% when extending. That's real and the same in both halves, but it's about the size the line spacing already prices, so it's context, not a trade on its own.</p>`);
   extra(null);
 }
 
@@ -273,16 +275,27 @@ function extra(t, s, html, n) { $('extraPane').hidden = !t; if (!t) return; $('e
 function empty(what, why) { $('surf').innerHTML = `<div class="empty">No ${esc(what)} build yet${why ? ': ' + esc(why) : ''}. It rebuilds every night, or press Rebuild now.</div>`; ['c1', 'c2'].forEach(id => $(id).innerHTML = ''); }
 
 const FIELDS = { absorption:['absorption (FX as one trade)', fAbsorption], persistence:['persistence by horizon', fPersistence], volTime:['vol time', fVolTime], rates:['rates curve + regime', fRates] };
-function render() {
+// Each field is fetched on first use (?field=…), so the page never downloads the whole ~2 MB build.
+const need = () => S.field === 'absorption' ? (S.amode === 'cross' ? 'crossAsset' : 'absorption') : S.field;
+async function ensure(f) {
+  if (D[f] !== undefined) return;
+  $('status').textContent = 'loading ' + f + '…';
+  try { const r = await fetch('/api/surface-lab?field=' + f); const j = await r.json(); D[f] = j[f] ?? null; Object.assign(D, { builtAt: j.builtAt, errors: j.errors }); }
+  catch (e) { D[f] = null; }
+  $('status').textContent = '';
+}
+async function render() {
+  await ensure(need());
   chips($('fieldBtns'), Object.entries(FIELDS).map(([k, v]) => [k, v[0]]), 'field');
-  const insts = Object.keys(D.persistence?.byInst ?? {});
+  const insts = Object.keys((S.field === 'volTime' ? D.volTime : D.persistence)?.byInst ?? {});
   $('instRow').hidden = !['persistence', 'volTime'].includes(S.field);
   $('modeRow').hidden = S.field !== 'absorption';
   chips($('modeBtns'), [['fx', 'FX: 27 pairs'], ['cross', 'cross-asset: FX, gold, oil, indices, bonds']], 'amode');
   chips($('instBtns'), insts.map(i => [i, i]), 'inst');
   chips($('viewBtns'), Object.keys(VIEWS).map(v => [v, v]), 'view');
-  if (!insts.includes(S.inst) && insts.length) S.inst = insts[0];
+  if (!insts.includes(S.inst) && insts.length) S.inst = insts.includes('EURUSD') ? 'EURUSD' : insts[0];
   try { FIELDS[S.field][1](); } catch (e) { $('surfNote').textContent = 'Could not draw this field: ' + e.message; }
+  if (!wired && $('surf').on) { wire(); wired = true; }
 }
 function wire() {
   $('surf').on?.('plotly_click', ev => {
@@ -296,10 +309,11 @@ function wire() {
 }
 async function load() {
   try {
-    const r = await fetch('/api/surface-lab'); D = await r.json();
-    if (!D.ok) { $('meta').textContent = D.error || 'no build yet'; $('status').textContent = D.running ? 'building…' : ''; return; }
-    $('meta').textContent = `built ${new Date(D.builtAt).toLocaleString()} · ${Math.round((D.buildMs ?? 0) / 1000)}s${Object.keys(D.errors ?? {}).length ? ' · some fields failed: ' + Object.keys(D.errors).join(', ') : ''}`;
-    render(); if (!wired && $('surf').on) { wire(); wired = true; }
+    const r = await fetch('/api/surface-lab?field=rates'); const j = await r.json();
+    if (!j.ok) { $('meta').textContent = j.error || 'no build yet'; $('status').textContent = j.running ? 'building…' : ''; return; }
+    D = { rates: j.rates ?? null, builtAt: j.builtAt, errors: j.errors };
+    $('meta').textContent = `built ${new Date(j.builtAt).toLocaleString()} · ${Math.round((j.buildMs ?? 0) / 1000)}s${Object.keys(j.errors ?? {}).length ? ' · some fields failed: ' + Object.keys(j.errors).join(', ') : ''}`;
+    await render();
   } catch (e) { $('meta').textContent = 'Could not load the Surface Lab: ' + e.message + '. Reload to try again.'; }
 }
 $('rebuild').onclick = async () => { $('status').textContent = 'rebuilding — takes a minute or two…'; try { await fetch('/api/surface-lab/rebuild', { method:'POST' }); } catch {} setTimeout(load, 90_000); };

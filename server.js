@@ -26067,7 +26067,7 @@ svcInterval('dailyRead', () => svcRun('dailyRead', () => dailyRead.tick('schedul
 // COG-style live 3D surfaces: FX absorption ratio (PCA), variance-ratio persistence by horizon, vol time, and the
 // Treasury curve with its steepener/flattener label. Rebuilt when older than 12 h; first build ~2 min after boot.
 const surfaceLab = createSurfaceLab({ kv, fetchCandles: fetchOandaCandleRange,
-  fetchFred: (id, from) => fetchFredSeries(id, from, process.env.FRED_KEY) });
+  fetchFred: (id, from) => fetchFredSeries(id, from, process.env.FRED_KEY), getSession: getSessionStatus });
 surfaceLab.mount(app);
 svcInterval('surfaceLab', () => svcRun('surfaceLab', () => surfaceLab.tick('scheduled')), 30 * 60_000);
 svcTimeout('surfaceLab', () => svcRun('surfaceLab', () => surfaceLab.tick('boot')), 120_000);

@@ -174,3 +174,49 @@ export function regimeOutcomes(ratesOut, assets, { fwd = 4 } = {}) {
   }
   return { fwdWeeks: fwd, split: half, byAsset: out };
 }
+
+// ── currency level ─────────────────────────────────────────────────────────────────────────────────
+// Equal-weight currency indices from every pair containing the currency (signed toward it). For each non-USD
+// currency c, its USD pair's move is (index_c − index_USD) up to scale, so its variance splits exactly into a dollar
+// part (var_USD − cov) and a c part (var_c − cov). dollarShare = the dollar's part over the window: "of the EURUSD
+// move over the last 60 days, how much was the dollar". move20Pct = each index's own 20-day move vs the basket.
+export const CCYS = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF'];
+export function currencyFactors(closes, { window = 60, recent = 20 } = {}) {
+  const pairs = Object.keys(closes).filter(p => /^[A-Z]{6}$/.test(p)).sort();
+  const dates = [...new Set(pairs.flatMap(p => [...closes[p].keys()]))].sort()
+    .filter(d => pairs.filter(p => closes[p].has(d)).length >= pairs.length * 0.9);
+  const ret = {};
+  for (const p of pairs) { let prev = null; ret[p] = dates.map(d => { const c = closes[p].get(d) ?? prev; const x = prev && c ? Math.log(c / prev) : 0; prev = c ?? prev; return x; }); }
+  const idx = {};
+  for (const c of CCYS) {
+    const legs = pairs.filter(p => p.startsWith(c) || p.endsWith(c)).map(p => [p, p.startsWith(c) ? 1 : -1]);
+    if (legs.length) idx[c] = dates.map((_, t) => mean(legs.map(([p, s]) => s * ret[p][t])));
+  }
+  const w0 = Math.max(0, dates.length - window), out = { asOf: dates.at(-1), window, byCcy: {} };
+  const sum20 = c => r(idx[c].slice(-recent).reduce((s, v) => s + v, 0) * 100, 2);
+  if (!idx.USD) return out;
+  const u = idx.USD.slice(w0), mu = mean(u);
+  for (const c of CCYS) {
+    if (!idx[c]) continue;
+    if (c === 'USD') { out.byCcy[c] = { move20Pct: sum20(c) }; continue; }
+    const x = idx[c].slice(w0), mx = mean(x);
+    let vx = 0, vu = 0, cv = 0; for (let k = 0; k < x.length; k++) { vx += (x[k] - mx) ** 2; vu += (u[k] - mu) ** 2; cv += (x[k] - mx) * (u[k] - mu); }
+    const tot = vx + vu - 2 * cv;
+    out.byCcy[c] = { pair: ['EUR', 'GBP', 'AUD', 'NZD'].includes(c) ? c + 'USD' : 'USD' + c,
+      dollarShare: tot > 0 ? r((vu - cv) / tot, 3) : null, ownShare: tot > 0 ? r((vx - cv) / tot, 3) : null, move20Pct: sum20(c) };
+  }
+  return out;
+}
+
+// ── live vol clock ─────────────────────────────────────────────────────────────────────────────────
+// profile: 96 slot shares (sum 1) of a typical day's movement in London time. Elapsed vol time τ = share of the typical
+// day's movement already behind us at `slot`. A Brownian range grows with √time, so the range expected by now is
+// medianRange × √τ, and pace = range so far ÷ that. Closed-form reference, not a backtested claim.
+export function volClock(profile, slot, rangeSoFarPct, medianRangePct) {
+  if (!Array.isArray(profile) || !(slot >= 0)) return null;
+  const tau = Math.min(1, profile.slice(0, slot + 1).reduce((s, x) => s + (x ?? 0), 0));
+  const expected = medianRangePct > 0 ? medianRangePct * Math.sqrt(tau) : null;
+  const pace = expected > 0 && Number.isFinite(rangeSoFarPct) ? rangeSoFarPct / expected : null;
+  return { tau: r(tau, 3), expectedSoFarPct: r(expected, 3), rangeSoFarPct: r(rangeSoFarPct, 3), pace: r(pace, 2),
+    read: pace == null ? null : pace >= 1.25 ? 'running ahead' : pace <= 0.8 ? 'running behind' : 'on schedule' };
+}
