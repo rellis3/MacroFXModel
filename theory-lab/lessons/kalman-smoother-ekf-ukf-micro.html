@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Bending a straight-line filter around a curved orbit</h2>
-      <p class="sl-sub">Stanley F. Schmidt · early 1960s · NASA Ames — then Rauch, Tung &amp; Striebel (1965) and Julier &amp; Uhlmann (1990s)</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">When prices are curved functions of a hidden state</h2>
+      <p class="sl-sub">Extended &amp; unscented filters, RTS smoother · rates and volatility models, 1990s–2000s</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Kálmán's 1960 filter was linear; orbits are not. Stanley Schmidt's group at NASA Ames relinearized the equations around the filter's own latest estimate at every step — essentially the EKF — and it went on to Apollo. Rauch, Tung &amp; Striebel (1965) then answered the post-flight question "where were we really?" with the backward-pass smoother.</p>
-        <p>In the 1990s Julier &amp; Uhlmann replaced the EKF's tangent line with a handful of sample points pushed through the true function. By Uhlmann's own account, the name "unscented" came half-jokingly from a deodorant on a colleague's desk.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Option prices, CIR-type yields and regime probabilities are curved functions of a hidden state, so the plain filter's linear algebra breaks. From the 1990s, extended and unscented filters became the usual way to fit nonlinear term-structure and volatility models to market prices.</p>
+        <p>The Rauch–Tung–Striebel smoother answers a research question instead: what was the hidden factor, using data on both sides of each date? So it belongs in post-mortems and factor histories, never in a live signal.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> estimate a hidden factor when prices are nonlinear in it, or reconstruct its path after the fact.</p>
       </div>
     </section>
 
@@ -308,7 +310,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The UKF skips linearization entirely — it pushes a few deterministic sigma points through the true nonlinear function and reconstructs the mean/variance from where they land.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>EKF is cheaper and the default first move for mild, smooth nonlinearity; UKF costs more but tolerates stronger curvature and needs no Jacobian at all.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>When nonlinearity is severe, or the noise is genuinely non-Gaussian or multimodal, escalate further still — to the particle filter from the previous lesson.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Each tool was born from a concrete complaint — curved orbits (EKF, NASA Ames), post-flight reconstruction (RTS smoother, 1965), tangent-line failures (UKF, 1990s).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk: EKF/UKF to fit nonlinear rates and volatility models to market prices; the smoother for research reconstruction only, because it looks ahead.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

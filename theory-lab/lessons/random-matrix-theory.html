@@ -35,7 +35,7 @@
       <li>The Marchenko-Pastur law gives the exact "noise band" \([\lambda_{\min}, \lambda_{\max}] = [(1-\sqrt{q})^2, (1+\sqrt{q})^2]\) that pure-noise eigenvalues are expected to fall inside, where \(q = N/T\) (instruments over observations).</li>
       <li>Worked example in this lesson: \(N=30\) FX pairs, \(T=250\) days gives \(q=0.12\), so \(\lambda_{\min}\approx0.43\) and \(\lambda_{\max}\approx1.81\) — the basket's \(\lambda_1=8.2\) clears that band easily (a real factor), while \(\lambda_2\)–\(\lambda_4\) all land inside it (indistinguishable from noise).</li>
       <li>This project's existing effective-number-of-bets calculation already consumes the full eigenvalue spectrum but does not run this noise-band check against it — a concrete, unbuilt guardrail, not something the repo currently does.</li>
-      <li><strong>Where it came from:</strong> Eugene Wigner's 1950s trick of modeling uncomputably complex heavy nuclei with random matrices, Marchenko &amp; Pastur's 1967 eigenvalue law (Kharkiv), and two physics groups who carried it into stock correlations in 1999.</li>
+      <li><strong>How it reached trading:</strong> two physics groups showed in 1999 (Laloux et al.; Plerou et al.) that most eigenvalues of stock correlation matrices sit inside the Marchenko–Pastur noise band, and cleaning them became a standard step before portfolio optimisation.</li>
     </ul>
   </div>
 
@@ -96,13 +96,20 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>Too many energy levels to compute</h3>
-    <div class="tl-origin-who">Eugene Wigner · 1950s · Princeton — then Vladimir Marchenko &amp; Leonid Pastur · 1967 · Kharkiv</div>
-    <p>Random matrices first appeared in statistics — John Wishart worked out the distribution of sample covariance matrices in 1928, the very object this lesson tests — but the field took off in nuclear physics. In the 1950s Eugene Wigner was facing heavy nuclei such as uranium, whose energy levels were far too numerous, and the forces inside far too complicated, to compute from first principles. His radical move was to replace the unknowable equations with a <em>random</em> symmetric matrix and ask only what its eigenvalues look like statistically. The spacings between real nuclear energy levels turned out to match the random-matrix predictions strikingly well.</p>
-    <p>In 1967 Marchenko and Pastur, mathematicians in Kharkiv (then in the Soviet Union, now Ukraine), proved the limiting law for the eigenvalues of large sample-covariance-type matrices — the noise band at the heart of this lesson.</p>
-    <p>The theory has a habit of turning up where nobody expects it. In 1972, over tea at the Institute for Advanced Study in Princeton, the number theorist Hugh Montgomery described a formula he had found for the spacing of zeros of the Riemann zeta function; Freeman Dyson recognized it as the random-matrix formula for the spacing of energy levels.</p>
-    <p>Finance arrived in 1999, when two physics groups — Jean-Philippe Bouchaud and colleagues in Paris, and H. Eugene Stanley's group in Boston — compared stock correlation matrices with the Marchenko–Pastur band and found most of the eigenvalues indistinguishable from noise.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Most of a correlation matrix is noise</h3>
+    <div class="tl-origin-who">Random matrix theory · Laloux, Cizeau, Bouchaud &amp; Potters and Plerou et al., 1999</div>
+    <p>A portfolio optimiser inverts a correlation matrix estimated from history. With hundreds of assets and a few years of data, that matrix has more parameters than the data can pin down, and the optimiser piles weight into spurious low-risk combinations. There was no clean test of which parts of an estimated matrix were real.</p>
+    <p>In 1999 two physics groups, Laloux, Cizeau, Bouchaud &amp; Potters in Paris and Plerou, Gopikrishnan, Rosenow, Amaral &amp; Stanley in Boston, compared large US stock correlation matrices with the Marchenko–Pastur noise band and found only a handful of eigenvalues, the market mode and some sector modes, clearly above it. Bouchaud and Potters worked at the hedge fund Capital Fund Management, and their group went on to show that optimising with a cleaned matrix brings realised risk much closer to predicted risk.</p>
+    <p>On a desk today, cleaning or shrinking the covariance matrix is a standard step before mean-variance or risk-parity optimisation, alongside Ledoit–Wolf shrinkage, and the noise band is a quick check on how many factors are real.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Which eigenvalues of an estimated correlation matrix are signal, and which are sampling noise to clean away before optimising?</dd>
+        <dt>Takes in</dt><dd>The eigen-decomposition from <a href="pca-factors.html">PCA &amp; Factors</a> and <a href="linear-algebra-matrices.html">Linear Algebra</a>.</dd>
+        <dt>Hands on to</dt><dd>A cleaned matrix for <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a> and <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>; compare <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit–Wolf shrinkage</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -556,7 +563,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The worked scenario: N=30, T=250 gives q=0.12.</strong> λ₁=8.2 clears the ~0.43–1.81 band easily (a real factor); λ₂–λ₄ all land inside it (indistinguishable from noise).</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>"Inside the band" doesn't prove there's no structure.</strong> It means this sample can't currently distinguish that eigenvalue from noise — a real but modest factor can still hide there.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This noise-band check is not currently run in this repo.</strong> This project's existing effective-number-of-bets calculation already has the eigenvalues it would need — this is a concrete, unbuilt guardrail, not a claim about existing behavior.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>A physicist's admission of ignorance became a noise filter.</strong> Wigner used random matrices precisely because the true nuclear equations were unknowable; the Marchenko–Pastur band asks the same humble question of a correlation matrix — what would pure randomness look like here?</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its job is to stop an optimiser trading on noise.</strong> Since 1999 (Laloux et al.; Plerou et al.) the Marchenko–Pastur band has been used to separate real factors from sampling noise, so a cleaned matrix, not the raw one, goes into the optimiser.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

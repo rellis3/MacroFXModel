@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Listening for oil in the echoes</h2>
-      <p class="sl-sub">Dennis Gabor (1946) · Jean Morlet &amp; Alex Grossmann (early 1980s, France) · Ingrid Daubechies (1988)</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">The same two markets, related differently at each horizon</h2>
+      <p class="sl-sub">Wavelets · Ramsey &amp; Lampart, 1998; Gençay, Selçuk &amp; Whitcher, 2002</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Gabor (1946) analyzed signals through a sliding fixed-width window. Jean Morlet, a geophysicist at Elf Aquitaine studying seismic echoes for oil exploration, found one width couldn't serve both fast and slow echoes — so he stretched and squeezed a single wave shape instead.</p>
-        <p>With physicist Alex Grossmann in Marseille he formalized it in the early 1980s, naming the shapes <em>ondelettes</em> ("small waves"). Daubechies (1988) and Mallat &amp; Meyer made it fast and practical — good enough for the FBI's fingerprint compression.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>A single correlation, beta or Fourier spectrum averages every horizon and every period together. Wavelets, from 1980s signal processing, reached economics in the 1990s to split relationships by timescale (Ramsey &amp; Lampart, 1998).</p>
+        <p>Gençay, Selçuk &amp; Whitcher (2002) brought the toolkit to finance, including betas estimated scale by scale. Today it gives multi-horizon views of correlation and beta, and wavelet coherence shows co-movement switching on and off.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how does this series or relationship behave at each horizon, and when did that change?</p>
       </div>
     </section>
 
@@ -276,7 +278,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The output, a scalogram, is a 2-D time-frequency map, not a 1-D spectrum — time on one axis, scale/frequency on the other.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Nothing escapes the resolution trade-off: sharper timing always costs some frequency precision, and vice versa.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A scalogram is a descriptive lens on how cyclical behavior evolves — a real-looking pattern still needs an honest out-of-sample test before it's a signal.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Wavelets came from oil-exploration seismology (Morlet &amp; Grossmann, early 1980s): stretch one wave shape to each frequency instead of using one fixed window (Gabor, 1946).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Wavelets reached markets to answer "at which horizon?" (Ramsey &amp; Lampart, 1998; Gençay, Selçuk &amp; Whitcher, 2002): correlations and betas measured scale by scale and through time.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

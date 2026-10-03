@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Tracking a target when the maths won't close</h2>
-      <p class="sl-sub">Neil Gordon, David Salmond &amp; Adrian Smith · 1993 · UK Defence Research Agency &amp; Imperial College London</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Volatility you can't see, in a model that won't linearise</h2>
+      <p class="sl-sub">Particle filters · stochastic-volatility econometrics, late 1990s–2000s</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Sampling ideas go back to Monte Carlo at Los Alamos in the 1940s, and sample-based filters were tried from the late 1960s — but the weights kept collapsing onto a few particles. Gordon and Salmond, at the UK Defence Research Agency, needed to track targets (e.g. bearings-only: angle known, range not) where Kalman-style filters fail.</p>
-        <p>With statistician Adrian Smith at Imperial College they published the 1993 "bootstrap filter," whose key addition was resampling — clone the heavy particles, drop the dead ones. Cheap 1990s computing made thousands of particles practical; Kitagawa and Isard &amp; Blake reached similar ideas independently.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Stochastic-volatility and jump models have a hidden variance with non-Gaussian shocks, where Kalman-type filters stop being accurate, and full-sample MCMC was too slow to rerun on every new price.</p>
+        <p>The 1993 bootstrap filter was adapted within a few years: Pitt &amp; Shephard (1999) demonstrated it on stochastic volatility, and Johannes, Polson &amp; Stroud (2009) used it to extract volatility and jumps from asset prices as they arrive.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> what is the hidden volatility, jump or regime right now, when the model will not linearise?</p>
       </div>
     </section>
 
@@ -355,7 +357,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>N_eff = 1/Σ(w_i²) measures swarm health — from N (every particle informative) down to 1 (total degeneracy, one particle carries everything).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Resampling fixes degeneracy but costs diversity (particle impoverishment) — trigger it on N_eff crossing a threshold, not unconditionally and not never.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Unlike a Kalman filter, a particle swarm can hold two or more live, separate clusters of belief at once — a genuinely multimodal state a single Gaussian can never represent.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Sampling was old (Los Alamos, 1940s); what Gordon, Salmond &amp; Smith added in 1993 for radar-style tracking was resampling — the step that stops the swarm collapsing.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>In markets the particle filter is a volatility tracker: it filters latent volatility and jumps out of returns when the model is too non-Gaussian for a Kalman filter (Pitt &amp; Shephard, 1999).</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

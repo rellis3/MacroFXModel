@@ -38,7 +38,7 @@
       <li>The update step is exact Bayesian updating: the predicted distribution is the prior, the observation model is the likelihood, and — because both are Gaussian and linearly related (conjugacy) — the posterior comes out Gaussian too, with the closed-form mean/variance shown here instead of a numerical integral.</li>
       <li>The worked example tracks a hedge ratio starting at \(\hat{x}=1.20\): Day 1's gain is 0.804 (estimate moves to 1.321), Day 2's gain drops to 0.471 with no parameter changed (estimate moves to 1.311) — the gain keeps settling toward a steady state set purely by \(Q/R\).</li>
       <li>This is presented as a genuine candidate for tracking a drifting hedge ratio or lead-lag coefficient in this repo — explicitly <strong>not built, not prototyped, not validated</strong>, and any use would need to beat the incumbent on true OOS performance first.</li>
-      <li><strong>Where it came from:</strong> Rudolf Kálmán's 1960 recursive reformulation of Wiener's wartime filtering problem, picked up by Stanley Schmidt's group at NASA Ames for Apollo-era navigation — an estimator designed to fit inside a spacecraft computer, later repurposed for drifting hedge ratios.</li>
+      <li><strong>How it reached trading:</strong> via 1980s state-space econometrics, then rates desks (Diebold, Rudebusch &amp; Aruoba's 2006 state-space yield curve) and pairs traders who needed a hedge ratio that drifts instead of jumping with the window.</li>
     </ul>
   </div>
 
@@ -116,13 +116,20 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>A navigation problem on the way to the Moon</h3>
-    <div class="tl-origin-who">Rudolf E. Kálmán · 1960 · RIAS, Baltimore → NASA Ames / Apollo</div>
-    <p>The problem Kálmán set out to fix wasn't a finance problem, and at first it wasn't even a space problem. The standard tool for pulling a signal out of noise was Norbert Wiener's filter, worked out during the Second World War for aiming anti-aircraft guns at moving aircraft. Wiener's classified 1942 report was so mathematically dense that engineers nicknamed it the "yellow peril," after its yellow cover. It also had practical limits: it was posed in the frequency domain, assumed the signal's statistics never changed, and was awkward to recompute every time a new measurement arrived.</p>
-    <p>Kálmán, a Hungarian-born engineer then at the Research Institute for Advanced Studies (RIAS) in Baltimore, recast the problem in <strong>state-space</strong> form — a hidden state that evolves one step at a time, seen only through noisy measurements — and showed that the best estimate could be updated <em>recursively</em>: keep only the current estimate and its uncertainty, fold in each new reading, and throw the raw history away. That is the predict/update pair this lesson derives. The 1960 paper appeared in an ASME engineering journal, the <em>Journal of Basic Engineering</em>.</p>
-    <p>The human break came when Kálmán visited NASA's Ames Research Center in the autumn of 1960 and described the idea to Stanley F. Schmidt, whose group was working on how a spacecraft could navigate to the Moon and back. Schmidt saw that a recursion that never needs to store a growing data history was exactly what a small on-board computer could run. His team adapted it — including stretching it to the nonlinear orbital equations, the subject of the next lesson — and a version of it flew in Apollo's guidance software. Kálmán received the US National Medal of Science in 2009.</p>
-    <p>Finance arrived much later, once economists treated a regression coefficient itself as a hidden state: the same few lines of algebra that helped steer Apollo became a standard way to track a drifting beta or hedge ratio — the use this lesson is built around.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>A hedge ratio that won't sit still</h3>
+    <div class="tl-origin-who">Kalman filter · state-space econometrics in the 1980s → rates and stat-arb desks</div>
+    <p>Before it, a hedge ratio or beta came from a rolling OLS regression: one number per window, frozen until the next re-fit, and liable to jump whenever an old data point rolled out. There was no principled way to let a relationship drift and still say how sure you were of today's value. Built for control engineering in 1960, the filter reached economics once a regression coefficient was treated as a hidden state; Andrew Harvey's 1989 book <em>Forecasting, Structural Time Series Models and the Kalman Filter</em> made it part of the standard econometric toolkit.</p>
+    <p>Markets took it up on two fronts. On rates, the yield curve's level, slope and curvature became hidden states read off noisy bond yields: Diebold, Rudebusch &amp; Aruoba's 2006 state-space Nelson–Siegel model is the reference case, and Kalman-filter estimation of term-structure models was routine by then. In statistical arbitrage, Elliott, van der Hoek &amp; Malcolm's 2005 paper "Pairs Trading" modelled the spread as a hidden mean-reverting state observed with noise.</p>
+    <p>Today it is the default way a desk tracks a time-varying hedge ratio or beta in a pairs or relative-value book, and the estimation engine inside many term-structure and nowcasting models.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>What is the relationship (hedge ratio, beta, curve factor) right now, and how sure are we of it?</dd>
+        <dt>Takes in</dt><dd>A noisy observed relationship, such as the OLS hedge ratio from <a href="primer-correlation-regression.html">Correlation &amp; Regression</a>, and the prior-to-posterior logic of <a href="bayesian-inference.html">Bayesian Inference</a>.</dd>
+        <dt>Hands on to</dt><dd>The spread that <a href="cointegration.html">Cointegration</a> and <a href="ou-mean-reversion.html">OU mean reversion</a> turn into an entry signal; the nonlinear cases go to <a href="kalman-smoother-ekf-ukf.html">the smoother, EKF &amp; UKF</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -670,7 +677,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The gain settles toward a \(Q/R\) steady state.</strong> The worked example's gain fell from 0.804 (Day 1) to 0.471 (Day 2) with no parameter touched — purely because \(P\) shrank. Keep iterating and it approaches a steady state set entirely by \(Q/R\), which is the filter's self-chosen "effective window length."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Grid-searching \(Q\) and \(R\) against backtest performance is overfitting in disguise.</strong> It relocates the same window-length-tuning risk into a less legible, more sophisticated-looking parameterization — it does not remove it.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Not built, not prototyped, not validated in this repo.</strong> The credit-leadlag / yield-spread lead-lag application described above is a genuine candidate, not a claim of improvement — any real use needs to beat the incumbent on true OOS performance first (Lego Principle 5).</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>It was built for a spacecraft, not a spreadsheet.</strong> Kálmán's 1960 point was recursion — carry only the current estimate and its uncertainty, never the whole history — which is why it suited Apollo's tiny on-board computer, and why it runs so cheaply on a daily data feed today.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it replaces the rolling-window hedge ratio.</strong> Pairs and relative-value traders use it to track a drifting beta with a stated uncertainty; rates desks use the same recursion to read level, slope and curvature off noisy yields (Diebold, Rudebusch &amp; Aruoba, 2006).</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>

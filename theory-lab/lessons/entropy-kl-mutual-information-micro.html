@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Measuring information to send it down a wire</h2>
-      <p class="sl-sub">Claude E. Shannon · 1948 · Bell Labs — then Solomon Kullback &amp; Richard Leibler · 1951</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Pricing an edge in bits</h2>
+      <p class="sl-sub">Kelly, 1956 → Thorp, 1960s; relative entropy in option pricing, 1990s</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Claude Shannon, an engineer at Bell Labs, wanted to know how much a noisy telephone channel could carry. His 1948 "A Mathematical Theory of Communication" ignored what messages mean and measured only how unpredictable they are — entropy. It also popularized the word "bit," which he credited to John Tukey. (An often-told anecdote says von Neumann suggested the name "entropy"; it's lore, not firm record.)</p>
-        <p>Kullback and Leibler, mathematicians at the NSA — Kullback had been one of the Army's original 1930s codebreakers — asked in 1951 how much evidence each observation gives for telling two distributions apart. That's KL divergence.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>In 1956 John Kelly, a Bell Labs colleague of Shannon's, showed that the best long-run growth rate from betting on a noisy tip equals the tip's information rate, in Shannon's bits. Edward Thorp took the rule to blackjack, then to warrant and convertible arbitrage from 1969.</p>
+        <p>In the 1990s KL divergence entered option pricing (Stutzer, 1996; Avellaneda and co-authors, 1997): pick the risk-neutral distribution closest to a prior that still matches market prices. Today MI ranks nonlinear features and KL flags distribution shifts.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how much does this variable tell us, beyond linear correlation, and has the distribution changed?</p>
       </div>
     </section>
 
@@ -384,7 +386,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Mutual information I(X;Y) = D<sub>KL</sub>(P(X,Y)‖P(X)P(Y)) = H(X) − H(X|Y) — built directly from entropy and KL divergence.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Unlike KL divergence, mutual information IS symmetric (I(X;Y) = I(Y;X)) and always ≥ 0, zero exactly when X and Y are independent.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Correlation only catches straight lines and can be exactly zero even for a perfectly deterministic nonlinear relationship (Y=X²) — mutual information catches this because it makes no linearity assumption at all.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Entropy came from sizing telephone channels (Shannon, Bell Labs, 1948); KL divergence from two NSA mathematicians asking how well data separate two hypotheses (1951).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Information theory reached markets through Kelly (1956) and Thorp's betting and trading; on a desk today MI ranks nonlinear features and KL divergence flags a shifted return distribution.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

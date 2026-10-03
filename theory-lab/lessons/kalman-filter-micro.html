@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">A navigation problem on the way to the Moon</h2>
-      <p class="sl-sub">Rudolf E. Kálmán · 1960 · RIAS, Baltimore → NASA Ames / Apollo</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">A hedge ratio that won't sit still</h2>
+      <p class="sl-sub">Kalman filter · state-space econometrics in the 1980s → rates and stat-arb desks</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Kálmán, a Hungarian-born engineer at RIAS in Baltimore, wanted a better version of Norbert Wiener's wartime anti-aircraft filter — one that didn't assume the world was stationary and didn't need recomputing from scratch. His 1960 answer was recursive: carry only the current estimate and its uncertainty, fold in each new reading, forget the raw history.</p>
-        <p>Later in 1960 he described it to Stanley F. Schmidt at NASA Ames, who was working on navigation to the Moon. A method that never stores a growing history was exactly what a tiny on-board computer needed — and a version flew in Apollo's guidance software. Finance borrowed it decades later to track drifting betas and hedge ratios.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Before it, a hedge ratio came from a rolling OLS window: one frozen number that jumped whenever an old point rolled out. Built for control engineering, the filter reached economics in the 1980s by treating a regression coefficient as a hidden state that drifts.</p>
+        <p>Rates desks used it to read level, slope and curvature off noisy yields (Diebold, Rudebusch &amp; Aruoba, 2006); stat-arb used it for spreads and drifting hedge ratios (Elliott, van der Hoek &amp; Malcolm, 2005). It is now the default way to track a time-varying beta.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> what is the hedge ratio right now, and how sure are we of it?</p>
       </div>
     </section>
 
@@ -318,7 +320,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Update blends in the new observation by the Kalman gain K = P/(P+R), then shrinks P — the gain is derived, not a fixed smoothing constant like an EMA's.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The gain settles toward a steady state set by Q/R — the filter's own, self-chosen "effective window length," with no N to pick.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Q and R are still chosen inputs — grid-searching them against a backtest is the same overfitting risk as tuning a window length, just harder to spot.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>The filter's origin explains its shape: Kálmán (1960) made estimation recursive so it could run with almost no memory — the property that got it onto Apollo and makes it cheap on a daily feed.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk it replaces the rolling-window hedge ratio: pairs traders track a drifting beta with it, and rates desks read curve factors off noisy yields with the same recursion.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

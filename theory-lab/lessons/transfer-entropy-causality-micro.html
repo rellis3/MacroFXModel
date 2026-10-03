@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
-      <h2 class="sl-h2">Which way does the information flow?</h2>
-      <p class="sl-sub">Thomas Schreiber · 2000 · building on Norbert Wiener (1956) and Clive Granger (1969)</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Who leads whom, when the link isn't linear</h2>
+      <p class="sl-sub">Transfer entropy · Schreiber, 2000 → financial lead-lag from Marschinski &amp; Kantz, 2002</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Wiener (1950s) and then Clive Granger (1969) asked whether one series' past improves forecasts of another — the linear "Granger causality" test, later part of Granger's 2003 Nobel-winning body of work.</p>
-        <p>Thomas Schreiber, a physicist working on chaotic and nonlinear time series, wanted the same directional question without the linearity. Mutual information catches nonlinear links but is symmetric; his 2000 paper "Measuring Information Transfer" conditioned on the target's own past to get direction, testing it on coupled chaotic maps and heart-rate/breathing data — not markets.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Lead-lag between markets was measured with Granger's 1969 linear test, which misses links that live in the tails or in volatility; mutual information catches those but cannot say which way influence runs.</p>
+        <p>Schreiber's 2000 measure fixed both, and Marschinski &amp; Kantz (2002) applied it to flows between the Dow Jones and DAX. It is now a standard nonlinear cross-check on Granger results and a way to draw directed spillover edges.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage on">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> does X's past predict Y's future, in which direction, linear or not?</p>
       </div>
     </section>
 
@@ -338,7 +340,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>It reduces exactly to Granger causality for jointly Gaussian, linear systems (Barnett, Barrett &amp; Seth, 2009) — added detection power appears only once the relationship is genuinely nonlinear.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neither tool proves causation — an unobserved common driver Z can produce a nonzero, asymmetric reading with zero real direct link, exactly as demonstrated on the confounder slider.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Estimating transfer entropy from real data needs a full joint probability distribution — far more data than Granger's linear regression, and much more as the relevant lag length grows.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Granger (1969, economics) and Schreiber (2000, physics) asked the same directional question; transfer entropy is the physicist's nonlinear version of it.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Transfer entropy reached markets as a nonlinear lead-lag test (Marschinski &amp; Kantz, 2002): Granger's question without the linearity, worth its data cost only when the link is nonlinear.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
