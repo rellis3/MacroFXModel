@@ -637,10 +637,13 @@ const MICRO_CALLOUT_RE = /<div class="tl-callout">\s*<strong>Prefer pictures to 
 const MICRO_MODE_TOGGLE_RE = /<div class="tl-mode-toggle"[\s\S]*?<\/div>\n?/;
 const MICRO_CARD_BADGE_RE = /<span class="tl-card-micro-badge"[\s\S]*?<\/span>/g;
 const MICRO_MODE_SCRIPT_RE = /try\s*\{\s*mode\s*=\s*localStorage\.getItem\(KEY\)\s*\|\|\s*'full';\s*\}\s*catch\s*\(e\)\s*\{\}/;
-const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
+const MICRO_LESSON_PAGE_RE = /^\/theory-lab\/(?:hub\.html|start\.html|lessons\/(?!.*-micro\.html$)[^/]+\.html)$/;
+// Prose that only makes sense when visual guides are on (start.html's reading-mode
+// explainer) sits between these markers and goes with the rest of the micro UI.
+const MICRO_PROSE_RE = /<!-- MICRO:START -->[\s\S]*?<!-- MICRO:END -->\n?/g;
 
 function stripMicroEducationUI(html, isHub) {
-  html = html.replace(MICRO_CALLOUT_RE, '');
+  html = html.replace(MICRO_CALLOUT_RE, '').replace(MICRO_PROSE_RE, '');
   if (isHub) {
     html = html.replace(MICRO_MODE_TOGGLE_RE, '');
     html = html.replace(MICRO_CARD_BADGE_RE, '');
