@@ -1,0 +1,32 @@
+# Theory Lab checks: the desk-evidence ledger, the lessons that cite it, and the
+# learning paths. Plain node scripts (✓/✗ output, exit 1 on failure), no deps.
+name: Theory Lab checks
+
+on:
+  pull_request:
+    paths:
+      - 'theory-lab/**'
+      - 'js/deskEvidence.js'
+      - 'js/*.test.mjs'
+      - '.github/workflows/theory-lab.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'theory-lab/**'
+      - 'js/deskEvidence.js'
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Desk evidence ledger
+        run: node js/deskEvidence.test.mjs
+      - name: Lessons citing the ledger (ids, dates, no internal leaks)
+        run: node js/lessonEvidence.test.mjs
+      - name: Learning paths
+        run: node js/lessonPaths.test.mjs
