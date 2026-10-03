@@ -36,6 +36,7 @@
       <li>What makes these genuinely different from an academic Fama-French-style model isn't just "more factors": careful covariance-matrix shrinkage so the risk matrix stays invertible for optimization, continuous re-estimation instead of one fixed specification, formal industry/sector/country factors, and a design purpose — risk attribution and portfolio construction — rather than testing an asset-pricing hypothesis.</li>
       <li>This repo trades FX and gold, not a broad equity cross-section — there is no direct Barra-for-currencies in wide commercial use. But the underlying logic (decompose total risk into named systematic buckets plus a residual, then use that decomposition for both attribution and construction) is exactly what this curriculum's own <a href="hierarchical-risk-parity.html">Hierarchical Risk Parity</a>, <a href="factor-based-portfolio-construction.html">Factor-Based Portfolio Construction</a>, and <a href="random-matrix-theory.html">Random Matrix Theory</a> lessons already do for this repo's own instrument universe.</li>
       <li>A genuinely computable anchor closes the gap a full build can't: a real, correct 2-factor risk decomposition — factor variance via \(x^\top F x\) plus specific variance — computed live, exactly the arithmetic a 40-factor commercial model runs at far larger scale.</li>
+      <li><strong>How it reached trading:</strong> Barr Rosenberg founded Barra in 1975 to sell factor risk models built from stock characteristics, and its descendants (MSCI Barra, Axioma) are how equity desks see and budget risk today.</li>
     </ul>
   </div>
 
@@ -96,6 +97,23 @@
       proprietary product a fund pays MSCI or Axioma a subscription for
       instead of building in-house.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Seeing a portfolio's risk before it bites</h3>
+    <div class="tl-origin-who">Factor risk models · Barr Rosenberg, Barra, from 1975 → MSCI and every equity desk</div>
+    <p>Before commercial risk models, a portfolio manager had either a single market beta or a full stock-by-stock covariance matrix that could not be estimated reliably for hundreds of names. Neither said where the risk actually came from: an unintended bet on small caps, on one industry, on high-momentum stocks.</p>
+    <p>Barr Rosenberg's research in the early 1970s (published work on "extra-market" components of covariance) described returns through a stock's measurable characteristics: industry, size, value, volatility, momentum. He founded Barra in 1975 to sell that approach, and its equity models became the industry's common language for risk. Barra became part of MSCI in 2004; Axioma and others compete with the same structure.</p>
+    <p>Today a portfolio manager or risk officer sees a book's predicted tracking error broken into style, industry, country and stock-specific risk every morning, and the same factor covariance matrix sits inside the optimiser that builds the portfolio.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Where does this portfolio's risk come from, in named factor bets plus stock-specific noise?</dd>
+        <dt>Takes in</dt><dd>Per-period factor returns from cross-sectional regressions (<a href="institutional-fama-macbeth.html">Fama-MacBeth</a>) and a well-conditioned covariance matrix from <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf shrinkage</a>.</dd>
+        <dt>Hands on to</dt><dd>Risk attribution in <a href="institutional-factor-marginal-component-var.html">Factor, Marginal &amp; Component VaR</a> and portfolio construction in <a href="markowitz-black-litterman.html">Markowitz &amp; Black-Litterman</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -652,6 +670,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Institutions use these for risk attribution, performance attribution, and portfolio-construction constraints</strong> — never as a source of alpha, since the exposures a subscription reveals are widely-known, already-priced-in descriptive statistics.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>There is no direct Barra-for-currencies in wide commercial use.</strong> This repo's genuine analog is the same decompose-and-attribute logic, already built here for FX/gold: Hierarchical Risk Parity, Factor-Based Portfolio Construction, and Random Matrix Theory.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>The live calculator is a real, correct decomposition, just at toy scale.</strong> Factor variance \(x^\top F x\) plus specific variance is exactly the arithmetic a 40-plus-factor commercial model runs, computed here with \(K=2\).</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk this is the daily risk report.</strong> Since Barr Rosenberg founded Barra in 1975, equity managers have read predicted risk split into style, industry, country and stock-specific parts, and fed the same factor covariance matrix into their optimisers.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

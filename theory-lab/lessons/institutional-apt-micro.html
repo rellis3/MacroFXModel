@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Arbitrage Pricing Theory — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, live math notation, a live calculator, and a 6-question self-test?<a href="institutional-apt.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Which macro shocks is this book really exposed to?</h2>
+      <p class="sl-sub">Arbitrage Pricing Theory · Ross, 1976 → Roll &amp; Ross's macro-factor models in the 1980s</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>CAPM gave managers one beta and no way to say why same-beta stocks reacted so differently to an inflation print or a credit-spread jump. Ross (1976) allowed several priced factors, held together by no-arbitrage alone.</p>
+        <p>Chen, Roll &amp; Ross (1986) named the factors as macro surprises, and Roll and Ross took the approach into money management through their own firm. It is now the reasoning behind every multi-factor risk model.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> which systematic shocks does this book carry, and what premium should each one earn?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Three routes to one equation</h2>
       <p class="sl-sub">Same destination — an equation for expected return — three completely different ways to get there. Pick a model.</p>
       <div class="sl-card">
@@ -49,8 +62,8 @@
       <p class="sl-p">APT only becomes a specific, testable model once you plug in a concrete choice of factors — the market portfolio alone (nearly CAPM again), the Fama-French factors, or — this deck's focus from here on — observable macroeconomic surprises.</p>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Diversification erases the noise</h2>
       <p class="sl-sub">Every asset's return splits into a common-factor part and its own private noise. Average enough assets and the noise disappears.</p>
       <div class="sl-icard-grid">
@@ -61,8 +74,8 @@
       <div class="sl-quote">If you flip one coin, the outcome is genuinely unpredictable. Flip a thousand and look at the average — that average lands remarkably close to 50% almost every time, because each coin's own randomness is a different, unrelated flip. A diversified portfolio does the same thing to a thousand unrelated, asset-specific noise terms.</div>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">The no-arbitrage argument, drawn</h2>
       <p class="sl-sub">Same factor exposure, different expected return — that gap cannot survive competitive trading.</p>
       <div class="sl-card">
@@ -101,8 +114,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">What the argument forces the pricing equation to look like</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The equation</div>
@@ -120,8 +133,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Chen, Roll &amp; Ross: a macro face on the factors</h2>
       <p class="sl-sub">The 1986 paper that made APT genuinely useful: five observable macro surprise variables as the priced factors.</p>
       <div class="sl-icard-grid">
@@ -133,8 +146,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">Why "surprise," never the level</h2>
       <p class="sl-sub">The single most important idea in this whole factor list.</p>
       <div class="sl-quote">Markets are forward-looking. By the time a macro release prints, the part everyone already expected is already priced in — through futures curves, consensus surveys, a central bank's own guidance. Only the part nobody saw coming still represents genuine, un-hedged risk at the moment it's realized, and only that part is capable of carrying a risk premium.</div>
@@ -144,8 +157,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">Worked example: pricing three toy assets</h2>
       <p class="sl-sub">Rf = 3%, an IP-surprise factor priced at λ = 3%, an inflation-surprise factor priced at λ = −1.5%. Pick an asset.</p>
       <div class="sl-card">
@@ -171,8 +184,8 @@
       <p class="sl-p">None of these three numbers is a fudge — each is the linear combination of loadings times prices of risk the pricing equation says it must be.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">Try it yourself — the 2-factor pricing equation, live</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>Try it — change any input, live</div>
@@ -198,8 +211,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Watch one price of risk move the expected return</h2>
       <p class="sl-sub">Drag the slider. Everything else stays fixed at Asset X's numbers (Rf = 3%, β₁ = 1.5, β₂ = 0.5, λ₂ = −1.5%) — only λ₁, the IP-surprise premium, moves.</p>
       <div class="sl-card">
@@ -220,8 +233,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Two honest cracks in the theory</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">The generality problem</div>
@@ -233,8 +246,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -284,8 +297,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>APT is derived from no-arbitrage alone — far weaker than CAPM's full-equilibrium assumption, which is what makes it more general and less specific at once.</p></div>
@@ -294,6 +307,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Chen-Roll-Ross (1986) gave APT a genuinely useful macro face: unexpected industrial production, inflation, term-spread, and default-spread surprises, plus a market residual.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Only the surprise carries a risk premium, never the level — the same logic this curriculum's Central Bank Policy and Taylor Rule lessons use for rate decisions.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>There's no single, standard "the APT model" — treat any specific specification as one modeling choice among many, not a settled consensus.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>On a desk APT is the case for multi-factor risk: judge a book by its exposure to macro surprises, the approach Roll and Ross took into money management in the 1980s.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

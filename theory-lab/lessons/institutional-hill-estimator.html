@@ -39,6 +39,7 @@
       <li>Choosing \(k\) is the Hill estimator's own version of the sibling lesson's "choosing the threshold \(u\)" problem: too small a \(k\) means high variance (a handful of points), too large a \(k\) means bias (you've pulled in observations that aren't really tail behavior anymore) — visualized as the notoriously unstable "Hill plot."</li>
       <li>What Hill buys you (no distributional assumption, trivial computation, known asymptotics) it also costs you: it only ever estimates the shape exponent, never a full fitted distribution — it can't be inverted for an arbitrary VaR/CVaR quantile the closed-form way a fitted GPD can.</li>
       <li>This repo's own <code>js/extremesCore.js</code> already contains a correct <code>hillEstimator</code> implementation using exactly this lesson's α/ξ convention — but, per the grep in the status badge above, nothing calls it. Its GPD/POT siblings in the same file are what's actually live in production.</li>
+      <li><strong>How it reached trading:</strong> Hill's 1975 tail-index estimator reached markets through 1990s fat-tail studies of returns (tail indices near three), and risk teams use it as the quick check on whether a normal VaR can be trusted.</li>
     </ul>
   </div>
 
@@ -85,6 +86,23 @@
     one" and wanted a single number to back that impression up without committing to a full model, the
     Hill estimator is exactly that number, made rigorous.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>How fat is this tail, really?</h3>
+    <div class="tl-origin-who">Tail index · Hill, 1975 → fat-tail measurement in returns from the 1990s</div>
+    <p>Benoit Mandelbrot argued in 1963 that price changes have tails far heavier than the normal distribution, but risk models kept assuming normality because there was no simple, assumption-light way to measure how heavy a tail is. Without that number, a desk cannot say whether a five-sigma loss is a once-a-millennium event or a once-a-decade one.</p>
+    <p>Bruce Hill's 1975 statistics paper gave a one-line estimator for the tail exponent. Jansen &amp; de Vries (1991) applied it to stock returns, and later studies found daily equity tail indices clustering around three (the "inverse cubic law"), meaning variance exists but kurtosis may not. That evidence fed the case for extreme-value methods in market-risk VaR during the 1990s.</p>
+    <p>Today risk teams use it as a quick diagnostic: how heavy is this return series' tail, and is a normal or Student-t VaR safe, or does it need a full extreme-value fit?</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How heavy is this return tail, and do the moments a risk model relies on even exist?</dd>
+        <dt>Takes in</dt><dd>Cleaned return data (<a href="data-cleaning-outliers-missing-data.html">Data Cleaning, Outliers &amp; Missing Data</a>) and the normal benchmark from <a href="primer-stats-normal.html">Stats &amp; the Normal Distribution</a>.</dd>
+        <dt>Hands on to</dt><dd>Full tail fits in <a href="extreme-value-theory.html">Extreme Value Theory</a>, the VaR assumptions of <a href="institutional-factor-marginal-component-var.html">Factor, Marginal &amp; Component VaR</a>, and <a href="tail-risk-hedging-convexity.html">Tail-Risk Hedging</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -459,6 +477,7 @@
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>It only ever hands back a shape exponent.</strong> No scale, no closed-form VaR/CVaR at an arbitrary confidence level the way a fitted \((\xi,\beta)\) GPD provides — that machinery lives in the sibling lesson, not here.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Choosing k is choosing u, restated.</strong> Too small = noisy; too large = biased — the identical trade-off the sibling lesson names for its own threshold choice, visualized here as the notoriously unstable "Hill plot."</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A ready-made, correct implementation sits unused in this repo.</strong> <code>js/extremesCore.js</code>'s <code>hillEstimator</code> has zero callers, unlike its live GPD/POT neighbors <code>fitGPD</code>/<code>potFit</code>, wired into <code>js/analyticsDesk.js</code> via <code>server.js</code>.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the quick fat-tail check.</strong> Since Jansen &amp; de Vries (1991) applied Hill's estimator to stock returns, tail indices near three have been the standard evidence that a normal VaR understates extreme losses.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

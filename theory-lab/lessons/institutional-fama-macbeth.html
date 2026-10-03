@@ -36,6 +36,7 @@
       <li>The risk premium estimate is the plain average of the \(T\) period-by-period \(\hat\lambda_t\)'s; its standard error comes from the <strong>time-series</strong> standard deviation of the \(\hat\lambda_t\) series itself, divided by \(\sqrt{T}\) — never from a single pooled regression's residuals.</li>
       <li>This sidesteps the single biggest trap in panel asset pricing: pooling every asset-period observation into one giant OLS regression understates standard errors badly, because returns across <em>different</em> assets in the <em>same</em> period are correlated — they share common-period shocks. Fama-MacBeth's per-period estimates reduce each period to one number, so that correlation stops mattering.</li>
       <li>Stage-1 betas are themselves noisy estimates, not the true population values — using an estimated regressor in Stage 2 biases \(\hat\lambda\) toward zero (classical errors-in-variables attenuation). Shanken (1992) derived the standard correction, which inflates the reported standard errors to account for that extra layer of uncertainty.</li>
+      <li><strong>How it reached trading:</strong> Fama &amp; MacBeth's 1973 month-by-month regressions became the standard way to test whether a factor or signal is priced, and quant equity desks use the same routine to vet new signals.</li>
     </ul>
   </div>
 
@@ -108,6 +109,23 @@
       correlated assets — and it would report a standard error far too small
       to be believed.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Does the market actually pay for this signal?</h3>
+    <div class="tl-origin-who">Cross-sectional regressions · Fama &amp; MacBeth, 1973 → standard in quant equity research</div>
+    <p>Knowing a stock's beta to a factor says how exposed it is, not whether that exposure is rewarded. Pooling every stock-month into one regression to find out gives standard errors that are far too small, because stocks in the same month share the same shock, so researchers kept finding "significant" premia that were not there.</p>
+    <p>Fama &amp; MacBeth's 1973 test of CAPM ran one cross-sectional regression per month and judged the premium by how much the monthly estimates varied over time. It became the default method in empirical asset pricing, and Petersen (2009) later surveyed how often finance papers' standard errors ignored this kind of correlation.</p>
+    <p>On quant equity desks the same monthly cross-sectional regression is how a candidate signal is tested: regress next month's returns on today's characteristic, average the slope, and use its time-series t-statistic. Commercial risk models estimate their factor returns the same way.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage on">Signal</span><span class="tl-role-stage on">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Does exposure to this factor or characteristic earn a premium, with an honest standard error?</dd>
+        <dt>Takes in</dt><dd>Factor loadings from <a href="institutional-fama-french-carhart.html">Fama-French &amp; Carhart</a> and the OLS mechanics of <a href="primer-correlation-regression.html">Correlation &amp; Regression</a>.</dd>
+        <dt>Hands on to</dt><dd>The priced factors of <a href="institutional-apt.html">APT</a> and <a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a>, and the correction for many tried signals in <a href="multiple-testing.html">Multiple Testing</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -711,6 +729,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Stage-1 betas are noisy estimates, not known constants</strong> — using them as a Stage-2 regressor biases \(\hat\lambda_t\) toward zero (attenuation); Shanken (1992) inflates the standard errors to correct for it.</span></div>
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>Both stages are the identical OLS slope formula,</strong> \(\hat\beta=\mathrm{Cov}(X,Y)/\mathrm{Var}(X)\) — only the axis playing the role of "the sample" (time in Stage 1, assets in Stage 2) changes.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>An honestly-computed, correctly-significant \(\bar\lambda\) still isn't proof of real trading edge.</strong> It's a statement about the estimator on a fixed historical sample — factor mining, out-of-sample survival, and costs are separate, unanswered questions.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the signal test.</strong> Regress next period's returns on today's characteristic, period by period, and judge the average slope by its time-series t-statistic: the routine Fama &amp; MacBeth set in 1973 and the way commercial risk models estimate factor returns.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 07</span></div>

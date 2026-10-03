@@ -47,6 +47,7 @@
       <li><strong>Factor VaR</strong> applies the identical logic to a smaller set of underlying risk factors instead of raw positions — decomposing an FX book's VaR into, say, USD-rate risk, EM-currency risk, and carry-factor risk — once portfolio variance is re-expressed as systematic (factor) variance plus specific variance.</li>
       <li>A worked 3-position example below computes every number by hand and confirms the three Component VaRs sum to total portfolio VaR to floating-point precision; a live calculator lets you change weights, volatilities, and correlations and watch the additivity hold for any inputs.</li>
       <li>The whole clean result rests on normality (or, more generally, an elliptical return distribution) and a well-specified factor model — under genuine fat tails, or with a badly-fit factor model, the closed form breaks down and simulation-based estimates are the honest fallback.</li>
+      <li><strong>How it reached trading:</strong> After RiskMetrics (1994) made firm-wide VaR standard, Litterman's 1996 "hot spots" and Garman's marginal and component VaR let banks split that number by position and factor, the basis of risk budgeting today.</li>
     </ul>
   </div>
 
@@ -107,6 +108,23 @@
       position in a portfolio, is what makes Component VaR sum exactly to
       the total.
     </p>
+  </div>
+
+  <div class="tl-origin">
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Which position is eating the risk budget?</h3>
+    <div class="tl-origin-who">Risk decomposition · RiskMetrics era, mid-1990s → risk budgeting on every desk</div>
+    <p>Once banks reported a single firm-wide VaR, after J.P. Morgan published RiskMetrics in 1994 and the 1996 Basel amendment let banks use internal VaR models for market-risk capital, the next question was obvious: which desk or position is driving that number, and what happens if we add to it? A total VaR alone could not say.</p>
+    <p>Robert Litterman's "Hot Spots and Hedges" (Goldman Sachs, 1996) showed how to split portfolio risk into each position's marginal contribution, and Mark Garman's articles in <em>Risk</em> (1996–97) set out marginal and component VaR. Because the components add up exactly to total VaR, banks and asset managers could allocate risk limits and capital by desk and by factor.</p>
+    <p>Today every risk report lists contribution to VaR or tracking error by position and by factor, and the same decomposition underlies risk budgeting and equal-risk-contribution portfolios.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>How much of total risk does each position or factor contribute, and what would one more unit of it add?</dd>
+        <dt>Takes in</dt><dd>A covariance matrix, factor-based from <a href="institutional-barra-risk-models.html">Barra-Style Risk Models</a> or shrunk by <a href="institutional-ledoit-wolf-shrinkage.html">Ledoit-Wolf</a>, and the VaR definition in <a href="coherent-risk-measures.html">Coherent Risk Measures</a>.</dd>
+        <dt>Hands on to</dt><dd>Risk budgets and equal risk contributions in <a href="risk-parity-erc.html">Risk Parity (ERC)</a>, and the fat-tail checks of <a href="institutional-hill-estimator.html">the Hill Estimator</a> and <a href="extreme-value-theory.html">Extreme Value Theory</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-eli5">
@@ -671,6 +689,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A Component VaR can be negative.</strong> If a position's exposure and its Marginal VaR have opposite signs, that position is a genuine diversifier — removing it would <em>increase</em> total portfolio VaR, not decrease it.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>The exact-additivity result depends on normal/elliptical returns and a well-specified factor model.</strong> Under genuine fat tails, or with a misspecified factor structure, the closed form breaks down and honest estimates require simulation, not a formula.</span></div>
     <div class="tl-takeaway red"><span class="tl-takeaway-icon">✗</span><span><strong>Σ itself is an estimate, not a known constant</strong> — calm-period correlations can shift sharply in stress, and any decomposition built on them inherits that instability.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>On a desk it is the risk-budget breakdown.</strong> Since the mid-1990s (Litterman's "hot spots", Garman's component VaR), risk reports split total VaR into contributions that add up exactly, so limits and capital can be set by desk, position and factor.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 08</span></div>

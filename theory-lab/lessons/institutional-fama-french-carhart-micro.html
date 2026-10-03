@@ -12,7 +12,7 @@
   <div class="sl-topbar">
     <a class="sl-back" href="../hub.html">← Theory Lab</a>
     <div class="sl-toptitle">Fama-French &amp; Carhart — Visual Guide</div>
-    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">13</span></div>
+    <div class="sl-topcount"><span id="sl-count">1</span> / <span id="sl-total">14</span></div>
   </div>
   <div class="sl-fullnote">Prefer full derivations, the double-sort mechanics, and a 6-question self-test?<a href="institutional-fama-french-carhart.html">Read the complete lesson →</a></div>
   <div class="sl-progress" id="sl-progress"></div>
@@ -26,7 +26,20 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Was it skill, or just small caps and value?</h2>
+      <p class="sl-sub">Factor attribution · Fama &amp; French 1992–93, Carhart 1997 → the standard performance yardstick</p>
+      <div class="sl-origin">
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Under CAPM, a fund full of small or cheap stocks looked skilled. Fama &amp; French (1992–93) showed size and value explained what beta missed, and turned them into long-short factors.</p>
+        <p>Carhart (1997) added momentum and found most fund "persistence" was factors and costs. Regressing a strategy on these factors is now the first check in manager selection, and the factors are sold as smart beta.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> how much of this strategy's return is just known factor premia, and what alpha is left?</p>
+      </div>
+    </section>
+
+    <section class="sl-slide" data-slide="3">
+      <div class="sl-kicker">Section 2</div>
       <h2 class="sl-h2">Two anomalies CAPM's beta can't touch</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">📉</div><div><h4>The size effect</h4><p>Sort stocks by market cap. The smallest ones earn more, on average, than their CAPM beta says they should — a persistent, replicated pattern a single factor has no room to describe.</p></div></div>
@@ -35,8 +48,8 @@
       <div class="sl-quote">Both patterns survive controlling for beta. Both are too large and too persistent to be noise. CAPM's single factor simply isn't enough — and the fix Fama &amp; French (1993) reached for wasn't a smarter beta, it was two more measured, tradeable portfolios sitting right next to it.</div>
     </section>
 
-    <section class="sl-slide" data-slide="3">
-      <div class="sl-kicker">Section 2</div>
+    <section class="sl-slide" data-slide="4">
+      <div class="sl-kicker">Section 3</div>
       <h2 class="sl-h2">Two more zero-cost portfolios, added as regressors</h2>
       <div class="sl-card">
         <div class="sl-card-label"><i></i>The three-factor model</div>
@@ -54,8 +67,8 @@
       <p class="sl-p"><strong>SMB</strong> (Small Minus Big): the return of a diversified small-cap portfolio minus a diversified large-cap portfolio, every period. <strong>HML</strong> (High Minus Low): the return of a high book-to-market ("value") portfolio minus a low book-to-market ("growth") portfolio. A stock's β<sub>SMB</sub> or β<sub>HML</sub> just measures how much its own return moves with each of those spreads — regardless of whether the stock is technically small or cheap itself.</p>
     </section>
 
-    <section class="sl-slide" data-slide="4">
-      <div class="sl-kicker">Section 3</div>
+    <section class="sl-slide" data-slide="5">
+      <div class="sl-kicker">Section 4</div>
       <h2 class="sl-h2">How SMB and HML actually get built</h2>
       <p class="sl-sub">Not an abstraction — a specific mechanical recipe. Step through it.</p>
       <div class="sl-card">
@@ -94,8 +107,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="5">
-      <div class="sl-kicker">Section 4</div>
+    <section class="sl-slide" data-slide="6">
+      <div class="sl-kicker">Section 5</div>
       <h2 class="sl-h2">Three factors, three toy periods, drawn</h2>
       <p class="sl-sub">Made-up return figures for illustration — not fitted to real data.</p>
       <div class="sl-card">
@@ -129,8 +142,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="6">
-      <div class="sl-kicker">Section 5</div>
+    <section class="sl-slide" data-slide="7">
+      <div class="sl-kicker">Section 6</div>
       <h2 class="sl-h2">Carhart's fourth factor — momentum earns its own line</h2>
       <div class="sl-compare">
         <div class="sl-ccard neutral">
@@ -149,8 +162,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="7">
-      <div class="sl-kicker">Section 6</div>
+    <section class="sl-slide" data-slide="8">
+      <div class="sl-kicker">Section 7</div>
       <h2 class="sl-h2">The 2015 extension, briefly</h2>
       <div class="sl-icard-grid">
         <div class="sl-icard"><div class="sl-icard-badge">RMW</div><div><h4>Robust Minus Weak</h4><p>Long high-operating-profitability firms, short low-profitability ones. More expected profit, holding price fixed, should mean higher expected return.</p></div></div>
@@ -159,8 +172,8 @@
       <div class="sl-quote">Both come from a dividend-discount-model argument, not a pure anomaly hunt. The five-factor model is the modern academic standard — but the 3- and 4-factor versions are still quoted constantly in practice, chosen by context rather than one strictly replacing the others.</div>
     </section>
 
-    <section class="sl-slide" data-slide="8">
-      <div class="sl-kicker">Section 7</div>
+    <section class="sl-slide" data-slide="9">
+      <div class="sl-kicker">Section 8</div>
       <h2 class="sl-h2">This curriculum already taught you a factor model</h2>
       <p class="sl-sub">The FX carry trade, from this curriculum's own Interest Rate Parity lesson, is the identical structure.</p>
       <div class="sl-compare">
@@ -184,8 +197,8 @@
       <p class="sl-p">The FX carry trade exists precisely because UIP's prediction — that a high-yielder should depreciate to offset its extra interest — fails, on average, across decades. That's HML's risk-premium logic, transplanted: a persistent long-short spread, compensated for real, debated risk (crash risk, or consumption risk — Lustig &amp; Verdelhan, 2007), not a free lunch.</p>
     </section>
 
-    <section class="sl-slide" data-slide="9">
-      <div class="sl-kicker">Section 8</div>
+    <section class="sl-slide" data-slide="10">
+      <div class="sl-kicker">Section 9</div>
       <h2 class="sl-h2">This repo actually tried it — and got an honest null</h2>
       <div class="sl-callout amber">
         <div class="sl-callout-label">Verified against this repo's actual code</div>
@@ -194,8 +207,8 @@
       <p class="sl-p">No literal SMB, HML, or UMD exists anywhere in this codebase — this repo trades FX and gold, not equities, so that's expected. What's genuinely present is the same <em>methodological move</em>, tested honestly, with a result that didn't clear its own noise floor.</p>
     </section>
 
-    <section class="sl-slide" data-slide="10">
-      <div class="sl-kicker">Section 9</div>
+    <section class="sl-slide" data-slide="11">
+      <div class="sl-kicker">Section 10</div>
       <h2 class="sl-h2">Drag β<sub>HML</sub> and watch the prediction move</h2>
       <p class="sl-sub">Everything else held fixed at the worked example's values. Only the value-factor loading changes.</p>
       <div class="sl-card">
@@ -217,8 +230,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="11">
-      <div class="sl-kicker">Section 10</div>
+    <section class="sl-slide" data-slide="12">
+      <div class="sl-kicker">Section 11</div>
       <h2 class="sl-h2">Compute the full prediction yourself</h2>
       <p class="sl-sub">R̂ = α + β_MKT·MKT + β_SMB·SMB + β_HML·HML + β_UMD·UMD. Change any input, live.</p>
       <div class="sl-card">
@@ -252,8 +265,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="12">
-      <div class="sl-kicker">Section 11</div>
+    <section class="sl-slide" data-slide="13">
+      <div class="sl-kicker">Section 12</div>
       <h2 class="sl-h2">Check yourself</h2>
       <p class="sl-sub">Nothing is scored beyond this device. The explanation is the useful part.</p>
 
@@ -303,8 +316,8 @@
       </div>
     </section>
 
-    <section class="sl-slide" data-slide="13">
-      <div class="sl-kicker">Section 12</div>
+    <section class="sl-slide" data-slide="14">
+      <div class="sl-kicker">Section 13</div>
       <h2 class="sl-h2">What to carry forward</h2>
       <div class="sl-recap">
         <div class="sl-recap-row"><div class="sl-recap-num">01</div><p>CAPM's single beta leaves the size and value effects unexplained; Fama &amp; French (1993) add SMB and HML — real, tradeable long-short portfolios — as two more regressors.</p></div>
@@ -313,6 +326,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Fama-French (2015) adds RMW and CMA via a dividend-discount-model argument; it's the modern standard, but 3- and 4-factor versions remain in routine use.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The FX carry trade is the identical methodological move in a currency-market costume, with direct published analogs for MKT, HML, and UMD alike.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>This repo's own honest attempt at the FX analog (<code>forge/xsect.py</code>) came back a clean null — a documented factor elsewhere is not validated edge here.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Since Carhart (1997), alpha means what is left after market, size, value and momentum: the standard yardstick for any manager or strategy.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>
