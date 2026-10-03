@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Plywood in Leningrad, Air Force logistics in Washington</h2>
-      <p class="sl-sub">Kantorovich · 1939 · Dantzig · 1947</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Making the optimiser fast enough for a real universe</h2>
+      <p class="sl-sub">Wolfe · 1959 · Sharpe · 1963 · Rockafellar &amp; Uryasev · 2000</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Kantorovich formulated linear programming in 1939 while advising a Leningrad plywood laboratory, and the West barely noticed until the late 1950s. Dantzig rediscovered it for US Air Force planning in 1947 and invented the simplex method.</p>
-        <p>The 1975 economics Nobel went to Kantorovich and Koopmans, not Dantzig. QP followed Markowitz, with Wolfe's simplex extension for quadratic objectives in 1959.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Markowitz's problem is a QP, and around 1960 it strained computers for a few hundred stocks. Wolfe's 1959 QP simplex solved it in general; Sharpe's 1963 single-index model cut the work.</p>
+        <p>LPs found their own jobs: cash-flow matching for pension liabilities, and minimising expected shortfall over scenarios (Rockafellar &amp; Uryasev, 2000). Today QPs run index tracking and cost-aware rebalancing.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> solve the constrained portfolio problem exactly and quickly.</p>
       </div>
     </section>
 
@@ -332,7 +334,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Constrained Markowitz — minimize wᵀΣw subject to budget, return target, and box constraints — is exactly a QP, which is why real portfolios run on a QP solver, not the textbook formula.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>When the unconstrained optimum falls outside the feasible region, the true constrained optimum gets pulled to the nearest boundary or corner — not to some compromise point in between.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Naive clip-and-renormalize heuristics can silently re-violate the very constraint they were trying to satisfy — exactly why a real solver, not a spreadsheet trick, does this properly.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Kantorovich (1939) and Dantzig (1947) independently; QP followed Markowitz in the 1950s.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: mean-variance is a QP (Wolfe, 1959); cash-flow matching and CVaR minimisation (Rockafellar &amp; Uryasev, 2000) are LPs.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

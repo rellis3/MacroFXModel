@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Growing interfaces, and a Fields medallist's audio app</h2>
-      <p class="sl-sub">KPZ · 1986 → Walsh · 1986 → Hairer · Fields Medal 2014</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Moving the whole yield curve at once</h2>
+      <p class="sl-sub">Heath, Jarrow &amp; Morton · 1992 · Musiela · 1993</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Physicists Kardar, Parisi and Zhang proposed an equation for randomly growing interfaces in 1986. They used it for decades even though nobody could define its solutions rigorously, because its non-linear term squares something too rough to square.</p>
-        <p>Martin Hairer's regularity structures settled that question and won him the 2014 Fields Medal. He also wrote Amadeus, a Mac sound editor he started as a teenager. Musiela (1993) carried SPDEs into forward-curve modelling.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Short-rate models (Vasicek 1977, CIR 1985) move every point on the curve with one factor and cannot match today's curve. HJM (1992) starts from the whole observed forward curve and evolves every forward rate, with drifts set by no-arbitrage.</p>
+        <p>Musiela (1993) rewrote HJM as one SPDE for the curve, and the LIBOR market model (1997) took the approach onto swaption desks. Curve risk, curve factors and Bermudan pricing build on it.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> evolve a whole curve, arbitrage-free, from today's market curve.</p>
       </div>
     </section>
 
@@ -326,7 +328,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>HJM/Musiela writes the whole forward-rate curve's random motion as one SPDE; the no-arbitrage drift condition forces the drift the moment volatility is chosen — it's never a second, independent choice.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Vasicek, CIR, and Hull-White are the x=0-only special case of that same curve SPDE — a single short-rate SDE is what's left once every other tenor is discarded.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The Zakai equation is the SPDE an unnormalized filtering density evolves by — the Kalman filter solves it exactly in the linear-Gaussian case, a particle filter approximates it by Monte Carlo otherwise.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: physics (KPZ, 1986) and filtering (Zakai, 1969); Hairer's 2014 Fields Medal work handled the hardest equations; Musiela (1993) brought SPDEs to the forward curve.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: HJM (1992) and Musiela's SPDE form (1993) model the whole forward curve; the LIBOR market model (1997) took it onto rates desks.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

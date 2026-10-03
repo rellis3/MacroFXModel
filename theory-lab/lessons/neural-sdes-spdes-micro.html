@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">A deep network that turned out to be Euler's method</h2>
-      <p class="sl-sub">Chen, Rubanova, Bettencourt &amp; Duvenaud · NeurIPS 2018 · Toronto</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Letting the data choose the dynamics</h2>
+      <p class="sl-sub">Deep hedging · 2019 · neural-SDE calibration · c. 2020</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>A residual network's update, h + f(h), is one Euler step. Making the layers continuous gave Neural ODEs, one of NeurIPS 2018's best papers, trained with an adjoint method from Pontryagin's 1962 optimal-control work.</p>
-        <p>Stochastic versions followed: Tzen &amp; Raginsky (2019), the stochastic adjoint (2020), and neural SDEs as GANs (Kidger et al., 2021). Applying them to finance is still research.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Heston and SABR fix the shape of the dynamics in advance; when the market disagrees, a desk can only add parameters. Deep hedging (Buehler et al., 2019) trained networks to hedge directly from simulated paths.</p>
+        <p>From around 2020, researchers made an SDE's drift and volatility neural networks and calibrated them to vanilla prices. It is still research, useful for asking how much a price depends on the assumed model.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> learn a model's dynamics from data instead of assuming a formula.</p>
       </div>
     </section>
 
@@ -335,7 +337,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The cost is also real: far harder to fit reliably, prone to overfitting and implausible extrapolation outside the training range, and interpretability is essentially gone.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Neural SPDEs extend the same idea to an entire evolving field, like an implied-volatility surface — resolution-invariant is a real property, but it is not the same claim as accurate.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>None of this is built, tested, or validated as a trading tool anywhere in this repo — verified directly against the current source code, not just repeated from the full lesson.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: residual network = Euler step, which led to Neural ODEs (NeurIPS 2018 best paper); neural SDEs followed in 2019–21.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: deep hedging (2019) and neural-SDE calibration (from around 2020); still research, not a desk standard.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

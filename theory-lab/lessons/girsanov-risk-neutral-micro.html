@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">Re-weighting random paths, in Kolmogorov's Moscow</h2>
-      <p class="sl-sub">Igor Girsanov · 1960 · Moscow State University</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">One pricing rule for every derivative</h2>
+      <p class="sl-sub">Harrison &amp; Kreps · 1979 · Harrison &amp; Pliska · 1981</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Cameron &amp; Martin (1944) showed how probabilities on Brownian paths change under a fixed shift. Girsanov, a young Moscow probabilist, extended it in 1960 to random, path-dependent drifts — exactly what changing μ to r needs.</p>
-        <p>He was killed in a mountain accident in Siberia in 1967, aged 32. Only in 1979–81 did Harrison, Kreps and Pliska show that no-arbitrage pricing means an equivalent martingale measure, the measure Girsanov's theorem builds.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Black-Scholes priced one product with one hedge and one PDE. Harrison, Kreps and Pliska (1979–81) showed that no arbitrage means a measure exists under which every price is a discounted expectation; Girsanov's 1960 theorem builds it by swapping μ for r.</p>
+        <p>That turned pricing into simulation, and change of numeraire (1995) carried it into rates and FX. A risk-neutral distribution prices; it does not forecast.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> pick the probabilities under which averaging a payoff gives an arbitrage-free price.</p>
       </div>
     </section>
 
@@ -344,7 +346,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Because that martingale property is what no-arbitrage pricing requires, V₀ = e⁻ʳᵀ·𝔼^ℚ[V_T] never needs μ — only r and σ.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>N(d₂) is a genuine probability — ℚ(S_T &gt; K) — computed correctly. What's a deliberate device is only the measure, never the number.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A real-world view is a separate directional bet — spot, forwards, an un-hedged option — never a silent adjustment to the drift inside a pricing model.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Girsanov (Moscow, 1960), extending Cameron &amp; Martin (1944); finance adopted it via Harrison, Kreps &amp; Pliska (1979–81).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Harrison, Kreps &amp; Pliska (1979–81) made price = discounted expectation under Q, and Girsanov's theorem builds Q.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

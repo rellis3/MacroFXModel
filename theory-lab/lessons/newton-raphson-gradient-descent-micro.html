@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">A cubic in the 1660s, and a one-page note in 1847</h2>
-      <p class="sl-sub">Newton · c. 1669 · Raphson · 1690 · Cauchy · 1847</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Backing a volatility out of a price</h2>
+      <p class="sl-sub">Newton-Raphson for implied vol · Manaster &amp; Koehler · 1982</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Newton's original method solved x³ − 2x − 5 = 0 by repeated polynomial substitution, with no tangent line. Raphson published a simpler repeatable version in 1690, and the f/f′ form in calculus came later (Simpson, 1740).</p>
-        <p>Gradient descent began with Cauchy's short 1847 note to the Paris Academy, written with astronomy's large equation systems in mind. It is the ancestor of how neural networks are trained.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Options are compared in implied vol and bonds in yield, and neither inversion has a closed form. Newton-Raphson divides the pricing error by vega (or by the bond's price sensitivity for a yield); Manaster and Koehler (1982) gave a start that guarantees convergence.</p>
+        <p>Gradient descent is the many-parameter version: calibrating Heston or SABR to a surface, fitting a curve, or training a network.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage on">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> find the input that makes a model match a market price.</p>
       </div>
     </section>
 
@@ -312,7 +314,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Gradient descent solves a related but different problem — minimizing, not root-finding — by stepping a fixed distance α downhill along the negative gradient: xₙ₊₁ = xₙ − α∇f(xₙ).</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The learning rate α is a genuine tradeoff: too small converges reliably but slowly; too large overshoots, oscillates, or diverges outright — there's no universally "safe" default.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Newton's method for optimization bridges both ideas by also using curvature (the Hessian) to pick the step automatically — faster per iteration, but too expensive to invert at the scale of a modern machine-learning model.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Newton (c. 1669) and Raphson (1690) for root-finding; Cauchy (1847) for gradient descent.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Newton-Raphson backs out implied vols (Manaster &amp; Koehler, 1982) and yields; gradient methods calibrate models and train ML.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

@@ -36,7 +36,7 @@
       <li>With \(\beta\) fixed by convention, calibration reduces to three unknowns (\(\alpha,\rho,\nu\)) against three standard FX quotes — a small, fast, well-identified fit rather than a slow global optimization.</li>
       <li>The formula is an asymptotic approximation, not exact — it can misbehave (even imply arbitrage) at extreme strikes/maturities or high \(\nu\), which is what "Arbitrage-Free SABR" (2014) patches numerically.</li>
       <li>This is the last lesson in the Advanced Stochastic Calculus &amp; Derivatives tier: Itô → Girsanov → Heston (dynamics done right) → SABR (the fast, practitioner-friendly cousin of Heston, not a "better" model, just one built for speed of fit).</li>
-      <li>Where it came from: practitioners Hagan, Kumar, Lesniewski &amp; Woodward (Wilmott, 2002) showed local volatility moves the smile the wrong way when spot moves, and built the simplest stochastic-vol model with a written-down smile; it became the rates-market standard.</li>
+      <li>How it reached trading: practitioners Hagan, Kumar, Lesniewski &amp; Woodward (Wilmott, 2002) built it because local vol's smile moved the wrong way and its hedges misbehaved; it became the market standard for swaption and cap smiles and is widely used in FX.</li>
     </ul>
   </div>
 
@@ -107,12 +107,20 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
+    <div class="tl-origin-label">How it reached trading</div>
     <h3>Practitioners whose hedges kept misbehaving</h3>
-    <div class="tl-origin-who">Patrick Hagan, Deep Kumar, Andrew Lesniewski &amp; Diana Woodward · 2002 · <em>Wilmott Magazine</em></div>
-    <p>By the late 1990s many desks priced smiles with local volatility (Dupire, and Derman &amp; Kani, both 1994), which can fit any observed smile exactly. In "Managing Smile Risk," Hagan, Kumar, Lesniewski and Woodward pointed to a serious flaw. When the underlying moves, local volatility predicts that the smile shifts in the <em>opposite</em> direction to what markets actually do. As a result, its deltas and vegas can hedge worse than plain Black-Scholes.</p>
-    <p>Their fix was deliberately modest: the simplest stochastic-volatility model whose smile could still be written down. They obtained the implied-volatility formula with singular perturbation, an asymptotic technique from applied mathematics and physics, and named the model after its parameters: stochastic alpha, beta, rho.</p>
-    <p>The paper appeared in <em>Wilmott</em>, a practitioners' magazine, rather than an academic journal, and its first application was to USD interest-rate options. It became the market convention for quoting swaption and cap/floor smiles and is widely used for FX smiles. The 2014 "Arbitrage-Free SABR" follow-up cited in this lesson's Further reading came from the same authors.</p>
+    <div class="tl-origin-who">SABR · Hagan, Kumar, Lesniewski &amp; Woodward, 2002 · the rates-smile standard</div>
+    <p>By the late 1990s many desks fitted smiles with local volatility (Dupire; Derman &amp; Kani, both 1994), which can match any smile exactly. In "Managing Smile Risk", Hagan, Kumar, Lesniewski and Woodward showed its flaw: when the underlying moves, local volatility predicts that the smile shifts the opposite way to the market, so its deltas and vegas can hedge worse than plain Black-Scholes.</p>
+    <p>Their fix was the simplest stochastic-volatility model with a written-down implied-vol formula, published in <em>Wilmott</em>, a practitioners' magazine, and aimed first at USD interest-rate options. It became the market convention for swaption and cap/floor smiles and is widely used for FX. When euro rates went negative in the mid-2010s desks moved to a shifted SABR, and the authors' 2014 "Arbitrage-Free SABR" patched the formula's trouble in the wings.</p>
+    <p>On a rates desk the swaption volatility cube is commonly stored as SABR parameters per expiry and tenor, and smile-consistent deltas (Bartlett, 2006) come from the same model.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage on">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Fit a smile with four parameters and get hedges that move the right way when the underlying moves.</dd>
+        <dt>Takes in</dt><dd>The quoted smile from <a href="vega-volatility-surface.html">Vega &amp; the volatility surface</a>; the forward rate from <a href="swap-curves-ois.html">Swap curves &amp; OIS</a>; the stochastic-vol idea from <a href="heston-model.html">Heston</a>.</dd>
+        <dt>Hands on to</dt><dd>Smile-consistent hedges and <a href="second-order-greeks.html">second-order Greeks</a> (vanna, volga).</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-solid blue">
@@ -667,7 +675,7 @@
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>The formula is an approximation, not exact.</strong> It can misbehave — even imply arbitrage — at extreme strikes/maturities or high ν, which "Arbitrage-Free SABR" (2014) patches numerically.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>A good same-day fit isn't the same as a correct smile-dynamics model.</strong> SABR's backbone prediction for how the whole smile should move doesn't always match how real markets shift as the underlying moves.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>This repo has no options-pricing or smile-calibration module today.</strong> This lesson and the Heston lesson are pure theory background, not a description of anything built or validated here.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>SABR was built to fix a hedging problem, not to be the most realistic model.</strong> Its authors showed that local volatility's smile moves the wrong way when spot moves (2002). SABR gets those dynamics roughly right and still has a closed-form smile.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>SABR was built by practitioners to hedge, and became the rates-smile standard.</strong> Local vol's smile moves the wrong way when spot moves (2002); SABR gets the dynamics roughly right with a closed-form smile, and swaption vol cubes are commonly stored as its parameters.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 06</span></div>

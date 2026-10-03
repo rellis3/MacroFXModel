@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">A theorem discovered three times</h2>
-      <p class="sl-sub">Karush · 1939 · John · 1948 · Kuhn &amp; Tucker · 1950–51</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">The best portfolio that still obeys the rules</h2>
+      <p class="sl-sub">Markowitz · 1952–56 · KKT · 1951</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>William Karush derived the optimality conditions in his 1939 Chicago master's thesis, which was never published. Fritz John found a version in 1948, and his paper was first rejected by a journal.</p>
-        <p>Kuhn and Tucker's 1950 presentation (published 1951) caught on with the new operations-research community. Kuhn later credited Karush, hence KKT. Markowitz's 1952 portfolio problem is exactly this kind of convex program.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Unconstrained mean-variance has a formula and gives extreme, levered, unstable weights. Real books add no-short rules, caps and turnover limits, and then there is no formula.</p>
+        <p>Markowitz posed it as a constrained convex problem (1952) and solved it with the critical-line algorithm (1956); KKT certifies the optimum. Jagannathan and Ma (2003) showed caps also tame covariance noise.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> find the best allocation inside the constraints, guaranteed to be the global optimum.</p>
       </div>
     </section>
 
@@ -294,7 +296,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Non-convex problems have no such guarantee — multiple local minima can trap a solver in a "false" optimum that looks like success.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Markowitz's variance term wᵀΣw is always convex, because a valid covariance matrix Σ is always positive semi-definite — the reason mean-variance optimization is reliably solvable.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A realistic-sounding rule (cardinality — "at most 10 names") can destroy convexity entirely, turning a clean convex QP into a combinatorial, NP-hard search.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Karush (1939), John (1948), Kuhn &amp; Tucker (1950–51), three discoveries behind one set of conditions.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Markowitz (1952–56) made portfolio choice a constrained convex problem; KKT certifies every capped or long-only optimiser's answer.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

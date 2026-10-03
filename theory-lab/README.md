@@ -82,8 +82,10 @@ markup, the house content order, and a verification checklist.
   each ending in a capstone. Defined in `assets/paths-data.js`; every lesson
   on a path shows an "On your path" bar (`assets/paths.js`). Checked by
   `node js/lessonPaths.test.mjs`.
-- **"Where this came from"** (`.tl-origin`) — the human origin of the idea in
-  59 maths/ML lessons; real-world episodes (`.tl-story`) now in 78 — every public lesson has one or the other.
+- **"How it reached trading"** (`.tl-origin` + `.tl-role`) — in 59 maths/ML
+  lessons: who brought the idea into markets and what it let traders do, plus
+  its job in the analysis pipeline (Data → Model → Signal → Test → Size & risk
+  → Execute); real-world episodes (`.tl-story`) now in 78 — every public lesson has one or the other.
 - **Theory in the Real World** (10, each with a full lesson and a visual
   guide) — the story layer: hard theory told through real episodes, real
   causal chains (`.tl-chain`), and this desk's own tested verdict on each

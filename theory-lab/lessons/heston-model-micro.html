@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
       <h2 class="sl-h2">After the 1987 crash, a skew that would not go away</h2>
-      <p class="sl-sub">Steven L. Heston · 1993 · Yale School of Management</p>
+      <p class="sl-sub">Heston · 1993 · Bates · 1996</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>After October 1987, index puts stayed permanently richer than at-the-money options. Earlier stochastic-volatility models (Hull &amp; White 1987, Stein &amp; Stein 1991) could not combine correlation with fast pricing.</p>
-        <p>Heston borrowed Feller's 1951 square-root process (the one CIR used for rates) and a Fourier trick, giving prices as one integral. His title says "closed-form" and names currency options. Strictly, the characteristic function is closed-form and the price still needs a numerical integral.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>After October 1987, index puts stayed permanently richer than at-the-money options. Black-Scholes cannot do that, and earlier stochastic-vol models lacked correlation or fast pricing.</p>
+        <p>Heston (1993) correlated CIR's square-root variance with the price and priced through a characteristic function. His title names currency options; Bates (1996) added jumps for Deutsche mark options. It is now a base for many exotics models.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> give spot and volatility joint dynamics that reproduce the smile.</p>
       </div>
     </section>
 
@@ -321,7 +323,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>The correlation ρ between price shocks and variance shocks is what turns stochastic vol into a smile: ξ≠0 alone gives symmetric curvature, ρ≠0 tilts it into the asymmetric put-skew markets actually show.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>The cost of realism: no simple closed-form price — Heston needs a characteristic-function/Fourier numerical step, and calibration means fitting five parameters (κ,θ,ξ,ρ,v₀), not one.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>A tight calibration fit is not a validated trading edge — parameters are a snapshot of today's option surface, not a physical law, and the Feller condition (2κθ≥ξ²) is often violated in practice.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: the post-1987 skew, answered by Heston (Yale, 1993) with Feller's square-root process and a Fourier pricing trick.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Heston (1993) answered the post-1987 skew, Bates (1996) took it to FX options with jumps, and it now anchors exotics pricing.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

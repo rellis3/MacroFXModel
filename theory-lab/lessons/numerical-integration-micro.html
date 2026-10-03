@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">A wedding, a wine barrel and a game of solitaire</h2>
-      <p class="sl-sub">Kepler · 1615 · Simpson · 1743 · Ulam &amp; von Neumann · 1946</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Option prices and tail risk are integrals</h2>
+      <p class="sl-sub">Boyle · 1977 · Paskov &amp; Traub · 1995 · FRTB · 2016</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Kepler distrusted how a wine merchant measured the barrels for his 1613 wedding, and in 1615 wrote a book on barrel volumes built from thin slices. The parabolic rule is still called Kepler's barrel rule in German; Simpson gave it its English name in 1743.</p>
-        <p>Monte Carlo began in 1946 when Ulam, recovering from illness, asked how often solitaire comes out. Playing many games beat calculating. With von Neumann it became a Los Alamos method, and Boyle brought it to option pricing in 1977.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>An option price is an expected payoff; expected shortfall is a tail average. Boyle (1977) priced options by Monte Carlo, quasi-Monte Carlo (Paskov and Traub, 1995) priced a 360-dimensional mortgage security much faster, and Gauss quadrature became standard for Heston's integrals.</p>
+        <p>Under FRTB (2016), 97.5% expected shortfall replaced 99% VaR, so how the tail is integrated now feeds capital.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage on">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> turn an expectation into a number with a known error.</p>
       </div>
     </section>
 
@@ -339,7 +341,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Both are grids, and grids don't scale — a d-dimensional grid needs roughly nᵈ points, the curse of dimensionality that makes them infeasible past 2-3 dimensions.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Monte Carlo replaces the grid with random sampling — its error shrinks at a fixed 1/√N rate, regardless of how many dimensions the problem has.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>The trade-off is real: quadrature is faster and far more accurate per point in 1-2 dimensions; Monte Carlo is the only tractable option once dimensionality is genuinely high.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Kepler's wine barrels (1615), Simpson (1743), Gauss (1814), and Ulam's solitaire at Los Alamos (1946) for Monte Carlo.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Monte Carlo (Boyle, 1977), quasi-Monte Carlo (Paskov &amp; Traub, 1995) and Gauss quadrature price options; FRTB's expected shortfall (2016) made the tail integral a capital number.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">An algorithm born from listening for nuclear tests</h2>
-      <p class="sl-sub">Cooley &amp; Tukey · 1965 → Carr &amp; Madan · 1999</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">A whole strike strip, fast enough to calibrate</h2>
+      <p class="sl-sub">Carr &amp; Madan · 1999</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>Tukey's FFT idea came up at a Kennedy-era science-advisory meeting about detecting Soviet nuclear tests with seismometers. Richard Garwin connected him with IBM's James Cooley, and the paper appeared in 1965. Gauss had found the trick around 1805 for asteroid orbits but never published it.</p>
-        <p>Carr and Madan (1999) damped the call price so that one FFT returns a whole strike strip.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>Heston-type prices are integrals of a characteristic function. Calibration reprices hundreds of strikes at every optimiser step, and integrating one strike at a time was the bottleneck.</p>
+        <p>Carr and Madan (1999) damped the call price so one FFT (Cooley–Tukey, 1965) returns a whole strike grid. That made Heston, Bates and variance gamma practical to fit; the COS method (2008) followed.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> price every strike at once so a model can be fitted to the surface.</p>
       </div>
     </section>
 
@@ -358,7 +360,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>Carr &amp; Madan's ψ_T(v) has a clean closed form in terms of φ_T — stated as the published result, not re-derived, the same convention this curriculum uses for other closed forms.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>Discretizing the inversion integral turns it into exactly the shape an FFT computes — one O(N log N) call prices a whole strike grid at once, instead of N separate integrations.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>It only works when a tractable φ_T exists, and a fast calibration loop is not a validated one — speed is infrastructure, not evidence the fitted model is correct.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Cooley &amp; Tukey's 1965 FFT (nuclear-test detection; Gauss had it around 1805), applied to option pricing by Carr &amp; Madan in 1999.</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: Carr &amp; Madan (1999) made one FFT price a whole strike strip, so Heston-type models could be calibrated routinely.</p></div>
       </div>
       <div class="sl-callout" style="background:var(--green-bg);border-color:var(--green-bd)">
         <div class="sl-callout-label" style="color:var(--green)">What this now lets you do</div>

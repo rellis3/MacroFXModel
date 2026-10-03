@@ -26,13 +26,15 @@
     </section>
 
     <section class="sl-slide" data-slide="2">
-      <div class="sl-kicker">Section 1 · Where this came from</div>
-      <h2 class="sl-h2">A nineteenth-century trick, rebuilt for random paths</h2>
-      <p class="sl-sub">Picard · c. 1890 → Itô · 1951 → Yamada &amp; Watanabe · 1971</p>
+      <div class="sl-kicker">Section 1 · How it reached trading</div>
+      <h2 class="sl-h2">Will this model even produce a price?</h2>
+      <p class="sl-sub">CIR · 1985 · Heston · 1993 · Andersen · 2008</p>
       <div class="sl-origin">
-        <div class="sl-origin-label">Where this came from</div>
-        <p>"Guess, plug in, repeat" — Picard's successive approximations for ODEs (around 1890, sharpened by Lindelöf in 1894) — is the engine of this lesson's theorem. Itô's 1951 memoir ran it on Brownian paths under Lipschitz and linear-growth conditions.</p>
-        <p>The square-root diffusion fell outside those conditions. Yamada and Watanabe (Watanabe was Itô's doctoral student at Kyoto) covered it in 1971, which is what CIR (1985) and Heston (1993) rely on.</p>
+        <div class="sl-origin-label">How it reached trading</div>
+        <p>A model is an SDE a desk will simulate and hedge with. If it has no solution, or several, its Monte Carlo prices are noise. Black-Scholes and Vasicek pass easily.</p>
+        <p>The square-root models, CIR (1985) and Heston (1993), sit outside the basic conditions. Yamada–Watanabe and Feller's condition decide whether rates or variance can hit zero, and fitted Heston parameters often fail Feller's test.</p>
+        <div class="sl-role-stages"><span class="sl-role-stage">Data</span><span class="sl-role-stage on">Model</span><span class="sl-role-stage">Signal</span><span class="sl-role-stage on">Test</span><span class="sl-role-stage">Size &amp; risk</span><span class="sl-role-stage">Execute</span></div>
+        <p><strong>Its job:</strong> confirm a model defines one sensible path per draw of noise before anyone prices with it.</p>
       </div>
     </section>
 
@@ -294,7 +296,7 @@
         <div class="sl-recap-row"><div class="sl-recap-num">04</div><p>OU's affine drift and GBM's level-proportional coefficients satisfy both conditions cleanly and cheaply — the quiet reason those closed-form solutions exist at all.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">05</div><p>CIR's σ(x)=σ√|x| fails Lipschitz at x=0 but not growth — a narrow failure that needs Yamada-Watanabe, not a verdict that the model is broken.</p></div>
         <div class="sl-recap-row"><div class="sl-recap-num">06</div><p>Superlinear growth (like σ(x)=σ₀x^1.5, or the illustrative dX/dt=X^p for p&gt;1) is the dangerous failure — no solution exists at all past some finite time, for any method.</p></div>
-        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>Where it came from: Picard's 1890s ODE iteration, carried over by Itô (1951); the square-root case was settled by Yamada &amp; Watanabe (1971).</p></div>
+        <div class="sl-recap-row"><div class="sl-recap-num">07</div><p>How it reached trading: a model-validation check that became live with CIR (1985) and Heston (1993), whose fitted parameters often fail the Feller condition.</p></div>
       </div>
       <div class="sl-callout green">
         <div class="sl-callout-label">What this now lets you do</div>

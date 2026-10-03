@@ -37,7 +37,7 @@
       <li>Inverting that transform is exactly the shape a discretized FFT computes efficiently — one \(O(N\log N)\) call returns prices at a whole grid of \(N\) log-strikes \(k\) at once, instead of \(N\) separate numerical integrations.</li>
       <li>The damping factor \(\alpha\) and the FFT's strike-spacing/grid-spacing pair are not free — there's a real, tunable trade-off between them (a discrete-FFT uncertainty-principle-style constraint), not a derivation this lesson works through in full.</li>
       <li>This is a real, load-bearing computational tool used daily wherever a model has a tractable characteristic function (stochastic-volatility, jump-diffusion) — and it flatly does not apply to models without one, where Monte Carlo or a PDE solve are the fallback instead.</li>
-      <li>Where it came from: the FFT was published by Cooley &amp; Tukey in 1965, out of work on detecting Soviet nuclear tests (Gauss had it, unpublished, around 1805); Carr &amp; Madan (1999) showed how a damped call price lets one FFT price a whole strike strip.</li>
+      <li>How it reached trading: Carr &amp; Madan (1999) damped the call price so one FFT prices a whole strike strip, which made Heston-type models fast enough to calibrate to a volatility surface.</li>
     </ul>
   </div>
 
@@ -125,12 +125,20 @@
   </div>
 
   <div class="tl-origin">
-    <div class="tl-origin-label">Where this came from</div>
-    <h3>An algorithm born from listening for nuclear tests</h3>
-    <div class="tl-origin-who">James Cooley &amp; John Tukey · 1965 · IBM / Princeton &nbsp;→&nbsp; Peter Carr &amp; Dilip Madan · 1999</div>
-    <p>The Fast Fourier Transform at the centre of this lesson came out of Cold War arms control. John Tukey of Princeton had the idea during a meeting of President Kennedy's Science Advisory Committee about detecting Soviet nuclear tests with seismometers outside the USSR, a task that needed a very large number of Fourier transforms. Richard Garwin of IBM, also at the meeting, put Tukey in touch with IBM's James Cooley. By the usual account, Garwin did not tell Cooley the real purpose and described the work as finding periodicities in a crystal of helium-3. Their paper appeared in 1965.</p>
-    <p>Gauss had found the same divide-and-conquer trick around 1805 while interpolating the orbits of the asteroids Pallas and Juno. He never published it in his lifetime, and it surfaced in his collected works in Latin, unnoticed by the people who later reinvented it. Its priority was established by Heideman, Johnson &amp; Burrus in 1984.</p>
-    <p>Peter Carr and Dilip Madan's 1999 contribution was to make option prices fit the FFT. Damping the call price makes it transformable, after which one FFT call returns a whole strike strip. An algorithm built for seismology is now part of how volatility surfaces are calibrated.</p>
+    <div class="tl-origin-label">How it reached trading</div>
+    <h3>Pricing a whole strike strip fast enough to calibrate</h3>
+    <div class="tl-origin-who">FFT option pricing · Carr &amp; Madan, 1999</div>
+    <p>Heston-type models give option prices as integrals of a characteristic function. One strike is fine; calibration needs hundreds of strikes and maturities, repriced at every step of an optimiser, and integrating strike by strike was the bottleneck.</p>
+    <p>Peter Carr and Dilip Madan (1999) damped the call price so that it has a Fourier transform, which lets one fast Fourier transform (Cooley &amp; Tukey's 1965 signal-processing algorithm) return prices on a whole grid of strikes in one pass. That made characteristic-function models, Heston, Bates and the variance-gamma model Madan had co-developed, practical to calibrate.</p>
+    <p>On desks it and its successors, such as the COS method of Fang &amp; Oosterlee (2008), sit inside volatility-surface calibration, where the speed is what makes frequent refits possible.</p>
+    <div class="tl-role">
+      <div class="tl-role-stages"><span class="tl-role-stage">Data</span><span class="tl-role-stage on">Model</span><span class="tl-role-stage">Signal</span><span class="tl-role-stage">Test</span><span class="tl-role-stage">Size &amp; risk</span><span class="tl-role-stage">Execute</span></div>
+      <dl>
+        <dt>Its job</dt><dd>Turn a model's characteristic function into option prices across all strikes quickly enough to fit a surface.</dd>
+        <dt>Takes in</dt><dd>Characteristic functions from <a href="heston-model.html">Heston</a>; the maths from <a href="foundation-complex-numbers.html">Complex numbers</a> and <a href="fourier-analysis-frequency-domain.html">Fourier analysis</a>.</dd>
+        <dt>Hands on to</dt><dd>A fitted <a href="vega-volatility-surface.html">volatility surface</a>; the calibration loop in <a href="newton-raphson-gradient-descent.html">Newton-Raphson &amp; gradient descent</a>; <a href="institutional-bates-model.html">the Bates model</a>.</dd>
+      </dl>
+    </div>
   </div>
 
   <div class="tl-section-mark"><span>Section 02</span></div>
@@ -579,7 +587,7 @@
     <div class="tl-takeaway green"><span class="tl-takeaway-icon">✓</span><span><strong>This is a real, load-bearing production technique — not a curiosity.</strong> It's the standard method wherever a tractable characteristic function needs fast, whole-curve calibration: stochastic-volatility and jump-diffusion models specifically.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>It only applies when a closed-form characteristic function exists.</strong> No φ_T, no Carr-Madan speedup — Monte Carlo or a PDE solve are the fallback for models without one.</span></div>
     <div class="tl-takeaway amber"><span class="tl-takeaway-icon">⚠</span><span><strong>Fast calibration is not validated calibration.</strong> Speeding up the reprice loop says nothing about whether the resulting fitted parameters generalize out-of-sample — the same caveat the Heston lesson already raises about a good smile fit.</span></div>
-    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>The pricing trick reuses a Cold War algorithm.</strong> Cooley &amp; Tukey's 1965 FFT grew out of nuclear-test detection, and Gauss had found it around 1805. Carr &amp; Madan's 1999 damping step is what lets option pricing use it.</span></div>
+    <div class="tl-takeaway blue"><span class="tl-takeaway-icon">ℹ</span><span><strong>Its job is calibration speed.</strong> Carr &amp; Madan (1999) made one FFT price a whole strike strip, so characteristic-function models such as Heston, Bates and variance gamma could be refitted to the surface routinely; the COS method (2008) followed.</span></div>
   </div>
 
   <div class="tl-section-mark"><span>Section 05</span></div>
